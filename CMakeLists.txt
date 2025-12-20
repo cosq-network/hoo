@@ -137,6 +137,13 @@ add_executable(test_codegen
     src/ast/ASTImpl.cpp
 )
 
+# Create comprehensive test
+add_executable(comprehensive_test
+    src/comprehensive_test.cpp
+    src/CodeGenerator.cpp
+    src/ast/ASTImpl.cpp
+)
+
 target_link_libraries(hooc_jit
     hooc_parser
     ${llvm_libs}
@@ -147,6 +154,11 @@ target_link_libraries(hooc_parse
 )
 
 target_link_libraries(test_codegen
+    hooc_parser
+    ${llvm_libs}
+)
+
+target_link_libraries(comprehensive_test
     hooc_parser
     ${llvm_libs}
 )
@@ -163,6 +175,12 @@ target_include_directories(hooc_parse PRIVATE
 )
 
 target_include_directories(test_codegen PRIVATE
+    ${LLVM_INCLUDE_DIRS}
+    ${ANTLR4_INCLUDE_DIR}
+    ${ANTLR4_GENERATED_DIR}
+)
+
+target_include_directories(comprehensive_test PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}

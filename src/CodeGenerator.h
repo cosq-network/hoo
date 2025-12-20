@@ -47,10 +47,22 @@ private:
     llvm::Value* generatePrimaryExpression(const ast::PrimaryExpression& expr);
     llvm::Value* generateBinaryExpression(const ast::BinaryExpression& expr);
     llvm::Value* generateFunctionCall(const ast::FunctionCall& call);
-    
+    llvm::Value* generateUnaryExpression(const ast::UnaryMinus& expr);
+    llvm::Value* generateLogicalNot(const ast::LogicalNot& expr);
+    llvm::Value* generateLogicalAnd(const ast::LogicalAnd& expr);
+    llvm::Value* generateLogicalOr(const ast::LogicalOr& expr);
+    llvm::Value* generateAssignment(const ast::AssignmentExpression& expr);
+    llvm::Value* generateMemberAccess(const ast::MemberAccess& expr);
+    llvm::Value* generateArrayAccess(const ast::ArrayAccess& expr);
+
     void generateBlock(const ast::Block& block);
     void generateReturnStatement(const ast::ReturnStatement& ret);
     void generateExpressionStatement(const ast::ExpressionStatement& stmt);
+    void generateIfStatement(const ast::IfStatement& stmt);
+    void generateWhileStatement(const ast::WhileStatement& stmt);
+    void generateForInStatement(const ast::ForInStatement& stmt);
+    void generateForRangeStatement(const ast::ForRangeStatement& stmt);
+    void generateVariableDeclaration(const ast::VariableDeclaration& decl);
     
     // Type conversion helpers
     llvm::Type* convertPrimitiveType(ast::PrimitiveTypeKind kind);
@@ -59,6 +71,7 @@ private:
     // Utility methods
     llvm::Constant* createConstant(const ast::Primary& primary);
     std::string mangleFunctionName(const std::string& name, const std::vector<llvm::Type*>& paramTypes);
+    llvm::AllocaInst* createEntryBlockAlloca(llvm::Function* function, const std::string& varName, llvm::Type* type);
 };
 
 } // namespace hooc

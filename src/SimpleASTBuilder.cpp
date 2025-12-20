@@ -24,8 +24,28 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
 std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::DeclarationContext* ctx) {
     if (ctx->functionDeclaration()) {
         return buildFunctionDeclaration(ctx->functionDeclaration());
+    } else if (ctx->variableDeclaration()) {
+        return buildVariableDeclaration(ctx->variableDeclaration());
     }
     return nullptr;
+}
+
+std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx) {
+    std::string name = ctx->IDENTIFIER()->getText();
+
+    if (ctx->VAR()) {
+        // Type inference: var x = expr
+        auto initializer = buildExpression(ctx->expression());
+        return std::make_unique<VariableDeclaration>(name, std::move(initializer));
+    } else {
+        // Explicit type: type x or type x = expr
+        auto type = buildType(ctx->type());
+        std::unique_ptr<Expression> initializer;
+        if (ctx->expression()) {
+            initializer = buildExpression(ctx->expression());
+        }
+        return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer));
+    }
 }
 
 std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx) {
@@ -119,31 +139,241 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return std::make_unique<ReturnStatement>(std::move(expr));
     } else if (ctx->block()) {
         return buildBlock(ctx->block());
+    } else if (ctx->ifStatement()) {
+        return buildIfStatement(ctx->ifStatement());
+    } else if (ctx->whileStatement()) {
+        return buildWhileStatement(ctx->whileStatement());
+    } else if (ctx->forStatement()) {
+        auto forCtx = ctx->forStatement();
+        if (auto forInCtx = dynamic_cast<HoocParser::ForInStatementContext*>(forCtx)) {
+            return buildForInStatement(forInCtx);
+        } else if (auto forRangeCtx = dynamic_cast<HoocParser::ForRangeStatementContext*>(forCtx)) {
+            return buildForRangeStatement(forRangeCtx);
+        }
     }
-    
+
     return nullptr;
+}
+
+std::unique_ptr<IfStatement> SimpleASTBuilder::buildIfStatement(HoocParser::IfStatementContext* ctx) {
+    auto condition = buildExpression(ctx->expression());
+    auto thenBlock = buildBlock(ctx->block(0));
+    std::unique_ptr<Block> elseBlock;
+    if (ctx->block().size() > 1) {
+        elseBlock = buildBlock(ctx->block(1));
+    }
+    return std::make_unique<IfStatement>(std::move(condition), std::move(thenBlock), std::move(elseBlock));
+}
+
+std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser::WhileStatementContext* ctx) {
+    auto condition = buildExpression(ctx->expression());
+    auto body = buildBlock(ctx->block());
+    return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
+}
+
+std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser::ForInStatementContext* ctx) {
+    std::string variable = ctx->IDENTIFIER()->getText();
+    auto iterable = buildExpression(ctx->expression());
+    auto body = buildBlock(ctx->block());
+    return std::make_unique<ForInStatement>(variable, std::move(iterable), std::move(body));
+}
+
+std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(HoocParser::ForRangeStatementContext* ctx) {
+    std::string variable = ctx->IDENTIFIER()->getText();
+    auto exprs = ctx->expression();
+    auto start = buildExpression(exprs[0]);
+    auto end = buildExpression(exprs[1]);
+    auto body = buildBlock(ctx->block());
+    return std::make_unique<ForRangeStatement>(variable, std::move(start), std::move(end), std::move(body));
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildExpression(HoocParser::ExpressionContext* ctx) {
-    if (ctx->primary()) {
-        return buildPrimary(ctx->primary());
+    if (ctx->assignmentExpression()) {
+        return buildAssignmentExpression(ctx->assignmentExpression());
     }
-    
-    // For now, just handle primary expressions
-    // TODO: Add binary operations, function calls, etc.
     return nullptr;
 }
 
+std::unique_ptr<Expression> SimpleASTBuilder::buildAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx) {
+    auto left = buildLogicalOrExpression(ctx->logicalOrExpression());
+
+    if (ctx->ASSIGN() && ctx->assignmentExpression()) {
+        auto right = buildAssignmentExpression(ctx->assignmentExpression());
+        return std::make_unique<AssignmentExpression>(std::move(left), std::move(right));
+    }
+
+    return left;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildLogicalOrExpression(HoocParser::LogicalOrExpressionContext* ctx) {
+    auto andExprs = ctx->logicalAndExpression();
+    auto result = buildLogicalAndExpression(andExprs[0]);
+
+    for (size_t i = 1; i < andExprs.size(); i++) {
+        auto right = buildLogicalAndExpression(andExprs[i]);
+        result = std::make_unique<LogicalOr>(std::move(result), std::move(right));
+    }
+
+    return result;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildLogicalAndExpression(HoocParser::LogicalAndExpressionContext* ctx) {
+    auto relExprs = ctx->relationalExpression();
+    auto result = buildRelationalExpression(relExprs[0]);
+
+    for (size_t i = 1; i < relExprs.size(); i++) {
+        auto right = buildRelationalExpression(relExprs[i]);
+        result = std::make_unique<LogicalAnd>(std::move(result), std::move(right));
+    }
+
+    return result;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildRelationalExpression(HoocParser::RelationalExpressionContext* ctx) {
+    auto addExprs = ctx->additiveExpression();
+    auto result = buildAdditiveExpression(addExprs[0]);
+
+    for (size_t i = 1; i < addExprs.size(); i++) {
+        auto right = buildAdditiveExpression(addExprs[i]);
+
+        // Determine the operator
+        BinaryOperator op;
+        if (ctx->EQUALS(i-1)) op = BinaryOperator::EQUALS;
+        else if (ctx->NOT_EQUALS(i-1)) op = BinaryOperator::NOT_EQUALS;
+        else if (ctx->LESS(i-1)) op = BinaryOperator::LESS;
+        else if (ctx->LESS_EQUALS(i-1)) op = BinaryOperator::LESS_EQUALS;
+        else if (ctx->GREATER(i-1)) op = BinaryOperator::GREATER;
+        else if (ctx->GREATER_EQUALS(i-1)) op = BinaryOperator::GREATER_EQUALS;
+        else op = BinaryOperator::EQUALS; // Default
+
+        result = std::make_unique<RelationalExpression>(std::move(result), op, std::move(right));
+    }
+
+    return result;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildAdditiveExpression(HoocParser::AdditiveExpressionContext* ctx) {
+    auto multExprs = ctx->multiplicativeExpression();
+    auto result = buildMultiplicativeExpression(multExprs[0]);
+
+    for (size_t i = 1; i < multExprs.size(); i++) {
+        auto right = buildMultiplicativeExpression(multExprs[i]);
+
+        BinaryOperator op = ctx->PLUS(i-1) ? BinaryOperator::PLUS : BinaryOperator::MINUS;
+        result = std::make_unique<AdditiveExpression>(std::move(result), op, std::move(right));
+    }
+
+    return result;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildMultiplicativeExpression(HoocParser::MultiplicativeExpressionContext* ctx) {
+    auto unaryExprs = ctx->unaryExpression();
+    auto result = buildUnaryExpression(unaryExprs[0]);
+
+    for (size_t i = 1; i < unaryExprs.size(); i++) {
+        auto right = buildUnaryExpression(unaryExprs[i]);
+
+        BinaryOperator op;
+        if (ctx->MULTIPLY(i-1)) op = BinaryOperator::MULTIPLY;
+        else if (ctx->DIVIDE(i-1)) op = BinaryOperator::DIVIDE;
+        else op = BinaryOperator::MODULO;
+
+        result = std::make_unique<MultiplicativeExpression>(std::move(result), op, std::move(right));
+    }
+
+    return result;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildUnaryExpression(HoocParser::UnaryExpressionContext* ctx) {
+    auto postfix = buildPostfixExpression(ctx->postfixExpression());
+
+    if (ctx->MINUS()) {
+        return std::make_unique<UnaryMinus>(std::move(postfix));
+    } else if (ctx->NOT()) {
+        return std::make_unique<LogicalNot>(std::move(postfix));
+    }
+
+    return postfix;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildPostfixExpression(HoocParser::PostfixExpressionContext* ctx) {
+    auto result = buildPrimary(ctx->primary());
+
+    // Process postfix operators in order
+    // We need to track which operators appear and in what order
+    // For simplicity, we'll handle them based on their token positions
+
+    // Handle member access (.member)
+    for (size_t i = 0; i < ctx->DOT().size(); i++) {
+        if (i < ctx->IDENTIFIER().size()) {
+            std::string member = ctx->IDENTIFIER(i)->getText();
+            result = std::make_unique<MemberAccess>(std::move(result), member);
+        }
+    }
+
+    // Handle array access ([index])
+    for (size_t i = 0; i < ctx->LBRACKET().size(); i++) {
+        if (i < ctx->expression().size()) {
+            auto index = buildExpression(ctx->expression(i));
+            result = std::make_unique<ArrayAccess>(std::move(result), std::move(index));
+        }
+    }
+
+    // Handle function calls (func(args))
+    for (size_t i = 0; i < ctx->LPAREN().size(); i++) {
+        auto argList = (i < ctx->argumentList().size())
+            ? buildArgumentList(ctx->argumentList(i))
+            : std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+        result = std::make_unique<FunctionCall>(std::move(result), std::move(argList));
+    }
+
+    return result;
+}
+
+std::unique_ptr<ArgumentList> SimpleASTBuilder::buildArgumentList(HoocParser::ArgumentListContext* ctx) {
+    std::vector<std::unique_ptr<Expression>> arguments;
+
+    if (ctx) {
+        for (auto exprCtx : ctx->expression()) {
+            auto expr = buildExpression(exprCtx);
+            if (expr) {
+                arguments.push_back(std::move(expr));
+            }
+        }
+    }
+
+    return std::make_unique<ArgumentList>(std::move(arguments));
+}
+
 std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryContext* ctx) {
-    if (ctx->IDENTIFIER()) {
+    if (ctx->LPAREN() && ctx->expression()) {
+        // Parenthesized expression
+        return buildExpression(ctx->expression());
+    } else if (ctx->IDENTIFIER()) {
         auto identifier = std::make_unique<Identifier>(ctx->IDENTIFIER()->getText());
         return std::make_unique<PrimaryExpression>(std::move(identifier));
     } else if (ctx->INTEGER_LITERAL()) {
         int value = getIntValue(ctx->INTEGER_LITERAL());
         auto intLiteral = std::make_unique<IntegerLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(intLiteral));
+    } else if (ctx->FLOATING_LITERAL()) {
+        double value = getDoubleValue(ctx->FLOATING_LITERAL());
+        auto floatingLiteral = std::make_unique<FloatingLiteral>(value);
+        return std::make_unique<PrimaryExpression>(std::move(floatingLiteral));
+    } else if (ctx->STRING_LITERAL()) {
+        std::string value = getStringValue(ctx->STRING_LITERAL());
+        auto stringLiteral = std::make_unique<StringLiteral>(value);
+        return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
+    } else if (ctx->CHAR_LITERAL()) {
+        char value = getCharValue(ctx->CHAR_LITERAL());
+        auto charLiteral = std::make_unique<CharacterLiteral>(value);
+        return std::make_unique<PrimaryExpression>(std::move(charLiteral));
+    } else if (ctx->TRUE() || ctx->FALSE()) {
+        bool value = ctx->TRUE() != nullptr;
+        auto boolLiteral = std::make_unique<BooleanLiteral>(value);
+        return std::make_unique<PrimaryExpression>(std::move(boolLiteral));
     }
-    
+
     return nullptr;
 }
 

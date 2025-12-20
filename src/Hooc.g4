@@ -116,6 +116,7 @@ declaration
     : functionDeclaration
     | classDeclaration
     | interfaceDeclaration
+    | variableDeclaration SEMICOLON
     ;
 
 // Function Declaration
@@ -183,6 +184,10 @@ statement
     : block
     | expressionStatement SEMICOLON
     | returnStatement SEMICOLON
+    | ifStatement
+    | whileStatement
+    | forStatement
+    | scopeStatement
     ;
 
 block: LBRACE statement* RBRACE;
@@ -202,14 +207,56 @@ returnStatement: RETURN expression?;
 
 scopeStatement: SCOPE block;
 
-// Expressions (Ultra-Simplified)
+// Expressions (with operator precedence)
 expression
-    : primary
+    : assignmentExpression
+    ;
+
+assignmentExpression
+    : logicalOrExpression (ASSIGN assignmentExpression)?
+    ;
+
+logicalOrExpression
+    : logicalAndExpression (OR logicalAndExpression)*
+    ;
+
+logicalAndExpression
+    : relationalExpression (AND relationalExpression)*
+    ;
+
+relationalExpression
+    : additiveExpression ((EQUALS | NOT_EQUALS | LESS | LESS_EQUALS | GREATER | GREATER_EQUALS) additiveExpression)*
+    ;
+
+additiveExpression
+    : multiplicativeExpression ((PLUS | MINUS) multiplicativeExpression)*
+    ;
+
+multiplicativeExpression
+    : unaryExpression ((MULTIPLY | DIVIDE | MODULO) unaryExpression)*
+    ;
+
+unaryExpression
+    : (MINUS | NOT)? postfixExpression
+    ;
+
+postfixExpression
+    : primary (
+        DOT IDENTIFIER
+      | LBRACKET expression RBRACKET
+      | LPAREN argumentList? RPAREN
+    )*
     ;
 
 primary
     : IDENTIFIER
     | INTEGER_LITERAL
+    | FLOATING_LITERAL
+    | STRING_LITERAL
+    | CHAR_LITERAL
+    | TRUE
+    | FALSE
+    | LPAREN expression RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)
