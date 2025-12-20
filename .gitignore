@@ -1,0 +1,70 @@
+# Build directories
+build/
+bin/
+obj/
+out/
+
+# CMake files
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+
+# Generated ANTLR4 files
+antlr4/generated/
+*.tokens
+*.interp
+
+# Compiled binaries and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+
+# Object files
+*.o
+*.obj
+
+# Debug files
+*.pdb
+*.dSYM/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Package manager files
+node_modules/
+*.lock
+
+# ANTLR4 tools
+tools/antlr-*.jar
+
+# Test outputs
+test_output/
+*.test
+
+# Coverage files
+*.gcov
+*.gcda
+*.gcno
+
+# Dependency directories
+deps/
+vendor/
+
+# Platform specific
+Thumbs.db
+ehthumbs.db
