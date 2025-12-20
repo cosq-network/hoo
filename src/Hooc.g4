@@ -100,7 +100,7 @@ MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip;
 // ===== PARSER RULES =====
 
 // Compilation Unit
-compilationUnit: importStatement* declaration* EOF;
+compilationUnit: declaration* EOF;
 
 // Import Statements
 importStatement
@@ -116,7 +116,6 @@ declaration
     : functionDeclaration
     | classDeclaration
     | interfaceDeclaration
-    | variableDeclaration SEMICOLON
     ;
 
 // Function Declaration
@@ -182,13 +181,8 @@ primitiveType: BYTE | UINT8 | INT64 | DOUBLE | F64 | BOOL | CHAR | STRING;
 // Statements
 statement
     : block
-    | variableDeclaration SEMICOLON
     | expressionStatement SEMICOLON
-    | ifStatement
-    | forStatement
-    | whileStatement
     | returnStatement SEMICOLON
-    | scopeStatement
     ;
 
 block: LBRACE statement* RBRACE;
@@ -208,40 +202,14 @@ returnStatement: RETURN expression?;
 
 scopeStatement: SCOPE block;
 
-// Expressions
+// Expressions (Ultra-Simplified)
 expression
-    : primary                                               # primaryExpression
-    | expression DOT IDENTIFIER                            # memberAccess
-    | expression LBRACKET expression RBRACKET              # arrayAccess
-    | expression LPAREN argumentList? RPAREN               # functionCall
-    | NEW type LBRACKET expression RBRACKET                # newArrayExpression
-    | NEW IDENTIFIER LPAREN argumentList? RPAREN           # newObjectExpression
-    | MINUS expression                                      # unaryMinus
-    | NOT expression                                        # logicalNot
-    | expression (MULTIPLY | DIVIDE | MODULO) expression   # multiplicativeExpression
-    | expression (PLUS | MINUS) expression                 # additiveExpression
-    | expression (LESS | LESS_EQUALS | GREATER | GREATER_EQUALS | EQUALS | NOT_EQUALS) expression # relationalExpression
-    | expression AND expression                             # logicalAnd
-    | expression OR expression                              # logicalOr
-    | expression ASSIGN expression                          # assignmentExpression
-    | expression ELSE block                                 # errorHandlingExpression
-    | LBRACKET expressionList? RBRACKET                     # arrayLiteral
-    | LBRACKET expression FOR IDENTIFIER IN expression (IF expression)? RBRACKET # listComprehension
-    | IDENTIFIER LAMBDA_ARROW expression                    # lambdaExpression
-    | LPAREN parameter (COMMA parameter)* RPAREN LAMBDA_ARROW expression # multiParamLambda
+    : primary
     ;
 
 primary
     : IDENTIFIER
     | INTEGER_LITERAL
-    | FLOATING_LITERAL
-    | STRING_LITERAL
-    | MULTILINE_STRING
-    | CHAR_LITERAL
-    | TRUE
-    | FALSE
-    | interpolatedString
-    | LPAREN expression RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

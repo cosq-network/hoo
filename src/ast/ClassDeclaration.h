@@ -1,0 +1,122 @@
+#pragma once
+
+#include "ASTNode.h"
+#include "Declaration.h"
+#include <vector>
+#include <string>
+
+namespace hooc {
+namespace ast {
+
+class Parameter;
+class Type;
+
+// Class modifiers
+enum class ClassModifier {
+    SINGLETON,
+    IMMUTABLE,
+    FACTORY,
+    OBSERVABLE,
+    SERVICE,
+    STRATEGY,
+    ACTOR,
+    FINAL
+};
+
+// Primary constructor (Dart-style)
+class PrimaryConstructor : public ASTNode {
+public:
+    PrimaryConstructor(std::vector<std::unique_ptr<Parameter>> parameters)
+        : parameters_(std::move(parameters)) {}
+
+    std::string toString() const override;
+
+    const std::vector<std::unique_ptr<Parameter>>& getParameters() const { return parameters_; }
+
+private:
+    std::vector<std::unique_ptr<Parameter>> parameters_;
+};
+
+// Event declaration
+class EventDeclaration : public ASTNode {
+public:
+    EventDeclaration(const std::string& name) : name_(name) {}
+
+    std::string toString() const override;
+
+    const std::string& getName() const { return name_; }
+
+private:
+    std::string name_;
+};
+
+// Class member (can be function, variable, or event)
+class ClassMember : public ASTNode {
+public:
+    ClassMember(std::unique_ptr<Declaration> declaration)
+        : declaration_(std::move(declaration)) {}
+
+    ClassMember(std::unique_ptr<EventDeclaration> event)
+        : event_(std::move(event)) {}
+
+    std::string toString() const override;
+
+    const Declaration* getDeclaration() const { return declaration_.get(); }
+    const EventDeclaration* getEvent() const { return event_.get(); }
+    bool isEvent() const { return event_ != nullptr; }
+
+private:
+    std::unique_ptr<Declaration> declaration_;
+    std::unique_ptr<EventDeclaration> event_;
+};
+
+// Class body
+class ClassBody : public ASTNode {
+public:
+    ClassBody(std::vector<std::unique_ptr<ClassMember>> members)
+        : members_(std::move(members)) {}
+
+    std::string toString() const override;
+
+    const std::vector<std::unique_ptr<ClassMember>>& getMembers() const { return members_; }
+
+private:
+    std::vector<std::unique_ptr<ClassMember>> members_;
+};
+
+// Class declaration
+class ClassDeclaration : public Declaration {
+public:
+    ClassDeclaration(std::vector<ClassModifier> modifiers,
+                    const std::string& name,
+                    std::unique_ptr<PrimaryConstructor> constructor,
+                    const std::string& baseClass,
+                    std::vector<std::string> interfaces,
+                    std::unique_ptr<ClassBody> body)
+        : modifiers_(modifiers), name_(name), constructor_(std::move(constructor)),
+          baseClass_(baseClass), interfaces_(interfaces), body_(std::move(body)) {}
+
+    std::string toString() const override;
+
+    const std::vector<ClassModifier>& getModifiers() const { return modifiers_; }
+    const std::string& getName() const { return name_; }
+    const PrimaryConstructor* getConstructor() const { return constructor_.get(); }
+    const std::string& getBaseClass() const { return baseClass_; }
+    const std::vector<std::string>& getInterfaces() const { return interfaces_; }
+    const ClassBody& getBody() const { return *body_; }
+
+    bool hasModifier(ClassModifier modifier) const;
+    bool hasBaseClass() const { return !baseClass_.empty(); }
+    bool hasInterfaces() const { return !interfaces_.empty(); }
+
+private:
+    std::vector<ClassModifier> modifiers_;
+    std::string name_;
+    std::unique_ptr<PrimaryConstructor> constructor_;
+    std::string baseClass_;
+    std::vector<std::string> interfaces_;
+    std::unique_ptr<ClassBody> body_;
+};
+
+} // namespace ast
+} // namespace hooc

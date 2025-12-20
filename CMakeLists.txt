@@ -27,6 +27,28 @@ endif()
 message(STATUS "ANTLR4 Include Dir: ${ANTLR4_INCLUDE_DIR}")
 message(STATUS "ANTLR4 Library: ${ANTLR4_LIBRARY}")
 
+# Find LLVM
+set(CMAKE_PREFIX_PATH "/opt/homebrew/opt/llvm" ${CMAKE_PREFIX_PATH})
+find_package(LLVM REQUIRED CONFIG)
+
+message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+
+# Set up LLVM
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
+# Find the LLVM libraries we need
+llvm_map_components_to_libnames(llvm_libs
+    Core
+    ExecutionEngine
+    OrcJIT
+    Support
+    Target
+    TargetParser
+    native
+)
+
 # Set ANTLR4 variables
 set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE STRING "Path to ANTLR4 JAR file")
 set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/Hooc.g4")
@@ -93,16 +115,37 @@ target_compile_definitions(hooc_parser PUBLIC
 # Ensure generated files are created before building the library
 add_dependencies(hooc_parser generate_parser)
 
-# Optional: Create an example executable that uses the parser (only if main.cpp exists)
-if(EXISTS "${CMAKE_SOURCE_DIR}/src/main.cpp")
-    add_executable(hooc_test_parser
-        src/main.cpp
-    )
-    
-    target_link_libraries(hooc_test_parser
-        hooc_parser
-    )
-endif()
+# Create JIT executable
+add_executable(hooc_jit
+    src/main.cpp
+    src/HoocJIT.cpp
+    src/ProcessIsolatedParser.cpp
+)
+
+# Create standalone parser utility
+add_executable(hooc_parse
+    src/hooc_parse.cpp
+)
+
+target_link_libraries(hooc_jit
+    hooc_parser
+    ${llvm_libs}
+)
+
+target_link_libraries(hooc_parse
+    hooc_parser
+)
+
+target_include_directories(hooc_jit PRIVATE
+    ${LLVM_INCLUDE_DIRS}
+    ${ANTLR4_INCLUDE_DIR}
+    ${ANTLR4_GENERATED_DIR}
+)
+
+target_include_directories(hooc_parse PRIVATE
+    ${ANTLR4_INCLUDE_DIR}
+    ${ANTLR4_GENERATED_DIR}
+)
 
 # Install targets
 install(TARGETS hooc_parser
