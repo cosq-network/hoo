@@ -1,0 +1,6 @@
+func byte_operations(byte a, byte b) -> byte {
+    var sum = a + b;
+    var diff = a - b;
+    var product = a * b;
+    return sum;
+}

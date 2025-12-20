@@ -165,3 +165,59 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithWhileLoop) {
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
     EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
 }
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteParameter) {
+    std::string code = "func process(byte data) -> byte { return data; }";
+    auto* parseTree = parseCode(code);
+    
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+    EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteVariable) {
+    std::string code = R"(
+        func test() -> void {
+            var b = 255;
+            var typed: byte = 128;
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+    EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteArithmetic) {
+    std::string code = R"(
+        func calculate(byte a, byte b) -> byte {
+            var result = a + b;
+            return result;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+    EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
+}

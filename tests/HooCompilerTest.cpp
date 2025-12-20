@@ -121,6 +121,49 @@ TEST_F(HooCompilerTest, MultipleCompilations) {
     EXPECT_NE(module2->getFunction("second"), nullptr);
 }
 
+TEST_F(HooCompilerTest, CompileByteFunction) {
+    std::string code = "func process(byte data) -> byte { return data; }";
+    auto module = compiler->compile("byte_test", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify byte type is properly handled (i8 in LLVM)
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(8));
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+TEST_F(HooCompilerTest, CompileByteArithmetic) {
+    std::string code = R"(
+        func calculate(byte a, byte b) -> byte {
+            var sum = a + b;
+            var diff = a - b;
+            return sum;
+        }
+    )";
+    auto module = compiler->compile("byte_arithmetic", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("calculate");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
 TEST_F(HooCompilerTest, ErrorAfterSuccessfulCompilation) {
     // First successful compilation
     std::string validCode = "func valid() -> void { return; }";

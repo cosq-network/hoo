@@ -1,0 +1,6 @@
+func byte_vars() -> void {
+    var inferred = 255;
+    var explicit: byte = 128;
+    var zero: byte = 0;
+    return;
+}

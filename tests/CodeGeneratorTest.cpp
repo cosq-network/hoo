@@ -219,3 +219,68 @@ TEST_F(CodeGeneratorTest, VerifyGeneratedIRFormat) {
     EXPECT_TRUE(irString.find("define void @test()") != std::string::npos);
     EXPECT_TRUE(irString.find("ret void") != std::string::npos);
 }
+
+TEST_F(CodeGeneratorTest, GenerateByteFunction) {
+    std::string code = "func process(byte data) -> byte { return data; }";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Check function signature
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(8));
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
+}
+
+TEST_F(CodeGeneratorTest, GenerateByteVariables) {
+    std::string code = R"(
+        func test() -> void {
+            var b = 255;
+            var typed: byte = 128;
+            return;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("test");
+    ASSERT_NE(func, nullptr);
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
+    EXPECT_TRUE(irString.find("store") != std::string::npos);
+}
+
+TEST_F(CodeGeneratorTest, GenerateByteArithmetic) {
+    std::string code = R"(
+        func calculate(byte a, byte b) -> byte {
+            var result = a + b;
+            return result;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("calculate");
+    ASSERT_NE(func, nullptr);
+    
+    // Check that function has byte parameters and return type
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(8));
+    EXPECT_EQ(func->arg_size(), 2);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
+    EXPECT_TRUE(func->getArg(1)->getType()->isIntegerTy(8));
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("add i8") != std::string::npos);
+}

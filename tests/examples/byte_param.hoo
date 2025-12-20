@@ -1,0 +1,3 @@
+func process_byte(byte data) -> byte {
+    return data;
+}
