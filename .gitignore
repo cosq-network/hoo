@@ -49,6 +49,11 @@ antlr4/generated/
 node_modules/
 *.lock
 
+# Debug and temporary hoo files
+tests/examples/debug*.hoo
+tests/examples/*_debug.hoo
+tests/examples/test_*.hoo
+
 # ANTLR4 tools
 tools/antlr-*.jar
 

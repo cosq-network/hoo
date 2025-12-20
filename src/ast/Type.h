@@ -24,7 +24,8 @@ enum class PrimitiveTypeKind {
     F64,
     BOOL,
     CHAR,
-    STRING
+    STRING,
+    VOID
 };
 
 class PrimitiveType : public Type {

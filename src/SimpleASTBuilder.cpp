@@ -28,8 +28,6 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
 std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::DeclarationContext* ctx) {
     if (ctx->functionDeclaration()) {
         return buildFunctionDeclaration(ctx->functionDeclaration());
-    } else if (ctx->variableDeclaration()) {
-        return buildVariableDeclaration(ctx->variableDeclaration());
     }
     return nullptr;
 }
@@ -37,18 +35,18 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
 std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx) {
     std::string name = ctx->IDENTIFIER()->getText();
 
-    if (ctx->VAR()) {
-        // Type inference: var x = expr
-        auto initializer = buildExpression(ctx->expression());
-        return std::make_unique<VariableDeclaration>(name, std::move(initializer));
-    } else {
-        // Explicit type: type x or type x = expr
+    if (ctx->type()) {
+        // Explicit type: var x: type or var x: type = expr
         auto type = buildType(ctx->type());
         std::unique_ptr<Expression> initializer;
         if (ctx->expression()) {
             initializer = buildExpression(ctx->expression());
         }
         return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer));
+    } else {
+        // Type inference: var x = expr
+        auto initializer = buildExpression(ctx->expression());
+        return std::make_unique<VariableDeclaration>(name, std::move(initializer));
     }
 }
 
@@ -70,10 +68,8 @@ std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
         }
     }
     
-    std::unique_ptr<Type> returnType;
-    if (ctx->type()) {
-        returnType = buildType(ctx->type());
-    }
+    // Return type is now mandatory
+    auto returnType = buildType(ctx->type());
     
     auto body = buildBlock(ctx->block());
     
@@ -137,7 +133,9 @@ std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ct
 }
 
 std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::StatementContext* ctx) {
-    if (ctx->expressionStatement()) {
+    if (ctx->variableDeclaration()) {
+        return buildVariableDeclarationStatement(ctx->variableDeclaration());
+    } else if (ctx->expressionStatement()) {
         auto expr = buildExpression(ctx->expressionStatement()->expression());
         return std::make_unique<ExpressionStatement>(std::move(expr));
     } else if (ctx->returnStatement()) {
@@ -396,6 +394,7 @@ PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& type
     if (typeName == "string") return PrimitiveTypeKind::STRING;
     if (typeName == "byte") return PrimitiveTypeKind::BYTE;
     if (typeName == "uint8") return PrimitiveTypeKind::UINT8;
+    if (typeName == "void") return PrimitiveTypeKind::VOID;
     return PrimitiveTypeKind::INT64; // Default fallback
 }
 

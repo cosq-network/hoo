@@ -63,6 +63,7 @@ private:
     void generateForInStatement(const ast::ForInStatement& stmt);
     void generateForRangeStatement(const ast::ForRangeStatement& stmt);
     void generateVariableDeclaration(const ast::VariableDeclaration& decl);
+    void generateVariableDeclarationStatement(const ast::VariableDeclarationStatement& stmt);
     
     // Type conversion helpers
     llvm::Type* convertPrimitiveType(ast::PrimitiveTypeKind kind);

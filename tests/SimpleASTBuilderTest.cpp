@@ -42,7 +42,7 @@ TEST_F(SimpleASTBuilderTest, BuildEmptyCompilationUnit) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildSingleFunctionDeclaration) {
-    std::string code = "func test() { return; }";
+    std::string code = "func test() -> void { return; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -58,8 +58,8 @@ TEST_F(SimpleASTBuilderTest, BuildSingleFunctionDeclaration) {
 
 TEST_F(SimpleASTBuilderTest, BuildMultipleFunctionDeclarations) {
     std::string code = R"(
-        func first() { return; }
-        func second() { 42; }
+        func first() -> void { return; }
+        func second() -> void { 42; }
     )";
     auto* parseTree = parseCode(code);
     
@@ -75,7 +75,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleFunctionDeclarations) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithParameters) {
-    std::string code = "func add(int64 a, int64 b) { return a + b; }";
+    std::string code = "func add(int64 a, int64 b) -> int64 { return a + b; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -90,7 +90,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithParameters) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithExpressionStatement) {
-    std::string code = "func calculate() { 42; }";
+    std::string code = "func calculate() -> void { 42; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -105,7 +105,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithExpressionStatement) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithVariableDeclaration) {
-    std::string code = "func test() { var x = 10; }";
+    std::string code = "func test() -> void { var x = 10; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -126,7 +126,7 @@ TEST_F(SimpleASTBuilderTest, HandleInvalidParseTree) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithIfStatement) {
     std::string code = R"(
-        func conditional() { 
+        func conditional() -> void { 
             if (true) { 
                 return; 
             } 
@@ -147,7 +147,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithIfStatement) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithWhileLoop) {
     std::string code = R"(
-        func loop() { 
+        func loop() -> void { 
             while (true) { 
                 break; 
             } 

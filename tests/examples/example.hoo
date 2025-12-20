@@ -1,12 +1,12 @@
-func greet() {
+func greet() -> void {
     return;
 }
 
-func calculate() {
+func calculate() -> void {
     42;
 }
 
 func addNumbers(int64 a, int64 b) -> int64 {
-    let sum = 42;
+    var sum = 42;
     return sum;
 }

@@ -1,6 +1,7 @@
 #include "CodeGenerator.h"
 #include "ast/AST.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/CFG.h"
 #include "llvm/Support/raw_ostream.h"
 #include <iostream>
 #include <stdexcept>
@@ -147,6 +148,8 @@ void CodeGenerator::generateStatement(const Statement& stmt) {
         generateForInStatement(*forInStmt);
     } else if (auto forRangeStmt = dynamic_cast<const ForRangeStatement*>(&stmt)) {
         generateForRangeStatement(*forRangeStmt);
+    } else if (auto varDeclStmt = dynamic_cast<const VariableDeclarationStatement*>(&stmt)) {
+        generateVariableDeclarationStatement(*varDeclStmt);
     } else {
         std::cerr << "Unsupported statement type" << std::endl;
     }
@@ -597,8 +600,13 @@ void CodeGenerator::generateIfStatement(const IfStatement& stmt) {
         }
     }
 
-    // Continue with merge block
+    // Continue with merge block and ensure it has a terminator
     builder_->SetInsertPoint(mergeBlock);
+    if (!mergeBlock->getTerminator()) {
+        // If the merge block has no terminator, it means it's unreachable
+        // but LLVM still needs a terminator for verification
+        builder_->CreateUnreachable();
+    }
 }
 
 void CodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
@@ -783,6 +791,8 @@ LLVMType* CodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
             return LLVMType::getInt32Ty(context_); // Unicode scalar
         case PrimitiveTypeKind::STRING:
             return llvm::PointerType::get(context_, 0); // String as char*
+        case PrimitiveTypeKind::VOID:
+            return LLVMType::getVoidTy(context_);
         default:
             return LLVMType::getVoidTy(context_);
     }
@@ -820,6 +830,10 @@ std::string CodeGenerator::mangleFunctionName(const std::string& name, const std
         }
     }
     return mangledName;
+}
+
+void CodeGenerator::generateVariableDeclarationStatement(const VariableDeclarationStatement& stmt) {
+    generateVariableDeclaration(stmt.getDeclaration());
 }
 
 AllocaInst* CodeGenerator::createEntryBlockAlloca(Function* function, const std::string& varName, LLVMType* type) {

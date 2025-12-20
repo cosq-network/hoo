@@ -1,4 +1,4 @@
-func test() {
+func test() -> void {
     var x = 10;
     return;
 }

@@ -41,6 +41,7 @@ F64: 'f64';
 BOOL: 'bool';
 CHAR: 'char';
 STRING: 'string';
+VOID: 'void';
 
 // Operators
 PLUS: '+';
@@ -116,12 +117,11 @@ declaration
     : functionDeclaration
     | classDeclaration
     | interfaceDeclaration
-    | variableDeclaration SEMICOLON
     ;
 
 // Function Declaration
 functionDeclaration
-    : FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)? block
+    : FUNC IDENTIFIER LPAREN parameterList? RPAREN ARROW type block
     ;
 
 parameterList: parameter (COMMA parameter)*;
@@ -142,7 +142,6 @@ classBody: LBRACE classMember* RBRACE;
 
 classMember
     : functionDeclaration
-    | variableDeclaration SEMICOLON
     | eventDeclaration SEMICOLON
     ;
 
@@ -155,12 +154,12 @@ interfaceDeclaration
 
 interfaceMember: functionSignature SEMICOLON;
 
-functionSignature: FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)?;
+functionSignature: FUNC IDENTIFIER LPAREN parameterList? RPAREN ARROW type;
 
 // Variable Declaration
 variableDeclaration
-    : type IDENTIFIER (ASSIGN expression)?
-    | VAR IDENTIFIER ASSIGN expression
+    : VAR IDENTIFIER ASSIGN expression
+    | VAR IDENTIFIER COLON type (ASSIGN expression)?
     ;
 
 // Types
@@ -177,11 +176,12 @@ baseType
     | IDENTIFIER
     ;
 
-primitiveType: BYTE | UINT8 | INT64 | DOUBLE | F64 | BOOL | CHAR | STRING;
+primitiveType: BYTE | UINT8 | INT64 | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
 
 // Statements
 statement
     : block
+    | variableDeclaration SEMICOLON
     | expressionStatement SEMICOLON
     | returnStatement SEMICOLON
     | ifStatement

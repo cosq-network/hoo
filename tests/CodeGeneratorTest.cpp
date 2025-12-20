@@ -56,7 +56,7 @@ TEST_F(CodeGeneratorTest, GenerateEmptyModule) {
 }
 
 TEST_F(CodeGeneratorTest, GenerateSingleVoidFunction) {
-    std::string code = "func test() { return; }";
+    std::string code = "func test() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -77,8 +77,8 @@ TEST_F(CodeGeneratorTest, GenerateSingleVoidFunction) {
 
 TEST_F(CodeGeneratorTest, GenerateMultipleFunctions) {
     std::string code = R"(
-        func first() { return; }
-        func second() { return; }
+        func first() -> void { return; }
+        func second() -> void { return; }
     )";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
@@ -105,7 +105,7 @@ TEST_F(CodeGeneratorTest, GenerateMultipleFunctions) {
 }
 
 TEST_F(CodeGeneratorTest, GenerateFunctionWithReturnStatement) {
-    std::string code = "func getValue() { return; }";
+    std::string code = "func getValue() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -127,7 +127,7 @@ TEST_F(CodeGeneratorTest, GenerateFunctionWithReturnStatement) {
 }
 
 TEST_F(CodeGeneratorTest, GenerateFunctionWithExpressionStatement) {
-    std::string code = "func calculate() { 42; }";
+    std::string code = "func calculate() -> void { 42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -145,7 +145,7 @@ TEST_F(CodeGeneratorTest, GenerateFunctionWithExpressionStatement) {
 }
 
 TEST_F(CodeGeneratorTest, VerifyModuleStructure) {
-    std::string code = "func main() { return; }";
+    std::string code = "func main() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -177,7 +177,7 @@ TEST_F(CodeGeneratorTest, HandleEmptyAST) {
 
 TEST_F(CodeGeneratorTest, GenerateModuleWithComplexFunction) {
     std::string code = R"(
-        func complex() {
+        func complex() -> void {
             var x = 10;
             if (x > 5) {
                 return;
@@ -204,7 +204,7 @@ TEST_F(CodeGeneratorTest, GenerateModuleWithComplexFunction) {
 }
 
 TEST_F(CodeGeneratorTest, VerifyGeneratedIRFormat) {
-    std::string code = "func test() { return; }";
+    std::string code = "func test() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     

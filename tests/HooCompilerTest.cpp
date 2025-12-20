@@ -30,7 +30,7 @@ TEST_F(HooCompilerTest, CompileEmptySource) {
 }
 
 TEST_F(HooCompilerTest, CompileSingleFunction) {
-    std::string code = "func test() { return; }";
+    std::string code = "func test() -> void { return; }";
     auto module = compiler->compile("test_module", code);
     
     ASSERT_NE(module, nullptr);
@@ -45,8 +45,8 @@ TEST_F(HooCompilerTest, CompileSingleFunction) {
 
 TEST_F(HooCompilerTest, CompileMultipleFunctions) {
     std::string code = R"(
-        func first() { return; }
-        func second() { return; }
+        func first() -> void { return; }
+        func second() -> void { return; }
     )";
     auto module = compiler->compile("multi_func", code);
     
@@ -71,7 +71,7 @@ TEST_F(HooCompilerTest, CompileInvalidSyntax) {
 
 TEST_F(HooCompilerTest, CompileComplexFunction) {
     std::string code = R"(
-        func calculate() {
+        func calculate() -> void {
             var x = 42;
             if (x > 0) {
                 return;
@@ -93,7 +93,7 @@ TEST_F(HooCompilerTest, CompileComplexFunction) {
 }
 
 TEST_F(HooCompilerTest, CompileWithParameters) {
-    std::string code = "func add(int64 a, int64 b) { return a + b; }";
+    std::string code = "func add(int64 a, int64 b) -> int64 { return a + b; }";
     auto module = compiler->compile("params", code);
     
     ASSERT_NE(module, nullptr);
@@ -105,8 +105,8 @@ TEST_F(HooCompilerTest, CompileWithParameters) {
 
 TEST_F(HooCompilerTest, MultipleCompilations) {
     // Test that compiler can be reused
-    std::string code1 = "func first() { return; }";
-    std::string code2 = "func second() { return; }";
+    std::string code1 = "func first() -> void { return; }";
+    std::string code2 = "func second() -> void { return; }";
     
     auto module1 = compiler->compile("mod1", code1);
     ASSERT_NE(module1, nullptr);
@@ -123,7 +123,7 @@ TEST_F(HooCompilerTest, MultipleCompilations) {
 
 TEST_F(HooCompilerTest, ErrorAfterSuccessfulCompilation) {
     // First successful compilation
-    std::string validCode = "func valid() { return; }";
+    std::string validCode = "func valid() -> void { return; }";
     auto validModule = compiler->compile("valid", validCode);
     ASSERT_NE(validModule, nullptr);
     EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
