@@ -223,3 +223,51 @@ TEST_F(HooCompilerTest, CompileFloatArithmetic) {
     raw_string_ostream errorStream(errorMsg);
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
+
+TEST_F(HooCompilerTest, CompileBoolFunction) {
+    std::string code = "func process(bool flag) -> bool { return flag; }";
+    auto module = compiler->compile("bool_test", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify bool type is properly handled (i1 in LLVM)
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(1));
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(1));
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+TEST_F(HooCompilerTest, CompileBoolLogic) {
+    std::string code = R"(
+        func logic(bool a, bool b) -> bool {
+            var and_result = a && b;
+            var or_result = a || b;
+            var not_result = !a;
+            if (and_result) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    )";
+    auto module = compiler->compile("bool_logic", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("logic");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}

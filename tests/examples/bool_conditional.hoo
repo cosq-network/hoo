@@ -1,0 +1,7 @@
+func conditional_logic(bool condition) -> int64 {
+    if (condition) {
+        return 1;
+    } else {
+        return 0;
+    }
+}

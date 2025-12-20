@@ -351,3 +351,72 @@ TEST_F(CodeGeneratorTest, GenerateFloatArithmetic) {
     EXPECT_TRUE(irString.find("fadd float") != std::string::npos);
     EXPECT_TRUE(irString.find("fmul float") != std::string::npos);
 }
+
+TEST_F(CodeGeneratorTest, GenerateBoolFunction) {
+    std::string code = "func process(bool flag) -> bool { return flag; }";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Check function signature
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(1));
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(1));
+}
+
+TEST_F(CodeGeneratorTest, GenerateBoolVariables) {
+    std::string code = R"(
+        func test() -> void {
+            var flag = true;
+            var explicit: bool = false;
+            return;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("test");
+    ASSERT_NE(func, nullptr);
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
+    EXPECT_TRUE(irString.find("store") != std::string::npos);
+    EXPECT_TRUE(irString.find("i1 true") != std::string::npos);
+    EXPECT_TRUE(irString.find("i1 false") != std::string::npos);
+}
+
+TEST_F(CodeGeneratorTest, GenerateBoolLogic) {
+    std::string code = R"(
+        func logic(bool a, bool b) -> bool {
+            var and_result = a && b;
+            var or_result = a || b;
+            var not_result = !a;
+            return and_result;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("logic");
+    ASSERT_NE(func, nullptr);
+    
+    // Check that function has bool parameters and return type
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(1));
+    EXPECT_EQ(func->arg_size(), 2);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(1));
+    EXPECT_TRUE(func->getArg(1)->getType()->isIntegerTy(1));
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("i1") != std::string::npos);
+}

@@ -1,0 +1,3 @@
+func process_bool(bool flag) -> bool {
+    return flag;
+}
