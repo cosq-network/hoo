@@ -3,11 +3,8 @@
 #include <string>
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/raw_ostream.h"
+#include "HooCompiler.h"
 #include "HoocJIT.h"
-#include "ProcessIsolatedParser.h"
-#include "SimpleASTBuilder.h"
-#include "CodeGenerator.h"
-#include "../antlr4/generated/HoocParser.h"
 
 using namespace llvm;
 using namespace hooc;
@@ -67,53 +64,36 @@ int main(int argc, char* argv[]) {
     std::cout << "```hoo\n" << sourceCode << "```\n\n";
     
     try {
-        // Step 2: Parse the source code  
-        std::cout << "Step 1: Parsing...\n";
-        ProcessIsolatedParser parser;
+        // Step 2: Compile source to LLVM IR
+        std::cout << "Step 1: Compiling...\n";
+        HooCompiler compiler;
         
-        // Parse and get parse tree for AST building
-        auto* parseTree = parser.parseForAST(sourceCode);
-        if (!parseTree) {
-            std::cerr << "Parse error: " << parser.getLastError() << "\n";
-            return 1;
+        std::string moduleName = filename.substr(filename.find_last_of("/\\") + 1);
+        if (moduleName.length() > 4) {
+            moduleName = moduleName.substr(0, moduleName.length() - 4); // Remove .hoo extension
         }
-        std::cout << "✅ Parse tree generated\n\n";
         
-        // Step 3: Build AST from parse tree
-        std::cout << "Step 2: Building AST...\n";
-        SimpleASTBuilder astBuilder;
-        auto ast = astBuilder.buildAST(parseTree);
-        if (!ast) {
-            std::cerr << "AST building failed\n";
-            return 1;
-        }
-        std::cout << "✅ AST built successfully\n";
-        std::cout << "AST: " << ast->toString() << "\n\n";
-        
-        // Step 4: Generate LLVM IR from AST
-        std::cout << "Step 3: Code generation...\n";
-        llvm::LLVMContext context;
-        CodeGenerator codeGen(context);
-        auto module = codeGen.generateModule(*ast);
+        auto module = compiler.compile(moduleName, sourceCode);
         if (!module) {
-            std::cerr << "Code generation failed\n";
+            std::cerr << "Compilation failed: " << compiler.getLastError() << "\n";
             return 1;
         }
-        std::cout << "✅ LLVM IR generated\n";
         
-        // Print the generated IR
-        std::string irString;
-        llvm::raw_string_ostream rso(irString);
-        module->print(rso, nullptr);
-        std::cout << "Generated LLVM IR:\n" << irString << "\n";
+        std::cout << "✅ Compilation successful\n\n";
         
-        // Step 5: JIT compile and execute
-        std::cout << "Step 4: JIT execution...\n";
-        HoocJIT jit;
-        // TODO: Add method to JIT compile and execute the module
-        std::cout << "🚧 JIT execution integration pending\n\n";
+        // Step 3: Display generated LLVM IR
+        std::cout << "Step 2: Generated LLVM IR:\n";
+        std::string moduleStr;
+        llvm::raw_string_ostream stream(moduleStr);
+        module->print(stream, nullptr);
+        std::cout << moduleStr << "\n";
         
-        std::cout << "🎉 Compilation pipeline completed successfully!\n";
+        // Step 4: JIT execution preparation
+        std::cout << "Step 3: JIT execution...\n";
+        std::cout << "HoocJIT available for module execution\n";
+        std::cout << "🚧 JIT execution integration pending\n";
+        
+        std::cout << "\n🎉 Compilation pipeline completed successfully!\n";
         
         return 0;
         

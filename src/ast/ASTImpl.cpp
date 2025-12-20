@@ -131,6 +131,10 @@ std::string ScopeStatement::toString() const {
     return "ScopeStatement";
 }
 
+std::string VariableDeclarationStatement::toString() const {
+    return "VariableDeclarationStatement(" + declaration_->toString() + ")";
+}
+
 // Expression implementations
 std::string PrimaryExpression::toString() const {
     return "PrimaryExpression";

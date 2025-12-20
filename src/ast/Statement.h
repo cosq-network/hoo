@@ -154,5 +154,19 @@ private:
     std::unique_ptr<Block> body_;
 };
 
+// Variable declaration statement
+class VariableDeclarationStatement : public Statement {
+public:
+    VariableDeclarationStatement(std::unique_ptr<VariableDeclaration> declaration)
+        : declaration_(std::move(declaration)) {}
+
+    std::string toString() const override;
+
+    const VariableDeclaration& getDeclaration() const { return *declaration_; }
+
+private:
+    std::unique_ptr<VariableDeclaration> declaration_;
+};
+
 } // namespace ast
 } // namespace hooc

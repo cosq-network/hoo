@@ -1,0 +1,12 @@
+func greet() {
+    return;
+}
+
+func calculate() {
+    42;
+}
+
+func addNumbers(int64 a, int64 b) -> int64 {
+    let sum = 42;
+    return sum;
+}

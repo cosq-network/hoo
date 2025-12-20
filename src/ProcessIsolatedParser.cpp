@@ -114,10 +114,17 @@ HoocParser::CompilationUnitContext* ProcessIsolatedParser::parseForAST(const std
         // Parse the compilation unit
         currentParseTree_ = parser_->compilationUnit();
         
-        lastParseSuccessful_ = (currentParseTree_ != nullptr);
+        // Check for parsing errors
+        bool hasErrors = (parser_->getNumberOfSyntaxErrors() > 0);
+        
+        lastParseSuccessful_ = (currentParseTree_ != nullptr && !hasErrors);
         
         if (!lastParseSuccessful_) {
-            lastError_ = "Failed to parse compilation unit";
+            if (hasErrors) {
+                lastError_ = "Syntax errors detected during parsing";
+            } else {
+                lastError_ = "Failed to parse compilation unit";
+            }
             return nullptr;
         }
         

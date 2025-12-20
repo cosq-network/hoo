@@ -115,9 +115,9 @@ target_compile_definitions(hooc_parser PUBLIC
 # Ensure generated files are created before building the library
 add_dependencies(hooc_parser generate_parser)
 
-# Create main hooc compiler executable
-add_executable(hooc
-    src/main.cpp
+# Create hoo-compiler library
+add_library(hoo-compiler
+    src/HooCompiler.cpp
     src/HoocJIT.cpp
     src/ProcessIsolatedParser.cpp
     src/CodeGenerator.cpp
@@ -125,20 +125,29 @@ add_executable(hooc
     src/ast/ASTImpl.cpp
 )
 
-target_link_libraries(hooc
+target_link_libraries(hoo-compiler PUBLIC
     hooc_parser
     ${llvm_libs}
 )
 
-target_include_directories(hooc PRIVATE
+target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}
 )
 
+# Create main hooc compiler executable
+add_executable(hooc
+    src/main.cpp
+)
+
+target_link_libraries(hooc
+    hoo-compiler
+)
+
 # Install targets
-install(TARGETS hooc_parser
+install(TARGETS hoo-compiler hooc_parser
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -172,3 +181,83 @@ add_custom_target(clean_generated
     COMMAND ${CMAKE_COMMAND} -E make_directory ${ANTLR4_GENERATED_DIR}
     COMMENT "Cleaning generated ANTLR4 files"
 )
+
+# Enable testing
+enable_testing()
+
+# Find GoogleTest
+find_package(GTest QUIET)
+if(NOT GTest_FOUND)
+    # Try to find via pkg-config as fallback
+    find_package(PkgConfig QUIET)
+    if(PkgConfig_FOUND)
+        pkg_check_modules(GTEST gtest)
+    endif()
+    
+    if(NOT GTEST_FOUND)
+        # Manual fallback for Homebrew installation
+        set(GTEST_ROOT "/opt/homebrew/Cellar/googletest/1.17.0")
+        find_path(GTEST_INCLUDE_DIRS gtest/gtest.h 
+            PATHS ${GTEST_ROOT}/include
+        )
+        find_library(GTEST_LIBRARIES gtest 
+            PATHS ${GTEST_ROOT}/lib
+        )
+        find_library(GTEST_MAIN_LIBRARIES gtest_main 
+            PATHS ${GTEST_ROOT}/lib
+        )
+        if(GTEST_INCLUDE_DIRS AND GTEST_LIBRARIES)
+            set(GTest_FOUND TRUE)
+        endif()
+    endif()
+endif()
+
+if(GTest_FOUND)
+    # Test executable
+    add_executable(hoo_tests
+        tests/test_main.cpp
+        tests/SimpleASTBuilderTest.cpp
+        tests/CodeGeneratorTest.cpp
+        tests/HooCompilerTest.cpp
+        tests/ProcessIsolatedParserTest.cpp
+    )
+
+    # Link test executable with libraries
+    if(TARGET GTest::gtest AND TARGET GTest::gtest_main)
+        target_link_libraries(hoo_tests
+            hoo-compiler
+            GTest::gtest
+            GTest::gtest_main
+        )
+    else()
+        target_link_libraries(hoo_tests
+            hoo-compiler
+            ${GTEST_LIBRARIES}
+            ${GTEST_MAIN_LIBRARIES}
+            pthread
+        )
+        target_include_directories(hoo_tests PRIVATE ${GTEST_INCLUDE_DIRS})
+    endif()
+
+    # Include directories for tests
+    target_include_directories(hoo_tests PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${LLVM_INCLUDE_DIRS}
+        ${ANTLR4_INCLUDE_DIR}
+        ${ANTLR4_GENERATED_DIR}
+    )
+
+    # Add test target
+    add_test(NAME HooUnitTests COMMAND hoo_tests)
+
+    # Custom test target for convenience
+    add_custom_target(run_tests
+        COMMAND ${CMAKE_CTEST_COMMAND} --verbose
+        DEPENDS hoo_tests
+        COMMENT "Running unit tests"
+    )
+    
+    message(STATUS "GoogleTest found - unit tests enabled")
+else()
+    message(WARNING "GoogleTest not found - unit tests disabled")
+endif()

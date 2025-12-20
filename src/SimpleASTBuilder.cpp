@@ -7,6 +7,10 @@ using namespace hooc;
 using namespace hooc::ast;
 
 std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::CompilationUnitContext* ctx) {
+    if (!ctx) {
+        return nullptr;
+    }
+    
     std::vector<std::unique_ptr<ImportStatement>> imports; // Empty for now
     std::vector<std::unique_ptr<Declaration>> declarations;
 
@@ -46,6 +50,11 @@ std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(
         }
         return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer));
     }
+}
+
+std::unique_ptr<VariableDeclarationStatement> SimpleASTBuilder::buildVariableDeclarationStatement(HoocParser::VariableDeclarationContext* ctx) {
+    auto varDecl = buildVariableDeclaration(ctx);
+    return std::make_unique<VariableDeclarationStatement>(std::move(varDecl));
 }
 
 std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx) {

@@ -1,0 +1,3 @@
+func test(int x, string y) {
+    return;
+}
