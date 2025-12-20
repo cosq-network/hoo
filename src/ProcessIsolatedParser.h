@@ -2,12 +2,17 @@
 
 #include <string>
 #include <vector>
+#include <memory>
+#include "../antlr4/generated/HoocParser.h"
+#include "../antlr4/generated/HoocLexer.h"
+#include "antlr4-runtime.h"
 
 namespace hooc {
 
 /**
- * Parser that uses process isolation to avoid ANTLR4 global state issues.
- * Each parse call spawns a fresh hooc_parse process.
+ * Parser that can work in both isolated and direct modes.
+ * Isolated mode uses process isolation to avoid ANTLR4 global state issues.
+ * Direct mode provides access to parse trees for AST building.
  */
 class ProcessIsolatedParser {
 public:
@@ -15,9 +20,15 @@ public:
     ~ProcessIsolatedParser();
     
     /**
-     * Parse source code using isolated process
+     * Parse source code using isolated process (validation only)
      */
     bool parse(const std::string& source);
+    
+    /**
+     * Parse source code directly and return parse tree context
+     * This is needed for AST building but may have ANTLR4 state issues
+     */
+    HoocParser::CompilationUnitContext* parseForAST(const std::string& source);
     
     /**
      * Get the result of the last parse
@@ -45,6 +56,13 @@ private:
     size_t parseTreeChildCount_;
     std::string lastError_;
     std::string parserExecutablePath_;
+    
+    // Direct parsing components (for AST building)
+    std::unique_ptr<antlr4::ANTLRInputStream> input_;
+    std::unique_ptr<HoocLexer> lexer_;
+    std::unique_ptr<antlr4::CommonTokenStream> tokens_;
+    std::unique_ptr<HoocParser> parser_;
+    HoocParser::CompilationUnitContext* currentParseTree_;
     
     // Execute parser process and capture output
     std::vector<std::string> executeParser(const std::string& source);

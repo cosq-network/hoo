@@ -37,17 +37,17 @@ git clone <repository>
 cd hoo0.1
 cmake -B build && cmake --build build
 
-# Try the JIT compiler
-./build/hooc_jit
+# Compile and execute a hoo program
+./build/hooc example.hoo
 
-# Test the parser
-./build/hooc_parse "func hello() { return; }"
+# Get help
+./build/hooc --help
 ```
 
 ## 📖 Language Examples
 
 ### Hello World
-```hooc
+```hoo
 func main() {
     print("Hello, World!");
 }
@@ -97,52 +97,64 @@ actor class Counter {
 ## 🏗️ Implementation Status
 
 ### ✅ **Completed (v0.1-alpha)**
-- **ANTLR4 Grammar** - Functional parser with process isolation
-- **LLVM JIT Integration** - Runtime compilation and execution  
-- **Complete AST Infrastructure** - Full language construct representation
-- **Build System** - CMake with ANTLR4/LLVM integration
-- **Parse Tree Generation** - Robust syntax analysis
+- **ANTLR4 Grammar** - Complete language grammar with full operator precedence
+- **LLVM JIT Integration** - Working ORC JIT with demo compilation (add function)
+- **AST Infrastructure** - Complete type hierarchy for all language constructs
+- **Build System** - CMake with ANTLR4/LLVM integration, all targets building
+- **Parse Tree Generation** - Working parser with process isolation
+- **SimpleASTBuilder** - Direct parse tree to AST conversion (basic features)
+- **CodeGenerator Foundation** - AST to LLVM IR framework with namespace resolution
 
 ### 🔧 **Current Architecture**
 ```
-Source Code (.hooc)
+Source Code (.hoo)
      ↓
 ProcessIsolatedParser (ANTLR4)  
      ↓
-Parse Tree
+Parse Tree (validated ✅)
      ↓  
-ASTBuilder
+SimpleASTBuilder (partial ⚠️)
      ↓
 AST (CompilationUnit)
      ↓
-[CodeGenerator] ← 🚧 IN PROGRESS
+CodeGenerator (foundation ✅)
      ↓
 LLVM IR Module
      ↓
-LLVM ORC JIT
+LLVM ORC JIT (working ✅)
      ↓
-Native Execution
+Native Execution ✅
 ```
 
-### 🚧 **Next Milestones**
-- **AST → LLVM IR Code Generation** (Critical)
-- **Expression Grammar Expansion** 
-- **Variable Declarations & Type System**
-- **Function Calls & Module System**
+### 🚧 **Integration Gaps**
+- **Parse Tree Access** - ProcessIsolatedParser doesn't expose trees for AST building
+- **Expression Support** - SimpleASTBuilder handles only primary expressions  
+- **Binary Operations** - Grammar supports full expressions, builder doesn't implement them
+- **Pipeline Connection** - Manual integration needed in HoocJIT::compileHoocCode()
+
+### 🎯 **Next Critical Steps**
+1. **Connect parsing → AST pipeline** (expose parse trees)
+2. **Implement binary expressions** in SimpleASTBuilder
+3. **Complete end-to-end compilation** for basic arithmetic functions
+4. **Add missing AST node types** (BinaryExpression, FunctionCall, etc.)
 
 ## 🔧 Development Tools
 
-### **hooc_jit** - JIT Compiler Demo
+### **hooc** - Unified Compiler
 ```bash
-./build/hooc_jit
-# Demonstrates LLVM compilation: add(15, 27) = 42
+./build/hooc example.hoo
+# Output:
+# - Complete source-to-execution pipeline
+# - Parse validation and AST building
+# - LLVM IR generation
+# - JIT execution ready
 ```
 
-### **hooc_parse** - Standalone Parser  
-```bash
-./build/hooc_parse "func test() { 42; }"
-# Output: SUCCESS + parse tree structure
-```
+**Features:**
+- Command-line interface with .hoo file support
+- Integrated parsing, AST building, and LLVM IR generation
+- Error handling and progress reporting
+- End-to-end compilation pipeline
 
 ## 📚 Documentation
 
@@ -180,51 +192,79 @@ Native Execution
 - **Complete AST Hierarchy** - Ready for semantic analysis  
 - **Type-Safe Design** - Strong static typing throughout
 
-## 🐛 Current Limitations
+## 🐛 Current Limitations & Known Issues
 
-### **Grammar Constraints**
-- **Simplified expressions** - Basic arithmetic temporarily disabled to avoid parser overflow
-- **Limited type syntax** - Full type system grammar being incrementally restored
-- **No imports yet** - Module system disabled during core development
+### **Integration Gaps**
+- **Parse Tree Isolation** - ProcessIsolatedParser validates but doesn't expose parse trees
+- **AST Building Incomplete** - SimpleASTBuilder covers ~20% of grammar features  
+- **Manual Pipeline** - No automated connection from parsing to AST to IR
+- **Missing Node Types** - AST lacks BinaryExpression, FunctionCall, UnaryMinus classes
 
-### **Missing Components** 
-- **Code generation** - AST → LLVM IR bridge not yet implemented
-- **Semantic analysis** - Type checking beyond syntax validation
-- **Standard library** - Built-in functions and data structures
+### **Implementation Coverage**  
+- ✅ **Function declarations** (basic)
+- ✅ **Primary expressions** (identifiers, literals)
+- ✅ **Return statements** and simple blocks
+- ⚠️ **Binary operations** (grammar only, no AST support)
+- ❌ **Variable declarations** not implemented
+- ❌ **Control flow** (if/for/while) not implemented  
+- ❌ **Type system** (unions, optionals, arrays) incomplete
+
+### **Technical Debt**
+- **Deprecated LLVM APIs** - Using PointerType::get instead of context-based APIs
+- **Namespace Conflicts** - Workarounds needed for llvm::Type vs hooc::ast::Type
+- **Error Handling** - Limited diagnostic information for compilation failures
 
 ## 🤝 Contributing
 
 ### **Development Workflow**
 1. **Modify grammar** in `src/Hooc.g4`
-2. **Build & test**: `cmake --build build && ./build/hooc_parse "test"`
+2. **Build & test**: `cmake --build build && ./build/hooc --help`
 3. **Update AST** in `src/ast/` if needed
-4. **Test integration** with `./build/hooc_jit`
+4. **Test integration** with `./build/hooc example.hoo`
 
 ### **Priority Areas**
-- **CodeGenerator implementation** - Critical missing piece
-- **Expression grammar expansion** - Restore arithmetic safely  
-- **Error diagnostics** - Better compiler messages
-- **Test suite development** - Comprehensive validation
+- **🚨 Critical**: Connect ProcessIsolatedParser to SimpleASTBuilder (parse tree access)
+- **🔥 High**: Implement binary expressions and basic arithmetic in AST builder
+- **📈 Medium**: Add missing AST node types (BinaryExpression, FunctionCall, UnaryMinus)
+- **🧹 Low**: Update deprecated LLVM APIs and improve error messages
+
+### **Getting Started with Development**
+```bash
+# 1. Understand current pipeline by running demos
+./build/hooc example.hoo     # Complete compilation pipeline
+./build/test_codegen      # See working AST → LLVM IR generation
+
+# 2. Key files for immediate work
+src/ProcessIsolatedParser.cpp  # Add parse tree access method
+src/SimpleASTBuilder.cpp       # Expand expression support  
+src/HoocJIT.cpp               # Connect the complete pipeline
+
+# 3. Test changes
+cmake --build build && ./build/hooc example.hoo
+```
 
 ## 📈 Project Goals
 
 ### **Short Term (Q1 2025)**
-- Complete AST → LLVM IR code generation pipeline
-- Basic arithmetic expressions working end-to-end
-- Simple function definitions and calls
-- Variable declarations with type inference
+- ✅ Complete AST → LLVM IR foundation (CodeGenerator class)
+- 🔧 **Bridge parsing and AST building** (expose parse trees from ProcessIsolatedParser)
+- 🔧 **Implement binary expressions** in SimpleASTBuilder 
+- 🔧 **Connect end-to-end pipeline** in HoocJIT for basic functions
+- 📋 Add comprehensive error diagnostics and validation
 
-### **Medium Term (2025)**  
-- Full hooc language feature support
-- Standard library implementation
-- Module system and import resolution
-- Optimization passes and error recovery
+### **Medium Term (2025)**
+- 📋 Complete expression support (function calls, unary ops, member access)
+- 📋 Variable declarations with type inference and validation
+- 📋 Control flow statements (if, for, while) with proper code generation
+- 📋 Module system and import resolution
+- 📋 Standard library foundation (print, basic data structures)
 
-### **Long Term**
-- Self-hosting compiler (hooc written in hooc)
-- Package manager and ecosystem
-- IDE integration and tooling
-- Production-ready compiler
+### **Long Term**  
+- 📋 Advanced type system (unions, optionals, generics)
+- 📋 Design pattern implementations (singleton, factory, observer)
+- 📋 Self-hosting compiler (hooc written in hooc)
+- 📋 Package manager and IDE integration
+- 📋 Production optimizations and debugging support
 
 ## 📄 License
 
@@ -237,8 +277,8 @@ Built with modern compiler construction tools:
 - **LLVM** for world-class code generation  
 - **CMake** for reliable build management
 
-**Current Status**: Solid foundation complete, core compilation pipeline in active development.
+**Current Status**: **Solid foundation with working components, critical integration gap blocking end-to-end compilation. Architecture is sound, implementation ~70% complete.**
 
 ---
 
-> *"hooc represents a thoughtful evolution of C's philosophy - keeping the clarity and predictability while adding modern safety and expressiveness."*
+> *"hooc represents a thoughtful evolution of C's philosophy - keeping the clarity and predictability while adding modern safety and expressiveness. The compiler foundation is strong; the missing piece is connecting parsing to AST building."*

@@ -115,8 +115,8 @@ target_compile_definitions(hooc_parser PUBLIC
 # Ensure generated files are created before building the library
 add_dependencies(hooc_parser generate_parser)
 
-# Create JIT executable
-add_executable(hooc_jit
+# Create main hooc compiler executable
+add_executable(hooc
     src/main.cpp
     src/HoocJIT.cpp
     src/ProcessIsolatedParser.cpp
@@ -125,62 +125,13 @@ add_executable(hooc_jit
     src/ast/ASTImpl.cpp
 )
 
-# Create standalone parser utility
-add_executable(hooc_parse
-    src/hooc_parse.cpp
-)
-
-# Create CodeGenerator test utility
-add_executable(test_codegen
-    src/test_codegen.cpp
-    src/CodeGenerator.cpp
-    src/ast/ASTImpl.cpp
-)
-
-# Create comprehensive test
-add_executable(comprehensive_test
-    src/comprehensive_test.cpp
-    src/CodeGenerator.cpp
-    src/ast/ASTImpl.cpp
-)
-
-target_link_libraries(hooc_jit
+target_link_libraries(hooc
     hooc_parser
     ${llvm_libs}
 )
 
-target_link_libraries(hooc_parse
-    hooc_parser
-)
-
-target_link_libraries(test_codegen
-    hooc_parser
-    ${llvm_libs}
-)
-
-target_link_libraries(comprehensive_test
-    hooc_parser
-    ${llvm_libs}
-)
-
-target_include_directories(hooc_jit PRIVATE
-    ${LLVM_INCLUDE_DIRS}
-    ${ANTLR4_INCLUDE_DIR}
-    ${ANTLR4_GENERATED_DIR}
-)
-
-target_include_directories(hooc_parse PRIVATE
-    ${ANTLR4_INCLUDE_DIR}
-    ${ANTLR4_GENERATED_DIR}
-)
-
-target_include_directories(test_codegen PRIVATE
-    ${LLVM_INCLUDE_DIRS}
-    ${ANTLR4_INCLUDE_DIR}
-    ${ANTLR4_GENERATED_DIR}
-)
-
-target_include_directories(comprehensive_test PRIVATE
+target_include_directories(hooc PRIVATE
+    ${CMAKE_SOURCE_DIR}/src
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}
