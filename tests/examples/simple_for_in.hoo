@@ -1,0 +1,7 @@
+func for_test() -> void {
+    var arr: int64[3];
+    for x in arr {
+        var y = x;
+    }
+    return;
+}

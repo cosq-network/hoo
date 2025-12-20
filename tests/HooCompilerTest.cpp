@@ -319,3 +319,50 @@ TEST_F(HooCompilerTest, CompileCharLiterals) {
     raw_string_ostream errorStream(errorMsg);
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
+
+TEST_F(HooCompilerTest, CompileArrayFunction) {
+    std::string code = "func process(int64 data) -> void { var arr: int64[5]; return; }";
+    auto module = compiler->compile("array_test", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify basic function signature (int64 parameter, not array since array parameters aren't fully supported)
+    EXPECT_TRUE(func->getReturnType()->isVoidTy());
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(64));
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+TEST_F(HooCompilerTest, CompileArrayDeclarations) {
+    std::string code = R"(
+        func array_demo() -> int64 {
+            var numbers: int64[10];
+            var matrix: char[3][4];
+            var bytes: byte[256];
+            return 42;
+        }
+    )";
+    auto module = compiler->compile("array_declarations", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("array_demo");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify return type
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(64));
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}

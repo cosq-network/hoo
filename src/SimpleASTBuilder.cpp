@@ -132,6 +132,22 @@ std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ct
     return std::make_unique<Block>(std::move(statements));
 }
 
+std::unique_ptr<ArrayType> SimpleASTBuilder::buildArrayType(HoocParser::ArrayTypeContext* ctx) {
+    auto baseType = buildBaseType(ctx->baseType());
+    std::vector<std::unique_ptr<Expression>> dimensions;
+    
+    for (auto exprCtx : ctx->expression()) {
+        if (exprCtx) {
+            dimensions.push_back(buildExpression(exprCtx));
+        } else {
+            // Empty dimension []
+            dimensions.push_back(nullptr);
+        }
+    }
+    
+    return std::make_unique<ArrayType>(std::move(baseType), std::move(dimensions));
+}
+
 std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::StatementContext* ctx) {
     if (ctx->variableDeclaration()) {
         return buildVariableDeclarationStatement(ctx->variableDeclaration());

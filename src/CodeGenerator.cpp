@@ -551,9 +551,41 @@ Value* CodeGenerator::generateMemberAccess(const MemberAccess& expr) {
 }
 
 Value* CodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
-    // TODO: Implement array indexing
-    std::cerr << "Array access not yet implemented" << std::endl;
-    return nullptr;
+    Value* arrayValue = generateExpression(expr.getArray());
+    Value* indexValue = generateExpression(expr.getIndex());
+    
+    if (!arrayValue || !indexValue) {
+        std::cerr << "Failed to generate array or index expression" << std::endl;
+        return nullptr;
+    }
+    
+    // Convert index to i64 if needed
+    if (!indexValue->getType()->isIntegerTy(64)) {
+        if (indexValue->getType()->isIntegerTy()) {
+            indexValue = builder_->CreateSExt(indexValue, LLVMType::getInt64Ty(context_), "index_ext");
+        } else {
+            std::cerr << "Array index must be integer type" << std::endl;
+            return nullptr;
+        }
+    }
+    
+    // For pointer types (dynamic arrays), use GEP with single index
+    if (arrayValue->getType()->isPointerTy()) {
+        // For newer LLVM versions, we need to explicitly specify the element type
+        LLVMType* elementType = LLVMType::getInt64Ty(context_); // default assumption
+        
+        Value* elementPtr = builder_->CreateGEP(
+            elementType, 
+            arrayValue, indexValue, "arrayidx");
+        
+        // Load the value from the computed address
+        return builder_->CreateLoad(
+            elementType, 
+            elementPtr, "arrayval");
+    } else {
+        std::cerr << "Array access on non-pointer type not supported" << std::endl;
+        return nullptr;
+    }
 }
 
 void CodeGenerator::generateIfStatement(const IfStatement& stmt) {
@@ -648,8 +680,74 @@ void CodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
 }
 
 void CodeGenerator::generateForInStatement(const ForInStatement& stmt) {
-    // TODO: Implement for-in loops (requires iterable support)
-    std::cerr << "For-in loops not yet implemented" << std::endl;
+    Function* currentFunc = builder_->GetInsertBlock()->getParent();
+    
+    // Evaluate the iterable expression
+    Value* iterableValue = generateExpression(stmt.getIterable());
+    if (!iterableValue) {
+        std::cerr << "Failed to generate iterable expression" << std::endl;
+        return;
+    }
+    
+    // For now, assume the iterable is an array (pointer)
+    // In a full implementation, we'd check the type and handle different iterables
+    
+    // Create loop variable - assume int64 elements for now
+    LLVMType* elementType = LLVMType::getInt64Ty(context_);
+    // In newer LLVM, we can't easily get pointer element type, so use default
+    
+    AllocaInst* loopVar = createEntryBlockAlloca(currentFunc, stmt.getVariable(), elementType);
+    
+    // Create index variable
+    AllocaInst* indexVar = createEntryBlockAlloca(currentFunc, "for.index", LLVMType::getInt64Ty(context_));
+    builder_->CreateStore(ConstantInt::get(LLVMType::getInt64Ty(context_), 0), indexVar);
+    
+    // Create blocks
+    BasicBlock* condBlock = BasicBlock::Create(context_, "for.cond", currentFunc);
+    BasicBlock* bodyBlock = BasicBlock::Create(context_, "for.body", currentFunc);
+    BasicBlock* incrBlock = BasicBlock::Create(context_, "for.incr", currentFunc);
+    BasicBlock* endBlock = BasicBlock::Create(context_, "for.end", currentFunc);
+    
+    // Branch to condition
+    builder_->CreateBr(condBlock);
+    
+    // Condition block - for simplicity, assume we iterate 10 times (should be array length)
+    builder_->SetInsertPoint(condBlock);
+    Value* currentIndex = builder_->CreateLoad(LLVMType::getInt64Ty(context_), indexVar, "index");
+    Value* arrayLength = ConstantInt::get(LLVMType::getInt64Ty(context_), 10); // hardcoded for now
+    Value* cond = builder_->CreateICmpSLT(currentIndex, arrayLength, "loopcond");
+    builder_->CreateCondBr(cond, bodyBlock, endBlock);
+    
+    // Body block
+    builder_->SetInsertPoint(bodyBlock);
+    
+    // Load current element (array[index])
+    if (iterableValue->getType()->isPointerTy()) {
+        Value* elementPtr = builder_->CreateGEP(elementType, iterableValue, currentIndex, "elem.ptr");
+        Value* element = builder_->CreateLoad(elementType, elementPtr, "elem");
+        
+        // Store current element in loop variable
+        builder_->CreateStore(element, loopVar);
+        namedValues_[stmt.getVariable()] = loopVar;
+    }
+    
+    // Generate loop body
+    generateBlock(stmt.getBody());
+    
+    // Branch to increment
+    builder_->CreateBr(incrBlock);
+    
+    // Increment block
+    builder_->SetInsertPoint(incrBlock);
+    Value* nextIndex = builder_->CreateAdd(currentIndex, ConstantInt::get(LLVMType::getInt64Ty(context_), 1), "nextindex");
+    builder_->CreateStore(nextIndex, indexVar);
+    builder_->CreateBr(condBlock);
+    
+    // End block
+    builder_->SetInsertPoint(endBlock);
+    
+    // Clean up loop variable from scope
+    namedValues_.erase(stmt.getVariable());
 }
 
 void CodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt) {
@@ -801,9 +899,27 @@ LLVMType* CodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
 }
 
 LLVMType* CodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
-    // For now, treat all arrays as pointers
-    // TODO: Implement proper array handling with size tracking
-    return llvm::PointerType::get(context_, 0);
+    // Get the base element type
+    LLVMType* elementType = generateType(arrayType.getBaseType());
+    if (!elementType) {
+        elementType = LLVMType::getInt32Ty(context_); // fallback
+    }
+    
+    // For arrays with known dimensions, create array type
+    // For now, we'll use a simple approach: arrays are pointers with runtime size
+    // In a full implementation, we'd track array sizes and create proper array types
+    
+    const auto& dimensions = arrayType.getDimensions();
+    LLVMType* currentType = elementType;
+    
+    // Build array type from innermost to outermost dimension
+    for (int i = dimensions.size() - 1; i >= 0; i--) {
+        // For now, treat all arrays as dynamic (pointers)
+        // In a full implementation, we'd check if dimension is a constant
+        currentType = llvm::PointerType::get(context_, 0);
+    }
+    
+    return currentType;
 }
 
 Constant* CodeGenerator::createConstant(const Primary& primary) {

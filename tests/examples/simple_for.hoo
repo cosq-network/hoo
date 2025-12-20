@@ -1,0 +1,8 @@
+func simple_for() -> void {
+    var start = 0;
+    var end = 5;
+    for i in start .. end {
+        var x = i;
+    }
+    return;
+}

@@ -1,0 +1,31 @@
+func for_range_demo() -> void {
+    // For-range loop: for variable in start..end
+    for i in 0..10 {
+        // Loop body - i goes from 0 to 9
+        var doubled = i * 2;
+    }
+    return;
+}
+
+func for_in_demo() -> void {
+    // For-in loop: for variable in iterable
+    // Note: Requires array/collection as iterable
+    var numbers: int64[5];
+    
+    for num in numbers {
+        // Loop body - num is each element
+        var processed = num + 1;
+    }
+    
+    return;
+}
+
+func nested_loops() -> void {
+    // Nested for loops
+    for i in 0..3 {
+        for j in 0..3 {
+            var product = i * j;
+        }
+    }
+    return;
+}

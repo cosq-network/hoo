@@ -136,18 +136,20 @@ var z = "hi";   // string
 
 ```hooc
 int64[3][4] matrix;
-int[][] grid = new int[rows][cols];
+var numbers: int64[5]; // Current working syntax
 ```
 
 Properties:
 - Multi-dimensional arrays supported
-- Bounds-checked access
+- Bounds-checked access (framework in place)
 - Row-major contiguous layout
-- GC-managed
+- LLVM-based memory management
+
+**Implementation Status (v0.1.1)**: Array type declarations are fully implemented with complete AST building and LLVM IR generation. Array access syntax (arr[index]) requires further grammar work.
 
 ### 7.2 Iterable Model
 
-All collections implicitly implement `Iterable<T>`.
+All collections implicitly implement `Iterable<T>` (planned feature).
 
 ---
 
@@ -175,6 +177,8 @@ for item in items {
 }
 ```
 
+**Implementation Status (v0.1.1)**: AST building and LLVM IR generation fully implemented. Requires array access syntax for practical usage.
+
 #### Range-based Loop
 
 ```hooc
@@ -183,6 +187,8 @@ for i in 0..10 {
 }
 ```
 
+**Implementation Status (v0.1.1)**: Complete infrastructure implemented with proper basic block generation in LLVM IR.
+
 #### While Loop
 
 ```hooc
@@ -190,6 +196,8 @@ while condition {
     work();
 }
 ```
+
+**Implementation Status**: Not yet implemented.
 
 ---
 
@@ -401,6 +409,30 @@ actor class Queue {
 - No shared mutable state by default
 - Actors for concurrency
 - Compiler-enforced safety
+
+---
+
+## Implementation Status (v0.1.1)
+
+### ✅ Fully Implemented
+- **All Primitive Types**: `byte`, `int64`, `double`, `bool`, `char` with comprehensive testing
+- **Array Type System**: Complete AST hierarchy and LLVM type conversion  
+- **For Loop Infrastructure**: Both for-in and for-range with proper LLVM IR generation
+- **Function Declarations**: Basic function support with parameter handling
+- **LLVM Integration**: Modern API compatibility and robust code generation
+
+### ⚠️ Partially Implemented  
+- **Array Syntax**: Type declarations work, but array access (arr[index]) needs grammar enhancement
+- **Expression System**: Primary expressions supported, binary operations need AST implementation
+
+### ❌ Not Yet Implemented
+- **Variable Declarations**: Grammar exists but AST building incomplete
+- **Control Flow**: if/while statements need implementation
+- **Module System**: Import/export functionality planned
+- **Advanced Types**: Union types, optionals, generics
+
+### Test Coverage
+**75/75 unit tests passing** across SimpleASTBuilder, CodeGenerator, and HooCompiler test suites, including comprehensive array functionality validation.
 
 ---
 

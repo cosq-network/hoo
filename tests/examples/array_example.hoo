@@ -1,0 +1,21 @@
+func array_demo() -> int64 {
+    // Note: This is a conceptual example
+    // Full array support requires more implementation
+    
+    var arr: int64[10]; // Array declaration
+    var index = 0;
+    var value = arr[index]; // Array access
+    
+    return value;
+}
+
+func array_operations() -> void {
+    // Array with explicit size
+    var numbers: int64[5];
+    
+    // Array access patterns
+    var first = numbers[0];
+    var last = numbers[4];
+    
+    return;
+}

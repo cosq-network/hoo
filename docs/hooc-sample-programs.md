@@ -94,11 +94,85 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 6. Iteration
+## 6. Arrays (v0.1.1 - Currently Implemented)
 
-### Range-Based Loop
+### Array Declarations
 
 ``` hooc
+func array_demo() -> void {
+    // Single-dimensional arrays
+    var numbers: int64[5];
+    var bytes: byte[10];
+    var flags: bool[8];
+    
+    // Multi-dimensional arrays
+    var matrix: int64[3][4];
+    var grid: double[10][20];
+    
+    return;
+}
+```
+
+### Array Types in Functions
+
+``` hooc
+// Array type declarations work in function bodies
+func process_data() -> void {
+    var data: int64[100];
+    var temp: double[50];
+    
+    // Array access syntax (arr[index]) is in development
+    // for i in 0..100 {
+    //     data[i] = i * 2;
+    // }
+    
+    return;
+}
+```
+
+------------------------------------------------------------------------
+
+## 7. For Loops (v0.1.1 - Infrastructure Complete)
+
+### Range-Based Loops
+
+``` hooc
+func range_example() -> void {
+    // For-range loop infrastructure is implemented
+    // Full syntax parsing is in development
+    
+    // This generates proper LLVM IR with:
+    // - Entry basic block
+    // - Condition check block  
+    // - Loop body block
+    // - Increment block
+    // - Exit block
+    
+    return;
+}
+```
+
+### For-In Loops
+
+``` hooc
+func for_in_example() -> void {
+    var arr: int64[10];
+    
+    // For-in loop AST and code generation complete
+    // Requires array access syntax for practical usage
+    
+    return;
+}
+```
+
+------------------------------------------------------------------------
+
+## 8. Legacy Examples (Syntax In Development)
+
+### Range-Based Loop (Planned Syntax)
+
+``` hooc
+// Note: Full parsing implementation in progress
 func main() {
     for i in 1..5 {
         print("i = ${i}");
@@ -106,9 +180,10 @@ func main() {
 }
 ```
 
-### Collection Iteration
+### Collection Iteration (Planned Syntax)
 
 ``` hooc
+// Note: Requires array access syntax completion
 func main() {
     int64[] numbers = [10, 20, 30];
 

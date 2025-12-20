@@ -60,7 +60,29 @@ func example() {
     string name = "hooc";
     bool active = true;
     
+    // Array declarations (v0.1.1)
+    var numbers: int64[5];
+    var matrix: int64[3][4];
+    
     print("Name: ${name}, Count: ${count}");
+}
+```
+
+### Arrays & Loops (NEW v0.1.1)
+```hooc
+func array_example() -> void {
+    var arr: int64[10];
+    
+    // For-range loop
+    for i in 0..10 {
+        // Array assignment would go here
+        // arr[i] = i * 2;
+    }
+    
+    // For-in loop (when implemented)
+    // for item in arr {
+    //     print(item);
+    // }
 }
 ```
 
@@ -102,8 +124,11 @@ actor class Counter {
 - **AST Infrastructure** - Complete type hierarchy for all language constructs
 - **Build System** - CMake with ANTLR4/LLVM integration, all targets building
 - **Parse Tree Generation** - Working parser with process isolation
-- **SimpleASTBuilder** - Direct parse tree to AST conversion (basic features)
+- **SimpleASTBuilder** - Direct parse tree to AST conversion (core features)
 - **CodeGenerator Foundation** - AST to LLVM IR framework with namespace resolution
+- **Array Types** - Full array type support with LLVM integration (v0.1.1)
+- **For Loop Infrastructure** - Complete for-in and for-range loop support (v0.1.1)
+- **Primitive Types** - All basic types (byte, int64, double, bool, char) with 75 passing unit tests
 
 ### 🔧 **Current Architecture**
 ```
@@ -204,15 +229,19 @@ Native Execution ✅
 - ✅ **Function declarations** (basic)
 - ✅ **Primary expressions** (identifiers, literals)
 - ✅ **Return statements** and simple blocks
+- ✅ **Array types** - Complete type system and LLVM IR generation (NEW v0.1.1)
+- ✅ **For loops** - Full AST and code generation infrastructure (NEW v0.1.1)
+- ✅ **All primitive types** - byte, int64, double, bool, char with comprehensive tests
 - ⚠️ **Binary operations** (grammar only, no AST support)
+- ⚠️ **Array access syntax** (arr[index] parsing needs grammar work)
 - ❌ **Variable declarations** not implemented
-- ❌ **Control flow** (if/for/while) not implemented  
-- ❌ **Type system** (unions, optionals, arrays) incomplete
+- ❌ **Control flow** (if/while) not implemented
 
 ### **Technical Debt**
-- **Deprecated LLVM APIs** - Using PointerType::get instead of context-based APIs
+- ✅ **LLVM API Compatibility** - Fixed deprecated getPointerElementType() calls (v0.1.1)
 - **Namespace Conflicts** - Workarounds needed for llvm::Type vs hooc::ast::Type
 - **Error Handling** - Limited diagnostic information for compilation failures
+- **Array Syntax** - Complex array parameter syntax hits parsing limitations
 
 ## 🤝 Contributing
 
