@@ -1,4 +1,4 @@
-#include "ast/AST.h"
+#include "AST.h"
 #include <sstream>
 
 using namespace hooc::ast;

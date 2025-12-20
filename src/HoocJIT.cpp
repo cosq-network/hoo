@@ -1,6 +1,8 @@
 #include "HoocJIT.h"
-#include "HoocJIT.h"
 #include "ProcessIsolatedParser.h"
+#include "SimpleASTBuilder.h"
+#include "CodeGenerator.h"
+#include "ast/AST.h"
 #include <iostream>
 #include <memory>
 
@@ -32,8 +34,10 @@ HoocJIT::HoocJIT() {
     }
     JIT = std::move(*JITExpected);
     
-    // Initialize parser
+    // Initialize parser, AST builder, and code generator
     parser_ = std::make_unique<ProcessIsolatedParser>();
+    astBuilder_ = std::make_unique<SimpleASTBuilder>();
+    codeGenerator_ = std::make_unique<CodeGenerator>(Context);
     
     std::cout << "HoocJIT initialized successfully!\n";
 }
@@ -111,4 +115,67 @@ void HoocJIT::parseHoocCode(const std::string& code) {
     } else {
         std::cout << "Parse failed: " << parser_->getLastError() << "\n";
     }
+}
+
+bool HoocJIT::compileHoocCode(const std::string& code) {
+    std::cout << "\n=== Compiling Hooc Code ===\n";
+    std::cout << "Source: \"" << code << "\"\n";
+    
+    // Step 1: Parse the code
+    if (!parser_->parse(code)) {
+        std::cout << "Parse failed: " << parser_->getLastError() << "\n";
+        return false;
+    }
+    
+    std::cout << "✅ Parsing successful\n";
+    
+    // TODO: Step 2: Build AST from parse tree
+    // For now, we'll create a dummy compilation unit
+    // In a complete implementation, you would:
+    // 1. Get the parse tree from ProcessIsolatedParser
+    // 2. Use ASTBuilder to convert parse tree to AST
+    // 3. Generate LLVM IR from AST
+    
+    std::cout << "⚠️  AST building not yet integrated with ProcessIsolatedParser\n";
+    std::cout << "⚠️  This requires connecting ANTLR4 parse tree to ASTBuilder\n";
+    
+    return true;
+}
+
+bool HoocJIT::executeFunction(const std::string& functionName) {
+    std::cout << "\n=== Executing Function: " << functionName << " ===\n";
+    
+    // Look up the function in the JIT
+    auto functionSymbol = JIT->lookup(functionName);
+    if (!functionSymbol) {
+        std::cout << "Function '" << functionName << "' not found: " 
+                 << toString(functionSymbol.takeError()) << "\n";
+        return false;
+    }
+    
+    // For now, assume it's a void function with no parameters
+    auto functionPtr = (void(*)())functionSymbol->getValue();
+    
+    std::cout << "Executing " << functionName << "()...\n";
+    functionPtr();
+    std::cout << "✅ Function executed successfully\n";
+    
+    return true;
+}
+
+std::unique_ptr<llvm::Module> HoocJIT::generateModuleFromAST(const ast::CompilationUnit& ast) {
+    std::cout << "\n=== Generating LLVM IR from AST ===\n";
+    
+    auto module = codeGenerator_->generateModule(ast);
+    if (module) {
+        std::cout << "✅ LLVM IR generation successful\n";
+        
+        // Print the generated IR
+        std::cout << "Generated LLVM IR:\n";
+        module->print(outs(), nullptr);
+    } else {
+        std::cout << "❌ LLVM IR generation failed\n";
+    }
+    
+    return module;
 }

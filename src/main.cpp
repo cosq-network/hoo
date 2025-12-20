@@ -26,6 +26,10 @@ int main(int argc, char* argv[]) {
     hooc::HoocJIT jit3;
     jit3.parseHoocCode("func math() { 42; }");       // Function with expression
     
+    // Test the new AST-based compilation (currently shows integration status)
+    std::cout << "\n=== Testing AST-Based Compilation ===\n";
+    jit.compileHoocCode("func example() { return; }");
+    
     std::cout << "\nDemo completed successfully!\n";
     return 0;
 }

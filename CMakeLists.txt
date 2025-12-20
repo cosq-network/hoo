@@ -120,11 +120,21 @@ add_executable(hooc_jit
     src/main.cpp
     src/HoocJIT.cpp
     src/ProcessIsolatedParser.cpp
+    src/CodeGenerator.cpp
+    src/SimpleASTBuilder.cpp
+    src/ast/ASTImpl.cpp
 )
 
 # Create standalone parser utility
 add_executable(hooc_parse
     src/hooc_parse.cpp
+)
+
+# Create CodeGenerator test utility
+add_executable(test_codegen
+    src/test_codegen.cpp
+    src/CodeGenerator.cpp
+    src/ast/ASTImpl.cpp
 )
 
 target_link_libraries(hooc_jit
@@ -136,6 +146,11 @@ target_link_libraries(hooc_parse
     hooc_parser
 )
 
+target_link_libraries(test_codegen
+    hooc_parser
+    ${llvm_libs}
+)
+
 target_include_directories(hooc_jit PRIVATE
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
@@ -143,6 +158,12 @@ target_include_directories(hooc_jit PRIVATE
 )
 
 target_include_directories(hooc_parse PRIVATE
+    ${ANTLR4_INCLUDE_DIR}
+    ${ANTLR4_GENERATED_DIR}
+)
+
+target_include_directories(test_codegen PRIVATE
+    ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}
 )

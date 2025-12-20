@@ -19,22 +19,19 @@ public:
 
     // Compilation unit and imports
     std::any visitCompilationUnit(HoocParser::CompilationUnitContext* ctx) override;
-    std::any visitImportStatement(HoocParser::ImportStatementContext* ctx);
-    std::any visitNamedImports(HoocParser::NamedImportsContext* ctx);
-    std::any visitNamespaceImport(HoocParser::NamespaceImportContext* ctx);
-    std::any visitSideEffectImport(HoocParser::SideEffectImportContext* ctx);
-    std::any visitImportItem(HoocParser::ImportItemContext* ctx);
+    std::any visitNamedImports(HoocParser::NamedImportsContext* ctx) override;
+    std::any visitNamespaceImport(HoocParser::NamespaceImportContext* ctx) override;
+    std::any visitSideEffectImport(HoocParser::SideEffectImportContext* ctx) override;
+    std::any visitImportItem(HoocParser::ImportItemContext* ctx) override;
 
     // Declarations
     std::any visitDeclaration(HoocParser::DeclarationContext* ctx) override;
     std::any visitFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx) override;
-    std::any visitClassDeclaration(HoocParser::ClassDeclarationContext* ctx) override;
-    std::any visitInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx) override;
-    std::any visitVariableDeclaration(HoocParser::VariableDeclarationContext* ctx) override;
-    std::any visitParameter(HoocParser::ParameterContext* ctx) override;
     std::any visitParameterList(HoocParser::ParameterListContext* ctx) override;
+    std::any visitParameter(HoocParser::ParameterContext* ctx) override;
 
-    // Class-related
+    // Class-related (simplified - only what exists in grammar)
+    std::any visitClassDeclaration(HoocParser::ClassDeclarationContext* ctx) override;
     std::any visitClassModifier(HoocParser::ClassModifierContext* ctx) override;
     std::any visitPrimaryConstructor(HoocParser::PrimaryConstructorContext* ctx) override;
     std::any visitClassBody(HoocParser::ClassBodyContext* ctx) override;
@@ -43,8 +40,12 @@ public:
     std::any visitInterfaceList(HoocParser::InterfaceListContext* ctx) override;
 
     // Interface-related
+    std::any visitInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx) override;
     std::any visitInterfaceMember(HoocParser::InterfaceMemberContext* ctx) override;
     std::any visitFunctionSignature(HoocParser::FunctionSignatureContext* ctx) override;
+
+    // Variable declarations
+    std::any visitVariableDeclaration(HoocParser::VariableDeclarationContext* ctx) override;
 
     // Types
     std::any visitType(HoocParser::TypeContext* ctx) override;
@@ -65,33 +66,12 @@ public:
     std::any visitReturnStatement(HoocParser::ReturnStatementContext* ctx) override;
     std::any visitScopeStatement(HoocParser::ScopeStatementContext* ctx) override;
 
-    // Expressions
-    std::any visitExpression(HoocParser::ExpressionContext* ctx);
-    std::any visitPrimaryExpression(HoocParser::PrimaryExpressionContext* ctx);
-    std::any visitMemberAccess(HoocParser::MemberAccessContext* ctx);
-    std::any visitArrayAccess(HoocParser::ArrayAccessContext* ctx);
-    std::any visitFunctionCall(HoocParser::FunctionCallContext* ctx);
-    std::any visitNewArrayExpression(HoocParser::NewArrayExpressionContext* ctx);
-    std::any visitNewObjectExpression(HoocParser::NewObjectExpressionContext* ctx);
-    std::any visitUnaryMinus(HoocParser::UnaryMinusContext* ctx);
-    std::any visitLogicalNot(HoocParser::LogicalNotContext* ctx);
-    std::any visitMultiplicativeExpression(HoocParser::MultiplicativeExpressionContext* ctx);
-    std::any visitAdditiveExpression(HoocParser::AdditiveExpressionContext* ctx);
-    std::any visitRelationalExpression(HoocParser::RelationalExpressionContext* ctx);
-    std::any visitLogicalAnd(HoocParser::LogicalAndContext* ctx);
-    std::any visitLogicalOr(HoocParser::LogicalOrContext* ctx);
-    std::any visitAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx);
-    std::any visitErrorHandlingExpression(HoocParser::ErrorHandlingExpressionContext* ctx);
-    std::any visitArrayLiteral(HoocParser::ArrayLiteralContext* ctx);
-    std::any visitListComprehension(HoocParser::ListComprehensionContext* ctx);
-    std::any visitLambdaExpression(HoocParser::LambdaExpressionContext* ctx);
-    std::any visitMultiParamLambda(HoocParser::MultiParamLambdaContext* ctx);
-
-    // Primary expressions
+    // Expressions (only what exists in simplified grammar)
+    std::any visitExpression(HoocParser::ExpressionContext* ctx) override;
     std::any visitPrimary(HoocParser::PrimaryContext* ctx) override;
-    std::any visitInterpolatedString(HoocParser::InterpolatedStringContext* ctx) override;
 
     // Utility
+    std::any visitInterpolatedString(HoocParser::InterpolatedStringContext* ctx) override;
     std::any visitArgumentList(HoocParser::ArgumentListContext* ctx) override;
     std::any visitExpressionList(HoocParser::ExpressionListContext* ctx) override;
 
@@ -99,7 +79,6 @@ private:
     // Helper methods
     ast::ClassModifier parseClassModifier(const std::string& modifier);
     ast::PrimitiveTypeKind parsePrimitiveType(const std::string& type);
-    ast::BinaryOperator parseBinaryOperator(const std::string& op);
     std::string getStringValue(antlr4::tree::TerminalNode* node);
     int64_t getIntegerValue(antlr4::tree::TerminalNode* node);
     double getDoubleValue(antlr4::tree::TerminalNode* node);
@@ -108,13 +87,23 @@ private:
 
     // Template helpers for casting std::any to AST types
     template<typename T>
-    std::unique_ptr<T> cast(std::any value) {
-        return std::any_cast<std::unique_ptr<T>>(value);
+    std::unique_ptr<T> cast(std::any& value) {
+        try {
+            return std::move(std::any_cast<std::unique_ptr<T>&>(value));
+        } catch (const std::bad_any_cast& e) {
+            std::cerr << "Failed to cast AST node: " << e.what() << std::endl;
+            return nullptr;
+        }
     }
 
     template<typename T>
-    std::vector<std::unique_ptr<T>> castVector(std::any value) {
-        return std::any_cast<std::vector<std::unique_ptr<T>>>(value);
+    std::vector<std::unique_ptr<T>> castVector(std::any& value) {
+        try {
+            return std::move(std::any_cast<std::vector<std::unique_ptr<T>>&>(value));
+        } catch (const std::bad_any_cast& e) {
+            std::cerr << "Failed to cast AST vector: " << e.what() << std::endl;
+            return std::vector<std::unique_ptr<T>>();
+        }
     }
 };
 
