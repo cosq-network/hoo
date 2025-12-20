@@ -335,3 +335,60 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolLogic) {
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
     EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
 }
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharParameter) {
+    std::string code = "func process(char ch) -> char { return ch; }";
+    auto* parseTree = parseCode(code);
+    
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+    EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharVariable) {
+    std::string code = R"(
+        func test() -> void {
+            var ch = 'a';
+            var explicit: char = 'Z';
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+    EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharComparison) {
+    std::string code = R"(
+        func compare(char a, char b) -> bool {
+            var equal = a == b;
+            var less = a < b;
+            return equal;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+    EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
+}

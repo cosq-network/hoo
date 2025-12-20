@@ -271,3 +271,51 @@ TEST_F(HooCompilerTest, CompileBoolLogic) {
     raw_string_ostream errorStream(errorMsg);
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
+
+TEST_F(HooCompilerTest, CompileCharFunction) {
+    std::string code = "func process(char ch) -> char { return ch; }";
+    auto module = compiler->compile("char_test", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify char type is properly handled (i32 in LLVM for Unicode scalar)
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(32));
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(32));
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+TEST_F(HooCompilerTest, CompileCharLiterals) {
+    std::string code = R"(
+        func test_chars() -> char {
+            var letter = 'A';
+            var digit = '9';
+            var symbol = '@';
+            if (letter == 'A') {
+                return digit;
+            } else {
+                return symbol;
+            }
+        }
+    )";
+    auto module = compiler->compile("char_literals", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("test_chars");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}

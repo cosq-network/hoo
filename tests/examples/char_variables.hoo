@@ -1,0 +1,12 @@
+func char_variables() -> void {
+    var letter = 'A';
+    var digit = '9';
+    var symbol = '@';
+    var explicit: char = 'z';
+    
+    // Character comparison examples
+    var is_upper = letter >= 'A' && letter <= 'Z';
+    var is_digit = digit >= '0' && digit <= '9';
+    
+    return;
+}

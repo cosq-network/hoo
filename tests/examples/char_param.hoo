@@ -1,0 +1,11 @@
+func process(char ch) -> char {
+    return ch;
+}
+
+func transform(char input) -> char {
+    if (input == 'a') {
+        return 'A';
+    } else {
+        return input;
+    }
+}

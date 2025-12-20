@@ -420,3 +420,72 @@ TEST_F(CodeGeneratorTest, GenerateBoolLogic) {
     std::string irString = getModuleString(module.get());
     EXPECT_TRUE(irString.find("i1") != std::string::npos);
 }
+
+TEST_F(CodeGeneratorTest, GenerateCharFunction) {
+    std::string code = "func process(char ch) -> char { return ch; }";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Check function signature
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(32));
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(32));
+}
+
+TEST_F(CodeGeneratorTest, GenerateCharVariables) {
+    std::string code = R"(
+        func test() -> void {
+            var ch = 'a';
+            var explicit: char = 'Z';
+            return;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("test");
+    ASSERT_NE(func, nullptr);
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
+    EXPECT_TRUE(irString.find("store") != std::string::npos);
+    EXPECT_TRUE(irString.find("i32 97") != std::string::npos); // ASCII 'a'
+    EXPECT_TRUE(irString.find("i32 90") != std::string::npos); // ASCII 'Z'
+}
+
+TEST_F(CodeGeneratorTest, GenerateCharComparison) {
+    std::string code = R"(
+        func compare(char a, char b) -> bool {
+            var equal = a == b;
+            var less = a < b;
+            return equal;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("compare");
+    ASSERT_NE(func, nullptr);
+    
+    // Check that function has char parameters and bool return type
+    EXPECT_TRUE(func->getReturnType()->isIntegerTy(1));
+    EXPECT_EQ(func->arg_size(), 2);
+    EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(32));
+    EXPECT_TRUE(func->getArg(1)->getType()->isIntegerTy(32));
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("icmp eq i32") != std::string::npos);
+    EXPECT_TRUE(irString.find("icmp slt i32") != std::string::npos);
+}

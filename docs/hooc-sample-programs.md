@@ -47,7 +47,38 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 4. Conditional Logic
+## 4. Character Operations & Classification
+
+``` hooc
+func classify_char(char ch) -> int {
+    if (ch >= 'A' && ch <= 'Z') {
+        return 1; // uppercase
+    } else if (ch >= 'a' && ch <= 'z') {
+        return 2; // lowercase  
+    } else if (ch >= '0' && ch <= '9') {
+        return 3; // digit
+    } else {
+        return 0; // other
+    }
+}
+
+func char_examples() -> void {
+    var letter = 'A';
+    var digit = '9';
+    var symbol = '@';
+    
+    // Character comparisons
+    var is_upper = letter >= 'A' && letter <= 'Z';
+    var is_equal = letter == 'A';
+    var is_less = digit < letter; // '9' < 'A' (ASCII comparison)
+    
+    return;
+}
+```
+
+------------------------------------------------------------------------
+
+## 5. Conditional Logic
 
 ``` hooc
 func main() {
@@ -63,7 +94,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 5. Iteration
+## 6. Iteration
 
 ### Range-Based Loop
 
@@ -89,7 +120,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 6. Multi-Dimensional Arrays
+## 7. Multi-Dimensional Arrays
 
 ``` hooc
 func main() {
@@ -108,7 +139,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 7. Functions
+## 8. Functions
 
 ``` hooc
 func add(int64 a, int64 b) -> int64 {
@@ -122,7 +153,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 8. Classes & Objects
+## 9. Classes & Objects
 
 ``` hooc
 class User(string name, int64 age) {
@@ -139,7 +170,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 9. Interfaces
+## 10. Interfaces
 
 ``` hooc
 interface Greeter {
@@ -160,7 +191,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 10. Searching & Sorting
+## 11. Searching & Sorting
 
 ``` hooc
 func main() {
@@ -179,7 +210,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 11. List Comprehension
+## 12. List Comprehension
 
 ``` hooc
 func main() {
@@ -190,7 +221,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 12. Error Handling
+## 13. Error Handling
 
 ``` hooc
 func divide(int64 a, int64 b) -> int64 | Error {
@@ -212,7 +243,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 13. Singleton Pattern
+## 14. Singleton Pattern
 
 ``` hooc
 singleton class Logger {
@@ -228,7 +259,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 14. Immutable Object
+## 15. Immutable Object
 
 ``` hooc
 immutable class Money(double amount, string currency);
@@ -241,7 +272,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 15. Actor (Concurrency)
+## 16. Actor (Concurrency)
 
 ``` hooc
 actor class Counter {
@@ -265,7 +296,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 16. Data Processing Example
+## 17. Data Processing Example
 
 ``` hooc
 class User(string name, int64 age, bool active);

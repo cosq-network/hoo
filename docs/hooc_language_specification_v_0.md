@@ -68,6 +68,8 @@ Rules:
 - No numeric-to-boolean coercion
 - Arithmetic overflow is checked by default
 
+**Implementation Status**: All primitive types (`byte`, `int64`, `double`, `bool`, `char`) are fully implemented with comprehensive test coverage (67 unit tests) in the current hooc compiler v0.1.
+
 ---
 
 ## 4. Strings
