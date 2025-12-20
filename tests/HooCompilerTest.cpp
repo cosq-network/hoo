@@ -178,3 +178,48 @@ TEST_F(HooCompilerTest, ErrorAfterSuccessfulCompilation) {
     EXPECT_FALSE(compiler->wasLastCompilationSuccessful());
     EXPECT_FALSE(compiler->getLastError().empty());
 }
+
+TEST_F(HooCompilerTest, CompileFloatFunction) {
+    std::string code = "func process(float data) -> float { return data; }";
+    auto module = compiler->compile("float_test", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify float type is properly handled (float in LLVM)
+    EXPECT_TRUE(func->getReturnType()->isFloatTy());
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isFloatTy());
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+TEST_F(HooCompilerTest, CompileFloatArithmetic) {
+    std::string code = R"(
+        func calculate(float a, float b) -> float {
+            var sum = a + b;
+            var diff = a - b;
+            var product = a * b;
+            var quotient = a / b;
+            return sum;
+        }
+    )";
+    auto module = compiler->compile("float_arithmetic", code);
+    
+    ASSERT_NE(module, nullptr);
+    EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
+    
+    Function* func = module->getFunction("calculate");
+    ASSERT_NE(func, nullptr);
+    
+    // Verify module is valid LLVM IR
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}

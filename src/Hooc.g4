@@ -36,6 +36,7 @@ FALSE: 'false';
 BYTE: 'byte';
 UINT8: 'uint8';
 INT64: 'int64';
+FLOAT: 'float';
 DOUBLE: 'double';
 F64: 'f64';
 BOOL: 'bool';
@@ -176,7 +177,7 @@ baseType
     | IDENTIFIER
     ;
 
-primitiveType: BYTE | UINT8 | INT64 | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
+primitiveType: BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
 
 // Statements
 statement

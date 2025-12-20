@@ -387,6 +387,7 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
 // Helper methods
 PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& typeName) {
     if (typeName == "int" || typeName == "int64") return PrimitiveTypeKind::INT64;
+    if (typeName == "float") return PrimitiveTypeKind::FLOAT;
     if (typeName == "double") return PrimitiveTypeKind::DOUBLE;
     if (typeName == "f64") return PrimitiveTypeKind::F64;
     if (typeName == "bool") return PrimitiveTypeKind::BOOL;

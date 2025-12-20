@@ -1,0 +1,3 @@
+func process_float(float data) -> float {
+    return data;
+}

@@ -20,6 +20,7 @@ enum class PrimitiveTypeKind {
     BYTE,
     UINT8,
     INT64,
+    FLOAT,
     DOUBLE,
     F64,
     BOOL,

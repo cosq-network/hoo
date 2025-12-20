@@ -782,6 +782,8 @@ LLVMType* CodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
             return LLVMType::getInt8Ty(context_);
         case PrimitiveTypeKind::INT64:
             return LLVMType::getInt64Ty(context_);
+        case PrimitiveTypeKind::FLOAT:
+            return LLVMType::getFloatTy(context_);
         case PrimitiveTypeKind::DOUBLE:
         case PrimitiveTypeKind::F64:
             return LLVMType::getDoubleTy(context_);

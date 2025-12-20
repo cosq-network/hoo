@@ -284,3 +284,70 @@ TEST_F(CodeGeneratorTest, GenerateByteArithmetic) {
     std::string irString = getModuleString(module.get());
     EXPECT_TRUE(irString.find("add i8") != std::string::npos);
 }
+
+TEST_F(CodeGeneratorTest, GenerateFloatFunction) {
+    std::string code = "func process(float data) -> float { return data; }";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+    
+    // Check function signature
+    EXPECT_TRUE(func->getReturnType()->isFloatTy());
+    EXPECT_EQ(func->arg_size(), 1);
+    EXPECT_TRUE(func->getArg(0)->getType()->isFloatTy());
+}
+
+TEST_F(CodeGeneratorTest, GenerateFloatVariables) {
+    std::string code = R"(
+        func test() -> void {
+            var f = 3.14;
+            var typed: float = 2.71;
+            return;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("test");
+    ASSERT_NE(func, nullptr);
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
+    EXPECT_TRUE(irString.find("store") != std::string::npos);
+}
+
+TEST_F(CodeGeneratorTest, GenerateFloatArithmetic) {
+    std::string code = R"(
+        func calculate(float a, float b) -> float {
+            var sum = a + b;
+            var product = a * b;
+            return sum;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    
+    auto module = codeGen->generateModule(*ast);
+    ASSERT_NE(module, nullptr);
+    
+    Function* func = module->getFunction("calculate");
+    ASSERT_NE(func, nullptr);
+    
+    // Check that function has float parameters and return type
+    EXPECT_TRUE(func->getReturnType()->isFloatTy());
+    EXPECT_EQ(func->arg_size(), 2);
+    EXPECT_TRUE(func->getArg(0)->getType()->isFloatTy());
+    EXPECT_TRUE(func->getArg(1)->getType()->isFloatTy());
+    
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("fadd float") != std::string::npos);
+    EXPECT_TRUE(irString.find("fmul float") != std::string::npos);
+}
