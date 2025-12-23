@@ -1,14 +1,14 @@
-# hooc Programming Language Specification (v0.1)
+# hoo Programming Language Specification (v0.1)
 
-> **hooc** is a compiled, statically typed programming language designed as a modern, safe, and expressive evolution of the C programming philosophy.
+> **hoo** is a compiled, statically typed programming language designed as a modern, safe, and expressive evolution of the C programming philosophy. Compiled by **hooc**.
 >
-> hooc removes C’s unsafe constructs while preserving its clarity, predictability, and performance mindset, and integrates modern abstractions directly into the language.
+> hoo removes C's unsafe constructs while preserving its clarity, predictability, and performance mindset, and integrates modern abstractions directly into the language.
 
 ---
 
 ## 1. Language Philosophy
 
-hooc is built on the following principles:
+hoo is built on the following principles:
 
 - **Safety by construction** – no undefined behavior, no pointer arithmetic, no null
 - **Simplicity over cleverness** – minimal syntax, few keywords, explicit behavior
@@ -35,7 +35,7 @@ Non-goals:
 
 ### 2.2 Import System (TypeScript Style)
 
-```hooc
+``` hoo
 import { User, Role } from "auth/user";
 import * as math from "core/math";
 import "net/http"; // side-effect import
@@ -76,13 +76,13 @@ Rules:
 
 ### 4.1 Single-Line Strings
 
-```hooc
+``` hoo
 string name = "Benoy";
 ```
 
 ### 4.2 Multiline Strings
 
-```hooc
+``` hoo
 string text = """
 Hello,
 This is a multiline string.
@@ -94,7 +94,7 @@ This is a multiline string.
 
 ### 4.3 String Interpolation
 
-```hooc
+``` hoo
 string msg = "Hello ${user.name}, age ${user.age}";
 ```
 
@@ -107,7 +107,7 @@ string msg = "Hello ${user.name}, age ${user.age}";
 
 hooc does not support `null`.
 
-```hooc
+``` hoo
 int64? value;
 ```
 
@@ -119,7 +119,7 @@ Rules:
 
 ## 6. Variables and Type Inference
 
-```hooc
+``` hoo
 var x = 10;      // int64
 var y = 3.14;    // double
 var z = "hi";   // string
@@ -134,7 +134,7 @@ var z = "hi";   // string
 
 ### 7.1 Arrays
 
-```hooc
+``` hoo
 int64[3][4] matrix;
 var numbers: int64[5]; // Current working syntax
 ```
@@ -157,7 +157,7 @@ All collections implicitly implement `Iterable<T>` (planned feature).
 
 ### 8.1 Conditionals
 
-```hooc
+``` hoo
 if condition {
     ...
 } else {
@@ -171,7 +171,7 @@ Condition must be `bool`.
 
 #### For-each Loop
 
-```hooc
+``` hoo
 for item in items {
     print(item);
 }
@@ -181,7 +181,7 @@ for item in items {
 
 #### Range-based Loop
 
-```hooc
+``` hoo
 for i in 0..10 {
     print(i);
 }
@@ -191,7 +191,7 @@ for i in 0..10 {
 
 #### While Loop
 
-```hooc
+``` hoo
 while condition {
     work();
 }
@@ -203,7 +203,7 @@ while condition {
 
 ## 9. Functions
 
-```hooc
+``` hoo
 func add(int64 a, int64 b) -> int64 {
     return a + b;
 }
@@ -220,7 +220,7 @@ Rules:
 
 ### 10.1 Class Declaration
 
-```hooc
+``` hoo
 class User(string name, int64 age) {
     func greet() {
         print("Hello " + name);
@@ -236,7 +236,7 @@ class User(string name, int64 age) {
 
 ### 10.2 Inheritance
 
-```hooc
+``` hoo
 class Admin extends User {
     int64 level;
 }
@@ -251,13 +251,13 @@ Rules:
 
 ### 10.3 Interfaces
 
-```hooc
+``` hoo
 interface Serializable {
     func serialize() -> string;
 }
 ```
 
-```hooc
+``` hoo
 class User implements Serializable {
     func serialize() -> string { ... }
 }
@@ -275,7 +275,7 @@ class User implements Serializable {
 - Garbage collection
 - Deterministic lifetime via `scope`
 
-```hooc
+``` hoo
 scope {
     Buffer b = Buffer(1024);
 }
@@ -287,11 +287,11 @@ scope {
 
 ### 12.1 Union-Based Errors
 
-```hooc
+``` hoo
 func read_file(string path) -> File | Error;
 ```
 
-```hooc
+``` hoo
 file = read_file("data.txt") else {
     print("Failed to read file");
 };
@@ -305,7 +305,7 @@ No unchecked exceptions.
 
 ### 13.1 Searching
 
-```hooc
+``` hoo
 users.find(u => u.id == 10);
 ```
 
@@ -313,7 +313,7 @@ Returns optional.
 
 ### 13.2 Sorting
 
-```hooc
+``` hoo
 users.sort();
 users.sort((a, b) => a.age < b.age);
 ```
@@ -323,7 +323,7 @@ users.sort((a, b) => a.age < b.age);
 
 ### 13.3 Functional Operations
 
-```hooc
+``` hoo
 users.filter(u => u.active);
 users.map(u => u.name);
 numbers.reduce(0, (a, b) => a + b);
@@ -333,7 +333,7 @@ numbers.reduce(0, (a, b) => a + b);
 
 ### 13.4 List Comprehensions
 
-```hooc
+``` hoo
 squares = [x * x for x in 1..10];
 evans = [x for x in numbers if x % 2 == 0];
 ```
@@ -346,7 +346,7 @@ Nested comprehensions allowed.
 
 ### 14.1 Singleton
 
-```hooc
+``` hoo
 singleton class Logger {
     func log(string msg);
 }
@@ -354,13 +354,13 @@ singleton class Logger {
 
 ### 14.2 Immutable Objects
 
-```hooc
+``` hoo
 immutable class Money(double amount, string currency);
 ```
 
 ### 14.3 Factory
 
-```hooc
+``` hoo
 factory class Shape {
     Circle(int r);
     Rectangle(int w, int h);
@@ -369,7 +369,7 @@ factory class Shape {
 
 ### 14.4 Observer
 
-```hooc
+``` hoo
 observable class Button {
     event clicked;
 }
@@ -377,7 +377,7 @@ observable class Button {
 
 ### 14.5 Dependency Injection
 
-```hooc
+``` hoo
 service class UserService { }
 ```
 
@@ -385,7 +385,7 @@ service class UserService { }
 
 ### 14.6 Strategy
 
-```hooc
+``` hoo
 strategy interface Payment {
     func pay(double amount);
 }
@@ -393,7 +393,7 @@ strategy interface Payment {
 
 ### 14.7 Actor Model
 
-```hooc
+``` hoo
 actor class Queue {
     int[] data;
 }
@@ -467,4 +467,5 @@ Planned (post v0.1):
 **hooc** is a pragmatic, safe, and expressive language that modernizes C without inheriting the complexity of C++, the verbosity of Java, or the cognitive overhead of Rust.
 
 This document defines **hooc v0.1**, suitable as a foundation for compiler implementation and ecosystem design.
+
 

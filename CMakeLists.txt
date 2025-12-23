@@ -5,12 +5,30 @@ project(HoocParser)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# On Windows, force Release runtime to match LLVM libraries
+# Use RelWithDebInfo to get debug symbols while using Release runtime
+if(WIN32 AND NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
+endif()
+
+# Force Release runtime library on Windows for all configurations
+if(MSVC)
+    # Use Release runtime (/MD) even in Debug mode to match LLVM
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+    
+    # Override default flags for Debug configuration to use /MD instead of /MDd
+    string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    string(REPLACE "/MTd" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
+endif()
+
 # Find ANTLR4 C++ runtime
 find_path(ANTLR4_INCLUDE_DIR 
     NAMES antlr4-runtime.h
     PATHS /opt/homebrew/include/antlr4-runtime
           /usr/local/include/antlr4-runtime
           /opt/homebrew/opt/antlr4-cpp-runtime/include/antlr4-runtime
+          D:\\antlr4\\runtime\\cpp\\include\\antlr4-runtime
 )
 
 find_library(ANTLR4_LIBRARY
@@ -18,6 +36,7 @@ find_library(ANTLR4_LIBRARY
     PATHS /opt/homebrew/lib
           /usr/local/lib
           /opt/homebrew/opt/antlr4-cpp-runtime/lib
+          D:\\antlr4\\runtime\\cpp\\lib
 )
 
 if(NOT ANTLR4_INCLUDE_DIR OR NOT ANTLR4_LIBRARY)

@@ -1,13 +1,13 @@
-# hooc Programming Language -- Sample Programs
+# hoo Programming Language -- Sample Programs
 
-This document contains reference examples for the **hooc** programming
-language, demonstrating core syntax and language features.
+This document contains reference examples for the **hoo** programming
+language, compiled by **hooc**, demonstrating core syntax and language features.
 
 ------------------------------------------------------------------------
 
 ## 1. Hello World (Minimal)
 
-``` hooc
+``` hoo
 func main() {
     print("Hello, World!");
 }
@@ -17,9 +17,9 @@ func main() {
 
 ## 2. Hello World (Multiline + Interpolation)
 
-``` hooc
+``` hoo
 func main() {
-    string lang = "hooc";
+    string lang = "hoo";
 
     print("""
     Hello from ${lang}!
@@ -32,7 +32,7 @@ func main() {
 
 ## 3. Variables & Basic Types
 
-``` hooc
+``` hoo
 func main() {
     byte b = 255;
     int64 count = 42;
@@ -49,7 +49,7 @@ func main() {
 
 ## 4. Character Operations & Classification
 
-``` hooc
+``` hoo
 func classify_char(char ch) -> int {
     if (ch >= 'A' && ch <= 'Z') {
         return 1; // uppercase
@@ -80,7 +80,7 @@ func char_examples() -> void {
 
 ## 5. Conditional Logic
 
-``` hooc
+``` hoo
 func main() {
     int64 age = 20;
 
@@ -98,7 +98,7 @@ func main() {
 
 ### Array Declarations
 
-``` hooc
+``` hoo
 func array_demo() -> void {
     // Single-dimensional arrays
     var numbers: int64[5];
@@ -115,7 +115,7 @@ func array_demo() -> void {
 
 ### Array Types in Functions
 
-``` hooc
+``` hoo
 // Array type declarations work in function bodies
 func process_data() -> void {
     var data: int64[100];
@@ -136,7 +136,7 @@ func process_data() -> void {
 
 ### Range-Based Loops
 
-``` hooc
+``` hoo
 func range_example() -> void {
     // For-range loop infrastructure is implemented
     // Full syntax parsing is in development
@@ -154,7 +154,7 @@ func range_example() -> void {
 
 ### For-In Loops
 
-``` hooc
+``` hoo
 func for_in_example() -> void {
     var arr: int64[10];
     
@@ -171,7 +171,7 @@ func for_in_example() -> void {
 
 ### Range-Based Loop (Planned Syntax)
 
-``` hooc
+``` hoo
 // Note: Full parsing implementation in progress
 func main() {
     for i in 1..5 {
@@ -182,7 +182,7 @@ func main() {
 
 ### Collection Iteration (Planned Syntax)
 
-``` hooc
+``` hoo
 // Note: Requires array access syntax completion
 func main() {
     int64[] numbers = [10, 20, 30];
@@ -197,7 +197,7 @@ func main() {
 
 ## 7. Multi-Dimensional Arrays
 
-``` hooc
+``` hoo
 func main() {
     int64[2][3] matrix = [
         [1, 2, 3],
@@ -216,7 +216,7 @@ func main() {
 
 ## 8. Functions
 
-``` hooc
+``` hoo
 func add(int64 a, int64 b) -> int64 {
     return a + b;
 }
@@ -230,7 +230,7 @@ func main() {
 
 ## 9. Classes & Objects
 
-``` hooc
+``` hoo
 class User(string name, int64 age) {
     func greet() {
         print("Hello, my name is ${name} and I am ${age}");
@@ -247,7 +247,7 @@ func main() {
 
 ## 10. Interfaces
 
-``` hooc
+``` hoo
 interface Greeter {
     func greet();
 }
@@ -268,7 +268,7 @@ func main() {
 
 ## 11. Searching & Sorting
 
-``` hooc
+``` hoo
 func main() {
     int64[] numbers = [5, 2, 9, 1];
 
@@ -287,7 +287,7 @@ func main() {
 
 ## 12. List Comprehension
 
-``` hooc
+``` hoo
 func main() {
     int64[] squares = [x * x for x in 1..10 if x % 2 == 0];
     print(squares);
@@ -298,7 +298,7 @@ func main() {
 
 ## 13. Error Handling
 
-``` hooc
+``` hoo
 func divide(int64 a, int64 b) -> int64 | Error {
     if b == 0 {
         return Error("Division by zero");
@@ -320,7 +320,7 @@ func main() {
 
 ## 14. Singleton Pattern
 
-``` hooc
+``` hoo
 singleton class Logger {
     func log(string msg) {
         print("[LOG] ${msg}");
@@ -336,7 +336,7 @@ func main() {
 
 ## 15. Immutable Object
 
-``` hooc
+``` hoo
 immutable class Money(double amount, string currency);
 
 func main() {
@@ -349,7 +349,7 @@ func main() {
 
 ## 16. Actor (Concurrency)
 
-``` hooc
+``` hoo
 actor class Counter {
     int64 value = 0;
 
@@ -373,7 +373,7 @@ func main() {
 
 ## 17. Data Processing Example
 
-``` hooc
+``` hoo
 class User(string name, int64 age, bool active);
 
 func main() {
@@ -396,3 +396,4 @@ func main() {
 ------------------------------------------------------------------------
 
 *End of hooc sample programs.*
+

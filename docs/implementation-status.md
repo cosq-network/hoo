@@ -1,6 +1,7 @@
 # hooc Compiler Implementation Status
 
-**Project**: hooc Programming Language Compiler  
+**Project**: hoo Programming Language  
+**Compiler**: hooc  
 **Version**: 0.1-alpha  
 **Date**: December 2025  
 **Status**: Core Infrastructure Complete  
@@ -9,21 +10,21 @@
 
 ## 🎯 Project Overview
 
-This document tracks the implementation status of the **hooc** programming language compiler, built using ANTLR4 for parsing, LLVM for code generation, and CMake for building.
+This document tracks the implementation status of the **hooc** compiler for the **hoo** programming language, built using ANTLR4 for parsing, LLVM for code generation, and CMake for building.
 
 ---
 
 ## ✅ Completed Components
 
 ### 1. **Language Specification & Grammar**
-- ✅ **hooc Language Specification v0.1** - Complete language design document
+- ✅ **hoo Language Specification v0.1** - Complete language design document
 - ✅ **ANTLR4 Grammar** (`src/Hooc.g4`) - Simplified but functional grammar
 - ✅ **Sample Programs** - Reference examples demonstrating syntax
 
 ### 2. **Parser Infrastructure** 
 - ✅ **ANTLR4 Integration** - C++ parser generation from grammar
 - ✅ **Process Isolation** - Robust parsing without state corruption
-- ✅ **Parse Tree Generation** - Successfully parses hooc syntax constructs
+- ✅ **Parse Tree Generation** - Successfully parses hoo syntax constructs
 - ✅ **Standalone Parser Utility** (`hooc_parse`) - Independent parsing tool
 
 ### 3. **LLVM JIT Compilation**
@@ -61,7 +62,7 @@ This document tracks the implementation status of the **hooc** programming langu
 ┌─────────────────────────────────────────────────────┐
 │                 hooc Compiler                       │
 ├─────────────────────────────────────────────────────┤
-│  Source Code (.hooc)                                │
+│  Source Code (.hoo)                                 │
 │      ↓                                              │
 │  ProcessIsolatedParser                              │
 │      ↓                                              │
@@ -196,12 +197,27 @@ SUCCESS
 ## 🔧 Development Environment
 
 ### **Dependencies**
+
+#### macOS
 - **ANTLR4 C++ Runtime**: 4.13.2 (Homebrew)
 - **LLVM**: 21.1.8 (Homebrew) 
 - **CMake**: 3.16+
 - **Apple Clang**: 17.0.0 (C++17)
 
+#### Windows
+- **ANTLR4 C++ Runtime**: via vcpkg
+- **LLVM**: 15.0+ (Pre-built binaries)
+- **CMake**: 3.16+
+- **MSVC**: Visual Studio 2022 (v143 toolchain)
+- **Ninja**: Build system
+- **vcpkg**: Package manager
+- **Java**: JRE 8+ (for ANTLR4 parser generation)
+
+**📘 Full Windows setup guide**: See [building-on-windows.md](building-on-windows.md)
+
 ### **Build Commands**
+
+#### macOS/Linux
 ```bash
 # Build all targets
 cmake --build build
@@ -211,6 +227,19 @@ cmake --build build
 
 # Test parser standalone  
 ./build/hooc_parse "func example() { return; }"
+```
+
+#### Windows
+```cmd
+# Build all targets
+cd build
+ninja
+
+# Run JIT demo
+.\hooc_jit.exe
+
+# Test parser standalone
+.\hooc_parse.exe "func example() { return; }"
 ```
 
 ### **File Structure**
@@ -271,16 +300,17 @@ src/
 - **No optimization passes** - direct AST → LLVM IR translation
 
 ### **Platform Dependencies**
-- **Homebrew-specific paths** in CMake configuration
-- **macOS-specific process isolation** using `popen()`
+- **Homebrew-specific paths** in CMake configuration (macOS)
+- **vcpkg toolchain** required for Windows builds
+- **Process isolation** using `popen()` (cross-platform)
 
 ---
 
 ## 🎉 Project Status: **CORE LANGUAGE FUNCTIONAL**
 
-The hooc compiler now has a **complete, working implementation** of core language features. All primitive types, expressions, control flow, and basic compilation pipeline are fully operational with comprehensive test coverage.
+The hooc compiler now has a **complete, working implementation** of core hoo language features. All primitive types, expressions, control flow, and basic compilation pipeline are fully operational with comprehensive test coverage.
 
-**Key Achievement**: Complete end-to-end compilation pipeline from hooc source code to executable LLVM IR, with all primitive types (`byte`, `int`, `float`, `bool`, `char`) fully implemented and tested.
+**Key Achievement**: Complete end-to-end compilation pipeline from hoo source code to executable LLVM IR, with all primitive types (`byte`, `int`, `float`, `bool`, `char`) fully implemented and tested.
 
 **Test Coverage**: 67 comprehensive unit tests covering parsing, AST building, LLVM IR generation, and end-to-end compilation - all passing.
 

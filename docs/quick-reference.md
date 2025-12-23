@@ -1,5 +1,7 @@
 # hooc Compiler Quick Reference
 
+**Language**: hoo  
+**Compiler**: hooc  
 **Current Build**: v0.1-alpha (December 2025)
 
 ---
@@ -7,8 +9,10 @@
 ## 🚀 Getting Started
 
 ### Prerequisites
+
+#### macOS (Homebrew)
 ```bash
-# Install dependencies via Homebrew (macOS)
+# Install dependencies via Homebrew
 brew install cmake llvm antlr4-cpp-runtime
 
 # Verify installations
@@ -16,7 +20,21 @@ cmake --version    # Should be 3.16+
 llvm-config --version  # Should be 21.x
 ```
 
+#### Windows
+```cmd
+# Install dependencies via vcpkg
+cd "D:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg"
+.\vcpkg install antlr4-cpp-runtime:x64-windows
+.\vcpkg install gtest:x64-windows
+
+# Install LLVM and Java (see full guide)
+```
+
+**📘 For detailed Windows setup**: See [building-on-windows.md](building-on-windows.md)
+
 ### Build the Compiler
+
+#### macOS
 ```bash
 # Clone and build
 cd /Users/benoybose/Projects/hoo0.1
@@ -29,6 +47,21 @@ cmake --build build
 # [100%] Built target hooc_parse
 ```
 
+#### Windows
+```cmd
+# Configure with CMake
+cd D:\Projects\hooc\build
+cmake -G "Ninja" ^
+  -DCMAKE_TOOLCHAIN_FILE="D:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake" ^
+  -DCMAKE_BUILD_TYPE=RelWithDebInfo ^
+  ..
+
+# Build with Ninja
+ninja
+```
+
+**📘 Full Windows build instructions**: [building-on-windows.md](building-on-windows.md)
+
 ---
 
 ## 🛠️ Available Tools
@@ -37,7 +70,11 @@ cmake --build build
 **Purpose**: Demonstrates LLVM ORC JIT compilation and execution
 
 ```bash
+# macOS/Linux
 ./build/hooc_jit
+
+# Windows
+.\build\hooc_jit.exe
 ```
 
 **Output Example**:
@@ -64,13 +101,20 @@ Parse tree: (compilationUnit ...)
 **Purpose**: Parse hooc source code and display syntax tree
 
 ```bash
+# macOS/Linux
 ./build/hooc_parse "SOURCE_CODE"
+
+# Windows
+.\build\hooc_parse.exe "SOURCE_CODE"
 ```
 
 **Examples**:
 ```bash
-# Empty function
+# Empty function (macOS/Linux)
 ./build/hooc_parse "func test() { }"
+
+# Windows
+.\build\hooc_parse.exe "func test() { }"
 
 # Function with return
 ./build/hooc_parse "func calc() { return; }"
