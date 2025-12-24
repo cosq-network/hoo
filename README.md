@@ -124,7 +124,7 @@ actor class Counter {
 
 ## 🏗️ Implementation Status
 
-### ✅ **Completed (v0.1-alpha)**
+### ✅ **Completed (v0.2-alpha)**
 - **ANTLR4 Grammar** - Complete language grammar with full operator precedence
 - **LLVM JIT Integration** - Working ORC JIT compilation and execution
 - **AST Infrastructure** - Complete type hierarchy for all language constructs
@@ -137,7 +137,8 @@ actor class Counter {
 - **Control Flow** - If/else statements, while loops, for-range loops, for-in loops
 - **Variable Declarations** - Full support with type inference and assignments
 - **Array Literals** - Complete array literal syntax with type inference and multi-dimensional support
-- **Test Suite** - 67 comprehensive unit tests with 100% pass rate
+- **Function Calls** - Full support for hooc-to-hooc function calls with argument passing
+- **Test Suite** - 12 array literal parsing tests with 100% pass rate
 
 ### 🔧 **Current Architecture**
 ```
@@ -161,11 +162,11 @@ Native Execution ✅
 ```
 
 ### 🎯 **Next Development Steps**
-1. **Function Calls** - Implement hooc-to-hooc function calls
-2. **String Type** - Add string type with LLVM support
-3. **Array Operations** - Complete array element access and manipulation
-4. **Module System** - Implement import/export functionality
-5. **Standard Library** - Build core library functions (print, I/O, collections)
+1. **String Type** - Add string type with LLVM support
+2. **Standard Library** - Build core library functions (print, I/O, collections)
+3. **Module System** - Implement import/export functionality
+4. **Advanced Function Features** - Function pointers, callbacks, method calls
+5. **Class System** - Complete class implementation with inheritance
 
 ## 🔧 Development Tools
 
@@ -226,15 +227,16 @@ Native Execution ✅
 
 ## 🐛 Current Limitations & Known Issues
 
-### **Implementation Coverage**  
+### **Implementation Coverage**
 - ✅ **Function declarations** - Complete with parameters and return types
+- ✅ **Function calls** - Full support for hooc-to-hooc calls with argument passing
 - ✅ **Primitive types** - byte, int64, double, bool, char fully supported
 - ✅ **Variable declarations** - With type inference and assignments
 - ✅ **All expressions** - Arithmetic, comparison, logical, assignments
 - ✅ **Control flow** - If/else, while loops, for-range, for-in loops
 - ✅ **Array literals** - Complete array literal syntax with type inference and global constant storage
 - ✅ **Array access** - Full support for array element access
-- ⚠️ **Function calls** - Hooc-to-hooc calls not yet implemented
+- ⚠️ **Advanced functions** - Function pointers, callbacks, and method calls not yet implemented
 - ❌ **String type** - Not yet implemented
 - ❌ **Classes & interfaces** - Grammar exists, code generation pending
 - ❌ **Import statements** - Module system not yet implemented
@@ -254,10 +256,10 @@ Native Execution ✅
 4. **Test integration** with `./build/hooc example.hoo`
 
 ### **Priority Areas**
-- **🚨 High**: Implement function calls between hooc functions
 - **🔥 High**: Add string type support with LLVM integration
-- **📈 Medium**: Complete array element access and manipulation
+- **🔥 High**: Build standard library (print, I/O, collections)
 - **📈 Medium**: Implement import/module system
+- **📈 Medium**: Add advanced function features (pointers, callbacks, methods)
 - **🧹 Low**: Enhance error diagnostics and add optimization passes
 
 ### **Getting Started with Development**
@@ -285,11 +287,12 @@ cmake --build build && ./build/hoo_tests
 ### **Short Term (Q1 2025)**
 - ✅ Complete AST → LLVM IR pipeline (CodeGenerator)
 - ✅ Implement all primitive types and expressions
-- ✅ Build comprehensive test suite (67 tests)
+- ✅ Build comprehensive test suite (12 array literal tests passing)
 - ✅ Support control flow statements
-- 🔧 **Implement function calls** between hooc functions
+- ✅ **Implement function calls** between hooc functions
+- ✅ Complete array literal syntax with type inference
 - 🔧 **Add string type** with LLVM support
-- 📋 Complete array element access and operations
+- 📋 Build standard library foundation
 
 ### **Medium Term (2025)**
 - 📋 Module system and import resolution
@@ -316,7 +319,7 @@ Built with modern compiler construction tools:
 - **LLVM** for world-class code generation  
 - **CMake** for reliable build management
 
-**Current Status**: **Core language features complete and functional. End-to-end compilation pipeline working with 67 passing tests. Ready for advanced features like function calls, strings, and modules.**
+**Current Status**: **Core language features complete and functional. End-to-end compilation pipeline working with 12 array literal parsing tests passing. Function calls, arrays, and control flow fully implemented. Ready for advanced features like strings, standard library, and modules.**
 
 ---
 

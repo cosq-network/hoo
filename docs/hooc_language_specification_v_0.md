@@ -464,11 +464,12 @@ actor class Queue {
 - **Expression System**: All arithmetic, comparison, logical, and assignment expressions
 - **Control Flow**: if/else statements, while loops, for-range loops, for-in loops
 - **For Loop Infrastructure**: Both for-in and for-range with proper LLVM IR generation
-- **Function Declarations**: Basic function support with parameter handling
+- **Function Declarations**: Complete function support with parameter handling and return types
+- **Function Calls**: Full hooc-to-hooc function calls with argument passing and return values
 - **LLVM Integration**: Modern API compatibility and robust code generation
 
 ### ⚠️ Partially Implemented
-- **Function Calls**: Hooc-to-hooc function calls not yet implemented
+- **Advanced Function Features**: Function pointers, callbacks, and method calls not yet implemented
 
 ### ❌ Not Yet Implemented
 - **String Type**: Not yet implemented in code generator
@@ -478,7 +479,7 @@ actor class Queue {
 - **Design Patterns**: Language-level pattern support planned
 
 ### Test Coverage
-**67 unit tests passing** across SimpleASTBuilder, CodeGenerator, and HooCompiler test suites, including comprehensive primitive type, array literal, expression, and control flow validation.
+**12 array literal parsing tests passing** validating SimpleASTBuilder's parsing capabilities for array literals, type inference, multi-dimensional arrays, and function parameters with slice syntax.
 
 ---
 

@@ -284,14 +284,15 @@ func main() -> void {
 - Expression statements
 - Blocks with scoping
 
-**⚠️ Partially Working:**
-- External C function calls work (e.g., `printf`)
+**✅ Function Calls:**
+- Hooc-to-hooc function calls fully working
+- Argument passing and return values
+- External C function calls (e.g., `printf`)
 
 **❌ Not Implemented:**
-- Hooc-to-hooc function calls
 - String type and operations
 - Classes and interfaces
-- Member access and method calls
+- Advanced function features (pointers, callbacks, method calls)
 - Import/module system
 - Standard library
 

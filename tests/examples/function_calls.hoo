@@ -1,0 +1,54 @@
+// Function call examples demonstrating hooc-to-hooc calls
+
+// Simple function with return value
+func add(int64 a, int64 b) -> int64 {
+    return a + b;
+}
+
+// Function with multiple parameters
+func multiply(int64 x, int64 y, int64 z) -> int64 {
+    return x * y * z;
+}
+
+// Function calling another function
+func calculate(int64 n) -> int64 {
+    var sum = add(n, 10);
+    var product = multiply(sum, 2, 3);
+    return product;
+}
+
+// Nested function calls
+func nested_example() -> int64 {
+    var result = add(multiply(2, 3, 4), add(5, 6));
+    return result;
+}
+
+// Recursive function (factorial)
+func factorial(int64 n) -> int64 {
+    if n <= 1 {
+        return 1;
+    } else {
+        var prev = factorial(n - 1);
+        return n * prev;
+    }
+}
+
+// Main function demonstrating all call types
+func main() -> int64 {
+    // Simple call
+    var sum = add(5, 3);
+
+    // Multiple parameters
+    var product = multiply(2, 3, 4);
+
+    // Nested calls
+    var nested = add(add(1, 2), add(3, 4));
+
+    // Function calling another function
+    var calc_result = calculate(5);
+
+    // Recursive call
+    var fact = factorial(5);
+
+    return sum;
+}
