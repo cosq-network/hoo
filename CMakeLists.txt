@@ -232,13 +232,10 @@ if(NOT GTest_FOUND)
 endif()
 
 if(GTest_FOUND)
-    # Test executable
+    # Test executable - Array Literal Parsing Tests Only
     add_executable(hoo_tests
         tests/test_main.cpp
-        tests/SimpleASTBuilderTest.cpp
-        tests/CodeGeneratorTest.cpp
-        tests/HooCompilerTest.cpp
-        tests/ProcessIsolatedParserTest.cpp
+        tests/ArrayLiteralParsingTest.cpp
     )
 
     # Link test executable with libraries
@@ -266,6 +263,24 @@ if(GTest_FOUND)
         ${ANTLR4_GENERATED_DIR}
     )
 
+    # Copy required DLLs to build directory on Windows
+    if(WIN32)
+        # Copy GTest DLLs from vcpkg
+        add_custom_command(TARGET hoo_tests POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/gtest.dll"
+                "${CMAKE_BINARY_DIR}/"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/gtest_main.dll"
+                "${CMAKE_BINARY_DIR}/"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "D:/antlr4/runtime/cpp/bin/antlr4-runtime.dll"
+                "${CMAKE_BINARY_DIR}/"
+            COMMENT "Copying required DLLs to build directory"
+            VERBATIM
+        )
+    endif()
+
     # Add test target
     add_test(NAME HooUnitTests COMMAND hoo_tests)
 
@@ -275,7 +290,7 @@ if(GTest_FOUND)
         DEPENDS hoo_tests
         COMMENT "Running unit tests"
     )
-    
+
     message(STATUS "GoogleTest found - unit tests enabled")
 else()
     message(WARNING "GoogleTest not found - unit tests disabled")

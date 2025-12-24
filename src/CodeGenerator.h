@@ -54,6 +54,7 @@ private:
     llvm::Value* generateAssignment(const ast::AssignmentExpression& expr);
     llvm::Value* generateMemberAccess(const ast::MemberAccess& expr);
     llvm::Value* generateArrayAccess(const ast::ArrayAccess& expr);
+    llvm::Value* generateArrayLiteral(const ast::ArrayLiteral& literal);
 
     void generateBlock(const ast::Block& block);
     void generateReturnStatement(const ast::ReturnStatement& ret);
@@ -71,6 +72,7 @@ private:
     
     // Utility methods
     llvm::Constant* createConstant(const ast::Primary& primary);
+    llvm::Constant* createGlobalArrayConstant(const std::vector<llvm::Constant*>& elements, llvm::Type* elementType);
     std::string mangleFunctionName(const std::string& name, const std::vector<llvm::Type*>& paramTypes);
     llvm::AllocaInst* createEntryBlockAlloca(llvm::Function* function, const std::string& varName, llvm::Type* type);
 };

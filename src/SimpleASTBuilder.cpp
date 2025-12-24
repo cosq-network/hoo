@@ -84,20 +84,36 @@ std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::Paramete
 }
 
 std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) {
-    if (ctx->unionType()) {
-        // For now, just take the first optional type from the union
-        auto unionCtx = ctx->unionType();
-        if (!unionCtx->optionalType().empty()) {
-            auto optCtx = unionCtx->optionalType(0);
-            if (optCtx->arrayType()) {
-                if (optCtx->arrayType()->baseType()) {
-                    return buildBaseType(optCtx->arrayType()->baseType());
-                }
-            }
-        }
+    if (!ctx || !ctx->unionType()) {
+        return std::make_unique<BaseType>("unknown");
     }
-    
-    // Fallback to unknown type
+
+    auto unionCtx = ctx->unionType();
+    if (unionCtx->optionalType().empty()) {
+        return std::make_unique<BaseType>("unknown");
+    }
+
+    // For now, handle single type (first optionalType from union)
+    // TODO: Full union type support with multiple types
+    auto optCtx = unionCtx->optionalType(0);
+
+    if (!optCtx->arrayType()) {
+        return std::make_unique<BaseType>("unknown");
+    }
+
+    auto arrayCtx = optCtx->arrayType();
+
+    // Check if this is actually an array (has brackets) or just a base type
+    if (arrayCtx->LBRACKET().empty()) {
+        // No brackets - just a base type like "int64"
+        if (arrayCtx->baseType()) {
+            return buildBaseType(arrayCtx->baseType());
+        }
+    } else {
+        // Has brackets - this is an array type like "int64[]" or "int64[10]"
+        return buildArrayType(arrayCtx);
+    }
+
     return std::make_unique<BaseType>("unknown");
 }
 
@@ -135,16 +151,16 @@ std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ct
 std::unique_ptr<ArrayType> SimpleASTBuilder::buildArrayType(HoocParser::ArrayTypeContext* ctx) {
     auto baseType = buildBaseType(ctx->baseType());
     std::vector<std::unique_ptr<Expression>> dimensions;
-    
-    for (auto exprCtx : ctx->expression()) {
-        if (exprCtx) {
-            dimensions.push_back(buildExpression(exprCtx));
-        } else {
-            // Empty dimension []
-            dimensions.push_back(nullptr);
-        }
+
+    // After grammar change, ctx->expression() will always be empty
+    // Count brackets to determine dimensionality
+    size_t dimensionCount = ctx->LBRACKET().size();
+
+    // All dimensions are unsized (nullptr) - only slice syntax allowed
+    for (size_t i = 0; i < dimensionCount; i++) {
+        dimensions.push_back(nullptr);
     }
-    
+
     return std::make_unique<ArrayType>(std::move(baseType), std::move(dimensions));
 }
 
@@ -368,10 +384,39 @@ std::unique_ptr<ArgumentList> SimpleASTBuilder::buildArgumentList(HoocParser::Ar
     return std::make_unique<ArgumentList>(std::move(arguments));
 }
 
+std::unique_ptr<ArrayLiteral> SimpleASTBuilder::buildArrayLiteral(HoocParser::PrimaryContext* ctx) {
+    std::unique_ptr<ExpressionList> elements;
+
+    if (ctx->expressionList()) {
+        elements = buildExpressionList(ctx->expressionList());
+    } else {
+        // Empty array []
+        elements = std::make_unique<ExpressionList>(std::vector<std::unique_ptr<Expression>>());
+    }
+
+    return std::make_unique<ArrayLiteral>(std::move(elements));
+}
+
+std::unique_ptr<ExpressionList> SimpleASTBuilder::buildExpressionList(HoocParser::ExpressionListContext* ctx) {
+    std::vector<std::unique_ptr<Expression>> expressions;
+    if (ctx) {
+        for (auto exprCtx : ctx->expression()) {
+            auto expr = buildExpression(exprCtx);
+            if (expr) {
+                expressions.push_back(std::move(expr));
+            }
+        }
+    }
+    return std::make_unique<ExpressionList>(std::move(expressions));
+}
+
 std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryContext* ctx) {
     if (ctx->LPAREN() && ctx->expression()) {
         // Parenthesized expression
         return buildExpression(ctx->expression());
+    } else if (ctx->LBRACKET()) {
+        // Array literal [expr1, expr2, ...]
+        return buildArrayLiteral(ctx);
     } else if (ctx->IDENTIFIER()) {
         auto identifier = std::make_unique<Identifier>(ctx->IDENTIFIER()->getText());
         return std::make_unique<PrimaryExpression>(std::move(identifier));

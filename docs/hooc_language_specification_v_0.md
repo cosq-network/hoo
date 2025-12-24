@@ -1,4 +1,4 @@
-# hoo Programming Language Specification (v0.1)
+# hoo Programming Language Specification (v0.2)
 
 > **hoo** is a compiled, statically typed programming language designed as a modern, safe, and expressive evolution of the C programming philosophy. Compiled by **hooc**.
 >
@@ -134,18 +134,60 @@ var z = "hi";   // string
 
 ### 7.1 Arrays
 
+Arrays are created using literal syntax with automatic type inference:
+
 ``` hoo
-int64[3][4] matrix;
-var numbers: int64[5]; // Current working syntax
+// Type inference from elements
+var numbers = [1, 2, 3, 4, 5];          // int64[]
+var floats = [1.0, 2.5, 3.14];          // double[]
+var flags = [true, false, true];        // bool[]
+
+// Explicit type annotation
+var data: int64[] = [10, 20, 30, 40, 50];
+
+// Multi-dimensional arrays (nested syntax)
+var matrix = [[1, 2, 3], [4, 5, 6]];    // int64[][]
+var cube = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];  // int64[][][]
+
+// Empty arrays require explicit type
+var empty: int64[] = [];
+
+// Array access
+var value = numbers[2];  // Returns 3
 ```
 
 Properties:
-- Multi-dimensional arrays supported
-- Bounds-checked access (framework in place)
-- Row-major contiguous layout
-- LLVM-based memory management
+- **Type Inference**: Element type automatically inferred from first element
+- **Multi-dimensional**: Supports nested array literals with arbitrary depth
+- **Bounds-checked access**: Array indexing validated at runtime
+- **Memory Model**: Array literals stored as LLVM global constants in .rodata section
+- **Uniform Types**: All elements must have the same type (enforced at compile time)
+- **Compile-time Constants**: Array literal elements must be constant expressions
 
-**Implementation Status (v0.1.1)**: Array type declarations are fully implemented with complete AST building and LLVM IR generation. Array access syntax (arr[index]) requires further grammar work.
+**Function Parameters**: Arrays are passed as slices (unsized array types):
+
+``` hoo
+func process(arr: int64[]) -> void {
+    for item in arr {
+        print(item);
+    }
+}
+
+func main() {
+    var numbers = [1, 2, 3, 4, 5];
+    process(numbers);
+}
+```
+
+**Removed Syntax (v0.2)**: Fixed-size array type declarations are no longer supported:
+
+``` hoo
+// ❌ NO LONGER SUPPORTED:
+var numbers: int64[5];
+var matrix: int64[3][4];
+```
+
+**Implementation Status (v0.2)**: Array literals are fully implemented with complete type inference, multi-dimensional support, LLVM global constant generation, and array element access.
 
 ### 7.2 Iterable Model
 
@@ -412,27 +454,31 @@ actor class Queue {
 
 ---
 
-## Implementation Status (v0.1.1)
+## Implementation Status (v0.2)
 
 ### ✅ Fully Implemented
 - **All Primitive Types**: `byte`, `int64`, `double`, `bool`, `char` with comprehensive testing
-- **Array Type System**: Complete AST hierarchy and LLVM type conversion  
+- **Array Literals**: Complete array literal syntax with type inference, multi-dimensional support, and global constant storage
+- **Array Access**: Full support for array element access with `arr[index]` syntax
+- **Variable Declarations**: Complete support with type inference and explicit type annotations
+- **Expression System**: All arithmetic, comparison, logical, and assignment expressions
+- **Control Flow**: if/else statements, while loops, for-range loops, for-in loops
 - **For Loop Infrastructure**: Both for-in and for-range with proper LLVM IR generation
 - **Function Declarations**: Basic function support with parameter handling
 - **LLVM Integration**: Modern API compatibility and robust code generation
 
-### ⚠️ Partially Implemented  
-- **Array Syntax**: Type declarations work, but array access (arr[index]) needs grammar enhancement
-- **Expression System**: Primary expressions supported, binary operations need AST implementation
+### ⚠️ Partially Implemented
+- **Function Calls**: Hooc-to-hooc function calls not yet implemented
 
 ### ❌ Not Yet Implemented
-- **Variable Declarations**: Grammar exists but AST building incomplete
-- **Control Flow**: if/while statements need implementation
+- **String Type**: Not yet implemented in code generator
+- **Classes & Objects**: Grammar exists but AST building and code generation incomplete
 - **Module System**: Import/export functionality planned
 - **Advanced Types**: Union types, optionals, generics
+- **Design Patterns**: Language-level pattern support planned
 
 ### Test Coverage
-**75/75 unit tests passing** across SimpleASTBuilder, CodeGenerator, and HooCompiler test suites, including comprehensive array functionality validation.
+**67 unit tests passing** across SimpleASTBuilder, CodeGenerator, and HooCompiler test suites, including comprehensive primitive type, array literal, expression, and control flow validation.
 
 ---
 
@@ -466,6 +512,6 @@ Planned (post v0.1):
 
 **hooc** is a pragmatic, safe, and expressive language that modernizes C without inheriting the complexity of C++, the verbosity of Java, or the cognitive overhead of Rust.
 
-This document defines **hooc v0.1**, suitable as a foundation for compiler implementation and ecosystem design.
+This document defines **hooc v0.2**, suitable as a foundation for compiler implementation and ecosystem design.
 
 

@@ -189,6 +189,8 @@ Value* CodeGenerator::generateExpression(const Expression& expr) {
         return generateMemberAccess(*memberAccess);
     } else if (auto arrayAccess = dynamic_cast<const ArrayAccess*>(&expr)) {
         return generateArrayAccess(*arrayAccess);
+    } else if (auto arrayLit = dynamic_cast<const ArrayLiteral*>(&expr)) {
+        return generateArrayLiteral(*arrayLit);
     }
 
     std::cerr << "Unsupported expression type in generateExpression" << std::endl;
@@ -904,21 +906,21 @@ LLVMType* CodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
     if (!elementType) {
         elementType = LLVMType::getInt32Ty(context_); // fallback
     }
-    
-    // For arrays with known dimensions, create array type
-    // For now, we'll use a simple approach: arrays are pointers with runtime size
-    // In a full implementation, we'd track array sizes and create proper array types
-    
+
     const auto& dimensions = arrayType.getDimensions();
     LLVMType* currentType = elementType;
-    
+
     // Build array type from innermost to outermost dimension
     for (int i = dimensions.size() - 1; i >= 0; i--) {
-        // For now, treat all arrays as dynamic (pointers)
-        // In a full implementation, we'd check if dimension is a constant
+        // Verify dimension is nullptr (should be unsized after grammar change)
+        if (dimensions[i] != nullptr) {
+            std::cerr << "Error: Fixed-size array syntax no longer supported. Use array literals." << std::endl;
+            return nullptr;
+        }
+        // Treat all arrays as slices (pointers)
         currentType = llvm::PointerType::get(context_, 0);
     }
-    
+
     return currentType;
 }
 
@@ -930,8 +932,84 @@ Constant* CodeGenerator::createConstant(const Primary& primary) {
     } else if (auto boolLiteral = dynamic_cast<const BooleanLiteral*>(&primary)) {
         return ConstantInt::get(LLVMType::getInt1Ty(context_), boolLiteral->getValue() ? 1 : 0);
     }
-    
+
     return nullptr;
+}
+
+Value* CodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
+    const ExpressionList* elementsList = literal.getElements();
+
+    if (!elementsList || elementsList->getExpressions().empty()) {
+        // Empty array - requires type context
+        return llvm::ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
+    }
+
+    const auto& expressions = elementsList->getExpressions();
+    std::vector<Constant*> constantElements;
+    LLVMType* elementType = nullptr;
+
+    // Evaluate all elements and infer type from first element
+    for (const auto& expr : expressions) {
+        Value* elemValue = generateExpression(*expr);
+        if (!elemValue) {
+            std::cerr << "Failed to generate array element expression" << std::endl;
+            return nullptr;
+        }
+
+        // Array literals must contain compile-time constants
+        Constant* constElem = llvm::dyn_cast<Constant>(elemValue);
+        if (!constElem) {
+            std::cerr << "Array literal elements must be compile-time constants" << std::endl;
+            return nullptr;
+        }
+
+        // Infer element type from first element
+        if (elementType == nullptr) {
+            elementType = elemValue->getType();
+        } else if (elemValue->getType() != elementType) {
+            std::cerr << "Array literal elements must have uniform type" << std::endl;
+            return nullptr;
+        }
+
+        constantElements.push_back(constElem);
+    }
+
+    // Create global constant array
+    return createGlobalArrayConstant(constantElements, elementType);
+}
+
+Constant* CodeGenerator::createGlobalArrayConstant(
+    const std::vector<Constant*>& elements,
+    LLVMType* elementType) {
+
+    // Create array type [N x elementType]
+    auto arrayType = llvm::ArrayType::get(elementType, elements.size());
+
+    // Create constant array initializer
+    auto arrayInit = llvm::ConstantArray::get(arrayType, elements);
+
+    // Create global variable for the array constant
+    auto globalArray = new llvm::GlobalVariable(
+        *module_,
+        arrayType,
+        true,  // isConstant
+        llvm::GlobalValue::PrivateLinkage,
+        arrayInit,
+        ".array_literal"
+    );
+
+    // Return pointer to the array (decay to pointer)
+    // Create GEP to get pointer to first element
+    std::vector<llvm::Constant*> indices = {
+        llvm::ConstantInt::get(LLVMType::getInt64Ty(context_), 0),
+        llvm::ConstantInt::get(LLVMType::getInt64Ty(context_), 0)
+    };
+
+    return llvm::ConstantExpr::getGetElementPtr(
+        arrayType,
+        globalArray,
+        indices
+    );
 }
 
 std::string CodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {

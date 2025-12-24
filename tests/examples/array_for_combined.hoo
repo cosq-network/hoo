@@ -1,47 +1,32 @@
-func array_iteration() -> int64 {
-    // Conceptual example showing array + for loop integration
-    var data: int64[8];
-    var sum = 0;
-    
-    // Initialize array (conceptually)
-    for i in 0..8 {
-        // data[i] = i * i; // Assignment would need more implementation
-    }
-    
-    // Sum array elements
-    for value in data {
-        sum = sum + value;
-    }
-    
-    return sum;
-}
+func range_over_array() -> void {
+    var data = [1, 2, 3, 4, 5, 6, 7, 8];
 
-func matrix_demo() -> void {
-    // Multi-dimensional array example
-    var matrix: int64[3][3];
-    
-    // Nested loops for 2D array processing
-    for row in 0..3 {
-        for col in 0..3 {
-            // var element = matrix[row][col]; // Multi-dimensional access
-        }
+    for i in 0..8 {
+        // var element = data[i]; // Array access
     }
-    
+
     return;
 }
 
-func search_example() -> bool {
-    var array: int64[10];
-    var target = 42;
-    var found = false;
-    
-    // Linear search with for-in loop
-    for element in array {
-        if (element == target) {
-            found = true;
-            // break; // Break statement would need implementation
+func nested_loops_with_arrays() -> void {
+    var matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
+
+    for row in 0..3 {
+        for col in 0..3 {
+            // Multi-dimensional access would go here
         }
     }
-    
-    return found;
+
+    return;
+}
+
+func for_in_array() -> void {
+    var array = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+    // For-in loop (when fully implemented)
+    for item in array {
+        // Process item
+    }
+
+    return;
 }

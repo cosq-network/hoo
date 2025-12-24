@@ -170,7 +170,7 @@ unionType: optionalType (PIPE optionalType)*;
 
 optionalType: arrayType QUESTION?;
 
-arrayType: baseType (LBRACKET (expression)? RBRACKET)*;
+arrayType: baseType (LBRACKET RBRACKET)*;
 
 baseType
     : primitiveType
@@ -257,6 +257,7 @@ primary
     | CHAR_LITERAL
     | TRUE
     | FALSE
+    | LBRACKET expressionList? RBRACKET
     | LPAREN expression RPAREN
     ;
 

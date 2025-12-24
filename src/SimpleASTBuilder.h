@@ -37,6 +37,8 @@ private:
     std::unique_ptr<ast::Expression> buildPrimary(HoocParser::PrimaryContext* ctx);
     std::unique_ptr<ast::Parameter> buildParameter(HoocParser::ParameterContext* ctx);
     std::unique_ptr<ast::ArgumentList> buildArgumentList(HoocParser::ArgumentListContext* ctx);
+    std::unique_ptr<ast::ArrayLiteral> buildArrayLiteral(HoocParser::PrimaryContext* ctx);
+    std::unique_ptr<ast::ExpressionList> buildExpressionList(HoocParser::ExpressionListContext* ctx);
 
     // Helper methods
     ast::PrimitiveTypeKind getPrimitiveTypeKind(const std::string& typeName);

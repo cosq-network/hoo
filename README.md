@@ -61,30 +61,34 @@ func example() {
     int64 count = 42;
     string name = "hooc";
     bool active = true;
-    
-    // Array declarations (v0.1.1)
-    var numbers: int64[5];
-    var matrix: int64[3][4];
-    
+
+    // Array literals with type inference (v0.2)
+    var numbers = [1, 2, 3, 4, 5];
+    var matrix = [[1, 2, 3], [4, 5, 6]];
+
     print("Name: ${name}, Count: ${count}");
 }
 ```
 
-### Arrays & Loops (NEW v0.1.1)
+### Arrays & Loops (v0.2)
 ```hoo
 func array_example() -> void {
-    var arr: int64[10];
-    
+    // Array literals with type inference
+    var numbers = [1, 2, 3, 4, 5];
+    var data: int64[] = [10, 20, 30, 40, 50];
+
     // For-range loop
-    for i in 0..10 {
-        // Array assignment would go here
-        // arr[i] = i * 2;
+    for i in 0..5 {
+        var item = numbers[i];
     }
-    
-    // For-in loop (when implemented)
-    // for item in arr {
-    //     print(item);
-    // }
+
+    // Multi-dimensional arrays
+    var matrix = [[1, 2], [3, 4]];
+
+    // For-in loop
+    for item in numbers {
+        // Process item
+    }
 }
 ```
 
@@ -132,7 +136,7 @@ actor class Counter {
 - **Expressions** - Arithmetic, comparison, logical operations, assignments
 - **Control Flow** - If/else statements, while loops, for-range loops, for-in loops
 - **Variable Declarations** - Full support with type inference and assignments
-- **Array Types** - Complete array type support with access and iteration
+- **Array Literals** - Complete array literal syntax with type inference and multi-dimensional support
 - **Test Suite** - 67 comprehensive unit tests with 100% pass rate
 
 ### 🔧 **Current Architecture**
@@ -228,9 +232,9 @@ Native Execution ✅
 - ✅ **Variable declarations** - With type inference and assignments
 - ✅ **All expressions** - Arithmetic, comparison, logical, assignments
 - ✅ **Control flow** - If/else, while loops, for-range, for-in loops
-- ✅ **Array types** - Complete type system and LLVM IR generation
+- ✅ **Array literals** - Complete array literal syntax with type inference and global constant storage
+- ✅ **Array access** - Full support for array element access
 - ⚠️ **Function calls** - Hooc-to-hooc calls not yet implemented
-- ⚠️ **Array access** - Type incomplete for element access
 - ❌ **String type** - Not yet implemented
 - ❌ **Classes & interfaces** - Grammar exists, code generation pending
 - ❌ **Import statements** - Module system not yet implemented

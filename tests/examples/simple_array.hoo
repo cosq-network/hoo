@@ -1,4 +1,4 @@
 func array_test() -> int64 {
-    var arr: int64[5];
+    var arr = [1, 2, 3, 4, 5];
     return 42;
 }

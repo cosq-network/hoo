@@ -1,21 +1,19 @@
 func array_demo() -> int64 {
-    // Note: This is a conceptual example
-    // Full array support requires more implementation
-    
-    var arr: int64[10]; // Array declaration
+    // Array literal syntax
+    var arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     var index = 0;
     var value = arr[index]; // Array access
-    
+
     return value;
 }
 
 func array_operations() -> void {
-    // Array with explicit size
-    var numbers: int64[5];
-    
+    // Array with explicit type
+    var numbers: int64[] = [10, 20, 30, 40, 50];
+
     // Array access patterns
     var first = numbers[0];
     var last = numbers[4];
-    
+
     return;
 }
