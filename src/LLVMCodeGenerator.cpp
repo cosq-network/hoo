@@ -26,7 +26,45 @@ LLVMCodeGenerator::LLVMCodeGenerator(LLVMContext& context)
 
 LLVMCodeGenerator::~LLVMCodeGenerator() {}
 
-std::unique_ptr<Module> LLVMCodeGenerator::generateModule(const CompilationUnit& compilationUnit) {
+// Abstract interface implementation - returns wrapped types
+std::unique_ptr<GeneratedModule> LLVMCodeGenerator::generateModule(const CompilationUnit& compilationUnit) {
+    auto llvmModule = generateLLVMModule(compilationUnit);
+    if (!llvmModule) {
+        return nullptr;
+    }
+    return std::make_unique<LLVMGeneratedModule>(std::move(llvmModule));
+}
+
+GeneratedFunction* LLVMCodeGenerator::generateFunction(const ast::FunctionDeclaration& funcDecl) {
+    auto* llvmFunc = generateLLVMFunction(funcDecl);
+    if (!llvmFunc) {
+        return nullptr;
+    }
+    return new LLVMGeneratedFunction(llvmFunc);
+}
+
+GeneratedValue* LLVMCodeGenerator::generateExpression(const ast::Expression& expr) {
+    auto* llvmValue = generateLLVMExpression(expr);
+    if (!llvmValue) {
+        return nullptr;
+    }
+    return new LLVMGeneratedValue(llvmValue);
+}
+
+void LLVMCodeGenerator::generateStatement(const ast::Statement& stmt) {
+    generateLLVMStatement(stmt);
+}
+
+GeneratedType* LLVMCodeGenerator::generateType(const ast::Type& type) {
+    auto* llvmType = generateLLVMType(type);
+    if (!llvmType) {
+        return nullptr;
+    }
+    return new LLVMGeneratedType(llvmType);
+}
+
+// LLVM-specific implementation
+std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationUnit& compilationUnit) {
     // Create a new module for this compilation unit
     module_ = std::make_unique<Module>("hooc_module", context_);
     
@@ -37,7 +75,7 @@ std::unique_ptr<Module> LLVMCodeGenerator::generateModule(const CompilationUnit&
     // Process all declarations in the compilation unit
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
-            generateFunction(*funcDecl);
+            generateLLVMFunction(*funcDecl);
         } else if (auto varDecl = dynamic_cast<const VariableDeclaration*>(decl.get())) {
             generateVariableDeclaration(*varDecl);
         }
@@ -55,18 +93,18 @@ std::unique_ptr<Module> LLVMCodeGenerator::generateModule(const CompilationUnit&
     return std::move(module_);
 }
 
-Function* LLVMCodeGenerator::generateFunction(const FunctionDeclaration& funcDecl) {
+Function* LLVMCodeGenerator::generateLLVMFunction(const FunctionDeclaration& funcDecl) {
     // Build parameter types
     std::vector<LLVMType*> paramTypes;
     for (const auto& param : funcDecl.getParameters()) {
-        LLVMType* paramType = generateType(param->getType());
+        LLVMType* paramType = generateLLVMType(param->getType());
         paramTypes.push_back(paramType);
     }
     
     // Determine return type
     LLVMType* returnType = LLVMType::getVoidTy(context_); // Default to void
     if (funcDecl.getReturnType()) {
-        returnType = generateType(*funcDecl.getReturnType());
+        returnType = generateLLVMType(*funcDecl.getReturnType());
     }
     
     // Create function type
@@ -129,11 +167,11 @@ Function* LLVMCodeGenerator::generateFunction(const FunctionDeclaration& funcDec
 
 void LLVMCodeGenerator::generateBlock(const Block& block) {
     for (const auto& stmt : block.getStatements()) {
-        generateStatement(*stmt);
+        generateLLVMStatement(*stmt);
     }
 }
 
-void LLVMCodeGenerator::generateStatement(const Statement& stmt) {
+void LLVMCodeGenerator::generateLLVMStatement(const Statement& stmt) {
     if (auto retStmt = dynamic_cast<const ReturnStatement*>(&stmt)) {
         generateReturnStatement(*retStmt);
     } else if (auto exprStmt = dynamic_cast<const ExpressionStatement*>(&stmt)) {
@@ -157,7 +195,7 @@ void LLVMCodeGenerator::generateStatement(const Statement& stmt) {
 
 void LLVMCodeGenerator::generateReturnStatement(const ReturnStatement& ret) {
     if (ret.hasExpression()) {
-        Value* retValue = generateExpression(*ret.getExpression());
+        Value* retValue = generateLLVMExpression(*ret.getExpression());
         builder_->CreateRet(retValue);
     } else {
         builder_->CreateRetVoid();
@@ -165,10 +203,10 @@ void LLVMCodeGenerator::generateReturnStatement(const ReturnStatement& ret) {
 }
 
 void LLVMCodeGenerator::generateExpressionStatement(const ExpressionStatement& stmt) {
-    generateExpression(stmt.getExpression());
+    generateLLVMExpression(stmt.getExpression());
 }
 
-Value* LLVMCodeGenerator::generateExpression(const Expression& expr) {
+Value* LLVMCodeGenerator::generateLLVMExpression(const Expression& expr) {
     if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&expr)) {
         return generatePrimaryExpression(*primaryExpr);
     } else if (auto binaryExpr = dynamic_cast<const BinaryExpression*>(&expr)) {
@@ -234,8 +272,8 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
 }
 
 Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr) {
-    Value* left = generateExpression(expr.getLeft());
-    Value* right = generateExpression(expr.getRight());
+    Value* left = generateLLVMExpression(expr.getLeft());
+    Value* right = generateLLVMExpression(expr.getRight());
     
     if (!left || !right) {
         return nullptr;
@@ -367,7 +405,7 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
     std::vector<Value*> args;
     if (call.getArguments()) {
         for (const auto& argExpr : call.getArguments()->getArguments()) {
-            Value* argValue = generateExpression(*argExpr);
+            Value* argValue = generateLLVMExpression(*argExpr);
             if (!argValue) {
                 return nullptr;
             }
@@ -385,7 +423,7 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
 }
 
 Value* LLVMCodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
-    Value* operand = generateExpression(expr.getOperand());
+    Value* operand = generateLLVMExpression(expr.getOperand());
     if (!operand) return nullptr;
 
     if (operand->getType()->isIntegerTy()) {
@@ -399,7 +437,7 @@ Value* LLVMCodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
 }
 
 Value* LLVMCodeGenerator::generateLogicalNot(const LogicalNot& expr) {
-    Value* operand = generateExpression(expr.getOperand());
+    Value* operand = generateLLVMExpression(expr.getOperand());
     if (!operand) return nullptr;
 
     // Convert to i1 if needed
@@ -422,7 +460,7 @@ Value* LLVMCodeGenerator::generateLogicalAnd(const LogicalAnd& expr) {
     BasicBlock* mergeBlock = BasicBlock::Create(context_, "and.merge", currentFunc);
 
     // Evaluate left operand
-    Value* leftVal = generateExpression(expr.getLeft());
+    Value* leftVal = generateLLVMExpression(expr.getLeft());
     if (!leftVal) return nullptr;
 
     // Convert to boolean
@@ -439,7 +477,7 @@ Value* LLVMCodeGenerator::generateLogicalAnd(const LogicalAnd& expr) {
 
     // Evaluate right operand
     builder_->SetInsertPoint(rhsBlock);
-    Value* rightVal = generateExpression(expr.getRight());
+    Value* rightVal = generateLLVMExpression(expr.getRight());
     if (!rightVal) return nullptr;
 
     // Convert to boolean
@@ -471,7 +509,7 @@ Value* LLVMCodeGenerator::generateLogicalOr(const LogicalOr& expr) {
     BasicBlock* mergeBlock = BasicBlock::Create(context_, "or.merge", currentFunc);
 
     // Evaluate left operand
-    Value* leftVal = generateExpression(expr.getLeft());
+    Value* leftVal = generateLLVMExpression(expr.getLeft());
     if (!leftVal) return nullptr;
 
     // Convert to boolean
@@ -488,7 +526,7 @@ Value* LLVMCodeGenerator::generateLogicalOr(const LogicalOr& expr) {
 
     // Evaluate right operand
     builder_->SetInsertPoint(rhsBlock);
-    Value* rightVal = generateExpression(expr.getRight());
+    Value* rightVal = generateLLVMExpression(expr.getRight());
     if (!rightVal) return nullptr;
 
     // Convert to boolean
@@ -531,7 +569,7 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     }
 
     // Generate the rvalue
-    Value* rvalue = generateExpression(expr.getRight());
+    Value* rvalue = generateLLVMExpression(expr.getRight());
     if (!rvalue) return nullptr;
 
     // Look up the variable
@@ -553,8 +591,8 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
 }
 
 Value* LLVMCodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
-    Value* arrayValue = generateExpression(expr.getArray());
-    Value* indexValue = generateExpression(expr.getIndex());
+    Value* arrayValue = generateLLVMExpression(expr.getArray());
+    Value* indexValue = generateLLVMExpression(expr.getIndex());
     
     if (!arrayValue || !indexValue) {
         std::cerr << "Failed to generate array or index expression" << std::endl;
@@ -594,7 +632,7 @@ void LLVMCodeGenerator::generateIfStatement(const IfStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Evaluate condition
-    Value* condValue = generateExpression(stmt.getCondition());
+    Value* condValue = generateLLVMExpression(stmt.getCondition());
     if (!condValue) return;
 
     // Convert condition to boolean if needed
@@ -656,7 +694,7 @@ void LLVMCodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
 
     // Condition block
     builder_->SetInsertPoint(condBlock);
-    Value* condValue = generateExpression(stmt.getCondition());
+    Value* condValue = generateLLVMExpression(stmt.getCondition());
     if (!condValue) return;
 
     // Convert condition to boolean if needed
@@ -685,7 +723,7 @@ void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
     
     // Evaluate the iterable expression
-    Value* iterableValue = generateExpression(stmt.getIterable());
+    Value* iterableValue = generateLLVMExpression(stmt.getIterable());
     if (!iterableValue) {
         std::cerr << "Failed to generate iterable expression" << std::endl;
         return;
@@ -756,8 +794,8 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Evaluate range bounds
-    Value* startValue = generateExpression(stmt.getStart());
-    Value* endValue = generateExpression(stmt.getEnd());
+    Value* startValue = generateLLVMExpression(stmt.getStart());
+    Value* endValue = generateLLVMExpression(stmt.getEnd());
     if (!startValue || !endValue) return;
 
     // Allocate loop variable
@@ -820,7 +858,7 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
             std::cerr << "Type inference requires initializer" << std::endl;
             return;
         }
-        Value* initValue = generateExpression(*decl.getInitializer());
+        Value* initValue = generateLLVMExpression(*decl.getInitializer());
         if (!initValue) return;
         varType = initValue->getType();
 
@@ -830,13 +868,13 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
         namedValues_[decl.getName()] = alloca;
     } else {
         // Explicit type
-        varType = generateType(*decl.getType());
+        varType = generateLLVMType(*decl.getType());
         AllocaInst* alloca = createEntryBlockAlloca(currentFunc, decl.getName(), varType);
         namedValues_[decl.getName()] = alloca;
 
         // Initialize if initializer present
         if (decl.getInitializer()) {
-            Value* initValue = generateExpression(*decl.getInitializer());
+            Value* initValue = generateLLVMExpression(*decl.getInitializer());
             if (initValue) {
                 builder_->CreateStore(initValue, alloca);
             }
@@ -844,18 +882,18 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
     }
 }
 
-LLVMType* LLVMCodeGenerator::generateType(const ASTType& type) {
+LLVMType* LLVMCodeGenerator::generateLLVMType(const ASTType& type) {
     if (auto unionType = dynamic_cast<const UnionType*>(&type)) {
         // For now, just use the first type in the union
         const auto& types = unionType->getTypes();
         if (!types.empty()) {
-            return generateType(*types[0]);
+            return generateLLVMType(*types[0]);
         }
     }
     
     if (auto optionalType = dynamic_cast<const OptionalType*>(&type)) {
         // For now, treat optional types as their underlying type
-        return generateType(optionalType->getArrayType());
+        return generateLLVMType(optionalType->getArrayType());
     }
     
     if (auto arrayType = dynamic_cast<const ASTArrayType*>(&type)) {
@@ -902,7 +940,7 @@ LLVMType* LLVMCodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
 
 LLVMType* LLVMCodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
     // Get the base element type
-    LLVMType* elementType = generateType(arrayType.getBaseType());
+    LLVMType* elementType = generateLLVMType(arrayType.getBaseType());
     if (!elementType) {
         elementType = LLVMType::getInt32Ty(context_); // fallback
     }
@@ -950,7 +988,7 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
 
     // Evaluate all elements and infer type from first element
     for (const auto& expr : expressions) {
-        Value* elemValue = generateExpression(*expr);
+        Value* elemValue = generateLLVMExpression(*expr);
         if (!elemValue) {
             std::cerr << "Failed to generate array element expression" << std::endl;
             return nullptr;

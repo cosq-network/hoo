@@ -41,12 +41,14 @@ std::unique_ptr<llvm::Module> HooCompiler::compile(const std::string& moduleName
         }
         
         // Step 3: Generate LLVM IR from AST
-        auto module = codeGenerator_->generateModule(*ast);
+        // Since we know we're using LLVM backend, use the LLVM-specific API
+        auto* llvmCodeGen = static_cast<LLVMCodeGenerator*>(codeGenerator_.get());
+        auto module = llvmCodeGen->generateLLVMModule(*ast);
         if (!module) {
             lastError_ = "LLVM IR generation failed";
             return nullptr;
         }
-        
+
         lastCompilationSuccessful_ = true;
         return module;
         

@@ -17,7 +17,7 @@ using namespace hooc;
 using namespace hooc::ast;
 using namespace llvm;
 
-class CodeGeneratorTest : public ::testing::Test {
+class BasicCodeGenTest : public ::testing::Test {
 protected:
     void SetUp() override {
         context = std::make_unique<LLVMContext>();
@@ -45,22 +45,22 @@ protected:
     }
 };
 
-TEST_F(CodeGeneratorTest, GenerateEmptyModule) {
+TEST_F(BasicCodeGenTest, GenerateEmptyModule) {
     std::vector<std::unique_ptr<ast::ImportStatement>> imports;
     std::vector<std::unique_ptr<ast::Declaration>> declarations;
     auto ast = std::make_unique<CompilationUnit>(std::move(imports), std::move(declarations));
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     EXPECT_EQ(module->getName(), "hooc_module");
 }
 
-TEST_F(CodeGeneratorTest, GenerateSingleVoidFunction) {
+TEST_F(BasicCodeGenTest, GenerateSingleVoidFunction) {
     std::string code = "func test() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     // Check that function exists
@@ -75,7 +75,7 @@ TEST_F(CodeGeneratorTest, GenerateSingleVoidFunction) {
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
 
-TEST_F(CodeGeneratorTest, GenerateMultipleFunctions) {
+TEST_F(BasicCodeGenTest, GenerateMultipleFunctions) {
     std::string code = R"(
         func first() -> void { return; }
         func second() -> void { return; }
@@ -83,7 +83,7 @@ TEST_F(CodeGeneratorTest, GenerateMultipleFunctions) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     // Check that both functions exist
@@ -104,12 +104,12 @@ TEST_F(CodeGeneratorTest, GenerateMultipleFunctions) {
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
 
-TEST_F(CodeGeneratorTest, GenerateFunctionWithReturnStatement) {
+TEST_F(BasicCodeGenTest, GenerateFunctionWithReturnStatement) {
     std::string code = "func getValue() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("getValue");
@@ -126,12 +126,12 @@ TEST_F(CodeGeneratorTest, GenerateFunctionWithReturnStatement) {
     EXPECT_TRUE(isa<ReturnInst>(terminator));
 }
 
-TEST_F(CodeGeneratorTest, GenerateFunctionWithExpressionStatement) {
+TEST_F(BasicCodeGenTest, GenerateFunctionWithExpressionStatement) {
     std::string code = "func calculate() -> void { 42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("calculate");
@@ -144,12 +144,12 @@ TEST_F(CodeGeneratorTest, GenerateFunctionWithExpressionStatement) {
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
 
-TEST_F(CodeGeneratorTest, VerifyModuleStructure) {
+TEST_F(BasicCodeGenTest, VerifyModuleStructure) {
     std::string code = "func main() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     // Check module properties
@@ -166,16 +166,16 @@ TEST_F(CodeGeneratorTest, VerifyModuleStructure) {
     EXPECT_EQ(mainFunc->size(), 1);
 }
 
-TEST_F(CodeGeneratorTest, HandleEmptyAST) {
+TEST_F(BasicCodeGenTest, HandleEmptyAST) {
     std::vector<std::unique_ptr<ast::ImportStatement>> imports;
     std::vector<std::unique_ptr<ast::Declaration>> declarations;
     auto ast = std::make_unique<CompilationUnit>(std::move(imports), std::move(declarations));
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     EXPECT_NE(module, nullptr);
 }
 
-TEST_F(CodeGeneratorTest, GenerateModuleWithComplexFunction) {
+TEST_F(BasicCodeGenTest, GenerateModuleWithComplexFunction) {
     std::string code = R"(
         func complex() -> void {
             var x = 10;
@@ -187,7 +187,7 @@ TEST_F(CodeGeneratorTest, GenerateModuleWithComplexFunction) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("complex");
@@ -203,12 +203,12 @@ TEST_F(CodeGeneratorTest, GenerateModuleWithComplexFunction) {
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
 
-TEST_F(CodeGeneratorTest, VerifyGeneratedIRFormat) {
+TEST_F(BasicCodeGenTest, VerifyGeneratedIRFormat) {
     std::string code = "func test() -> void { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     // Get the generated IR as string
@@ -220,12 +220,12 @@ TEST_F(CodeGeneratorTest, VerifyGeneratedIRFormat) {
     EXPECT_TRUE(irString.find("ret void") != std::string::npos);
 }
 
-TEST_F(CodeGeneratorTest, GenerateByteFunction) {
+TEST_F(BasicCodeGenTest, GenerateByteFunction) {
     std::string code = "func process(byte data) -> byte { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("process");
@@ -237,29 +237,7 @@ TEST_F(CodeGeneratorTest, GenerateByteFunction) {
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
 }
 
-TEST_F(CodeGeneratorTest, GenerateByteVariables) {
-    std::string code = R"(
-        func test() -> void {
-            var b = 255;
-            var typed: byte = 128;
-            return;
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    
-    auto module = codeGen->generateModule(*ast);
-    ASSERT_NE(module, nullptr);
-    
-    Function* func = module->getFunction("test");
-    ASSERT_NE(func, nullptr);
-    
-    std::string irString = getModuleString(module.get());
-    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
-    EXPECT_TRUE(irString.find("store") != std::string::npos);
-}
-
-TEST_F(CodeGeneratorTest, GenerateByteArithmetic) {
+TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
     std::string code = R"(
         func calculate(byte a, byte b) -> byte {
             var result = a + b;
@@ -269,7 +247,7 @@ TEST_F(CodeGeneratorTest, GenerateByteArithmetic) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("calculate");
@@ -285,12 +263,12 @@ TEST_F(CodeGeneratorTest, GenerateByteArithmetic) {
     EXPECT_TRUE(irString.find("add i8") != std::string::npos);
 }
 
-TEST_F(CodeGeneratorTest, GenerateFloatFunction) {
+TEST_F(BasicCodeGenTest, GenerateFloatFunction) {
     std::string code = "func process(float data) -> float { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("process");
@@ -302,29 +280,7 @@ TEST_F(CodeGeneratorTest, GenerateFloatFunction) {
     EXPECT_TRUE(func->getArg(0)->getType()->isFloatTy());
 }
 
-TEST_F(CodeGeneratorTest, GenerateFloatVariables) {
-    std::string code = R"(
-        func test() -> void {
-            var f = 3.14;
-            var typed: float = 2.71;
-            return;
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    
-    auto module = codeGen->generateModule(*ast);
-    ASSERT_NE(module, nullptr);
-    
-    Function* func = module->getFunction("test");
-    ASSERT_NE(func, nullptr);
-    
-    std::string irString = getModuleString(module.get());
-    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
-    EXPECT_TRUE(irString.find("store") != std::string::npos);
-}
-
-TEST_F(CodeGeneratorTest, GenerateFloatArithmetic) {
+TEST_F(BasicCodeGenTest, GenerateFloatArithmetic) {
     std::string code = R"(
         func calculate(float a, float b) -> float {
             var sum = a + b;
@@ -335,7 +291,7 @@ TEST_F(CodeGeneratorTest, GenerateFloatArithmetic) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("calculate");
@@ -352,12 +308,12 @@ TEST_F(CodeGeneratorTest, GenerateFloatArithmetic) {
     EXPECT_TRUE(irString.find("fmul float") != std::string::npos);
 }
 
-TEST_F(CodeGeneratorTest, GenerateBoolFunction) {
+TEST_F(BasicCodeGenTest, GenerateBoolFunction) {
     std::string code = "func process(bool flag) -> bool { return flag; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("process");
@@ -369,31 +325,7 @@ TEST_F(CodeGeneratorTest, GenerateBoolFunction) {
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(1));
 }
 
-TEST_F(CodeGeneratorTest, GenerateBoolVariables) {
-    std::string code = R"(
-        func test() -> void {
-            var flag = true;
-            var explicit: bool = false;
-            return;
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    
-    auto module = codeGen->generateModule(*ast);
-    ASSERT_NE(module, nullptr);
-    
-    Function* func = module->getFunction("test");
-    ASSERT_NE(func, nullptr);
-    
-    std::string irString = getModuleString(module.get());
-    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
-    EXPECT_TRUE(irString.find("store") != std::string::npos);
-    EXPECT_TRUE(irString.find("i1 true") != std::string::npos);
-    EXPECT_TRUE(irString.find("i1 false") != std::string::npos);
-}
-
-TEST_F(CodeGeneratorTest, GenerateBoolLogic) {
+TEST_F(BasicCodeGenTest, GenerateBoolLogic) {
     std::string code = R"(
         func logic(bool a, bool b) -> bool {
             var and_result = a && b;
@@ -405,7 +337,7 @@ TEST_F(CodeGeneratorTest, GenerateBoolLogic) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("logic");
@@ -421,12 +353,12 @@ TEST_F(CodeGeneratorTest, GenerateBoolLogic) {
     EXPECT_TRUE(irString.find("i1") != std::string::npos);
 }
 
-TEST_F(CodeGeneratorTest, GenerateCharFunction) {
+TEST_F(BasicCodeGenTest, GenerateCharFunction) {
     std::string code = "func process(char ch) -> char { return ch; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("process");
@@ -438,31 +370,7 @@ TEST_F(CodeGeneratorTest, GenerateCharFunction) {
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(32));
 }
 
-TEST_F(CodeGeneratorTest, GenerateCharVariables) {
-    std::string code = R"(
-        func test() -> void {
-            var ch = 'a';
-            var explicit: char = 'Z';
-            return;
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    
-    auto module = codeGen->generateModule(*ast);
-    ASSERT_NE(module, nullptr);
-    
-    Function* func = module->getFunction("test");
-    ASSERT_NE(func, nullptr);
-    
-    std::string irString = getModuleString(module.get());
-    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
-    EXPECT_TRUE(irString.find("store") != std::string::npos);
-    EXPECT_TRUE(irString.find("i32 97") != std::string::npos); // ASCII 'a'
-    EXPECT_TRUE(irString.find("i32 90") != std::string::npos); // ASCII 'Z'
-}
-
-TEST_F(CodeGeneratorTest, GenerateCharComparison) {
+TEST_F(BasicCodeGenTest, GenerateCharComparison) {
     std::string code = R"(
         func compare(char a, char b) -> bool {
             var equal = a == b;
@@ -473,7 +381,7 @@ TEST_F(CodeGeneratorTest, GenerateCharComparison) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("compare");
@@ -490,12 +398,12 @@ TEST_F(CodeGeneratorTest, GenerateCharComparison) {
     EXPECT_TRUE(irString.find("icmp slt i32") != std::string::npos);
 }
 
-TEST_F(CodeGeneratorTest, GenerateArrayFunction) {
+TEST_F(BasicCodeGenTest, GenerateArrayFunction) {
     std::string code = "func process(int64 data) -> void { var arr: int64[5]; return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("process");
@@ -508,36 +416,7 @@ TEST_F(CodeGeneratorTest, GenerateArrayFunction) {
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(64));
 }
 
-TEST_F(CodeGeneratorTest, GenerateArrayVariables) {
-    std::string code = R"(
-        func test() -> void {
-            var numbers: int64[5];
-            var chars: char[10];
-            return;
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    
-    auto module = codeGen->generateModule(*ast);
-    ASSERT_NE(module, nullptr);
-    
-    Function* func = module->getFunction("test");
-    ASSERT_NE(func, nullptr);
-    
-    std::string irString = getModuleString(module.get());
-    EXPECT_TRUE(irString.find("alloca") != std::string::npos);
-    // Both array variables should generate allocations
-    size_t allocaCount = 0;
-    size_t pos = 0;
-    while ((pos = irString.find("alloca", pos)) != std::string::npos) {
-        allocaCount++;
-        pos += 6;
-    }
-    EXPECT_GE(allocaCount, 2); // At least 2 alloca instructions
-}
-
-TEST_F(CodeGeneratorTest, GenerateArrayAccess) {
+TEST_F(BasicCodeGenTest, GenerateArrayAccess) {
     std::string code = R"(
         func access_test() -> int64 {
             var arr: int64[5];
@@ -549,14 +428,15 @@ TEST_F(CodeGeneratorTest, GenerateArrayAccess) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
-    auto module = codeGen->generateModule(*ast);
+    auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
     
     Function* func = module->getFunction("access_test");
     ASSERT_NE(func, nullptr);
-    
+
     // Verify array and index variables are allocated
     std::string irString = getModuleString(module.get());
     EXPECT_TRUE(irString.find("alloca") != std::string::npos);
     EXPECT_TRUE(irString.find("ret i64") != std::string::npos);
 }
+

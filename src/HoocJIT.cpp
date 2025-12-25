@@ -165,17 +165,20 @@ bool HoocJIT::executeFunction(const std::string& functionName) {
 
 std::unique_ptr<llvm::Module> HoocJIT::generateModuleFromAST(const ast::CompilationUnit& ast) {
     std::cout << "\n=== Generating LLVM IR from AST ===\n";
-    
-    auto module = codeGenerator_->generateModule(ast);
+
+    // Since we know we're using LLVM backend, use the LLVM-specific API
+    auto* llvmCodeGen = static_cast<LLVMCodeGenerator*>(codeGenerator_.get());
+    auto module = llvmCodeGen->generateLLVMModule(ast);
+
     if (module) {
         std::cout << "✅ LLVM IR generation successful\n";
-        
+
         // Print the generated IR
         std::cout << "Generated LLVM IR:\n";
         module->print(outs(), nullptr);
     } else {
         std::cout << "❌ LLVM IR generation failed\n";
     }
-    
+
     return module;
 }

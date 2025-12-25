@@ -232,12 +232,15 @@ if(NOT GTest_FOUND)
 endif()
 
 if(GTest_FOUND)
-    # Test executable - Array Literal Parsing Tests Only
+    # Test executable
     add_executable(hoo_tests
         tests/test_main.cpp
         tests/ArrayLiteralParsingTest.cpp
         tests/FunctionCallParsingTest.cpp
         tests/VariableDeclarationParseTest.cpp
+        tests/BasicCodeGenTest.cpp
+        tests/FunctionCallCodeGenTest.cpp
+        tests/VariableDeclarationCodeGenTest.cpp
     )
 
     # Link test executable with libraries

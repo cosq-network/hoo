@@ -1,11 +1,9 @@
 #pragma once
 
 #include "ast/AST.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Function.h"
-#include "llvm/IR/Value.h"
-#include "llvm/IR/Type.h"
+#include "CodeGeneratorTypes.h"
 #include <memory>
+#include <string>
 
 namespace hooc {
 
@@ -14,11 +12,18 @@ namespace hooc {
  *
  * This interface defines the contract for translating hooc AST nodes
  * into executable code. Different implementations can target different
- * backends (LLVM IR, bytecode, C, etc.).
+ * backends (LLVM IR, bytecode, C, JavaScript, etc.).
+ *
+ * The interface uses opaque wrapper types to hide implementation details.
  */
 class CodeGenerator {
 public:
     virtual ~CodeGenerator() = default;
+
+    /**
+     * Get the backend type identifier (e.g., "LLVM", "Bytecode", "C")
+     */
+    virtual std::string getBackendType() const = 0;
 
     /**
      * Generate a complete module/compilation unit from a hooc AST.
@@ -27,7 +32,7 @@ public:
      * @param compilationUnit The root AST node to generate code from
      * @return A generated module (implementation-specific), or nullptr on failure
      */
-    virtual std::unique_ptr<llvm::Module> generateModule(const ast::CompilationUnit& compilationUnit) = 0;
+    virtual std::unique_ptr<GeneratedModule> generateModule(const ast::CompilationUnit& compilationUnit) = 0;
 
     /**
      * Generate code for a function declaration.
@@ -35,7 +40,7 @@ public:
      * @param funcDecl The function declaration AST node
      * @return A function representation (implementation-specific), or nullptr on failure
      */
-    virtual llvm::Function* generateFunction(const ast::FunctionDeclaration& funcDecl) = 0;
+    virtual GeneratedFunction* generateFunction(const ast::FunctionDeclaration& funcDecl) = 0;
 
     /**
      * Generate code for an expression.
@@ -43,7 +48,7 @@ public:
      * @param expr The expression AST node
      * @return A value representation (implementation-specific), or nullptr on failure
      */
-    virtual llvm::Value* generateExpression(const ast::Expression& expr) = 0;
+    virtual GeneratedValue* generateExpression(const ast::Expression& expr) = 0;
 
     /**
      * Generate code for a statement.
@@ -58,7 +63,7 @@ public:
      * @param type The type AST node
      * @return A type representation (implementation-specific), or nullptr on failure
      */
-    virtual llvm::Type* generateType(const ast::Type& type) = 0;
+    virtual GeneratedType* generateType(const ast::Type& type) = 0;
 
 protected:
     // Protected constructor - only derived classes can instantiate

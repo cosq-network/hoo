@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CodeGenerator.h"
+#include "LLVMCodeGeneratorTypes.h"
 #include "ast/AST.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -23,17 +24,32 @@ public:
     ~LLVMCodeGenerator();
 
     /**
+     * Get the backend type identifier
+     */
+    std::string getBackendType() const override { return "LLVM"; }
+
+    /**
      * Generate a complete LLVM module from a compilation unit
      */
-    std::unique_ptr<llvm::Module> generateModule(const ast::CompilationUnit& compilationUnit) override;
+    std::unique_ptr<GeneratedModule> generateModule(const ast::CompilationUnit& compilationUnit) override;
 
     /**
      * Generate LLVM IR for individual AST components
      */
-    llvm::Function* generateFunction(const ast::FunctionDeclaration& funcDecl) override;
-    llvm::Value* generateExpression(const ast::Expression& expr) override;
+    GeneratedFunction* generateFunction(const ast::FunctionDeclaration& funcDecl) override;
+    GeneratedValue* generateExpression(const ast::Expression& expr) override;
     void generateStatement(const ast::Statement& stmt) override;
-    llvm::Type* generateType(const ast::Type& type) override;
+    GeneratedType* generateType(const ast::Type& type) override;
+
+    /**
+     * LLVM-specific API for direct access to LLVM types
+     * (for use when you know you're working with LLVM backend)
+     */
+    std::unique_ptr<llvm::Module> generateLLVMModule(const ast::CompilationUnit& compilationUnit);
+    llvm::Function* generateLLVMFunction(const ast::FunctionDeclaration& funcDecl);
+    llvm::Value* generateLLVMExpression(const ast::Expression& expr);
+    void generateLLVMStatement(const ast::Statement& stmt);
+    llvm::Type* generateLLVMType(const ast::Type& type);
 
 private:
     llvm::LLVMContext& context_;
