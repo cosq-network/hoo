@@ -20,7 +20,7 @@ class CompilationUnit;
 
 class ProcessIsolatedParser;
 class SimpleASTBuilder;
-class LLVMCodeGenerator;
+class CodeGenerator;
 
 class HoocJIT {
 private:
@@ -28,7 +28,7 @@ private:
     llvm::LLVMContext Context;
     std::unique_ptr<ProcessIsolatedParser> parser_;
     std::unique_ptr<SimpleASTBuilder> astBuilder_;
-    std::unique_ptr<LLVMCodeGenerator> codeGenerator_;
+    std::unique_ptr<CodeGenerator> codeGenerator_;
     
 public:
     HoocJIT();

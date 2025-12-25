@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CodeGenerator.h"
 #include "ast/AST.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -14,9 +15,9 @@ namespace hooc {
 
 /**
  * LLVMCodeGenerator translates hooc AST nodes into LLVM IR.
- * This is the bridge between the parsed AST and executable code.
+ * This is the concrete implementation of CodeGenerator that targets LLVM.
  */
-class LLVMCodeGenerator {
+class LLVMCodeGenerator : public CodeGenerator {
 public:
     LLVMCodeGenerator(llvm::LLVMContext& context);
     ~LLVMCodeGenerator();
@@ -24,15 +25,15 @@ public:
     /**
      * Generate a complete LLVM module from a compilation unit
      */
-    std::unique_ptr<llvm::Module> generateModule(const ast::CompilationUnit& compilationUnit);
+    std::unique_ptr<llvm::Module> generateModule(const ast::CompilationUnit& compilationUnit) override;
 
     /**
      * Generate LLVM IR for individual AST components
      */
-    llvm::Function* generateFunction(const ast::FunctionDeclaration& funcDecl);
-    llvm::Value* generateExpression(const ast::Expression& expr);
-    void generateStatement(const ast::Statement& stmt);
-    llvm::Type* generateType(const ast::Type& type);
+    llvm::Function* generateFunction(const ast::FunctionDeclaration& funcDecl) override;
+    llvm::Value* generateExpression(const ast::Expression& expr) override;
+    void generateStatement(const ast::Statement& stmt) override;
+    llvm::Type* generateType(const ast::Type& type) override;
 
 private:
     llvm::LLVMContext& context_;
