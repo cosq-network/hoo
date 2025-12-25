@@ -237,6 +237,7 @@ if(GTest_FOUND)
         tests/test_main.cpp
         tests/ArrayLiteralParsingTest.cpp
         tests/FunctionCallParsingTest.cpp
+        tests/VariableDeclarationParseTest.cpp
     )
 
     # Link test executable with libraries
