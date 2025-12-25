@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <sstream>
-#include "../src/CodeGenerator.h"
+#include "../src/LLVMCodeGenerator.h"
 #include "../src/SimpleASTBuilder.h"
 #include "../src/ProcessIsolatedParser.h"
 #include "../src/ast/AST.h"
@@ -21,13 +21,13 @@ class CodeGeneratorTest : public ::testing::Test {
 protected:
     void SetUp() override {
         context = std::make_unique<LLVMContext>();
-        codeGen = std::make_unique<CodeGenerator>(*context);
+        codeGen = std::make_unique<LLVMCodeGenerator>(*context);
         parser = std::make_unique<ProcessIsolatedParser>();
         astBuilder = std::make_unique<SimpleASTBuilder>();
     }
 
     std::unique_ptr<LLVMContext> context;
-    std::unique_ptr<CodeGenerator> codeGen;
+    std::unique_ptr<LLVMCodeGenerator> codeGen;
     std::unique_ptr<ProcessIsolatedParser> parser;
     std::unique_ptr<SimpleASTBuilder> astBuilder;
     

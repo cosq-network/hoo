@@ -1,7 +1,7 @@
 #include "HoocJIT.h"
 #include "ProcessIsolatedParser.h"
 #include "SimpleASTBuilder.h"
-#include "CodeGenerator.h"
+#include "LLVMCodeGenerator.h"
 #include "ast/AST.h"
 #include <iostream>
 #include <memory>
@@ -37,7 +37,7 @@ HoocJIT::HoocJIT() {
     // Initialize parser, AST builder, and code generator
     parser_ = std::make_unique<ProcessIsolatedParser>();
     astBuilder_ = std::make_unique<SimpleASTBuilder>();
-    codeGenerator_ = std::make_unique<CodeGenerator>(Context);
+    codeGenerator_ = std::make_unique<LLVMCodeGenerator>(Context);
     
     std::cout << "HoocJIT initialized successfully!\n";
 }

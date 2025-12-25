@@ -1,7 +1,7 @@
 #include "HooCompiler.h"
 #include "ProcessIsolatedParser.h"
 #include "SimpleASTBuilder.h"
-#include "CodeGenerator.h"
+#include "LLVMCodeGenerator.h"
 #include "../antlr4/generated/HoocParser.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
@@ -15,7 +15,7 @@ HooCompiler::HooCompiler()
     parser_ = std::make_unique<ProcessIsolatedParser>();
     astBuilder_ = std::make_unique<SimpleASTBuilder>();
     context_ = std::make_unique<llvm::LLVMContext>();
-    codeGenerator_ = std::make_unique<CodeGenerator>(*context_);
+    codeGenerator_ = std::make_unique<LLVMCodeGenerator>(*context_);
 }
 
 HooCompiler::~HooCompiler() = default;

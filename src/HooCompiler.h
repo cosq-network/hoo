@@ -11,7 +11,7 @@ namespace hooc {
 // Forward declarations
 class ProcessIsolatedParser;
 class SimpleASTBuilder;
-class CodeGenerator;
+class LLVMCodeGenerator;
 
 /**
  * HooCompiler - Main compilation interface
@@ -50,7 +50,7 @@ public:
 private:
     std::unique_ptr<ProcessIsolatedParser> parser_;
     std::unique_ptr<SimpleASTBuilder> astBuilder_;
-    std::unique_ptr<CodeGenerator> codeGenerator_;
+    std::unique_ptr<LLVMCodeGenerator> codeGenerator_;
     std::unique_ptr<llvm::LLVMContext> context_;
     
     std::string lastError_;

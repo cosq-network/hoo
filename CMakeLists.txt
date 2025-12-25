@@ -139,7 +139,7 @@ add_library(hoo-compiler
     src/HooCompiler.cpp
     src/HoocJIT.cpp
     src/ProcessIsolatedParser.cpp
-    src/CodeGenerator.cpp
+    src/LLVMCodeGenerator.cpp
     src/SimpleASTBuilder.cpp
     src/ast/ASTImpl.cpp
 )

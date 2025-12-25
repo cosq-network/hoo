@@ -1,4 +1,4 @@
-#include "CodeGenerator.h"
+#include "LLVMCodeGenerator.h"
 #include "ast/AST.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/CFG.h"
@@ -19,14 +19,14 @@ namespace {
     using ASTArrayType = hooc::ast::ArrayType;
 }
 
-CodeGenerator::CodeGenerator(LLVMContext& context) 
+LLVMCodeGenerator::LLVMCodeGenerator(LLVMContext& context)
     : context_(context) {
     builder_ = std::make_unique<IRBuilder<>>(context_);
 }
 
-CodeGenerator::~CodeGenerator() {}
+LLVMCodeGenerator::~LLVMCodeGenerator() {}
 
-std::unique_ptr<Module> CodeGenerator::generateModule(const CompilationUnit& compilationUnit) {
+std::unique_ptr<Module> LLVMCodeGenerator::generateModule(const CompilationUnit& compilationUnit) {
     // Create a new module for this compilation unit
     module_ = std::make_unique<Module>("hooc_module", context_);
     
@@ -55,7 +55,7 @@ std::unique_ptr<Module> CodeGenerator::generateModule(const CompilationUnit& com
     return std::move(module_);
 }
 
-Function* CodeGenerator::generateFunction(const FunctionDeclaration& funcDecl) {
+Function* LLVMCodeGenerator::generateFunction(const FunctionDeclaration& funcDecl) {
     // Build parameter types
     std::vector<LLVMType*> paramTypes;
     for (const auto& param : funcDecl.getParameters()) {
@@ -127,13 +127,13 @@ Function* CodeGenerator::generateFunction(const FunctionDeclaration& funcDecl) {
     return function;
 }
 
-void CodeGenerator::generateBlock(const Block& block) {
+void LLVMCodeGenerator::generateBlock(const Block& block) {
     for (const auto& stmt : block.getStatements()) {
         generateStatement(*stmt);
     }
 }
 
-void CodeGenerator::generateStatement(const Statement& stmt) {
+void LLVMCodeGenerator::generateStatement(const Statement& stmt) {
     if (auto retStmt = dynamic_cast<const ReturnStatement*>(&stmt)) {
         generateReturnStatement(*retStmt);
     } else if (auto exprStmt = dynamic_cast<const ExpressionStatement*>(&stmt)) {
@@ -155,7 +155,7 @@ void CodeGenerator::generateStatement(const Statement& stmt) {
     }
 }
 
-void CodeGenerator::generateReturnStatement(const ReturnStatement& ret) {
+void LLVMCodeGenerator::generateReturnStatement(const ReturnStatement& ret) {
     if (ret.hasExpression()) {
         Value* retValue = generateExpression(*ret.getExpression());
         builder_->CreateRet(retValue);
@@ -164,11 +164,11 @@ void CodeGenerator::generateReturnStatement(const ReturnStatement& ret) {
     }
 }
 
-void CodeGenerator::generateExpressionStatement(const ExpressionStatement& stmt) {
+void LLVMCodeGenerator::generateExpressionStatement(const ExpressionStatement& stmt) {
     generateExpression(stmt.getExpression());
 }
 
-Value* CodeGenerator::generateExpression(const Expression& expr) {
+Value* LLVMCodeGenerator::generateExpression(const Expression& expr) {
     if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&expr)) {
         return generatePrimaryExpression(*primaryExpr);
     } else if (auto binaryExpr = dynamic_cast<const BinaryExpression*>(&expr)) {
@@ -197,7 +197,7 @@ Value* CodeGenerator::generateExpression(const Expression& expr) {
     return nullptr;
 }
 
-Value* CodeGenerator::generatePrimaryExpression(const PrimaryExpression& expr) {
+Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& expr) {
     const ASTNode& primary = expr.getPrimary();
     
     if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
@@ -233,7 +233,7 @@ Value* CodeGenerator::generatePrimaryExpression(const PrimaryExpression& expr) {
     return nullptr;
 }
 
-Value* CodeGenerator::generateBinaryExpression(const BinaryExpression& expr) {
+Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr) {
     Value* left = generateExpression(expr.getLeft());
     Value* right = generateExpression(expr.getRight());
     
@@ -337,7 +337,7 @@ Value* CodeGenerator::generateBinaryExpression(const BinaryExpression& expr) {
     return nullptr;
 }
 
-Value* CodeGenerator::generateFunctionCall(const FunctionCall& call) {
+Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
     // Get the function being called
     const Expression& funcExpr = call.getFunction();
 
@@ -384,7 +384,7 @@ Value* CodeGenerator::generateFunctionCall(const FunctionCall& call) {
     return builder_->CreateCall(calleeFunc, args, "calltmp");
 }
 
-Value* CodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
+Value* LLVMCodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
     Value* operand = generateExpression(expr.getOperand());
     if (!operand) return nullptr;
 
@@ -398,7 +398,7 @@ Value* CodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
     return nullptr;
 }
 
-Value* CodeGenerator::generateLogicalNot(const LogicalNot& expr) {
+Value* LLVMCodeGenerator::generateLogicalNot(const LogicalNot& expr) {
     Value* operand = generateExpression(expr.getOperand());
     if (!operand) return nullptr;
 
@@ -414,7 +414,7 @@ Value* CodeGenerator::generateLogicalNot(const LogicalNot& expr) {
     return builder_->CreateNot(operand, "nottmp");
 }
 
-Value* CodeGenerator::generateLogicalAnd(const LogicalAnd& expr) {
+Value* LLVMCodeGenerator::generateLogicalAnd(const LogicalAnd& expr) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Create blocks for short-circuit evaluation
@@ -463,7 +463,7 @@ Value* CodeGenerator::generateLogicalAnd(const LogicalAnd& expr) {
     return phi;
 }
 
-Value* CodeGenerator::generateLogicalOr(const LogicalOr& expr) {
+Value* LLVMCodeGenerator::generateLogicalOr(const LogicalOr& expr) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Create blocks for short-circuit evaluation
@@ -512,7 +512,7 @@ Value* CodeGenerator::generateLogicalOr(const LogicalOr& expr) {
     return phi;
 }
 
-Value* CodeGenerator::generateAssignment(const AssignmentExpression& expr) {
+Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     // Get the lvalue (must be an identifier for now)
     const Expression& lhs = expr.getLeft();
     std::string varName;
@@ -546,13 +546,13 @@ Value* CodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     return rvalue;
 }
 
-Value* CodeGenerator::generateMemberAccess(const MemberAccess& expr) {
+Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // TODO: Implement struct/class member access
     std::cerr << "Member access not yet implemented" << std::endl;
     return nullptr;
 }
 
-Value* CodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
+Value* LLVMCodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
     Value* arrayValue = generateExpression(expr.getArray());
     Value* indexValue = generateExpression(expr.getIndex());
     
@@ -590,7 +590,7 @@ Value* CodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
     }
 }
 
-void CodeGenerator::generateIfStatement(const IfStatement& stmt) {
+void LLVMCodeGenerator::generateIfStatement(const IfStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Evaluate condition
@@ -643,7 +643,7 @@ void CodeGenerator::generateIfStatement(const IfStatement& stmt) {
     }
 }
 
-void CodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
+void LLVMCodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Create blocks
@@ -681,7 +681,7 @@ void CodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
     builder_->SetInsertPoint(afterBlock);
 }
 
-void CodeGenerator::generateForInStatement(const ForInStatement& stmt) {
+void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
     
     // Evaluate the iterable expression
@@ -752,7 +752,7 @@ void CodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     namedValues_.erase(stmt.getVariable());
 }
 
-void CodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt) {
+void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Evaluate range bounds
@@ -809,7 +809,7 @@ void CodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt) {
     namedValues_.erase(stmt.getVariable());
 }
 
-void CodeGenerator::generateVariableDeclaration(const VariableDeclaration& decl) {
+void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& decl) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
 
     // Determine type
@@ -844,7 +844,7 @@ void CodeGenerator::generateVariableDeclaration(const VariableDeclaration& decl)
     }
 }
 
-LLVMType* CodeGenerator::generateType(const ASTType& type) {
+LLVMType* LLVMCodeGenerator::generateType(const ASTType& type) {
     if (auto unionType = dynamic_cast<const UnionType*>(&type)) {
         // For now, just use the first type in the union
         const auto& types = unionType->getTypes();
@@ -875,7 +875,7 @@ LLVMType* CodeGenerator::generateType(const ASTType& type) {
     return LLVMType::getVoidTy(context_);
 }
 
-LLVMType* CodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
+LLVMType* LLVMCodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
     switch (kind) {
         case PrimitiveTypeKind::BYTE:
         case PrimitiveTypeKind::UINT8:
@@ -900,7 +900,7 @@ LLVMType* CodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
     }
 }
 
-LLVMType* CodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
+LLVMType* LLVMCodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
     // Get the base element type
     LLVMType* elementType = generateType(arrayType.getBaseType());
     if (!elementType) {
@@ -924,7 +924,7 @@ LLVMType* CodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
     return currentType;
 }
 
-Constant* CodeGenerator::createConstant(const Primary& primary) {
+Constant* LLVMCodeGenerator::createConstant(const Primary& primary) {
     if (auto intLiteral = dynamic_cast<const IntegerLiteral*>(&primary)) {
         return ConstantInt::get(LLVMType::getInt64Ty(context_), intLiteral->getValue());
     } else if (auto floatLiteral = dynamic_cast<const FloatingLiteral*>(&primary)) {
@@ -936,7 +936,7 @@ Constant* CodeGenerator::createConstant(const Primary& primary) {
     return nullptr;
 }
 
-Value* CodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
+Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
     const ExpressionList* elementsList = literal.getElements();
 
     if (!elementsList || elementsList->getExpressions().empty()) {
@@ -978,7 +978,7 @@ Value* CodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
     return createGlobalArrayConstant(constantElements, elementType);
 }
 
-Constant* CodeGenerator::createGlobalArrayConstant(
+Constant* LLVMCodeGenerator::createGlobalArrayConstant(
     const std::vector<Constant*>& elements,
     LLVMType* elementType) {
 
@@ -1012,7 +1012,7 @@ Constant* CodeGenerator::createGlobalArrayConstant(
     );
 }
 
-std::string CodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {
+std::string LLVMCodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {
     // Simple name mangling - for production, use a more sophisticated scheme
     std::string mangledName = name;
     for (LLVMType* type : paramTypes) {
@@ -1028,11 +1028,11 @@ std::string CodeGenerator::mangleFunctionName(const std::string& name, const std
     return mangledName;
 }
 
-void CodeGenerator::generateVariableDeclarationStatement(const VariableDeclarationStatement& stmt) {
+void LLVMCodeGenerator::generateVariableDeclarationStatement(const VariableDeclarationStatement& stmt) {
     generateVariableDeclaration(stmt.getDeclaration());
 }
 
-AllocaInst* CodeGenerator::createEntryBlockAlloca(Function* function, const std::string& varName, LLVMType* type) {
+AllocaInst* LLVMCodeGenerator::createEntryBlockAlloca(Function* function, const std::string& varName, LLVMType* type) {
     IRBuilder<> tmpBuilder(&function->getEntryBlock(), function->getEntryBlock().begin());
     return tmpBuilder.CreateAlloca(type, nullptr, varName);
 }

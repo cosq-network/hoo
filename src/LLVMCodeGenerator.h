@@ -13,13 +13,13 @@
 namespace hooc {
 
 /**
- * CodeGenerator translates hooc AST nodes into LLVM IR.
+ * LLVMCodeGenerator translates hooc AST nodes into LLVM IR.
  * This is the bridge between the parsed AST and executable code.
  */
-class CodeGenerator {
+class LLVMCodeGenerator {
 public:
-    CodeGenerator(llvm::LLVMContext& context);
-    ~CodeGenerator();
+    LLVMCodeGenerator(llvm::LLVMContext& context);
+    ~LLVMCodeGenerator();
 
     /**
      * Generate a complete LLVM module from a compilation unit
