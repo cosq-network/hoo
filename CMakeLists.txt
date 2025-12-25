@@ -236,6 +236,7 @@ if(GTest_FOUND)
     add_executable(hoo_tests
         tests/test_main.cpp
         tests/ArrayLiteralParsingTest.cpp
+        tests/FunctionCallParsingTest.cpp
     )
 
     # Link test executable with libraries
