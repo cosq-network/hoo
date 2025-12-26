@@ -249,6 +249,7 @@ if(GTest_FOUND)
         tests/IfElseIfCodeGenTest.cpp
         tests/WhileLoopCodeGenTest.cpp
         tests/NullableCodeGenTest.cpp
+        tests/ModuleLevelVariableParsingTest.cpp # Added new test file
     )
 
     # Link test executable with libraries
@@ -269,7 +270,8 @@ if(GTest_FOUND)
     endif()
 
     # Include directories for tests
-    target_include_directories(hoo_tests PRIVATE
+    target_include_directories(hoo_tests PUBLIC
+        ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
         ${LLVM_INCLUDE_DIRS}
         ${ANTLR4_INCLUDE_DIR}

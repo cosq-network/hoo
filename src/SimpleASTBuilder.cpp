@@ -35,7 +35,11 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
 std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::DeclarationContext* ctx) {
     if (ctx->functionDeclaration()) {
         return buildFunctionDeclaration(ctx->functionDeclaration());
+    } else if (ctx->variableDeclaration()) { // Added this condition
+        return buildVariableDeclaration(ctx->variableDeclaration());
     }
+    // Assuming classDeclaration and interfaceDeclaration rules are also handled
+    // by the parser context and would be checked here if present.
     return nullptr;
 }
 
@@ -280,10 +284,7 @@ std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(Hooc
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildExpression(HoocParser::ExpressionContext* ctx) {
-    if (ctx->assignmentExpression()) {
-        return buildAssignmentExpression(ctx->assignmentExpression());
-    }
-    return nullptr;
+    return buildAssignmentExpression(ctx->assignmentExpression());
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx) {
@@ -468,8 +469,8 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         // Parenthesized expression
         return buildExpression(ctx->expression());
     } else if (ctx->LBRACKET()) {
-        // Array literal [expr1, expr2, ...]
-        return buildArrayLiteral(ctx);
+        auto arrayLiteral = buildArrayLiteral(ctx);
+        return std::make_unique<PrimaryExpression>(std::move(arrayLiteral)); // Wrap in PrimaryExpression
     } else if (ctx->IDENTIFIER()) {
         auto identifier = std::make_unique<Identifier>(ctx->IDENTIFIER()->getText());
         return std::make_unique<PrimaryExpression>(std::move(identifier));

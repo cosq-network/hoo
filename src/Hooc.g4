@@ -120,6 +120,7 @@ declaration
     : functionDeclaration
     | classDeclaration
     | interfaceDeclaration
+    | variableDeclaration  // Added this line
     ;
 
 // Function Declaration

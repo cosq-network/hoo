@@ -74,8 +74,11 @@ TEST_F(ArrayLiteralParsingTest, SimpleIntegerArrayLiteral) {
     auto* initializer = varDecl.getInitializer();
     ASSERT_NE(initializer, nullptr);
 
-    // Should be an ArrayLiteral
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(initializer);
+    // Should be an ArrayLiteral, wrapped in PrimaryExpression
+    auto* primaryExpr = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExpr, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExpr->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     // Check elements
@@ -122,7 +125,10 @@ TEST_F(ArrayLiteralParsingTest, ExplicitTypeArrayLiteral) {
     auto* initializer = varDecl.getInitializer();
     ASSERT_NE(initializer, nullptr);
 
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(initializer);
+    auto* primaryExpr = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExpr, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExpr->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();
@@ -154,7 +160,13 @@ TEST_F(ArrayLiteralParsingTest, EmptyArrayLiteral) {
     const auto& varDecl = varDeclStmt->getDeclaration();
 
     // Check array literal
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExpr = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExpr, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExpr->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();
@@ -185,7 +197,13 @@ TEST_F(ArrayLiteralParsingTest, FloatArrayLiteral) {
 
     const auto& varDecl = varDeclStmt->getDeclaration();
 
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();
@@ -226,7 +244,13 @@ TEST_F(ArrayLiteralParsingTest, BooleanArrayLiteral) {
 
     const auto& varDecl = varDeclStmt->getDeclaration();
 
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();
@@ -259,7 +283,13 @@ TEST_F(ArrayLiteralParsingTest, TwoDimensionalArrayLiteral) {
     EXPECT_EQ(varDecl.getName(), "matrix");
 
     // Outer array literal
-    auto* outerArray = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* outerArray = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(outerArray, nullptr);
 
     auto* outerElements = outerArray->getElements();
@@ -267,7 +297,9 @@ TEST_F(ArrayLiteralParsingTest, TwoDimensionalArrayLiteral) {
     EXPECT_EQ(outerElements->getExpressions().size(), static_cast<size_t>(3));  // 3 rows
 
     // Check first inner array
-    auto* firstRow = dynamic_cast<const ArrayLiteral*>(outerElements->getExpressions()[0].get());
+    auto* firstRowPrimary = dynamic_cast<const PrimaryExpression*>(outerElements->getExpressions()[0].get());
+    ASSERT_NE(firstRowPrimary, nullptr);
+    auto* firstRow = dynamic_cast<const ArrayLiteral*>(&firstRowPrimary->getPrimary());
     ASSERT_NE(firstRow, nullptr);
 
     auto* firstRowElements = firstRow->getElements();
@@ -298,7 +330,13 @@ TEST_F(ArrayLiteralParsingTest, ThreeDimensionalArrayLiteral) {
 
     const auto& varDecl = varDeclStmt->getDeclaration();
 
-    auto* cubeArray = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* cubeArray = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(cubeArray, nullptr);
 
     auto* cubeElements = cubeArray->getElements();
@@ -329,7 +367,13 @@ TEST_F(ArrayLiteralParsingTest, ArrayLiteralWithExpressions) {
 
     const auto& varDecl = varDeclStmt->getDeclaration();
 
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();
@@ -376,7 +420,13 @@ TEST_F(ArrayLiteralParsingTest, MultipleArrayLiterals) {
 
         const auto& varDecl = varDeclStmt->getDeclaration();
 
-        auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+        auto* initializer = varDecl.getInitializer();
+        ASSERT_NE(initializer, nullptr);
+
+        auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+        ASSERT_NE(primaryExprOuter, nullptr);
+
+        auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
         ASSERT_NE(arrayLit, nullptr);
 
         auto* elements = arrayLit->getElements();
@@ -408,7 +458,13 @@ TEST_F(ArrayLiteralParsingTest, CharArrayLiteral) {
 
     const auto& varDecl = varDeclStmt->getDeclaration();
 
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();
@@ -475,7 +531,13 @@ TEST_F(ArrayLiteralParsingTest, LargeArrayLiteral) {
 
     const auto& varDecl = varDeclStmt->getDeclaration();
 
-    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(varDecl.getInitializer());
+    auto* initializer = varDecl.getInitializer();
+    ASSERT_NE(initializer, nullptr);
+
+    auto* primaryExprOuter = dynamic_cast<const PrimaryExpression*>(initializer);
+    ASSERT_NE(primaryExprOuter, nullptr);
+
+    auto* arrayLit = dynamic_cast<const ArrayLiteral*>(&primaryExprOuter->getPrimary());
     ASSERT_NE(arrayLit, nullptr);
 
     auto* elements = arrayLit->getElements();

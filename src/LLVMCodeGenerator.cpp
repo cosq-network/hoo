@@ -279,6 +279,8 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
 
     } else if (auto charLiteral = dynamic_cast<const CharacterLiteral*>(&primary)) {
         return ConstantInt::get(LLVMType::getInt32Ty(context_), static_cast<uint32_t>(charLiteral->getValue()));
+    } else if (auto arrayLiteral = dynamic_cast<const ArrayLiteral*>(&primary)) { // Handle ArrayLiteral
+        return generateArrayLiteral(*arrayLiteral);
     }
 
     std::cerr << "Unsupported primary expression type" << std::endl;
