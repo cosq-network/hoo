@@ -336,7 +336,7 @@ var y: int64? = null;       // Null value
 var z: double? = 3.14;      // Works with all primitive types
 
 // Nullable function parameters
-func process(int64? value) -> int64 {
+func process(value: int64?) -> int64 {
     return 10;
 }
 
@@ -346,7 +346,7 @@ func maybeValue() -> int64? {
 }
 
 // Mixed nullable and non-nullable parameters
-func compare(int64 required, int64? optional) -> bool {
+func compare(required: int64, optional: int64?) -> bool {
     return true;
 }
 
@@ -388,7 +388,7 @@ var empty: int64[]? = null;
 - Type system: union types (`T | U`), optional types (`T?`), array types (`T[]`)
 - **Nullable types** - Full support with `T?` syntax (v0.3 addition):
   - Nullable variable declarations (`var x: int64? = 42` or `var y: int64? = null`)
-  - Nullable function parameters (`func process(int64? value) -> int64`)
+  - Nullable function parameters (`func process(value: int64?) -> int64`)
   - Nullable return types (`func maybeValue() -> int64?`)
   - All primitive types support nullability
   - LLVM tagged union representation (`{ i1 isNull, T value }`)

@@ -129,7 +129,7 @@ functionDeclaration
     ;
 
 parameterList: parameter (COMMA parameter)*;
-parameter: type IDENTIFIER;
+parameter: IDENTIFIER COLON type;
 
 // Class Declaration
 classDeclaration

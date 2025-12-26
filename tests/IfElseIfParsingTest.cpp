@@ -172,7 +172,7 @@ TEST_F(IfElseIfParsingTest, NestedIfInElseIf) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithReturnStatements) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             if (x < 0) {
                 return -1;
             } else {
@@ -192,11 +192,11 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithReturnStatements) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithFunctionCalls) {
     std::string code = R"(
-        func helper(int64 x) -> int64 {
+        func helper(x: int64) -> int64 {
             return x * 2;
         }
 
-        func test(int64 x) -> void {
+        func test(x: int64) -> void {
             if (x < 10) {
                 var result = helper(x);
             } else {

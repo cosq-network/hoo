@@ -221,7 +221,7 @@ TEST_F(BasicCodeGenTest, VerifyGeneratedIRFormat) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateByteFunction) {
-    std::string code = "func process(byte data) -> byte { return data; }";
+    std::string code = "func process(data: byte) -> byte { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -239,7 +239,7 @@ TEST_F(BasicCodeGenTest, GenerateByteFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
     std::string code = R"(
-        func calculate(byte a, byte b) -> byte {
+        func calculate(a: byte, b: byte) -> byte {
             var result = a + b;
             return result;
         }
@@ -264,7 +264,7 @@ TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateFloatFunction) {
-    std::string code = "func process(float data) -> float { return data; }";
+    std::string code = "func process(data: float) -> float { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -282,7 +282,7 @@ TEST_F(BasicCodeGenTest, GenerateFloatFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateFloatArithmetic) {
     std::string code = R"(
-        func calculate(float a, float b) -> float {
+        func calculate(a: float, b: float) -> float {
             var sum = a + b;
             var product = a * b;
             return sum;
@@ -309,7 +309,7 @@ TEST_F(BasicCodeGenTest, GenerateFloatArithmetic) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateBoolFunction) {
-    std::string code = "func process(bool flag) -> bool { return flag; }";
+    std::string code = "func process(flag: bool) -> bool { return flag; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -327,7 +327,7 @@ TEST_F(BasicCodeGenTest, GenerateBoolFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateBoolLogic) {
     std::string code = R"(
-        func logic(bool a, bool b) -> bool {
+        func logic(a: bool, b: bool) -> bool {
             var and_result = a && b;
             var or_result = a || b;
             var not_result = !a;
@@ -354,7 +354,7 @@ TEST_F(BasicCodeGenTest, GenerateBoolLogic) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateCharFunction) {
-    std::string code = "func process(char ch) -> char { return ch; }";
+    std::string code = "func process(ch: char) -> char { return ch; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -372,7 +372,7 @@ TEST_F(BasicCodeGenTest, GenerateCharFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateCharComparison) {
     std::string code = R"(
-        func compare(char a, char b) -> bool {
+        func compare(a: char, b: char) -> bool {
             var equal = a == b;
             var less = a < b;
             return equal;
@@ -399,7 +399,7 @@ TEST_F(BasicCodeGenTest, GenerateCharComparison) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateArrayFunction) {
-    std::string code = "func process(int64 data) -> void { var arr = [1, 2, 3, 4, 5]; return; }";
+    std::string code = "func process(data: int64) -> void { var arr = [1, 2, 3, 4, 5]; return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
 

@@ -93,7 +93,7 @@ TEST_F(HooCompilerTest, CompileComplexFunction) {
 }
 
 TEST_F(HooCompilerTest, CompileWithParameters) {
-    std::string code = "func add(int64 a, int64 b) -> int64 { return a + b; }";
+    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
     auto module = compiler->compile("params", code);
     
     ASSERT_NE(module, nullptr);
@@ -122,7 +122,7 @@ TEST_F(HooCompilerTest, MultipleCompilations) {
 }
 
 TEST_F(HooCompilerTest, CompileByteFunction) {
-    std::string code = "func process(byte data) -> byte { return data; }";
+    std::string code = "func process(data: byte) -> byte { return data; }";
     auto module = compiler->compile("byte_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -144,7 +144,7 @@ TEST_F(HooCompilerTest, CompileByteFunction) {
 
 TEST_F(HooCompilerTest, CompileByteArithmetic) {
     std::string code = R"(
-        func calculate(byte a, byte b) -> byte {
+        func calculate(a: byte, b: byte) -> byte {
             var sum = a + b;
             var diff = a - b;
             return sum;
@@ -180,7 +180,7 @@ TEST_F(HooCompilerTest, ErrorAfterSuccessfulCompilation) {
 }
 
 TEST_F(HooCompilerTest, CompileFloatFunction) {
-    std::string code = "func process(float data) -> float { return data; }";
+    std::string code = "func process(data: float) -> float { return data; }";
     auto module = compiler->compile("float_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -202,7 +202,7 @@ TEST_F(HooCompilerTest, CompileFloatFunction) {
 
 TEST_F(HooCompilerTest, CompileFloatArithmetic) {
     std::string code = R"(
-        func calculate(float a, float b) -> float {
+        func calculate(a: float, b: float) -> float {
             var sum = a + b;
             var diff = a - b;
             var product = a * b;
@@ -225,7 +225,7 @@ TEST_F(HooCompilerTest, CompileFloatArithmetic) {
 }
 
 TEST_F(HooCompilerTest, CompileBoolFunction) {
-    std::string code = "func process(bool flag) -> bool { return flag; }";
+    std::string code = "func process(flag: bool) -> bool { return flag; }";
     auto module = compiler->compile("bool_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -247,7 +247,7 @@ TEST_F(HooCompilerTest, CompileBoolFunction) {
 
 TEST_F(HooCompilerTest, CompileBoolLogic) {
     std::string code = R"(
-        func logic(bool a, bool b) -> bool {
+        func logic(a: bool, b: bool) -> bool {
             var and_result = a && b;
             var or_result = a || b;
             var not_result = !a;
@@ -273,7 +273,7 @@ TEST_F(HooCompilerTest, CompileBoolLogic) {
 }
 
 TEST_F(HooCompilerTest, CompileCharFunction) {
-    std::string code = "func process(char ch) -> char { return ch; }";
+    std::string code = "func process(ch: char) -> char { return ch; }";
     auto module = compiler->compile("char_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -321,7 +321,7 @@ TEST_F(HooCompilerTest, CompileCharLiterals) {
 }
 
 TEST_F(HooCompilerTest, CompileArrayFunction) {
-    std::string code = "func process(int64 data) -> void { var arr: int64[5]; return; }";
+    std::string code = "func process(data: int64) -> void { var arr: int64[5]; return; }";
     auto module = compiler->compile("array_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -330,7 +330,7 @@ TEST_F(HooCompilerTest, CompileArrayFunction) {
     Function* func = module->getFunction("process");
     ASSERT_NE(func, nullptr);
     
-    // Verify basic function signature (int64 parameter, not array since array parameters aren't fully supported)
+    // Verify basic function signature (parameter: int64, not array since array parameters aren't fully supported)
     EXPECT_TRUE(func->getReturnType()->isVoidTy());
     EXPECT_EQ(func->arg_size(), 1);
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(64));

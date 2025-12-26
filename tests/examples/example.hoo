@@ -6,7 +6,7 @@ func calculate() -> void {
     42;
 }
 
-func addNumbers(int64 a, int64 b) -> int64 {
+func addNumbers(int64 a, b: int64) -> int64 {
     var sum = 42;
     return sum;
 }

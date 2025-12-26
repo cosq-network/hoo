@@ -97,7 +97,7 @@ TEST_F(NullableTypeParsingTest, SimpleNullableInt64Type) {
 // Test 2: Nullable type in function parameter
 TEST_F(NullableTypeParsingTest, NullableTypeInFunctionParameter) {
     std::string code = R"(
-        func process(int64? value) -> void {
+        func process(value: int64?) -> void {
         }
     )";
 
@@ -140,7 +140,7 @@ TEST_F(NullableTypeParsingTest, NullableTypeInFunctionParameter) {
 // Test 3: Nullable array type in function parameter
 TEST_F(NullableTypeParsingTest, NullableArrayTypeInParameter) {
     std::string code = R"(
-        func processArray(int64[]? items) -> void {
+        func processArray(items: int64[]?) -> void {
         }
     )";
 
@@ -180,7 +180,7 @@ TEST_F(NullableTypeParsingTest, NullableArrayTypeInParameter) {
 // Test 4: Multiple nullable parameters
 TEST_F(NullableTypeParsingTest, MultipleNullableParameters) {
     std::string code = R"(
-        func multiParam(int64? a, string? b, double? c) -> void {
+        func multiParam(a: int64?, b: string?, c: double?) -> void {
         }
     )";
 
@@ -208,7 +208,7 @@ TEST_F(NullableTypeParsingTest, MultipleNullableParameters) {
 // Test 5: Non-nullable type (should work as before)
 TEST_F(NullableTypeParsingTest, NonNullableTypeInParameter) {
     std::string code = R"(
-        func nonNull(int64 value) -> void {
+        func nonNull(value: int64) -> void {
         }
     )";
 
@@ -245,7 +245,7 @@ TEST_F(NullableTypeParsingTest, NonNullableTypeInParameter) {
 // Test 6: Union type with nullable and non-nullable - int64 | double?
 TEST_F(NullableTypeParsingTest, UnionWithMixedNullability) {
     std::string code = R"(
-        func unionType(int64 | double? value) -> void {
+        func unionType(value: int64 | double?) -> void {
         }
     )";
 
@@ -283,7 +283,7 @@ TEST_F(NullableTypeParsingTest, UnionWithMixedNullability) {
 // Test 7: Nullable array with multiple dimensions - int64[][]?
 TEST_F(NullableTypeParsingTest, NullableMultiDimensionalArray) {
     std::string code = R"(
-        func matrix(int64[][]? data) -> void {
+        func matrix(data: int64[][]?) -> void {
         }
     )";
 
@@ -322,7 +322,7 @@ TEST_F(NullableTypeParsingTest, NullableMultiDimensionalArray) {
 // Test 8: Nullable string type
 TEST_F(NullableTypeParsingTest, NullableStringType) {
     std::string code = R"(
-        func greet(string? message) -> void {
+        func greet(message: string?) -> void {
         }
     )";
 
@@ -349,7 +349,7 @@ TEST_F(NullableTypeParsingTest, NullableStringType) {
 // Test 9: Nullable boolean type
 TEST_F(NullableTypeParsingTest, NullableBoolType) {
     std::string code = R"(
-        func validateFlag(bool? flag) -> void {
+        func validateFlag(flag: bool?) -> void {
         }
     )";
 
@@ -372,7 +372,7 @@ TEST_F(NullableTypeParsingTest, NullableBoolType) {
 // Test 10: Nullable char type
 TEST_F(NullableTypeParsingTest, NullableCharType) {
     std::string code = R"(
-        func processChar(char? ch) -> void {
+        func processChar(ch: char?) -> void {
         }
     )";
 
@@ -419,7 +419,7 @@ TEST_F(NullableTypeParsingTest, NullableReturnType) {
 // Test 12: Multiple parameters with mixed nullable and non-nullable
 TEST_F(NullableTypeParsingTest, MixedNullabilityInMultipleParameters) {
     std::string code = R"(
-        func mixed(int64 a, int64? b, string c, string? d) -> void {
+        func mixed(a: int64, b: int64?, c: string, d: string?) -> void {
         }
     )";
 
@@ -448,7 +448,7 @@ TEST_F(NullableTypeParsingTest, MixedNullabilityInMultipleParameters) {
 // Test 13: Nullable float type
 TEST_F(NullableTypeParsingTest, NullableFloatType) {
     std::string code = R"(
-        func floatOp(float? val) -> void {
+        func floatOp(val: float?) -> void {
         }
     )";
 
@@ -472,7 +472,7 @@ TEST_F(NullableTypeParsingTest, NullableFloatType) {
 // Test 14: Nullable double/f64 type
 TEST_F(NullableTypeParsingTest, NullableDoubleType) {
     std::string code = R"(
-        func doubleOp(double? val) -> void {
+        func doubleOp(val: double?) -> void {
         }
     )";
 
@@ -495,7 +495,7 @@ TEST_F(NullableTypeParsingTest, NullableDoubleType) {
 // Test 15: Complex nullable array in union type
 TEST_F(NullableTypeParsingTest, ComplexNullableUnionType) {
     std::string code = R"(
-        func complex(int64 | string? | bool[] data) -> void {
+        func complex(data: int64 | string? | bool[]?) -> void {
         }
     )";
 

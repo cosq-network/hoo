@@ -75,7 +75,7 @@ TEST_F(FunctionCallCodeGenTest, SimpleFunctionCall) {
 
 TEST_F(FunctionCallCodeGenTest, FunctionCallWithParameters) {
     std::string code = R"(
-        func add(int64 a, int64 b) -> int64 {
+        func add(a: int64, b: int64) -> int64 {
             return a + b;
         }
 
@@ -105,7 +105,7 @@ TEST_F(FunctionCallCodeGenTest, FunctionCallWithParameters) {
 
 TEST_F(FunctionCallCodeGenTest, FunctionCallWithMultipleParameters) {
     std::string code = R"(
-        func multiply(int64 x, int64 y, int64 z) -> int64 {
+        func multiply(x: int64, y: int64, z: int64) -> int64 {
             return x * y * z;
         }
 
@@ -130,7 +130,7 @@ TEST_F(FunctionCallCodeGenTest, FunctionCallWithMultipleParameters) {
 
 TEST_F(FunctionCallCodeGenTest, NestedFunctionCalls) {
     std::string code = R"(
-        func add(int64 a, int64 b) -> int64 {
+        func add(a: int64, b: int64) -> int64 {
             return a + b;
         }
 
@@ -161,7 +161,7 @@ TEST_F(FunctionCallCodeGenTest, NestedFunctionCalls) {
 
 TEST_F(FunctionCallCodeGenTest, RecursiveFunctionCall) {
     std::string code = R"(
-        func factorial(int64 n) -> int64 {
+        func factorial(n: int64) -> int64 {
             if n <= 1 {
                 return 1;
             } else {

@@ -192,7 +192,7 @@ TEST_F(NullableCodeGenTest, MixedNullAndNonNullValues) {
 // Test 8: Nullable parameter in function
 TEST_F(NullableCodeGenTest, NullableParameterFunction) {
     std::string code = R"(
-        func process(int64? value) -> int64 {
+        func process(value: int64?) -> int64 {
             return 0;
         }
     )";
@@ -213,7 +213,7 @@ TEST_F(NullableCodeGenTest, NullableParameterFunction) {
 // Test 9: Multiple nullable parameters
 TEST_F(NullableCodeGenTest, MultipleNullableParameters) {
     std::string code = R"(
-        func compare(int64? a, double? b, bool? c) -> int64 {
+        func compare(a: int64?, b: double?, c: bool?) -> int64 {
             return 0;
         }
     )";
@@ -234,7 +234,7 @@ TEST_F(NullableCodeGenTest, MultipleNullableParameters) {
 // Test 10: Mixed nullable and non-nullable parameters
 TEST_F(NullableCodeGenTest, MixedNullableAndNonNullableParameters) {
     std::string code = R"(
-        func process(int64 required, int64? optional) -> int64 {
+        func process(required: int64, optional: int64?) -> int64 {
             return 0;
         }
     )";
@@ -410,7 +410,7 @@ TEST_F(NullableCodeGenTest, NullLiteralInMultipleContexts) {
 // Test 18: Call function with nullable parameter
 TEST_F(NullableCodeGenTest, CallFunctionWithNullableParameter) {
     std::string code = R"(
-        func process(int64? value) -> int64 {
+        func process(value: int64?) -> int64 {
             return 10;
         }
 
@@ -453,7 +453,7 @@ TEST_F(NullableCodeGenTest, NullableArrayVariableDeclaration) {
 // Test 20: Comprehensive nullable type scenario
 TEST_F(NullableCodeGenTest, ComprehensiveNullableScenario) {
     std::string code = R"(
-        func getValue(int64? x, double? y) -> int64 {
+        func getValue(x: int64?, y: double?) -> int64 {
             return 99;
         }
 

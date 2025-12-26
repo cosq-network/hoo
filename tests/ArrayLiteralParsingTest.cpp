@@ -475,7 +475,7 @@ TEST_F(ArrayLiteralParsingTest, CharArrayLiteral) {
 // Test 11: Array type in function parameter (slice syntax)
 TEST_F(ArrayLiteralParsingTest, ArrayTypeInFunctionParameter) {
     std::string code = R"(
-        func process(int64[] arr) -> void {
+        func process(arr: int64[]) -> void {
             return;
         }
     )";

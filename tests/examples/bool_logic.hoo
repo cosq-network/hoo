@@ -1,4 +1,4 @@
-func bool_operations(bool a, bool b) -> bool {
+func bool_operations(bool a, b: bool) -> bool {
     var and_result = a && b;
     var or_result = a || b;
     var not_a = !a;

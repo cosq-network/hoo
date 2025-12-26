@@ -8,7 +8,12 @@
       "Bash(cmake:*)",
       "Bash(cat:*)",
       "Bash(./build/RelWithDebInfo/hoo_tests.exe:*)",
-      "Bash(./build/hoo_tests:*)"
+      "Bash(./build/hoo_tests:*)",
+      "Bash(find:*)",
+      "Bash(for:*)",
+      "Bash(do)",
+      "Bash(perl -pi -e:*)",
+      "Bash(done)"
     ]
   }
 }

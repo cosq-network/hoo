@@ -1,4 +1,4 @@
-func float_operations(float a, float b) -> float {
+func float_operations(float a, b: float) -> float {
     var sum = a + b;
     var diff = a - b;
     var product = a * b;

@@ -13,7 +13,7 @@ func char_comparison() -> bool {
     return equal && not_equal;
 }
 
-func classify_char(char ch) -> int {
+func classify_char(ch: char) -> int {
     if (ch >= 'A' && ch <= 'Z') {
         return 1; // uppercase
     } else if (ch >= 'a' && ch <= 'z') {

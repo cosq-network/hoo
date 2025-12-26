@@ -102,7 +102,7 @@ TEST_F(IfElseIfCodeGenTest, SimpleIfElseStatement) {
 // If-else-if chain (nested if in else)
 TEST_F(IfElseIfCodeGenTest, IfElseIfChain) {
     std::string code = R"(
-        func test(int64 x) -> void {
+        func test(x: int64) -> void {
             if (x == 1) {
                 return;
             } else {
@@ -134,7 +134,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfChain) {
 // If-else-if with else clause
 TEST_F(IfElseIfCodeGenTest, IfElseIfElseChain) {
     std::string code = R"(
-        func test(int64 x) -> void {
+        func test(x: int64) -> void {
             if (x == 1) {
                 return;
             } else {
@@ -166,7 +166,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfElseChain) {
 // Multiple else-if clauses
 TEST_F(IfElseIfCodeGenTest, MultipleElseIfClauses) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             if (x < 0) {
                 return -1;
             } else {
@@ -203,7 +203,7 @@ TEST_F(IfElseIfCodeGenTest, MultipleElseIfClauses) {
 // If-else-if with variable declarations and assignments
 TEST_F(IfElseIfCodeGenTest, IfElseIfWithVariables) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             var result = 0;
             if (x < 0) {
                 result = -1;
@@ -238,7 +238,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfWithVariables) {
 // If-else-if with complex conditions (logical AND)
 TEST_F(IfElseIfCodeGenTest, IfElseIfComplexConditionAnd) {
     std::string code = R"(
-        func test(int64 x, int64 y) -> int64 {
+        func test(x: int64, y: int64) -> int64 {
             if (x > 0 && y > 0) {
                 return 1;
             } else {
@@ -271,7 +271,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfComplexConditionAnd) {
 // If-else-if with complex conditions (logical OR)
 TEST_F(IfElseIfCodeGenTest, IfElseIfComplexConditionOr) {
     std::string code = R"(
-        func test(int64 x, int64 y) -> int64 {
+        func test(x: int64, y: int64) -> int64 {
             if (x == 10 || y == 10) {
                 return 10;
             } else {
@@ -304,7 +304,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfComplexConditionOr) {
 // If-else-if with negated conditions
 TEST_F(IfElseIfCodeGenTest, IfElseIfNegatedCondition) {
     std::string code = R"(
-        func test(bool flag) -> int64 {
+        func test(flag: bool) -> int64 {
             if (!flag) {
                 return 0;
             } else {
@@ -337,7 +337,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfNegatedCondition) {
 // If-else-if with float comparisons
 TEST_F(IfElseIfCodeGenTest, IfElseIfFloatComparison) {
     std::string code = R"(
-        func test(double temp) -> int64 {
+        func test(temp: double) -> int64 {
             if (temp < 0.0) {
                 return -1;
             } else {
@@ -374,7 +374,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfFloatComparison) {
 // If-else-if with char comparisons
 TEST_F(IfElseIfCodeGenTest, IfElseIfCharComparison) {
     std::string code = R"(
-        func test(char ch) -> int64 {
+        func test(ch: char) -> int64 {
             if (ch == 'a') {
                 return 1;
             } else {
@@ -412,7 +412,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfCharComparison) {
 // If-else-if with nested if statements
 TEST_F(IfElseIfCodeGenTest, IfElseIfWithNestedIf) {
     std::string code = R"(
-        func test(int64 x, int64 y) -> int64 {
+        func test(x: int64, y: int64) -> int64 {
             if (x < 0) {
                 return -1;
             } else {
@@ -449,7 +449,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfWithNestedIf) {
 // If-else-if with arithmetic in conditions
 TEST_F(IfElseIfCodeGenTest, IfElseIfArithmeticCondition) {
     std::string code = R"(
-        func test(int64 x, int64 y) -> int64 {
+        func test(x: int64, y: int64) -> int64 {
             if (x + y > 20) {
                 return 1;
             } else {
@@ -486,7 +486,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfArithmeticCondition) {
 // If-else-if with multiple statements in blocks
 TEST_F(IfElseIfCodeGenTest, IfElseIfMultipleStatements) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             var a = 10;
             var b = 20;
             if (x < 5) {
@@ -527,7 +527,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfMultipleStatements) {
 // Deep else-if chain
 TEST_F(IfElseIfCodeGenTest, DeepElseIfChain) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             if (x == 1) {
                 return 1;
             } else {
@@ -571,11 +571,11 @@ TEST_F(IfElseIfCodeGenTest, DeepElseIfChain) {
 // If-else-if with function calls
 TEST_F(IfElseIfCodeGenTest, IfElseIfWithFunctionCalls) {
     std::string code = R"(
-        func helper(int64 x) -> int64 {
+        func helper(x: int64) -> int64 {
             return x * 2;
         }
 
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             if (x < 10) {
                 return helper(x);
             } else {
@@ -610,7 +610,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfWithFunctionCalls) {
 // If-else-if with array access
 TEST_F(IfElseIfCodeGenTest, IfElseIfWithArrayAccess) {
     std::string code = R"(
-        func test(int64 index) -> int64 {
+        func test(index: int64) -> int64 {
             var arr = [10, 20, 30, 40, 50];
             if (index < 2) {
                 return arr[0];
@@ -643,7 +643,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfWithArrayAccess) {
 // If-else-if with all primitive types
 TEST_F(IfElseIfCodeGenTest, IfElseIfMixedTypes) {
     std::string code = R"(
-        func test(int64 intVal, double floatVal, bool boolVal) -> int64 {
+        func test(intVal: int64, floatVal: double, boolVal: bool) -> int64 {
             if (intVal > 0) {
                 return 1;
             } else {
@@ -680,7 +680,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfMixedTypes) {
 // If-else-if followed by other statements
 TEST_F(IfElseIfCodeGenTest, IfElseIfFollowedByStatements) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             var result = 0;
             if (x < 3) {
                 result = 1;
@@ -715,7 +715,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfFollowedByStatements) {
 // Multiple if-else-if chains in same function
 TEST_F(IfElseIfCodeGenTest, MultipleIfElseIfChains) {
     std::string code = R"(
-        func test(int64 x, int64 y) -> int64 {
+        func test(x: int64, y: int64) -> int64 {
             var result = 0;
             if (x < 3) {
                 result = 1;
@@ -759,7 +759,7 @@ TEST_F(IfElseIfCodeGenTest, MultipleIfElseIfChains) {
 // If-else-if with int64 type (typical use case)
 TEST_F(IfElseIfCodeGenTest, IfElseIfInt64Type) {
     std::string code = R"(
-        func test(int64 value) -> int64 {
+        func test(value: int64) -> int64 {
             if (value < 10) {
                 return 1;
             } else {
@@ -797,7 +797,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfInt64Type) {
 // If-else-if with complex nested structures
 TEST_F(IfElseIfCodeGenTest, IfElseIfComplexNesting) {
     std::string code = R"(
-        func test(int64 x, int64 y) -> int64 {
+        func test(x: int64, y: int64) -> int64 {
             if (x > 0) {
                 if (y > 0) {
                     return 1;
@@ -841,7 +841,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfComplexNesting) {
 // If-else-if with boolean variables as conditions
 TEST_F(IfElseIfCodeGenTest, IfElseIfBooleanVariable) {
     std::string code = R"(
-        func test(bool flag1, bool flag2) -> int64 {
+        func test(flag1: bool, flag2: bool) -> int64 {
             if (flag1 && flag2) {
                 return 1;
             } else {
@@ -877,7 +877,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfBooleanVariable) {
 // If-else-if with comparison chains
 TEST_F(IfElseIfCodeGenTest, IfElseIfComparisonChain) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             if (x < 10) {
                 return 1;
             } else {
@@ -913,7 +913,7 @@ TEST_F(IfElseIfCodeGenTest, IfElseIfComparisonChain) {
 // If-else-if IR verification
 TEST_F(IfElseIfCodeGenTest, VerifyIfElseIfIRStructure) {
     std::string code = R"(
-        func test(int64 x) -> int64 {
+        func test(x: int64) -> int64 {
             if (x < 0) {
                 return -1;
             } else {

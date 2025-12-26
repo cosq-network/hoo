@@ -160,7 +160,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithEmptyConstructor) {
 // Test 5: Class with constructor with parameters
 TEST_F(ClassDeclarationParsingTest, ClassWithConstructorParameters) {
     std::string code = R"(
-        class Point(int64 x, int64 y) {
+        class Point(x: int64, y: int64) {
         }
     )";
 
@@ -252,7 +252,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithBaseClassAndInterfaces) {
 TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
     std::string code = R"(
         class Calculator {
-            func add(int64 a, int64 b) -> int64 {
+            func add(a: int64, b: int64) -> int64 {
                 return a + b;
             }
         }
@@ -404,9 +404,9 @@ TEST_F(ClassDeclarationParsingTest, InterfaceWithSingleMethod) {
 TEST_F(ClassDeclarationParsingTest, InterfaceWithMultipleMethods) {
     std::string code = R"(
         interface Repository {
-            func save(int64 data) -> bool;
-            func load(int64 id) -> int64;
-            func delete(int64 id) -> void;
+            func save(data: int64) -> bool;
+            func load(id: int64) -> int64;
+            func delete(id: int64) -> void;
         }
     )";
 
@@ -497,11 +497,11 @@ TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
 // Test 17: Complex class with all features
 TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     std::string code = R"(
-        immutable class ComplexClass(int64 id, int64 name) extends BaseClass implements Interface1, Interface2 {
+        immutable class ComplexClass(id: int64, name: int64) extends BaseClass implements Interface1, Interface2 {
             func method1() -> void {
             }
             event onEvent1;
-            func method2(int64 param) -> int64 {
+            func method2(param: int64) -> int64 {
                 return param;
             }
         }

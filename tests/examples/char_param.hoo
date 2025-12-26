@@ -1,8 +1,8 @@
-func process(char ch) -> char {
+func process(ch: char) -> char {
     return ch;
 }
 
-func transform(char input) -> char {
+func transform(input: char) -> char {
     if (input == 'a') {
         return 'A';
     } else {

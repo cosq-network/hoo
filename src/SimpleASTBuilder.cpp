@@ -91,6 +91,7 @@ std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
 }
 
 std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::ParameterContext* ctx) {
+    // Grammar: IDENTIFIER COLON type
     std::string name = ctx->IDENTIFIER()->getText();
     auto type = buildType(ctx->type());
     return std::make_unique<Parameter>(std::move(type), name);

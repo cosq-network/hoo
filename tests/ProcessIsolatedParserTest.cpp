@@ -45,7 +45,7 @@ TEST_F(ProcessIsolatedParserTest, ParseEmptySource) {
 }
 
 TEST_F(ProcessIsolatedParserTest, ParseFunctionWithParameters) {
-    std::string code = "func add(int64 a, int64 b) -> int64 { return a + b; }";
+    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
     auto* parseTree = parser->parseForAST(code);
     
     ASSERT_NE(parseTree, nullptr);

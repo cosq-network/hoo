@@ -267,7 +267,7 @@ while condition {
 ## 9. Functions
 
 ``` hoo
-func add(int64 a, int64 b) -> int64 {
+func add(a: int64, b: int64) -> int64 {
     return a + b;
 }
 ```
@@ -476,7 +476,7 @@ Constructor injection only. Compiler manages dependency resolution.
 
 ``` hoo
 strategy interface Payment {
-    func pay(double amount);
+    func pay(amount: double);
 }
 ```
 

@@ -405,7 +405,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithArrayAccess) {
 // Function calls in while loop
 TEST_F(WhileLoopParsingTest, WhileLoopWithFunctionCall) {
     std::string code = R"(
-        func helper(int64 x) -> int64 {
+        func helper(x: int64) -> int64 {
             return x * 2;
         }
 
@@ -455,7 +455,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithSingleStatement) {
 // Parameter-based conditions
 TEST_F(WhileLoopParsingTest, WhileLoopWithParameterCondition) {
     std::string code = R"(
-        func test(int64 limit) -> void {
+        func test(limit: int64) -> void {
             var x = 0;
             while (x < limit) {
                 x = x + 1;

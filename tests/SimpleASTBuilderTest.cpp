@@ -75,7 +75,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleFunctionDeclarations) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithParameters) {
-    std::string code = "func add(int64 a, int64 b) -> int64 { return a + b; }";
+    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -167,7 +167,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithWhileLoop) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteParameter) {
-    std::string code = "func process(byte data) -> byte { return data; }";
+    std::string code = "func process(data: byte) -> byte { return data; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -204,7 +204,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteArithmetic) {
     std::string code = R"(
-        func calculate(byte a, byte b) -> byte {
+        func calculate(a: byte, b: byte) -> byte {
             var result = a + b;
             return result;
         }
@@ -223,7 +223,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteArithmetic) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatParameter) {
-    std::string code = "func process(float data) -> float { return data; }";
+    std::string code = "func process(data: float) -> float { return data; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -260,7 +260,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatArithmetic) {
     std::string code = R"(
-        func calculate(float a, float b) -> float {
+        func calculate(a: float, b: float) -> float {
             var result = a + b * 2.0;
             return result;
         }
@@ -279,7 +279,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatArithmetic) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolParameter) {
-    std::string code = "func process(bool flag) -> bool { return flag; }";
+    std::string code = "func process(flag: bool) -> bool { return flag; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -316,7 +316,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolLogic) {
     std::string code = R"(
-        func logic(bool a, bool b) -> bool {
+        func logic(a: bool, b: bool) -> bool {
             var and_result = a && b;
             var or_result = a || b;
             var not_result = !a;
@@ -337,7 +337,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolLogic) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharParameter) {
-    std::string code = "func process(char ch) -> char { return ch; }";
+    std::string code = "func process(ch: char) -> char { return ch; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -374,7 +374,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharComparison) {
     std::string code = R"(
-        func compare(char a, char b) -> bool {
+        func compare(a: char, b: char) -> bool {
             var equal = a == b;
             var less = a < b;
             return equal;
@@ -395,7 +395,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharComparison) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayParameter) {
     // Note: Array parameters may need different syntax, test with simple array variable instead
-    std::string code = "func process(int64 data) -> void { var arr: int64[5]; return; }";
+    std::string code = "func process(data: int64) -> void { var arr: int64[5]; return; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
