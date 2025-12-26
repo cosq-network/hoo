@@ -156,17 +156,27 @@ Native Execution
 
 **Primitive Types**
 All primitive types are fully implemented with LLVM IR generation:
-- `byte` → i8
+- `byte` / `uint8` → i8
 - `int64` → i64
-- `double` → double
+- `float` → f32
+- `double` / `f64` → double
 - `bool` → i1
 - `char` → i8
+- `void` → no return value
 - Array types with multi-dimensional support
 
+**Partially Implemented**
+- `string` type (parsing complete, code generation pending)
+- Classes and interfaces (grammar complete, AST building partial)
+- Design pattern keywords (singleton, immutable, factory, observable, service, strategy, actor - parsed, code generation not implemented)
+
 **Not Yet Implemented**
-- `string` type (pending LLVM string support)
-- Classes, interfaces, and member access
-- Import/module system
+- Type casting with `as` keyword (reserved)
+- Object instantiation with `new` keyword (parsed, not implemented)
+- Class inheritance with `extends` (parsed, not implemented)
+- Interface implementation (parsed, not implemented)
+- Event system (parsed, not implemented)
+- Module resolution (import/export parsing works, resolution not implemented)
 - Alternative code generator backends (bytecode, C, JavaScript, etc.)
 
 ### Code Generator Architecture
@@ -314,34 +324,52 @@ func main() -> void {
 
 ### Current Implementation Status
 
-**✅ Fully Working:**
-- All primitive types and literals
-- Variable declarations with type inference
+**✅ Fully Working (v0.2):**
+- All primitive types: `byte`, `uint8`, `int64`, `float`, `double`, `f64`, `bool`, `char`, `void`
+- Literals: integer, floating-point, boolean, character, string literal, array literals
+- Variable declarations with type inference and explicit type annotations
 - Array literals with type inference (`[1, 2, 3]`)
 - Multi-dimensional array literals (`[[1, 2], [3, 4]]`)
 - Array slice types for function parameters (`int64[]`)
 - Array element access (`arr[index]`)
-- All arithmetic, comparison, logical operators
+- Type system: union types (`T | U`), optional types (`T?`), array types (`T[]`)
+- All arithmetic operators: `+`, `-`, `*`, `/`, `%`
+- All comparison operators: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- All logical operators: `&&`, `||`, `!`
 - Assignments and compound assignments
-- If/else statements
-- While loops
+- If/else statements with proper control flow
+- While loops with break/continue support
 - For-range loops (`for i in 0..10`)
 - For-in loops (`for item in collection`)
 - Function declarations with parameters and return types
 - Return statements
 - Expression statements
-- Blocks with scoping
+- Blocks with proper scoping
+- Scope statements (`scope { ... }`) for deterministic resource management
+- Unary operators: negation (`-`), logical NOT (`!`)
+- Postfix operators: array indexing, function calls, member access
 
 **✅ Function Calls:**
 - Hooc-to-hooc function calls fully working
 - Argument passing and return values
 - External C function calls (e.g., `printf`)
 
+**⚠️ Parsed But Code Generation Incomplete:**
+- String type (parsing works, LLVM generation pending)
+- Class declarations (grammar and basic parsing work)
+- Interface declarations (grammar parsed)
+- Design pattern modifiers (singleton, immutable, factory, observable, service, strategy, actor)
+- Event system (`event` keyword)
+- Object instantiation (`new` keyword)
+- Type casting (`as` keyword)
+
 **❌ Not Implemented:**
-- String type and operations
-- Classes and interfaces
+- String type operations and LLVM generation
+- Classes and object instantiation
+- Inheritance and polymorphism
+- Interface implementation
 - Advanced function features (pointers, callbacks, method calls)
-- Import/module system
+- Module system and import resolution
 - Standard library
 
 **🚫 Removed (v0.2):**

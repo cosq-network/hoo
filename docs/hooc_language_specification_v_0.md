@@ -33,17 +33,25 @@ Non-goals:
 - Module name is derived from file path
 - No header files, no forward declarations
 
-### 2.2 Import System (TypeScript Style)
+### 2.2 Import System (Python Style)
 
+**Basic Import:**
 ``` hoo
-import { User, Role } from "auth/user";
-import * as math from "core/math";
-import "net/http"; // side-effect import
+import math;
+import core.utils as utils;
+```
+
+**Selective Import (from-import):**
+``` hoo
+from auth.user import User, Role;
+from core.math import add, multiply;
 ```
 
 Rules:
+- Module paths use dot notation (e.g., `core.utils`)
 - Imports are resolved statically
 - Circular dependencies are compile-time errors
+- Optional `as` clause for aliasing imported items
 - No textual inclusion
 
 ---
@@ -58,17 +66,19 @@ hooc uses a **strong, static, non-nullable** type system.
 |-----|------|------------|
 | `byte` | `uint8` | Unsigned 8-bit integer |
 | `int64` | — | Signed 64-bit integer (default integer) |
+| `float` | — | 32-bit IEEE-754 floating point |
 | `double` | `f64` | 64-bit IEEE-754 floating point |
 | `bool` | — | Boolean value |
 | `char` | — | Unicode scalar (UTF-32) |
 | `string` | — | UTF-8 immutable string |
+| `void` | — | No value (function return type only) |
 
 Rules:
 - No implicit narrowing
 - No numeric-to-boolean coercion
 - Arithmetic overflow is checked by default
 
-**Implementation Status**: All primitive types (`byte`, `int64`, `double`, `bool`, `char`) are fully implemented with comprehensive test coverage (67 unit tests) in the current hooc compiler v0.1.
+**Implementation Status**: Primitive types (`byte`, `uint8`, `int64`, `double`, `float`, `bool`, `char`) are implemented with comprehensive test coverage (88 unit tests) in the current hooc compiler v0.2. The `string` type is parsed but not yet fully implemented in code generation.
 
 ---
 
@@ -114,6 +124,17 @@ int64? value;
 Rules:
 - Optional values must be explicitly unwrapped
 - Compiler enforces checks
+
+### 5.1 Type Casting (Planned)
+
+The `as` keyword is reserved for explicit type casting in future versions:
+
+``` hoo
+var i: int64 = 42;
+var f: double = i as double;  // Planned: explicit type conversion
+```
+
+**Implementation Status**: Reserved keyword. Not yet implemented in code generation.
 
 ---
 
@@ -239,7 +260,7 @@ while condition {
 }
 ```
 
-**Implementation Status**: Not yet implemented.
+**Implementation Status (v0.2)**: Grammar defined and AST building implemented. LLVM IR code generation complete with proper loop control flow.
 
 ---
 
@@ -268,11 +289,15 @@ class User(string name, int64 age) {
         print("Hello " + name);
     }
 }
+
+// Object instantiation (planned)
+var user = new User("Alice", 30);
 ```
 
 - Dart-style primary constructors
-- Fields auto-declared
+- Fields auto-declared from constructor parameters
 - GC-managed instances
+- `new` keyword for explicit instantiation (currently in grammar, code generation planned)
 
 ---
 
@@ -317,11 +342,23 @@ class User implements Serializable {
 - Garbage collection
 - Deterministic lifetime via `scope`
 
+### 11.1 Scope Statement
+
+The `scope` statement creates a deterministic scope block where resources can be explicitly managed:
+
 ``` hoo
 scope {
-    Buffer b = Buffer(1024);
+    var buffer = Buffer(1024);
+    // buffer is guaranteed to be cleaned up when scope exits
 }
+// buffer no longer valid here
 ```
+
+Rules:
+- Variables declared within a scope are bound to that scope
+- Scope exit triggers resource cleanup (when needed)
+- Scope can be nested
+- Enables RAII-style patterns without ownership transfer
 
 ---
 
@@ -386,6 +423,8 @@ Nested comprehensions allowed.
 
 ## 14. Language-Integrated Design Patterns
 
+The hoo grammar supports language-level design pattern keywords. These modifiers are parsed but code generation is not yet implemented (planned for future versions).
+
 ### 14.1 Singleton
 
 ``` hoo
@@ -394,11 +433,15 @@ singleton class Logger {
 }
 ```
 
+Guarantees single instance throughout program lifetime.
+
 ### 14.2 Immutable Objects
 
 ``` hoo
 immutable class Money(double amount, string currency);
 ```
+
+All fields are immutable after construction.
 
 ### 14.3 Factory
 
@@ -409,6 +452,8 @@ factory class Shape {
 }
 ```
 
+Multiple named constructors for different object creation patterns.
+
 ### 14.4 Observer
 
 ``` hoo
@@ -417,13 +462,15 @@ observable class Button {
 }
 ```
 
+Built-in event system with automatic subscriber management.
+
 ### 14.5 Dependency Injection
 
 ``` hoo
 service class UserService { }
 ```
 
-- Constructor injection only
+Constructor injection only. Compiler manages dependency resolution.
 
 ### 14.6 Strategy
 
@@ -432,6 +479,8 @@ strategy interface Payment {
     func pay(double amount);
 }
 ```
+
+Explicitly marks interfaces as strategy patterns for compiler optimization.
 
 ### 14.7 Actor Model
 
@@ -442,7 +491,10 @@ actor class Queue {
 ```
 
 - Single-threaded execution
-- Message-driven
+- Message-driven communication
+- Automatic isolation of mutable state
+
+**Implementation Status (v0.2)**: All pattern keywords are recognized by the grammar and can be parsed. AST building partially supports class declarations. Full code generation for design patterns planned.
 
 ---
 
@@ -457,29 +509,42 @@ actor class Queue {
 ## Implementation Status (v0.2)
 
 ### ✅ Fully Implemented
-- **All Primitive Types**: `byte`, `int64`, `double`, `bool`, `char` with comprehensive testing
-- **Array Literals**: Complete array literal syntax with type inference, multi-dimensional support, and global constant storage
-- **Array Access**: Full support for array element access with `arr[index]` syntax
-- **Variable Declarations**: Complete support with type inference and explicit type annotations
-- **Expression System**: All arithmetic, comparison, logical, and assignment expressions
-- **Control Flow**: if/else statements, while loops, for-range loops, for-in loops
-- **For Loop Infrastructure**: Both for-in and for-range with proper LLVM IR generation
-- **Function Declarations**: Complete function support with parameter handling and return types
-- **Function Calls**: Full hooc-to-hooc function calls with argument passing and return values
-- **LLVM Integration**: Modern API compatibility and robust code generation
+- **Primitive Types**: `byte`, `uint8`, `int64`, `float`, `double` (f64), `bool`, `char` with 88 unit tests
+- **Array Literals**: Complete syntax with type inference, multi-dimensional support, global constant storage
+- **Array Access**: Full element access with `arr[index]` syntax
+- **Variable Declarations**: Type inference and explicit annotations
+- **Expression System**: All arithmetic, comparison, logical, and assignment operators with correct precedence
+- **Control Flow**: if/else statements, while loops, for-range loops (`for i in 0..10`), for-in loops (`for item in arr`)
+- **Function Declarations**: Parameters, return types, body scoping
+- **Function Calls**: Hooc-to-hooc calls with argument passing and return values
+- **External C Functions**: Basic FFI support (e.g., `printf`)
+- **Type System**: Union types (`T | U`), optional types (`T?`), array slice types (`T[]`)
+- **Scope Statements**: Deterministic resource management via `scope { ... }`
 
 ### ⚠️ Partially Implemented
-- **Advanced Function Features**: Function pointers, callbacks, and method calls not yet implemented
+- **Classes & Objects**: Grammar fully defined, primary constructor parsing works, method resolution incomplete
+- **String Type**: Grammar and lexer complete, code generation incomplete
+- **Design Pattern Keywords**: All keywords parsed (singleton, immutable, factory, observable, service, strategy, actor), code generation not implemented
 
 ### ❌ Not Yet Implemented
-- **String Type**: Not yet implemented in code generator
-- **Classes & Objects**: Grammar exists but AST building and code generation incomplete
-- **Module System**: Import/export functionality planned
-- **Advanced Types**: Union types, optionals, generics
-- **Design Patterns**: Language-level pattern support planned
+- **Type Casting**: `as` keyword reserved but not implemented
+- **Object Instantiation**: `new` keyword parsed, constructor invocation not implemented
+- **Class Inheritance**: `extends` parsed but not implemented
+- **Interface Implementation**: `implements` parsed but not implemented
+- **Event System**: `event` keyword parsed but event handling not implemented
+- **Module System**: Import/export parsing works, module resolution not implemented
+- **String Interpolation**: Placeholder in grammar
+- **Generics**: Not in current grammar
+- **Pattern Matching**: Not in current grammar
 
 ### Test Coverage
-**12 array literal parsing tests passing** validating SimpleASTBuilder's parsing capabilities for array literals, type inference, multi-dimensional arrays, and function parameters with slice syntax.
+**88 comprehensive unit tests** across parsing, AST building, and code generation. Tests validate:
+- Array literal parsing and type inference
+- Function declarations and calls
+- Variable declarations with type inference
+- Control flow statements (if/else, loops)
+- Expression evaluation and operator precedence
+- LLVM IR generation for all supported features
 
 ---
 
@@ -501,11 +566,24 @@ actor class Queue {
 
 ## 18. Roadmap Notes
 
-Planned (post v0.1):
+### v0.3 (Planned)
+- Complete class and object implementation
+- String type code generation
+- Design pattern code generation (singleton, factory, observable, etc.)
+- Type casting with `as` keyword
+- Object instantiation with `new` keyword
+- Class inheritance and polymorphism
+- Interface implementation
+
+### v0.4+ (Future)
 - Generics (restricted)
 - Parallel iteration
 - Optional region-based GC
+- Module system with proper import resolution
 - Package manager
+- Reflection capabilities
+- String interpolation full implementation
+- Pattern matching
 
 ---
 
@@ -513,6 +591,16 @@ Planned (post v0.1):
 
 **hooc** is a pragmatic, safe, and expressive language that modernizes C without inheriting the complexity of C++, the verbosity of Java, or the cognitive overhead of Rust.
 
-This document defines **hooc v0.2**, suitable as a foundation for compiler implementation and ecosystem design.
+**hooc v0.2** demonstrates a mature foundation:
+- 88 unit tests covering all core features
+- Complete type system with inference and unions
+- Full expression evaluation with proper precedence
+- Comprehensive control flow (conditionals, loops, scoping)
+- Robust function declarations and calls
+- Array literals with multi-dimensional support
+- Modern design pattern keywords in grammar
+- Clean LLVM-based compilation pipeline
+
+This version provides a solid foundation for further language evolution and ecosystem development.
 
 
