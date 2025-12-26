@@ -73,8 +73,8 @@ std::string Parameter::toString() const {
 }
 
 // Class-related implementations
-std::string PrimaryConstructor::toString() const {
-    return "PrimaryConstructor";
+std::string ConstructorDeclaration::toString() const {
+    return "ConstructorDeclaration";
 }
 
 std::string EventDeclaration::toString() const {

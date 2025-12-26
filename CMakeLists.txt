@@ -251,6 +251,7 @@ if(GTest_FOUND)
         tests/NullableCodeGenTest.cpp
         tests/ModuleLevelVariableParsingTest.cpp
         tests/ClassDeclarationParsingTest.cpp
+        tests/OptionalReturnTypeTest.cpp
     )
 
     # Link test executable with libraries

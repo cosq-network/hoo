@@ -76,16 +76,13 @@ TEST_F(ClassDeclarationParsingTest, SimpleClassDeclaration) {
     // Verify no modifiers
     EXPECT_TRUE(classDecl->getModifiers().empty());
 
-    // Verify no constructor
-    EXPECT_EQ(classDecl->getConstructor(), nullptr);
-
     // Verify no base class
     EXPECT_FALSE(classDecl->hasBaseClass());
 
     // Verify no interfaces
     EXPECT_FALSE(classDecl->hasInterfaces());
 
-    // Verify empty body
+    // Verify empty body (no constructor or other members)
     EXPECT_TRUE(classDecl->getBody().getMembers().empty());
 }
 
@@ -138,7 +135,9 @@ TEST_F(ClassDeclarationParsingTest, ClassWithMultipleModifiers) {
 // Test 4: Class with empty constructor
 TEST_F(ClassDeclarationParsingTest, ClassWithEmptyConstructor) {
     std::string code = R"(
-        class Point() {
+        class Point {
+            constructor() {
+            }
         }
     )";
 
@@ -151,8 +150,12 @@ TEST_F(ClassDeclarationParsingTest, ClassWithEmptyConstructor) {
     auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
     ASSERT_NE(classDecl, nullptr);
 
-    // Verify constructor exists with no parameters
-    auto* constructor = classDecl->getConstructor();
+    // Verify constructor exists with no parameters in the class body
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 1);
+    EXPECT_TRUE(members[0]->isConstructor());
+
+    auto* constructor = members[0]->getConstructor();
     ASSERT_NE(constructor, nullptr);
     EXPECT_TRUE(constructor->getParameters().empty());
 }
@@ -160,7 +163,9 @@ TEST_F(ClassDeclarationParsingTest, ClassWithEmptyConstructor) {
 // Test 5: Class with constructor with parameters
 TEST_F(ClassDeclarationParsingTest, ClassWithConstructorParameters) {
     std::string code = R"(
-        class Point(x: int64, y: int64) {
+        class Point {
+            constructor(x: int64, y: int64) {
+            }
         }
     )";
 
@@ -173,8 +178,12 @@ TEST_F(ClassDeclarationParsingTest, ClassWithConstructorParameters) {
     auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
     ASSERT_NE(classDecl, nullptr);
 
-    // Verify constructor parameters
-    auto* constructor = classDecl->getConstructor();
+    // Verify constructor parameters in the class body
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 1);
+    EXPECT_TRUE(members[0]->isConstructor());
+
+    auto* constructor = members[0]->getConstructor();
     ASSERT_NE(constructor, nullptr);
     EXPECT_EQ(constructor->getParameters().size(), 2);
     EXPECT_EQ(constructor->getParameters()[0]->getName(), "x");
@@ -497,7 +506,9 @@ TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
 // Test 17: Complex class with all features
 TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     std::string code = R"(
-        immutable class ComplexClass(id: int64, name: int64) extends BaseClass implements Interface1, Interface2 {
+        immutable class ComplexClass extends BaseClass implements Interface1, Interface2 {
+            constructor(id: int64, name: int64) {
+            }
             func method1() -> void {
             }
             event onEvent1;
@@ -522,11 +533,6 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     // Verify modifier
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::IMMUTABLE));
 
-    // Verify constructor
-    auto* constructor = classDecl->getConstructor();
-    ASSERT_NE(constructor, nullptr);
-    EXPECT_EQ(constructor->getParameters().size(), 2);
-
     // Verify base class
     EXPECT_TRUE(classDecl->hasBaseClass());
     EXPECT_EQ(classDecl->getBaseClass(), "BaseClass");
@@ -535,10 +541,213 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     EXPECT_TRUE(classDecl->hasInterfaces());
     EXPECT_EQ(classDecl->getInterfaces().size(), 2);
 
-    // Verify members
+    // Verify members (constructor + 2 methods + 1 event = 4 members)
     auto& members = classDecl->getBody().getMembers();
-    EXPECT_EQ(members.size(), 3);
-    EXPECT_FALSE(members[0]->isEvent()); // method1
-    EXPECT_TRUE(members[1]->isEvent());  // onEvent1
-    EXPECT_FALSE(members[2]->isEvent()); // method2
+    EXPECT_EQ(members.size(), 4);
+    EXPECT_TRUE(members[0]->isConstructor());  // constructor
+    EXPECT_FALSE(members[1]->isEvent());        // method1
+    EXPECT_TRUE(members[2]->isEvent());         // onEvent1
+    EXPECT_FALSE(members[3]->isEvent());        // method2
+
+    // Verify constructor parameters
+    auto* constructor = members[0]->getConstructor();
+    ASSERT_NE(constructor, nullptr);
+    EXPECT_EQ(constructor->getParameters().size(), 2);
+}
+
+// Tests to verify that multiple constructors are NOT allowed
+
+TEST_F(ClassDeclarationParsingTest, ClassWithMultipleConstructorsShouldFail) {
+    std::string code = R"(
+        class Point {
+            constructor(x: int64, y: int64) {
+            }
+            constructor(x: int64) {
+            }
+        }
+    )";
+
+    // This should fail when building AST
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_THROW({
+        astBuilder->buildAST(ctx);
+    }, std::runtime_error);
+}
+
+TEST_F(ClassDeclarationParsingTest, ClassWithTwoEmptyConstructorsShouldFail) {
+    std::string code = R"(
+        class Point {
+            constructor() {
+            }
+            constructor() {
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_THROW({
+        astBuilder->buildAST(ctx);
+    }, std::runtime_error);
+}
+
+TEST_F(ClassDeclarationParsingTest, ClassWithThreeConstructorsShouldFail) {
+    std::string code = R"(
+        class Shape {
+            constructor() {
+            }
+            constructor(x: int64) {
+            }
+            constructor(x: int64, y: int64) {
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_THROW({
+        astBuilder->buildAST(ctx);
+    }, std::runtime_error);
+}
+
+TEST_F(ClassDeclarationParsingTest, ClassWithConstructorAndMethodsWithMultipleConstructorsShouldFail) {
+    std::string code = R"(
+        class User {
+            constructor(name: int64) {
+            }
+            func greet() -> void {
+            }
+            constructor(name: int64, age: int64) {
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_THROW({
+        astBuilder->buildAST(ctx);
+    }, std::runtime_error);
+}
+
+TEST_F(ClassDeclarationParsingTest, SingletonClassWithMultipleConstructorsShouldFail) {
+    std::string code = R"(
+        singleton class Database {
+            constructor(url: int64) {
+            }
+            constructor() {
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_THROW({
+        astBuilder->buildAST(ctx);
+    }, std::runtime_error);
+}
+
+TEST_F(ClassDeclarationParsingTest, ImmutableClassWithMultipleConstructorsShouldFail) {
+    std::string code = R"(
+        immutable class Point {
+            constructor(x: int64) {
+            }
+            constructor(x: int64, y: int64) {
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    EXPECT_THROW({
+        astBuilder->buildAST(ctx);
+    }, std::runtime_error);
+}
+
+// Positive test: verify single constructor is allowed
+TEST_F(ClassDeclarationParsingTest, ClassWithSingleConstructorShouldSucceed) {
+    std::string code = R"(
+        class Point {
+            constructor(x: int64, y: int64) {
+            }
+            func getX() -> int64 {
+                return x;
+            }
+            func getY() -> int64 {
+                return y;
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    ASSERT_EQ(ast->getDeclarations().size(), 1);
+
+    auto* classDecl = dynamic_cast<ClassDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(classDecl, nullptr);
+
+    // Verify class has exactly one constructor
+    auto& members = classDecl->getBody().getMembers();
+    int constructorCount = 0;
+    for (const auto& member : members) {
+        if (member->isConstructor()) {
+            constructorCount++;
+        }
+    }
+    EXPECT_EQ(constructorCount, 1);
+}
+
+TEST_F(ClassDeclarationParsingTest, ClassWithNoConstructorShouldSucceed) {
+    std::string code = R"(
+        class Util {
+            func helper() -> int64 {
+                return 42;
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    ASSERT_EQ(ast->getDeclarations().size(), 1);
+
+    auto* classDecl = dynamic_cast<ClassDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(classDecl, nullptr);
+
+    // Verify class has no constructors
+    auto& members = classDecl->getBody().getMembers();
+    int constructorCount = 0;
+    for (const auto& member : members) {
+        if (member->isConstructor()) {
+            constructorCount++;
+        }
+    }
+    EXPECT_EQ(constructorCount, 0);
 }

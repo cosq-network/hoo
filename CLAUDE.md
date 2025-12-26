@@ -401,7 +401,7 @@ var empty: int64[]? = null;
 - While loops with break/continue support
 - For-range loops (`for i in 0..10`)
 - For-in loops (`for item in collection`)
-- Function declarations with parameters and return types
+- Function declarations with parameters and optional return types (defaults to void if omitted)
 - Return statements
 - Expression statements
 - Blocks with proper scoping
@@ -416,7 +416,7 @@ var empty: int64[]? = null;
 
 **⚠️ Parsed But Code Generation Incomplete:**
 - String type (parsing works, LLVM generation pending)
-- Class declarations (grammar and basic parsing work)
+- Class declarations (grammar and parsing work, Kotlin-style constructors supported - single constructor per class)
 - Interface declarations (grammar parsed)
 - Design pattern modifiers (singleton, immutable, factory, observable, service, strategy, actor)
 - Event system (`event` keyword)

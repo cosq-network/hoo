@@ -10,6 +10,7 @@ namespace ast {
 
 class Parameter;
 class Type;
+class Block;
 
 // Class modifiers
 enum class ClassModifier {
@@ -23,18 +24,21 @@ enum class ClassModifier {
     FINAL
 };
 
-// Primary constructor (Dart-style)
-class PrimaryConstructor : public ASTNode {
+// Constructor declaration (Kotlin-style)
+class ConstructorDeclaration : public ASTNode {
 public:
-    PrimaryConstructor(std::vector<std::unique_ptr<Parameter>> parameters)
-        : parameters_(std::move(parameters)) {}
+    ConstructorDeclaration(std::vector<std::unique_ptr<Parameter>> parameters,
+                          std::unique_ptr<Block> body)
+        : parameters_(std::move(parameters)), body_(std::move(body)) {}
 
     std::string toString() const override;
 
     const std::vector<std::unique_ptr<Parameter>>& getParameters() const { return parameters_; }
+    const Block& getBody() const { return *body_; }
 
 private:
     std::vector<std::unique_ptr<Parameter>> parameters_;
+    std::unique_ptr<Block> body_;
 };
 
 // Event declaration
@@ -50,9 +54,12 @@ private:
     std::string name_;
 };
 
-// Class member (can be function, variable, or event)
+// Class member (can be constructor, function, or event)
 class ClassMember : public ASTNode {
 public:
+    ClassMember(std::unique_ptr<ConstructorDeclaration> constructor)
+        : constructor_(std::move(constructor)) {}
+
     ClassMember(std::unique_ptr<Declaration> declaration)
         : declaration_(std::move(declaration)) {}
 
@@ -61,11 +68,14 @@ public:
 
     std::string toString() const override;
 
+    const ConstructorDeclaration* getConstructor() const { return constructor_.get(); }
     const Declaration* getDeclaration() const { return declaration_.get(); }
     const EventDeclaration* getEvent() const { return event_.get(); }
+    bool isConstructor() const { return constructor_ != nullptr; }
     bool isEvent() const { return event_ != nullptr; }
 
 private:
+    std::unique_ptr<ConstructorDeclaration> constructor_;
     std::unique_ptr<Declaration> declaration_;
     std::unique_ptr<EventDeclaration> event_;
 };
@@ -89,18 +99,16 @@ class ClassDeclaration : public Declaration {
 public:
     ClassDeclaration(std::vector<ClassModifier> modifiers,
                     const std::string& name,
-                    std::unique_ptr<PrimaryConstructor> constructor,
                     const std::string& baseClass,
                     std::vector<std::string> interfaces,
                     std::unique_ptr<ClassBody> body)
-        : modifiers_(modifiers), name_(name), constructor_(std::move(constructor)),
+        : modifiers_(modifiers), name_(name),
           baseClass_(baseClass), interfaces_(interfaces), body_(std::move(body)) {}
 
     std::string toString() const override;
 
     const std::vector<ClassModifier>& getModifiers() const { return modifiers_; }
     const std::string& getName() const { return name_; }
-    const PrimaryConstructor* getConstructor() const { return constructor_.get(); }
     const std::string& getBaseClass() const { return baseClass_; }
     const std::vector<std::string>& getInterfaces() const { return interfaces_; }
     const ClassBody& getBody() const { return *body_; }
@@ -112,7 +120,6 @@ public:
 private:
     std::vector<ClassModifier> modifiers_;
     std::string name_;
-    std::unique_ptr<PrimaryConstructor> constructor_;
     std::string baseClass_;
     std::vector<std::string> interfaces_;
     std::unique_ptr<ClassBody> body_;

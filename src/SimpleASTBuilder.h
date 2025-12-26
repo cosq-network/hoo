@@ -51,7 +51,7 @@ private:
     std::unique_ptr<ast::ImportItem> buildImportItem(HoocParser::ImportItemContext* ctx);
 
     // Class and interface building methods
-    std::unique_ptr<ast::PrimaryConstructor> buildPrimaryConstructor(HoocParser::PrimaryConstructorContext* ctx);
+    std::unique_ptr<ast::ConstructorDeclaration> buildConstructorDeclaration(HoocParser::ConstructorDeclarationContext* ctx);
     std::unique_ptr<ast::ClassBody> buildClassBody(HoocParser::ClassBodyContext* ctx);
     std::unique_ptr<ast::ClassMember> buildClassMember(HoocParser::ClassMemberContext* ctx);
     std::unique_ptr<ast::EventDeclaration> buildEventDeclaration(HoocParser::EventDeclarationContext* ctx);

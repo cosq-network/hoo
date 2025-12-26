@@ -70,7 +70,7 @@ std::unique_ptr<VariableDeclarationStatement> SimpleASTBuilder::buildVariableDec
 
 std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx) {
     std::string name = ctx->IDENTIFIER()->getText();
-    
+
     std::vector<std::unique_ptr<Parameter>> parameters;
     if (ctx->parameterList()) {
         for (auto paramCtx : ctx->parameterList()->parameter()) {
@@ -80,13 +80,20 @@ std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
             }
         }
     }
-    
-    // Return type is now mandatory
-    auto returnType = buildType(ctx->type());
-    
+
+    // Return type is optional - defaults to void if not specified
+    std::unique_ptr<Type> returnType;
+    if (ctx->type()) {
+        returnType = buildType(ctx->type());
+    } else {
+        // Create void type as default
+        auto voidPrimitive = std::make_unique<PrimitiveType>(PrimitiveTypeKind::VOID);
+        returnType = std::make_unique<BaseType>(std::move(voidPrimitive));
+    }
+
     auto body = buildBlock(ctx->block());
-    
-    return std::make_unique<FunctionDeclaration>(name, std::move(parameters), 
+
+    return std::make_unique<FunctionDeclaration>(name, std::move(parameters),
                                                std::move(returnType), std::move(body));
 }
 
@@ -572,12 +579,6 @@ std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocPa
     // Get class name
     std::string name = ctx->IDENTIFIER(0)->getText();
 
-    // Build primary constructor (optional)
-    std::unique_ptr<PrimaryConstructor> constructor;
-    if (ctx->primaryConstructor()) {
-        constructor = buildPrimaryConstructor(ctx->primaryConstructor());
-    }
-
     // Get base class name (optional)
     std::string baseClass;
     if (ctx->EXTENDS()) {
@@ -593,13 +594,12 @@ std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocPa
         }
     }
 
-    // Build class body
+    // Build class body (which may now contain a constructor)
     auto body = buildClassBody(ctx->classBody());
 
     return std::make_unique<ClassDeclaration>(
         std::move(modifiers),
         name,
-        std::move(constructor),
         baseClass,
         std::move(interfaces),
         std::move(body)
@@ -620,7 +620,7 @@ std::unique_ptr<InterfaceDeclaration> SimpleASTBuilder::buildInterfaceDeclaratio
     return std::make_unique<InterfaceDeclaration>(name, std::move(members));
 }
 
-std::unique_ptr<PrimaryConstructor> SimpleASTBuilder::buildPrimaryConstructor(HoocParser::PrimaryConstructorContext* ctx) {
+std::unique_ptr<ConstructorDeclaration> SimpleASTBuilder::buildConstructorDeclaration(HoocParser::ConstructorDeclarationContext* ctx) {
     std::vector<std::unique_ptr<Parameter>> parameters;
     if (ctx->parameterList()) {
         for (auto paramCtx : ctx->parameterList()->parameter()) {
@@ -630,14 +630,26 @@ std::unique_ptr<PrimaryConstructor> SimpleASTBuilder::buildPrimaryConstructor(Ho
             }
         }
     }
-    return std::make_unique<PrimaryConstructor>(std::move(parameters));
+
+    auto body = buildBlock(ctx->block());
+
+    return std::make_unique<ConstructorDeclaration>(std::move(parameters), std::move(body));
 }
 
 std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBodyContext* ctx) {
     std::vector<std::unique_ptr<ClassMember>> members;
+    int constructorCount = 0;
+
     for (auto memberCtx : ctx->classMember()) {
         auto member = buildClassMember(memberCtx);
         if (member) {
+            // Check if this member is a constructor
+            if (member->isConstructor()) {
+                constructorCount++;
+                if (constructorCount > 1) {
+                    throw std::runtime_error("Class cannot have multiple constructors. Only one constructor is allowed per class.");
+                }
+            }
             members.push_back(std::move(member));
         }
     }
@@ -645,7 +657,10 @@ std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBod
 }
 
 std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::ClassMemberContext* ctx) {
-    if (ctx->functionDeclaration()) {
+    if (ctx->constructorDeclaration()) {
+        auto constructor = buildConstructorDeclaration(ctx->constructorDeclaration());
+        return std::make_unique<ClassMember>(std::move(constructor));
+    } else if (ctx->functionDeclaration()) {
         auto decl = buildFunctionDeclaration(ctx->functionDeclaration());
         return std::make_unique<ClassMember>(std::move(decl));
     } else if (ctx->eventDeclaration()) {

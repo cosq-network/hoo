@@ -267,13 +267,25 @@ while condition {
 ## 9. Functions
 
 ``` hoo
+// Function with explicit return type
 func add(a: int64, b: int64) -> int64 {
     return a + b;
+}
+
+// Function without return type (defaults to void)
+func printMessage(msg: string) {
+    // No return statement needed
+}
+
+// Explicit void return type (equivalent to omitting it)
+func doSomething() -> void {
+    // Do something
 }
 ```
 
 Rules:
-- Explicit return types
+- Return types are optional - functions without a return type default to void
+- Explicit return types can be specified with `-> type`
 - No overloading
 - No variadic functions (v0.x)
 
@@ -284,7 +296,11 @@ Rules:
 ### 10.1 Class Declaration
 
 ``` hoo
-class User(string name, int64 age) {
+class User {
+    constructor(name: string, age: int64) {
+        // Constructor body
+    }
+
     func greet() {
         print("Hello " + name);
     }
@@ -294,8 +310,8 @@ class User(string name, int64 age) {
 var user = new User("Alice", 30);
 ```
 
-- Dart-style primary constructors
-- Fields auto-declared from constructor parameters
+- Kotlin-style constructors (single constructor allowed per class)
+- Constructor parameters use modern syntax (name: type)
 - GC-managed instances
 - `new` keyword for explicit instantiation (currently in grammar, code generation planned)
 
@@ -447,12 +463,12 @@ All fields are immutable after construction.
 
 ``` hoo
 factory class Shape {
-    Circle(int r);
-    Rectangle(int w, int h);
+    Circle(r: int64);
+    Rectangle(w: int64, h: int64);
 }
 ```
 
-Multiple named constructors for different object creation patterns.
+Multiple named constructors for different object creation patterns. (Future feature - currently only single constructor per class is supported)
 
 ### 14.4 Observer
 
@@ -522,7 +538,7 @@ actor class Queue {
 - **Scope Statements**: Deterministic resource management via `scope { ... }`
 
 ### ⚠️ Partially Implemented
-- **Classes & Objects**: Grammar fully defined, primary constructor parsing works, method resolution incomplete
+- **Classes & Objects**: Grammar fully defined, Kotlin-style constructor parsing works (single constructor per class), method resolution incomplete
 - **String Type**: Grammar and lexer complete, code generation incomplete
 - **Design Pattern Keywords**: All keywords parsed (singleton, immutable, factory, observable, service, strategy, actor), code generation not implemented
 

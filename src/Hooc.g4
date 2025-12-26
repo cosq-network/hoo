@@ -25,6 +25,7 @@ IMMUTABLE: 'immutable';
 FACTORY: 'factory';
 OBSERVABLE: 'observable';
 EVENT: 'event';
+CONSTRUCTOR: 'constructor';
 SERVICE: 'service';
 STRATEGY: 'strategy';
 ACTOR: 'actor';
@@ -125,7 +126,7 @@ declaration
 
 // Function Declaration
 functionDeclaration
-    : FUNC IDENTIFIER LPAREN parameterList? RPAREN ARROW type block
+    : FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)? block
     ;
 
 parameterList: parameter (COMMA parameter)*;
@@ -133,21 +134,22 @@ parameter: IDENTIFIER COLON type;
 
 // Class Declaration
 classDeclaration
-    : classModifier* CLASS IDENTIFIER primaryConstructor? (EXTENDS IDENTIFIER)? (IMPLEMENTS interfaceList)? classBody
+    : classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? (IMPLEMENTS interfaceList)? classBody
     ;
 
 classModifier: SINGLETON | IMMUTABLE | FACTORY | OBSERVABLE | SERVICE | STRATEGY | ACTOR | FINAL;
-
-primaryConstructor: LPAREN parameterList? RPAREN;
 
 interfaceList: IDENTIFIER (COMMA IDENTIFIER)*;
 
 classBody: LBRACE classMember* RBRACE;
 
 classMember
-    : functionDeclaration
+    : constructorDeclaration
+    | functionDeclaration
     | eventDeclaration SEMICOLON
     ;
+
+constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block;
 
 eventDeclaration: EVENT IDENTIFIER;
 
