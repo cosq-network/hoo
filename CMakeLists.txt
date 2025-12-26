@@ -249,7 +249,8 @@ if(GTest_FOUND)
         tests/IfElseIfCodeGenTest.cpp
         tests/WhileLoopCodeGenTest.cpp
         tests/NullableCodeGenTest.cpp
-        tests/ModuleLevelVariableParsingTest.cpp # Added new test file
+        tests/ModuleLevelVariableParsingTest.cpp
+        tests/ClassDeclarationParsingTest.cpp
     )
 
     # Link test executable with libraries

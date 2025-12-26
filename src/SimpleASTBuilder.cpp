@@ -35,11 +35,13 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
 std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::DeclarationContext* ctx) {
     if (ctx->functionDeclaration()) {
         return buildFunctionDeclaration(ctx->functionDeclaration());
-    } else if (ctx->variableDeclaration()) { // Added this condition
+    } else if (ctx->variableDeclaration()) {
         return buildVariableDeclaration(ctx->variableDeclaration());
+    } else if (ctx->classDeclaration()) {
+        return buildClassDeclaration(ctx->classDeclaration());
+    } else if (ctx->interfaceDeclaration()) {
+        return buildInterfaceDeclaration(ctx->interfaceDeclaration());
     }
-    // Assuming classDeclaration and interfaceDeclaration rules are also handled
-    // by the parser context and would be checked here if present.
     return nullptr;
 }
 
@@ -556,6 +558,140 @@ std::unique_ptr<ImportItem> SimpleASTBuilder::buildImportItem(HoocParser::Import
     }
 
     return std::make_unique<ImportItem>(name, alias);
+}
+
+// Class and interface building methods
+std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocParser::ClassDeclarationContext* ctx) {
+    // Build modifiers
+    std::vector<ClassModifier> modifiers;
+    for (auto modifierCtx : ctx->classModifier()) {
+        modifiers.push_back(getClassModifier(modifierCtx));
+    }
+
+    // Get class name
+    std::string name = ctx->IDENTIFIER(0)->getText();
+
+    // Build primary constructor (optional)
+    std::unique_ptr<PrimaryConstructor> constructor;
+    if (ctx->primaryConstructor()) {
+        constructor = buildPrimaryConstructor(ctx->primaryConstructor());
+    }
+
+    // Get base class name (optional)
+    std::string baseClass;
+    if (ctx->EXTENDS()) {
+        // The identifier after EXTENDS is the base class
+        baseClass = ctx->IDENTIFIER(1)->getText();
+    }
+
+    // Get interface names (optional)
+    std::vector<std::string> interfaces;
+    if (ctx->interfaceList()) {
+        for (auto idNode : ctx->interfaceList()->IDENTIFIER()) {
+            interfaces.push_back(idNode->getText());
+        }
+    }
+
+    // Build class body
+    auto body = buildClassBody(ctx->classBody());
+
+    return std::make_unique<ClassDeclaration>(
+        std::move(modifiers),
+        name,
+        std::move(constructor),
+        baseClass,
+        std::move(interfaces),
+        std::move(body)
+    );
+}
+
+std::unique_ptr<InterfaceDeclaration> SimpleASTBuilder::buildInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx) {
+    std::string name = ctx->IDENTIFIER()->getText();
+
+    std::vector<std::unique_ptr<InterfaceMember>> members;
+    for (auto memberCtx : ctx->interfaceMember()) {
+        auto member = buildInterfaceMember(memberCtx);
+        if (member) {
+            members.push_back(std::move(member));
+        }
+    }
+
+    return std::make_unique<InterfaceDeclaration>(name, std::move(members));
+}
+
+std::unique_ptr<PrimaryConstructor> SimpleASTBuilder::buildPrimaryConstructor(HoocParser::PrimaryConstructorContext* ctx) {
+    std::vector<std::unique_ptr<Parameter>> parameters;
+    if (ctx->parameterList()) {
+        for (auto paramCtx : ctx->parameterList()->parameter()) {
+            auto param = buildParameter(paramCtx);
+            if (param) {
+                parameters.push_back(std::move(param));
+            }
+        }
+    }
+    return std::make_unique<PrimaryConstructor>(std::move(parameters));
+}
+
+std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBodyContext* ctx) {
+    std::vector<std::unique_ptr<ClassMember>> members;
+    for (auto memberCtx : ctx->classMember()) {
+        auto member = buildClassMember(memberCtx);
+        if (member) {
+            members.push_back(std::move(member));
+        }
+    }
+    return std::make_unique<ClassBody>(std::move(members));
+}
+
+std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::ClassMemberContext* ctx) {
+    if (ctx->functionDeclaration()) {
+        auto decl = buildFunctionDeclaration(ctx->functionDeclaration());
+        return std::make_unique<ClassMember>(std::move(decl));
+    } else if (ctx->eventDeclaration()) {
+        auto event = buildEventDeclaration(ctx->eventDeclaration());
+        return std::make_unique<ClassMember>(std::move(event));
+    }
+    return nullptr;
+}
+
+std::unique_ptr<EventDeclaration> SimpleASTBuilder::buildEventDeclaration(HoocParser::EventDeclarationContext* ctx) {
+    std::string name = ctx->IDENTIFIER()->getText();
+    return std::make_unique<EventDeclaration>(name);
+}
+
+std::unique_ptr<InterfaceMember> SimpleASTBuilder::buildInterfaceMember(HoocParser::InterfaceMemberContext* ctx) {
+    auto signature = buildFunctionSignature(ctx->functionSignature());
+    return std::make_unique<InterfaceMember>(std::move(signature));
+}
+
+std::unique_ptr<FunctionSignature> SimpleASTBuilder::buildFunctionSignature(HoocParser::FunctionSignatureContext* ctx) {
+    std::string name = ctx->IDENTIFIER()->getText();
+
+    std::vector<std::unique_ptr<Parameter>> parameters;
+    if (ctx->parameterList()) {
+        for (auto paramCtx : ctx->parameterList()->parameter()) {
+            auto param = buildParameter(paramCtx);
+            if (param) {
+                parameters.push_back(std::move(param));
+            }
+        }
+    }
+
+    auto returnType = buildType(ctx->type());
+
+    return std::make_unique<FunctionSignature>(name, std::move(parameters), std::move(returnType));
+}
+
+ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContext* ctx) {
+    if (ctx->SINGLETON()) return ClassModifier::SINGLETON;
+    if (ctx->IMMUTABLE()) return ClassModifier::IMMUTABLE;
+    if (ctx->FACTORY()) return ClassModifier::FACTORY;
+    if (ctx->OBSERVABLE()) return ClassModifier::OBSERVABLE;
+    if (ctx->SERVICE()) return ClassModifier::SERVICE;
+    if (ctx->STRATEGY()) return ClassModifier::STRATEGY;
+    if (ctx->ACTOR()) return ClassModifier::ACTOR;
+    if (ctx->FINAL()) return ClassModifier::FINAL;
+    return ClassModifier::FINAL; // Default fallback
 }
 
 // Helper methods

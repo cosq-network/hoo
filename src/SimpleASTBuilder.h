@@ -14,6 +14,8 @@ private:
     std::unique_ptr<ast::FunctionDeclaration> buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx);
     std::unique_ptr<ast::VariableDeclaration> buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx);
     std::unique_ptr<ast::VariableDeclarationStatement> buildVariableDeclarationStatement(HoocParser::VariableDeclarationContext* ctx);
+    std::unique_ptr<ast::ClassDeclaration> buildClassDeclaration(HoocParser::ClassDeclarationContext* ctx);
+    std::unique_ptr<ast::InterfaceDeclaration> buildInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx);
     std::unique_ptr<ast::Type> buildType(HoocParser::TypeContext* ctx);
     std::unique_ptr<ast::UnionType> buildUnionType(HoocParser::UnionTypeContext* ctx);
     std::unique_ptr<ast::OptionalType> buildOptionalType(HoocParser::OptionalTypeContext* ctx);
@@ -47,6 +49,15 @@ private:
     std::unique_ptr<ast::FromImport> buildFromImport(HoocParser::FromImportContext* ctx);
     std::unique_ptr<ast::ModulePath> buildModulePath(HoocParser::ModulePathContext* ctx);
     std::unique_ptr<ast::ImportItem> buildImportItem(HoocParser::ImportItemContext* ctx);
+
+    // Class and interface building methods
+    std::unique_ptr<ast::PrimaryConstructor> buildPrimaryConstructor(HoocParser::PrimaryConstructorContext* ctx);
+    std::unique_ptr<ast::ClassBody> buildClassBody(HoocParser::ClassBodyContext* ctx);
+    std::unique_ptr<ast::ClassMember> buildClassMember(HoocParser::ClassMemberContext* ctx);
+    std::unique_ptr<ast::EventDeclaration> buildEventDeclaration(HoocParser::EventDeclarationContext* ctx);
+    std::unique_ptr<ast::InterfaceMember> buildInterfaceMember(HoocParser::InterfaceMemberContext* ctx);
+    std::unique_ptr<ast::FunctionSignature> buildFunctionSignature(HoocParser::FunctionSignatureContext* ctx);
+    ast::ClassModifier getClassModifier(HoocParser::ClassModifierContext* ctx);
 
     // Helper methods
     ast::PrimitiveTypeKind getPrimitiveTypeKind(const std::string& typeName);

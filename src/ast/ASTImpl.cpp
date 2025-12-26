@@ -93,6 +93,15 @@ std::string ClassDeclaration::toString() const {
     return "ClassDeclaration " + name_;
 }
 
+bool ClassDeclaration::hasModifier(ClassModifier modifier) const {
+    for (const auto& mod : modifiers_) {
+        if (mod == modifier) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Interface implementations
 std::string FunctionSignature::toString() const {
     return "FunctionSignature " + name_;
