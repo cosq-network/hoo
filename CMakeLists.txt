@@ -238,9 +238,12 @@ if(GTest_FOUND)
         tests/ArrayLiteralParsingTest.cpp
         tests/FunctionCallParsingTest.cpp
         tests/VariableDeclarationParseTest.cpp
+        tests/IfElseIfParsingTest.cpp
         tests/BasicCodeGenTest.cpp
         tests/FunctionCallCodeGenTest.cpp
         tests/VariableDeclarationCodeGenTest.cpp
+        tests/ArrayLiteralCodeGenTest.cpp
+        tests/IfElseIfCodeGenTest.cpp
     )
 
     # Link test executable with libraries

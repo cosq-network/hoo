@@ -144,10 +144,19 @@ Function* LLVMCodeGenerator::generateLLVMFunction(const FunctionDeclaration& fun
     
     // Generate function body
     generateBlock(funcDecl.getBody());
-    
-    // If no explicit return and void function, add return void
-    if (returnType->isVoidTy() && !entryBlock->getTerminator()) {
-        builder_->CreateRetVoid();
+
+    // Ensure all basic blocks have terminators
+    // Check the current block (not just entry block) in case we're in a merge block from an if-statement
+    BasicBlock* currentBlock = builder_->GetInsertBlock();
+    if (currentBlock && !currentBlock->getTerminator()) {
+        if (returnType->isVoidTy()) {
+            // For void functions, add return void
+            builder_->CreateRetVoid();
+        } else {
+            // For non-void functions, if we reach here without a return statement,
+            // add unreachable (this handles unreachable merge blocks)
+            builder_->CreateUnreachable();
+        }
     }
     
     // Verify function
@@ -672,13 +681,10 @@ void LLVMCodeGenerator::generateIfStatement(const IfStatement& stmt) {
         }
     }
 
-    // Continue with merge block and ensure it has a terminator
+    // Continue with merge block
+    // Note: We don't add a terminator here - subsequent code will add instructions
+    // to the merge block (like return statements, more code, etc.)
     builder_->SetInsertPoint(mergeBlock);
-    if (!mergeBlock->getTerminator()) {
-        // If the merge block has no terminator, it means it's unreachable
-        // but LLVM still needs a terminator for verification
-        builder_->CreateUnreachable();
-    }
 }
 
 void LLVMCodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
