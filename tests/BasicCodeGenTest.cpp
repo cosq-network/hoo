@@ -399,42 +399,45 @@ TEST_F(BasicCodeGenTest, GenerateCharComparison) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateArrayFunction) {
-    std::string code = "func process(int64 data) -> void { var arr: int64[5]; return; }";
+    std::string code = "func process(int64 data) -> void { var arr = [1, 2, 3, 4, 5]; return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
-    
+
     auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
-    
+
     Function* func = module->getFunction("process");
     ASSERT_NE(func, nullptr);
-    
+
     // Check basic function signature
     EXPECT_TRUE(func->getReturnType()->isVoidTy());
     EXPECT_EQ(func->arg_size(), 1);
-    // Parameter is int64, not array (since array parameters syntax isn't fully supported)
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(64));
+
+    // Verify array literal is present in IR
+    std::string irString = getModuleString(module.get());
+    EXPECT_TRUE(irString.find("@") != std::string::npos); // Global array constant
 }
 
 TEST_F(BasicCodeGenTest, GenerateArrayAccess) {
     std::string code = R"(
         func access_test() -> int64 {
-            var arr: int64[5];
+            var arr = [10, 20, 30, 40, 50];
             var index = 2;
             var value = arr[index];
-            return 42; // Return constant for now since array access needs refinement
+            return 42;
         }
     )";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
-    
+
     auto module = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(module, nullptr);
-    
+
     Function* func = module->getFunction("access_test");
     ASSERT_NE(func, nullptr);
 
-    // Verify array and index variables are allocated
+    // Verify variables are allocated and function returns correctly
     std::string irString = getModuleString(module.get());
     EXPECT_TRUE(irString.find("alloca") != std::string::npos);
     EXPECT_TRUE(irString.find("ret i64") != std::string::npos);

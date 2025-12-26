@@ -3,11 +3,11 @@
 > A modern, safe, and expressive programming language designed as an evolution of the C programming philosophy. Compiled by **hooc**.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](.)
-[![Version](https://img.shields.io/badge/version-0.1--alpha-blue)](.)
-[![Language](https://img.shields.io/badge/language-C%2B%2B17-blue)]() 
+[![Version](https://img.shields.io/badge/version-0.2--alpha-blue)](.)
+[![Language](https://img.shields.io/badge/language-C%2B%2B17-blue)]()
 [![Parser](https://img.shields.io/badge/parser-ANTLR4-orange)]()
 [![Backend](https://img.shields.io/badge/backend-LLVM-red)]()
-[![Tests](https://img.shields.io/badge/tests-67%20passing-success)](.)
+[![Tests](https://img.shields.io/badge/tests-88%20passing-success)](.)
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 ## 🎯 Project Overview
@@ -138,7 +138,7 @@ actor class Counter {
 - **Variable Declarations** - Full support with type inference and assignments
 - **Array Literals** - Complete array literal syntax with type inference and multi-dimensional support
 - **Function Calls** - Full support for hooc-to-hooc function calls with argument passing
-- **Test Suite** - 12 array literal parsing tests with 100% pass rate
+- **Test Suite** - 88 comprehensive unit tests covering parsing, AST building, and code generation with 100% pass rate
 
 ### 🔧 **Current Architecture**
 ```
@@ -147,12 +147,12 @@ Source Code (.hoo)
 ProcessIsolatedParser (ANTLR4) ✅
      ↓
 Parse Tree ✅
-     ↓  
-ASTBuilder ✅
+     ↓
+SimpleASTBuilder ✅
      ↓
 AST (CompilationUnit) ✅
      ↓
-CodeGenerator ✅
+LLVMCodeGenerator (implements CodeGenerator) ✅
      ↓
 LLVM IR Module ✅
      ↓
@@ -266,17 +266,18 @@ Native Execution ✅
 ```bash
 # 1. Run existing tests to verify setup
 cmake --build build
-./build/hoo_tests              # Run full test suite (67 tests)
+./build/hoo_tests              # Run full test suite (88 tests)
 
 # 2. Try compiling example programs
 ./build/hooc tests/examples/arithmetic.hoo
 ./build/hooc tests/examples/for_loops.hoo
 
 # 3. Key files for development
-src/CodeGenerator.cpp          # LLVM IR generation
-src/ASTBuilder.cpp            # Parse tree to AST conversion  
-src/HoocCompiler.cpp          # Main compilation pipeline
-src/ast/                      # AST node definitions
+src/LLVMCodeGenerator.cpp      # LLVM IR generation (concrete implementation)
+src/CodeGenerator.h            # Abstract code generator interface
+src/SimpleASTBuilder.cpp       # Parse tree to AST conversion
+src/HooCompiler.cpp            # Main compilation pipeline
+src/ast/                       # AST node definitions
 
 # 4. Add new features and test
 cmake --build build && ./build/hoo_tests
@@ -285,12 +286,13 @@ cmake --build build && ./build/hoo_tests
 ## 📈 Project Goals
 
 ### **Short Term (Q1 2025)**
-- ✅ Complete AST → LLVM IR pipeline (CodeGenerator)
+- ✅ Complete AST → LLVM IR pipeline (LLVMCodeGenerator)
 - ✅ Implement all primitive types and expressions
-- ✅ Build comprehensive test suite (12 array literal tests passing)
+- ✅ Build comprehensive test suite (88 tests covering all core features)
 - ✅ Support control flow statements
 - ✅ **Implement function calls** between hooc functions
 - ✅ Complete array literal syntax with type inference
+- ✅ **Refactor code generator** into abstract interface with LLVM implementation
 - 🔧 **Add string type** with LLVM support
 - 📋 Build standard library foundation
 
@@ -319,7 +321,7 @@ Built with modern compiler construction tools:
 - **LLVM** for world-class code generation  
 - **CMake** for reliable build management
 
-**Current Status**: **Core language features complete and functional. End-to-end compilation pipeline working with 12 array literal parsing tests passing. Function calls, arrays, and control flow fully implemented. Ready for advanced features like strings, standard library, and modules.**
+**Current Status**: **Core language features complete and functional. End-to-end compilation pipeline working with 88 comprehensive tests passing. Function calls, arrays, and control flow fully implemented. Code generator abstraction provides foundation for multiple backend targets. Ready for advanced features like strings, standard library, and modules.**
 
 ---
 

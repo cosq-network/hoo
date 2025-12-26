@@ -36,12 +36,13 @@ cmake --build build --config RelWithDebInfo
 
 ### Running Tests
 ```bash
-# Run all unit tests (67 tests)
+# Run all unit tests (88 tests)
 ./build/hoo_tests        # macOS/Linux
 ./build/hoo_tests.exe    # Windows
 
 # Run specific test suite with verbose output
-./build/hoo_tests --gtest_filter="CodeGeneratorTest.*"
+./build/hoo_tests --gtest_filter="BasicCodeGenTest.*"
+./build/hoo_tests --gtest_filter="FunctionCallCodeGenTest.*"
 
 # Run tests through CMake
 cmake --build build --target run_tests
@@ -85,7 +86,7 @@ SimpleASTBuilder
     ↓
 AST (CompilationUnit)
     ↓
-CodeGenerator
+LLVMCodeGenerator (implements CodeGenerator)
     ↓
 LLVM IR Module
     ↓
@@ -114,15 +115,22 @@ Native Execution
 - Recursively builds AST nodes from parse tree contexts
 - Handles all language constructs: declarations, types, statements, expressions
 
-**CodeGenerator** (`src/CodeGenerator.{h,cpp}`)
+**CodeGenerator** (`src/CodeGenerator.h`)
+- Abstract base class interface for code generation
+- Provides contract for translating AST to executable code
+- Enables support for multiple backend targets (LLVM, bytecode, C, etc.)
+- Key methods: `generateModule()`, `generateFunction()`, `generateExpression()`, `generateStatement()`, `generateType()`
+
+**LLVMCodeGenerator** (`src/LLVMCodeGenerator.{h,cpp}`)
+- Concrete implementation of CodeGenerator for LLVM backend
 - Translates AST to LLVM IR
-- Entry point: `generateModule(CompilationUnit&)` returns LLVM Module
+- Entry point: `generateLLVMModule(CompilationUnit&)` returns LLVM Module
 - Maintains symbol tables for variables and functions (`namedValues_`, `functions_`)
 - Key methods:
-  - `generateFunction()`: Creates LLVM functions with parameters and body
-  - `generateExpression()`: Dispatches to specific expression generators
-  - `generateStatement()`: Handles control flow and variable declarations
-  - `generateType()`: Converts hooc types to LLVM types
+  - `generateLLVMFunction()`: Creates LLVM functions with parameters and body
+  - `generateLLVMExpression()`: Dispatches to specific expression generators
+  - `generateLLVMStatement()`: Handles control flow and variable declarations
+  - `generateLLVMType()`: Converts hooc types to LLVM types
 
 **AST Hierarchy** (`src/ast/`)
 - Complete type-safe representation of hoo language constructs
@@ -157,14 +165,48 @@ All primitive types are fully implemented with LLVM IR generation:
 
 **Not Yet Implemented**
 - `string` type (pending LLVM string support)
-- Function calls between hooc functions (only external C functions work)
 - Classes, interfaces, and member access
 - Import/module system
+- Alternative code generator backends (bytecode, C, JavaScript, etc.)
+
+### Code Generator Architecture
+
+**Design Pattern: Abstract Factory + Strategy**
+
+The code generator has been refactored to use an abstract interface pattern, enabling support for multiple backend targets:
+
+**CodeGenerator (Abstract Base Class)**
+- Defines the contract for code generation
+- Uses opaque wrapper types (`GeneratedModule`, `GeneratedFunction`, `GeneratedValue`, `GeneratedType`)
+- Enables backend-agnostic AST processing
+- Future backends can implement this interface (bytecode VM, C transpiler, JavaScript, etc.)
+
+**LLVMCodeGenerator (Concrete Implementation)**
+- Implements CodeGenerator interface for LLVM backend
+- Provides LLVM-specific API for direct LLVM type access
+- Methods prefixed with `generateLLVM*` return concrete LLVM types (`llvm::Module*`, `llvm::Function*`, etc.)
+- Maintains LLVM-specific state (context, builder, symbol tables)
+
+**Benefits:**
+- Clean separation between AST and backend
+- Easy to add new code generation targets
+- Testing can use mock code generators
+- Future support for WebAssembly, bytecode, or other targets without changing AST
+
+**When to Use Which API:**
+- Use `CodeGenerator` interface for backend-agnostic code
+- Use `LLVMCodeGenerator::generateLLVM*()` methods when you specifically need LLVM types
+- `HooCompiler` uses the abstract interface internally but returns concrete LLVM modules for now
 
 ## Testing Strategy
 
 ### Test Organization
-- `tests/CodeGeneratorTest.cpp`: LLVM IR generation tests
+- `tests/BasicCodeGenTest.cpp`: Basic LLVM IR generation tests
+- `tests/FunctionCallCodeGenTest.cpp`: Function call code generation tests
+- `tests/VariableDeclarationCodeGenTest.cpp`: Variable declaration code generation tests
+- `tests/ArrayLiteralParsingTest.cpp`: Array literal parsing tests (12 tests)
+- `tests/FunctionCallParsingTest.cpp`: Function call parsing tests (15 tests)
+- `tests/VariableDeclarationParseTest.cpp`: Variable declaration parsing tests (15 tests)
 - `tests/SimpleASTBuilderTest.cpp`: Parse tree → AST conversion tests
 - `tests/HooCompilerTest.cpp`: End-to-end compilation tests
 - `tests/ProcessIsolatedParserTest.cpp`: Parser validation tests
@@ -172,8 +214,8 @@ All primitive types are fully implemented with LLVM IR generation:
 
 ### Writing Tests
 ```cpp
-// Standard test pattern
-TEST_F(CodeGeneratorTest, TestName) {
+// Standard test pattern for code generation
+TEST_F(BasicCodeGenTest, TestName) {
     std::string code = R"(
         func test() -> int64 {
             return 42;
@@ -183,11 +225,16 @@ TEST_F(CodeGeneratorTest, TestName) {
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
 
-    auto module = codeGen->generateModule(*ast);
-    ASSERT_NE(module, nullptr);
+    // LLVMCodeGenerator now returns GeneratedModule wrapper
+    auto generatedModule = codeGen->generateModule(*ast);
+    ASSERT_NE(generatedModule, nullptr);
+
+    // For LLVM-specific tests, use generateLLVMModule directly
+    auto llvmModule = llvmCodeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
 
     // Verify IR
-    auto* func = module->getFunction("test");
+    auto* func = llvmModule->getFunction("test");
     ASSERT_NE(func, nullptr);
 }
 ```
@@ -211,11 +258,12 @@ TEST_F(CodeGeneratorTest, TestName) {
    - Handle all context alternatives
    - Extract values from terminal nodes correctly
 
-4. **Implement CodeGenerator** (`src/CodeGenerator.cpp`)
-   - Add `generate*` methods for new AST nodes
-   - Update dispatch methods (generateExpression/generateStatement)
+4. **Implement LLVMCodeGenerator** (`src/LLVMCodeGenerator.cpp`)
+   - Add `generateLLVM*` methods for new AST nodes
+   - Update dispatch methods (generateLLVMExpression/generateLLVMStatement)
    - Emit proper LLVM IR using `builder_`
    - Update symbol tables as needed
+   - If targeting other backends, implement in separate CodeGenerator subclass
 
 5. **Write Tests**
    - Add unit tests in appropriate test file
@@ -324,7 +372,10 @@ func main() -> void {
 | `src/HooCompiler.{h,cpp}` | Main compilation orchestrator |
 | `src/ProcessIsolatedParser.{h,cpp}` | ANTLR4 parser wrapper |
 | `src/SimpleASTBuilder.{h,cpp}` | Parse tree → AST converter |
-| `src/CodeGenerator.{h,cpp}` | AST → LLVM IR translator |
+| `src/CodeGenerator.h` | Abstract code generator interface |
+| `src/CodeGeneratorTypes.h` | Opaque wrapper types for generated code |
+| `src/LLVMCodeGenerator.{h,cpp}` | LLVM backend implementation (AST → LLVM IR) |
+| `src/LLVMCodeGeneratorTypes.h` | LLVM-specific wrapper implementations |
 | `src/HoocJIT.{h,cpp}` | LLVM ORC JIT execution engine |
 | `src/Hooc.g4` | ANTLR4 grammar definition |
 | `src/ast/*.h` | AST node type definitions |
