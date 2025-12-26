@@ -10,11 +10,18 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
     if (!ctx) {
         return nullptr;
     }
-    
-    std::vector<std::unique_ptr<ImportStatement>> imports; // Empty for now
-    std::vector<std::unique_ptr<Declaration>> declarations;
+
+    // Process imports
+    std::vector<std::unique_ptr<ImportStatement>> imports;
+    for (auto importCtx : ctx->importStatement()) {
+        auto import = buildImportStatement(importCtx);
+        if (import) {
+            imports.push_back(std::move(import));
+        }
+    }
 
     // Process declarations
+    std::vector<std::unique_ptr<Declaration>> declarations;
     for (auto declCtx : ctx->declaration()) {
         auto decl = buildDeclaration(declCtx);
         if (decl) {
@@ -443,6 +450,62 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
     }
 
     return nullptr;
+}
+
+// Import building methods
+std::unique_ptr<ImportStatement> SimpleASTBuilder::buildImportStatement(HoocParser::ImportStatementContext* ctx) {
+    if (auto basicCtx = dynamic_cast<HoocParser::BasicImportContext*>(ctx)) {
+        return buildBasicImport(basicCtx);
+    } else if (auto fromCtx = dynamic_cast<HoocParser::FromImportContext*>(ctx)) {
+        return buildFromImport(fromCtx);
+    }
+    return nullptr;
+}
+
+std::unique_ptr<BasicImport> SimpleASTBuilder::buildBasicImport(HoocParser::BasicImportContext* ctx) {
+    auto module = buildModulePath(ctx->modulePath());
+    std::string alias;
+
+    // Check if AS clause is present (IDENTIFIER after modulePath)
+    if (ctx->IDENTIFIER()) {
+        alias = ctx->IDENTIFIER()->getText();
+    }
+
+    return std::make_unique<BasicImport>(std::move(module), alias);
+}
+
+std::unique_ptr<FromImport> SimpleASTBuilder::buildFromImport(HoocParser::FromImportContext* ctx) {
+    auto module = buildModulePath(ctx->modulePath());
+
+    std::vector<std::unique_ptr<ImportItem>> items;
+    for (auto itemCtx : ctx->importItem()) {
+        auto item = buildImportItem(itemCtx);
+        if (item) {
+            items.push_back(std::move(item));
+        }
+    }
+
+    return std::make_unique<FromImport>(std::move(module), std::move(items));
+}
+
+std::unique_ptr<ModulePath> SimpleASTBuilder::buildModulePath(HoocParser::ModulePathContext* ctx) {
+    std::vector<std::string> components;
+    for (auto id : ctx->IDENTIFIER()) {
+        components.push_back(id->getText());
+    }
+    return std::make_unique<ModulePath>(std::move(components));
+}
+
+std::unique_ptr<ImportItem> SimpleASTBuilder::buildImportItem(HoocParser::ImportItemContext* ctx) {
+    std::string name = ctx->IDENTIFIER(0)->getText();
+    std::string alias;
+
+    // Check if AS clause is present (second IDENTIFIER)
+    if (ctx->IDENTIFIER().size() > 1) {
+        alias = ctx->IDENTIFIER(1)->getText();
+    }
+
+    return std::make_unique<ImportItem>(name, alias);
 }
 
 // Helper methods

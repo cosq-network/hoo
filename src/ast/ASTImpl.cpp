@@ -30,6 +30,35 @@ std::string SideEffectImport::toString() const {
     return "SideEffectImport " + module_;
 }
 
+// Python-style import implementations
+std::string ModulePath::toString() const {
+    std::stringstream ss;
+    for (size_t i = 0; i < components_.size(); i++) {
+        if (i > 0) ss << ".";
+        ss << components_[i];
+    }
+    return ss.str();
+}
+
+std::string BasicImport::toString() const {
+    std::stringstream ss;
+    ss << "import " << module_->toString();
+    if (!alias_.empty()) {
+        ss << " as " << alias_;
+    }
+    return ss.str();
+}
+
+std::string FromImport::toString() const {
+    std::stringstream ss;
+    ss << "from " << module_->toString() << " import ";
+    for (size_t i = 0; i < items_.size(); i++) {
+        if (i > 0) ss << ", ";
+        ss << items_[i]->toString();
+    }
+    return ss.str();
+}
+
 // Declaration implementations
 std::string FunctionDeclaration::toString() const {
     return "FunctionDeclaration " + name_;

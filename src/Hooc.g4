@@ -102,14 +102,15 @@ MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip;
 // ===== PARSER RULES =====
 
 // Compilation Unit
-compilationUnit: declaration* EOF;
+compilationUnit: importStatement* declaration* EOF;
 
-// Import Statements
+// Import Statements (Python-style)
 importStatement
-    : IMPORT LBRACE importItem (COMMA importItem)* RBRACE FROM STRING_LITERAL SEMICOLON     # namedImports
-    | IMPORT MULTIPLY AS IDENTIFIER FROM STRING_LITERAL SEMICOLON                          # namespaceImport
-    | IMPORT STRING_LITERAL SEMICOLON                                                      # sideEffectImport
+    : IMPORT modulePath (AS IDENTIFIER)? SEMICOLON              # basicImport
+    | FROM modulePath IMPORT importItem (COMMA importItem)* SEMICOLON  # fromImport
     ;
+
+modulePath: IDENTIFIER (DOT IDENTIFIER)*;
 
 importItem: IDENTIFIER (AS IDENTIFIER)?;
 

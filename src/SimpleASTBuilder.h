@@ -40,6 +40,13 @@ private:
     std::unique_ptr<ast::ArrayLiteral> buildArrayLiteral(HoocParser::PrimaryContext* ctx);
     std::unique_ptr<ast::ExpressionList> buildExpressionList(HoocParser::ExpressionListContext* ctx);
 
+    // Import building methods
+    std::unique_ptr<ast::ImportStatement> buildImportStatement(HoocParser::ImportStatementContext* ctx);
+    std::unique_ptr<ast::BasicImport> buildBasicImport(HoocParser::BasicImportContext* ctx);
+    std::unique_ptr<ast::FromImport> buildFromImport(HoocParser::FromImportContext* ctx);
+    std::unique_ptr<ast::ModulePath> buildModulePath(HoocParser::ModulePathContext* ctx);
+    std::unique_ptr<ast::ImportItem> buildImportItem(HoocParser::ImportItemContext* ctx);
+
     // Helper methods
     ast::PrimitiveTypeKind getPrimitiveTypeKind(const std::string& typeName);
     ast::BinaryOperator getBinaryOperator(antlr4::tree::TerminalNode* node);
