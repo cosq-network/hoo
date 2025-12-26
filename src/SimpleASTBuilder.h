@@ -16,6 +16,7 @@ private:
     std::unique_ptr<ast::VariableDeclarationStatement> buildVariableDeclarationStatement(HoocParser::VariableDeclarationContext* ctx);
     std::unique_ptr<ast::Type> buildType(HoocParser::TypeContext* ctx);
     std::unique_ptr<ast::UnionType> buildUnionType(HoocParser::UnionTypeContext* ctx);
+    std::unique_ptr<ast::OptionalType> buildOptionalType(HoocParser::OptionalTypeContext* ctx);
     std::unique_ptr<ast::ArrayType> buildArrayType(HoocParser::ArrayTypeContext* ctx);
     std::unique_ptr<ast::BaseType> buildBaseType(HoocParser::BaseTypeContext* ctx);
     std::unique_ptr<ast::PrimitiveType> buildPrimitiveType(HoocParser::PrimitiveTypeContext* ctx);

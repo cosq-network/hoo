@@ -95,6 +95,14 @@ private:
     bool value_;
 };
 
+// Null literal
+class NullLiteral : public Primary {
+public:
+    NullLiteral() {}
+
+    std::string toString() const override;
+};
+
 // Interpolated string (placeholder)
 class InterpolatedString : public Primary {
 public:

@@ -237,6 +237,7 @@ if(GTest_FOUND)
         tests/test_main.cpp
         tests/ArrayLiteralParsingTest.cpp
         tests/FunctionCallParsingTest.cpp
+        tests/NullableTypeParsingTest.cpp
         tests/VariableDeclarationParseTest.cpp
         tests/IfElseIfParsingTest.cpp
         tests/WhileLoopParsingTest.cpp
@@ -247,6 +248,7 @@ if(GTest_FOUND)
         tests/ArrayLiteralCodeGenTest.cpp
         tests/IfElseIfCodeGenTest.cpp
         tests/WhileLoopCodeGenTest.cpp
+        tests/NullableCodeGenTest.cpp
     )
 
     # Link test executable with libraries

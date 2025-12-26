@@ -36,13 +36,14 @@ cmake --build build --config RelWithDebInfo
 
 ### Running Tests
 ```bash
-# Run all unit tests (88 tests)
+# Run all unit tests (278 tests, 14 test suites)
 ./build/hoo_tests        # macOS/Linux
 ./build/hoo_tests.exe    # Windows
 
 # Run specific test suite with verbose output
 ./build/hoo_tests --gtest_filter="BasicCodeGenTest.*"
 ./build/hoo_tests --gtest_filter="FunctionCallCodeGenTest.*"
+./build/hoo_tests --gtest_filter="NullableCodeGenTest.*"
 
 # Run tests through CMake
 cmake --build build --target run_tests
@@ -322,17 +323,76 @@ func main() -> void {
 
 **Important:** Fixed-size array type syntax (e.g., `var arr: int64[10]`) is no longer supported. Use array literals instead.
 
+## Nullable Types (v0.3)
+
+Hoo supports nullable types using the `T?` syntax, allowing variables to represent either a value or null. This provides memory safety and null-safety guarantees at compile time.
+
+### Syntax and Usage
+
+```hoo
+// Nullable variable declarations
+var x: int64? = 42;         // Non-null value
+var y: int64? = null;       // Null value
+var z: double? = 3.14;      // Works with all primitive types
+
+// Nullable function parameters
+func process(int64? value) -> int64 {
+    return 10;
+}
+
+// Nullable return types
+func maybeValue() -> int64? {
+    return 42;
+}
+
+// Mixed nullable and non-nullable parameters
+func compare(int64 required, int64? optional) -> bool {
+    return true;
+}
+
+// Nullable arrays
+var arr: int64[]? = [1, 2, 3];
+var empty: int64[]? = null;
+```
+
+### Implementation Details
+
+**LLVM Representation:**
+- Nullable types use a **tagged union pattern**: `{ i1 isNull, T value }`
+- First field: null flag (true if null, false if contains value)
+- Second field: actual value (undefined if null)
+- Example: `int64?` is represented as `{ i1, i64 }` in LLVM IR
+
+**Type Support:**
+- All primitive types support nullability: `byte?`, `uint8?`, `int64?`, `float?`, `double?`, `f64?`, `bool?`, `char?`
+- Array types support nullability: `int64[]?`, `double[][]?`
+- Union types can contain nullable types: `int64? | double?`
+
+**Features:**
+- Null literal support: `null` keyword for assigning null values
+- Type inference: Nullable types are inferred from the `?` annotation
+- Function parameters: Can be nullable to accept optional values
+- Return values: Functions can return nullable types
+- Variable scope: Nullable variables properly scoped in blocks
+
 ### Current Implementation Status
 
-**✅ Fully Working (v0.2):**
+**✅ Fully Working (v0.3):**
 - All primitive types: `byte`, `uint8`, `int64`, `float`, `double`, `f64`, `bool`, `char`, `void`
-- Literals: integer, floating-point, boolean, character, string literal, array literals
+- Literals: integer, floating-point, boolean, character, string literal, array literals, null literals (`null`)
 - Variable declarations with type inference and explicit type annotations
 - Array literals with type inference (`[1, 2, 3]`)
 - Multi-dimensional array literals (`[[1, 2], [3, 4]]`)
 - Array slice types for function parameters (`int64[]`)
 - Array element access (`arr[index]`)
 - Type system: union types (`T | U`), optional types (`T?`), array types (`T[]`)
+- **Nullable types** - Full support with `T?` syntax (v0.3 addition):
+  - Nullable variable declarations (`var x: int64? = 42` or `var y: int64? = null`)
+  - Nullable function parameters (`func process(int64? value) -> int64`)
+  - Nullable return types (`func maybeValue() -> int64?`)
+  - All primitive types support nullability
+  - LLVM tagged union representation (`{ i1 isNull, T value }`)
+  - Null literal support (`null` keyword for assigning null values)
 - All arithmetic operators: `+`, `-`, `*`, `/`, `%`
 - All comparison operators: `==`, `!=`, `<`, `<=`, `>`, `>=`
 - All logical operators: `&&`, `||`, `!`
@@ -372,7 +432,7 @@ func main() -> void {
 - Module system and import resolution
 - Standard library
 
-**🚫 Removed (v0.2):**
+**🚫 Removed (v0.2-v0.3):**
 - Fixed-size array type declarations (e.g., `var arr: int64[10]`) - Use array literals instead
 
 ### Common Issues
@@ -392,6 +452,18 @@ func main() -> void {
 - `functions_` maps function names to LLVM Function pointers
 - Clear/manage scope properly for nested blocks
 
+**Nullable Type Operations (v0.3)**
+- Nullable types use tagged union representation in LLVM (`{ i1, T }`)
+- Helper methods available in `LLVMCodeGenerator`:
+  - `createNullableType(valueType)` - Creates struct type for nullable value
+  - `createNullValue(valueType)` - Creates a null value
+  - `wrapValueInNullable(value, nullableType)` - Wraps value in nullable struct
+  - `extractValueFromNullable(nullableValue)` - Extracts value from nullable
+  - `extractNullFlagFromNullable(nullableValue)` - Extracts null flag
+  - `isTypeNullable(type)` - Checks if type is nullable
+- Nullable types are fully transparent to existing code generation logic
+- No special handling needed in most contexts - LLVM IR handles struct operations
+
 ## Key Files Reference
 
 | Path | Purpose |
@@ -408,6 +480,8 @@ func main() -> void {
 | `src/Hooc.g4` | ANTLR4 grammar definition |
 | `src/ast/*.h` | AST node type definitions |
 | `src/ast/ASTImpl.cpp` | AST utility implementations |
+| `tests/NullableTypeParsingTest.cpp` | Nullable type parsing tests (15 tests) |
+| `tests/NullableCodeGenTest.cpp` | Nullable type code generation tests (20 tests) - v0.3 |
 | `CMakeLists.txt` | Build configuration |
 | `docs/hooc_language_specification_v_0.md` | Complete language spec |
 | `docs/implementation-status.md` | Detailed progress tracking |

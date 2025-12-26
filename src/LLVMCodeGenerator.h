@@ -86,7 +86,15 @@ private:
     // Type conversion helpers
     llvm::Type* convertPrimitiveType(ast::PrimitiveTypeKind kind);
     llvm::Type* convertArrayType(const ast::ArrayType& arrayType);
-    
+
+    // Nullable type helpers (tagged union pattern: { i1 flag, T value })
+    llvm::StructType* createNullableType(llvm::Type* valueType);
+    llvm::Value* createNullValue(llvm::Type* valueType);
+    llvm::Value* wrapValueInNullable(llvm::Value* value, llvm::Type* nullableType);
+    llvm::Value* extractValueFromNullable(llvm::Value* nullableValue);
+    llvm::Value* extractNullFlagFromNullable(llvm::Value* nullableValue);
+    bool isTypeNullable(const ast::Type& type);
+
     // Utility methods
     llvm::Constant* createConstant(const ast::Primary& primary);
     llvm::Constant* createGlobalArrayConstant(const std::vector<llvm::Constant*>& elements, llvm::Type* elementType);

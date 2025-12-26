@@ -31,6 +31,7 @@ ACTOR: 'actor';
 AS: 'as';
 TRUE: 'true';
 FALSE: 'false';
+NULL: 'null';
 
 // Primitive Types
 BYTE: 'byte';
@@ -258,6 +259,7 @@ primary
     | CHAR_LITERAL
     | TRUE
     | FALSE
+    | NULL
     | LBRACKET expressionList? RBRACKET
     | LPAREN expression RPAREN
     ;

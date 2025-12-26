@@ -274,6 +274,10 @@ std::string BooleanLiteral::toString() const {
     return "BooleanLiteral(" + std::string(value_ ? "true" : "false") + ")";
 }
 
+std::string NullLiteral::toString() const {
+    return "NullLiteral(null)";
+}
+
 std::string InterpolatedString::toString() const {
     return "InterpolatedString";
 }

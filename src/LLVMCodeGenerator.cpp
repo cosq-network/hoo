@@ -267,7 +267,12 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
         
     } else if (auto boolLiteral = dynamic_cast<const BooleanLiteral*>(&primary)) {
         return ConstantInt::get(LLVMType::getInt1Ty(context_), boolLiteral->getValue() ? 1 : 0);
-        
+
+    } else if (auto nullLiteral = dynamic_cast<const NullLiteral*>(&primary)) {
+        // Return a null pointer for now - the actual nullable type handling
+        // happens in variable declaration and function parameter contexts
+        return ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
+
     } else if (auto stringLiteral = dynamic_cast<const ASTStringLiteral*>(&primary)) {
         // Create global string constant
         return builder_->CreateGlobalString(stringLiteral->getValue());
@@ -890,22 +895,47 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
 
 LLVMType* LLVMCodeGenerator::generateLLVMType(const ASTType& type) {
     if (auto unionType = dynamic_cast<const UnionType*>(&type)) {
-        // For now, just use the first type in the union
+        // For union types, check if any type is nullable
         const auto& types = unionType->getTypes();
         if (!types.empty()) {
-            return generateLLVMType(*types[0]);
+            // If the union contains optional types, create a tagged union
+            bool hasOptional = false;
+            for (const auto& t : types) {
+                if (t->isOptional()) {
+                    hasOptional = true;
+                    break;
+                }
+            }
+
+            if (hasOptional && types.size() == 1) {
+                // Single optional type in union - wrap it in nullable type
+                auto valueType = generateLLVMType(*types[0]);
+                return createNullableType(valueType);
+            } else if (hasOptional) {
+                // Multiple types with optional - use first type for now
+                return generateLLVMType(*types[0]);
+            } else {
+                // Non-optional union - just use first type
+                return generateLLVMType(*types[0]);
+            }
         }
     }
-    
+
     if (auto optionalType = dynamic_cast<const OptionalType*>(&type)) {
-        // For now, treat optional types as their underlying type
-        return generateLLVMType(optionalType->getArrayType());
+        // Handle optional types with tagged union pattern
+        if (optionalType->isOptional()) {
+            auto valueType = generateLLVMType(optionalType->getArrayType());
+            return createNullableType(valueType);
+        } else {
+            // Not actually optional, just return the array type
+            return generateLLVMType(optionalType->getArrayType());
+        }
     }
-    
+
     if (auto arrayType = dynamic_cast<const ASTArrayType*>(&type)) {
         return convertArrayType(*arrayType);
     }
-    
+
     if (auto baseType = dynamic_cast<const BaseType*>(&type)) {
         if (baseType->isPrimitive()) {
             return convertPrimitiveType(baseType->getPrimitiveType()->getKind());
@@ -914,7 +944,7 @@ LLVMType* LLVMCodeGenerator::generateLLVMType(const ASTType& type) {
             return llvm::PointerType::get(context_, 0);
         }
     }
-    
+
     // Default to void
     return LLVMType::getVoidTy(context_);
 }
@@ -1079,4 +1109,85 @@ void LLVMCodeGenerator::generateVariableDeclarationStatement(const VariableDecla
 AllocaInst* LLVMCodeGenerator::createEntryBlockAlloca(Function* function, const std::string& varName, LLVMType* type) {
     IRBuilder<> tmpBuilder(&function->getEntryBlock(), function->getEntryBlock().begin());
     return tmpBuilder.CreateAlloca(type, nullptr, varName);
+}
+
+// Nullable type helpers (tagged union pattern: { i1 flag, T value })
+llvm::StructType* LLVMCodeGenerator::createNullableType(llvm::Type* valueType) {
+    // Create a struct type: { i1 isNull, T value }
+    std::vector<llvm::Type*> elements = {
+        llvm::Type::getInt1Ty(context_),  // isNull flag
+        valueType                          // value
+    };
+
+    // Generate a name for the nullable type
+    std::string typeName = "nullable";
+    if (valueType->isIntegerTy()) {
+        typeName += "_i" + std::to_string(valueType->getIntegerBitWidth());
+    } else if (valueType->isDoubleTy()) {
+        typeName += "_f64";
+    } else if (valueType->isFloatTy()) {
+        typeName += "_f32";
+    } else if (valueType->isPointerTy()) {
+        typeName += "_ptr";
+    } else if (auto structTy = llvm::dyn_cast<llvm::StructType>(valueType)) {
+        if (!structTy->getName().empty()) {
+            typeName += "_" + std::string(structTy->getName());
+        } else {
+            typeName += "_struct";
+        }
+    } else {
+        typeName += "_unknown";
+    }
+
+    return llvm::StructType::create(context_, elements, typeName);
+}
+
+llvm::Value* LLVMCodeGenerator::createNullValue(llvm::Type* valueType) {
+    // Create a null value: { i1 true, undef }
+    auto nullableType = createNullableType(valueType);
+    auto nullStruct = llvm::ConstantAggregateZero::get(nullableType);
+
+    // Set the isNull flag to true
+    std::vector<unsigned> indices = {0};
+    return llvm::ConstantStruct::get(nullableType, {
+        llvm::ConstantInt::getTrue(context_),
+        llvm::UndefValue::get(valueType)
+    });
+}
+
+llvm::Value* LLVMCodeGenerator::wrapValueInNullable(llvm::Value* value, llvm::Type* nullableType) {
+    // Wrap a value in the nullable type: { i1 false, value }
+    auto structType = llvm::dyn_cast<llvm::StructType>(nullableType);
+    if (!structType) return nullptr;
+
+    // Create the struct with isNull=false and the provided value
+    llvm::Value* nullableValue = llvm::UndefValue::get(nullableType);
+    nullableValue = builder_->CreateInsertValue(nullableValue,
+                                                llvm::ConstantInt::getFalse(context_), 0);
+    nullableValue = builder_->CreateInsertValue(nullableValue, value, 1);
+    return nullableValue;
+}
+
+llvm::Value* LLVMCodeGenerator::extractValueFromNullable(llvm::Value* nullableValue) {
+    // Extract the value (second field) from nullable type
+    return builder_->CreateExtractValue(nullableValue, 1);
+}
+
+llvm::Value* LLVMCodeGenerator::extractNullFlagFromNullable(llvm::Value* nullableValue) {
+    // Extract the isNull flag (first field) from nullable type
+    return builder_->CreateExtractValue(nullableValue, 0);
+}
+
+bool LLVMCodeGenerator::isTypeNullable(const ast::Type& type) {
+    // Check if the type is an optional type
+    if (auto optionalType = dynamic_cast<const ast::OptionalType*>(&type)) {
+        return optionalType->isOptional();
+    }
+    if (auto unionType = dynamic_cast<const ast::UnionType*>(&type)) {
+        // Union types containing at least one optional type are nullable
+        for (const auto& t : unionType->getTypes()) {
+            if (t->isOptional()) return true;
+        }
+    }
+    return false;
 }
