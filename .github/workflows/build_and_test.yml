@@ -1,0 +1,46 @@
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Java for ANTLR4
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          cmake \
+          build-essential \
+          llvm-16-dev \
+          libclang-16-dev \
+          libantlr4-runtime-dev \
+          libgtest-dev # For Google Test
+
+    - name: Configure CMake
+      run: cmake -B build
+
+    - name: Build ANTLR4 parser
+      run: cmake --build build --target generate_parser
+
+    - name: Build project
+      run: cmake --build build
+
+    - name: Run unit tests
+      run: ctest --test-dir build --output-on-failure
