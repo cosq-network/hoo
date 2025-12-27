@@ -290,6 +290,7 @@ if(GTest_FOUND)
         tests/StringBasicsTest.cpp
         tests/StringCodeGenTest.cpp
         tests/ClassArrayCodeGenTest.cpp
+        tests/HooArrayPhase7Test.cpp
     )
 
     # Link test executable with libraries
