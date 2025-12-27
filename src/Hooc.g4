@@ -126,15 +126,19 @@ declaration
 
 // Function Declaration
 functionDeclaration
-    : FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)? block
+    : FUNC IDENTIFIER typeParameterList? LPAREN parameterList? RPAREN (ARROW type)? block
     ;
 
 parameterList: parameter (COMMA parameter)*;
 parameter: IDENTIFIER COLON type;
 
+// Type Parameters and Arguments (for generics)
+typeParameterList: LESS IDENTIFIER (COMMA IDENTIFIER)* GREATER;
+typeArgumentList: LESS type (COMMA type)* GREATER;
+
 // Class Declaration
 classDeclaration
-    : classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? (IMPLEMENTS interfaceList)? classBody
+    : classModifier* CLASS IDENTIFIER typeParameterList? (EXTENDS IDENTIFIER typeArgumentList?)? (IMPLEMENTS interfaceList)? classBody
     ;
 
 classModifier: SINGLETON | IMMUTABLE | FACTORY | OBSERVABLE | SERVICE | STRATEGY | ACTOR | FINAL;
@@ -180,7 +184,7 @@ arrayType: baseType (LBRACKET RBRACKET)*;
 
 baseType
     : primitiveType
-    | IDENTIFIER
+    | IDENTIFIER typeArgumentList?
     ;
 
 primitiveType: BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
@@ -249,9 +253,9 @@ unaryExpression
 
 postfixExpression
     : primary (
-        DOT IDENTIFIER
+        DOT IDENTIFIER typeArgumentList?
       | LBRACKET expression RBRACKET
-      | LPAREN argumentList? RPAREN
+      | typeArgumentList? LPAREN argumentList? RPAREN
     )*
     ;
 
@@ -271,7 +275,7 @@ primary
 
 // Object creation expression
 newExpression
-    : NEW IDENTIFIER LPAREN argumentList? RPAREN
+    : NEW IDENTIFIER typeArgumentList? LPAREN argumentList? RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

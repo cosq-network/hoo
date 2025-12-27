@@ -71,6 +71,14 @@ std::unique_ptr<VariableDeclarationStatement> SimpleASTBuilder::buildVariableDec
 std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx) {
     std::string name = ctx->IDENTIFIER()->getText();
 
+    // Get type parameters (optional)
+    std::vector<std::string> typeParameters;
+    if (ctx->typeParameterList()) {
+        for (auto idNode : ctx->typeParameterList()->IDENTIFIER()) {
+            typeParameters.push_back(idNode->getText());
+        }
+    }
+
     std::vector<std::unique_ptr<Parameter>> parameters;
     if (ctx->parameterList()) {
         for (auto paramCtx : ctx->parameterList()->parameter()) {
@@ -93,8 +101,15 @@ std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
 
     auto body = buildBlock(ctx->block());
 
-    return std::make_unique<FunctionDeclaration>(name, std::move(parameters),
-                                               std::move(returnType), std::move(body));
+    // Use appropriate constructor based on whether there are type parameters
+    if (!typeParameters.empty()) {
+        return std::make_unique<FunctionDeclaration>(name, std::move(typeParameters),
+                                                   std::move(parameters),
+                                                   std::move(returnType), std::move(body));
+    } else {
+        return std::make_unique<FunctionDeclaration>(name, std::move(parameters),
+                                                   std::move(returnType), std::move(body));
+    }
 }
 
 std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::ParameterContext* ctx) {
@@ -190,9 +205,22 @@ std::unique_ptr<BaseType> SimpleASTBuilder::buildBaseType(HoocParser::BaseTypeCo
         return std::make_unique<BaseType>(std::move(primitive));
     } else if (ctx->IDENTIFIER()) {
         std::string identifier = ctx->IDENTIFIER()->getText();
-        return std::make_unique<BaseType>(identifier);
+
+        // Check for type arguments (generics)
+        std::vector<std::unique_ptr<Type>> typeArguments;
+        if (ctx->typeArgumentList()) {
+            for (auto typeCtx : ctx->typeArgumentList()->type()) {
+                typeArguments.push_back(buildType(typeCtx));
+            }
+        }
+
+        if (!typeArguments.empty()) {
+            return std::make_unique<BaseType>(identifier, std::move(typeArguments));
+        } else {
+            return std::make_unique<BaseType>(identifier);
+        }
     }
-    
+
     return std::make_unique<BaseType>("unknown");
 }
 
@@ -518,6 +546,14 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
     // Get the class name
     std::string className = ctx->IDENTIFIER()->getText();
 
+    // Build type arguments if present (for generics)
+    std::vector<std::unique_ptr<Type>> typeArguments;
+    if (ctx->typeArgumentList()) {
+        for (auto typeCtx : ctx->typeArgumentList()->type()) {
+            typeArguments.push_back(buildType(typeCtx));
+        }
+    }
+
     // Build argument list if present
     std::unique_ptr<ArgumentList> args;
     if (ctx->argumentList()) {
@@ -527,7 +563,11 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
         args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
     }
 
-    return std::make_unique<NewObjectExpression>(className, std::move(args));
+    if (!typeArguments.empty()) {
+        return std::make_unique<NewObjectExpression>(className, std::move(typeArguments), std::move(args));
+    } else {
+        return std::make_unique<NewObjectExpression>(className, std::move(args));
+    }
 }
 
 // Import building methods
@@ -597,6 +637,14 @@ std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocPa
     // Get class name
     std::string name = ctx->IDENTIFIER(0)->getText();
 
+    // Get type parameters (optional)
+    std::vector<std::string> typeParameters;
+    if (ctx->typeParameterList()) {
+        for (auto idNode : ctx->typeParameterList()->IDENTIFIER()) {
+            typeParameters.push_back(idNode->getText());
+        }
+    }
+
     // Get base class name (optional)
     std::string baseClass;
     if (ctx->EXTENDS()) {
@@ -618,6 +666,7 @@ std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocPa
     return std::make_unique<ClassDeclaration>(
         std::move(modifiers),
         name,
+        std::move(typeParameters),
         baseClass,
         std::move(interfaces),
         std::move(body)

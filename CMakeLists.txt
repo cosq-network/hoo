@@ -270,6 +270,8 @@ if(GTest_FOUND)
         tests/NullableCodeGenTest.cpp
         tests/ModuleLevelVariableParsingTest.cpp
         tests/ClassDeclarationParsingTest.cpp
+        tests/GenericSyntaxParsingTest.cpp
+        tests/GenericASTBuildingTest.cpp
         tests/OptionalReturnTypeTest.cpp
         tests/NewExpressionParsingTest.cpp
         tests/NewExpressionCodeGenTest.cpp

@@ -45,20 +45,26 @@ private:
 class BaseType : public Type {
 public:
     BaseType(std::unique_ptr<PrimitiveType> primitiveType)
-        : primitiveType_(std::move(primitiveType)), identifier_("") {}
+        : primitiveType_(std::move(primitiveType)), identifier_(""), typeArguments_() {}
 
     BaseType(const std::string& identifier)
-        : primitiveType_(nullptr), identifier_(identifier) {}
+        : primitiveType_(nullptr), identifier_(identifier), typeArguments_() {}
+
+    BaseType(const std::string& identifier, std::vector<std::unique_ptr<Type>> typeArguments)
+        : primitiveType_(nullptr), identifier_(identifier), typeArguments_(std::move(typeArguments)) {}
 
     std::string toString() const override;
 
     const PrimitiveType* getPrimitiveType() const { return primitiveType_.get(); }
     const std::string& getIdentifier() const { return identifier_; }
+    const std::vector<std::unique_ptr<Type>>& getTypeArguments() const { return typeArguments_; }
     bool isPrimitive() const { return primitiveType_ != nullptr; }
+    bool hasTypeArguments() const { return !typeArguments_.empty(); }
 
 private:
     std::unique_ptr<PrimitiveType> primitiveType_;
     std::string identifier_;
+    std::vector<std::unique_ptr<Type>> typeArguments_;
 };
 
 // Array type

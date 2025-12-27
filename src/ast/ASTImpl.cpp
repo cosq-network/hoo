@@ -61,7 +61,17 @@ std::string FromImport::toString() const {
 
 // Declaration implementations
 std::string FunctionDeclaration::toString() const {
-    return "FunctionDeclaration " + name_;
+    std::stringstream ss;
+    ss << "FunctionDeclaration " << name_;
+    if (isGeneric()) {
+        ss << "<";
+        for (size_t i = 0; i < typeParameters_.size(); ++i) {
+            if (i > 0) ss << ", ";
+            ss << typeParameters_[i];
+        }
+        ss << ">";
+    }
+    return ss.str();
 }
 
 std::string VariableDeclaration::toString() const {
@@ -90,7 +100,17 @@ std::string ClassBody::toString() const {
 }
 
 std::string ClassDeclaration::toString() const {
-    return "ClassDeclaration " + name_;
+    std::stringstream ss;
+    ss << "ClassDeclaration " << name_;
+    if (isGeneric()) {
+        ss << "<";
+        for (size_t i = 0; i < typeParameters_.size(); ++i) {
+            if (i > 0) ss << ", ";
+            ss << typeParameters_[i];
+        }
+        ss << ">";
+    }
+    return ss.str();
 }
 
 bool ClassDeclaration::hasModifier(ClassModifier modifier) const {
@@ -121,7 +141,16 @@ std::string PrimitiveType::toString() const {
 }
 
 std::string BaseType::toString() const {
-    return "BaseType";
+    std::stringstream ss;
+    ss << "BaseType";
+    if (isPrimitive()) {
+        ss << "(primitive)";
+    } else if (hasTypeArguments()) {
+        ss << "(" << identifier_ << "<...>)";
+    } else if (!identifier_.empty()) {
+        ss << "(" << identifier_ << ")";
+    }
+    return ss.str();
 }
 
 std::string ArrayType::toString() const {
@@ -199,7 +228,12 @@ std::string NewArrayExpression::toString() const {
 }
 
 std::string NewObjectExpression::toString() const {
-    return "NewObjectExpression " + className_;
+    std::stringstream ss;
+    ss << "NewObjectExpression " << className_;
+    if (hasTypeArguments()) {
+        ss << "<...>";
+    }
+    return ss.str();
 }
 
 std::string UnaryMinus::toString() const {
