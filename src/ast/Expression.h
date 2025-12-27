@@ -81,15 +81,23 @@ class FunctionCall : public Expression {
 public:
     FunctionCall(std::unique_ptr<Expression> function,
                 std::unique_ptr<ArgumentList> arguments)
-        : function_(std::move(function)), arguments_(std::move(arguments)) {}
+        : function_(std::move(function)), typeArguments_(), arguments_(std::move(arguments)) {}
+
+    FunctionCall(std::unique_ptr<Expression> function,
+                std::vector<std::unique_ptr<Type>> typeArguments,
+                std::unique_ptr<ArgumentList> arguments)
+        : function_(std::move(function)), typeArguments_(std::move(typeArguments)), arguments_(std::move(arguments)) {}
 
     std::string toString() const override;
 
     const Expression& getFunction() const { return *function_; }
+    const std::vector<std::unique_ptr<Type>>& getTypeArguments() const { return typeArguments_; }
     const ArgumentList* getArguments() const { return arguments_.get(); }
+    bool hasTypeArguments() const { return !typeArguments_.empty(); }
 
 private:
     std::unique_ptr<Expression> function_;
+    std::vector<std::unique_ptr<Type>> typeArguments_;
     std::unique_ptr<ArgumentList> arguments_;
 };
 

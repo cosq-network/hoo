@@ -1,0 +1,32 @@
+// Example: Generic Function with Generic Class Argument
+// Demonstrates a generic function that operates on an instance of a generic class
+
+class Box<T> {
+    var content: int64; // Simplified storage as per existing examples
+
+    constructor(initialContent: int64) {
+        content = initialContent;
+    }
+
+    func getContent() -> int64 { // Should conceptually return T
+        return content;
+    }
+}
+
+// A generic function that takes a generic Box<T> as an argument
+func inspectBox<T>(box: Box<T>) -> int64 {
+    // In a real scenario, this would inspect the box's content of type T
+    // For now, it retrieves a simplified int64 value.
+    var value = box.getContent();
+    return value * 2;
+}
+
+func main() {
+    var intBox = new Box<int64>(42);
+    var doubleBox = new Box<double>(314); // Storing 3.14 as int64 for simplification
+    var stringBox = new Box<string>(100); // Storing "hello" as int64 for simplification
+
+    var result1 = inspectBox<int64>(intBox);
+    var result2 = inspectBox<double>(doubleBox);
+    var result3 = inspectBox<string>(stringBox);
+}

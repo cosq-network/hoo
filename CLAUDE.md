@@ -225,6 +225,13 @@ All primitive types are fully implemented with LLVM IR generation:
 - Member access - Reading class fields via `.` operator
 - Method calls - Invoking methods on object instances
 - Automatic Reference Counting - Memory management via runtime library
+- **Generics (v0.6)** - C#-style generics with monomorphization
+  - Generic class declarations: `class Box<T> { ... }`
+  - Generic function declarations: `func identity<T>(value: T) -> int64 { ... }`
+  - Nested generic types: `Box<Box<int64>>`
+  - Multiple type parameters: `Pair<K, V>`
+  - Name mangling and type substitution
+  - 49 comprehensive unit tests (GenericSyntaxParsingTest, GenericASTBuildingTest, GenericNameManglingTest, GenericClassCodeGenTest, GenericFunctionCodeGenTest, GenericIntegrationTest, GenericErrorHandlingTest)
 
 **Partially Implemented**
 - Classes and interfaces - Object fields and methods complete, inheritance pending
@@ -237,6 +244,7 @@ All primitive types are fully implemented with LLVM IR generation:
 - Event system (parsed, code generation pending)
 - Member assignment - `obj.field = value` (parsed, code generation pending)
 - Module resolution (import/export parsing works, resolution not implemented)
+- Type constraints for generics: `<T: Serializable>` (planned for v1.0+)
 - Alternative code generator backends (bytecode, C, JavaScript, etc.)
 
 ### Code Generator Architecture

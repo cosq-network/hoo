@@ -8,7 +8,8 @@
       "Bash(./build/RelWithDebInfo/hooc.exe:*)",
       "Bash(./build/RelWithDebInfo/hoo-tests.exe:*)",
       "Bash(timeout:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\hoo-tests.exe\" --gtest_filter=\"GenericNameManglingTest.*\")"
     ]
   }
 }

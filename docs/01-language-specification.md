@@ -351,14 +351,122 @@ class User implements Serializable {
 
 ---
 
-## 11. Memory Management
+## 11. Generics
+
+hoo supports **C#-style generic parameters** for both classes and functions using **monomorphization** (compile-time specialization). This enables writing reusable, type-safe code without sacrificing performance.
+
+### 11.1 Generic Classes
+
+``` hoo
+// Generic class with single type parameter
+class Box<T> {
+    constructor() {}
+
+    func get() -> int64 {
+        return 0;
+    }
+}
+
+// Generic class with multiple type parameters
+class Pair<K, V> {
+    constructor() {}
+
+    func setKeyValue(key: K, value: V) -> void {
+        // Implementation
+    }
+}
+
+// Usage with type arguments
+func main() {
+    var intBox = new Box<int64>();
+    var doubleBox = new Box<double>();
+    var stringDoubleBox = new Pair<string, double>();
+}
+```
+
+**Key Features:**
+- Type parameters denoted with angle brackets: `<T>`, `<K, V>`
+- Each type instantiation generates specialized code
+- Type safety enforced at compile time
+- No runtime overhead (monomorphization)
+- Supports nested generic types: `Box<Box<int64>>`
+
+### 11.2 Generic Functions
+
+``` hoo
+// Generic function with single type parameter
+func identity<T>(value: T) -> int64 {
+    return 0;
+}
+
+// Generic function with multiple type parameters
+func swap<T, U>(a: T, b: U) -> void {
+    // Implementation
+}
+
+// Usage with explicit type arguments
+func main() {
+    var result1 = identity<int64>(42);
+    var result2 = identity<string>("hello");
+
+    var x: int64 = 5;
+    var y: double = 2.5;
+    swap<int64, double>(x, y);
+}
+```
+
+**Key Features:**
+- Type parameters in angle brackets before parameter list
+- Explicit type arguments required at call site
+- Full type substitution in function body
+- Type parameter can appear in parameters and return type
+
+### 11.3 Implementation Details
+
+**Monomorphization Strategy:**
+- Generic templates stored without immediate code generation
+- Code generated on-demand when a type instantiation is encountered
+- Each unique type combination gets its own specialized version
+- Example: `Array<int64>` and `Array<string>` are compiled separately
+
+**Name Mangling:**
+Generic types are converted to unique names for code generation:
+- `Box<int64>` → `Box_int64`
+- `Pair<string, double>` → `Pair_string_double`
+- `swap<int64, double>` → `swap_int64_double`
+
+**Type Parameter Scope:**
+Type parameters are resolved during code generation using a stack-based scope:
+- Type parameters pushed when instantiation begins
+- Type names resolved in method bodies and constructors
+- Scope popped after instantiation completes
+- Supports arbitrarily nested generic types
+
+### 11.4 Restrictions and Future Work
+
+**Current (v0.6):**
+- No type constraints (all types accepted)
+- Type parameters appear only in class fields and function bodies (inferred or substituted)
+- Instantiation checked at compile time
+
+**Planned (v1.0+):**
+- Type constraints: `class Container<T: Serializable> { ... }`
+- Variance annotations (covariance, contravariance)
+- Higher-ranked types
+- Associated types
+
+**Implementation Status (v0.6)**: Fully implemented with comprehensive test coverage (49 unit tests covering generic classes, functions, nested types, and error conditions).
+
+---
+
+## 12. Memory Management
 
 - No pointers
 - No manual allocation
 - Garbage collection
 - Deterministic lifetime via `scope`
 
-### 11.1 Scope Statement
+### 12.1 Scope Statement
 
 The `scope` statement creates a deterministic scope block where resources can be explicitly managed:
 
@@ -378,9 +486,9 @@ Rules:
 
 ---
 
-## 12. Error Handling
+## 13. Error Handling
 
-### 12.1 Union-Based Errors
+### 13.1 Union-Based Errors
 
 ``` hoo
 func read_file(string path) -> File | Error;
@@ -396,9 +504,9 @@ No unchecked exceptions.
 
 ---
 
-## 13. Collections & Algorithms (Language-Level)
+## 14. Collections & Algorithms (Language-Level)
 
-### 13.1 Searching
+### 14.1 Searching
 
 ``` hoo
 users.find(u => u.id == 10);
@@ -406,7 +514,7 @@ users.find(u => u.id == 10);
 
 Returns optional.
 
-### 13.2 Sorting
+### 14.2 Sorting
 
 ``` hoo
 users.sort();
@@ -416,7 +524,7 @@ users.sort((a, b) => a.age < b.age);
 - Stable
 - In-place by default
 
-### 13.3 Functional Operations
+### 14.3 Functional Operations
 
 ``` hoo
 users.filter(u => u.active);
@@ -426,7 +534,7 @@ numbers.reduce(0, (a, b) => a + b);
 
 ---
 
-### 13.4 List Comprehensions
+### 14.4 List Comprehensions
 
 ``` hoo
 squares = [x * x for x in 1..10];
@@ -437,11 +545,11 @@ Nested comprehensions allowed.
 
 ---
 
-## 14. Language-Integrated Design Patterns
+## 15. Language-Integrated Design Patterns
 
 The hoo grammar supports language-level design pattern keywords. These modifiers are parsed but code generation is not yet implemented (planned for future versions).
 
-### 14.1 Singleton
+### 15.1 Singleton
 
 ``` hoo
 singleton class Logger {
@@ -451,7 +559,7 @@ singleton class Logger {
 
 Guarantees single instance throughout program lifetime.
 
-### 14.2 Immutable Objects
+### 15.2 Immutable Objects
 
 ``` hoo
 immutable class Money(double amount, string currency);
@@ -459,7 +567,7 @@ immutable class Money(double amount, string currency);
 
 All fields are immutable after construction.
 
-### 14.3 Factory
+### 15.3 Factory
 
 ``` hoo
 factory class Shape {
@@ -470,7 +578,7 @@ factory class Shape {
 
 Multiple named constructors for different object creation patterns. (Future feature - currently only single constructor per class is supported)
 
-### 14.4 Observer
+### 15.4 Observer
 
 ``` hoo
 observable class Button {
@@ -480,7 +588,7 @@ observable class Button {
 
 Built-in event system with automatic subscriber management.
 
-### 14.5 Dependency Injection
+### 15.5 Dependency Injection
 
 ``` hoo
 service class UserService { }
@@ -488,7 +596,7 @@ service class UserService { }
 
 Constructor injection only. Compiler manages dependency resolution.
 
-### 14.6 Strategy
+### 15.6 Strategy
 
 ``` hoo
 strategy interface Payment {
@@ -498,7 +606,7 @@ strategy interface Payment {
 
 Explicitly marks interfaces as strategy patterns for compiler optimization.
 
-### 14.7 Actor Model
+### 15.7 Actor Model
 
 ``` hoo
 actor class Queue {
@@ -514,7 +622,7 @@ actor class Queue {
 
 ---
 
-## 15. Concurrency Model
+## 16. Concurrency Model
 
 - No shared mutable state by default
 - Actors for concurrency
@@ -522,10 +630,10 @@ actor class Queue {
 
 ---
 
-## Implementation Status (v0.2)
+## Implementation Status (v0.6)
 
 ### ✅ Fully Implemented
-- **Primitive Types**: `byte`, `uint8`, `int64`, `float`, `double` (f64), `bool`, `char` with 88 unit tests
+- **Primitive Types**: `byte`, `uint8`, `int64`, `float`, `double` (f64), `bool`, `char`
 - **Array Literals**: Complete syntax with type inference, multi-dimensional support, global constant storage
 - **Array Access**: Full element access with `arr[index]` syntax
 - **Variable Declarations**: Type inference and explicit annotations
@@ -536,31 +644,44 @@ actor class Queue {
 - **External C Functions**: Basic FFI support (e.g., `printf`)
 - **Type System**: Union types (`T | U`), optional types (`T?`), array slice types (`T[]`)
 - **Scope Statements**: Deterministic resource management via `scope { ... }`
+- **Classes and Objects**: Full support for class declarations with constructors, member variables, and method calls
+- **Object Creation**: `new` keyword for instantiation with automatic reference counting (ARC)
+- **Member Access**: Reading class fields via `.` operator
+- **Method Calls**: Invoking methods on object instances with implicit `this` pointer
+- **Generics**: Full C#-style generics with monomorphization for classes and functions (49 unit tests)
+  - Generic class declarations: `class Box<T> { ... }`
+  - Generic function declarations: `func identity<T>(value: T) -> T { ... }`
+  - Nested generic types: `Box<Box<int64>>`
+  - Multiple type parameters: `Pair<K, V>`
+  - Type argument inference and validation
+  - Name mangling: `Box<int64>` → `Box_int64`
 
 ### ⚠️ Partially Implemented
-- **Classes & Objects**: Grammar fully defined, Kotlin-style constructor parsing works (single constructor per class), method resolution incomplete
-- **String Type**: Grammar and lexer complete, code generation incomplete
-- **Design Pattern Keywords**: All keywords parsed (singleton, immutable, factory, observable, service, strategy, actor), code generation not implemented
+- **String Type**: Full parsing, LLVM generation, and 30+ runtime functions via runtime injection framework
+- **Design Pattern Keywords**: All keywords parsed (singleton, immutable, factory, observable, service, strategy, actor), code generation not yet implemented
 
 ### ❌ Not Yet Implemented
 - **Type Casting**: `as` keyword reserved but not implemented
-- **Object Instantiation**: `new` keyword parsed, constructor invocation not implemented
 - **Class Inheritance**: `extends` parsed but not implemented
 - **Interface Implementation**: `implements` parsed but not implemented
 - **Event System**: `event` keyword parsed but event handling not implemented
 - **Module System**: Import/export parsing works, module resolution not implemented
 - **String Interpolation**: Placeholder in grammar
-- **Generics**: Not in current grammar
 - **Pattern Matching**: Not in current grammar
+- **Type Constraints**: Generic constraints like `<T: Serializable>` planned for v1.0+
 
 ### Test Coverage
-**88 comprehensive unit tests** across parsing, AST building, and code generation. Tests validate:
-- Array literal parsing and type inference
-- Function declarations and calls
-- Variable declarations with type inference
-- Control flow statements (if/else, loops)
-- Expression evaluation and operator precedence
+**577 comprehensive unit tests** across parsing, AST building, and code generation. Tests validate:
+- Generic class instantiation and code generation (12 tests)
+- Generic function instantiation and code generation (12 tests)
+- Generic integration scenarios (10 tests)
+- Generic error handling and validation (15 tests)
+- Member access and method calls (25 tests)
+- Class and object creation (32 tests)
+- String operations (65 tests)
+- Array operations, control flow, and expression evaluation
 - LLVM IR generation for all supported features
+- Zero regressions from previous implementations
 
 ---
 
@@ -582,17 +703,21 @@ actor class Queue {
 
 ## 18. Roadmap Notes
 
-### v0.3 (Planned)
-- Complete class and object implementation
-- String type code generation
-- Design pattern code generation (singleton, factory, observable, etc.)
+### v0.3-v0.6 (Completed)
+- ✅ Complete class and object implementation
+- ✅ String type code generation with 30+ runtime functions
+- ✅ Object instantiation with `new` keyword and ARC memory management
+- ✅ Member variables and member access via `.` operator
+- ✅ Method calls on object instances
+- ✅ C#-style generics with monomorphization (v0.6)
+
+### v0.7+ (Planned)
 - Type casting with `as` keyword
-- Object instantiation with `new` keyword
+- Design pattern code generation (singleton, factory, observable, etc.)
 - Class inheritance and polymorphism
 - Interface implementation
-
-### v0.4+ (Future)
-- Generics (restricted)
+- Type constraints for generics: `<T: Serializable>`
+- Variance annotations (covariance, contravariance)
 - Parallel iteration
 - Optional region-based GC
 - Module system with proper import resolution
@@ -607,16 +732,20 @@ actor class Queue {
 
 **hooc** is a pragmatic, safe, and expressive language that modernizes C without inheriting the complexity of C++, the verbosity of Java, or the cognitive overhead of Rust.
 
-**hooc v0.2** demonstrates a mature foundation:
-- 88 unit tests covering all core features
-- Complete type system with inference and unions
-- Full expression evaluation with proper precedence
+**hooc v0.6** demonstrates a mature, feature-rich compiler:
+- 577 comprehensive unit tests covering all implemented features
+- Complete type system with inference, unions, optionals, and generics
+- Full expression evaluation with proper operator precedence
 - Comprehensive control flow (conditionals, loops, scoping)
-- Robust function declarations and calls
-- Array literals with multi-dimensional support
-- Modern design pattern keywords in grammar
-- Clean LLVM-based compilation pipeline
+- Robust function declarations and calls with generic support
+- Array literals with multi-dimensional support and element access
+- Class declarations with constructors, member variables, and methods
+- Automatic Reference Counting (ARC) memory management
+- C#-style generics with monomorphization for zero-overhead specialization
+- String type with 30+ runtime functions via runtime injection framework
+- Modern design pattern keywords integrated into grammar
+- Clean LLVM-based compilation pipeline with ORC JIT execution
 
-This version provides a solid foundation for further language evolution and ecosystem development.
+This version provides a solid foundation for practical system programming while maintaining safety and expressiveness.
 
 

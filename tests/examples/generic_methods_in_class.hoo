@@ -1,0 +1,36 @@
+// Example: Generic Class with Generic Methods
+// Demonstrates a generic class where some methods also have their own type parameters
+
+class Processor<T> {
+    var data: int64; // Simplified storage as per existing examples
+
+    constructor(initialData: int64) {
+        data = initialData;
+    }
+
+    // A generic method that processes an item of type U
+    func processItem<U>(item: U) -> int64 {
+        // In a real scenario, this would do something with 'item'
+        // For now, it returns a fixed int64 as per example constraints.
+        return 100 + data;
+    }
+
+    // A generic method that 'transforms' the class's generic type T
+    // (return type is int64 for simplicity in this example)
+    func transform(value: T) -> int64 {
+        // In a real scenario, 'value' would be of type T
+        return 200 + data;
+    }
+}
+
+func main() {
+    var intProcessor = new Processor<int64>(10);
+    var doubleProcessor = new Processor<double>(20);
+
+    // Call generic methods with different types
+    var res1 = intProcessor.processItem<string>("test_string"); // U is string
+    var res2 = doubleProcessor.processItem<bool>(true);         // U is bool
+
+    var res3 = intProcessor.transform(42);                     // T is int64
+    var res4 = doubleProcessor.transform(3.14);                 // T is double
+}

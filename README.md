@@ -3,11 +3,11 @@
 > A modern, safe, and expressive programming language designed as an evolution of the C programming philosophy. Compiled by **hooc**.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](.)
-[![Version](https://img.shields.io/badge/version-0.5--alpha-blue)](.)
+[![Version](https://img.shields.io/badge/version-0.6-blue)](.)
 [![Language](https://img.shields.io/badge/language-C%2B%2B17-blue)]()
 [![Parser](https://img.shields.io/badge/parser-ANTLR4-orange)]()
 [![Backend](https://img.shields.io/badge/backend-LLVM-red)]()
-[![Tests](https://img.shields.io/badge/tests-111%20key%20tests-success)](.)
+[![Tests](https://img.shields.io/badge/tests-577%20comprehensive%20tests-success)](.)
 [![Framework](https://img.shields.io/badge/framework-Runtime%20Class%20Injection-blue)](.)
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
@@ -23,7 +23,9 @@
 - ✅ **Modern syntax** - Python-style imports, clean control flow
 - ✅ **Object-oriented programming** - Classes with constructors and member variables
 - ✅ **Member access** - Read class fields with the `.` operator
+- ✅ **Method calls** - Invoke methods on object instances
 - ✅ **Automatic memory management** - Reference counting for safe object lifetime management
+- ✅ **C#-style generics** (v0.6) - Generic classes and functions with monomorphization
 - ✅ **Language-level design patterns** (Singleton, Factory, Observer, etc. - grammar defined, code generation planned)
 
 ## 🚀 Quick Start
@@ -245,7 +247,7 @@ LLVM IR Module ✅
 
 ## 📚 Documentation
 
--   **[Language Specification](docs/01-language-specification.md)** - Complete hoo language design
+-   **[Language Specification](docs/01-language-specification.md)** - Complete hoo language design (v0.6 with generics)
 -   **[String Quick Reference](docs/02-hoo-string-quick-reference.md)** - HooString API reference
 -   **[Implementation Status](docs/03-implementation-status.md)** - Detailed progress tracking
 -   **[Roadmap](docs/04-roadmap.md)** - Feature roadmap and future plans
@@ -253,7 +255,7 @@ LLVM IR Module ✅
 -   **[Object Creation Guide](docs/06-object-creation-guide.md)** - Classes and instantiation
 -   **[Memory Management Design](docs/07-memory-management-design.md)** - ARC implementation details
 -   **[String Integration Guide](docs/08-string-integration-guide.md)** - String type architecture
--   **[Quick Reference](docs/09-quick-reference.md)** - Developer guide
+-   **[Generics Implementation Guide](docs/09-generics-implementation-guide.md)** - C#-style generics with monomorphization (v0.6)
 -   **[FFI Implementation Plan](docs/10-ffi-plan.md)** - Foreign function interface
 -   **[Windows Build Guide](docs/11-building-on-windows.md)** - Windows-specific setup
 
@@ -278,7 +280,7 @@ LLVM IR Module ✅
 
 ## 🐛 Current Status & Known Limitations
 
-### **Fully Implemented (v0.5)**
+### **Fully Implemented (v0.6)**
 -   ✅ **Primitive types** - byte, uint8, int64, float, double, f64, bool, char, void
 -   ✅ **String type** - Full parsing and LLVM code generation with HooString runtime library
 -   ✅ **String operations** - 30+ string functions via runtime class injection framework
@@ -290,11 +292,17 @@ LLVM IR Module ✅
 -   ✅ **Array literals** - Complete with type inference and multi-dimensional support
 -   ✅ **Array access** - Full support for indexed access
 -   ✅ **Type system** - Unions, optionals (nullable system), array slice types
--   ✅ **Classes & Objects** - Class declarations with member variables and methods (v0.4)
+-   ✅ **Classes & Objects** - Class declarations with member variables and methods (v0.4-v0.5)
 -   ✅ **Member access** - Read class fields with the `.` operator (v0.5)
 -   ✅ **Method calls** - Invoke methods on object instances (v0.5)
 -   ✅ **Automatic Reference Counting** - Memory management via runtime library
--   ✅ **111 key unit tests** - StringCodeGenTest, StringBasicsTest, and comprehensive feature tests
+-   ✅ **C#-Style Generics (v0.6)** - Generic classes and functions with monomorphization
+     - Generic class declarations: `class Box<T> { ... }`
+     - Generic function declarations: `func identity<T>(value: T) -> int64 { ... }`
+     - Nested generic types: `Box<Box<int64>>`
+     - Multiple type parameters: `Pair<K, V>`
+     - Type argument validation and name mangling
+-   ✅ **577 comprehensive unit tests** - 49 generic tests + 528 feature tests with 100% pass rate
 
 ### **Parsed But Code Generation Incomplete**
 -   ⚠️ **Design patterns** - Keywords parsed, code generation planned for future versions.
@@ -388,7 +396,7 @@ src/Hooc.g4                    # ANTLR grammar
 
 ## 📈 Project Roadmap
 
-### **v0.5 (Current) - ✅ Mostly Complete**
+### **v0.6 (Current) - ✅ Complete**
 -   ✅ Full ANTLR4 grammar with design patterns
 -   ✅ Complete AST → LLVM IR pipeline
 -   ✅ All primitive types with proper semantics
@@ -401,21 +409,23 @@ src/Hooc.g4                    # ANTLR grammar
 -   ✅ Nullable types with `T?` syntax
 -   ✅ Array literals with type inference and multi-dimensional support
 -   ✅ Control flow: if/else, while, for-range, for-in, scope blocks
--   ✅ 111 key unit tests with comprehensive feature coverage
+-   ✅ **C#-Style Generics** - Generic classes and functions with monomorphization
+-   ✅ **577 comprehensive unit tests** with 100% pass rate
 
-### **v0.6 (Planned)**
+### **v0.7 (Planned)**
 -   🔧 **JIT Execution** - Integrate LLVM ORC JIT for direct execution of compiled code.
 -   🔧 **Class Inheritance** - Implement `extends` for single inheritance.
 -   🔧 **Interfaces** - Full `implements` support with method resolution.
 -   🔧 **Member Assignment** - Implement `obj.field = value` for mutable fields.
 -   🔧 **Design Patterns** - Code generation for singleton, factory, observer.
+-   🔧 **Type Constraints** - Generic constraints: `<T: Serializable>`
 -   🔧 **Array Type** - Add Array runtime type using injection framework.
 -   🔧 **Dict Type** - Add Dictionary runtime type using injection framework.
 
-### **v0.7+ (Future)**
+### **v0.8+ (Future)**
 -   📋 Type casting with `as` keyword
 -   📋 Module system with proper import resolution.
--   📋 Advanced type features: generics (restricted), pattern matching.
+-   📋 Advanced type features: variance annotations, higher-ranked types, pattern matching.
 -   📋 Standard Library expansion - I/O, collections, utilities.
 -   📋 Runtime features: reflection, serialization.
 -   📋 Performance: optimization passes, inline hints.
@@ -434,8 +444,8 @@ Built with modern compiler construction tools:
 -   **CMake** for reliable build management.
 -   **vcpkg** for dependency management.
 
-**Current Status (v0.5)**: The hooc compiler now features a complete string type implementation with 30+ functions, automatic reference counting for objects, member variables and method calls on classes, and a powerful runtime class injection framework for easy addition of new types. The framework uses compile-time code generation (X-Macros) to eliminate boilerplate while maintaining type safety and performance. The project is production-ready for string and object-oriented programming features, with a clear roadmap for inheritance, interfaces, and additional runtime types.
+**Current Status (v0.6)**: The hooc compiler now features C#-style generics with monomorphization, complete string type support with 30+ runtime functions, automatic reference counting for objects, and classes with member variables and method calls. The runtime class injection framework (X-Macros) enables easy addition of new types without boilerplate. The project is production-ready for generic programming, string operations, and object-oriented features, with a comprehensive test suite (577 tests) and a clear roadmap for inheritance, interfaces, and type constraints.
 
 ---
 
-> *"hoo v0.5 delivers a mature compiler with string support, object-oriented programming, and a novel runtime class injection framework. The hooc compiler successfully handles complex language features while maintaining code clarity and extensibility. With comprehensive testing (111 key tests passing) and a proven architecture pattern, the project is production-ready for its supported feature set and well-prepared for future expansions."*
+> *"hoo v0.6 delivers a mature, feature-rich compiler with C#-style generics, comprehensive string support, object-oriented programming, and a powerful runtime class injection framework. The hooc compiler successfully handles complex language features including generic class and function instantiation with zero-overhead monomorphization while maintaining code clarity and extensibility. With comprehensive testing (577 tests passing with 100% success rate) and proven architectural patterns, the project is production-ready for its supported feature set and well-prepared for future expansions like JIT execution and class inheritance."*

@@ -450,12 +450,34 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPostfixExpression(HoocParser:
         }
     }
 
-    // Handle function calls (func(args))
+    // Handle function calls (func<T>(args)) with optional type arguments
+    // Note: We need to match typeArgumentList with LPAREN in the correct sequence
+    size_t typeArgIdx = 0;
     for (size_t i = 0; i < ctx->LPAREN().size(); i++) {
         auto argList = (i < ctx->argumentList().size())
             ? buildArgumentList(ctx->argumentList(i))
             : std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
-        result = std::make_unique<FunctionCall>(std::move(result), std::move(argList));
+
+        // Check if there's a typeArgumentList for this function call
+        // The grammar allows: typeArgumentList? LPAREN argumentList? RPAREN
+        std::vector<std::unique_ptr<Type>> typeArgs;
+        if (typeArgIdx < ctx->typeArgumentList().size()) {
+            auto typeArgCtx = ctx->typeArgumentList(typeArgIdx);
+            for (auto typeCtx : typeArgCtx->type()) {
+                auto type = buildType(typeCtx);
+                if (type) {
+                    typeArgs.push_back(std::move(type));
+                }
+            }
+            typeArgIdx++;
+        }
+
+        // Create FunctionCall with or without type arguments
+        if (!typeArgs.empty()) {
+            result = std::make_unique<FunctionCall>(std::move(result), std::move(typeArgs), std::move(argList));
+        } else {
+            result = std::make_unique<FunctionCall>(std::move(result), std::move(argList));
+        }
     }
 
     return result;

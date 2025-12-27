@@ -12,7 +12,9 @@
 #include "runtime/RuntimeClassRegistry.h"
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
+#include <vector>
 
 namespace hooc {
 
@@ -53,6 +55,73 @@ public:
     void generateLLVMStatement(const ast::Statement& stmt);
     llvm::Type* generateLLVMType(const ast::Type& type);
 
+    // ========================================================================
+    // Generic Type Name Mangling and Type Parameter Resolution
+    // ========================================================================
+
+    /**
+     * Mangle a class name with type arguments
+     * Example: mangleClassName("Array", [int64]) -> "Array_int64"
+     */
+    std::string mangleClassName(const std::string& baseName,
+                               const std::vector<std::unique_ptr<ast::Type>>& typeArguments);
+
+    /**
+     * Mangle a function name with type arguments
+     * Example: mangleFunctionNameWithTypes("swap", [string, int64]) -> "swap_string_int64"
+     */
+    std::string mangleFunctionNameWithTypes(const std::string& baseName,
+                                           const std::vector<std::unique_ptr<ast::Type>>& typeArguments);
+
+    /**
+     * Convert a type to its mangled string representation
+     * Handles: primitive types, user-defined types, arrays, optionals, unions, nested generics
+     * Example: typeToMangledString(BaseType("Array", [int64])) -> "Array_int64"
+     */
+    std::string typeToMangledString(const ast::Type& type);
+
+    /**
+     * Push type parameter bindings onto the stack
+     * Maps type parameter names (T, K, V) to concrete LLVM types
+     */
+    void pushTypeParameterScope(const std::vector<std::string>& typeParams,
+                               const std::vector<llvm::Type*>& concreteTypes);
+
+    /**
+     * Pop type parameter bindings from the stack
+     */
+    void popTypeParameterScope();
+
+    /**
+     * Resolve a type parameter name to its concrete LLVM type
+     * Returns nullptr if not found or not a type parameter
+     */
+    llvm::Type* resolveTypeParameter(const std::string& name);
+
+    // ========================================================================
+    // Generic Class Instantiation (Monomorphization)
+    // ========================================================================
+
+    /**
+     * Instantiate a generic class for specific type arguments
+     * Generates specialized struct, constructor, and methods
+     * Example: instantiateGenericClass("Array", [int64]) generates Array_int64
+     * Returns nullptr if instantiation fails
+     */
+    llvm::StructType* instantiateGenericClass(
+        const std::string& baseName,
+        const std::vector<std::unique_ptr<ast::Type>>& typeArguments);
+
+    /**
+     * Instantiate a generic function for specific type arguments
+     * Generates specialized function with type parameter substitution
+     * Example: instantiateGenericFunction("swap", [int64]) generates swap_int64
+     * Returns nullptr if instantiation fails
+     */
+    llvm::Function* instantiateGenericFunction(
+        const std::string& baseName,
+        const std::vector<std::unique_ptr<ast::Type>>& typeArguments);
+
 private:
     llvm::LLVMContext& context_;
     std::unique_ptr<llvm::Module> module_;
@@ -68,6 +137,22 @@ private:
     std::unordered_map<std::string, int64_t> classTypeIds_;
     std::unordered_map<std::string, const ast::ClassDeclaration*> classDeclarations_; // Track class declarations
     int64_t nextTypeId_ = 1;
+
+    // ========================================================================
+    // Generic Declaration Template Storage
+    // ========================================================================
+
+    // Template storage for generic declarations (e.g., "Array" -> ClassDeclaration)
+    std::unordered_map<std::string, const ast::ClassDeclaration*> genericClassTemplates_;
+    std::unordered_map<std::string, const ast::FunctionDeclaration*> genericFunctionTemplates_;
+
+    // Track instantiated versions (e.g., "Array_int64", "swap_string_int64")
+    std::unordered_set<std::string> instantiatedClasses_;
+    std::unordered_set<std::string> instantiatedFunctions_;
+
+    // Type parameter context stack for nested generic resolution
+    // Stack of maps: type parameter name -> concrete LLVM type
+    std::vector<std::unordered_map<std::string, llvm::Type*>> typeParameterStack_;
 
     // Runtime function declarations (core allocation/refcount)
     llvm::Function* hoo_alloc_func_ = nullptr;

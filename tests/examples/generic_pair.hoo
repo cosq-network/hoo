@@ -1,0 +1,39 @@
+// Example: Generic Pair Class
+// Demonstrates a generic class with multiple type parameters
+
+class Pair<K, V> {
+    constructor() {
+    }
+
+    func getKey() -> int64 {
+        // Return key (dummy implementation)
+        return 1;
+    }
+
+    func getValue() -> int64 {
+        // Return value (dummy implementation)
+        return 2;
+    }
+
+    func setKeyValue(key: K, value: V) -> void {
+        // Store key-value pair
+    }
+}
+
+func main() {
+    // Create pairs with different type combinations
+    var intStringPair = new Pair<int64, string>();
+    var stringDoublePair = new Pair<string, double>();
+    var doubleBoolPair = new Pair<double, int64>();
+
+    // Each pair specialization has its own type-safe methods
+    intStringPair.setKeyValue(1, "one");
+    intStringPair.setKeyValue(2, "two");
+
+    stringDoublePair.setKeyValue("pi", 3.14);
+    stringDoublePair.setKeyValue("e", 2.71);
+
+    // Get values
+    var k = intStringPair.getKey();
+    var v = intStringPair.getValue();
+}
