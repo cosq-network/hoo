@@ -41,28 +41,52 @@ hoo source code with arrays
     Memory Management
 ```
 
+## Completed Work (Phases 1-4)
+
+### Phase 1-2: Generic Array Implementation ✅
+- Created `runtime/hoo_generic_array.h` - Generic array header with type-agnostic API
+- Created `runtime/hoo_generic_array.cpp` - Full generic array implementation (550+ lines)
+- Full reference counting support with ARC
+
+### Phase 3: Type-Specific Wrappers ✅
+- Added type-specific wrapper functions:
+  - int64 wrappers: hoo_int64_array_* (20 functions)
+  - double wrappers: hoo_double_array_* (17 functions)
+- All wrappers delegate to generic array functions
+- Maintains backward compatibility with existing API
+
+### Phase 4: Code Generation Updates ✅
+**Status**: COMPLETE - All 577 tests passing
+
+**Implementation**:
+1. Added helper methods to `LLVMCodeGenerator.h`:
+   - `getArrayFromBufferFunc(llvm::Type* elementType)` - Selects hoo_*_array_from_buffer based on element type
+   - `generateArrayLiteralWithRuntime()` - Creates global data buffer and emits runtime function call
+
+2. Implemented array function declarations:
+   - `declareInt64ArrayFunctions()` - Declares hoo_int64_array_from_buffer and related functions
+   - `declareDoubleArrayFunctions()` - Declares hoo_double_array_from_buffer and related functions
+
+3. Refactored `generateArrayLiteral()`:
+   - Now creates global constant data buffer for array elements
+   - Calls hoo_*_array_from_buffer(dataPtr, length) at runtime
+   - Infers element type from literal expressions
+   - Replaces old LLVM constant array approach
+
+**Code Generation Flow**:
+```
+Array Literal [1, 2, 3]
+    ↓
+Infer element type (int64)
+    ↓
+Create global data: .array_data = [const i64 1, const i64 2, const i64 3]
+    ↓
+Call: hoo_int64_array_from_buffer(&.array_data, 3)
+    ↓
+Returns: HooArray pointer
+```
+
 ## Remaining Work
-
-### Phase 4: Code Generation Updates
-**Goal**: Modify code generation to infer array types and use generic array runtime
-
-**Currently**: Array literals are generated as LLVM global constants with inline array types
-**Needed**: Array literals should call runtime array creation functions based on inferred type
-
-**Implementation Strategy**:
-1. Detect array type from variable/parameter declaration context
-2. Replace `generateArrayLiteral()` to:
-   - Create global data buffer for array elements
-   - Call appropriate `hoo_*_array_from_buffer()` function
-   - Return HooArray pointer
-3. Update type inference to determine element type
-4. Register array creation functions with JIT if not already done
-
-**Files to Modify**:
-- `src/LLVMCodeGenerator.cpp`:
-  - `generateArrayLiteral()` - Use runtime functions instead of LLVM constants
-  - `createGlobalArrayConstant()` - Create typed buffer + runtime call
-  - Type inference helpers - Determine element type from context
 
 ### Phase 5: Testing & Verification
 **Goal**: Ensure array operations work with generic array runtime
