@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            var arr1 = [1, 2, 3];
+            var arr2 = [[1, 2], [3, 4]];
+            var arr3 = [[[1]]];
+            return;
+        }
+    

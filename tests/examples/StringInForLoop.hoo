@@ -1,0 +1,12 @@
+
+        func test() -> void {
+            var name = "Alice";
+
+            for i in 0..5 {
+                if (name == "Alice") {
+                    return;
+                }
+            }
+            return;
+        }
+    

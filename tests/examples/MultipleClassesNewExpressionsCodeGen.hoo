@@ -1,0 +1,19 @@
+
+        class ClassA {
+            constructor() {}
+        }
+
+        class ClassB {
+            constructor(x: int64) {}
+        }
+
+        class ClassC {
+            constructor(x: int64, y: int64) {}
+        }
+
+        func test() {
+            var a = new ClassA();
+            var b = new ClassB(42);
+            var c = new ClassC(10, 20);
+        }
+    

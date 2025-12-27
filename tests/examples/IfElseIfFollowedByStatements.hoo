@@ -1,0 +1,16 @@
+
+        func test(x: int64) -> int64 {
+            var result = 0;
+            if (x < 3) {
+                result = 1;
+            } else {
+                if (x < 7) {
+                    result = 2;
+                } else {
+                    result = 3;
+                }
+            }
+            var finalValue = result + 10;
+            return finalValue;
+        }
+    

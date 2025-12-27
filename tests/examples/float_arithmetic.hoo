@@ -1,7 +1,0 @@
-func float_operations(float a, b: float) -> float {
-    var sum = a + b;
-    var diff = a - b;
-    var product = a * b;
-    var quotient = a / b;
-    return sum;
-}

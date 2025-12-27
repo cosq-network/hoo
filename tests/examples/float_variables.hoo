@@ -1,6 +1,0 @@
-func float_vars() -> void {
-    var pi = 3.14159;
-    var explicit: float = 2.71828;
-    var zero: float = 0.0;
-    return;
-}

@@ -1,0 +1,14 @@
+
+        class Data {
+            constructor() {}
+
+            func getData() -> int64 {
+                return 100;
+            }
+        }
+
+        func getResult() -> int64 {
+            var d: Data = new Data();
+            return d.getData();
+        }
+    

@@ -1,0 +1,15 @@
+
+        func factorial(n: int64) -> int64 {
+            if n <= 1 {
+                return 1;
+            } else {
+                var prev = factorial(n - 1);
+                return n * prev;
+            }
+        }
+
+        func test() -> int64 {
+            var result = factorial(5);
+            return result;
+        }
+    

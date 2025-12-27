@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            if (true) {
+                var arr = [1, 2, 3];
+            }
+            return;
+        }
+    

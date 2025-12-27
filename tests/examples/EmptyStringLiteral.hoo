@@ -1,0 +1,9 @@
+
+        func test() -> void {
+            var empty = "";
+            if (empty == "") {
+                return;
+            }
+            return;
+        }
+    

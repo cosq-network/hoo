@@ -1,0 +1,10 @@
+
+        func test() -> void {
+            var a = 5;
+            var b = 10;
+            var c = true;
+            while ((a < b) && c || (a == b)) {
+                a = a + 1;
+            }
+        }
+    

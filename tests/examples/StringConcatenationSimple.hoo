@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            var greeting = "Hello";
+            var name = "World";
+            var message = greeting + name;
+            return;
+        }
+    

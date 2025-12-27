@@ -1,0 +1,18 @@
+
+        class ClassA {
+            var fieldA: int64;
+            constructor() {}
+        }
+
+        class ClassB {
+            var fieldB: double;
+            constructor() {}
+        }
+
+        func test() {
+            var a: ClassA = new ClassA();
+            var b: ClassB = new ClassB();
+            var x = a.fieldA;
+            var y = b.fieldB;
+        }
+    

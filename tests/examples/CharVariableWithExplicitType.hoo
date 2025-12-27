@@ -1,0 +1,6 @@
+
+        func test() -> char {
+            var x: char = 'Z';
+            return x;
+        }
+    

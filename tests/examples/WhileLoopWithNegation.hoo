@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            var flag = true;
+            while (!flag) {
+                flag = true;
+            }
+        }
+    

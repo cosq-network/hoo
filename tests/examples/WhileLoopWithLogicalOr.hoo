@@ -1,0 +1,9 @@
+
+        func test() -> void {
+            var a = true;
+            var b = false;
+            while (a || b) {
+                a = false;
+            }
+        }
+    

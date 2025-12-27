@@ -1,0 +1,5 @@
+
+        func compare(a: int64?, b: double?, c: bool?) -> int64 {
+            return 0;
+        }
+    

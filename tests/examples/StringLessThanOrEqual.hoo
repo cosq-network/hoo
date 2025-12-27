@@ -1,0 +1,10 @@
+
+        func test() -> void {
+            var s1 = "apple";
+            var s2 = "apple";
+            if (s1 <= s2) {
+                return;
+            }
+            return;
+        }
+    

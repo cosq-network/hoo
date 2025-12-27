@@ -1,0 +1,13 @@
+
+        func test(x: int64) -> void {
+            if (x == 1) {
+                return;
+            } else {
+                if (x == 2) {
+                    return;
+                } else {
+                    return;
+                }
+            }
+        }
+    

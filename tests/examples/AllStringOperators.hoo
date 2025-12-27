@@ -1,0 +1,39 @@
+
+        func test() -> void {
+            var a = "apple";
+            var b = "banana";
+            var c = "apple";
+
+            // Concatenation
+            var combined = a + b;
+
+            // Equality
+            if (a == c) {
+                return;
+            }
+
+            // Inequality
+            if (a != b) {
+                return;
+            }
+
+            // Ordering
+            if (a < b) {
+                return;
+            }
+
+            if (b > a) {
+                return;
+            }
+
+            if (a <= c) {
+                return;
+            }
+
+            if (c >= a) {
+                return;
+            }
+
+            return;
+        }
+    

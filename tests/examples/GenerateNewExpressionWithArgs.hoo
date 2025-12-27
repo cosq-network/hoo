@@ -1,0 +1,9 @@
+
+        class Rectangle {
+            constructor(width: int64, height: int64) {}
+        }
+
+        func createRect() {
+            var r = new Rectangle(10, 20);
+        }
+    

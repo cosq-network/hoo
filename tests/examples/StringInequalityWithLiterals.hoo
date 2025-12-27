@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            if ("hello" != "world") {
+                return;
+            }
+            return;
+        }
+    

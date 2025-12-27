@@ -1,0 +1,13 @@
+
+        func test(temp: double) -> int64 {
+            if (temp < 0.0) {
+                return -1;
+            } else {
+                if (temp > 100.0) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            }
+        }
+    

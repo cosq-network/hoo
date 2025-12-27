@@ -1,0 +1,7 @@
+
+        func test() -> int64 {
+            var arr = [10, 20, 30, 40, 50];
+            var value = arr[2];
+            return value;
+        }
+    

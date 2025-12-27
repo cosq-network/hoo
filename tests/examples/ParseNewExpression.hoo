@@ -1,0 +1,9 @@
+
+        class Widget {
+            constructor() {}
+        }
+
+        func createWidget() {
+            var w = new Widget();
+        }
+    

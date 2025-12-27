@@ -1,0 +1,10 @@
+
+        func test() -> void {
+            var x = 5;
+            var target = 15;
+
+            while (x == target) {
+                x = x + 1;
+            }
+        }
+    

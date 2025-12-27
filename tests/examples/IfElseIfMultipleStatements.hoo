@@ -1,0 +1,21 @@
+
+        func test(x: int64) -> int64 {
+            var a = 10;
+            var b = 20;
+            if (x < 5) {
+                a = 1;
+                b = 2;
+                return a + b;
+            } else {
+                if (x < 15) {
+                    a = 10;
+                    b = 20;
+                    return a + b;
+                } else {
+                    a = 100;
+                    b = 200;
+                    return a + b;
+                }
+            }
+        }
+    

@@ -1,0 +1,10 @@
+
+        func helper() -> int64 {
+            return 42;
+        }
+
+        func test() -> int64 {
+            var result = helper();
+            return result;
+        }
+    

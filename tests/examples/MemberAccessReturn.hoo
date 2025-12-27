@@ -1,0 +1,11 @@
+
+        class Holder {
+            var value: int64;
+            constructor() {}
+        }
+
+        func getValue() -> int64 {
+            var h: Holder = new Holder();
+            return h.value;
+        }
+    

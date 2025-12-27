@@ -1,0 +1,7 @@
+
+        func test() -> void {
+            var ch = 'a';
+            var explicit: char = 'Z';
+            return;
+        }
+    

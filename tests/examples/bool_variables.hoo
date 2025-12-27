@@ -1,6 +1,0 @@
-func bool_vars() -> void {
-    var flag = true;
-    var explicit: bool = false;
-    var computed = flag && explicit;
-    return;
-}

@@ -1,0 +1,6 @@
+
+        func test() -> int64 {
+            var x = 10 + 20;
+            return x;
+        }
+    

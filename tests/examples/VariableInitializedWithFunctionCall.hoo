@@ -1,0 +1,10 @@
+
+        func getValue() -> int64 {
+            return 42;
+        }
+
+        func test() -> int64 {
+            var x = getValue();
+            return x;
+        }
+    

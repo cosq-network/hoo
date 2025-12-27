@@ -1,4 +1,0 @@
-func test() -> void {
-    var x: int64 = 10;
-    return;
-}

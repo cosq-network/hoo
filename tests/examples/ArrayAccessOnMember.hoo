@@ -1,0 +1,11 @@
+
+        class Collection {
+            var items: int64[];
+            constructor() {}
+        }
+
+        func test() {
+            var c: Collection = new Collection();
+            var first = c.items[0];
+        }
+    

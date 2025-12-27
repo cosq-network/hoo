@@ -1,3 +1,0 @@
-func process_bool(flag: bool) -> bool {
-    return flag;
-}

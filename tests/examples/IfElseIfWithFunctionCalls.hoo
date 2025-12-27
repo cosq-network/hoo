@@ -1,0 +1,17 @@
+
+        func helper(x: int64) -> int64 {
+            return x * 2;
+        }
+
+        func test(x: int64) -> int64 {
+            if (x < 10) {
+                return helper(x);
+            } else {
+                if (x < 20) {
+                    return helper(x + 5);
+                } else {
+                    return helper(x + 10);
+                }
+            }
+        }
+    

@@ -1,0 +1,6 @@
+
+        func test() -> void {
+            var greeting = "Hello";
+            return;
+        }
+    

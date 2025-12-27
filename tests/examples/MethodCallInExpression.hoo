@@ -1,0 +1,14 @@
+
+        class Math {
+            constructor() {}
+
+            func getValue() -> int64 {
+                return 5;
+            }
+        }
+
+        func test() {
+            var m: Math = new Math();
+            var result = m.getValue() + 10;
+        }
+    

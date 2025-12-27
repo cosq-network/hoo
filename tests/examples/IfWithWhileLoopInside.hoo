@@ -1,0 +1,11 @@
+
+        func test() -> void {
+            var flag = true;
+            if (flag) {
+                var x = 0;
+                while (x < 5) {
+                    x = x + 1;
+                }
+            }
+        }
+    

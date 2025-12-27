@@ -1,3 +1,0 @@
-func process_float(data: float) -> float {
-    return data;
-}

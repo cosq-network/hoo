@@ -1,0 +1,7 @@
+
+        func calculate(a: float, b: float) -> float {
+            var sum = a + b;
+            var product = a * b;
+            return sum;
+        }
+    

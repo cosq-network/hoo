@@ -1,0 +1,4 @@
+
+        func first() -> void { return; }
+        func second() -> void { return; }
+    

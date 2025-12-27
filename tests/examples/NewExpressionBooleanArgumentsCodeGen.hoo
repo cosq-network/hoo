@@ -1,0 +1,9 @@
+
+        class Config {
+            constructor(enabled: bool, debug: bool) {}
+        }
+
+        func test() {
+            var cfg = new Config(true, false);
+        }
+    

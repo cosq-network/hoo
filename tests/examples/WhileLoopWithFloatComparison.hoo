@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            var value = 0.5;
+            while (value < 10.0) {
+                value = value + 1.5;
+            }
+        }
+    

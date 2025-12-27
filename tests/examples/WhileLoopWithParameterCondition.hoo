@@ -1,0 +1,8 @@
+
+        func test(limit: int64) -> void {
+            var x = 0;
+            while (x < limit) {
+                x = x + 1;
+            }
+        }
+    

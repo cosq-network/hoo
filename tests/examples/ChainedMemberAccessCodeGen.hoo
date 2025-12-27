@@ -1,0 +1,16 @@
+
+        class Address {
+            var city: string;
+            constructor() {}
+        }
+
+        class Person {
+            var address: Address;
+            constructor() {}
+        }
+
+        func test() {
+            var p: Person = new Person();
+            var city = p.address.city;
+        }
+    

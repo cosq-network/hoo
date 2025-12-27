@@ -1,0 +1,11 @@
+
+        func test() -> void {
+            var greeting = "Hello";
+            var name = "World";
+            var message = greeting + ", " + name + "!";
+            if (message == "Hello, World!") {
+                return;
+            }
+            return;
+        }
+    

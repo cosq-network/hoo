@@ -1,0 +1,19 @@
+
+        class Operations {
+            constructor() {}
+
+            func getX() -> int64 {
+                return 10;
+            }
+
+            func getY() -> int64 {
+                return 20;
+            }
+        }
+
+        func test() {
+            var ops: Operations = new Operations();
+            var x = ops.getX();
+            var y = ops.getY();
+        }
+    

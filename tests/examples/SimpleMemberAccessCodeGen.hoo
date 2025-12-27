@@ -1,0 +1,12 @@
+
+        class Person {
+            var name: string;
+            var age: int64;
+            constructor() {}
+        }
+
+        func test() {
+            var p: Person = new Person();
+            var age = p.age;
+        }
+    

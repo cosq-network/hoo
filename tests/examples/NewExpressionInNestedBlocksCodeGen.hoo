@@ -1,0 +1,13 @@
+
+        class Nested {
+            constructor() {}
+        }
+
+        func test() {
+            if (true) {
+                if (true) {
+                    var n = new Nested();
+                }
+            }
+        }
+    

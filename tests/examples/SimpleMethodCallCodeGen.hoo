@@ -1,0 +1,15 @@
+
+        class Counter {
+            var count: int64;
+            constructor() {}
+
+            func getValue() -> int64 {
+                return 42;
+            }
+        }
+
+        func test() {
+            var c: Counter = new Counter();
+            var result = c.getValue();
+        }
+    

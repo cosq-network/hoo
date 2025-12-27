@@ -1,0 +1,13 @@
+
+        func test() -> void {
+            var flag = true;
+            var msg = "hello";
+
+            while (flag) {
+                if (msg == "hello") {
+                    flag = false;
+                }
+            }
+            return;
+        }
+    

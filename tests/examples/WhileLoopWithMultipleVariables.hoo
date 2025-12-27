@@ -1,0 +1,12 @@
+
+        func test() -> void {
+            var x = 0;
+            var y = 10;
+            var product = 1;
+
+            while (x < y) {
+                product = product * x;
+                x = x + 1;
+            }
+        }
+    

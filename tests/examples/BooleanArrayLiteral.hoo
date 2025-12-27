@@ -1,0 +1,6 @@
+
+        func test() -> void {
+            var arr = [true, false, true, false];
+            return;
+        }
+    

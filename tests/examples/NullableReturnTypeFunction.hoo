@@ -1,0 +1,5 @@
+
+        func maybeValue() -> int64? {
+            return 42;
+        }
+    

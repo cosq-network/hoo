@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            if ("apple" < "banana") {
+                return;
+            }
+            return;
+        }
+    

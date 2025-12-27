@@ -1,0 +1,15 @@
+
+        class Data {
+            var value: int64;
+            constructor() {}
+        }
+
+        func process(x: int64) -> int64 {
+            return x;
+        }
+
+        func test() {
+            var d: Data = new Data();
+            var result = process(d.value);
+        }
+    

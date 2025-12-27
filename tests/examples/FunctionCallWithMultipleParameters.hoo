@@ -1,0 +1,10 @@
+
+        func multiply(x: int64, y: int64, z: int64) -> int64 {
+            return x * y * z;
+        }
+
+        func test() -> int64 {
+            var result = multiply(2, 3, 4);
+            return result;
+        }
+    

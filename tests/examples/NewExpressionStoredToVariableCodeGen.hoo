@@ -1,0 +1,9 @@
+
+        class Storage {
+            constructor() {}
+        }
+
+        func test() {
+            var s = new Storage();
+        }
+    

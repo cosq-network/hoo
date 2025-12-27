@@ -1,6 +1,0 @@
-func test() -> int64 {
-    var numbers = [10, 20, 30, 40, 50];
-    var index = 2;
-    var value = numbers[index];
-    return value;
-}

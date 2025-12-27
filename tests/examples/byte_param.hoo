@@ -1,3 +1,0 @@
-func process_byte(data: byte) -> byte {
-    return data;
-}

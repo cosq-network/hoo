@@ -1,0 +1,10 @@
+
+        class Box {
+            constructor() {}
+        }
+
+        func test() {
+            var box = new Box();
+            var another = new Box();
+        }
+    

@@ -1,0 +1,6 @@
+
+        func test() -> void {
+            var arr: int64[] = [];
+            return;
+        }
+    

@@ -1,0 +1,9 @@
+
+        func test() -> void {
+            var x = 5;
+            var y = 10;
+            while (x < y && y > 0) {
+                x = x + 1;
+            }
+        }
+    

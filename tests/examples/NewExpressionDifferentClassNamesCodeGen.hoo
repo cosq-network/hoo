@@ -1,0 +1,14 @@
+
+        class ClassOne {
+            constructor(x: int64) {}
+        }
+
+        class ClassTwo {
+            constructor(y: int64) {}
+        }
+
+        func test() {
+            var o = new ClassOne(10);
+            var t = new ClassTwo(20);
+        }
+    

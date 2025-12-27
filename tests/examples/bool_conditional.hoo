@@ -1,7 +1,0 @@
-func conditional_logic(condition: bool) -> int64 {
-    if (condition) {
-        return 1;
-    } else {
-        return 0;
-    }
-}

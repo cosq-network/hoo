@@ -1,0 +1,6 @@
+
+        func calculate(a: byte, b: byte) -> byte {
+            var result = a + b;
+            return result;
+        }
+    

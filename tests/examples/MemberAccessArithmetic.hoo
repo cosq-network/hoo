@@ -1,0 +1,12 @@
+
+        class Point {
+            var x: int64;
+            var y: int64;
+            constructor() {}
+        }
+
+        func test() {
+            var p: Point = new Point();
+            var sum = p.x + p.y;
+        }
+    

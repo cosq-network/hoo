@@ -1,0 +1,11 @@
+
+        class Item {
+            constructor() {}
+        }
+
+        func test() {
+            var a = new Item();
+            var b = new Item();
+            var c = new Item();
+        }
+    

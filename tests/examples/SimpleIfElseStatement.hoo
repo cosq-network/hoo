@@ -1,0 +1,9 @@
+
+        func test() -> void {
+            if (true) {
+                return;
+            } else {
+                return;
+            }
+        }
+    

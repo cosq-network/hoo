@@ -1,0 +1,11 @@
+
+        class Obj {
+            constructor() {}
+        }
+
+        func test() {
+            if (true) {
+                var o = new Obj();
+            }
+        }
+    

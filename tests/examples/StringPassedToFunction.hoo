@@ -1,0 +1,11 @@
+
+        func print_string(s: string) -> void {
+            return;
+        }
+
+        func test() -> void {
+            var msg = "Hello";
+            print_string(msg);
+            return;
+        }
+    

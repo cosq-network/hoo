@@ -1,0 +1,9 @@
+
+        func test() -> void {
+            var name = "Alice";
+            if (name == "Alice") {
+                return;
+            }
+            return;
+        }
+    

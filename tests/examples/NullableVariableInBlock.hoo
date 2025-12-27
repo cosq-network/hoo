@@ -1,0 +1,9 @@
+
+        func test() -> int64 {
+            var x: int64? = null;
+            {
+                var y: int64? = 10;
+            }
+            return 0;
+        }
+    

@@ -1,0 +1,12 @@
+
+        func test() -> void {
+            var intVal = 0;
+            var floatVal = 0.0;
+            var boolVal = true;
+
+            while (intVal < 10 && boolVal) {
+                intVal = intVal + 1;
+                floatVal = floatVal + 1.5;
+            }
+        }
+    

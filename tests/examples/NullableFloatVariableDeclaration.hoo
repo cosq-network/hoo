@@ -1,0 +1,6 @@
+
+        func test() -> double {
+            var x: float? = 1.5;
+            return 0.0;
+        }
+    

@@ -1,0 +1,8 @@
+
+        func test() -> void {
+            if ("hello" == "hello") {
+                return;
+            }
+            return;
+        }
+    
