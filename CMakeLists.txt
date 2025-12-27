@@ -167,6 +167,7 @@ target_link_libraries(hoo-compiler PUBLIC
 
 target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/runtime
     ${CMAKE_SOURCE_DIR}/runtime
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}

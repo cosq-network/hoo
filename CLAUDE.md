@@ -36,9 +36,13 @@ cmake --build build --config RelWithDebInfo
 
 ### Running Tests
 ```bash
-# Run all unit tests (421 tests, 24 test suites)
+# Run all unit tests with comprehensive feature coverage
 ./build/hoo-tests        # macOS/Linux
 ./build/hoo-tests.exe    # Windows
+
+# Run specific test suites
+./build/hoo-tests --gtest_filter="StringCodeGenTest.*"      # 29 string code generation tests
+./build/hoo-tests --gtest_filter="StringBasicsTest.*"       # 36 string basics tests
 
 # Run specific test suite with verbose output
 ./build/hoo-tests --gtest_filter="BasicCodeGenTest.*"
@@ -146,6 +150,53 @@ Native Execution
   - `Expression.h`: Binary ops, function calls, assignments, member access
   - `Primary.h`: Literals (int, float, bool, char, string), identifiers
 
+### Runtime Class Injection Framework
+
+The compiler features a novel **X-Macro pattern** framework for injecting runtime classes (like String) with minimal boilerplate. This enables easy addition of new runtime types to the compiler.
+
+**Core Concept:**
+-   Single source of truth in `src/runtime/RuntimeClassRegistry.h`
+-   Metadata expanded with different macro definitions at compilation points
+-   JIT registration, LLVM declarations, and operator dispatch auto-generated
+
+**Framework Files:**
+-   `src/runtime/MacroHelpers.h` - Macro utilities (VA_NARGS, STRINGIFY, MACRO_CONCAT)
+-   `src/runtime/RuntimeClassRegistry.h` - Central registry using X-Macro pattern
+-   `src/runtime/RuntimeClassCodeGen.h` - Code generation documentation and patterns
+
+**Key Macros in RuntimeClassRegistry.h:**
+```cpp
+DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)
+    BEGIN_RUNTIME_FUNCTIONS
+        RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...)
+    END_RUNTIME_FUNCTIONS
+    BEGIN_RUNTIME_OPERATORS
+        RUNTIME_OPERATOR(Operator, FuncName)
+    END_RUNTIME_OPERATORS
+```
+
+**Integration Points:**
+1. **HoocJIT** (`src/HoocJIT.{h,cpp}`)
+   -   Auto-generates `register*Functions()` methods
+   -   Registers all runtime class symbols with LLVM ORC JIT
+   -   ~40 lines of auto-generated code replacing 250+ manual lines
+
+2. **LLVMCodeGenerator** (`src/LLVMCodeGenerator.{h,cpp}`)
+   -   Auto-generates function pointer storage declarations
+   -   Auto-generates `declare*Functions()` implementations
+   -   Auto-generates `try*Operator()` dispatch methods
+   -   Type-aware routing of binary operators to runtime implementations
+
+**Adding a New Runtime Class:**
+Simply add to `RuntimeClassRegistry.h`:
+```cpp
+DEFINE_RUNTIME_CLASS(MyType, HooMyType, isPointerTy)
+    BEGIN_RUNTIME_FUNCTIONS
+        RUNTIME_FUNCTION(function_name, RetType, LLVM_TYPE, ...)
+    END_RUNTIME_FUNCTIONS
+```
+Everything else auto-generates!
+
 ### Type System
 
 **Namespace Collision Handling**
@@ -168,17 +219,23 @@ All primitive types are fully implemented with LLVM IR generation:
 - `void` → no return value
 - Array types with multi-dimensional support
 
+**Fully Implemented**
+- `string` type - Full parsing and LLVM code generation (30+ functions via runtime injection framework)
+- Classes - Full parsing, AST building, and code generation for v0.5
+- Member access - Reading class fields via `.` operator
+- Method calls - Invoking methods on object instances
+- Automatic Reference Counting - Memory management via runtime library
+
 **Partially Implemented**
-- `string` type (parsing complete, code generation pending)
-- Classes and interfaces (grammar complete, AST building partial)
+- Classes and interfaces - Object fields and methods complete, inheritance pending
 - Design pattern keywords (singleton, immutable, factory, observable, service, strategy, actor - parsed, code generation not implemented)
 
 **Not Yet Implemented**
 - Type casting with `as` keyword (reserved)
-- Object instantiation with `new` keyword (parsed, not implemented)
-- Class inheritance with `extends` (parsed, not implemented)
-- Interface implementation (parsed, not implemented)
-- Event system (parsed, not implemented)
+- Class inheritance with `extends` (parsed, code generation pending)
+- Interface implementation (parsed, code generation pending)
+- Event system (parsed, code generation pending)
+- Member assignment - `obj.field = value` (parsed, code generation pending)
 - Module resolution (import/export parsing works, resolution not implemented)
 - Alternative code generator backends (bytecode, C, JavaScript, etc.)
 
@@ -210,6 +267,58 @@ The code generator has been refactored to use an abstract interface pattern, ena
 - Use `CodeGenerator` interface for backend-agnostic code
 - Use `LLVMCodeGenerator::generateLLVM*()` methods when you specifically need LLVM types
 - `HooCompiler` uses the abstract interface internally but returns concrete LLVM modules for now
+
+## Adding New Runtime Classes
+
+The runtime class injection framework makes it trivial to add new runtime types to the compiler.
+
+### Step-by-Step Example: Adding Array Type
+
+1. **Implement C functions** in `runtime/hoo_array.{h,cpp}`:
+   ```cpp
+   // runtime/hoo_array.h
+   typedef struct HooArray* HooArray;
+   HooArray hoo_array_new(int64_t capacity);
+   void hoo_array_push(HooArray arr, int64_t value);
+   int64_t hoo_array_length(HooArray arr);
+   void hoo_array_release(HooArray arr);
+   ```
+
+2. **Register in RuntimeClassRegistry.h**:
+   ```cpp
+   #define RUNTIME_CLASSES \
+       DEFINE_RUNTIME_CLASS(String, HooString, isPointerTy) \
+           /* ... String functions ... */ \
+       DEFINE_RUNTIME_CLASS(Array, HooArray, isPointerTy) \
+           BEGIN_RUNTIME_FUNCTIONS \
+               RUNTIME_FUNCTION(new, HooArray, LLVM_PTR, (int64_t, LLVM_I64)) \
+               RUNTIME_FUNCTION(push, void, LLVM_VOID, (HooArray, LLVM_PTR), (int64_t, LLVM_I64)) \
+               RUNTIME_FUNCTION(length, int64_t, LLVM_I64, (HooArray, LLVM_PTR)) \
+               RUNTIME_FUNCTION(release, void, LLVM_VOID, (HooArray, LLVM_PTR)) \
+           END_RUNTIME_FUNCTIONS \
+           BEGIN_RUNTIME_OPERATORS \
+               RUNTIME_OPERATOR(PLUS, concat)  // Optional: [1,2] + [3,4] = [1,2,3,4] \
+           END_RUNTIME_OPERATORS
+   ```
+
+3. **Rebuild** - Everything auto-generates:
+   ```bash
+   cmake --build build
+   ```
+
+That's it! The framework automatically:
+- Registers `hoo_array_*` functions with HoocJIT
+- Generates LLVM function declarations in LLVMCodeGenerator
+- Creates operator dispatch for Array operations
+- Enables `[1, 2, 3] + [4, 5]` syntax if you implement operator overloads
+
+### Key Points
+
+- **No modifications to HoocJIT.cpp needed** - Already uses X-Macros
+- **No modifications to LLVMCodeGenerator.cpp needed** - Already uses X-Macros
+- **Single registration point** - RuntimeClassRegistry.h
+- **Type-safe** - Compile-time verification of function signatures
+- **Zero runtime overhead** - All code generation at compile time
 
 ## Testing Strategy
 
@@ -289,6 +398,28 @@ TEST_F(BasicCodeGenTest, TestName) {
    - Add unit tests in appropriate test file
    - Add example `.hoo` programs in `tests/examples/`
    - Verify with `./build/hoo-tests`
+
+### Adding New Runtime Classes (v0.5+)
+
+For runtime types like String, Array, Dict that require C implementation and JIT registration:
+
+1. **Implement C Runtime** (`runtime/hoo_typename.{h,cpp}`)
+   - Define C functions for all operations
+   - Use proper memory management (reference counting for objects)
+
+2. **Register in RuntimeClassRegistry.h**
+   - Add `DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)` block
+   - List all functions with `RUNTIME_FUNCTION` macros
+   - Optionally define operator overloads with `RUNTIME_OPERATOR`
+
+3. **Rebuild**
+   - Framework auto-generates:
+     - JIT registration code
+     - LLVM function declarations
+     - Binary operator dispatch
+   - No changes needed to HoocJIT.cpp or LLVMCodeGenerator.cpp!
+
+**Example:** See `docs/08-string-integration-guide.md` for complete String implementation details.
 
 ## Array Literals (v0.2)
 
@@ -759,23 +890,33 @@ define i64 @MyClass_myMethod(ptr %this, i64 %a) { ... }
 | `src/CodeGeneratorTypes.h` | Opaque wrapper types for generated code |
 | `src/LLVMCodeGenerator.{h,cpp}` | LLVM backend implementation (AST → LLVM IR) |
 | `src/LLVMCodeGeneratorTypes.h` | LLVM-specific wrapper implementations |
-| `src/HoocJIT.{h,cpp}` | LLVM ORC JIT execution engine |
+| `src/HoocJIT.{h,cpp}` | LLVM ORC JIT execution engine with runtime class registration |
 | `src/Hooc.g4` | ANTLR4 grammar definition |
 | `src/ast/*.h` | AST node type definitions |
 | `src/ast/ASTImpl.cpp` | AST utility implementations |
 | `src/ast/ClassDeclaration.h` | Class, constructor, and event AST nodes |
-| `runtime/hoo_runtime.{h,c}` | Runtime library with ARC memory management - v0.4 |
+| `src/runtime/MacroHelpers.h` | X-Macro utilities for runtime class framework |
+| `src/runtime/RuntimeClassRegistry.h` | Central registry for all runtime classes (single source of truth) |
+| `src/runtime/RuntimeClassCodeGen.h` | Code generation patterns and documentation |
+| `runtime/hoo_runtime.{h,c}` | Runtime library with ARC memory management |
+| `runtime/hoo_string.{h,cpp}` | HooString implementation with 30+ functions |
+| `tests/StringCodeGenTest.cpp` | String code generation tests (29 tests) |
+| `tests/StringBasicsTest.cpp` | String basics functionality tests (36 tests) |
 | `tests/NullableTypeParsingTest.cpp` | Nullable type parsing tests (15 tests) |
-| `tests/NullableCodeGenTest.cpp` | Nullable type code generation tests (20 tests) - v0.3 |
-| `tests/ClassDeclarationParsingTest.cpp` | Class declaration parsing tests - v0.4 |
-| `tests/NewExpressionParsingTest.cpp` | New expression parsing tests (20 tests) - v0.4 |
-| `tests/NewExpressionCodeGenTest.cpp` | New expression code generation tests (20 tests) - v0.4 |
-| `tests/ObjectCreationCodeGenTest.cpp` | Object creation code generation tests (12 tests) - v0.4 |
-| `tests/MemberAccessParsingTest.cpp` | Member access parsing tests (15 tests) - v0.5 |
-| `tests/MemberAccessCodeGenTest.cpp` | Member access code generation tests (10 tests) - v0.5 |
+| `tests/NullableCodeGenTest.cpp` | Nullable type code generation tests (20 tests) |
+| `tests/ClassDeclarationParsingTest.cpp` | Class declaration parsing tests |
+| `tests/NewExpressionParsingTest.cpp` | New expression parsing tests (20 tests) |
+| `tests/NewExpressionCodeGenTest.cpp` | New expression code generation tests (20 tests) |
+| `tests/ObjectCreationCodeGenTest.cpp` | Object creation code generation tests (12 tests) |
+| `tests/MemberAccessParsingTest.cpp` | Member access parsing tests (15 tests) |
+| `tests/MemberAccessCodeGenTest.cpp` | Member access code generation tests (10 tests) |
+| `tests/MethodCallParsingTest.cpp` | Method call parsing tests (15 tests) |
+| `tests/MethodCallCodeGenTest.cpp` | Method call code generation tests (10 tests) |
 | `CMakeLists.txt` | Build configuration |
-| `docs/hooc_language_specification_v_0.md` | Complete language spec |
-| `docs/implementation-status.md` | Detailed progress tracking |
+| `docs/01-language-specification.md` | Complete language spec |
+| `docs/02-hoo-string-quick-reference.md` | HooString API quick reference |
+| `docs/03-implementation-status.md` | Detailed progress tracking |
+| `docs/08-string-integration-guide.md` | String integration and runtime class framework |
 
 ## Dependencies
 

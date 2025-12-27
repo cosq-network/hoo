@@ -83,11 +83,25 @@ std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationU
     hoo_release_func_ = nullptr;
 
     // Reset string function pointers
-    hoo_string_from_cstr_func_ = nullptr;
-    hoo_string_concat_func_ = nullptr;
-    hoo_string_equals_func_ = nullptr;
-    hoo_string_compare_func_ = nullptr;
-    hoo_string_length_func_ = nullptr;
+    // TODO: Use X-Macro auto-generation once parameter handling is fixed
+    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)
+    #define BEGIN_RUNTIME_FUNCTIONS
+    #define END_RUNTIME_FUNCTIONS
+    #define RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...) \
+        hoo_string_##FuncName##_func_ = nullptr;
+    #define BEGIN_RUNTIME_OPERATORS
+    #define END_RUNTIME_OPERATORS
+    #define RUNTIME_OPERATOR(...)
+
+    #include "runtime/RuntimeClassRegistry.h"
+
+    #undef DEFINE_RUNTIME_CLASS
+    #undef BEGIN_RUNTIME_FUNCTIONS
+    #undef END_RUNTIME_FUNCTIONS
+    #undef RUNTIME_FUNCTION
+    #undef BEGIN_RUNTIME_OPERATORS
+    #undef END_RUNTIME_OPERATORS
+    #undef RUNTIME_OPERATOR
 
     // Declare string functions early so they're available
     declareStringFunctions();
@@ -1528,98 +1542,117 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     }
 }
 
+// ============================================================================
+// LLVM String Function Declarations
+// ============================================================================
+// NOTE: Using manual declarations for correct parameter signatures
+// Framework in place (RuntimeClassRegistry.h) for future auto-generation
+// once parameter extraction from (Type, LLVM_Type) pairs is improved
+
 void LLVMCodeGenerator::declareStringFunctions() {
     // Declare hoo_string_from_cstr: HooString hoo_string_from_cstr(const char* cstr)
     if (!hoo_string_from_cstr_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0)  // const char* cstr
-        };
-        FunctionType* funcType = FunctionType::get(
-            llvm::PointerType::get(context_, 0),  // returns HooString (opaque pointer)
-            params,
-            false
-        );
-        hoo_string_from_cstr_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_string_from_cstr",
-            module_.get()
-        );
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_string_from_cstr_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_from_cstr", module_.get());
     }
 
     // Declare hoo_string_concat: HooString hoo_string_concat(HooString dst, HooString src)
     if (!hoo_string_concat_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooString dst
-            llvm::PointerType::get(context_, 0)   // HooString src
-        };
-        FunctionType* funcType = FunctionType::get(
-            llvm::PointerType::get(context_, 0),  // returns HooString
-            params,
-            false
-        );
-        hoo_string_concat_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_string_concat",
-            module_.get()
-        );
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0), llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_string_concat_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_concat", module_.get());
     }
 
     // Declare hoo_string_equals: int64_t hoo_string_equals(HooString str1, HooString str2)
     if (!hoo_string_equals_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooString str1
-            llvm::PointerType::get(context_, 0)   // HooString str2
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),  // returns int64_t (1 if equal, 0 if not)
-            params,
-            false
-        );
-        hoo_string_equals_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_string_equals",
-            module_.get()
-        );
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0), llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
+        hoo_string_equals_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_equals", module_.get());
     }
 
     // Declare hoo_string_compare: int64_t hoo_string_compare(HooString str1, HooString str2)
     if (!hoo_string_compare_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooString str1
-            llvm::PointerType::get(context_, 0)   // HooString str2
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),  // returns int64_t (<0, 0, >0)
-            params,
-            false
-        );
-        hoo_string_compare_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_string_compare",
-            module_.get()
-        );
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0), llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
+        hoo_string_compare_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_compare", module_.get());
     }
 
     // Declare hoo_string_length: int64_t hoo_string_length(HooString str)
     if (!hoo_string_length_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0)  // HooString str
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),  // returns int64_t
-            params,
-            false
-        );
-        hoo_string_length_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_string_length",
-            module_.get()
-        );
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
+        hoo_string_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_length", module_.get());
+    }
+}
+
+// ============================================================================
+// Auto-Generated Operator Dispatch Methods
+// ============================================================================
+// These are generated from RUNTIME_CLASSES registry. Each runtime class gets
+// a tryMxxxOperator() method that handles binary operators for that class.
+// TODO: Implement auto-generation when __VA_ARGS__ parameter handling is fixed
+
+Value* LLVMCodeGenerator::tryStringOperator(
+    ASTBinaryOperator op, Value* left, Value* right) {
+    // Check if both operands are string pointers
+    if (!left->getType()->isPointerTy() || !right->getType()->isPointerTy()) {
+        return nullptr;
+    }
+
+    // Ensure string functions are declared
+    declareStringFunctions();
+
+    // Dispatch to appropriate operator
+    switch (op) {
+        case ASTBinaryOperator::PLUS:
+            if (!hoo_string_concat_func_) return nullptr;
+            return builder_->CreateCall(hoo_string_concat_func_, {left, right}, "concat_result");
+
+        case ASTBinaryOperator::EQUALS:
+            if (!hoo_string_equals_func_) return nullptr;
+            {
+                Value* result = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "equals_result");
+                return builder_->CreateICmpNE(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
+            }
+
+        case ASTBinaryOperator::NOT_EQUALS:
+            if (!hoo_string_equals_func_) return nullptr;
+            {
+                Value* result = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "neq_result");
+                return builder_->CreateICmpEQ(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
+            }
+
+        case ASTBinaryOperator::LESS:
+            if (!hoo_string_compare_func_) return nullptr;
+            {
+                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+                return builder_->CreateICmpSLT(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
+            }
+
+        case ASTBinaryOperator::LESS_EQUALS:
+            if (!hoo_string_compare_func_) return nullptr;
+            {
+                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+                return builder_->CreateICmpSLE(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
+            }
+
+        case ASTBinaryOperator::GREATER:
+            if (!hoo_string_compare_func_) return nullptr;
+            {
+                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+                return builder_->CreateICmpSGT(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
+            }
+
+        case ASTBinaryOperator::GREATER_EQUALS:
+            if (!hoo_string_compare_func_) return nullptr;
+            {
+                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+                return builder_->CreateICmpSGE(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
+            }
+
+        default:
+            return nullptr;
     }
 }
 

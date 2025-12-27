@@ -23,7 +23,13 @@
       "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*\")",
       "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_list_tests)",
       "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*\" --gtest_print_time=1)",
-      "Bash(./hoo-tests.exe:*)"
+      "Bash(./hoo-tests.exe:*)",
+      "Bash(.hoo-tests.exe:*)",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringBasicsTest.*\")",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\")",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*:StringBasicsTest.*:BasicCodeGenTest.*:FunctionCallCodeGenTest.*:VariableDeclarationCodeGenTest.*\")",
+      "Bash(ls:*)",
+      "Bash(del runtimehoo_string_quick_ref.txt)"
     ]
   }
 }

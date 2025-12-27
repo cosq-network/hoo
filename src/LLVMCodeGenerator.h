@@ -9,6 +9,7 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
+#include "runtime/RuntimeClassRegistry.h"
 #include <memory>
 #include <unordered_map>
 #include <string>
@@ -68,21 +69,86 @@ private:
     std::unordered_map<std::string, const ast::ClassDeclaration*> classDeclarations_; // Track class declarations
     int64_t nextTypeId_ = 1;
 
-    // Runtime function declarations
+    // Runtime function declarations (core allocation/refcount)
     llvm::Function* hoo_alloc_func_ = nullptr;
     llvm::Function* hoo_retain_func_ = nullptr;
     llvm::Function* hoo_release_func_ = nullptr;
 
-    // String function declarations
-    llvm::Function* hoo_string_from_cstr_func_ = nullptr;
-    llvm::Function* hoo_string_concat_func_ = nullptr;
-    llvm::Function* hoo_string_equals_func_ = nullptr;
-    llvm::Function* hoo_string_compare_func_ = nullptr;
-    llvm::Function* hoo_string_length_func_ = nullptr;
+    // ========================================================================
+    // Auto-Generated Runtime Class Function Pointers
+    // ========================================================================
+    // These are generated from RUNTIME_CLASSES registry. Each class gets
+    // function pointer storage for its declared functions.
 
-    // Runtime function declaration
+    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)
+    #define BEGIN_RUNTIME_FUNCTIONS
+    #define END_RUNTIME_FUNCTIONS
+    #define RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...) \
+        llvm::Function* hoo_string_##FuncName##_func_ = nullptr;
+    #define BEGIN_RUNTIME_OPERATORS
+    #define END_RUNTIME_OPERATORS
+    #define RUNTIME_OPERATOR(...)
+
+    RUNTIME_CLASSES
+
+    #undef DEFINE_RUNTIME_CLASS
+    #undef BEGIN_RUNTIME_FUNCTIONS
+    #undef END_RUNTIME_FUNCTIONS
+    #undef RUNTIME_FUNCTION
+    #undef BEGIN_RUNTIME_OPERATORS
+    #undef END_RUNTIME_OPERATORS
+    #undef RUNTIME_OPERATOR
+
+    // ========================================================================
+    // Auto-Generated Runtime Function Declaration Methods
+    // ========================================================================
+    // Each runtime class gets a declare<Class>Functions() method
+
     void declareRuntimeFunctions();
-    void declareStringFunctions();
+
+    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate) \
+        void declare##ClassName##Functions();
+    #define BEGIN_RUNTIME_FUNCTIONS
+    #define END_RUNTIME_FUNCTIONS
+    #define RUNTIME_FUNCTION(...)
+    #define BEGIN_RUNTIME_OPERATORS
+    #define END_RUNTIME_OPERATORS
+    #define RUNTIME_OPERATOR(...)
+
+    RUNTIME_CLASSES
+
+    #undef DEFINE_RUNTIME_CLASS
+    #undef BEGIN_RUNTIME_FUNCTIONS
+    #undef END_RUNTIME_FUNCTIONS
+    #undef RUNTIME_FUNCTION
+    #undef BEGIN_RUNTIME_OPERATORS
+    #undef END_RUNTIME_OPERATORS
+    #undef RUNTIME_OPERATOR
+
+    // ========================================================================
+    // Auto-Generated Operator Dispatch Methods
+    // ========================================================================
+    // Each runtime class can handle specific binary operators
+
+    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate) \
+        llvm::Value* try##ClassName##Operator( \
+            ast::BinaryOperator op, llvm::Value* left, llvm::Value* right);
+    #define BEGIN_RUNTIME_FUNCTIONS
+    #define END_RUNTIME_FUNCTIONS
+    #define RUNTIME_FUNCTION(...)
+    #define BEGIN_RUNTIME_OPERATORS
+    #define END_RUNTIME_OPERATORS
+    #define RUNTIME_OPERATOR(...)
+
+    RUNTIME_CLASSES
+
+    #undef DEFINE_RUNTIME_CLASS
+    #undef BEGIN_RUNTIME_FUNCTIONS
+    #undef END_RUNTIME_FUNCTIONS
+    #undef RUNTIME_FUNCTION
+    #undef BEGIN_RUNTIME_OPERATORS
+    #undef END_RUNTIME_OPERATORS
+    #undef RUNTIME_OPERATOR
 
     // Class type management
     llvm::StructType* getOrCreateClassType(const std::string& className);
