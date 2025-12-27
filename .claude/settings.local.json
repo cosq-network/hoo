@@ -2,34 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(cmake --build:*)",
-      "Bash(./build/hooc.exe:*)",
       "Bash(cmake:*)",
-      "Bash(cat:*)",
-      "Bash(find:*)",
-      "Bash(for:*)",
-      "Bash(do)",
-      "Bash(perl -pi -e:*)",
-      "Bash(done)",
-      "Bash(grep:*)",
+      "Bash(./build/hooc.exe:*)",
       "Bash(./build/hoo-tests:*)",
-      "Bash(dir:*)",
-      "Bash(echo:*)",
-      "Bash(unset:*)",
       "Bash(./build/RelWithDebInfo/hooc.exe:*)",
-      "Bash(./hooc.exe:*)",
       "Bash(./build/RelWithDebInfo/hoo-tests.exe:*)",
-      "Bash(cd:*)",
-      "Bash(.buildRelWithDebInfohoo-tests.exe --gtest_filter=\"StringCodeGenTest.*\")",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*\")",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_list_tests)",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*\" --gtest_print_time=1)",
-      "Bash(./hoo-tests.exe:*)",
-      "Bash(.hoo-tests.exe:*)",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringBasicsTest.*\")",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\")",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*:StringBasicsTest.*:BasicCodeGenTest.*:FunctionCallCodeGenTest.*:VariableDeclarationCodeGenTest.*\")",
-      "Bash(ls:*)",
-      "Bash(del runtimehoo_string_quick_ref.txt)"
+      "Bash(timeout:*)",
+      "Bash(git:*)"
     ]
   }
 }

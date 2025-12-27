@@ -144,10 +144,11 @@ add_library(hoo-compiler
     src/ast/ASTImpl.cpp
 )
 
-# Hooc runtime library (reference counting, memory management, string support)
+# Hooc runtime library (reference counting, memory management, string support, array support)
 add_library(hoort STATIC
     runtime/hoo_runtime.c
     runtime/hoo_string.cpp
+    runtime/hoo_array.cpp
 )
 
 target_include_directories(hoort PUBLIC

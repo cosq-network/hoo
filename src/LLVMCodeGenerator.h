@@ -75,29 +75,85 @@ private:
     llvm::Function* hoo_release_func_ = nullptr;
 
     // ========================================================================
-    // Auto-Generated Runtime Class Function Pointers
+    // Runtime Class Function Pointers - String Class
     // ========================================================================
-    // These are generated from RUNTIME_CLASSES registry. Each class gets
-    // function pointer storage for its declared functions.
 
-    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)
-    #define BEGIN_RUNTIME_FUNCTIONS
-    #define END_RUNTIME_FUNCTIONS
-    #define RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...) \
-        llvm::Function* hoo_string_##FuncName##_func_ = nullptr;
-    #define BEGIN_RUNTIME_OPERATORS
-    #define END_RUNTIME_OPERATORS
-    #define RUNTIME_OPERATOR(...)
+    llvm::Function* hoo_string_from_cstr_func_ = nullptr;
+    llvm::Function* hoo_string_new_func_ = nullptr;
+    llvm::Function* hoo_string_from_bytes_func_ = nullptr;
+    llvm::Function* hoo_string_repeat_func_ = nullptr;
+    llvm::Function* hoo_string_concat_func_ = nullptr;
+    llvm::Function* hoo_string_substring_func_ = nullptr;
+    llvm::Function* hoo_string_to_upper_func_ = nullptr;
+    llvm::Function* hoo_string_to_lower_func_ = nullptr;
+    llvm::Function* hoo_string_trim_func_ = nullptr;
+    llvm::Function* hoo_string_replace_func_ = nullptr;
+    llvm::Function* hoo_string_length_func_ = nullptr;
+    llvm::Function* hoo_string_data_func_ = nullptr;
+    llvm::Function* hoo_string_byte_at_func_ = nullptr;
+    llvm::Function* hoo_string_is_empty_func_ = nullptr;
+    llvm::Function* hoo_string_index_of_func_ = nullptr;
+    llvm::Function* hoo_string_last_index_of_func_ = nullptr;
+    llvm::Function* hoo_string_contains_func_ = nullptr;
+    llvm::Function* hoo_string_starts_with_func_ = nullptr;
+    llvm::Function* hoo_string_ends_with_func_ = nullptr;
+    llvm::Function* hoo_string_compare_func_ = nullptr;
+    llvm::Function* hoo_string_equals_func_ = nullptr;
+    llvm::Function* hoo_string_equals_ignore_case_func_ = nullptr;
+    llvm::Function* hoo_string_retain_func_ = nullptr;
+    llvm::Function* hoo_string_release_func_ = nullptr;
+    llvm::Function* hoo_string_refcount_func_ = nullptr;
+    llvm::Function* hoo_string_from_int64_func_ = nullptr;
+    llvm::Function* hoo_string_from_double_func_ = nullptr;
+    llvm::Function* hoo_string_from_bool_func_ = nullptr;
+    llvm::Function* hoo_string_to_int64_func_ = nullptr;
+    llvm::Function* hoo_string_to_double_func_ = nullptr;
+    llvm::Function* hoo_string_format_func_ = nullptr;
+    llvm::Function* hoo_string_print_func_ = nullptr;
+    llvm::Function* hoo_string_println_func_ = nullptr;
+    llvm::Function* hoo_string_debug_func_ = nullptr;
 
-    RUNTIME_CLASSES
+    // ========================================================================
+    // Runtime Class Function Pointers - Int64Array Class
+    // ========================================================================
 
-    #undef DEFINE_RUNTIME_CLASS
-    #undef BEGIN_RUNTIME_FUNCTIONS
-    #undef END_RUNTIME_FUNCTIONS
-    #undef RUNTIME_FUNCTION
-    #undef BEGIN_RUNTIME_OPERATORS
-    #undef END_RUNTIME_OPERATORS
-    #undef RUNTIME_OPERATOR
+    llvm::Function* hoo_int64_array_new_func_ = nullptr;
+    llvm::Function* hoo_int64_array_from_buffer_func_ = nullptr;
+    llvm::Function* hoo_int64_array_repeat_func_ = nullptr;
+    llvm::Function* hoo_int64_array_length_func_ = nullptr;
+    llvm::Function* hoo_int64_array_get_func_ = nullptr;
+    llvm::Function* hoo_int64_array_set_func_ = nullptr;
+    llvm::Function* hoo_int64_array_push_func_ = nullptr;
+    llvm::Function* hoo_int64_array_pop_func_ = nullptr;
+    llvm::Function* hoo_int64_array_clear_func_ = nullptr;
+    llvm::Function* hoo_int64_array_contains_func_ = nullptr;
+    llvm::Function* hoo_int64_array_index_of_func_ = nullptr;
+    llvm::Function* hoo_int64_array_concat_func_ = nullptr;
+    llvm::Function* hoo_int64_array_slice_func_ = nullptr;
+    llvm::Function* hoo_int64_array_clone_func_ = nullptr;
+    llvm::Function* hoo_int64_array_retain_func_ = nullptr;
+    llvm::Function* hoo_int64_array_release_func_ = nullptr;
+    llvm::Function* hoo_int64_array_refcount_func_ = nullptr;
+
+    // ========================================================================
+    // Runtime Class Function Pointers - DoubleArray Class
+    // ========================================================================
+
+    llvm::Function* hoo_double_array_new_func_ = nullptr;
+    llvm::Function* hoo_double_array_from_buffer_func_ = nullptr;
+    llvm::Function* hoo_double_array_repeat_func_ = nullptr;
+    llvm::Function* hoo_double_array_length_func_ = nullptr;
+    llvm::Function* hoo_double_array_get_func_ = nullptr;
+    llvm::Function* hoo_double_array_set_func_ = nullptr;
+    llvm::Function* hoo_double_array_push_func_ = nullptr;
+    llvm::Function* hoo_double_array_pop_func_ = nullptr;
+    llvm::Function* hoo_double_array_clear_func_ = nullptr;
+    llvm::Function* hoo_double_array_concat_func_ = nullptr;
+    llvm::Function* hoo_double_array_slice_func_ = nullptr;
+    llvm::Function* hoo_double_array_clone_func_ = nullptr;
+    llvm::Function* hoo_double_array_retain_func_ = nullptr;
+    llvm::Function* hoo_double_array_release_func_ = nullptr;
+    llvm::Function* hoo_double_array_refcount_func_ = nullptr;
 
     // ========================================================================
     // Auto-Generated Runtime Function Declaration Methods

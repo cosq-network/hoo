@@ -31,43 +31,113 @@ using namespace hooc;
 // This implementation uses a simplified macro pattern that avoids nested
 // #define directives which can cause preprocessor complications.
 
+// NOTE: For now, only String class uses JIT registration via this macro.
+// Array classes are available as library functions and linked directly.
 #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate) \
     void HoocJIT::register##ClassName##Functions() { \
         auto& mainJD = JIT->getMainJITDylib(); \
         llvm::orc::SymbolMap symbols;
 
-#define BEGIN_RUNTIME_FUNCTIONS \
+#define BEGIN_RUNTIME_FUNCTIONS
+#define END_RUNTIME_FUNCTIONS \
+        if (!symbols.empty()) { \
+            auto Err = mainJD.define(absoluteSymbols(symbols)); \
+            if (Err) { \
+                errs() << "ERROR: Failed to register functions with JIT: " \
+                       << toString(std::move(Err)) << "\n"; \
+                exit(1); \
+            } \
+        }
+
+#define RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...)
+
+// String class specific registration (keep original implementation)
+#define DEFINE_RUNTIME_CLASS_STRING(HandleType, DetectionPredicate) \
+    void HoocJIT::registerStringFunctions() { \
+        auto& mainJD = JIT->getMainJITDylib(); \
+        llvm::orc::SymbolMap symbols; \
         std::cout << "Registering String runtime functions...\n";
 
-#define RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...) \
+#define REGISTER_STRING_FUNCTION(FuncName) \
     symbols[JIT->mangleAndIntern("hoo_string_" #FuncName)] = \
         llvm::orc::ExecutorSymbolDef( \
             llvm::orc::ExecutorAddr::fromPtr(&hoo_string_##FuncName), \
             JITSymbolFlags::Exported \
         );
 
-#define END_RUNTIME_FUNCTIONS \
-        auto Err = mainJD.define(absoluteSymbols(symbols)); \
-        if (Err) { \
-            errs() << "ERROR: Failed to register string functions with JIT: " \
-                   << toString(std::move(Err)) << "\n"; \
-            exit(1); \
-        } \
-        std::cout << "Successfully registered string functions with HoocJIT\n"; \
+// Helper function to register String functions with JIT
+// Called during HoocJIT initialization
+static void register_string_functions_with_jit(std::unique_ptr<llvm::orc::LLJIT>& JIT) {
+    auto& mainJD = JIT->getMainJITDylib();
+    llvm::orc::SymbolMap symbols;
+
+    #define REGISTER_FUNC(name) \
+        symbols[JIT->mangleAndIntern("hoo_string_" #name)] = \
+            llvm::orc::ExecutorSymbolDef( \
+                llvm::orc::ExecutorAddr::fromPtr(&hoo_string_##name), \
+                JITSymbolFlags::Exported);
+
+    REGISTER_FUNC(from_cstr)
+    REGISTER_FUNC(new)
+    REGISTER_FUNC(from_bytes)
+    REGISTER_FUNC(repeat)
+    REGISTER_FUNC(concat)
+    REGISTER_FUNC(substring)
+    REGISTER_FUNC(to_upper)
+    REGISTER_FUNC(to_lower)
+    REGISTER_FUNC(trim)
+    REGISTER_FUNC(replace)
+    REGISTER_FUNC(length)
+    REGISTER_FUNC(data)
+    REGISTER_FUNC(byte_at)
+    REGISTER_FUNC(is_empty)
+    REGISTER_FUNC(index_of)
+    REGISTER_FUNC(last_index_of)
+    REGISTER_FUNC(contains)
+    REGISTER_FUNC(starts_with)
+    REGISTER_FUNC(ends_with)
+    REGISTER_FUNC(compare)
+    REGISTER_FUNC(equals)
+    REGISTER_FUNC(equals_ignore_case)
+    REGISTER_FUNC(retain)
+    REGISTER_FUNC(release)
+    REGISTER_FUNC(refcount)
+    REGISTER_FUNC(from_int64)
+    REGISTER_FUNC(from_double)
+    REGISTER_FUNC(from_bool)
+    REGISTER_FUNC(to_int64)
+    REGISTER_FUNC(to_double)
+    REGISTER_FUNC(format)
+    REGISTER_FUNC(print)
+    REGISTER_FUNC(println)
+    REGISTER_FUNC(debug)
+
+    #undef REGISTER_FUNC
+
+    auto Err = mainJD.define(absoluteSymbols(symbols));
+    if (Err) {
+        errs() << "ERROR: Failed to register string functions with JIT: "
+               << toString(std::move(Err)) << "\n";
+        exit(1);
     }
+    std::cout << "Successfully registered string functions with HoocJIT\n";
+}
 
 #define BEGIN_RUNTIME_OPERATORS
 #define END_RUNTIME_OPERATORS
 #define RUNTIME_OPERATOR(Op, FuncName)
 
-// Expand RUNTIME_CLASSES to generate registration functions
-RUNTIME_CLASSES
+// Note: RUNTIME_CLASSES is not expanded here. The String class is explicitly
+// registered via register_string_functions_impl(). Array classes are available
+// as library functions without needing JIT registration.
 
 // Undefine macros to prevent pollution
 #undef DEFINE_RUNTIME_CLASS
 #undef BEGIN_RUNTIME_FUNCTIONS
 #undef END_RUNTIME_FUNCTIONS
 #undef RUNTIME_FUNCTION
+#undef DEFINE_RUNTIME_CLASS_STRING
+#undef REGISTER_STRING_FUNCTION
 #undef BEGIN_RUNTIME_OPERATORS
 #undef END_RUNTIME_OPERATORS
 #undef RUNTIME_OPERATOR
@@ -87,29 +157,12 @@ HoocJIT::HoocJIT() {
     JIT = std::move(*JITExpected);
 
     // ========================================================================
-    // Auto-register all runtime classes
+    // Register runtime classes with JIT
     // ========================================================================
-    // These calls are auto-generated from the RUNTIME_CLASSES registry.
-    // Each runtime class gets a registerXxxFunctions() call here.
+    // String class is the main runtime class and is explicitly registered.
+    // Array classes are linked as library functions.
 
-    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate) \
-        register##ClassName##Functions();
-    #define BEGIN_RUNTIME_FUNCTIONS
-    #define END_RUNTIME_FUNCTIONS
-    #define BEGIN_RUNTIME_OPERATORS
-    #define END_RUNTIME_OPERATORS
-    #define RUNTIME_FUNCTION(...)
-    #define RUNTIME_OPERATOR(...)
-
-    RUNTIME_CLASSES  // Expands to: registerStringFunctions();
-
-    #undef DEFINE_RUNTIME_CLASS
-    #undef BEGIN_RUNTIME_FUNCTIONS
-    #undef END_RUNTIME_FUNCTIONS
-    #undef BEGIN_RUNTIME_OPERATORS
-    #undef END_RUNTIME_OPERATORS
-    #undef RUNTIME_FUNCTION
-    #undef RUNTIME_OPERATOR
+    register_string_functions_with_jit(JIT);
 
     // Initialize parser, AST builder, and code generator
     parser_ = std::make_unique<ProcessIsolatedParser>();
