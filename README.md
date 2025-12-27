@@ -300,7 +300,7 @@ LLVM IR Module ✅
 ### **Development Workflow**
 1.  **Modify grammar** in `src/Hooc.g4`.
 2.  **Regenerate ANTLR4 files** (if grammar changes): `cmake --build build --target generate_parser`.
-3.  **Build and test**: `cmake --build build && ./build/hoo_tests`.
+3.  **Build and test**: `cmake --build build && ./build/hoo-tests`.
 4.  **Update AST** in `src/ast/` if needed.
 5.  **Test integration** with `./build/hooc tests/examples/example.hoo`.
 6.  **Run the compiler executable** `./build/hooc <your_program.hoo>`.
@@ -323,7 +323,7 @@ cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=<path/to/vcpkg>/scripts/buildsystems/
 cmake --build build
 
 # 3. Run existing tests to verify setup
-./build/hoo_tests              # Run full test suite (88 tests)
+./build/hoo-tests              # Run full test suite (421 tests)
 
 # 4. Try compiling example programs and view LLVM IR
 ./build/hooc tests/examples/arithmetic.hoo

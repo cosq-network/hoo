@@ -111,28 +111,28 @@ add_custom_target(generate_parser
 )
 
 # Library for the generated parser
-add_library(hooc_parser
+add_library(hoo-parser
     ${ANTLR4_GENERATED_FILES}
 )
 
 # Include directories
-target_include_directories(hooc_parser PUBLIC
+target_include_directories(hoo-parser PUBLIC
     ${ANTLR4_GENERATED_DIR}
     ${ANTLR4_INCLUDE_DIR}
 )
 
 # Link ANTLR4 runtime
-target_link_libraries(hooc_parser PUBLIC
+target_link_libraries(hoo-parser PUBLIC
     ${ANTLR4_LIBRARY}
 )
 
 # Set compile definitions
-target_compile_definitions(hooc_parser PUBLIC
+target_compile_definitions(hoo-parser PUBLIC
     ANTLR4CPP_STATIC
 )
 
 # Ensure generated files are created before building the library
-add_dependencies(hooc_parser generate_parser)
+add_dependencies(hoo-parser generate_parser)
 
 # Create hoo-compiler library
 add_library(hoo-compiler
@@ -145,22 +145,22 @@ add_library(hoo-compiler
 )
 
 # Hooc runtime library (reference counting, memory management)
-add_library(hoo_runtime STATIC
+add_library(hoort STATIC
     runtime/hoo_runtime.c
 )
 
-target_include_directories(hoo_runtime PUBLIC
+target_include_directories(hoort PUBLIC
     ${CMAKE_SOURCE_DIR}/runtime
 )
 
 # Add debug memory tracking in Debug builds
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(hoo_runtime PRIVATE HOO_DEBUG_MEMORY)
+    target_compile_definitions(hoort PRIVATE HOO_DEBUG_MEMORY)
 endif()
 
 target_link_libraries(hoo-compiler PUBLIC
-    hooc_parser
-    hoo_runtime
+    hoo-parser
+    hoort
     ${llvm_libs}
 )
 
@@ -182,7 +182,7 @@ target_link_libraries(hooc
 )
 
 # Install targets
-install(TARGETS hoo-compiler hooc_parser
+install(TARGETS hoo-compiler hoo-parser
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -249,7 +249,7 @@ endif()
 
 if(GTest_FOUND)
     # Test executable
-    add_executable(hoo_tests
+    add_executable(hoo-tests
         tests/test_main.cpp
         tests/ArrayLiteralParsingTest.cpp
         tests/FunctionCallParsingTest.cpp
@@ -279,23 +279,23 @@ if(GTest_FOUND)
 
     # Link test executable with libraries
     if(TARGET GTest::gtest AND TARGET GTest::gtest_main)
-        target_link_libraries(hoo_tests
+        target_link_libraries(hoo-tests
             hoo-compiler
             GTest::gtest
             GTest::gtest_main
         )
     else()
-        target_link_libraries(hoo_tests
+        target_link_libraries(hoo-tests
             hoo-compiler
             ${GTEST_LIBRARIES}
             ${GTEST_MAIN_LIBRARIES}
             pthread
         )
-        target_include_directories(hoo_tests PRIVATE ${GTEST_INCLUDE_DIRS})
+        target_include_directories(hoo-tests PRIVATE ${GTEST_INCLUDE_DIRS})
     endif()
 
     # Include directories for tests
-    target_include_directories(hoo_tests PUBLIC
+    target_include_directories(hoo-tests PUBLIC
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
         ${LLVM_INCLUDE_DIRS}
@@ -306,7 +306,7 @@ if(GTest_FOUND)
     # Copy required DLLs to build directory on Windows
     if(WIN32)
         # Copy GTest DLLs from vcpkg
-        add_custom_command(TARGET hoo_tests POST_BUILD
+        add_custom_command(TARGET hoo-tests POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/gtest.dll"
                 "${CMAKE_BINARY_DIR}/"
@@ -322,12 +322,12 @@ if(GTest_FOUND)
     endif()
 
     # Add test target
-    add_test(NAME HooUnitTests COMMAND hoo_tests)
+    add_test(NAME HooUnitTests COMMAND hoo-tests)
 
     # Custom test target for convenience
     add_custom_target(run_tests
         COMMAND ${CMAKE_CTEST_COMMAND} --verbose
-        DEPENDS hoo_tests
+        DEPENDS hoo-tests
         COMMENT "Running unit tests"
     )
 

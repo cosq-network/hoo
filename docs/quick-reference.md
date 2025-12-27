@@ -42,9 +42,9 @@ cmake --build build
 
 # Expected output:
 # [  7%] Built target generate_parser
-# [ 53%] Built target hooc_parser  
-# [ 69%] Built target hooc_jit
-# [100%] Built target hooc_parse
+# [ 53%] Built target hoo-parser
+# [ 69%] Built target hooc
+# [100%] Built target hoo-tests
 ```
 
 #### Windows

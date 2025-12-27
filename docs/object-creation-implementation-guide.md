@@ -20,18 +20,18 @@ The runtime library (`runtime/hoo_runtime.c`) is already created. Now integrate 
 
 ```cmake
 # Add runtime library
-add_library(hoo_runtime STATIC
+add_library(hoort STATIC
     runtime/hoo_runtime.c
 )
 
-target_include_directories(hoo_runtime PUBLIC
+target_include_directories(hoort PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/runtime
 )
 
 # Link runtime with compiler
 target_link_libraries(hoo-compiler
-    hooc_parser
-    hoo_runtime  # Add this
+    hoo-parser
+    hoort  # Add this
     ${ANTLR4_LIBRARIES}
     ${LLVM_LIBRARIES}
 )
@@ -542,11 +542,11 @@ Run tests with memory error detection:
 
 ```bash
 # With Valgrind
-valgrind --leak-check=full ./build/hoo_tests
+valgrind --leak-check=full ./build/hoo-tests
 
 # With AddressSanitizer
 cmake -DCMAKE_CXX_FLAGS="-fsanitize=address" -B build
-./build/hoo_tests
+./build/hoo-tests
 ```
 
 ### LLVM IR Inspection

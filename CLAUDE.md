@@ -36,16 +36,16 @@ cmake --build build --config RelWithDebInfo
 
 ### Running Tests
 ```bash
-# Run all unit tests (396 tests, 22 test suites)
-./build/hoo_tests        # macOS/Linux
-./build/hoo_tests.exe    # Windows
+# Run all unit tests (421 tests, 24 test suites)
+./build/hoo-tests        # macOS/Linux
+./build/hoo-tests.exe    # Windows
 
 # Run specific test suite with verbose output
-./build/hoo_tests --gtest_filter="BasicCodeGenTest.*"
-./build/hoo_tests --gtest_filter="FunctionCallCodeGenTest.*"
-./build/hoo_tests --gtest_filter="NullableCodeGenTest.*"
-./build/hoo_tests --gtest_filter="MemberAccessParsingTest.*"
-./build/hoo_tests --gtest_filter="MemberAccessCodeGenTest.*"
+./build/hoo-tests --gtest_filter="BasicCodeGenTest.*"
+./build/hoo-tests --gtest_filter="FunctionCallCodeGenTest.*"
+./build/hoo-tests --gtest_filter="NullableCodeGenTest.*"
+./build/hoo-tests --gtest_filter="MemberAccessParsingTest.*"
+./build/hoo-tests --gtest_filter="MemberAccessCodeGenTest.*"
 
 # Run tests through CMake
 cmake --build build --target run_tests
@@ -288,7 +288,7 @@ TEST_F(BasicCodeGenTest, TestName) {
 5. **Write Tests**
    - Add unit tests in appropriate test file
    - Add example `.hoo` programs in `tests/examples/`
-   - Verify with `./build/hoo_tests`
+   - Verify with `./build/hoo-tests`
 
 ## Array Literals (v0.2)
 
@@ -689,7 +689,7 @@ define i64 @MyClass_myMethod(ptr %this, i64 %a) { ... }
 - Class declarations with Kotlin-style constructors (single constructor per class)
 - Object instantiation with `new ClassName(args)` syntax
 - Automatic Reference Counting (ARC) for memory management
-- Runtime library (hoo_runtime) provides memory management functions:
+- Runtime library (hoort) provides memory management functions:
   - `hoo_alloc(size, type_id)` - Allocate object with refcount=1
   - `hoo_retain(obj)` - Increment reference count
   - `hoo_release(obj)` - Decrement reference count, free when zero

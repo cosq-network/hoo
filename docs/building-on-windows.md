@@ -200,8 +200,8 @@ ninja -v
 After successful build, you'll find:
 - `hooc.exe`: Main compiler executable
 - `hoo-compiler.lib`: Compiler library
-- `hooc_parser.lib`: Parser library
-- `hoo_tests.exe`: Unit test executable (if GTest is found)
+- `hoo-parser.lib`: Parser library
+- `hoo-tests.exe`: Unit test executable (if GTest is found)
 
 ---
 
@@ -211,7 +211,7 @@ After successful build, you'll find:
 
 ```cmd
 cd D:\Projects\hooc\build
-.\hoo_tests.exe
+.\hoo-tests.exe
 ```
 
 ### Run Tests via CTest
@@ -223,7 +223,7 @@ ctest --verbose
 ### Run Specific Test
 
 ```cmd
-.\hoo_tests.exe --gtest_filter=CodeGeneratorTest.*
+.\hoo-tests.exe --gtest_filter=CodeGeneratorTest.*
 ```
 
 ---
@@ -446,7 +446,7 @@ cmake -G "Ninja" -DCMAKE_TOOLCHAIN_FILE="<path-to-vcpkg.cmake>" -DCMAKE_BUILD_TY
 ninja
 
 # Test
-.\hoo_tests.exe
+.\hoo-tests.exe
 
 # Run compiler
 .\hooc.exe --help
