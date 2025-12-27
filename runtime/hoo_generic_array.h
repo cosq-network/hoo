@@ -1,251 +1,397 @@
 #pragma once
 
 #include <stdint.h>
-#include <stddef.h>
+
+#ifdef __cplusplus
+    #include <memory>
+    #include <list>
+    #include <any>
+    #include <typeinfo>
+    #include <string>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // ============================================================================
-// HooArray - Generic Dynamic Array Type with Reference Counting
+// HooArray - Generic Dynamic Array using std::list + std::any
 // ============================================================================
 //
-// A type-agnostic dynamic array implementation that can store elements of
-// any size. Elements are stored as untyped bytes, with the element size
-// tracked in the array header.
+// A truly type-agnostic dynamic array that can store elements of any type.
+// Elements are stored using std::any for type safety and flexibility.
+// Supports multi-dimensional arrays naturally through nested HooArray values.
 //
-// Internally managed with automatic reference counting.
+// Internally managed with automatic reference counting (ARC).
 //
 
-typedef void* HooArray;
+typedef void* HooArray;  // Opaque handle to HooArrayImpl
 
 // ============================================================================
 // Creation and Destruction
 // ============================================================================
 
 /**
- * Create a new empty generic array with initial capacity
- *
- * The returned HooArray has refcount=1. Caller is responsible for
- * releasing when no longer needed.
- *
- * @param element_size Size of each element in bytes (must be > 0)
- * @param capacity Initial capacity (number of elements)
+ * Create a new empty generic array
  * @return New HooArray with refcount=1, or NULL on allocation failure
  */
-HooArray hoo_array_new(size_t element_size, int64_t capacity);
+HooArray hoo_array_new(void);
 
 /**
  * Create a generic array from a buffer
- *
- * @param element_size Size of each element in bytes (must be > 0)
- * @param data Pointer to array data (may be NULL)
- * @param length Number of elements to copy
+ * @param data Pointer to array data
+ * @param length Number of elements
  * @return New HooArray with refcount=1
  */
-HooArray hoo_array_from_buffer(size_t element_size, const void* data, int64_t length);
+HooArray hoo_array_from_buffer(const void* data, int64_t length);
 
 /**
- * Create a generic array with a repeated value
- *
- * @param element_size Size of each element in bytes (must be > 0)
- * @param value Pointer to value to repeat (size must be element_size bytes)
- * @param count Number of times to repeat
- * @return New HooArray containing the repeated value
+ * Create a generic array with repeated value
+ * @param value Pointer to value to repeat
+ * @param count Number of repetitions
+ * @return New HooArray
  */
-HooArray hoo_array_repeat(size_t element_size, const void* value, int64_t count);
+HooArray hoo_array_repeat(const void* value, int64_t count);
 
 // ============================================================================
 // Basic Operations
 // ============================================================================
 
 /**
- * Get the number of elements in a generic array
- *
+ * Get number of elements in array
  * @param arr Array (may be NULL)
- * @return Number of elements, or 0 if arr is NULL
+ * @return Number of elements, or 0 if NULL
  */
 int64_t hoo_array_length(HooArray arr);
 
 /**
- * Get an element from a generic array by index
- *
- * The element is copied into the destination buffer. Caller must ensure
- * the destination buffer is at least element_size bytes.
- *
+ * Get element by index via pointer
  * @param arr Array
- * @param index Element index (0-based)
- * @param dest Destination buffer for element (may not be NULL)
- * @return 1 if successful, 0 if index out of bounds
+ * @param index Index (0-based)
+ * @param dest Destination buffer
+ * @return 1 if success, 0 if out of bounds
  */
 int64_t hoo_array_get(HooArray arr, int64_t index, void* dest);
 
 /**
- * Set an element in a generic array by index
- *
- * The element is copied from the source buffer. Caller must ensure
- * the source buffer contains at least element_size bytes.
- *
+ * Set element by index via pointer
  * @param arr Array
- * @param index Element index (0-based)
- * @param src Source buffer containing element (may not be NULL)
- * @return 1 if successful, 0 if index out of bounds
+ * @param index Index (0-based)
+ * @param value Pointer to value
+ * @return 1 if success, 0 if out of bounds
  */
-int64_t hoo_array_set(HooArray arr, int64_t index, const void* src);
+int64_t hoo_array_set(HooArray arr, int64_t index, const void* value);
 
 /**
- * Append an element to a generic array
- *
- * Automatically grows the array if needed.
- *
+ * Add element to end of array
  * @param arr Array
- * @param value Pointer to value to append (may not be NULL)
- * @return 1 on success, 0 on allocation failure
+ * @param value Pointer to value
+ * @return New length on success, -1 on failure
  */
 int64_t hoo_array_push(HooArray arr, const void* value);
 
 /**
- * Remove and return the last element from a generic array
- *
- * The element is copied into the destination buffer. Caller must ensure
- * the destination buffer is at least element_size bytes.
- *
+ * Remove and return last element
  * @param arr Array
- * @param dest Destination buffer for popped element (may not be NULL)
- * @return 1 on success (element copied to dest), 0 if array is empty
+ * @param dest Destination buffer
+ * @return 1 if success, 0 if empty
  */
 int64_t hoo_array_pop(HooArray arr, void* dest);
 
 /**
- * Clear all elements from a generic array
- *
+ * Remove all elements
  * @param arr Array
  */
 void hoo_array_clear(HooArray arr);
 
 /**
- * Concatenate two generic arrays
- *
- * Returns a new array containing all elements from arr1 followed by all
- * elements from arr2. Neither input array is modified. Both arrays must
- * have the same element size.
- *
- * @param arr1 First array (may be NULL, treated as empty)
- * @param arr2 Second array (may be NULL, treated as empty)
- * @return New concatenated HooArray with refcount=1
- */
-HooArray hoo_array_concat(HooArray arr1, HooArray arr2);
-
-/**
- * Get a slice of a generic array
- *
- * @param arr Source array
- * @param start Starting index (0-based)
- * @param length Number of elements to extract
- * @return New HooArray containing the slice
- */
-HooArray hoo_array_slice(HooArray arr, int64_t start, int64_t length);
-
-/**
- * Create a clone of a generic array
- *
- * @param arr Source array
- * @return New HooArray with refcount=1, or NULL if arr is NULL
- */
-HooArray hoo_array_clone(HooArray arr);
-
-// ============================================================================
-// Element Size Query
-// ============================================================================
-
-/**
- * Get the element size of a generic array
- *
+ * Check if array is empty
  * @param arr Array (may be NULL)
- * @return Element size in bytes, or 0 if arr is NULL
+ * @return 1 if empty or NULL, 0 otherwise
  */
-size_t hoo_array_element_size(HooArray arr);
+int64_t hoo_array_empty(HooArray arr);
+
+// ============================================================================
+// Type-Specific Push Operations
+// ============================================================================
+
+/**
+ * Push int64 value
+ * @param arr Array
+ * @param value int64 value
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_int64(HooArray arr, int64_t value);
+
+/**
+ * Push double value
+ * @param arr Array
+ * @param value double value
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_double(HooArray arr, double value);
+
+/**
+ * Push float value
+ * @param arr Array
+ * @param value float value
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_float(HooArray arr, float value);
+
+/**
+ * Push bool value
+ * @param arr Array
+ * @param value bool value
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_bool(HooArray arr, int64_t value);
+
+/**
+ * Push char value
+ * @param arr Array
+ * @param value char value
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_char(HooArray arr, char value);
+
+/**
+ * Push string pointer
+ * @param arr Array
+ * @param value Pointer to string
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_string(HooArray arr, const char* value);
+
+/**
+ * Push object pointer (class instance)
+ * @param arr Array
+ * @param value Pointer to object
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_object(HooArray arr, void* value);
+
+/**
+ * Push array (for multi-dimensional arrays)
+ * @param arr Array
+ * @param value HooArray handle
+ * @return New length on success, -1 on failure
+ */
+int64_t hoo_array_push_array(HooArray arr, HooArray value);
+
+// ============================================================================
+// Type-Specific Get Operations
+// ============================================================================
+
+/**
+ * Get int64 value from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_int64(HooArray arr, int64_t index, int64_t* dest);
+
+/**
+ * Get double value from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_double(HooArray arr, int64_t index, double* dest);
+
+/**
+ * Get float value from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_float(HooArray arr, int64_t index, float* dest);
+
+/**
+ * Get bool value from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_bool(HooArray arr, int64_t index, int64_t* dest);
+
+/**
+ * Get char value from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_char(HooArray arr, int64_t index, char* dest);
+
+/**
+ * Get string pointer from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer to string pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_string(HooArray arr, int64_t index, const char** dest);
+
+/**
+ * Get object pointer from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer to object pointer
+ * @return 1 if success, 0 if index out of bounds or type mismatch
+ */
+int64_t hoo_array_get_object(HooArray arr, int64_t index, void** dest);
+
+/**
+ * Get nested array from array
+ * @param arr Array
+ * @param index Index (0-based)
+ * @param dest Destination pointer to HooArray handle
+ * @return 1 if success, 0 if index out of bounds or not an array
+ */
+int64_t hoo_array_get_array(HooArray arr, int64_t index, HooArray* dest);
 
 // ============================================================================
 // Reference Counting
 // ============================================================================
 
 /**
- * Increment reference count of a generic array
- *
- * @param arr Array (may be NULL)
- * @return The array (for chaining)
+ * Increment reference count
+ * @param arr Array
+ * @return Array handle (same as input)
  */
 HooArray hoo_array_retain(HooArray arr);
 
 /**
- * Decrement reference count of a generic array
- *
- * If refcount reaches 0, the array is freed.
- *
- * @param arr Array (may be NULL)
+ * Decrement reference count, free if zero
+ * @param arr Array
  */
 void hoo_array_release(HooArray arr);
 
 /**
- * Get the reference count of a generic array
- *
- * @param arr Array (may be NULL)
- * @return Current refcount, or 0 if arr is NULL
+ * Get reference count
+ * @param arr Array
+ * @return Current refcount, or 0 if NULL
  */
 int64_t hoo_array_refcount(HooArray arr);
 
 // ============================================================================
-// Type-Specific Wrappers - Convenience Functions
+// Type Information
 // ============================================================================
-//
-// The following are type-specific wrappers around the generic array that
-// provide convenience APIs for common types (int64, double).
-// Internally, they all use HooArray (generic array) but provide type-safe
-// interfaces for specific element types.
-//
 
-// int64 Array Wrappers
-typedef HooArray HooInt64Array;
+/**
+ * Get element type name
+ * @param arr Array
+ * @return Type name string
+ */
+const char* hoo_array_element_type(HooArray arr);
 
-HooInt64Array hoo_int64_array_new(int64_t capacity);
-HooInt64Array hoo_int64_array_from_buffer(const int64_t* data, int64_t length);
-HooInt64Array hoo_int64_array_repeat(int64_t value, int64_t count);
-int64_t hoo_int64_array_length(HooInt64Array arr);
-int64_t hoo_int64_array_get(HooInt64Array arr, int64_t index);
-int64_t hoo_int64_array_set(HooInt64Array arr, int64_t index, int64_t value);
-int64_t hoo_int64_array_push(HooInt64Array arr, int64_t value);
-int64_t hoo_int64_array_pop(HooInt64Array arr);
-void hoo_int64_array_clear(HooInt64Array arr);
-int64_t hoo_int64_array_contains(HooInt64Array arr, int64_t value);
-int64_t hoo_int64_array_index_of(HooInt64Array arr, int64_t value);
-HooInt64Array hoo_int64_array_concat(HooInt64Array arr1, HooInt64Array arr2);
-HooInt64Array hoo_int64_array_slice(HooInt64Array arr, int64_t start, int64_t length);
-HooInt64Array hoo_int64_array_clone(HooInt64Array arr);
-HooInt64Array hoo_int64_array_retain(HooInt64Array arr);
-void hoo_int64_array_release(HooInt64Array arr);
-int64_t hoo_int64_array_refcount(HooInt64Array arr);
-
-// double Array Wrappers
-typedef HooArray HooDoubleArray;
-
-HooDoubleArray hoo_double_array_new(int64_t capacity);
-HooDoubleArray hoo_double_array_from_buffer(const double* data, int64_t length);
-HooDoubleArray hoo_double_array_repeat(double value, int64_t count);
-int64_t hoo_double_array_length(HooDoubleArray arr);
-double hoo_double_array_get(HooDoubleArray arr, int64_t index);
-int64_t hoo_double_array_set(HooDoubleArray arr, int64_t index, double value);
-int64_t hoo_double_array_push(HooDoubleArray arr, double value);
-double hoo_double_array_pop(HooDoubleArray arr);
-void hoo_double_array_clear(HooDoubleArray arr);
-HooDoubleArray hoo_double_array_concat(HooDoubleArray arr1, HooDoubleArray arr2);
-HooDoubleArray hoo_double_array_slice(HooDoubleArray arr, int64_t start, int64_t length);
-HooDoubleArray hoo_double_array_clone(HooDoubleArray arr);
-HooDoubleArray hoo_double_array_retain(HooDoubleArray arr);
-void hoo_double_array_release(HooDoubleArray arr);
-int64_t hoo_double_array_refcount(HooDoubleArray arr);
+/**
+ * Check if array contains specific type
+ * @param arr Array
+ * @param type_name Type name to check
+ * @return 1 if matches, 0 otherwise
+ */
+int64_t hoo_array_is_type(HooArray arr, const char* type_name);
 
 #ifdef __cplusplus
-}
+}  // extern "C"
 #endif
+
+// ============================================================================
+// C++ Implementation Class (outside extern "C")
+// ============================================================================
+
+#ifdef __cplusplus
+
+namespace hooc {
+
+/**
+ * HooArrayImpl - C++ implementation using std::list + std::any
+ */
+class HooArrayImpl {
+public:
+    HooArrayImpl();
+    ~HooArrayImpl();
+
+    HooArrayImpl(const HooArrayImpl&) = delete;
+    HooArrayImpl& operator=(const HooArrayImpl&) = delete;
+
+    // Template methods for type-safe operations
+    template<typename T>
+    int64_t push(const T& value) {
+        try {
+            element_type = &typeid(T);
+            elements.push_back(std::any(value));
+            return static_cast<int64_t>(elements.size());
+        } catch (...) {
+            return -1;
+        }
+    }
+
+    template<typename T>
+    bool get(int64_t index, T& dest) const {
+        if (index < 0 || index >= static_cast<int64_t>(elements.size())) {
+            return false;
+        }
+        try {
+            auto it = elements.begin();
+            std::advance(it, index);
+            dest = std::any_cast<T>(*it);
+            return true;
+        } catch (const std::bad_any_cast&) {
+            return false;
+        }
+    }
+
+    template<typename T>
+    bool set(int64_t index, const T& value) {
+        if (index < 0 || index >= static_cast<int64_t>(elements.size())) {
+            return false;
+        }
+        try {
+            auto it = elements.begin();
+            std::advance(it, index);
+            *it = std::any(value);
+            return true;
+        } catch (...) {
+            return false;
+        }
+    }
+
+    // Basic operations
+    void clear() { elements.clear(); }
+    int64_t length() const { return static_cast<int64_t>(elements.size()); }
+    bool empty() const { return elements.empty(); }
+
+    // Reference counting
+    void retain() { ++refcount; }
+    void release() {
+        --refcount;
+        if (refcount <= 0) delete this;
+    }
+    int64_t getRefcount() const { return refcount; }
+
+    // Type information
+    const std::type_info* getElementType() const { return element_type; }
+    bool isType(const std::type_info& type) const {
+        return element_type && (*element_type == type);
+    }
+
+    // Container access
+    std::list<std::any>& getElements() { return elements; }
+    const std::list<std::any>& getElements() const { return elements; }
+
+private:
+    std::list<std::any> elements;
+    const std::type_info* element_type;
+    int64_t refcount;
+};
+
+} // namespace hooc
+
+#endif // __cplusplus

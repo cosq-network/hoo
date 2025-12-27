@@ -205,7 +205,17 @@ private:
     llvm::Function* hoo_int64_array_from_buffer_func_ = nullptr;
     llvm::Function* hoo_double_array_from_buffer_func_ = nullptr;
     llvm::Function* hoo_array_new_func_ = nullptr;      // For dynamic array construction
-    llvm::Function* hoo_array_push_func_ = nullptr;     // For dynamic array construction
+    llvm::Function* hoo_array_push_func_ = nullptr;     // For dynamic array construction (deprecated)
+
+    // Phase 7: Type-specific push function pointers
+    llvm::Function* hoo_array_push_int64_func_ = nullptr;
+    llvm::Function* hoo_array_push_double_func_ = nullptr;
+    llvm::Function* hoo_array_push_float_func_ = nullptr;
+    llvm::Function* hoo_array_push_bool_func_ = nullptr;
+    llvm::Function* hoo_array_push_char_func_ = nullptr;
+    llvm::Function* hoo_array_push_string_func_ = nullptr;
+    llvm::Function* hoo_array_push_object_func_ = nullptr;
+    llvm::Function* hoo_array_push_array_func_ = nullptr;
 
     // ========================================================================
     // Auto-Generated Runtime Function Declaration Methods
@@ -316,6 +326,19 @@ private:
     llvm::Value* generateDynamicArrayLiteral(const std::vector<llvm::Value*>& elements, llvm::Type* elementType);
     llvm::Function* getArrayNewFunc(size_t elementSize);
     llvm::Function* getArrayPushFunc();
+
+    // Phase 7: Type-specific array push functions for generic array redesign
+    llvm::Function* getArrayPushInt64Func();
+    llvm::Function* getArrayPushDoubleFunc();
+    llvm::Function* getArrayPushFloatFunc();
+    llvm::Function* getArrayPushBoolFunc();
+    llvm::Function* getArrayPushCharFunc();
+    llvm::Function* getArrayPushStringFunc();
+    llvm::Function* getArrayPushObjectFunc();
+    llvm::Function* getArrayPushArrayFunc();
+
+    // Helper to get the appropriate type-specific push function
+    llvm::Function* getArrayPushFuncForType(llvm::Type* elementType);
 };
 
 } // namespace hooc

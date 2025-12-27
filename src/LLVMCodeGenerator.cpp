@@ -1568,36 +1568,25 @@ llvm::Value* LLVMCodeGenerator::generateDynamicArrayLiteral(
         return llvm::ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
     }
 
-    // Get hoo_array_new function
-    // For now, we assume pointer type = 8 bytes (64-bit pointer)
-    size_t elementSize = 8;  // sizeof(void*)
-    auto arrayNewFunc = getArrayNewFunc(elementSize);
+    // Phase 7: New API - hoo_array_new() takes no parameters
+    auto arrayNewFunc = getArrayNewFunc(0);  // elementSize parameter ignored
     if (!arrayNewFunc) {
         std::cerr << "Error: Failed to declare hoo_array_new function" << std::endl;
         return nullptr;
     }
 
-    // Create empty array with initial capacity
-    auto capacityConst = llvm::ConstantInt::get(
-        LLVMType::getInt64Ty(context_),
-        elements.size()
-    );
-    auto elementSizeConst = llvm::ConstantInt::get(
-        llvm::Type::getInt64Ty(context_),
-        elementSize
-    );
-
-    std::vector<llvm::Value*> newArgs = {elementSizeConst, capacityConst};
+    // Create empty array with no parameters
+    std::vector<llvm::Value*> newArgs;  // No arguments
     llvm::Value* arrayHandle = builder_->CreateCall(arrayNewFunc, newArgs, "hoo_arr_new");
 
-    // Get hoo_array_push function
-    auto arrayPushFunc = getArrayPushFunc();
+    // Get the type-specific push function for this element type
+    auto arrayPushFunc = getArrayPushFuncForType(elementType);
     if (!arrayPushFunc) {
-        std::cerr << "Error: Failed to declare hoo_array_push function" << std::endl;
+        std::cerr << "Error: Failed to get type-specific array push function" << std::endl;
         return nullptr;
     }
 
-    // Push each element into the array
+    // Push each element into the array using the type-specific function
     for (const auto& elem : elements) {
         std::vector<llvm::Value*> pushArgs = {arrayHandle, elem};
         builder_->CreateCall(arrayPushFunc, pushArgs);
@@ -1608,11 +1597,9 @@ llvm::Value* LLVMCodeGenerator::generateDynamicArrayLiteral(
 
 llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
     if (!hoo_array_new_func_) {
-        // Declare: HooArray hoo_array_new(size_t element_size, int64_t capacity)
-        std::vector<LLVMType*> params = {
-            llvm::Type::getInt64Ty(context_),  // element_size
-            LLVMType::getInt64Ty(context_)     // capacity
-        };
+        // Phase 7: New API - hoo_array_new(void) with no parameters
+        // elementSize parameter is now ignored - the array uses std::any internally
+        std::vector<LLVMType*> params;  // No parameters
         FunctionType* funcType = FunctionType::get(
             llvm::PointerType::get(context_, 0),  // return HooArray (void*)
             params,
@@ -1631,6 +1618,7 @@ llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
 llvm::Function* LLVMCodeGenerator::getArrayPushFunc() {
     if (!hoo_array_push_func_) {
         // Declare: int64_t hoo_array_push(HooArray arr, const void* value)
+        // Note: This is deprecated - use type-specific push functions instead
         std::vector<LLVMType*> params = {
             llvm::PointerType::get(context_, 0),  // array
             llvm::PointerType::get(context_, 0)   // value pointer
@@ -1648,6 +1636,203 @@ llvm::Function* LLVMCodeGenerator::getArrayPushFunc() {
         );
     }
     return hoo_array_push_func_;
+}
+
+// ============================================================================
+// Phase 7: Type-Specific Array Push Function Getters
+// ============================================================================
+
+llvm::Function* LLVMCodeGenerator::getArrayPushInt64Func() {
+    if (!hoo_array_push_int64_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            LLVMType::getInt64Ty(context_)        // int64_t value
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_int64_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_int64",
+            module_.get()
+        );
+    }
+    return hoo_array_push_int64_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushDoubleFunc() {
+    if (!hoo_array_push_double_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            LLVMType::getDoubleTy(context_)       // double value
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_double_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_double",
+            module_.get()
+        );
+    }
+    return hoo_array_push_double_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushFloatFunc() {
+    if (!hoo_array_push_float_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            LLVMType::getFloatTy(context_)        // float value
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_float_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_float",
+            module_.get()
+        );
+    }
+    return hoo_array_push_float_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushBoolFunc() {
+    if (!hoo_array_push_bool_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            LLVMType::getInt64Ty(context_)        // int64_t bool (0 or 1)
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_bool_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_bool",
+            module_.get()
+        );
+    }
+    return hoo_array_push_bool_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushCharFunc() {
+    if (!hoo_array_push_char_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            LLVMType::getInt8Ty(context_)         // char value (i8)
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_char_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_char",
+            module_.get()
+        );
+    }
+    return hoo_array_push_char_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushStringFunc() {
+    if (!hoo_array_push_string_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            llvm::PointerType::get(context_, 0)   // const char* (string pointer)
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_string_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_string",
+            module_.get()
+        );
+    }
+    return hoo_array_push_string_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushObjectFunc() {
+    if (!hoo_array_push_object_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray
+            llvm::PointerType::get(context_, 0)   // void* (object pointer)
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_object_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_object",
+            module_.get()
+        );
+    }
+    return hoo_array_push_object_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushArrayFunc() {
+    if (!hoo_array_push_array_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooArray (outer array)
+            llvm::PointerType::get(context_, 0)   // HooArray (nested array to push)
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_array_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push_array",
+            module_.get()
+        );
+    }
+    return hoo_array_push_array_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushFuncForType(llvm::Type* elementType) {
+    if (!elementType) {
+        return getArrayPushObjectFunc();  // Default to object pointer
+    }
+
+    if (elementType == LLVMType::getInt64Ty(context_)) {
+        return getArrayPushInt64Func();
+    } else if (elementType == LLVMType::getDoubleTy(context_)) {
+        return getArrayPushDoubleFunc();
+    } else if (elementType == LLVMType::getFloatTy(context_)) {
+        return getArrayPushFloatFunc();
+    } else if (elementType == LLVMType::getInt1Ty(context_)) {
+        return getArrayPushBoolFunc();
+    } else if (elementType == LLVMType::getInt8Ty(context_)) {
+        return getArrayPushCharFunc();
+    } else if (elementType->isPointerTy()) {
+        // For now, treat all pointers as object pointers
+        // Could refine this to distinguish between strings and objects
+        return getArrayPushObjectFunc();
+    } else {
+        // Unknown type - default to object
+        return getArrayPushObjectFunc();
+    }
 }
 
 std::string LLVMCodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {
