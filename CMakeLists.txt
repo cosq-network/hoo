@@ -289,6 +289,7 @@ if(GTest_FOUND)
         tests/MethodCallCodeGenTest.cpp
         tests/StringBasicsTest.cpp
         tests/StringCodeGenTest.cpp
+        tests/ClassArrayCodeGenTest.cpp
     )
 
     # Link test executable with libraries

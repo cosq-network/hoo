@@ -1389,20 +1389,15 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
 
     const auto& expressions = elementsList->getExpressions();
     std::vector<Constant*> constantElements;
+    std::vector<Value*> dynamicElements;
     LLVMType* elementType = nullptr;
+    bool allConstant = true;
 
     // Evaluate all elements and infer type from first element
     for (const auto& expr : expressions) {
         Value* elemValue = generateLLVMExpression(*expr);
         if (!elemValue) {
             std::cerr << "Failed to generate array element expression" << std::endl;
-            return nullptr;
-        }
-
-        // Array literals must contain compile-time constants
-        Constant* constElem = llvm::dyn_cast<Constant>(elemValue);
-        if (!constElem) {
-            std::cerr << "Array literal elements must be compile-time constants" << std::endl;
             return nullptr;
         }
 
@@ -1414,7 +1409,28 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
             return nullptr;
         }
 
-        constantElements.push_back(constElem);
+        // Check if element is a compile-time constant
+        Constant* constElem = llvm::dyn_cast<Constant>(elemValue);
+        if (!constElem) {
+            allConstant = false;
+            dynamicElements.push_back(elemValue);
+        } else {
+            constantElements.push_back(constElem);
+            dynamicElements.push_back(elemValue);
+        }
+    }
+
+    // Phase 6: Handle pointer-type arrays (classes) with dynamic construction
+    if (!allConstant) {
+        // For non-constant elements (which are typically object pointers)
+        if (elementType->isPointerTy()) {
+            // Use dynamic array construction for class instances
+            return generateDynamicArrayLiteral(dynamicElements, elementType);
+        } else {
+            // Non-constant elements that aren't pointers are not supported
+            std::cerr << "Array literal elements must be compile-time constants (unless they are class instances)" << std::endl;
+            return nullptr;
+        }
     }
 
     // Phase 4: Use generic array runtime functions instead of LLVM constant arrays
@@ -1538,6 +1554,100 @@ llvm::Value* LLVMCodeGenerator::generateArrayLiteralWithRuntime(
     std::vector<llvm::Value*> args = {dataPtr, lengthConst};
 
     return builder_->CreateCall(arrayFunc, args, "hoo_arr");
+}
+
+// ============================================================================
+// Phase 6: Dynamic Array Construction for Pointer Types (Class Instances)
+// ============================================================================
+
+llvm::Value* LLVMCodeGenerator::generateDynamicArrayLiteral(
+    const std::vector<llvm::Value*>& elements,
+    llvm::Type* elementType) {
+
+    if (elements.empty()) {
+        return llvm::ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
+    }
+
+    // Get hoo_array_new function
+    // For now, we assume pointer type = 8 bytes (64-bit pointer)
+    size_t elementSize = 8;  // sizeof(void*)
+    auto arrayNewFunc = getArrayNewFunc(elementSize);
+    if (!arrayNewFunc) {
+        std::cerr << "Error: Failed to declare hoo_array_new function" << std::endl;
+        return nullptr;
+    }
+
+    // Create empty array with initial capacity
+    auto capacityConst = llvm::ConstantInt::get(
+        LLVMType::getInt64Ty(context_),
+        elements.size()
+    );
+    auto elementSizeConst = llvm::ConstantInt::get(
+        llvm::Type::getInt64Ty(context_),
+        elementSize
+    );
+
+    std::vector<llvm::Value*> newArgs = {elementSizeConst, capacityConst};
+    llvm::Value* arrayHandle = builder_->CreateCall(arrayNewFunc, newArgs, "hoo_arr_new");
+
+    // Get hoo_array_push function
+    auto arrayPushFunc = getArrayPushFunc();
+    if (!arrayPushFunc) {
+        std::cerr << "Error: Failed to declare hoo_array_push function" << std::endl;
+        return nullptr;
+    }
+
+    // Push each element into the array
+    for (const auto& elem : elements) {
+        std::vector<llvm::Value*> pushArgs = {arrayHandle, elem};
+        builder_->CreateCall(arrayPushFunc, pushArgs);
+    }
+
+    return arrayHandle;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
+    if (!hoo_array_new_func_) {
+        // Declare: HooArray hoo_array_new(size_t element_size, int64_t capacity)
+        std::vector<LLVMType*> params = {
+            llvm::Type::getInt64Ty(context_),  // element_size
+            LLVMType::getInt64Ty(context_)     // capacity
+        };
+        FunctionType* funcType = FunctionType::get(
+            llvm::PointerType::get(context_, 0),  // return HooArray (void*)
+            params,
+            false
+        );
+        hoo_array_new_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_new",
+            module_.get()
+        );
+    }
+    return hoo_array_new_func_;
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayPushFunc() {
+    if (!hoo_array_push_func_) {
+        // Declare: int64_t hoo_array_push(HooArray arr, const void* value)
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // array
+            llvm::PointerType::get(context_, 0)   // value pointer
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),  // return int64_t (new length)
+            params,
+            false
+        );
+        hoo_array_push_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_array_push",
+            module_.get()
+        );
+    }
+    return hoo_array_push_func_;
 }
 
 std::string LLVMCodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {

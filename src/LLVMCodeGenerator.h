@@ -204,6 +204,8 @@ private:
 
     llvm::Function* hoo_int64_array_from_buffer_func_ = nullptr;
     llvm::Function* hoo_double_array_from_buffer_func_ = nullptr;
+    llvm::Function* hoo_array_new_func_ = nullptr;      // For dynamic array construction
+    llvm::Function* hoo_array_push_func_ = nullptr;     // For dynamic array construction
 
     // ========================================================================
     // Auto-Generated Runtime Function Declaration Methods
@@ -309,6 +311,11 @@ private:
     // Array runtime function helpers for Phase 4 (generic array integration)
     llvm::Function* getArrayFromBufferFunc(llvm::Type* elementType);
     llvm::Value* generateArrayLiteralWithRuntime(const std::vector<llvm::Constant*>& elements, llvm::Type* elementType);
+
+    // Array support for pointer types (classes) - Phase 6
+    llvm::Value* generateDynamicArrayLiteral(const std::vector<llvm::Value*>& elements, llvm::Type* elementType);
+    llvm::Function* getArrayNewFunc(size_t elementSize);
+    llvm::Function* getArrayPushFunc();
 };
 
 } // namespace hooc
