@@ -146,13 +146,13 @@ add_library(hoo-compiler
 
 # Hooc runtime library (reference counting, memory management, string support, generic array support)
 add_library(hoort STATIC
-    runtime/hoo_runtime.c
-    runtime/hoo_string.cpp
-    runtime/hoo_generic_array.cpp
+    src/rt/hoo_runtime.c
+    src/rt/hoo_string.cpp
+    src/rt/hoo_generic_array.cpp
 )
 
 target_include_directories(hoort PUBLIC
-    ${CMAKE_SOURCE_DIR}/runtime
+    ${CMAKE_SOURCE_DIR}/src/rt
 )
 
 # Add debug memory tracking in Debug builds
@@ -168,8 +168,7 @@ target_link_libraries(hoo-compiler PUBLIC
 
 target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/runtime
-    ${CMAKE_SOURCE_DIR}/runtime
+    ${CMAKE_SOURCE_DIR}/src/rt
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}

@@ -3,7 +3,7 @@
 #include "SimpleASTBuilder.h"
 #include "LLVMCodeGenerator.h"
 #include "ast/AST.h"
-#include "../runtime/hoo_string.h"
+#include "hoo_string.h"
 #include <iostream>
 #include <memory>
 
