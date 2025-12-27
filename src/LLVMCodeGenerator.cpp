@@ -600,7 +600,7 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
         return nullptr;
     }
 
-    // Generate argument values
+    // Generate argument values with type conversion
     std::vector<Value*> args;
 
     // If this is a method call, add the 'this' pointer as the first argument
@@ -609,11 +609,46 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
     }
 
     if (call.getArguments()) {
-        for (const auto& argExpr : call.getArguments()->getArguments()) {
-            Value* argValue = generateLLVMExpression(*argExpr);
+        const auto& argsList = call.getArguments()->getArguments();
+        for (size_t i = 0; i < argsList.size(); ++i) {
+            Value* argValue = generateLLVMExpression(*argsList[i]);
             if (!argValue) {
                 return nullptr;
             }
+
+            // Get expected parameter type (param index = arg index + 1 if method call, else arg index)
+            size_t paramIndex = thisPtr ? (i + 1) : i;
+            if (paramIndex < calleeFunc->arg_size()) {
+                llvm::Type* expectedType = calleeFunc->getFunctionType()->getParamType(paramIndex);
+                llvm::Type* actualType = argValue->getType();
+
+                // Convert if types don't match
+                if (actualType != expectedType) {
+                    if (actualType->isIntegerTy() && expectedType->isIntegerTy()) {
+                        // Integer to integer conversion
+                        unsigned actualBits = actualType->getIntegerBitWidth();
+                        unsigned expectedBits = expectedType->getIntegerBitWidth();
+
+                        if (actualBits > expectedBits) {
+                            // Truncate larger integer to smaller
+                            argValue = builder_->CreateTrunc(argValue, expectedType);
+                        } else if (actualBits < expectedBits) {
+                            // Sign-extend smaller integer to larger
+                            argValue = builder_->CreateSExt(argValue, expectedType);
+                        }
+                    } else if (actualType->isFloatingPointTy() && expectedType->isFloatingPointTy()) {
+                        // Floating point to floating point conversion
+                        if (actualType->isDoubleTy() && expectedType->isFloatTy()) {
+                            // Convert double to float
+                            argValue = builder_->CreateFPTrunc(argValue, expectedType);
+                        } else if (actualType->isFloatTy() && expectedType->isDoubleTy()) {
+                            // Convert float to double
+                            argValue = builder_->CreateFPExt(argValue, expectedType);
+                        }
+                    }
+                }
+            }
+
             args.push_back(argValue);
         }
     }
@@ -1926,14 +1961,49 @@ Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression&
         std::vector<Value*> ctorArgs;
         ctorArgs.push_back(rawPtr);
 
-        // Add user-provided arguments
+        // Add user-provided arguments with type conversion if needed
         if (newExpr.getArguments()) {
-            for (const auto& argExpr : newExpr.getArguments()->getArguments()) {
-                Value* argValue = generateLLVMExpression(*argExpr);
+            const auto& argsList = newExpr.getArguments()->getArguments();
+            for (size_t i = 0; i < argsList.size(); ++i) {
+                Value* argValue = generateLLVMExpression(*argsList[i]);
                 if (!argValue) {
                     std::cerr << "Failed to generate constructor argument" << std::endl;
                     return nullptr;
                 }
+
+                // Get expected parameter type (param index = arg index + 1 due to 'this' pointer)
+                size_t paramIndex = i + 1;
+                if (paramIndex < ctorFunc->arg_size()) {
+                    llvm::Type* expectedType = ctorFunc->getFunctionType()->getParamType(paramIndex);
+                    llvm::Type* actualType = argValue->getType();
+
+                    // Convert if types don't match
+                    if (actualType != expectedType) {
+                        if (actualType->isIntegerTy() && expectedType->isIntegerTy()) {
+                            // Integer to integer conversion
+                            unsigned actualBits = actualType->getIntegerBitWidth();
+                            unsigned expectedBits = expectedType->getIntegerBitWidth();
+
+                            if (actualBits > expectedBits) {
+                                // Truncate larger integer to smaller
+                                argValue = builder_->CreateTrunc(argValue, expectedType);
+                            } else if (actualBits < expectedBits) {
+                                // Sign-extend smaller integer to larger
+                                argValue = builder_->CreateSExt(argValue, expectedType);
+                            }
+                        } else if (actualType->isFloatingPointTy() && expectedType->isFloatingPointTy()) {
+                            // Floating point to floating point conversion
+                            if (actualType->isDoubleTy() && expectedType->isFloatTy()) {
+                                // Convert double to float
+                                argValue = builder_->CreateFPTrunc(argValue, expectedType);
+                            } else if (actualType->isFloatTy() && expectedType->isDoubleTy()) {
+                                // Convert float to double
+                                argValue = builder_->CreateFPExt(argValue, expectedType);
+                            }
+                        }
+                    }
+                }
+
                 ctorArgs.push_back(argValue);
             }
         }
