@@ -340,6 +340,10 @@ private:
     llvm::Constant* createGlobalArrayConstant(const std::vector<llvm::Constant*>& elements, llvm::Type* elementType);
     std::string mangleFunctionName(const std::string& name, const std::vector<llvm::Type*>& paramTypes);
     llvm::AllocaInst* createEntryBlockAlloca(llvm::Function* function, const std::string& varName, llvm::Type* type);
+
+    // Array runtime function helpers for Phase 4 (generic array integration)
+    llvm::Function* getArrayFromBufferFunc(llvm::Type* elementType);
+    llvm::Value* generateArrayLiteralWithRuntime(const std::vector<llvm::Constant*>& elements, llvm::Type* elementType);
 };
 
 } // namespace hooc

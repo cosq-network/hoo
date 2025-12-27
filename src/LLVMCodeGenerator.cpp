@@ -1382,7 +1382,8 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
     const ExpressionList* elementsList = literal.getElements();
 
     if (!elementsList || elementsList->getExpressions().empty()) {
-        // Empty array - requires type context
+        // Empty array - return null pointer
+        // Note: In Phase 5, this should call hoo_*_array_new(0) with proper type inference
         return llvm::ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
     }
 
@@ -1416,8 +1417,9 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
         constantElements.push_back(constElem);
     }
 
-    // Create global constant array
-    return createGlobalArrayConstant(constantElements, elementType);
+    // Phase 4: Use generic array runtime functions instead of LLVM constant arrays
+    // This creates a global data buffer and calls hoo_*_array_from_buffer()
+    return generateArrayLiteralWithRuntime(constantElements, elementType);
 }
 
 Constant* LLVMCodeGenerator::createGlobalArrayConstant(
@@ -1452,6 +1454,77 @@ Constant* LLVMCodeGenerator::createGlobalArrayConstant(
         globalArray,
         indices
     );
+}
+
+llvm::Function* LLVMCodeGenerator::getArrayFromBufferFunc(llvm::Type* elementType) {
+    // Ensure array functions are declared
+    declareInt64ArrayFunctions();
+    declareDoubleArrayFunctions();
+
+    // Return the appropriate from_buffer function based on element type
+    if (elementType->isIntegerTy(64)) {
+        return hoo_int64_array_from_buffer_func_;
+    } else if (elementType->isDoubleTy()) {
+        return hoo_double_array_from_buffer_func_;
+    }
+
+    std::cerr << "Error: No array from_buffer function for element type" << std::endl;
+    return nullptr;
+}
+
+llvm::Value* LLVMCodeGenerator::generateArrayLiteralWithRuntime(
+    const std::vector<llvm::Constant*>& elements,
+    llvm::Type* elementType) {
+
+    if (elements.empty()) {
+        // Return null for empty arrays - should ideally call hoo_*_array_new(0) instead
+        return llvm::ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
+    }
+
+    // Create array type [N x elementType]
+    auto arrayType = llvm::ArrayType::get(elementType, elements.size());
+
+    // Create constant array initializer
+    auto arrayInit = llvm::ConstantArray::get(arrayType, elements);
+
+    // Create global variable for the array data (buffer)
+    auto globalData = new llvm::GlobalVariable(
+        *module_,
+        arrayType,
+        true,  // isConstant
+        llvm::GlobalValue::PrivateLinkage,
+        arrayInit,
+        ".array_data"
+    );
+
+    // Create GEP to get pointer to first element
+    std::vector<llvm::Constant*> indices = {
+        llvm::ConstantInt::get(LLVMType::getInt64Ty(context_), 0),
+        llvm::ConstantInt::get(LLVMType::getInt64Ty(context_), 0)
+    };
+
+    auto dataPtr = llvm::ConstantExpr::getGetElementPtr(
+        arrayType,
+        globalData,
+        indices
+    );
+
+    // Get the array creation function for this element type
+    auto arrayFunc = getArrayFromBufferFunc(elementType);
+    if (!arrayFunc) {
+        std::cerr << "Error: No array creation function for element type" << std::endl;
+        return nullptr;
+    }
+
+    // Create call: hoo_*_array_from_buffer(dataPtr, length)
+    auto lengthConst = llvm::ConstantInt::get(
+        LLVMType::getInt64Ty(context_),
+        elements.size()
+    );
+
+    std::vector<llvm::Value*> args = {dataPtr, lengthConst};
+
+    return builder_->CreateCall(arrayFunc, args, "hoo_arr");
 }
 
 std::string LLVMCodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {
@@ -1662,6 +1735,58 @@ void LLVMCodeGenerator::declareStringFunctions() {
         std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
         FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
         hoo_string_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_length", module_.get());
+    }
+}
+
+void LLVMCodeGenerator::declareInt64ArrayFunctions() {
+    // Declare hoo_int64_array_from_buffer: HooInt64Array hoo_int64_array_from_buffer(const int64_t* data, int64_t length)
+    if (!hoo_int64_array_from_buffer_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // data pointer
+            LLVMType::getInt64Ty(context_)         // length
+        };
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_int64_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_.get());
+    }
+
+    // Declare hoo_int64_array_new: HooInt64Array hoo_int64_array_new(int64_t capacity)
+    if (!hoo_int64_array_new_func_) {
+        std::vector<LLVMType*> params = {LLVMType::getInt64Ty(context_)};
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_int64_array_new_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_new", module_.get());
+    }
+
+    // Declare hoo_int64_array_length: int64_t hoo_int64_array_length(HooInt64Array arr)
+    if (!hoo_int64_array_length_func_) {
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
+        hoo_int64_array_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_length", module_.get());
+    }
+}
+
+void LLVMCodeGenerator::declareDoubleArrayFunctions() {
+    // Declare hoo_double_array_from_buffer: HooDoubleArray hoo_double_array_from_buffer(const double* data, int64_t length)
+    if (!hoo_double_array_from_buffer_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // data pointer
+            LLVMType::getInt64Ty(context_)         // length
+        };
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_double_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_.get());
+    }
+
+    // Declare hoo_double_array_new: HooDoubleArray hoo_double_array_new(int64_t capacity)
+    if (!hoo_double_array_new_func_) {
+        std::vector<LLVMType*> params = {LLVMType::getInt64Ty(context_)};
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_double_array_new_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_new", module_.get());
+    }
+
+    // Declare hoo_double_array_length: int64_t hoo_double_array_length(HooDoubleArray arr)
+    if (!hoo_double_array_length_func_) {
+        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
+        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
+        hoo_double_array_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_length", module_.get());
     }
 }
 
