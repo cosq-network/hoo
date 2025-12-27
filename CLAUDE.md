@@ -232,6 +232,17 @@ All primitive types are fully implemented with LLVM IR generation:
   - Multiple type parameters: `Pair<K, V>`
   - Name mangling and type substitution
   - 49 comprehensive unit tests (GenericSyntaxParsingTest, GenericASTBuildingTest, GenericNameManglingTest, GenericClassCodeGenTest, GenericFunctionCodeGenTest, GenericIntegrationTest, GenericErrorHandlingTest)
+- **Generic Array Redesign (Phase 7)** - std::list + std::any architecture
+  - Flexible, type-agnostic arrays using `std::list<std::any>` internally
+  - Support for all primitive types: int64, double, float, bool, char, string
+  - Support for object pointers (class instances)
+  - True multi-dimensional arrays (naturally nested via std::any)
+  - Type-specific push functions: `hoo_array_push_int64()`, `hoo_array_push_double()`, `hoo_array_push_float()`, `hoo_array_push_bool()`, `hoo_array_push_char()`, `hoo_array_push_string()`, `hoo_array_push_object()`, `hoo_array_push_array()`
+  - Type-specific get functions for type-safe element retrieval
+  - Full reference counting (retain, release, refcount)
+  - Runtime type information (element_type, is_type)
+  - 35 comprehensive unit tests (HooArrayPhase7Test)
+  - Code generation support for type inference and type-specific function calls
 
 **Partially Implemented**
 - Classes and interfaces - Object fields and methods complete, inheritance pending
@@ -522,6 +533,126 @@ var empty: int64[]? = null;
 - Function parameters: Can be nullable to accept optional values
 - Return values: Functions can return nullable types
 - Variable scope: Nullable variables properly scoped in blocks
+
+## Generic Arrays with Multi-Dimensional Support (Phase 7)
+
+Phase 7 completely redesigned the array implementation using `std::list<std::any>` architecture for maximum flexibility and type safety.
+
+### Supported Array Types
+
+Arrays can now contain any of these types:
+- **Primitives**: int64, double, float, bool, char
+- **Strings**: `string` type via pointer storage
+- **Objects**: Class instances via void* pointers
+- **Nested Arrays**: Multi-dimensional arrays via recursive array elements
+
+### Array Literals and Type Inference
+
+```hoo
+// Type-inferred arrays
+var ints = [1, 2, 3, 4, 5];              // int64[]
+var floats = [1.5, 2.5, 3.14];           // double[] (NEW in Phase 7)
+var bools = [true, false, true];         // bool[] (NEW in Phase 7)
+var chars = ['a', 'b', 'c'];             // char[] (NEW in Phase 7)
+var strings = ["hello", "world"];        // string[] (NEW in Phase 7)
+
+// Multi-dimensional arrays
+var matrix = [[1, 2], [3, 4]];           // int64[][] - true 2D support!
+var cube = [[[1, 2]], [[3, 4]]];         // int64[][][] - 3D arrays
+
+// Mixed types via std::any
+var mixed = [42, 3.14, true, 'x', "test"];  // Works! All types coexist
+```
+
+### Implementation Architecture
+
+**Before Phase 7 (Fixed-Size Byte Buffers):**
+- Element size fixed at array creation
+- Only int64 and double fully supported
+- No multi-dimensional array support
+- Limited type flexibility
+
+**After Phase 7 (std::list + std::any):**
+- Variable element types via std::any
+- All primitive types fully supported
+- Natural multi-dimensional support
+- Complete type safety with runtime type info
+
+### Code Generation
+
+The compiler automatically detects array element types and emits the appropriate C function calls:
+
+```hoo
+var ints = [1, 2, 3];
+```
+
+Generates:
+```c
+hoo_array_new()                    // Create empty array
+hoo_array_push_int64(arr, 1)      // Push int64 value
+hoo_array_push_int64(arr, 2)
+hoo_array_push_int64(arr, 3)
+```
+
+### Runtime API
+
+The redesigned array API provides type-specific functions:
+
+**Creation:**
+- `HooArray hoo_array_new()` - Create empty generic array
+
+**Type-Specific Push Operations:**
+- `int64_t hoo_array_push_int64(HooArray arr, int64_t value)`
+- `int64_t hoo_array_push_double(HooArray arr, double value)`
+- `int64_t hoo_array_push_float(HooArray arr, float value)`
+- `int64_t hoo_array_push_bool(HooArray arr, int64_t value)`
+- `int64_t hoo_array_push_char(HooArray arr, char value)`
+- `int64_t hoo_array_push_string(HooArray arr, const char* value)`
+- `int64_t hoo_array_push_object(HooArray arr, void* value)`
+- `int64_t hoo_array_push_array(HooArray arr, HooArray value)`
+
+**Type-Specific Get Operations:**
+- `int64_t hoo_array_get_int64(HooArray arr, int64_t index, int64_t* dest)`
+- `int64_t hoo_array_get_double(HooArray arr, int64_t index, double* dest)`
+- `int64_t hoo_array_get_float(HooArray arr, int64_t index, float* dest)`
+- `int64_t hoo_array_get_bool(HooArray arr, int64_t index, int64_t* dest)`
+- `int64_t hoo_array_get_char(HooArray arr, int64_t index, char* dest)`
+- `int64_t hoo_array_get_string(HooArray arr, int64_t index, const char** dest)`
+- `int64_t hoo_array_get_object(HooArray arr, int64_t index, void** dest)`
+- `int64_t hoo_array_get_array(HooArray arr, int64_t index, HooArray* dest)`
+
+**Reference Counting:**
+- `HooArray hoo_array_retain(HooArray arr)`
+- `void hoo_array_release(HooArray arr)`
+- `int64_t hoo_array_refcount(HooArray arr)`
+
+**Utilities:**
+- `int64_t hoo_array_length(HooArray arr)`
+- `void hoo_array_clear(HooArray arr)`
+- `int64_t hoo_array_empty(HooArray arr)`
+- `const char* hoo_array_element_type(HooArray arr)`
+- `int64_t hoo_array_is_type(HooArray arr, const char* type_name)`
+
+### Key Features
+
+✅ **True Type-Agnostic Storage** - std::any handles any C++ type
+✅ **Multi-Dimensional Arrays** - Natural nested array support
+✅ **Runtime Type Info** - Full type information available at runtime
+✅ **Reference Counting** - Automatic memory management for nested arrays
+✅ **Type Safety** - Type-specific getter functions prevent type confusion
+✅ **Backward Compatible** - C API maintained for consistency
+
+### Testing
+
+Phase 7.4 includes 35 comprehensive unit tests covering:
+- All 8 primitive types
+- Multi-dimensional arrays (2D, 3D)
+- Reference counting behavior
+- Memory management
+- Large-scale arrays (1000+ elements)
+- Mixed-type arrays
+
+See `docs/10-phase7-test-specification.md` for detailed test documentation.
 
 ## Object Creation and Memory Management (v0.4)
 
