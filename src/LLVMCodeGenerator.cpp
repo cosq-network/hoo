@@ -1457,14 +1457,27 @@ Constant* LLVMCodeGenerator::createGlobalArrayConstant(
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayFromBufferFunc(llvm::Type* elementType) {
-    // Ensure array functions are declared
-    declareInt64ArrayFunctions();
-    declareDoubleArrayFunctions();
-
-    // Return the appropriate from_buffer function based on element type
     if (elementType->isIntegerTy(64)) {
+        // Declare hoo_int64_array_from_buffer if not already done
+        if (!hoo_int64_array_from_buffer_func_) {
+            std::vector<LLVMType*> params = {
+                llvm::PointerType::get(context_, 0),  // data pointer
+                LLVMType::getInt64Ty(context_)         // length
+            };
+            FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+            hoo_int64_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_.get());
+        }
         return hoo_int64_array_from_buffer_func_;
     } else if (elementType->isDoubleTy()) {
+        // Declare hoo_double_array_from_buffer if not already done
+        if (!hoo_double_array_from_buffer_func_) {
+            std::vector<LLVMType*> params = {
+                llvm::PointerType::get(context_, 0),  // data pointer
+                LLVMType::getInt64Ty(context_)         // length
+            };
+            FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+            hoo_double_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_.get());
+        }
         return hoo_double_array_from_buffer_func_;
     }
 
@@ -1735,58 +1748,6 @@ void LLVMCodeGenerator::declareStringFunctions() {
         std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
         FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
         hoo_string_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_length", module_.get());
-    }
-}
-
-void LLVMCodeGenerator::declareInt64ArrayFunctions() {
-    // Declare hoo_int64_array_from_buffer: HooInt64Array hoo_int64_array_from_buffer(const int64_t* data, int64_t length)
-    if (!hoo_int64_array_from_buffer_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // data pointer
-            LLVMType::getInt64Ty(context_)         // length
-        };
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_int64_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_.get());
-    }
-
-    // Declare hoo_int64_array_new: HooInt64Array hoo_int64_array_new(int64_t capacity)
-    if (!hoo_int64_array_new_func_) {
-        std::vector<LLVMType*> params = {LLVMType::getInt64Ty(context_)};
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_int64_array_new_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_new", module_.get());
-    }
-
-    // Declare hoo_int64_array_length: int64_t hoo_int64_array_length(HooInt64Array arr)
-    if (!hoo_int64_array_length_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
-        hoo_int64_array_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_length", module_.get());
-    }
-}
-
-void LLVMCodeGenerator::declareDoubleArrayFunctions() {
-    // Declare hoo_double_array_from_buffer: HooDoubleArray hoo_double_array_from_buffer(const double* data, int64_t length)
-    if (!hoo_double_array_from_buffer_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // data pointer
-            LLVMType::getInt64Ty(context_)         // length
-        };
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_double_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_.get());
-    }
-
-    // Declare hoo_double_array_new: HooDoubleArray hoo_double_array_new(int64_t capacity)
-    if (!hoo_double_array_new_func_) {
-        std::vector<LLVMType*> params = {LLVMType::getInt64Ty(context_)};
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_double_array_new_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_new", module_.get());
-    }
-
-    // Declare hoo_double_array_length: int64_t hoo_double_array_length(HooDoubleArray arr)
-    if (!hoo_double_array_length_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
-        hoo_double_array_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_length", module_.get());
     }
 }
 

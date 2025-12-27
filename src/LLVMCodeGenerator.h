@@ -199,46 +199,11 @@ private:
     llvm::Function* hoo_string_debug_func_ = nullptr;
 
     // ========================================================================
-    // Runtime Class Function Pointers - Int64Array Class
+    // Runtime Array Function Pointers (Generic Array via type-specific wrappers)
     // ========================================================================
 
-    llvm::Function* hoo_int64_array_new_func_ = nullptr;
     llvm::Function* hoo_int64_array_from_buffer_func_ = nullptr;
-    llvm::Function* hoo_int64_array_repeat_func_ = nullptr;
-    llvm::Function* hoo_int64_array_length_func_ = nullptr;
-    llvm::Function* hoo_int64_array_get_func_ = nullptr;
-    llvm::Function* hoo_int64_array_set_func_ = nullptr;
-    llvm::Function* hoo_int64_array_push_func_ = nullptr;
-    llvm::Function* hoo_int64_array_pop_func_ = nullptr;
-    llvm::Function* hoo_int64_array_clear_func_ = nullptr;
-    llvm::Function* hoo_int64_array_contains_func_ = nullptr;
-    llvm::Function* hoo_int64_array_index_of_func_ = nullptr;
-    llvm::Function* hoo_int64_array_concat_func_ = nullptr;
-    llvm::Function* hoo_int64_array_slice_func_ = nullptr;
-    llvm::Function* hoo_int64_array_clone_func_ = nullptr;
-    llvm::Function* hoo_int64_array_retain_func_ = nullptr;
-    llvm::Function* hoo_int64_array_release_func_ = nullptr;
-    llvm::Function* hoo_int64_array_refcount_func_ = nullptr;
-
-    // ========================================================================
-    // Runtime Class Function Pointers - DoubleArray Class
-    // ========================================================================
-
-    llvm::Function* hoo_double_array_new_func_ = nullptr;
     llvm::Function* hoo_double_array_from_buffer_func_ = nullptr;
-    llvm::Function* hoo_double_array_repeat_func_ = nullptr;
-    llvm::Function* hoo_double_array_length_func_ = nullptr;
-    llvm::Function* hoo_double_array_get_func_ = nullptr;
-    llvm::Function* hoo_double_array_set_func_ = nullptr;
-    llvm::Function* hoo_double_array_push_func_ = nullptr;
-    llvm::Function* hoo_double_array_pop_func_ = nullptr;
-    llvm::Function* hoo_double_array_clear_func_ = nullptr;
-    llvm::Function* hoo_double_array_concat_func_ = nullptr;
-    llvm::Function* hoo_double_array_slice_func_ = nullptr;
-    llvm::Function* hoo_double_array_clone_func_ = nullptr;
-    llvm::Function* hoo_double_array_retain_func_ = nullptr;
-    llvm::Function* hoo_double_array_release_func_ = nullptr;
-    llvm::Function* hoo_double_array_refcount_func_ = nullptr;
 
     // ========================================================================
     // Auto-Generated Runtime Function Declaration Methods
