@@ -265,6 +265,12 @@ primary
     | NULL
     | LBRACKET expressionList? RBRACKET
     | LPAREN expression RPAREN
+    | newExpression
+    ;
+
+// Object creation expression
+newExpression
+    : NEW IDENTIFIER LPAREN argumentList? RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

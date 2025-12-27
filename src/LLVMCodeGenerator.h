@@ -3,6 +3,7 @@
 #include "CodeGenerator.h"
 #include "LLVMCodeGeneratorTypes.h"
 #include "ast/AST.h"
+#include "ast/ClassDeclaration.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
@@ -59,6 +60,28 @@ private:
     // Symbol table for variables and functions
     std::unordered_map<std::string, llvm::Value*> namedValues_;
     std::unordered_map<std::string, llvm::Function*> functions_;
+
+    // Class type tracking
+    std::unordered_map<std::string, llvm::StructType*> classTypes_;
+    std::unordered_map<std::string, int64_t> classTypeIds_;
+    int64_t nextTypeId_ = 1;
+
+    // Runtime function declarations
+    llvm::Function* hoo_alloc_func_ = nullptr;
+    llvm::Function* hoo_retain_func_ = nullptr;
+    llvm::Function* hoo_release_func_ = nullptr;
+
+    // Runtime function declaration
+    void declareRuntimeFunctions();
+
+    // Class type management
+    llvm::StructType* getOrCreateClassType(const std::string& className);
+    int64_t getClassTypeId(const std::string& className);
+    void generateClassDeclaration(const ast::ClassDeclaration& classDecl);
+    void generateConstructor(const ast::ClassDeclaration& classDecl, const ast::ConstructorDeclaration& constructor);
+
+    // Object creation
+    llvm::Value* generateNewObjectExpression(const ast::NewObjectExpression& newExpr);
 
     // Helper methods for specific AST node types
     llvm::Value* generatePrimaryExpression(const ast::PrimaryExpression& expr);

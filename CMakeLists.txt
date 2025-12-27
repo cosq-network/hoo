@@ -144,13 +144,29 @@ add_library(hoo-compiler
     src/ast/ASTImpl.cpp
 )
 
+# Hooc runtime library (reference counting, memory management)
+add_library(hoo_runtime STATIC
+    runtime/hoo_runtime.c
+)
+
+target_include_directories(hoo_runtime PUBLIC
+    ${CMAKE_SOURCE_DIR}/runtime
+)
+
+# Add debug memory tracking in Debug builds
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(hoo_runtime PRIVATE HOO_DEBUG_MEMORY)
+endif()
+
 target_link_libraries(hoo-compiler PUBLIC
     hooc_parser
+    hoo_runtime
     ${llvm_libs}
 )
 
 target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/runtime
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}
@@ -252,6 +268,9 @@ if(GTest_FOUND)
         tests/ModuleLevelVariableParsingTest.cpp
         tests/ClassDeclarationParsingTest.cpp
         tests/OptionalReturnTypeTest.cpp
+        tests/NewExpressionParsingTest.cpp
+        tests/NewExpressionCodeGenTest.cpp
+        tests/ObjectCreationCodeGenTest.cpp
     )
 
     # Link test executable with libraries

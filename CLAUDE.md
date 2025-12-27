@@ -375,6 +375,85 @@ var empty: int64[]? = null;
 - Return values: Functions can return nullable types
 - Variable scope: Nullable variables properly scoped in blocks
 
+## Object Creation and Memory Management (v0.4)
+
+Hoo supports class-based object-oriented programming with automatic memory management using Automatic Reference Counting (ARC).
+
+### Class Declarations
+
+Classes are declared with Kotlin-style constructors:
+
+```hoo
+// Simple class with no-argument constructor
+class Counter {
+    constructor() {
+        // Initialization code
+    }
+}
+
+// Class with constructor parameters
+class Point {
+    constructor(x: int64, y: int64) {
+        // x and y are available in constructor body
+    }
+}
+
+// Class with methods
+class Calculator {
+    constructor() {}
+
+    func add(a: int64, b: int64) -> int64 {
+        return a + b;
+    }
+}
+```
+
+**Important:** Each class can have only one constructor. Attempting to declare multiple constructors will result in a compile error.
+
+### Object Creation
+
+Objects are created using the `new` keyword:
+
+```hoo
+// Create object with no arguments
+var c = new Counter();
+
+// Create object with arguments
+var p = new Point(10, 20);
+```
+
+### Memory Management
+
+Hoo uses Automatic Reference Counting (ARC) for memory management:
+
+- Objects are allocated with reference count = 1
+- Reference counts are tracked in a hidden header before object data
+- Memory is automatically freed when reference count reaches 0
+
+**Runtime Functions (declared in hoo_runtime.h):**
+- `hoo_alloc(size, type_id)` - Allocate object with refcount=1
+- `hoo_retain(obj)` - Increment reference count
+- `hoo_release(obj)` - Decrement reference count, free when zero
+- `hoo_get_refcount(obj)` - Get current refcount (for debugging)
+- `hoo_get_type_id(obj)` - Get type ID for RTTI
+
+**Object Layout:**
+```
++-----------------+
+| HooObjectHeader |  <- Hidden header (refcount, type_id)
++-----------------+
+| Object Data     |  <- Pointer returned to user
++-----------------+
+```
+
+### Current Limitations
+
+- Automatic retain/release at scope boundaries not yet implemented
+- Class fields (member variables) not yet implemented
+- Member access (obj.field) not yet implemented
+- Inheritance (`extends`) not yet implemented
+- Interface implementation (`implements`) not yet implemented
+
 ### Current Implementation Status
 
 **✅ Fully Working (v0.3):**
@@ -414,23 +493,34 @@ var empty: int64[]? = null;
 - Argument passing and return values
 - External C function calls (e.g., `printf`)
 
+**✅ Classes and Object Creation (v0.4):**
+- Class declarations with Kotlin-style constructors (single constructor per class)
+- Object instantiation with `new ClassName(args)` syntax
+- Automatic Reference Counting (ARC) for memory management
+- Runtime library (hoo_runtime) provides memory management functions:
+  - `hoo_alloc(size, type_id)` - Allocate object with refcount=1
+  - `hoo_retain(obj)` - Increment reference count
+  - `hoo_release(obj)` - Decrement reference count, free when zero
+- Constructor functions generated as `ClassName_init`
+- Object type tracking via hidden header for RTTI
+
 **⚠️ Parsed But Code Generation Incomplete:**
 - String type (parsing works, LLVM generation pending)
-- Class declarations (grammar and parsing work, Kotlin-style constructors supported - single constructor per class)
 - Interface declarations (grammar parsed)
 - Design pattern modifiers (singleton, immutable, factory, observable, service, strategy, actor)
 - Event system (`event` keyword)
-- Object instantiation (`new` keyword)
 - Type casting (`as` keyword)
+- Member access for class fields (parsing works, code gen pending)
+- Class inheritance with `extends` (parsing works, code gen pending)
 
 **❌ Not Implemented:**
 - String type operations and LLVM generation
-- Classes and object instantiation
 - Inheritance and polymorphism
 - Interface implementation
 - Advanced function features (pointers, callbacks, method calls)
 - Module system and import resolution
 - Standard library
+- Automatic retain/release insertion at scope boundaries
 
 **🚫 Removed (v0.2-v0.3):**
 - Fixed-size array type declarations (e.g., `var arr: int64[10]`) - Use array literals instead
@@ -480,8 +570,12 @@ var empty: int64[]? = null;
 | `src/Hooc.g4` | ANTLR4 grammar definition |
 | `src/ast/*.h` | AST node type definitions |
 | `src/ast/ASTImpl.cpp` | AST utility implementations |
+| `src/ast/ClassDeclaration.h` | Class, constructor, and event AST nodes |
+| `runtime/hoo_runtime.{h,c}` | Runtime library with ARC memory management - v0.4 |
 | `tests/NullableTypeParsingTest.cpp` | Nullable type parsing tests (15 tests) |
 | `tests/NullableCodeGenTest.cpp` | Nullable type code generation tests (20 tests) - v0.3 |
+| `tests/ClassDeclarationParsingTest.cpp` | Class declaration parsing tests - v0.4 |
+| `tests/ObjectCreationCodeGenTest.cpp` | Object creation code generation tests (12 tests) - v0.4 |
 | `CMakeLists.txt` | Build configuration |
 | `docs/hooc_language_specification_v_0.md` | Complete language spec |
 | `docs/implementation-status.md` | Detailed progress tracking |

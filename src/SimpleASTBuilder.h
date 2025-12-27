@@ -38,6 +38,7 @@ private:
     std::unique_ptr<ast::Expression> buildUnaryExpression(HoocParser::UnaryExpressionContext* ctx);
     std::unique_ptr<ast::Expression> buildPostfixExpression(HoocParser::PostfixExpressionContext* ctx);
     std::unique_ptr<ast::Expression> buildPrimary(HoocParser::PrimaryContext* ctx);
+    std::unique_ptr<ast::Expression> buildNewExpression(HoocParser::NewExpressionContext* ctx);
     std::unique_ptr<ast::Parameter> buildParameter(HoocParser::ParameterContext* ctx);
     std::unique_ptr<ast::ArgumentList> buildArgumentList(HoocParser::ArgumentListContext* ctx);
     std::unique_ptr<ast::ArrayLiteral> buildArrayLiteral(HoocParser::PrimaryContext* ctx);

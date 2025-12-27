@@ -507,9 +507,27 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
     } else if (ctx->NULL_()) {
         auto nullLiteral = std::make_unique<NullLiteral>();
         return std::make_unique<PrimaryExpression>(std::move(nullLiteral));
+    } else if (ctx->newExpression()) {
+        return buildNewExpression(ctx->newExpression());
     }
 
     return nullptr;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::NewExpressionContext* ctx) {
+    // Get the class name
+    std::string className = ctx->IDENTIFIER()->getText();
+
+    // Build argument list if present
+    std::unique_ptr<ArgumentList> args;
+    if (ctx->argumentList()) {
+        args = buildArgumentList(ctx->argumentList());
+    } else {
+        // Empty argument list
+        args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+    }
+
+    return std::make_unique<NewObjectExpression>(className, std::move(args));
 }
 
 // Import building methods

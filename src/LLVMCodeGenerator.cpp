@@ -1,8 +1,10 @@
 #include "LLVMCodeGenerator.h"
 #include "ast/AST.h"
+#include "ast/ClassDeclaration.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/DerivedTypes.h"
 #include <iostream>
 #include <stdexcept>
 
@@ -67,19 +69,34 @@ GeneratedType* LLVMCodeGenerator::generateType(const ast::Type& type) {
 std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationUnit& compilationUnit) {
     // Create a new module for this compilation unit
     module_ = std::make_unique<Module>("hooc_module", context_);
-    
+
     // Clear symbol tables for new module
     namedValues_.clear();
     functions_.clear();
-    
-    // Process all declarations in the compilation unit
+    classTypes_.clear();
+    classTypeIds_.clear();
+    nextTypeId_ = 1;
+
+    // Reset runtime function pointers
+    hoo_alloc_func_ = nullptr;
+    hoo_retain_func_ = nullptr;
+    hoo_release_func_ = nullptr;
+
+    // First pass: process class declarations to create types
+    for (const auto& decl : compilationUnit.getDeclarations()) {
+        if (auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
+            generateClassDeclaration(*classDecl);
+        }
+    }
+
+    // Second pass: process functions and variables
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             generateLLVMFunction(*funcDecl);
         } else if (auto varDecl = dynamic_cast<const VariableDeclaration*>(decl.get())) {
             generateVariableDeclaration(*varDecl);
         }
-        // TODO: Add support for class declarations, interface declarations, etc.
+        // Class declarations already handled in first pass
     }
     
     // Verify the module
@@ -238,6 +255,8 @@ Value* LLVMCodeGenerator::generateLLVMExpression(const Expression& expr) {
         return generateArrayAccess(*arrayAccess);
     } else if (auto arrayLit = dynamic_cast<const ArrayLiteral*>(&expr)) {
         return generateArrayLiteral(*arrayLit);
+    } else if (auto newObjExpr = dynamic_cast<const NewObjectExpression*>(&expr)) {
+        return generateNewObjectExpression(*newObjExpr);
     }
 
     std::cerr << "Unsupported expression type in generateExpression" << std::endl;
@@ -1192,4 +1211,282 @@ bool LLVMCodeGenerator::isTypeNullable(const ast::Type& type) {
         }
     }
     return false;
+}
+
+// ============================================================================
+// Runtime function declarations for reference counting
+// ============================================================================
+
+void LLVMCodeGenerator::declareRuntimeFunctions() {
+    // Declare hoo_alloc: void* hoo_alloc(size_t size, int64_t type_id)
+    if (!hoo_alloc_func_) {
+        std::vector<LLVMType*> allocParams = {
+            LLVMType::getInt64Ty(context_),  // size_t size
+            LLVMType::getInt64Ty(context_)   // int64_t type_id
+        };
+        FunctionType* allocType = FunctionType::get(
+            llvm::PointerType::get(context_, 0),  // returns void*
+            allocParams,
+            false
+        );
+        hoo_alloc_func_ = Function::Create(
+            allocType,
+            Function::ExternalLinkage,
+            "hoo_alloc",
+            module_.get()
+        );
+    }
+
+    // Declare hoo_retain: void* hoo_retain(void* obj)
+    if (!hoo_retain_func_) {
+        std::vector<LLVMType*> retainParams = {
+            llvm::PointerType::get(context_, 0)  // void* obj
+        };
+        FunctionType* retainType = FunctionType::get(
+            llvm::PointerType::get(context_, 0),  // returns void*
+            retainParams,
+            false
+        );
+        hoo_retain_func_ = Function::Create(
+            retainType,
+            Function::ExternalLinkage,
+            "hoo_retain",
+            module_.get()
+        );
+    }
+
+    // Declare hoo_release: void hoo_release(void* obj)
+    if (!hoo_release_func_) {
+        std::vector<LLVMType*> releaseParams = {
+            llvm::PointerType::get(context_, 0)  // void* obj
+        };
+        FunctionType* releaseType = FunctionType::get(
+            LLVMType::getVoidTy(context_),  // returns void
+            releaseParams,
+            false
+        );
+        hoo_release_func_ = Function::Create(
+            releaseType,
+            Function::ExternalLinkage,
+            "hoo_release",
+            module_.get()
+        );
+    }
+}
+
+// ============================================================================
+// Class type management
+// ============================================================================
+
+llvm::StructType* LLVMCodeGenerator::getOrCreateClassType(const std::string& className) {
+    // Check if already created
+    auto it = classTypes_.find(className);
+    if (it != classTypes_.end()) {
+        return it->second;
+    }
+
+    // Create a named struct type for the class
+    // For now, we create an opaque struct that will be defined later
+    llvm::StructType* classType = llvm::StructType::create(context_, "class." + className);
+    classTypes_[className] = classType;
+
+    // Assign a unique type ID
+    classTypeIds_[className] = nextTypeId_++;
+
+    return classType;
+}
+
+int64_t LLVMCodeGenerator::getClassTypeId(const std::string& className) {
+    auto it = classTypeIds_.find(className);
+    if (it != classTypeIds_.end()) {
+        return it->second;
+    }
+
+    // Create type ID if doesn't exist
+    getOrCreateClassType(className);
+    return classTypeIds_[className];
+}
+
+void LLVMCodeGenerator::generateClassDeclaration(const ClassDeclaration& classDecl) {
+    const std::string& className = classDecl.getName();
+
+    // Get or create the class struct type
+    llvm::StructType* classType = getOrCreateClassType(className);
+
+    // Collect field types from class body
+    // For now, we only look at variable declarations in the class
+    std::vector<LLVMType*> fieldTypes;
+
+    const ClassBody& body = classDecl.getBody();
+    for (const auto& member : body.getMembers()) {
+        if (auto decl = member->getDeclaration()) {
+            if (auto varDecl = dynamic_cast<const VariableDeclaration*>(decl)) {
+                if (varDecl->getType()) {
+                    LLVMType* fieldType = generateLLVMType(*varDecl->getType());
+                    fieldTypes.push_back(fieldType);
+                }
+            }
+        }
+    }
+
+    // If no fields, add a dummy byte to avoid zero-sized struct
+    if (fieldTypes.empty()) {
+        fieldTypes.push_back(LLVMType::getInt8Ty(context_));
+    }
+
+    // Set the body of the struct type
+    classType->setBody(fieldTypes);
+
+    // Generate constructor(s)
+    for (const auto& member : body.getMembers()) {
+        if (member->isConstructor()) {
+            generateConstructor(classDecl, *member->getConstructor());
+        }
+    }
+
+    // Generate methods
+    for (const auto& member : body.getMembers()) {
+        if (auto decl = member->getDeclaration()) {
+            if (auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl)) {
+                // TODO: Generate method with implicit 'this' parameter
+                // For now, we generate it as a regular function
+                generateLLVMFunction(*funcDecl);
+            }
+        }
+    }
+}
+
+void LLVMCodeGenerator::generateConstructor(const ClassDeclaration& classDecl,
+                                            const ConstructorDeclaration& constructor) {
+    const std::string& className = classDecl.getName();
+    llvm::StructType* classType = getOrCreateClassType(className);
+    int64_t typeId = getClassTypeId(className);
+
+    // Constructor function name: ClassName_init
+    std::string ctorName = className + "_init";
+
+    // Build parameter types: first parameter is 'this' pointer, then explicit params
+    std::vector<LLVMType*> paramTypes;
+    paramTypes.push_back(llvm::PointerType::get(context_, 0));  // this pointer
+
+    for (const auto& param : constructor.getParameters()) {
+        LLVMType* paramType = generateLLVMType(param->getType());
+        paramTypes.push_back(paramType);
+    }
+
+    // Constructor returns void (initializes in-place)
+    FunctionType* ctorType = FunctionType::get(
+        LLVMType::getVoidTy(context_),
+        paramTypes,
+        false
+    );
+
+    Function* ctorFunc = Function::Create(
+        ctorType,
+        Function::ExternalLinkage,
+        ctorName,
+        module_.get()
+    );
+
+    // Create entry block
+    BasicBlock* entryBlock = BasicBlock::Create(context_, "entry", ctorFunc);
+    builder_->SetInsertPoint(entryBlock);
+
+    // Set up parameters
+    auto argIt = ctorFunc->arg_begin();
+    Value* thisPtr = &*argIt;
+    thisPtr->setName("this");
+    ++argIt;
+
+    // Store 'this' in namedValues for access in constructor body
+    namedValues_["this"] = thisPtr;
+
+    // Add remaining parameters to symbol table
+    auto paramIt = constructor.getParameters().begin();
+    while (argIt != ctorFunc->arg_end() && paramIt != constructor.getParameters().end()) {
+        const std::string& paramName = (*paramIt)->getName();
+        argIt->setName(paramName);
+
+        // Create alloca for parameter
+        AllocaInst* alloca = createEntryBlockAlloca(ctorFunc, paramName, argIt->getType());
+        builder_->CreateStore(&*argIt, alloca);
+        namedValues_[paramName] = alloca;
+
+        ++argIt;
+        ++paramIt;
+    }
+
+    // Generate constructor body
+    generateBlock(constructor.getBody());
+
+    // Add return void if not already terminated
+    if (!builder_->GetInsertBlock()->getTerminator()) {
+        builder_->CreateRetVoid();
+    }
+
+    // Clean up 'this' from symbol table
+    namedValues_.erase("this");
+
+    // Verify the function
+    std::string errorStr;
+    raw_string_ostream errorStream(errorStr);
+    if (verifyFunction(*ctorFunc, &errorStream)) {
+        std::cerr << "Constructor verification failed: " << errorStr << std::endl;
+        ctorFunc->eraseFromParent();
+    } else {
+        functions_[ctorName] = ctorFunc;
+    }
+}
+
+// ============================================================================
+// Object creation
+// ============================================================================
+
+Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression& newExpr) {
+    const std::string& className = newExpr.getClassName();
+
+    // Ensure runtime functions are declared
+    declareRuntimeFunctions();
+
+    // Get or create class type
+    llvm::StructType* classType = getOrCreateClassType(className);
+    int64_t typeId = getClassTypeId(className);
+
+    // Calculate object size using DataLayout
+    // For now, use a simple size calculation
+    auto& dataLayout = module_->getDataLayout();
+    uint64_t objectSize = dataLayout.getTypeAllocSize(classType);
+
+    // Call hoo_alloc(size, type_id)
+    Value* sizeArg = ConstantInt::get(LLVMType::getInt64Ty(context_), objectSize);
+    Value* typeIdArg = ConstantInt::get(LLVMType::getInt64Ty(context_), typeId);
+
+    Value* rawPtr = builder_->CreateCall(hoo_alloc_func_, {sizeArg, typeIdArg}, "newobj");
+
+    // Look for constructor and call it if exists
+    std::string ctorName = className + "_init";
+    Function* ctorFunc = module_->getFunction(ctorName);
+
+    if (ctorFunc) {
+        // Build constructor arguments: this + explicit args
+        std::vector<Value*> ctorArgs;
+        ctorArgs.push_back(rawPtr);
+
+        // Add user-provided arguments
+        if (newExpr.getArguments()) {
+            for (const auto& argExpr : newExpr.getArguments()->getArguments()) {
+                Value* argValue = generateLLVMExpression(*argExpr);
+                if (!argValue) {
+                    std::cerr << "Failed to generate constructor argument" << std::endl;
+                    return nullptr;
+                }
+                ctorArgs.push_back(argValue);
+            }
+        }
+
+        // Call constructor
+        builder_->CreateCall(ctorFunc, ctorArgs);
+    }
+
+    return rawPtr;
 }
