@@ -73,8 +73,16 @@ private:
     llvm::Function* hoo_retain_func_ = nullptr;
     llvm::Function* hoo_release_func_ = nullptr;
 
+    // String function declarations
+    llvm::Function* hoo_string_from_cstr_func_ = nullptr;
+    llvm::Function* hoo_string_concat_func_ = nullptr;
+    llvm::Function* hoo_string_equals_func_ = nullptr;
+    llvm::Function* hoo_string_compare_func_ = nullptr;
+    llvm::Function* hoo_string_length_func_ = nullptr;
+
     // Runtime function declaration
     void declareRuntimeFunctions();
+    void declareStringFunctions();
 
     // Class type management
     llvm::StructType* getOrCreateClassType(const std::string& className);

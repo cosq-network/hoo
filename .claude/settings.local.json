@@ -11,7 +11,19 @@
       "Bash(perl -pi -e:*)",
       "Bash(done)",
       "Bash(grep:*)",
-      "Bash(./build/hoo-tests:*)"
+      "Bash(./build/hoo-tests:*)",
+      "Bash(dir:*)",
+      "Bash(echo:*)",
+      "Bash(unset:*)",
+      "Bash(./build/RelWithDebInfo/hooc.exe:*)",
+      "Bash(./hooc.exe:*)",
+      "Bash(./build/RelWithDebInfo/hoo-tests.exe:*)",
+      "Bash(cd:*)",
+      "Bash(.buildRelWithDebInfohoo-tests.exe --gtest_filter=\"StringCodeGenTest.*\")",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*\")",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_list_tests)",
+      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\" --gtest_filter=\"StringCodeGenTest.*\" --gtest_print_time=1)",
+      "Bash(./hoo-tests.exe:*)"
     ]
   }
 }

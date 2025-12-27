@@ -82,6 +82,16 @@ std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationU
     hoo_retain_func_ = nullptr;
     hoo_release_func_ = nullptr;
 
+    // Reset string function pointers
+    hoo_string_from_cstr_func_ = nullptr;
+    hoo_string_concat_func_ = nullptr;
+    hoo_string_equals_func_ = nullptr;
+    hoo_string_compare_func_ = nullptr;
+    hoo_string_length_func_ = nullptr;
+
+    // Declare string functions early so they're available
+    declareStringFunctions();
+
     // First pass: process class declarations to create types
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto classDecl = dynamic_cast<const ClassDeclaration*>(decl.get())) {
@@ -294,7 +304,19 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
 
     } else if (auto stringLiteral = dynamic_cast<const ASTStringLiteral*>(&primary)) {
         // Create global string constant
-        return builder_->CreateGlobalString(stringLiteral->getValue());
+        Value* cstr = builder_->CreateGlobalString(stringLiteral->getValue(), "str");
+
+        // Ensure string functions are declared
+        declareStringFunctions();
+
+        // Call hoo_string_from_cstr(cstr) to create HooString object
+        if (!hoo_string_from_cstr_func_) {
+            std::cerr << "Error: hoo_string_from_cstr not declared" << std::endl;
+            return nullptr;
+        }
+
+        Value* hooString = builder_->CreateCall(hoo_string_from_cstr_func_, {cstr}, "hoo_str");
+        return hooString;
 
     } else if (auto charLiteral = dynamic_cast<const CharacterLiteral*>(&primary)) {
         return ConstantInt::get(LLVMType::getInt32Ty(context_), static_cast<uint32_t>(charLiteral->getValue()));
@@ -316,7 +338,20 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
     
     switch (expr.getOperator()) {
         case ASTBinaryOperator::PLUS:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string concatenation (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_concat(left, right)
+                if (!hoo_string_concat_func_) {
+                    std::cerr << "Error: hoo_string_concat not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* result = builder_->CreateCall(hoo_string_concat_func_, {left, right}, "concat");
+                return result;
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateAdd(left, right, "addtmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFAdd(left, right, "addtmp");
@@ -354,7 +389,20 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
 
         case ASTBinaryOperator::LESS:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string comparison (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_compare(left, right) - returns <0 if left < right
+                if (!hoo_string_compare_func_) {
+                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                return builder_->CreateICmpSLT(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "ltmp");
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSLT(left, right, "cmptmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFCmpOLT(left, right, "cmptmp");
@@ -362,7 +410,20 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
             
         case ASTBinaryOperator::LESS_EQUALS:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string comparison (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_compare(left, right) - returns <=0 if left <= right
+                if (!hoo_string_compare_func_) {
+                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                return builder_->CreateICmpSLE(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "letmp");
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSLE(left, right, "cmptmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFCmpOLE(left, right, "cmptmp");
@@ -370,7 +431,20 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
 
         case ASTBinaryOperator::GREATER:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string comparison (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_compare(left, right) - returns >0 if left > right
+                if (!hoo_string_compare_func_) {
+                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                return builder_->CreateICmpSGT(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "gtmp");
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSGT(left, right, "cmptmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFCmpOGT(left, right, "cmptmp");
@@ -378,7 +452,20 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
 
         case ASTBinaryOperator::GREATER_EQUALS:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string comparison (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_compare(left, right) - returns >=0 if left >= right
+                if (!hoo_string_compare_func_) {
+                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                return builder_->CreateICmpSGE(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "getmp");
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSGE(left, right, "cmptmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFCmpOGE(left, right, "cmptmp");
@@ -386,7 +473,21 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
 
         case ASTBinaryOperator::EQUALS:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string comparison (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_equals(left, right) - returns 1 if equal, 0 if not
+                if (!hoo_string_equals_func_) {
+                    std::cerr << "Error: hoo_string_equals not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* equalResult = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "streq");
+                // Convert i64 result to i1 (bool)
+                return builder_->CreateICmpNE(equalResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "eqtmp");
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpEQ(left, right, "cmptmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFCmpOEQ(left, right, "cmptmp");
@@ -394,7 +495,21 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
 
         case ASTBinaryOperator::NOT_EQUALS:
-            if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
+            // Check for string comparison (both operands are pointers)
+            if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
+                // Ensure string functions are declared
+                declareStringFunctions();
+
+                // Call hoo_string_equals(left, right) - returns 1 if equal, 0 if not
+                if (!hoo_string_equals_func_) {
+                    std::cerr << "Error: hoo_string_equals not declared" << std::endl;
+                    return nullptr;
+                }
+
+                Value* equalResult = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "strneq");
+                // Convert i64 result to i1 (bool) - return true if NOT equal (equalResult == 0)
+                return builder_->CreateICmpEQ(equalResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "neqtmp");
+            } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpNE(left, right, "cmptmp");
             } else if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
                 return builder_->CreateFCmpONE(left, right, "cmptmp");
@@ -1408,6 +1523,101 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
             releaseType,
             Function::ExternalLinkage,
             "hoo_release",
+            module_.get()
+        );
+    }
+}
+
+void LLVMCodeGenerator::declareStringFunctions() {
+    // Declare hoo_string_from_cstr: HooString hoo_string_from_cstr(const char* cstr)
+    if (!hoo_string_from_cstr_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0)  // const char* cstr
+        };
+        FunctionType* funcType = FunctionType::get(
+            llvm::PointerType::get(context_, 0),  // returns HooString (opaque pointer)
+            params,
+            false
+        );
+        hoo_string_from_cstr_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_string_from_cstr",
+            module_.get()
+        );
+    }
+
+    // Declare hoo_string_concat: HooString hoo_string_concat(HooString dst, HooString src)
+    if (!hoo_string_concat_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooString dst
+            llvm::PointerType::get(context_, 0)   // HooString src
+        };
+        FunctionType* funcType = FunctionType::get(
+            llvm::PointerType::get(context_, 0),  // returns HooString
+            params,
+            false
+        );
+        hoo_string_concat_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_string_concat",
+            module_.get()
+        );
+    }
+
+    // Declare hoo_string_equals: int64_t hoo_string_equals(HooString str1, HooString str2)
+    if (!hoo_string_equals_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooString str1
+            llvm::PointerType::get(context_, 0)   // HooString str2
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),  // returns int64_t (1 if equal, 0 if not)
+            params,
+            false
+        );
+        hoo_string_equals_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_string_equals",
+            module_.get()
+        );
+    }
+
+    // Declare hoo_string_compare: int64_t hoo_string_compare(HooString str1, HooString str2)
+    if (!hoo_string_compare_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // HooString str1
+            llvm::PointerType::get(context_, 0)   // HooString str2
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),  // returns int64_t (<0, 0, >0)
+            params,
+            false
+        );
+        hoo_string_compare_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_string_compare",
+            module_.get()
+        );
+    }
+
+    // Declare hoo_string_length: int64_t hoo_string_length(HooString str)
+    if (!hoo_string_length_func_) {
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0)  // HooString str
+        };
+        FunctionType* funcType = FunctionType::get(
+            LLVMType::getInt64Ty(context_),  // returns int64_t
+            params,
+            false
+        );
+        hoo_string_length_func_ = Function::Create(
+            funcType,
+            Function::ExternalLinkage,
+            "hoo_string_length",
             module_.get()
         );
     }

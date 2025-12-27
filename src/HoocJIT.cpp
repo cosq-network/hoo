@@ -3,6 +3,7 @@
 #include "SimpleASTBuilder.h"
 #include "LLVMCodeGenerator.h"
 #include "ast/AST.h"
+#include "../runtime/hoo_string.h"
 #include <iostream>
 #include <memory>
 
@@ -20,12 +21,267 @@ using namespace llvm;
 using namespace llvm::orc;
 using namespace hooc;
 
+// ============================================================================
+// String Functions Registration
+// ============================================================================
+
+void HoocJIT::registerStringFunctions() {
+    auto& mainJD = JIT->getMainJITDylib();
+
+    llvm::orc::SymbolMap symbols;
+
+    // ========================================================================
+    // Creation Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_from_cstr")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_from_cstr),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_new")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_new),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_from_bytes")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_from_bytes),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_repeat")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_repeat),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Manipulation Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_concat")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_concat),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_substring")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_substring),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_to_upper")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_to_upper),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_to_lower")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_to_lower),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_trim")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_trim),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_replace")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_replace),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Query Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_length")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_length),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_data")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_data),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_byte_at")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_byte_at),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_is_empty")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_is_empty),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_index_of")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_index_of),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_last_index_of")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_last_index_of),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_contains")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_contains),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_starts_with")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_starts_with),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_ends_with")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_ends_with),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Comparison Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_compare")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_compare),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_equals")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_equals),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_equals_ignore_case")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_equals_ignore_case),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Reference Counting Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_retain")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_retain),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_release")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_release),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_refcount")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_refcount),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Conversion Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_from_int64")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_from_int64),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_from_double")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_from_double),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_from_bool")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_from_bool),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_to_int64")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_to_int64),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_to_double")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_to_double),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_format")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_format),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Debugging Functions
+    // ========================================================================
+
+    symbols[JIT->mangleAndIntern("hoo_string_print")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_print),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_println")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_println),
+            JITSymbolFlags::Exported
+        );
+
+    symbols[JIT->mangleAndIntern("hoo_string_debug")] =
+        llvm::orc::ExecutorSymbolDef(
+            llvm::orc::ExecutorAddr::fromPtr(&hoo_string_debug),
+            JITSymbolFlags::Exported
+        );
+
+    // ========================================================================
+    // Register All Symbols with JIT
+    // ========================================================================
+
+    auto Err = mainJD.define(absoluteSymbols(symbols));
+    if (Err) {
+        errs() << "ERROR: Failed to register string functions with JIT: "
+               << toString(std::move(Err)) << "\n";
+        exit(1);
+    }
+
+    std::cout << "✅ Registered 30 string functions with HoocJIT\n";
+}
+
 HoocJIT::HoocJIT() {
     // Initialize LLVM
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
-    
+
     // Create JIT
     auto JITExpected = LLJITBuilder().create();
     if (!JITExpected) {
@@ -33,12 +289,15 @@ HoocJIT::HoocJIT() {
         exit(1);
     }
     JIT = std::move(*JITExpected);
-    
+
+    // Register string functions with JIT
+    registerStringFunctions();
+
     // Initialize parser, AST builder, and code generator
     parser_ = std::make_unique<ProcessIsolatedParser>();
     astBuilder_ = std::make_unique<SimpleASTBuilder>();
     codeGenerator_ = std::make_unique<LLVMCodeGenerator>(Context);
-    
+
     std::cout << "HoocJIT initialized successfully!\n";
 }
 

@@ -144,9 +144,10 @@ add_library(hoo-compiler
     src/ast/ASTImpl.cpp
 )
 
-# Hooc runtime library (reference counting, memory management)
+# Hooc runtime library (reference counting, memory management, string support)
 add_library(hoort STATIC
     runtime/hoo_runtime.c
+    runtime/hoo_string.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -275,6 +276,8 @@ if(GTest_FOUND)
         tests/MemberAccessCodeGenTest.cpp
         tests/MethodCallParsingTest.cpp
         tests/MethodCallCodeGenTest.cpp
+        tests/StringBasicsTest.cpp
+        tests/StringCodeGenTest.cpp
     )
 
     # Link test executable with libraries
