@@ -2,18 +2,16 @@
   "permissions": {
     "allow": [
       "Bash(cmake --build:*)",
-      "Bash(./build/hoo_tests.exe)",
       "Bash(./build/hooc.exe:*)",
-      "Bash(./build/hoo_tests.exe:*)",
       "Bash(cmake:*)",
       "Bash(cat:*)",
-      "Bash(./build/RelWithDebInfo/hoo_tests.exe:*)",
-      "Bash(./build/hoo_tests:*)",
       "Bash(find:*)",
       "Bash(for:*)",
       "Bash(do)",
       "Bash(perl -pi -e:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(./build/hoo-tests:*)"
     ]
   }
 }
