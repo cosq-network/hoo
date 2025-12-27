@@ -414,9 +414,44 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
     // Get the function being called
     const Expression& funcExpr = call.getFunction();
 
-    // For now, only support direct function calls via identifier
     std::string functionName;
-    if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&funcExpr)) {
+    Value* thisPtr = nullptr;
+
+    // Check if this is a method call (member access followed by function call)
+    if (auto memberAccess = dynamic_cast<const MemberAccess*>(&funcExpr)) {
+        // Method call: obj.method()
+        const std::string& methodName = memberAccess->getMember();
+
+        // Get the object value
+        Value* objectValue = generateLLVMExpression(memberAccess->getObject());
+        if (!objectValue) {
+            std::cerr << "Failed to generate object expression for method call" << std::endl;
+            return nullptr;
+        }
+
+        // Determine the class type from the object
+        std::string className;
+        if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&memberAccess->getObject())) {
+            const ASTNode& primary = primaryExpr->getPrimary();
+            if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
+                auto it = variableTypes_.find(identifier->getName());
+                if (it != variableTypes_.end()) {
+                    className = it->second;
+                }
+            }
+        }
+
+        if (className.empty()) {
+            std::cerr << "Cannot determine class type for method call" << std::endl;
+            return nullptr;
+        }
+
+        // Method function names are ClassName_methodName
+        functionName = className + "_" + methodName;
+        thisPtr = objectValue;
+
+    } else if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&funcExpr)) {
+        // Regular function call via identifier
         const ASTNode& primary = primaryExpr->getPrimary();
         if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
             functionName = identifier->getName();
@@ -438,6 +473,12 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
 
     // Generate argument values
     std::vector<Value*> args;
+
+    // If this is a method call, add the 'this' pointer as the first argument
+    if (thisPtr) {
+        args.push_back(thisPtr);
+    }
+
     if (call.getArguments()) {
         for (const auto& argExpr : call.getArguments()->getArguments()) {
             Value* argValue = generateLLVMExpression(*argExpr);
@@ -450,11 +491,17 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
 
     // Check argument count
     if (args.size() != calleeFunc->arg_size()) {
-        std::cerr << "Incorrect number of arguments for function " << functionName << std::endl;
+        std::cerr << "Incorrect number of arguments for function " << functionName
+                  << " (expected " << calleeFunc->arg_size() << ", got " << args.size() << ")" << std::endl;
         return nullptr;
     }
 
-    return builder_->CreateCall(calleeFunc, args, "calltmp");
+    // Don't assign a name to void return values
+    if (calleeFunc->getReturnType()->isVoidTy()) {
+        return builder_->CreateCall(calleeFunc, args);
+    } else {
+        return builder_->CreateCall(calleeFunc, args, "calltmp");
+    }
 }
 
 Value* LLVMCodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
@@ -1443,9 +1490,78 @@ void LLVMCodeGenerator::generateClassDeclaration(const ClassDeclaration& classDe
     for (const auto& member : body.getMembers()) {
         if (auto decl = member->getDeclaration()) {
             if (auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl)) {
-                // TODO: Generate method with implicit 'this' parameter
-                // For now, we generate it as a regular function
-                generateLLVMFunction(*funcDecl);
+                // Generate method with implicit 'this' parameter (object pointer)
+                const std::string& methodName = funcDecl->getName();
+                std::string mangledName = className + "_" + methodName;
+
+                // Create function with signature: method(void* this, ...params) -> returnType
+                std::vector<llvm::Type*> paramTypes;
+                paramTypes.push_back(llvm::PointerType::get(context_, 0)); // void* this
+
+                // Add explicit parameters
+                for (const auto& param : funcDecl->getParameters()) {
+                    paramTypes.push_back(generateLLVMType(param->getType()));
+                }
+
+                // Get return type
+                llvm::Type* returnType = funcDecl->getReturnType()
+                    ? generateLLVMType(*funcDecl->getReturnType())
+                    : llvm::Type::getVoidTy(context_);
+
+                // Create function type and function
+                auto funcType = llvm::FunctionType::get(returnType, paramTypes, false);
+                Function* methodFunc = llvm::Function::Create(funcType,
+                    llvm::Function::ExternalLinkage, mangledName, module_.get());
+
+                // Generate function body
+                auto saveBB = builder_->GetInsertBlock();
+                auto saveFn = saveBB ? saveBB->getParent() : nullptr;
+
+                llvm::BasicBlock* BB = llvm::BasicBlock::Create(context_, "entry", methodFunc);
+                builder_->SetInsertPoint(BB);
+
+                // Set up local scope with parameters
+                namedValues_.clear();
+
+                // Add 'this' as a local variable (skip it, it's used directly)
+                // Add explicit parameters to symbol table
+                auto argIt = methodFunc->arg_begin();
+                ++argIt; // Skip 'this' pointer
+
+                for (const auto& param : funcDecl->getParameters()) {
+                    auto& arg = *argIt++;
+                    arg.setName(param->getName());
+                    AllocaInst* alloca = createEntryBlockAlloca(methodFunc, param->getName(), arg.getType());
+                    builder_->CreateStore(&arg, alloca);
+                    namedValues_[param->getName()] = alloca;
+                }
+
+                // Generate method body
+                if (funcDecl->getBody().getStatements().empty()) {
+                    // Empty body
+                    if (returnType->isVoidTy()) {
+                        builder_->CreateRetVoid();
+                    }
+                } else {
+                    generateBlock(funcDecl->getBody());
+
+                    // Ensure method has a proper return terminator
+                    if (!builder_->GetInsertBlock()->getTerminator()) {
+                        if (returnType->isVoidTy()) {
+                            builder_->CreateRetVoid();
+                        } else {
+                            // Non-void return without explicit return statement is an error
+                            // For now, return a default value
+                            builder_->CreateRet(Constant::getNullValue(returnType));
+                        }
+                    }
+                }
+
+                // Restore insertion point
+                if (saveBB) {
+                    builder_->SetInsertPoint(saveBB);
+                }
+                namedValues_.clear();
             }
         }
     }

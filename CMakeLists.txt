@@ -273,6 +273,8 @@ if(GTest_FOUND)
         tests/ObjectCreationCodeGenTest.cpp
         tests/MemberAccessParsingTest.cpp
         tests/MemberAccessCodeGenTest.cpp
+        tests/MethodCallParsingTest.cpp
+        tests/MethodCallCodeGenTest.cpp
     )
 
     # Link test executable with libraries

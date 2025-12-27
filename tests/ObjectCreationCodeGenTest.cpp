@@ -261,7 +261,7 @@ TEST_F(ObjectCreationCodeGenTest, MultipleClasses) {
     EXPECT_NE(module->getFunction("Dog_init"), nullptr);
 }
 
-// Test 10: Class with method (generates as regular function for now)
+// Test 10: Class with method (methods are named ClassName_methodName)
 TEST_F(ObjectCreationCodeGenTest, ClassWithMethod) {
     std::string code = R"(
         class Calculator {
@@ -280,7 +280,7 @@ TEST_F(ObjectCreationCodeGenTest, ClassWithMethod) {
     ASSERT_NE(module, nullptr);
 
     EXPECT_NE(module->getFunction("Calculator_init"), nullptr);
-    EXPECT_NE(module->getFunction("add"), nullptr);
+    EXPECT_NE(module->getFunction("Calculator_add"), nullptr);
 }
 
 // Test 11: New expression stores to variable

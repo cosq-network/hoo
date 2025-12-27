@@ -220,6 +220,13 @@ The code generator has been refactored to use an abstract interface pattern, ena
 - `tests/ArrayLiteralParsingTest.cpp`: Array literal parsing tests (12 tests)
 - `tests/FunctionCallParsingTest.cpp`: Function call parsing tests (15 tests)
 - `tests/VariableDeclarationParseTest.cpp`: Variable declaration parsing tests (15 tests)
+- `tests/MemberAccessParsingTest.cpp`: Member access parsing tests (12 tests)
+- `tests/MemberAccessCodeGenTest.cpp`: Member access code generation tests (10 tests)
+- `tests/MethodCallParsingTest.cpp`: Method call parsing tests (15 tests)
+- `tests/MethodCallCodeGenTest.cpp`: Method call code generation tests (10 tests)
+- `tests/NewExpressionParsingTest.cpp`: Object creation parsing tests (20 tests)
+- `tests/NewExpressionCodeGenTest.cpp`: Object creation code generation tests (20 tests)
+- `tests/ObjectCreationCodeGenTest.cpp`: Object creation integration tests (12 tests)
 - `tests/SimpleASTBuilderTest.cpp`: Parse tree → AST conversion tests
 - `tests/HooCompilerTest.cpp`: End-to-end compilation tests
 - `tests/ProcessIsolatedParserTest.cpp`: Parser validation tests
@@ -514,6 +521,115 @@ func test() {
 - Control flow conditions (if, while)
 - Array indexing on member fields
 
+## Method Calls on Objects (v0.5 continued)
+
+Hoo now supports calling methods on object instances. Methods are functions defined within a class that receive an implicit `this` pointer to the object they're called on.
+
+### Method Definition
+
+Methods are defined as functions within class bodies:
+
+```hoo
+class Calculator {
+    constructor() {}
+
+    func add(a: int64, b: int64) -> int64 {
+        return a + b;
+    }
+
+    func multiply(a: int64, b: int64) -> int64 {
+        return a * b;
+    }
+
+    func print() {
+        var result = 42;
+    }
+}
+
+class Counter {
+    var count: int64;
+
+    constructor() {}
+
+    func increment() {
+        // Methods can access object state via member access
+        // (member assignment coming in future version)
+    }
+
+    func getValue() -> int64 {
+        return 42;  // TODO: return count when member assignment is available
+    }
+}
+```
+
+### Method Call Syntax
+
+Call methods using the dot operator on object instances:
+
+```hoo
+func test() {
+    // Create objects
+    var calc: Calculator = new Calculator();
+    var counter: Counter = new Counter();
+
+    // Call methods with arguments
+    var sum = calc.add(5, 10);
+    var product = calc.multiply(3, 4);
+
+    // Call methods with no arguments
+    calc.print();
+
+    // Call methods in expressions
+    var result = counter.getValue() + 100;
+
+    // Call methods in function arguments
+    func process(value: int64) -> int64 { return value * 2; }
+    var processed = process(calc.add(1, 2));
+
+    // Call methods in control flow
+    if (counter.getValue() > 50) {
+        // ...
+    }
+
+    // Call methods in return statements
+    func getDoubled() -> int64 {
+        return calc.multiply(counter.getValue(), 2);
+    }
+}
+```
+
+### Implementation Details
+
+**Method Name Mangling:**
+- Methods are stored as functions with mangled names: `ClassName_methodName`
+- Example: `Calculator::add()` becomes function `Calculator_add`
+- This avoids naming conflicts between classes with same method names
+
+**Implicit `this` Parameter:**
+- Each method receives an implicit `void*` (opaque pointer) as the first parameter
+- This pointer references the object instance
+- Automatically passed by the compiler when methods are called
+- Not visible in method signatures, purely implementation detail
+
+**Function Signature Example:**
+```
+// User-defined method
+class MyClass {
+    func myMethod(a: int64) -> int64 { ... }
+}
+
+// Generated LLVM function signature
+define i64 @MyClass_myMethod(ptr %this, i64 %a) { ... }
+```
+
+**Supported Method Contexts:**
+- Variable initialization and assignment
+- Function arguments and return values
+- Binary and unary expressions
+- Control flow conditions (if, while, for)
+- Return statements
+- Call chains (object.method1().method2() - when methods return objects)
+
 ### Current Implementation Status
 
 **✅ Fully Working (v0.3):**
@@ -546,7 +662,7 @@ func test() {
 - Blocks with proper scoping
 - Scope statements (`scope { ... }`) for deterministic resource management
 - Unary operators: negation (`-`), logical NOT (`!`)
-- Postfix operators: array indexing, function calls
+- Postfix operators: array indexing, function calls, member access, method calls
 
 **✅ Member Access and Class Fields (v0.5):**
 - Member variables in classes (`var fieldName: type;`)
@@ -555,10 +671,19 @@ func test() {
 - Proper type resolution for member access
 - Support for chained member access
 
+**✅ Method Calls on Objects (v0.5 continued):**
+- Method definitions within classes
+- Method invocation on object instances using dot operator
+- Implicit `this` pointer passed to methods
+- Methods with various parameter and return types
+- Methods callable in all expression contexts
+- Method name mangling to avoid conflicts (`ClassName_methodName`)
+
 **✅ Function Calls:**
 - Hooc-to-hooc function calls fully working
 - Argument passing and return values
 - External C function calls (e.g., `printf`)
+- Method calls on objects (v0.5 addition)
 
 **✅ Classes and Object Creation (v0.4):**
 - Class declarations with Kotlin-style constructors (single constructor per class)
@@ -584,7 +709,8 @@ func test() {
 - String type operations and LLVM generation
 - Inheritance and polymorphism
 - Interface implementation
-- Advanced function features (pointers, callbacks, method calls)
+- Advanced function features (pointers, callbacks)
+- Member assignment (obj.field = value)
 - Module system and import resolution
 - Standard library
 - Automatic retain/release insertion at scope boundaries
