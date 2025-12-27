@@ -144,7 +144,8 @@ interfaceList: IDENTIFIER (COMMA IDENTIFIER)*;
 classBody: LBRACE classMember* RBRACE;
 
 classMember
-    : constructorDeclaration
+    : variableDeclaration SEMICOLON
+    | constructorDeclaration
     | functionDeclaration
     | eventDeclaration SEMICOLON
     ;

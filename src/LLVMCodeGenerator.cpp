@@ -620,9 +620,93 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
 }
 
 Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
-    // TODO: Implement struct/class member access
-    std::cerr << "Member access not yet implemented" << std::endl;
-    return nullptr;
+    // Get the object value
+    Value* objectValue = generateLLVMExpression(expr.getObject());
+    if (!objectValue) {
+        std::cerr << "Failed to generate object expression" << std::endl;
+        return nullptr;
+    }
+
+    // Try to determine the class type from the object
+    std::string className;
+
+    // If the object is a primary identifier, look it up in variable types
+    if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&expr.getObject())) {
+        const ASTNode& primary = primaryExpr->getPrimary();
+        if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
+            auto it = variableTypes_.find(identifier->getName());
+            if (it != variableTypes_.end()) {
+                className = it->second;
+            }
+        }
+    }
+
+    if (className.empty()) {
+        std::cerr << "Cannot determine class type for member access" << std::endl;
+        return nullptr;
+    }
+
+    // Get the class struct type
+    auto classTypeIt = classTypes_.find(className);
+    if (classTypeIt == classTypes_.end()) {
+        std::cerr << "Unknown class type: " << className << std::endl;
+        return nullptr;
+    }
+    llvm::StructType* classType = classTypeIt->second;
+
+    // Get the class declaration to find member info
+    auto declIt = classDeclarations_.find(className);
+    if (declIt == classDeclarations_.end()) {
+        std::cerr << "Missing class declaration for: " << className << std::endl;
+        return nullptr;
+    }
+    const ast::ClassDeclaration* classDecl = declIt->second;
+
+    // Find the member in the class
+    const std::string& memberName = expr.getMember();
+    int memberIndex = -1;
+    llvm::Type* memberType = nullptr;
+    int fieldIdx = 0;
+
+    for (const auto& member : classDecl->getBody().getMembers()) {
+        // Variables in class members are stored as declarations
+        if (auto decl = member->getDeclaration()) {
+            if (auto varMember = dynamic_cast<const ast::VariableDeclaration*>(decl)) {
+                if (varMember->getName() == memberName) {
+                    memberIndex = fieldIdx;
+                    if (varMember->getType()) {
+                        memberType = generateLLVMType(*varMember->getType());
+                    }
+                    break;
+                }
+                fieldIdx++;
+            }
+        }
+    }
+
+    if (memberIndex == -1) {
+        std::cerr << "Member not found: " << memberName << " in class " << className << std::endl;
+        return nullptr;
+    }
+
+    // objectValue is a void* pointer to the object data (after the header)
+    // We need to cast it to the struct type and use GEP to access the member
+
+    // Cast void* to struct pointer using PointerType::get
+    auto structPtrType = llvm::PointerType::get(classType, 0);
+    auto castPtr = builder_->CreateBitCast(objectValue, structPtrType, "struct_ptr_cast");
+
+    // Use GEP to access the field
+    auto fieldPtr = builder_->CreateStructGEP(classType, castPtr, memberIndex, "field_ptr");
+
+    // Load the field value
+    if (!memberType) {
+        std::cerr << "Member type is null for: " << memberName << std::endl;
+        return nullptr;
+    }
+    auto loadedValue = builder_->CreateLoad(memberType, fieldPtr, memberName);
+
+    return loadedValue;
 }
 
 Value* LLVMCodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
@@ -903,6 +987,14 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
         varType = generateLLVMType(*decl.getType());
         AllocaInst* alloca = createEntryBlockAlloca(currentFunc, decl.getName(), varType);
         namedValues_[decl.getName()] = alloca;
+
+        // Track variable type if it's a user-defined class
+        if (auto baseType = dynamic_cast<const ast::BaseType*>(decl.getType())) {
+            if (!baseType->isPrimitive()) {
+                // It's a user-defined type (class name)
+                variableTypes_[decl.getName()] = baseType->getIdentifier();
+            }
+        }
 
         // Initialize if initializer present
         if (decl.getInitializer()) {
@@ -1309,6 +1401,9 @@ int64_t LLVMCodeGenerator::getClassTypeId(const std::string& className) {
 
 void LLVMCodeGenerator::generateClassDeclaration(const ClassDeclaration& classDecl) {
     const std::string& className = classDecl.getName();
+
+    // Store the class declaration for later use (e.g., member access)
+    classDeclarations_[className] = &classDecl;
 
     // Get or create the class struct type
     llvm::StructType* classType = getOrCreateClassType(className);

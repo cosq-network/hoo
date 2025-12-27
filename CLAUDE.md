@@ -36,7 +36,7 @@ cmake --build build --config RelWithDebInfo
 
 ### Running Tests
 ```bash
-# Run all unit tests (278 tests, 14 test suites)
+# Run all unit tests (396 tests, 22 test suites)
 ./build/hoo_tests        # macOS/Linux
 ./build/hoo_tests.exe    # Windows
 
@@ -44,6 +44,8 @@ cmake --build build --config RelWithDebInfo
 ./build/hoo_tests --gtest_filter="BasicCodeGenTest.*"
 ./build/hoo_tests --gtest_filter="FunctionCallCodeGenTest.*"
 ./build/hoo_tests --gtest_filter="NullableCodeGenTest.*"
+./build/hoo_tests --gtest_filter="MemberAccessParsingTest.*"
+./build/hoo_tests --gtest_filter="MemberAccessCodeGenTest.*"
 
 # Run tests through CMake
 cmake --build build --target run_tests
@@ -449,10 +451,68 @@ Hoo uses Automatic Reference Counting (ARC) for memory management:
 ### Current Limitations
 
 - Automatic retain/release at scope boundaries not yet implemented
-- Class fields (member variables) not yet implemented
-- Member access (obj.field) not yet implemented
+- Member assignment (obj.field = value) not yet implemented
+- Method calls on objects not yet implemented
 - Inheritance (`extends`) not yet implemented
 - Interface implementation (`implements`) not yet implemented
+
+## Member Access and Class Fields (v0.5)
+
+Hoo supports member variables in classes with read access through the member access operator (`.`).
+
+### Class Fields
+
+Classes can now declare member variables:
+
+```hoo
+class Person {
+    var name: string;
+    var age: int64;
+
+    constructor() {}
+}
+
+class Point {
+    var x: int64;
+    var y: int64;
+
+    constructor() {}
+}
+```
+
+### Member Access
+
+Access class member fields using the dot operator:
+
+```hoo
+func test() {
+    var p: Person = new Person();
+    var name = p.name;        // Read field
+    var age = p.age;          // Read field
+
+    // Members in expressions
+    var point: Point = new Point();
+    var sum = point.x + point.y;
+
+    // Members as function arguments
+    func process(value: int64) {}
+    process(point.x);
+
+    // Chained member access
+    var person: Person = new Person();
+    if (person.age > 18) {
+        // ...
+    }
+}
+```
+
+**Supported member access contexts:**
+- Variable initialization
+- Binary expressions (arithmetic, comparison, logical)
+- Function call arguments
+- Return statements
+- Control flow conditions (if, while)
+- Array indexing on member fields
 
 ### Current Implementation Status
 
@@ -486,7 +546,14 @@ Hoo uses Automatic Reference Counting (ARC) for memory management:
 - Blocks with proper scoping
 - Scope statements (`scope { ... }`) for deterministic resource management
 - Unary operators: negation (`-`), logical NOT (`!`)
-- Postfix operators: array indexing, function calls, member access
+- Postfix operators: array indexing, function calls
+
+**✅ Member Access and Class Fields (v0.5):**
+- Member variables in classes (`var fieldName: type;`)
+- Member access operator (`.`) for reading fields
+- Member access in all expression contexts (assignments, operators, function calls, returns)
+- Proper type resolution for member access
+- Support for chained member access
 
 **✅ Function Calls:**
 - Hooc-to-hooc function calls fully working
@@ -510,8 +577,8 @@ Hoo uses Automatic Reference Counting (ARC) for memory management:
 - Design pattern modifiers (singleton, immutable, factory, observable, service, strategy, actor)
 - Event system (`event` keyword)
 - Type casting (`as` keyword)
-- Member access for class fields (parsing works, code gen pending)
 - Class inheritance with `extends` (parsing works, code gen pending)
+- Member assignment (parsing works, code gen pending)
 
 **❌ Not Implemented:**
 - String type operations and LLVM generation
@@ -575,7 +642,11 @@ Hoo uses Automatic Reference Counting (ARC) for memory management:
 | `tests/NullableTypeParsingTest.cpp` | Nullable type parsing tests (15 tests) |
 | `tests/NullableCodeGenTest.cpp` | Nullable type code generation tests (20 tests) - v0.3 |
 | `tests/ClassDeclarationParsingTest.cpp` | Class declaration parsing tests - v0.4 |
+| `tests/NewExpressionParsingTest.cpp` | New expression parsing tests (20 tests) - v0.4 |
+| `tests/NewExpressionCodeGenTest.cpp` | New expression code generation tests (20 tests) - v0.4 |
 | `tests/ObjectCreationCodeGenTest.cpp` | Object creation code generation tests (12 tests) - v0.4 |
+| `tests/MemberAccessParsingTest.cpp` | Member access parsing tests (15 tests) - v0.5 |
+| `tests/MemberAccessCodeGenTest.cpp` | Member access code generation tests (10 tests) - v0.5 |
 | `CMakeLists.txt` | Build configuration |
 | `docs/hooc_language_specification_v_0.md` | Complete language spec |
 | `docs/implementation-status.md` | Detailed progress tracking |

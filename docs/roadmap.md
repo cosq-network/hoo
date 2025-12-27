@@ -16,11 +16,14 @@ This is the most critical phase: making the compiler fully implement the feature
 
 *   **1.2. Complete Class & Object Implementation:**
     *   **Task:** Implement the full object lifecycle.
-        *   **Memory Layout:** Define how class instances are represented in memory using LLVM structs.
-        *   **Instantiation:** Implement the `new` keyword to handle memory allocation and constructor calls.
-        *   **Member Access:** Implement the `.` operator for accessing fields and methods.
-        *   **Method Calls:** Implement a dispatch mechanism (e.g., v-tables) for calling methods on objects.
+        *   **Memory Layout:** ✅ Define how class instances are represented in memory using LLVM structs.
+        *   **Instantiation:** ✅ Implement the `new` keyword to handle memory allocation and constructor calls.
+        *   **Member Variables:** ✅ Support member variables in class declarations.
+        *   **Member Access:** ✅ Implement the `.` operator for reading fields (read-only access).
+        *   **Member Assignment:** ⏳ Implement field assignment (obj.field = value).
+        *   **Method Calls:** ⏳ Implement a dispatch mechanism (e.g., v-tables) for calling methods on objects.
     *   **Why:** This is the cornerstone of the language's object-oriented features.
+    *   **Status:** Member reading complete (v0.5). Member assignment and method calls pending.
 
 *   **1.3. Implement Interfaces and Inheritance:**
     *   **Task:** Once classes are working, implement `extends` for single inheritance and `implements` for interfaces. This will involve managing subclass memory layouts and supporting virtual method dispatch for polymorphism.

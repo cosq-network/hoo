@@ -271,6 +271,8 @@ if(GTest_FOUND)
         tests/NewExpressionParsingTest.cpp
         tests/NewExpressionCodeGenTest.cpp
         tests/ObjectCreationCodeGenTest.cpp
+        tests/MemberAccessParsingTest.cpp
+        tests/MemberAccessCodeGenTest.cpp
     )
 
     # Link test executable with libraries

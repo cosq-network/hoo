@@ -3,11 +3,11 @@
 > A modern, safe, and expressive programming language designed as an evolution of the C programming philosophy. Compiled by **hooc**.
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](.)
-[![Version](https://img.shields.io/badge/version-0.2--alpha-blue)](.)
+[![Version](https://img.shields.io/badge/version-0.5--alpha-blue)](.)
 [![Language](https://img.shields.io/badge/language-C%2B%2B17-blue)]()
 [![Parser](https://img.shields.io/badge/parser-ANTLR4-orange)]()
 [![Backend](https://img.shields.io/badge/backend-LLVM-red)]()
-[![Tests](https://img.shields.io/badge/tests-100%25%20passing-success)](.)
+[![Tests](https://img.shields.io/badge/tests-396%20passing-success)](.)
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 ## 🎯 Project Overview
@@ -20,6 +20,9 @@
 - ✅ **No null pointers** - optional types with explicit unwrapping
 - ✅ **Module-level variable declarations** - Top-level variables for global scope
 - ✅ **Modern syntax** - Python-style imports, clean control flow
+- ✅ **Object-oriented programming** - Classes with constructors and member variables
+- ✅ **Member access** - Read class fields with the `.` operator
+- ✅ **Automatic memory management** - Reference counting for safe object lifetime management
 - ✅ **Language-level design patterns** (Singleton, Factory, Observer, etc. - grammar defined, code generation planned)
 
 ## 🚀 Quick Start

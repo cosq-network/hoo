@@ -60,10 +60,12 @@ private:
     // Symbol table for variables and functions
     std::unordered_map<std::string, llvm::Value*> namedValues_;
     std::unordered_map<std::string, llvm::Function*> functions_;
+    std::unordered_map<std::string, std::string> variableTypes_; // Map var name -> class name (for objects)
 
     // Class type tracking
     std::unordered_map<std::string, llvm::StructType*> classTypes_;
     std::unordered_map<std::string, int64_t> classTypeIds_;
+    std::unordered_map<std::string, const ast::ClassDeclaration*> classDeclarations_; // Track class declarations
     int64_t nextTypeId_ = 1;
 
     // Runtime function declarations

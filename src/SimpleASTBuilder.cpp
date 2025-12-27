@@ -675,7 +675,10 @@ std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBod
 }
 
 std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::ClassMemberContext* ctx) {
-    if (ctx->constructorDeclaration()) {
+    if (ctx->variableDeclaration()) {
+        auto varDecl = buildVariableDeclaration(ctx->variableDeclaration());
+        return std::make_unique<ClassMember>(std::move(varDecl));
+    } else if (ctx->constructorDeclaration()) {
         auto constructor = buildConstructorDeclaration(ctx->constructorDeclaration());
         return std::make_unique<ClassMember>(std::move(constructor));
     } else if (ctx->functionDeclaration()) {
