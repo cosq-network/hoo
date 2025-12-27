@@ -27,6 +27,7 @@ func main() {
     """);
 }
 ```
+*Note: Full string interpolation (expressions inside `${}`) is a planned feature. The current grammar parses the placeholder.*```
 
 ------------------------------------------------------------------------
 
@@ -94,73 +95,107 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 6. Arrays (v0.1.1 - Currently Implemented)
+## 6. Arrays (v0.2 - Fully Implemented)
 
-### Array Declarations
+### 6.1 Array Literals and Declarations
 
 ``` hoo
-func array_demo() -> void {
-    // Single-dimensional arrays
-    var numbers: int64[5];
-    var bytes: byte[10];
-    var flags: bool[8];
-    
-    // Multi-dimensional arrays
-    var matrix: int64[3][4];
-    var grid: double[10][20];
-    
-    return;
+func array_declarations() -> void {
+    // Type inferred from elements
+    var numbers = [1, 2, 3, 4, 5];          // int64[]
+    var floats = [1.0, 2.5, 3.14];          // double[]
+    var names = ["Alice", "Bob"];           // string[]
+    var flags = [true, false, true];        // bool[]
+
+    // Explicit type annotation for empty arrays
+    var empty_ints: int64[] = [];
+    var empty_strings: string[] = [];
+
+    // Array access
+    var value = numbers[2];  // Returns 3
+    print("Value at index 2: ${value}");
 }
 ```
 
-### Array Types in Functions
+### 6.2 Array Types in Functions
 
 ``` hoo
-// Array type declarations work in function bodies
-func process_data() -> void {
-    var data: int64[100];
-    var temp: double[50];
-    
-    // Array access syntax (arr[index]) is in development
-    // for i in 0..100 {
-    //     data[i] = i * 2;
-    // }
-    
-    return;
+// Arrays are passed as slices (unsized array types)
+func process_array(arr: int64[]) -> void {
+    // Array access syntax (arr[index]) is now implemented
+    if arr.len > 0 { // .len property is available on slices
+        print("First element: ${arr[0]}");
+    }
+    // Iteration over arrays is also fully supported
+    for item in arr {
+        // print(item); // Example of iteration
+    }
+}
+
+func array_function_demo() -> void {
+    var my_numbers = [10, 20, 30, 40];
+    process_array(my_numbers);
+
+    // This shows passing an array literal directly
+    process_array([1, 2, 3]);
+}
+```
+
+### 6.3 Multi-Dimensional Array Literals
+
+``` hoo
+func multi_dimensional_array_demo() -> void {
+    // Multi-dimensional arrays use nested array literals
+    var matrix = [
+        [1, 2, 3],
+        [4, 5, 6]
+    ]; // int64[][]
+
+    // Accessing elements
+    print("Element at [0][1]: ${matrix[0][1]}"); // Prints 2
+
+    // Iterating over multi-dimensional arrays
+    for row in matrix {
+        for value in row {
+            print(value);
+        }
+    }
 }
 ```
 
 ------------------------------------------------------------------------
 
-## 7. For Loops (v0.1.1 - Infrastructure Complete)
+## 7. For Loops (v0.2 - Fully Implemented)
 
-### Range-Based Loops
+### 7.1 Range-Based Loops
 
 ``` hoo
 func range_example() -> void {
-    // For-range loop infrastructure is implemented
-    // Full syntax parsing is in development
-    
+    // For-range loop is fully implemented (AST and LLVM IR generation)
     // This generates proper LLVM IR with:
     // - Entry basic block
     // - Condition check block  
     // - Loop body block
     // - Increment block
     // - Exit block
-    
+    for i in 0..5 { // Example syntax (full parsing and code generation works)
+        print("i = ${i}");
+    }
     return;
 }
 ```
 
-### For-In Loops
+### 7.2 For-In Loops
 
 ``` hoo
 func for_in_example() -> void {
-    var arr: int64[10];
+    var arr = [10, 20, 30];
     
-    // For-in loop AST and code generation complete
-    // Requires array access syntax for practical usage
-    
+    // For-in loop (for-each) AST and code generation complete
+    // Works with any iterable, including arrays
+    for item in arr {
+        print(item);
+    }
     return;
 }
 ```
@@ -192,29 +227,11 @@ func main() {
     }
 }
 ```
-
-------------------------------------------------------------------------
-
-## 7. Multi-Dimensional Arrays
-
-``` hoo
-func main() {
-    int64[2][3] matrix = [
-        [1, 2, 3],
-        [4, 5, 6]
-    ];
-
-    for row in matrix {
-        for value in row {
-            print(value);
-        }
-    }
-}
 ```
 
 ------------------------------------------------------------------------
 
-## 8. Functions
+## 9. Functions
 
 ``` hoo
 func add(int64 a, int64 b) -> int64 {
@@ -228,7 +245,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 9. Classes & Objects
+## 10. Classes & Objects
 
 ``` hoo
 class User(string name, int64 age) {
@@ -238,14 +255,14 @@ class User(string name, int64 age) {
 }
 
 func main() {
-    User u = User("Benoy", 30);
+    var u = new User("Benoy", 30); // Use 'new' keyword for instantiation
     u.greet();
 }
 ```
 
 ------------------------------------------------------------------------
 
-## 10. Interfaces
+## 11. Interfaces
 
 ``` hoo
 interface Greeter {
@@ -266,7 +283,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 11. Searching & Sorting
+## 12. Searching & Sorting
 
 ``` hoo
 func main() {
@@ -285,7 +302,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 12. List Comprehension
+## 13. List Comprehension
 
 ``` hoo
 func main() {
@@ -296,7 +313,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 13. Error Handling
+## 14. Error Handling
 
 ``` hoo
 func divide(int64 a, int64 b) -> int64 | Error {
@@ -318,7 +335,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 14. Singleton Pattern
+## 15. Singleton Pattern
 
 ``` hoo
 singleton class Logger {
@@ -334,7 +351,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 15. Immutable Object
+## 16. Immutable Object
 
 ``` hoo
 immutable class Money(double amount, string currency);
@@ -347,7 +364,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 16. Actor (Concurrency)
+## 17. Actor (Concurrency)
 
 ``` hoo
 actor class Counter {
@@ -371,7 +388,7 @@ func main() {
 
 ------------------------------------------------------------------------
 
-## 17. Data Processing Example
+## 18. Data Processing Example
 
 ``` hoo
 class User(string name, int64 age, bool active);
