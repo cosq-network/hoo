@@ -265,6 +265,7 @@ if(GTest_FOUND)
         tests/FunctionCallCodeGenTest.cpp
         tests/VariableDeclarationCodeGenTest.cpp
         tests/ArrayLiteralCodeGenTest.cpp
+        tests/ArrayGenericRuntimeTest.cpp
         tests/IfElseIfCodeGenTest.cpp
         tests/WhileLoopCodeGenTest.cpp
         tests/NullableCodeGenTest.cpp
