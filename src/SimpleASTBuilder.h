@@ -49,6 +49,7 @@ private:
     std::unique_ptr<ast::BasicImport> buildBasicImport(HoocParser::BasicImportContext* ctx);
     std::unique_ptr<ast::FromImport> buildFromImport(HoocParser::FromImportContext* ctx);
     std::unique_ptr<ast::ModulePath> buildModulePath(HoocParser::ModulePathContext* ctx);
+    std::unique_ptr<ast::QualifiedIdentifier> buildQualifiedIdentifier(HoocParser::QualifiedIdentifierContext* ctx);
     std::unique_ptr<ast::ImportItem> buildImportItem(HoocParser::ImportItemContext* ctx);
 
     // Class and interface building methods

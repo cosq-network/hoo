@@ -9,8 +9,11 @@
       "Bash(./build/RelWithDebInfo/hoo-tests.exe:*)",
       "Bash(timeout:*)",
       "Bash(git:*)",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\hoo-tests.exe\" --gtest_filter=\"GenericNameManglingTest.*\")",
-      "Bash(\"D:\\\\Projects\\\\hooc\\\\build\\\\RelWithDebInfo\\\\hoo-tests.exe\")"
+      "Bash(cat:*)",
+      "Bash(ctest:*)",
+      "Bash(findstr:*)",
+      "Bash(build\\\\hoo-tests.exe:*)",
+      "Bash(cd:*)"
     ]
   }
 }

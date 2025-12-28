@@ -1,6 +1,0 @@
-
-        func test() -> void {
-            var arr = ['a', 'b', 'c', 'd'];
-            return;
-        }
-    

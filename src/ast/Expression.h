@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ASTNode.h"
+#include "QualifiedIdentifier.h"
 #include <vector>
 #include <string>
 
@@ -122,22 +123,40 @@ class NewObjectExpression : public Expression {
 public:
     NewObjectExpression(const std::string& className,
                        std::unique_ptr<ArgumentList> arguments)
-        : className_(className), typeArguments_(), arguments_(std::move(arguments)) {}
+        : className_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{className})),
+          typeArguments_(), arguments_(std::move(arguments)) {}
+
+    NewObjectExpression(std::unique_ptr<QualifiedIdentifier> className,
+                       std::unique_ptr<ArgumentList> arguments)
+        : className_(std::move(className)), typeArguments_(), arguments_(std::move(arguments)) {}
 
     NewObjectExpression(const std::string& className,
                        std::vector<std::unique_ptr<Type>> typeArguments,
                        std::unique_ptr<ArgumentList> arguments)
-        : className_(className), typeArguments_(std::move(typeArguments)), arguments_(std::move(arguments)) {}
+        : className_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{className})),
+          typeArguments_(std::move(typeArguments)), arguments_(std::move(arguments)) {}
+
+    NewObjectExpression(std::unique_ptr<QualifiedIdentifier> className,
+                       std::vector<std::unique_ptr<Type>> typeArguments,
+                       std::unique_ptr<ArgumentList> arguments)
+        : className_(std::move(className)), typeArguments_(std::move(typeArguments)), arguments_(std::move(arguments)) {}
 
     std::string toString() const override;
 
-    const std::string& getClassName() const { return className_; }
+    // Get simple class name (backward compatible)
+    std::string getClassName() const {
+        return className_ ? className_->getName() : "";
+    }
+
+    // Get qualified class name (new API)
+    const QualifiedIdentifier* getQualifiedClassName() const { return className_.get(); }
+
     const std::vector<std::unique_ptr<Type>>& getTypeArguments() const { return typeArguments_; }
     const ArgumentList* getArguments() const { return arguments_.get(); }
     bool hasTypeArguments() const { return !typeArguments_.empty(); }
 
 private:
-    std::string className_;
+    std::unique_ptr<QualifiedIdentifier> className_;
     std::vector<std::unique_ptr<Type>> typeArguments_;
     std::unique_ptr<ArgumentList> arguments_;
 };

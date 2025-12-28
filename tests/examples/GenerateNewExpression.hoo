@@ -1,9 +1,0 @@
-
-        class Box {
-            constructor() {}
-        }
-
-        func createBox() {
-            var b = new Box();
-        }
-    

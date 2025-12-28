@@ -1,6 +1,0 @@
-
-        func test() -> void {
-            var longStr = "This is a very long string with many characters and spaces";
-            return;
-        }
-    

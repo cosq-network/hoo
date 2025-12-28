@@ -1,9 +1,0 @@
-
-        class Empty {
-            constructor() {}
-        }
-
-        func test() {
-            var e = new Empty();
-        }
-    

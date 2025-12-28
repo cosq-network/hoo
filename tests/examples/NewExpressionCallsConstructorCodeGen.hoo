@@ -1,9 +1,0 @@
-
-        class Init {
-            constructor(v: int64) {}
-        }
-
-        func test() {
-            var obj = new Init(100);
-        }
-    

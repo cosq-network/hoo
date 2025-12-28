@@ -1,9 +1,0 @@
-
-        class Point {
-            constructor(x: int64, y: int64) {}
-        }
-
-        func test() {
-            var p = new Point(10, 20);
-        }
-    

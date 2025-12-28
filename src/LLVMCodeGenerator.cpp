@@ -1,4 +1,5 @@
 #include "LLVMCodeGenerator.h"
+#include "runtime/RuntimeRegistry.h"
 #include "ast/AST.h"
 #include "ast/ClassDeclaration.h"
 #include "llvm/IR/Verifier.h"
@@ -117,7 +118,7 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
     #undef RUNTIME_OPERATOR
 
     // Declare string functions early so they're available
-    declareStringFunctions();
+    declareRuntimeFunctions();
 
     // First pass: process class declarations to create types
     for (const auto& decl : compilationUnit.getDeclarations()) {
@@ -340,7 +341,7 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
         Value* cstr = builder_->CreateGlobalString(stringLiteral->getValue(), "str");
 
         // Ensure string functions are declared
-        declareStringFunctions();
+        declareRuntimeFunctions();
 
         // Call hoo_string_from_cstr(cstr) to create HooString object
         if (!hoo_string_from_cstr_func_) {
@@ -374,7 +375,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string concatenation (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_concat(left, right)
                 if (!hoo_string_concat_func_) {
@@ -425,7 +426,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string comparison (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns <0 if left < right
                 if (!hoo_string_compare_func_) {
@@ -446,7 +447,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string comparison (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns <=0 if left <= right
                 if (!hoo_string_compare_func_) {
@@ -467,7 +468,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string comparison (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns >0 if left > right
                 if (!hoo_string_compare_func_) {
@@ -488,7 +489,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string comparison (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns >=0 if left >= right
                 if (!hoo_string_compare_func_) {
@@ -509,7 +510,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string comparison (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_equals(left, right) - returns 1 if equal, 0 if not
                 if (!hoo_string_equals_func_) {
@@ -531,7 +532,7 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             // Check for string comparison (both operands are pointers)
             if (left->getType()->isPointerTy() && right->getType()->isPointerTy()) {
                 // Ensure string functions are declared
-                declareStringFunctions();
+                declareRuntimeFunctions();
 
                 // Call hoo_string_equals(left, right) - returns 1 if equal, 0 if not
                 if (!hoo_string_equals_func_) {
@@ -2006,57 +2007,63 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
             module_.get()
         );
     }
-}
 
-// ============================================================================
-// LLVM String Function Declarations
-// ============================================================================
-// NOTE: Using manual declarations for correct parameter signatures
-// Framework in place (RuntimeClassRegistry.h) for future auto-generation
-// once parameter extraction from (Type, LLVM_Type) pairs is improved
+    // ========================================================================
+    // Invoke Registry Callbacks to Declare Runtime Functions
+    // ========================================================================
+    // Call all registered runtime libraries to declare their LLVM functions
+    // and populate the runtimeFunctionStorage_.
+    // This replaces the manual declareRuntimeFunctions() approach.
 
-void LLVMCodeGenerator::declareStringFunctions() {
-    // Declare hoo_string_new: HooString hoo_string_new()
-    if (!hoo_string_new_func_) {
-        std::vector<LLVMType*> params;  // No parameters
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_string_new_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_new", module_.get());
-    }
+    // Force String runtime to be linked and registered (works around linker optimization)
+    extern void _hoo_string_ensure_registration();
+    _hoo_string_ensure_registration();
 
-    // Declare hoo_string_from_cstr: HooString hoo_string_from_cstr(const char* cstr)
-    if (!hoo_string_from_cstr_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_string_from_cstr_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_from_cstr", module_.get());
-    }
+    auto& registry = runtime::RuntimeRegistry::getInstance();
+    registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);
 
-    // Declare hoo_string_concat: HooString hoo_string_concat(HooString dst, HooString src)
-    if (!hoo_string_concat_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0), llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        hoo_string_concat_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_concat", module_.get());
-    }
+    // ========================================================================
+    // Sync Legacy Function Pointers (for backward compatibility)
+    // ========================================================================
+    // The new architecture uses runtimeFunctionStorage_.strings, but the rest
+    // of the code still uses individual function pointers. Sync them here.
+    // This will be removed once all code is refactored to use storage.
 
-    // Declare hoo_string_equals: int64_t hoo_string_equals(HooString str1, HooString str2)
-    if (!hoo_string_equals_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0), llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
-        hoo_string_equals_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_equals", module_.get());
-    }
-
-    // Declare hoo_string_compare: int64_t hoo_string_compare(HooString str1, HooString str2)
-    if (!hoo_string_compare_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0), llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
-        hoo_string_compare_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_compare", module_.get());
-    }
-
-    // Declare hoo_string_length: int64_t hoo_string_length(HooString str)
-    if (!hoo_string_length_func_) {
-        std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
-        FunctionType* funcType = FunctionType::get(LLVMType::getInt64Ty(context_), params, false);
-        hoo_string_length_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_length", module_.get());
-    }
+    auto& stringStorage = runtimeFunctionStorage_.strings;
+    hoo_string_from_cstr_func_ = stringStorage.hoo_string_from_cstr_func;
+    hoo_string_new_func_ = stringStorage.hoo_string_new_func;
+    hoo_string_from_bytes_func_ = stringStorage.hoo_string_from_bytes_func;
+    hoo_string_repeat_func_ = stringStorage.hoo_string_repeat_func;
+    hoo_string_concat_func_ = stringStorage.hoo_string_concat_func;
+    hoo_string_substring_func_ = stringStorage.hoo_string_substring_func;
+    hoo_string_to_upper_func_ = stringStorage.hoo_string_to_upper_func;
+    hoo_string_to_lower_func_ = stringStorage.hoo_string_to_lower_func;
+    hoo_string_trim_func_ = stringStorage.hoo_string_trim_func;
+    hoo_string_replace_func_ = stringStorage.hoo_string_replace_func;
+    hoo_string_length_func_ = stringStorage.hoo_string_length_func;
+    hoo_string_data_func_ = stringStorage.hoo_string_data_func;
+    hoo_string_byte_at_func_ = stringStorage.hoo_string_byte_at_func;
+    hoo_string_is_empty_func_ = stringStorage.hoo_string_is_empty_func;
+    hoo_string_index_of_func_ = stringStorage.hoo_string_index_of_func;
+    hoo_string_last_index_of_func_ = stringStorage.hoo_string_last_index_of_func;
+    hoo_string_contains_func_ = stringStorage.hoo_string_contains_func;
+    hoo_string_starts_with_func_ = stringStorage.hoo_string_starts_with_func;
+    hoo_string_ends_with_func_ = stringStorage.hoo_string_ends_with_func;
+    hoo_string_compare_func_ = stringStorage.hoo_string_compare_func;
+    hoo_string_equals_func_ = stringStorage.hoo_string_equals_func;
+    hoo_string_equals_ignore_case_func_ = stringStorage.hoo_string_equals_ignore_case_func;
+    hoo_string_retain_func_ = stringStorage.hoo_string_retain_func;
+    hoo_string_release_func_ = stringStorage.hoo_string_release_func;
+    hoo_string_refcount_func_ = stringStorage.hoo_string_refcount_func;
+    hoo_string_from_int64_func_ = stringStorage.hoo_string_from_int64_func;
+    hoo_string_from_double_func_ = stringStorage.hoo_string_from_double_func;
+    hoo_string_from_bool_func_ = stringStorage.hoo_string_from_bool_func;
+    hoo_string_to_int64_func_ = stringStorage.hoo_string_to_int64_func;
+    hoo_string_to_double_func_ = stringStorage.hoo_string_to_double_func;
+    hoo_string_format_func_ = stringStorage.hoo_string_format_func;
+    hoo_string_print_func_ = stringStorage.hoo_string_print_func;
+    hoo_string_println_func_ = stringStorage.hoo_string_println_func;
+    hoo_string_debug_func_ = stringStorage.hoo_string_debug_func;
 }
 
 // ============================================================================
@@ -2074,7 +2081,7 @@ Value* LLVMCodeGenerator::tryStringOperator(
     }
 
     // Ensure string functions are declared
-    declareStringFunctions();
+    declareRuntimeFunctions();
 
     // Dispatch to appropriate operator
     switch (op) {
@@ -2527,7 +2534,7 @@ llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectEx
     const ast::ArgumentList* args = newExpr.getArguments();
 
     // Ensure string functions are declared
-    declareStringFunctions();
+    declareRuntimeFunctions();
 
     if (!args || args->getArguments().empty()) {
         // new std.String() - create empty string

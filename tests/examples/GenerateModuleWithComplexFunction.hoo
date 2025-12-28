@@ -1,8 +1,0 @@
-
-        func complex() -> void {
-            var x = 10;
-            if (x > 5) {
-                return;
-            }
-        }
-    

@@ -1,9 +1,0 @@
-
-        class Counter {
-            constructor(initial: int64) {}
-        }
-
-        func test() {
-            var c = new Counter(42);
-        }
-    

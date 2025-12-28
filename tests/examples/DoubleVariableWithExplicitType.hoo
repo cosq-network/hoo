@@ -1,6 +1,0 @@
-
-        func test() -> double {
-            var x: double = 2.718;
-            return x;
-        }
-    

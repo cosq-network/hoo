@@ -1,1 +1,0 @@
-func process(flag: bool) -> bool { return flag; }

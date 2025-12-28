@@ -1,7 +1,0 @@
-
-        func test() -> void {
-            if (true) {
-                return;
-            }
-        }
-    

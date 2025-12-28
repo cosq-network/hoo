@@ -1,5 +1,0 @@
-
-        func process(required: int64, optional: int64?) -> int64 {
-            return 0;
-        }
-    

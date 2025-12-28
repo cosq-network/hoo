@@ -1,9 +1,0 @@
-
-        class Widget {
-            constructor() {}
-        }
-
-        func test() {
-            var w = new Widget();
-        }
-    

@@ -1,6 +1,0 @@
-
-        func test() -> byte {
-            var x: byte = 255;
-            return x;
-        }
-    

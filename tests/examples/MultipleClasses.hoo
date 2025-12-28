@@ -1,9 +1,0 @@
-
-        class Animal {
-            constructor() {}
-        }
-
-        class Dog {
-            constructor() {}
-        }
-    

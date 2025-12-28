@@ -4,12 +4,14 @@
 #include "LLVMCodeGeneratorTypes.h"
 #include "ast/AST.h"
 #include "ast/ClassDeclaration.h"
+#include "ModuleSystem.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
 #include "runtime/RuntimeClassRegistry.h"
+#include "runtime/RuntimeFunctionStorage.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>
@@ -54,6 +56,22 @@ public:
     llvm::Value* generateLLVMExpression(const ast::Expression& expr);
     void generateLLVMStatement(const ast::Statement& stmt);
     llvm::Type* generateLLVMType(const ast::Type& type);
+
+    // ========================================================================
+    // Runtime Function Registration
+    // ========================================================================
+
+    /**
+     * Declare all runtime functions in the current module.
+     *
+     * Invokes the central RuntimeRegistry to call all registered runtime
+     * callbacks, which declare LLVM function prototypes and populate
+     * the runtimeFunctionStorage_ with function pointers.
+     *
+     * This should be called once during module creation, before generating
+     * code that uses runtime functions.
+     */
+    void declareRuntimeFunctions();
 
     // ========================================================================
     // Generic Type Name Mangling and Type Parameter Resolution
@@ -160,8 +178,22 @@ private:
     llvm::Function* hoo_release_func_ = nullptr;
 
     // ========================================================================
+    // Runtime Function Storage (populated by registry callbacks)
+    // ========================================================================
+    // This storage is populated by runtime libraries during module generation.
+    // Each runtime library registers a callback that populates its section
+    // of this storage with function pointers.
+    //
+    // Usage: See declareRuntimeFunctions() method
+
+    runtime::RuntimeFunctionStorage runtimeFunctionStorage_;
+
+    // ========================================================================
     // Runtime Class Function Pointers - String Class
     // ========================================================================
+    // DEPRECATED: For backward compatibility, these members point into
+    // runtimeFunctionStorage_.strings. They will be removed in a future refactor.
+    // New code should access functions via runtimeFunctionStorage_.strings.
 
     llvm::Function* hoo_string_from_cstr_func_ = nullptr;
     llvm::Function* hoo_string_new_func_ = nullptr;
@@ -218,32 +250,6 @@ private:
     llvm::Function* hoo_array_push_array_func_ = nullptr;
 
     // ========================================================================
-    // Auto-Generated Runtime Function Declaration Methods
-    // ========================================================================
-    // Each runtime class gets a declare<Class>Functions() method
-
-    void declareRuntimeFunctions();
-
-    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate) \
-        void declare##ClassName##Functions();
-    #define BEGIN_RUNTIME_FUNCTIONS
-    #define END_RUNTIME_FUNCTIONS
-    #define RUNTIME_FUNCTION(...)
-    #define BEGIN_RUNTIME_OPERATORS
-    #define END_RUNTIME_OPERATORS
-    #define RUNTIME_OPERATOR(...)
-
-    RUNTIME_CLASSES
-
-    #undef DEFINE_RUNTIME_CLASS
-    #undef BEGIN_RUNTIME_FUNCTIONS
-    #undef END_RUNTIME_FUNCTIONS
-    #undef RUNTIME_FUNCTION
-    #undef BEGIN_RUNTIME_OPERATORS
-    #undef END_RUNTIME_OPERATORS
-    #undef RUNTIME_OPERATOR
-
-    // ========================================================================
     // Auto-Generated Operator Dispatch Methods
     // ========================================================================
     // Each runtime class can handle specific binary operators
@@ -276,6 +282,27 @@ private:
 
     // Object creation
     llvm::Value* generateNewObjectExpression(const ast::NewObjectExpression& newExpr);
+
+    // ========================================================================
+    // Standard Library Class Constructor Generation
+    // ========================================================================
+
+    /**
+     * Generate code for standard library class constructors
+     * Maps std.String and std.Array to runtime functions
+     */
+    llvm::Value* generateStdClassConstructor(const ModuleExport& moduleExport,
+                                            const ast::NewObjectExpression& newExpr);
+
+    /**
+     * Generate constructor for std.String
+     */
+    llvm::Value* generateStringConstructor(const ast::NewObjectExpression& newExpr);
+
+    /**
+     * Generate constructor for std.Array
+     */
+    llvm::Value* generateArrayConstructor(const ast::NewObjectExpression& newExpr);
 
     // Helper methods for specific AST node types
     llvm::Value* generatePrimaryExpression(const ast::PrimaryExpression& expr);
@@ -339,6 +366,29 @@ private:
 
     // Helper to get the appropriate type-specific push function
     llvm::Function* getArrayPushFuncForType(llvm::Type* elementType);
+
+    // ========================================================================
+    // Module System - Import Resolution and Module Registry
+    // ========================================================================
+
+    ModuleRegistry moduleRegistry_;
+    std::unordered_map<std::string, const ModuleExport*> importedNames_;
+
+    /**
+     * Process import statements from the compilation unit
+     * Populates importedNames_ map with resolved imports
+     */
+    void processImports(const std::vector<std::unique_ptr<ast::ImportStatement>>& imports);
+
+    /**
+     * Process a basic import statement (import module.path as alias)
+     */
+    void processBasicImport(const ast::BasicImport& import);
+
+    /**
+     * Process a from import statement (from module import item1, item2)
+     */
+    void processFromImport(const ast::FromImport& import);
 };
 
 } // namespace hooc

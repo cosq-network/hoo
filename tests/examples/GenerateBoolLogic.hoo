@@ -1,8 +1,0 @@
-
-        func logic(a: bool, b: bool) -> bool {
-            var and_result = a && b;
-            var or_result = a || b;
-            var not_result = !a;
-            return and_result;
-        }
-    

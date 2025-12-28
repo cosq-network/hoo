@@ -40,6 +40,16 @@ std::string ModulePath::toString() const {
     return ss.str();
 }
 
+// Qualified identifier implementation
+std::string QualifiedIdentifier::toString() const {
+    std::stringstream ss;
+    for (size_t i = 0; i < components_.size(); i++) {
+        if (i > 0) ss << ".";
+        ss << components_[i];
+    }
+    return ss.str();
+}
+
 std::string BasicImport::toString() const {
     std::stringstream ss;
     ss << "import " << module_->toString();
@@ -145,10 +155,12 @@ std::string BaseType::toString() const {
     ss << "BaseType";
     if (isPrimitive()) {
         ss << "(primitive)";
-    } else if (hasTypeArguments()) {
-        ss << "(" << identifier_ << "<...>)";
-    } else if (!identifier_.empty()) {
-        ss << "(" << identifier_ << ")";
+    } else if (identifier_) {
+        if (hasTypeArguments()) {
+            ss << "(" << identifier_->toString() << "<...>)";
+        } else {
+            ss << "(" << identifier_->toString() << ")";
+        }
     }
     return ss.str();
 }

@@ -1,8 +1,0 @@
-
-        func access_test() -> int64 {
-            var arr = [10, 20, 30, 40, 50];
-            var index = 2;
-            var value = arr[index];
-            return 42;
-        }
-    

@@ -37,7 +37,7 @@ protected:
         return astBuilder->buildAST(parseTree);
     }
 
-    std::string getModuleString(Module* module) {
+    std::string getModuleString(llvm::Module* module) {
         std::string str;
         raw_string_ostream rso(str);
         module->print(rso, nullptr);
@@ -52,7 +52,7 @@ protected:
         return irString.find("call i64 @hoo_array_push") != std::string::npos;
     }
 
-    bool isModuleValid(Module* module) {
+    bool isModuleValid(llvm::Module* module) {
         std::string errorMsg;
         raw_string_ostream errorStream(errorMsg);
         return !verifyModule(*module, &errorStream);

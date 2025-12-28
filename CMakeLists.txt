@@ -147,6 +147,8 @@ add_library(hoo-compiler
     src/SimpleASTBuilder.cpp
     src/ast/ASTImpl.cpp
     src/ModuleSystem.cpp
+    src/runtime/RuntimeRegistry.cpp
+    src/rt/hoo_string_registration.cpp
 )
 
 # Hooc runtime library (reference counting, memory management, string support, generic array support)
@@ -157,7 +159,9 @@ add_library(hoort STATIC
 )
 
 target_include_directories(hoort PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/rt
+    ${LLVM_INCLUDE_DIRS}
 )
 
 # Add debug memory tracking in Debug builds

@@ -1,7 +1,0 @@
-
-        func compare(a: char, b: char) -> bool {
-            var equal = a == b;
-            var less = a < b;
-            return equal;
-        }
-    

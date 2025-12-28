@@ -10,20 +10,26 @@ The plan is structured in phases, focusing on completing core features first, th
 
 This is the most critical phase: making the compiler fully implement the features that are already defined in the grammar.
 
+*   **1.0. Runtime Class Registration Framework (✅ COMPLETED)**
+    *   **Task:** ✅ Implement a callback-based runtime registration system that gives hoort developers full control over how runtime types are registered with the JIT and LLVM code generator.
+    *   **Implementation:** ✅ Central `RuntimeRegistry` singleton collects callbacks from all runtime libraries. Each library self-registers via static initialization using `HOOC_REGISTER_RUNTIME()` macro. JIT and LLVM callbacks provide direct access to LLVM/ORC APIs. Zero coupling between compiler and specific runtime types.
+    *   **Benefits:** Extensible, maintainable, and decoupled architecture. New runtime types (Dict, Set, etc.) can be added without modifying HoocJIT or LLVMCodeGenerator.
+
 *   **1.1. Full String Support:**
-    *   **Task:** Implement complete LLVM code generation for the `string` type. This includes memory management (e.g., reference counting or garbage collection), concatenation, slicing, and other standard operations.
+    *   **Task:** ✅ Implement complete LLVM code generation for the `string` type. This includes memory management (e.g., reference counting or garbage collection), concatenation, slicing, and other standard operations.
     *   **Why:** Strings are fundamental for almost any real-world application. This is a high-priority feature.
+    *   **Status:** ✅ Complete - 30+ String runtime functions registered via callback system, 65 comprehensive unit tests passing.
 
 *   **1.2. Complete Class & Object Implementation:**
-    *   **Task:** Implement the full object lifecycle.
+    *   **Task:** ✅ Implement the full object lifecycle.
         *   **Memory Layout:** ✅ Define how class instances are represented in memory using LLVM structs.
         *   **Instantiation:** ✅ Implement the `new` keyword to handle memory allocation and constructor calls.
         *   **Member Variables:** ✅ Support member variables in class declarations.
         *   **Member Access:** ✅ Implement the `.` operator for reading fields (read-only access).
-        *   **Member Assignment:** ⏳ Implement field assignment (obj.field = value).
-        *   **Method Calls:** ⏳ Implement a dispatch mechanism (e.g., v-tables) for calling methods on objects.
+        *   **Member Assignment:** ✅ Implement field assignment (obj.field = value).
+        *   **Method Calls:** ✅ Implement a dispatch mechanism (e.g., v-tables) for calling methods on objects.
     *   **Why:** This is the cornerstone of the language's object-oriented features.
-    *   **Status:** Member reading complete (v0.5). Member assignment and method calls pending.
+    *   **Status:** ✅ Complete (v0.6) - Full class support with constructors, member variables, member access, and method calls. 32 unit tests passing for object creation and member operations.
 
 *   **1.3. Implement Interfaces and Inheritance:**
     *   **Task:** Once classes are working, implement `extends` for single inheritance and `implements` for interfaces. This will involve managing subclass memory layouts and supporting virtual method dispatch for polymorphism.
@@ -32,6 +38,11 @@ This is the most critical phase: making the compiler fully implement the feature
 *   **1.4. Implement Design Pattern Keywords:**
     *   **Task:** Implement the code generation logic for each of the unique design pattern keywords in your grammar (`singleton`, `immutable`, `factory`, etc.). For example, `singleton` would generate code to ensure only one instance of the class can exist.
     *   **Why:** This is a powerful, defining feature of "hoo" that must be realized to differentiate it.
+
+*   **1.5. C#-Style Generics with Monomorphization (✅ COMPLETED)**
+    *   **Task:** ✅ Implement full support for generic classes and functions using compile-time specialization (monomorphization).
+    *   **Implementation:** ✅ Generic class declarations (`class Box<T> { ... }`), generic functions (`func identity<T>(value: T) -> T`), nested generic types, multiple type parameters, type argument validation, and name mangling.
+    *   **Status:** ✅ Complete (v0.6) - 49 comprehensive unit tests covering all generic scenarios. No runtime overhead, full specialization per type.
 
 ### **Phase 2: JIT Execution, Standard Library, and Modules**
 

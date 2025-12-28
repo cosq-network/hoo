@@ -37,14 +37,14 @@ protected:
         return astBuilder->buildAST(parseTree);
     }
 
-    std::string getModuleString(Module* module) {
+    std::string getModuleString(llvm::Module* module) {
         std::string str;
         raw_string_ostream rso(str);
         module->print(rso, nullptr);
         return str;
     }
 
-    bool verifyModuleIsValid(Module* module) {
+    bool verifyModuleIsValid(llvm::Module* module) {
         std::string errorMsg;
         raw_string_ostream errorStream(errorMsg);
         return !verifyModule(*module, &errorStream);

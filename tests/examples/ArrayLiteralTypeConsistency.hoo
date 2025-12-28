@@ -1,9 +1,0 @@
-
-        func test() -> void {
-            var ints = [1, 2, 3];
-            var floats = [1.0, 2.0, 3.0];
-            var bools = [true, false, true];
-            var chars = ['x', 'y', 'z'];
-            return;
-        }
-    

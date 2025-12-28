@@ -1,6 +1,0 @@
-
-        func test() -> bool {
-            var x: bool = false;
-            return x;
-        }
-    

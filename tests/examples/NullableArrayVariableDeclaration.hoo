@@ -1,6 +1,0 @@
-
-        func test() -> int64 {
-            var x: int64[]? = [1, 2, 3];
-            return 0;
-        }
-    

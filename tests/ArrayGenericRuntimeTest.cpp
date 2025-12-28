@@ -39,14 +39,14 @@ protected:
         return astBuilder->buildAST(parseTree);
     }
 
-    std::string getModuleString(Module* module) {
+    std::string getModuleString(llvm::Module* module) {
         std::string str;
         raw_string_ostream rso(str);
         module->print(rso, nullptr);
         return str;
     }
 
-    bool hasGlobalDataBuffer(Module* module) {
+    bool hasGlobalDataBuffer(llvm::Module* module) {
         // Phase 4: Array literals should create global data buffers (.array_data)
         for (auto& global : module->globals()) {
             if (global.getName().contains("array_data")) {

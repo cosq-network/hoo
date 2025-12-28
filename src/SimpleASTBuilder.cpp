@@ -203,8 +203,8 @@ std::unique_ptr<BaseType> SimpleASTBuilder::buildBaseType(HoocParser::BaseTypeCo
     if (ctx->primitiveType()) {
         auto primitive = buildPrimitiveType(ctx->primitiveType());
         return std::make_unique<BaseType>(std::move(primitive));
-    } else if (ctx->IDENTIFIER()) {
-        std::string identifier = ctx->IDENTIFIER()->getText();
+    } else if (ctx->qualifiedIdentifier()) {
+        auto qualifiedId = buildQualifiedIdentifier(ctx->qualifiedIdentifier());
 
         // Check for type arguments (generics)
         std::vector<std::unique_ptr<Type>> typeArguments;
@@ -215,9 +215,9 @@ std::unique_ptr<BaseType> SimpleASTBuilder::buildBaseType(HoocParser::BaseTypeCo
         }
 
         if (!typeArguments.empty()) {
-            return std::make_unique<BaseType>(identifier, std::move(typeArguments));
+            return std::make_unique<BaseType>(std::move(qualifiedId), std::move(typeArguments));
         } else {
-            return std::make_unique<BaseType>(identifier);
+            return std::make_unique<BaseType>(std::move(qualifiedId));
         }
     }
 
@@ -565,8 +565,8 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::NewExpressionContext* ctx) {
-    // Get the class name
-    std::string className = ctx->IDENTIFIER()->getText();
+    // Get the qualified class name
+    auto qualifiedClassName = buildQualifiedIdentifier(ctx->qualifiedIdentifier());
 
     // Build type arguments if present (for generics)
     std::vector<std::unique_ptr<Type>> typeArguments;
@@ -586,9 +586,9 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
     }
 
     if (!typeArguments.empty()) {
-        return std::make_unique<NewObjectExpression>(className, std::move(typeArguments), std::move(args));
+        return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), std::move(typeArguments), std::move(args));
     } else {
-        return std::make_unique<NewObjectExpression>(className, std::move(args));
+        return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), std::move(args));
     }
 }
 
@@ -634,6 +634,14 @@ std::unique_ptr<ModulePath> SimpleASTBuilder::buildModulePath(HoocParser::Module
         components.push_back(id->getText());
     }
     return std::make_unique<ModulePath>(std::move(components));
+}
+
+std::unique_ptr<QualifiedIdentifier> SimpleASTBuilder::buildQualifiedIdentifier(HoocParser::QualifiedIdentifierContext* ctx) {
+    std::vector<std::string> components;
+    for (auto id : ctx->IDENTIFIER()) {
+        components.push_back(id->getText());
+    }
+    return std::make_unique<QualifiedIdentifier>(std::move(components));
 }
 
 std::unique_ptr<ImportItem> SimpleASTBuilder::buildImportItem(HoocParser::ImportItemContext* ctx) {

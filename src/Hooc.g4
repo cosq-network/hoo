@@ -114,6 +114,9 @@ importStatement
 
 modulePath: IDENTIFIER (DOT IDENTIFIER)*;
 
+// Qualified identifier (for module.Type syntax in type and constructor contexts)
+qualifiedIdentifier: IDENTIFIER (DOT IDENTIFIER)*;
+
 importItem: IDENTIFIER (AS IDENTIFIER)?;
 
 // Top-level Declarations
@@ -184,7 +187,7 @@ arrayType: baseType (LBRACKET RBRACKET)*;
 
 baseType
     : primitiveType
-    | IDENTIFIER typeArgumentList?
+    | qualifiedIdentifier typeArgumentList?
     ;
 
 primitiveType: BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
@@ -275,7 +278,7 @@ primary
 
 // Object creation expression
 newExpression
-    : NEW IDENTIFIER typeArgumentList? LPAREN argumentList? RPAREN
+    : NEW qualifiedIdentifier typeArgumentList? LPAREN argumentList? RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

@@ -1,9 +1,0 @@
-
-        class Node {
-            constructor() {}
-        }
-
-        func test() {
-            var n = new Node();
-        }
-    

@@ -1,7 +1,0 @@
-
-        func test() -> void {
-            var f = 3.14;
-            var typed: float = 2.71;
-            return;
-        }
-    

@@ -1,6 +1,0 @@
-
-        func test() -> void {
-            var result = "Hello" + ", " + "World" + "!";
-            return;
-        }
-    

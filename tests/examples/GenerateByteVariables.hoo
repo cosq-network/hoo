@@ -1,7 +1,0 @@
-
-        func test() -> void {
-            var b = 255;
-            var typed: byte = 128;
-            return;
-        }
-    

@@ -1,9 +1,0 @@
-
-        class Data {
-            constructor() {}
-        }
-
-        func createData() {
-            var d = new Data();
-        }
-    

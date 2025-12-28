@@ -1,1 +1,0 @@
-func process(data: float) -> float { return data; }

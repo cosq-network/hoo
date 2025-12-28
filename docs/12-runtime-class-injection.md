@@ -1,141 +1,225 @@
 # Runtime Class Injection Framework
 
-This document explains how runtime modules, classes, functions, and variables from **hoort** (the Hoo runtime library) are injected into **HoocJIT** and **LLVMCodeGenerator** using the X-Macro pattern.
+This document explains how runtime modules, classes, functions, and variables from **hoort** (the Hoo runtime library) are injected into **HoocJIT** and **LLVMCodeGenerator** using a **callback-based registration system**.
 
 ## Overview
 
-The **Runtime Class Injection Framework** is a compile-time metaprogramming system that enables:
-- Single source of truth for runtime class metadata
-- Zero-cost abstraction (all code generation at compile time)
-- Automatic JIT registration of runtime functions
-- Automatic LLVM function declarations
-- Extensible operator dispatch for runtime types
-- Minimal boilerplate when adding new runtime classes
+The **Runtime Class Injection Framework** is a callback-based system that enables:
+- **Full developer control**: Runtime authors write callbacks to register their types
+- **Zero compiler coupling**: HoocJIT and LLVMCodeGenerator don't know about specific runtime types
+- **Distributed registration**: Each runtime library self-registers via static initialization
+- **Automatic JIT registration** of runtime functions via callbacks
+- **Automatic LLVM function declarations** via callbacks
+- **Extensible operator dispatch** for runtime types
+- **Minimal boilerplate** when adding new runtime classes
 
 ### Key Components
 
 | Component | Purpose |
 |-----------|---------|
-| `src/runtime/RuntimeClassRegistry.h` | Central registry (X-Macro) defining all runtime classes |
-| `src/runtime/RuntimeClassCodeGen.h` | Code generation patterns and documentation |
-| `src/HoocJIT.cpp` | JIT symbol registration |
-| `src/LLVMCodeGenerator.cpp` | LLVM function declarations and operator dispatch |
+| `src/runtime/RuntimeRegistry.h` | Central singleton registry that collects and invokes callbacks |
+| `src/runtime/RuntimeFunctionStorage.h` | Storage for runtime function pointers |
+| `src/HoocJIT.cpp` | Invokes JIT registration callbacks |
+| `src/LLVMCodeGenerator.cpp` | Invokes LLVM declaration callbacks |
+| `src/rt/hoo_string_registration.cpp` | String runtime self-registration (example) |
 | `src/rt/` | C/C++ implementation of runtime classes (hoo_string, hoo_array, etc.) |
 
 ---
 
-## The X-Macro Pattern
+## The Callback-Based Registration System
 
-The X-Macro (eXtensible Macro) pattern allows the same metadata to be **re-included multiple times** with different macro definitions, generating different code for each use case.
+Runtime libraries register themselves through **two callbacks**:
+
+1. **JIT Registration Callback**: Register symbols with LLVM ORC JIT
+2. **LLVM Declaration Callback**: Declare function prototypes in LLVM modules
 
 ### How It Works
 
-1. **Define the data** in a header without include guards:
+1. **Runtime library defines callbacks**:
    ```cpp
-   // RuntimeClassRegistry.h (NO #pragma once or #ifndef!)
-   #define RUNTIME_CLASSES \
-       DEFINE_RUNTIME_CLASS(String, HooString, isPointerTy) \
-           BEGIN_RUNTIME_FUNCTIONS \
-               RUNTIME_FUNCTION(from_cstr, HooString, LLVM_PTR, ...) \
-               RUNTIME_FUNCTION(concat, HooString, LLVM_PTR, ...) \
-           END_RUNTIME_FUNCTIONS \
-           BEGIN_RUNTIME_OPERATORS \
-               RUNTIME_OPERATOR(PLUS, concat) \
-           END_RUNTIME_OPERATORS
+   // src/rt/hoo_string_registration.cpp
+
+   void hoo_string_register_with_jit(
+       llvm::orc::LLJIT& jit,
+       llvm::orc::JITDylib& mainDylib) {
+       // Register hoo_string_* functions as JIT symbols
+       // Full control over how symbols are registered
+   }
+
+   void hoo_string_declare_llvm_functions(
+       llvm::Module& module,
+       llvm::LLVMContext& context,
+       void* userData) {
+       // Declare hoo_string_* functions in LLVM module
+       // Populate function pointers in userData storage
+   }
    ```
 
-2. **Use it multiple times with different macro definitions:**
+2. **Runtime library self-registers using macro**:
    ```cpp
-   // In HoocJIT.cpp - generates JIT registration
-   #define DEFINE_RUNTIME_CLASS(Name, ...) \
-       void HoocJIT::register##Name##Functions() { ... }
-   #define RUNTIME_FUNCTION(FuncName, ...) \
-       // Register with JIT
-   #include "runtime/RuntimeClassRegistry.h"
-   #undef DEFINE_RUNTIME_CLASS
-   #undef RUNTIME_FUNCTION
+   // At end of hoo_string_registration.cpp
+   HOOC_REGISTER_RUNTIME(
+       String,                                // Runtime name
+       hoo_string_register_with_jit,          // JIT callback
+       hoo_string_declare_llvm_functions      // LLVM callback
+   )
+   ```
 
-   // In LLVMCodeGenerator.cpp - generates LLVM declarations
-   #define DEFINE_RUNTIME_CLASS(Name, ...) \
-       void LLVMCodeGenerator::declare##Name##Functions() { ... }
-   #define RUNTIME_FUNCTION(FuncName, ...) \
-       // Create LLVM function declaration
-   #include "runtime/RuntimeClassRegistry.h"
-   #undef DEFINE_RUNTIME_CLASS
-   #undef RUNTIME_FUNCTION
+3. **HoocJIT invokes JIT callbacks**:
+   ```cpp
+   // In HoocJIT constructor
+   auto& registry = runtime::RuntimeRegistry::getInstance();
+   auto& mainJD = JIT->getMainJITDylib();
+   registry.registerAllWithJIT(*JIT, mainJD);  // Invokes all registered JIT callbacks
+   ```
+
+4. **LLVMCodeGenerator invokes LLVM callbacks**:
+   ```cpp
+   // In LLVMCodeGenerator::declareRuntimeFunctions()
+   auto& registry = runtime::RuntimeRegistry::getInstance();
+   registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);
+   // Invokes all registered LLVM callbacks, populating function pointers
    ```
 
 ### Benefits
 
-✅ **Single Source of Truth**: Define each runtime class once
-✅ **DRY (Don't Repeat Yourself)**: No duplication across JIT, LLVM, and header files
-✅ **Type Safety**: Function signatures defined once, used everywhere
-✅ **Maintainability**: Add one entry to registry, all code auto-generates
-✅ **Zero Runtime Cost**: All code generation happens at compile time
+✅ **Full Control**: Runtime developers have direct access to LLVM and JIT APIs
+✅ **Zero Coupling**: Compiler infrastructure doesn't know about specific runtime types
+✅ **Extensibility**: Add new runtime types without modifying compiler code
+✅ **Distributed**: Each runtime manages its own registration logic
+✅ **Type Safety**: Callbacks receive concrete LLVM types, not void pointers
 
 ---
 
-## Runtime Class Registry
+## Central Registry (RuntimeRegistry)
 
 ### File Location
-`src/runtime/RuntimeClassRegistry.h`
+`src/runtime/RuntimeRegistry.h` and `src/runtime/RuntimeRegistry.cpp`
 
 ### Structure
 
+The `RuntimeRegistry` is a singleton that collects callbacks from all runtime libraries:
+
 ```cpp
-#define RUNTIME_CLASSES \
-    DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate) \
-        BEGIN_RUNTIME_FUNCTIONS \
-            RUNTIME_FUNCTION(func_name, ReturnType, LLVM_TYPE, (ParamType, LLVM_TYPE)...) \
-            ... \
-        END_RUNTIME_FUNCTIONS \
-        BEGIN_RUNTIME_OPERATORS \
-            RUNTIME_OPERATOR(AST_OPERATOR, function_name) \
-            ... \
-        END_RUNTIME_OPERATORS
+class RuntimeRegistry {
+public:
+    static RuntimeRegistry& getInstance();  // Singleton accessor
+
+    void registerRuntime(const RuntimeRegistrationEntry& entry);
+
+    void registerAllWithJIT(
+        llvm::orc::LLJIT& jit,
+        llvm::orc::JITDylib& mainDylib);
+
+    void declareAllFunctions(
+        llvm::Module& module,
+        llvm::LLVMContext& context,
+        void* userData);
+
+    const std::vector<RuntimeRegistrationEntry>& getRegisteredRuntimes() const;
+
+private:
+    std::vector<RuntimeRegistrationEntry> runtimes_;
+};
 ```
+
+### Registration Entry
+
+Each runtime library registers itself with:
+
+```cpp
+struct RuntimeRegistrationEntry {
+    const char* runtimeName;
+    RuntimeJITRegistrationCallback jitCallback;
+    RuntimeLLVMDeclarationCallback llvmCallback;
+};
+```
+
+Where callbacks are:
+
+```cpp
+// JIT symbol registration callback
+using RuntimeJITRegistrationCallback = void(*)(
+    llvm::orc::LLJIT& jit,
+    llvm::orc::JITDylib& mainDylib
+);
+
+// LLVM function declaration callback
+using RuntimeLLVMDeclarationCallback = void(*)(
+    llvm::Module& module,
+    llvm::LLVMContext& context,
+    void* userData  // Pointer to RuntimeFunctionStorage
+);
+```
+
+### Registration Macro
+
+Runtime libraries use this macro to self-register:
+
+```cpp
+#define HOOC_REGISTER_RUNTIME(Name, JitFn, LlvmFn) \
+    static ::hooc::runtime::RuntimeAutoRegister \
+        __hooc_runtime_auto_register_##Name({ \
+            #Name, \
+            JitFn, \
+            LlvmFn \
+        });
+```
+
+This creates a static `RuntimeAutoRegister` object that registers the callbacks during C++ static initialization (before main()).
 
 ### Current Runtime Classes
 
 #### 1. String (HooString)
+
+**Self-registration in `src/rt/hoo_string_registration.cpp`:**
+
 ```cpp
-DEFINE_RUNTIME_CLASS(String, HooString, isPointerTy)
-    BEGIN_RUNTIME_FUNCTIONS
-        RUNTIME_FUNCTION(new, HooString, LLVM_PTR, )
-        RUNTIME_FUNCTION(from_cstr, HooString, LLVM_PTR, (const char*, LLVM_PTR))
-        RUNTIME_FUNCTION(from_bytes, HooString, LLVM_PTR, (const char*, LLVM_PTR), (int64_t, LLVM_I64))
-        RUNTIME_FUNCTION(concat, HooString, LLVM_PTR, (HooString, LLVM_PTR), (HooString, LLVM_PTR))
-        RUNTIME_FUNCTION(equals, int64_t, LLVM_I64, (HooString, LLVM_PTR), (HooString, LLVM_PTR))
-        RUNTIME_FUNCTION(length, int64_t, LLVM_I64, (HooString, LLVM_PTR))
-        // ... more functions ...
-    END_RUNTIME_FUNCTIONS
-    BEGIN_RUNTIME_OPERATORS
-        RUNTIME_OPERATOR(PLUS, concat)
-        RUNTIME_OPERATOR(EQUALS, equals)
-        RUNTIME_OPERATOR(LESS, compare)
-        // ... more operators ...
-    END_RUNTIME_OPERATORS
+// JIT Registration Callback
+void hoo_string_register_with_jit(
+    llvm::orc::LLJIT& jit,
+    llvm::orc::JITDylib& mainDylib) {
+    SymbolMap symbols;
+    // Register all String functions with JIT
+    symbols[jit.mangleAndIntern("hoo_string_from_cstr")] = ...;
+    symbols[jit.mangleAndIntern("hoo_string_concat")] = ...;
+    // ... 30+ functions ...
+    mainDylib.define(absoluteSymbols(symbols));
+}
+
+// LLVM Declaration Callback
+void hoo_string_declare_llvm_functions(
+    llvm::Module& module,
+    llvm::LLVMContext& context,
+    void* userData) {
+    auto storage = static_cast<RuntimeFunctionStorage*>(userData);
+    auto& stringStorage = storage->strings;
+
+    // Declare all String functions in LLVM module
+    stringStorage.hoo_string_from_cstr_func = Function::Create(
+        FunctionType::get(ptrTy, {ptrTy}, false),
+        Function::ExternalLinkage,
+        "hoo_string_from_cstr",
+        &module);
+    // ... 30+ functions ...
+}
+
+// Self-register
+HOOC_REGISTER_RUNTIME(
+    String,
+    hoo_string_register_with_jit,
+    hoo_string_declare_llvm_functions
+)
 ```
 
-- **ClassName**: `String` - used for method naming
-- **HandleType**: `HooString` - C type representing the object (void* pointer)
-- **DetectionPredicate**: `isPointerTy` - LLVM type check to identify this runtime type
+Functions include: `new`, `from_cstr`, `concat`, `equals`, `length`, `compare`, `substring`, `to_upper`, `to_lower`, etc. (30+ total)
 
 #### 2. Array (HooArray)
-```cpp
-DEFINE_RUNTIME_CLASS(Array, HooArray, isPointerTy)
-    BEGIN_RUNTIME_FUNCTIONS
-        RUNTIME_FUNCTION(new, HooArray, LLVM_PTR, )
-        RUNTIME_FUNCTION(push, void, LLVM_VOID, (HooArray, LLVM_PTR), (const void*, LLVM_PTR))
-        RUNTIME_FUNCTION(get, const void*, LLVM_PTR, (HooArray, LLVM_PTR), (int64_t, LLVM_I64))
-        RUNTIME_FUNCTION(set, void, LLVM_VOID, (HooArray, LLVM_PTR), (int64_t, LLVM_I64), (const void*, LLVM_PTR))
-        RUNTIME_FUNCTION(length, int64_t, LLVM_I64, (HooArray, LLVM_PTR))
-        // ... more functions ...
-    END_RUNTIME_FUNCTIONS
-    BEGIN_RUNTIME_OPERATORS
-        // Arrays typically don't have operator overloads
-    END_RUNTIME_OPERATORS
-```
+
+Similar callback-based structure:
+- JIT callback registers 20+ array functions
+- LLVM callback declares function prototypes and populates storage
+- Self-registers using same `HOOC_REGISTER_RUNTIME` macro
 
 ---
 
@@ -151,28 +235,37 @@ DEFINE_RUNTIME_CLASS(Array, HooArray, isPointerTy)
 │  - hoo_string_new()  ← actual C function                    │
 │  - hoo_string_concat()                                      │
 │  - hoo_array_push()                                         │
-│  - etc.                                                      │
+│  - Self-registration callbacks                              │
 └─────────────────────────────────────────────────────────────┘
                           ↓
 ┌─────────────────────────────────────────────────────────────┐
-│  2. REGISTRY DEFINITION (RuntimeClassRegistry.h)            │
+│  2. CALLBACK REGISTRATION (hoo_*_registration.cpp)          │
 │  ────────────────────────────────────────────────────────── │
-│  Metadata: function names, signatures, types               │
-│  (Single source of truth)                                   │
+│  • JIT callback: Register symbols with LLJIT               │
+│  • LLVM callback: Declare functions in module              │
+│  • HOOC_REGISTER_RUNTIME macro: Auto-registers             │
+└─────────────────────────────────────────────────────────────┘
+                          ↓
+┌─────────────────────────────────────────────────────────────┐
+│  3. CENTRAL REGISTRY (RuntimeRegistry singleton)            │
+│  ────────────────────────────────────────────────────────── │
+│  • Collects all registered callbacks                        │
+│  • Invoked by HoocJIT and LLVMCodeGenerator                 │
 └─────────────────────────────────────────────────────────────┘
                           ↓
               ┌───────────┴───────────┐
               ↓                       ↓
     ┌──────────────────────┐  ┌──────────────────────┐
-    │  3A. HoocJIT         │  │  3B. LLVMCodeGen     │
+    │  4A. HoocJIT         │  │  4B. LLVMCodeGen     │
     │  ─────────────────   │  │  ──────────────────  │
+    │  • Invoke JIT        │  │  • Invoke LLVM       │
+    │    callbacks         │  │    callbacks         │
     │  • Register symbols  │  │  • Declare functions │
-    │  • Link runtime C    │  │  • Storage pointers  │
-    │  • Enable JIT exec   │  │  • Operator dispatch │
+    │  • Enable JIT exec   │  │  • Populate storage  │
     └──────────────────────┘  └──────────────────────┘
               ↓                       ↓
     ┌──────────────────────────────────────┐
-    │  4. LLVM IR GENERATION                │
+    │  5. LLVM IR GENERATION                │
     │  ──────────────────────────           │
     │  %0 = call i8* @hoo_string_new()     │
     │  %1 = call i8* @hoo_string_concat(   │
@@ -181,7 +274,7 @@ DEFINE_RUNTIME_CLASS(Array, HooArray, isPointerTy)
     └──────────────────────────────────────┘
               ↓
     ┌──────────────────────────────────────┐
-    │  5. JIT EXECUTION                     │
+    │  6. JIT EXECUTION                     │
     │  ──────────────────────              │
     │  • Link LLVM module with JIT         │
     │  • Resolve hoo_string_* symbols      │
@@ -194,44 +287,66 @@ DEFINE_RUNTIME_CLASS(Array, HooArray, isPointerTy)
 ## HoocJIT: Symbol Registration
 
 ### Purpose
-Register runtime C functions as symbols in the LLVM ORC JIT dylib so they can be called from compiled code.
+Invoke runtime registration callbacks to register runtime C functions as symbols in the LLVM ORC JIT dylib.
 
 ### Location
-`src/HoocJIT.cpp` (lines ~40-145)
+`src/HoocJIT.cpp` (constructor)
 
 ### How It Works
 
 ```cpp
-// Generated method for each runtime class
-void HoocJIT::registerStringFunctions() {
+// In HoocJIT constructor
+HoocJIT::HoocJIT() {
+    // ... initialize LLVM ...
+
+    // Invoke all registered runtime callbacks
+    auto& registry = runtime::RuntimeRegistry::getInstance();
     auto& mainJD = JIT->getMainJITDylib();
+
+    registry.registerAllWithJIT(*JIT, mainJD);  // Call all JIT callbacks
+}
+```
+
+**What happens inside the callback:**
+
+```cpp
+// In hoo_string_registration.cpp
+void hoo_string_register_with_jit(
+    llvm::orc::LLJIT& jit,
+    llvm::orc::JITDylib& mainDylib) {
+
     llvm::orc::SymbolMap symbols;
 
-    // Register each function in the String class
-    symbols[JIT->mangleAndIntern("hoo_string_new")] =
+    // Register each function with JIT
+    symbols[jit.mangleAndIntern("hoo_string_new")] =
         llvm::orc::ExecutorSymbolDef(
             llvm::orc::ExecutorAddr::fromPtr(&hoo_string_new),
             JITSymbolFlags::Exported);
 
-    symbols[JIT->mangleAndIntern("hoo_string_concat")] =
+    symbols[jit.mangleAndIntern("hoo_string_concat")] =
         llvm::orc::ExecutorSymbolDef(
             llvm::orc::ExecutorAddr::fromPtr(&hoo_string_concat),
             JITSymbolFlags::Exported);
 
-    // ... more functions ...
+    // ... 28+ more functions ...
 
-    auto Err = mainJD.define(absoluteSymbols(symbols));
-    if (Err) exit(1);
+    auto Err = mainDylib.define(absoluteSymbols(symbols));
+    if (Err) {
+        llvm::errs() << "Failed to register String functions\\n";
+        exit(1);
+    }
 }
 ```
 
 **What This Does:**
-1. Gets the main JIT dylib (where symbols live)
-2. Creates a map of symbol names → function pointers
-3. For each runtime function, adds an entry mapping:
+1. HoocJIT invokes `registerAllWithJIT()` on the registry
+2. Registry invokes JIT callback for each registered runtime (e.g., String)
+3. Runtime callback creates a map of symbol names → function pointers
+4. For each runtime function, adds an entry mapping:
    - **Symbol name**: `hoo_string_new` (for linker resolution)
    - **Function pointer**: Address of actual C implementation `&hoo_string_new`
-4. Registers all symbols with the JIT
+5. Callback registers all symbols with the JIT
+6. Runtime developer has **full control** over symbol registration
 
 **Result:** When LLVM generates `call @hoo_string_new()`, the JIT can resolve it to the actual C function.
 
@@ -240,42 +355,81 @@ void HoocJIT::registerStringFunctions() {
 ## LLVMCodeGenerator: Function Declaration & Dispatch
 
 ### Purpose
-1. **Declare** runtime functions as LLVM external functions
-2. **Store** function pointers for code generation
+1. **Invoke callbacks** to declare runtime functions in LLVM modules
+2. **Store** function pointers from callbacks for code generation
 3. **Dispatch** operators to correct runtime implementations
 
 ### Location
 `src/LLVMCodeGenerator.cpp` and `src/LLVMCodeGenerator.h`
 
-### 1. Function Declaration
+### 1. Function Declaration via Callbacks
 
-In `declareStringFunctions()` and similar methods:
+In `declareRuntimeFunctions()` method:
 
 ```cpp
-void LLVMCodeGenerator::declareStringFunctions() {
-    // Declare hoo_string_new: HooString hoo_string_new()
-    if (!hoo_string_new_func_) {
-        std::vector<llvm::Type*> params;  // No parameters
-        FunctionType* funcType = FunctionType::get(
-            llvm::PointerType::get(context_, 0),  // return void*
-            params,
-            false);
-        hoo_string_new_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_string_new",  // ← Must match C function name
-            module_.get());
-    }
+void LLVMCodeGenerator::declareRuntimeFunctions() {
+    // Force String runtime to be linked (works around linker optimization)
+    extern void _hoo_string_ensure_registration();
+    _hoo_string_ensure_registration();
 
-    // ... declare more functions ...
+    // Invoke all registered LLVM declaration callbacks
+    auto& registry = runtime::RuntimeRegistry::getInstance();
+    registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);
+
+    // Sync function pointers to legacy members (for backward compatibility)
+    auto& stringStorage = runtimeFunctionStorage_.strings;
+    hoo_string_from_cstr_func_ = stringStorage.hoo_string_from_cstr_func;
+    hoo_string_concat_func_ = stringStorage.hoo_string_concat_func;
+    // ... sync 28+ more functions ...
+}
+```
+
+**What happens inside the callback:**
+
+```cpp
+// In hoo_string_registration.cpp
+void hoo_string_declare_llvm_functions(
+    llvm::Module& module,
+    llvm::LLVMContext& context,
+    void* userData) {
+
+    auto fullStorage = static_cast<RuntimeFunctionStorage*>(userData);
+    auto& storage = fullStorage->strings;
+
+    // Create LLVM types
+    auto ptrTy = PointerType::get(context, 0);  // void*
+    auto i64Ty = Type::getInt64Ty(context);     // int64_t
+
+    // Declare hoo_string_new: void* hoo_string_new()
+    std::vector<Type*> params;  // No parameters
+    auto funcType = FunctionType::get(ptrTy, params, false);
+    storage.hoo_string_new_func = Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_string_new",  // Must match C function name
+        &module);
+
+    // Declare hoo_string_concat: void* hoo_string_concat(void*, void*)
+    params = {ptrTy, ptrTy};
+    funcType = FunctionType::get(ptrTy, params, false);
+    storage.hoo_string_concat_func = Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_string_concat",
+        &module);
+
+    // ... declare 28+ more functions ...
 }
 ```
 
 **What This Does:**
-1. Creates LLVM function type matching the C signature
-2. Creates LLVM Function declaration (not definition)
-3. Stores pointer in `hoo_string_new_func_` for later use
-4. Links to external C implementation via name matching
+1. LLVMCodeGenerator invokes `declareAllFunctions()` on registry
+2. Registry invokes LLVM callback for each registered runtime (e.g., String)
+3. Runtime callback creates LLVM function types matching C signatures
+4. Creates LLVM Function declarations (not definitions)
+5. Stores pointers in `RuntimeFunctionStorage` passed via `userData`
+6. LLVMCodeGenerator syncs pointers to legacy members for backward compatibility
+7. Runtime developer has **full control** over how functions are declared
 
 ### 2. Function Pointer Storage
 
@@ -672,15 +826,85 @@ llvm::Value* LLVMCodeGenerator::tryStringOperator(...) {
 
 ---
 
+## Adding a New Runtime Type (Dict Example)
+
+To add a new runtime type (e.g., Dict/HashMap):
+
+1. **Implement C API** in `src/rt/hoo_dict.{h,cpp}`
+   ```c
+   typedef void* HooDict;
+   HooDict hoo_dict_new(void);
+   void hoo_dict_set(HooDict d, const char* key, void* value);
+   void* hoo_dict_get(HooDict d, const char* key);
+   // ... etc ...
+   ```
+
+2. **Create registration** in `src/rt/hoo_dict_registration.cpp`
+   ```cpp
+   void hoo_dict_register_with_jit(llvm::orc::LLJIT& jit, llvm::orc::JITDylib& mainDylib) {
+       SymbolMap symbols;
+       symbols[jit.mangleAndIntern("hoo_dict_new")] = ...;
+       symbols[jit.mangleAndIntern("hoo_dict_set")] = ...;
+       symbols[jit.mangleAndIntern("hoo_dict_get")] = ...;
+       mainDylib.define(absoluteSymbols(symbols));
+   }
+
+   void hoo_dict_declare_llvm_functions(
+       llvm::Module& module,
+       llvm::LLVMContext& context,
+       void* userData) {
+       auto storage = static_cast<RuntimeFunctionStorage*>(userData);
+       auto& dictStorage = storage->dicts;  // Access Dict function storage
+
+       // Declare LLVM functions and populate storage
+       dictStorage.hoo_dict_new_func = Function::Create(...);
+       dictStorage.hoo_dict_set_func = Function::Create(...);
+       dictStorage.hoo_dict_get_func = Function::Create(...);
+   }
+
+   HOOC_REGISTER_RUNTIME(Dict, hoo_dict_register_with_jit, hoo_dict_declare_llvm_functions)
+   ```
+
+3. **Add to CMakeLists.txt**
+   ```cmake
+   add_library(hoo-compiler
+       ...
+       src/rt/hoo_dict_registration.cpp
+   )
+   ```
+
+4. **Update RuntimeFunctionStorage.h** with Dict storage:
+   ```cpp
+   struct DictFunctionStorage {
+       llvm::Function* hoo_dict_new_func = nullptr;
+       llvm::Function* hoo_dict_set_func = nullptr;
+       llvm::Function* hoo_dict_get_func = nullptr;
+       // ... etc ...
+   };
+
+   struct RuntimeFunctionStorage {
+       StringFunctionStorage strings;
+       ArrayFunctionStorage arrays;
+       DictFunctionStorage dicts;  // ← Add this
+   };
+   ```
+
+5. **Done!** No changes needed to HoocJIT or LLVMCodeGenerator
+
+That's it! The callback system handles everything else automatically.
+
+---
+
 ## Summary
 
-The Runtime Class Injection Framework:
+The Runtime Class Injection Framework uses a **callback-based registration system**:
 
-1. ✅ Defines runtime metadata **once** in `RuntimeClassRegistry.h`
-2. ✅ Auto-generates **JIT registration** via X-Macros in `HoocJIT.cpp`
-3. ✅ Auto-generates **LLVM declarations** via X-Macros in `LLVMCodeGenerator.cpp`
-4. ✅ Auto-generates **operator dispatch** via X-Macros in `LLVMCodeGenerator.cpp`
-5. ✅ Links to **C implementations** in `src/rt/` at compile time (HoocJIT) and JIT time (execution)
-6. ✅ Enables **modular extension**: Add one registry entry, get full integration
+1. ✅ **Full Control**: Runtime developers write callbacks with complete control
+2. ✅ **Zero Coupling**: Compiler infrastructure has no knowledge of specific runtimes
+3. ✅ **Distributed Registration**: Each runtime manages its own registration logic
+4. ✅ **Extensible**: Add new runtime types without modifying compiler code
+5. ✅ **Type Safe**: Callbacks receive concrete LLVM types, not void pointers
+6. ✅ **Self-registering**: Uses static initialization and HOOC_REGISTER_RUNTIME macro
+7. ✅ **Links to C implementations** in `src/rt/` at compile time and JIT time
 
-This pattern makes it straightforward to extend Hoo with new runtime types while maintaining clean, maintainable code with zero duplication.
+This pattern makes it straightforward to extend Hoo with new runtime types while giving runtime developers complete control over registration and maintaining clean, maintainable code with zero compiler coupling.

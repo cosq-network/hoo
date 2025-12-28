@@ -1,7 +1,0 @@
-
-        func test() -> void {
-            while (true) {
-                return;
-            }
-        }
-    

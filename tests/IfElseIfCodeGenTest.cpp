@@ -37,7 +37,7 @@ protected:
         return astBuilder->buildAST(parseTree);
     }
 
-    std::string getModuleString(Module* module) {
+    std::string getModuleString(llvm::Module* module) {
         std::string str;
         raw_string_ostream rso(str);
         module->print(rso, nullptr);

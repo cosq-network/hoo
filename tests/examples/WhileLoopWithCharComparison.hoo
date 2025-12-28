@@ -1,8 +1,0 @@
-
-        func test() -> void {
-            var ch = 'a';
-            while (ch != 'z') {
-                ch = 'b';
-            }
-        }
-    

@@ -1,6 +1,0 @@
-
-        func test() -> int64 {
-            var x: byte? = 255;
-            return 0;
-        }
-    

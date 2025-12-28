@@ -1,8 +1,0 @@
-
-        func test() -> int64 {
-            var x: int64? = 10;
-            var y: double? = 3.14;
-            var z: bool? = true;
-            return 0;
-        }
-    

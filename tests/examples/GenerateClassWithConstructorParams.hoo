@@ -1,5 +1,0 @@
-
-        class Point {
-            constructor(x: int64, y: int64) {}
-        }
-    

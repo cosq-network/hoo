@@ -655,9 +655,16 @@ actor class Queue {
   - Multiple type parameters: `Pair<K, V>`
   - Type argument inference and validation
   - Name mangling: `Box<int64>` → `Box_int64`
+- **Runtime Class Registration**: Callback-based registration system for runtime types
+  - JIT registration callbacks for symbol registration
+  - LLVM declaration callbacks for function declarations
+  - Self-registering runtimes via static initialization and HOOC_REGISTER_RUNTIME macro
+  - Full control over registration logic by runtime developers
+  - Zero coupling between compiler and specific runtime types
 
 ### ⚠️ Partially Implemented
-- **String Type**: Full parsing, LLVM generation, and 30+ runtime functions via runtime injection framework
+- **String Type**: Full parsing, LLVM generation, and 30+ runtime functions via callback-based runtime injection framework
+- **Array Type**: Full parsing, LLVM generation, and 20+ runtime functions via callback-based runtime injection framework
 - **Design Pattern Keywords**: All keywords parsed (singleton, immutable, factory, observable, service, strategy, actor), code generation not yet implemented
 
 ### ❌ Not Yet Implemented

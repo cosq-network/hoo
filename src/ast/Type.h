@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ASTNode.h"
+#include "QualifiedIdentifier.h"
 #include <vector>
 #include <string>
 
@@ -45,25 +46,39 @@ private:
 class BaseType : public Type {
 public:
     BaseType(std::unique_ptr<PrimitiveType> primitiveType)
-        : primitiveType_(std::move(primitiveType)), identifier_(""), typeArguments_() {}
+        : primitiveType_(std::move(primitiveType)), identifier_(nullptr), typeArguments_() {}
 
     BaseType(const std::string& identifier)
-        : primitiveType_(nullptr), identifier_(identifier), typeArguments_() {}
+        : primitiveType_(nullptr), identifier_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{identifier})), typeArguments_() {}
+
+    BaseType(std::unique_ptr<QualifiedIdentifier> identifier)
+        : primitiveType_(nullptr), identifier_(std::move(identifier)), typeArguments_() {}
 
     BaseType(const std::string& identifier, std::vector<std::unique_ptr<Type>> typeArguments)
-        : primitiveType_(nullptr), identifier_(identifier), typeArguments_(std::move(typeArguments)) {}
+        : primitiveType_(nullptr), identifier_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{identifier})), typeArguments_(std::move(typeArguments)) {}
+
+    BaseType(std::unique_ptr<QualifiedIdentifier> identifier, std::vector<std::unique_ptr<Type>> typeArguments)
+        : primitiveType_(nullptr), identifier_(std::move(identifier)), typeArguments_(std::move(typeArguments)) {}
 
     std::string toString() const override;
 
     const PrimitiveType* getPrimitiveType() const { return primitiveType_.get(); }
-    const std::string& getIdentifier() const { return identifier_; }
+
+    // Get simple identifier name (backward compatible)
+    std::string getIdentifier() const {
+        return identifier_ ? identifier_->getName() : "";
+    }
+
+    // Get qualified identifier (new API)
+    const QualifiedIdentifier* getQualifiedIdentifier() const { return identifier_.get(); }
+
     const std::vector<std::unique_ptr<Type>>& getTypeArguments() const { return typeArguments_; }
     bool isPrimitive() const { return primitiveType_ != nullptr; }
     bool hasTypeArguments() const { return !typeArguments_.empty(); }
 
 private:
     std::unique_ptr<PrimitiveType> primitiveType_;
-    std::string identifier_;
+    std::unique_ptr<QualifiedIdentifier> identifier_;
     std::vector<std::unique_ptr<Type>> typeArguments_;
 };
 
