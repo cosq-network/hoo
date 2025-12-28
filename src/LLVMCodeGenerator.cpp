@@ -2015,9 +2015,11 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     // and populate the runtimeFunctionStorage_.
     // This replaces the manual declareRuntimeFunctions() approach.
 
-    // Force String runtime to be linked and registered (works around linker optimization)
+    // Force String and Array runtimes to be linked and registered (works around linker optimization)
     extern void _hoo_string_ensure_registration();
+    extern void _hoo_array_ensure_registration();
     _hoo_string_ensure_registration();
+    _hoo_array_ensure_registration();
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
     registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);
@@ -2064,6 +2066,28 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     hoo_string_print_func_ = stringStorage.hoo_string_print_func;
     hoo_string_println_func_ = stringStorage.hoo_string_println_func;
     hoo_string_debug_func_ = stringStorage.hoo_string_debug_func;
+
+    // Sync Array function pointers from storage
+    auto& arrayStorage = runtimeFunctionStorage_.arrays;
+    hoo_array_new_func_ = arrayStorage.hoo_array_new_func;
+    hoo_array_from_buffer_func_ = arrayStorage.hoo_array_from_buffer_func;
+    hoo_array_repeat_func_ = arrayStorage.hoo_array_repeat_func;
+    hoo_array_length_func_ = arrayStorage.hoo_array_length_func;
+    hoo_array_get_func_ = arrayStorage.hoo_array_get_func;
+    hoo_array_set_func_ = arrayStorage.hoo_array_set_func;
+    hoo_array_push_func_ = arrayStorage.hoo_array_push_func;
+    hoo_array_pop_func_ = arrayStorage.hoo_array_pop_func;
+    hoo_array_push_int64_func_ = arrayStorage.hoo_array_push_int64_func;
+    hoo_array_push_double_func_ = arrayStorage.hoo_array_push_double_func;
+    hoo_array_push_float_func_ = arrayStorage.hoo_array_push_float_func;
+    hoo_array_push_bool_func_ = arrayStorage.hoo_array_push_bool_func;
+    hoo_array_push_char_func_ = arrayStorage.hoo_array_push_char_func;
+    hoo_array_push_byte_func_ = arrayStorage.hoo_array_push_byte_func;
+    hoo_array_retain_func_ = arrayStorage.hoo_array_retain_func;
+    hoo_array_release_func_ = arrayStorage.hoo_array_release_func;
+    hoo_array_refcount_func_ = arrayStorage.hoo_array_refcount_func;
+    hoo_array_empty_func_ = arrayStorage.hoo_array_empty_func;
+    hoo_array_clear_func_ = arrayStorage.hoo_array_clear_func;
 }
 
 // ============================================================================

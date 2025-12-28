@@ -68,6 +68,49 @@ struct StringFunctionStorage {
 };
 
 // ============================================================================
+// Array Function Storage
+// ============================================================================
+
+/**
+ * Storage for Array runtime function pointers.
+ *
+ * Each LLVM function pointer in this structure corresponds to a runtime
+ * Array function. The Array registration callback populates these during
+ * module creation, and the code generator uses them when generating calls
+ * to array operations.
+ */
+struct ArrayFunctionStorage {
+    // Creation functions
+    llvm::Function* hoo_array_new_func = nullptr;
+    llvm::Function* hoo_array_from_buffer_func = nullptr;
+    llvm::Function* hoo_array_repeat_func = nullptr;
+
+    // Basic operations
+    llvm::Function* hoo_array_length_func = nullptr;
+    llvm::Function* hoo_array_get_func = nullptr;
+    llvm::Function* hoo_array_set_func = nullptr;
+    llvm::Function* hoo_array_push_func = nullptr;
+    llvm::Function* hoo_array_pop_func = nullptr;
+
+    // Type-specialized push functions (for common types)
+    llvm::Function* hoo_array_push_int64_func = nullptr;
+    llvm::Function* hoo_array_push_double_func = nullptr;
+    llvm::Function* hoo_array_push_float_func = nullptr;
+    llvm::Function* hoo_array_push_bool_func = nullptr;
+    llvm::Function* hoo_array_push_char_func = nullptr;
+    llvm::Function* hoo_array_push_byte_func = nullptr;
+
+    // Reference counting
+    llvm::Function* hoo_array_retain_func = nullptr;
+    llvm::Function* hoo_array_release_func = nullptr;
+    llvm::Function* hoo_array_refcount_func = nullptr;
+
+    // Utility
+    llvm::Function* hoo_array_empty_func = nullptr;
+    llvm::Function* hoo_array_clear_func = nullptr;
+};
+
+// ============================================================================
 // Central Runtime Function Storage
 // ============================================================================
 
@@ -81,12 +124,14 @@ struct StringFunctionStorage {
  *   RuntimeFunctionStorage storage;
  *   registry.declareAllFunctions(module, context, &storage);
  *   // Now storage.strings contains all String function pointers
+ *   // Now storage.arrays contains all Array function pointers
  *   // Callbacks can access them via:
  *   // auto* strings = &static_cast<RuntimeFunctionStorage*>(userData)->strings;
+ *   // auto* arrays = &static_cast<RuntimeFunctionStorage*>(userData)->arrays;
  */
 struct RuntimeFunctionStorage {
     StringFunctionStorage strings;
-    // Future runtimes (Array, Dict, etc.) would add their storage here
+    ArrayFunctionStorage arrays;
 };
 
 } // namespace runtime

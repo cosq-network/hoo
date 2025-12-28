@@ -245,9 +245,23 @@ private:
     llvm::Function* hoo_array_push_float_func_ = nullptr;
     llvm::Function* hoo_array_push_bool_func_ = nullptr;
     llvm::Function* hoo_array_push_char_func_ = nullptr;
+    llvm::Function* hoo_array_push_byte_func_ = nullptr;
     llvm::Function* hoo_array_push_string_func_ = nullptr;
     llvm::Function* hoo_array_push_object_func_ = nullptr;
     llvm::Function* hoo_array_push_array_func_ = nullptr;
+
+    // Callback-based Array function pointers (synced from registry)
+    llvm::Function* hoo_array_from_buffer_func_ = nullptr;
+    llvm::Function* hoo_array_repeat_func_ = nullptr;
+    llvm::Function* hoo_array_length_func_ = nullptr;
+    llvm::Function* hoo_array_get_func_ = nullptr;
+    llvm::Function* hoo_array_set_func_ = nullptr;
+    llvm::Function* hoo_array_pop_func_ = nullptr;
+    llvm::Function* hoo_array_retain_func_ = nullptr;
+    llvm::Function* hoo_array_release_func_ = nullptr;
+    llvm::Function* hoo_array_refcount_func_ = nullptr;
+    llvm::Function* hoo_array_empty_func_ = nullptr;
+    llvm::Function* hoo_array_clear_func_ = nullptr;
 
     // ========================================================================
     // Auto-Generated Operator Dispatch Methods

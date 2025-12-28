@@ -149,6 +149,7 @@ add_library(hoo-compiler
     src/ModuleSystem.cpp
     src/runtime/RuntimeRegistry.cpp
     src/rt/hoo_string_registration.cpp
+    src/rt/hoo_array_registration.cpp
 )
 
 # Hooc runtime library (reference counting, memory management, string support, generic array support)
