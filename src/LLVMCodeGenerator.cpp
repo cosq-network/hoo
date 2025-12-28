@@ -15,6 +15,8 @@ using namespace llvm;
 // Avoid namespace conflicts with LLVM
 namespace {
     using LLVMType = llvm::Type;
+    using LLVMModule = llvm::Module;
+    using HoocModule = hooc::Module;
     using ASTType = hooc::ast::Type;
     using ASTBinaryOperator = hooc::ast::BinaryOperator;
     using ASTStringLiteral = hooc::ast::StringLiteral;
@@ -66,9 +68,9 @@ GeneratedType* LLVMCodeGenerator::generateType(const ast::Type& type) {
 }
 
 // LLVM-specific implementation
-std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationUnit& compilationUnit) {
+std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const CompilationUnit& compilationUnit) {
     // Create a new module for this compilation unit
-    module_ = std::make_unique<Module>("hooc_module", context_);
+    module_ = std::make_unique<llvm::Module>("hooc_module", context_);
 
     // Clear symbol tables for new module
     namedValues_.clear();
@@ -76,6 +78,7 @@ std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationU
     classTypes_.clear();
     classTypeIds_.clear();
     nextTypeId_ = 1;
+    importedNames_.clear();
 
     // Clear generic class/function templates and instantiations
     genericClassTemplates_.clear();
@@ -83,6 +86,9 @@ std::unique_ptr<Module> LLVMCodeGenerator::generateLLVMModule(const CompilationU
     instantiatedClasses_.clear();
     instantiatedFunctions_.clear();
     typeParameterStack_.clear();
+
+    // Process imports to populate importedNames_ symbol table
+    processImports(compilationUnit.getImports());
 
     // Reset runtime function pointers
     hoo_alloc_func_ = nullptr;
@@ -2010,6 +2016,13 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
 // once parameter extraction from (Type, LLVM_Type) pairs is improved
 
 void LLVMCodeGenerator::declareStringFunctions() {
+    // Declare hoo_string_new: HooString hoo_string_new()
+    if (!hoo_string_new_func_) {
+        std::vector<LLVMType*> params;  // No parameters
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        hoo_string_new_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_string_new", module_.get());
+    }
+
     // Declare hoo_string_from_cstr: HooString hoo_string_from_cstr(const char* cstr)
     if (!hoo_string_from_cstr_func_) {
         std::vector<LLVMType*> params = {llvm::PointerType::get(context_, 0)};
@@ -2363,10 +2376,38 @@ void LLVMCodeGenerator::generateConstructor(const ClassDeclaration& classDecl,
 // ============================================================================
 
 Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression& newExpr) {
+    const ast::QualifiedIdentifier* qualifiedName = newExpr.getQualifiedClassName();
     std::string className = newExpr.getClassName();
 
     // Ensure runtime functions are declared
     declareRuntimeFunctions();
+
+    // ========================================================================
+    // Try to resolve as a standard library class (qualified name or import)
+    // ========================================================================
+
+    if (qualifiedName && qualifiedName->isQualified()) {
+        // This is a qualified name like std.String
+        const ModuleExport* moduleExport = moduleRegistry_.resolveQualifiedName(*qualifiedName);
+        if (moduleExport && moduleExport->kind == ModuleExport::Kind::CLASS) {
+            // This is a standard library class - use runtime constructor
+            return generateStdClassConstructor(*moduleExport, newExpr);
+        }
+    }
+
+    // Try to resolve as an imported name (e.g., "String" after "import std.String")
+    auto importedIt = importedNames_.find(className);
+    if (importedIt != importedNames_.end()) {
+        const ModuleExport* moduleExport = importedIt->second;
+        if (moduleExport && moduleExport->kind == ModuleExport::Kind::CLASS) {
+            // This is an imported standard library class
+            return generateStdClassConstructor(*moduleExport, newExpr);
+        }
+    }
+
+    // ========================================================================
+    // Fall back to user-defined class
+    // ========================================================================
 
     // Handle generic class instantiation
     if (newExpr.hasTypeArguments()) {
@@ -2458,6 +2499,88 @@ Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression&
     }
 
     return rawPtr;
+}
+
+// ============================================================================
+// Standard Library Class Constructor Generation
+// ============================================================================
+
+llvm::Value* LLVMCodeGenerator::generateStdClassConstructor(const ModuleExport& moduleExport,
+                                                            const ast::NewObjectExpression& newExpr) {
+    // Dispatch to specific constructor based on runtime class name
+    if (moduleExport.runtimeClassName == "HooString") {
+        return generateStringConstructor(newExpr);
+    } else if (moduleExport.runtimeClassName == "HooArray") {
+        return generateArrayConstructor(newExpr);
+    }
+
+    // Unknown standard library class - should not reach here
+    std::cerr << "Unknown standard library class: " << moduleExport.runtimeClassName << std::endl;
+    return nullptr;
+}
+
+llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectExpression& newExpr) {
+    // std.String() -> hoo_string_new()
+    // std.String("hello") -> hoo_string_from_cstr("hello")
+    // std.String(other_string) -> hoo_string_from_cstr(hoo_string_data(other_string))
+
+    const ast::ArgumentList* args = newExpr.getArguments();
+
+    // Ensure string functions are declared
+    declareStringFunctions();
+
+    if (!args || args->getArguments().empty()) {
+        // new std.String() - create empty string
+        if (!hoo_string_new_func_) {
+            std::cerr << "hoo_string_new function not declared" << std::endl;
+            return nullptr;
+        }
+        return builder_->CreateCall(hoo_string_new_func_, {}, "new_string");
+    }
+
+    // Get the first argument
+    const auto& firstArg = args->getArguments()[0];
+    llvm::Value* argValue = generateLLVMExpression(*firstArg);
+    if (!argValue) {
+        std::cerr << "Failed to generate String constructor argument" << std::endl;
+        return nullptr;
+    }
+
+    // Check argument type
+    llvm::Type* argType = argValue->getType();
+
+    // If it's a string literal or pointer to i8 (C string), use hoo_string_from_cstr
+    if (argType->isPointerTy()) {
+        if (!hoo_string_from_cstr_func_) {
+            std::cerr << "hoo_string_from_cstr function not declared" << std::endl;
+            return nullptr;
+        }
+        return builder_->CreateCall(hoo_string_from_cstr_func_, {argValue}, "new_string");
+    }
+
+    // If it's a HooString pointer, return as-is (already a string)
+    // This handles: new std.String(existingString)
+    if (argType->isPointerTy()) {
+        return argValue;
+    }
+
+    std::cerr << "Invalid argument type for std.String constructor" << std::endl;
+    return nullptr;
+}
+
+llvm::Value* LLVMCodeGenerator::generateArrayConstructor(const ast::NewObjectExpression& newExpr) {
+    // std.Array() -> hoo_array_new()
+    // std.Array<T>() -> hoo_array_new()
+    // std.Array can also be initialized with array literal in future
+
+    // Get the array_new function (declares it if needed)
+    llvm::Function* arrayNewFunc = getArrayNewFunc(0);  // elementSize parameter ignored in Phase 7
+    if (!arrayNewFunc) {
+        std::cerr << "hoo_array_new function could not be declared" << std::endl;
+        return nullptr;
+    }
+
+    return builder_->CreateCall(arrayNewFunc, {}, "new_array");
 }
 
 // ============================================================================
@@ -2983,4 +3106,87 @@ llvm::Function* LLVMCodeGenerator::instantiateGenericFunction(
     functions_[mangledName] = func;
 
     return func;
+}
+
+// ============================================================================
+// Import Resolution and Module System Integration
+// ============================================================================
+
+void LLVMCodeGenerator::processImports(const std::vector<std::unique_ptr<ast::ImportStatement>>& imports) {
+    for (const auto& import : imports) {
+        if (auto basicImport = dynamic_cast<const ast::BasicImport*>(import.get())) {
+            processBasicImport(*basicImport);
+        } else if (auto fromImport = dynamic_cast<const ast::FromImport*>(import.get())) {
+            processFromImport(*fromImport);
+        }
+        // Add other import types here as needed
+    }
+}
+
+void LLVMCodeGenerator::processBasicImport(const ast::BasicImport& import) {
+    // For basic imports like "import std.String as String" or "import std.io.File"
+    // Extract the module path from the ModulePath
+    const ast::ModulePath* modulePath = import.getModule();
+    if (!modulePath) {
+        return;
+    }
+    const auto& components = modulePath->getComponents();
+
+    // Resolve the module path in the registry
+    hooc::Module* module = moduleRegistry_.resolveModulePath(components);
+    if (!module) {
+        // Module not found - for now, silently skip
+        // In a full implementation, this would be a compile error
+        return;
+    }
+
+    // For basic imports, we add all exports from the module/namespace
+    // The alias (if provided) would apply to the module as a whole
+    // For now, we just add the module exports with their original names
+    const auto& exports = module->getExports();
+    for (const auto& pair : exports) {
+        // Store the export under its name (or alias if provided)
+        std::string importName = pair.first;
+        if (!import.getAlias().empty()) {
+            // If there's an alias, prepend it to the name
+            importName = import.getAlias() + "." + pair.first;
+        }
+        importedNames_[importName] = &pair.second;
+    }
+}
+
+void LLVMCodeGenerator::processFromImport(const ast::FromImport& import) {
+    // For from imports like "from std import String, Array" or "from std.io import File"
+    // Extract the module path
+    const ast::ModulePath* modulePath = import.getModule();
+    if (!modulePath) {
+        return;
+    }
+    const auto& components = modulePath->getComponents();
+
+    // Resolve the module path in the registry
+    hooc::Module* module = moduleRegistry_.resolveModulePath(components);
+    if (!module) {
+        // Module not found - for now, silently skip
+        return;
+    }
+
+    // Get the items to import
+    const auto& items = import.getItems();
+    for (const auto& item : items) {
+        // item is an ImportItem with name and optional alias
+        const std::string& name = item->getName();
+        const std::string& alias = item->getAlias();
+
+        // Look up the export in the module
+        const ModuleExport* export_ = module->getExport(name);
+        if (!export_) {
+            // Export not found in module
+            continue;
+        }
+
+        // Add to importedNames using the alias (if provided) or the original name
+        std::string importName = alias.empty() ? name : alias;
+        importedNames_[importName] = export_;
+    }
 }

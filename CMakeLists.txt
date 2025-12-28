@@ -15,11 +15,15 @@ endif()
 if(MSVC)
     # Use Release runtime (/MD) even in Debug mode to match LLVM
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-    
+
     # Override default flags for Debug configuration to use /MD instead of /MDd
     string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     string(REPLACE "/MTd" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
+
+    # Suppress C4624 warning from LLVM headers (destructor implicitly defined as deleted)
+    # This is a false positive in LLVM's intentional design
+    add_compile_options(/wd4624)
 endif()
 
 # Find ANTLR4 C++ runtime
@@ -142,6 +146,7 @@ add_library(hoo-compiler
     src/LLVMCodeGenerator.cpp
     src/SimpleASTBuilder.cpp
     src/ast/ASTImpl.cpp
+    src/ModuleSystem.cpp
 )
 
 # Hooc runtime library (reference counting, memory management, string support, generic array support)
@@ -223,24 +228,30 @@ add_custom_target(clean_generated
 enable_testing()
 
 # Find GoogleTest
-find_package(GTest QUIET)
+# Try vcpkg first (CONFIG mode for vcpkg-installed packages)
+find_package(GTest CONFIG QUIET)
+if(NOT GTest_FOUND)
+    # Try module mode
+    find_package(GTest MODULE QUIET)
+endif()
+
 if(NOT GTest_FOUND)
     # Try to find via pkg-config as fallback
     find_package(PkgConfig QUIET)
     if(PkgConfig_FOUND)
         pkg_check_modules(GTEST gtest)
     endif()
-    
+
     if(NOT GTEST_FOUND)
         # Manual fallback for Homebrew installation
         set(GTEST_ROOT "/opt/homebrew/Cellar/googletest/1.17.0")
-        find_path(GTEST_INCLUDE_DIRS gtest/gtest.h 
+        find_path(GTEST_INCLUDE_DIRS gtest/gtest.h
             PATHS ${GTEST_ROOT}/include
         )
-        find_library(GTEST_LIBRARIES gtest 
+        find_library(GTEST_LIBRARIES gtest
             PATHS ${GTEST_ROOT}/lib
         )
-        find_library(GTEST_MAIN_LIBRARIES gtest_main 
+        find_library(GTEST_MAIN_LIBRARIES gtest_main
             PATHS ${GTEST_ROOT}/lib
         )
         if(GTEST_INCLUDE_DIRS AND GTEST_LIBRARIES)
@@ -290,6 +301,10 @@ if(GTest_FOUND)
         tests/StringCodeGenTest.cpp
         tests/ClassArrayCodeGenTest.cpp
         tests/HooArrayPhase7Test.cpp
+        tests/QualifiedIdentifierParsingTest.cpp
+        tests/QualifiedNewExpressionParsingTest.cpp
+        tests/ModuleRegistryTest.cpp
+        tests/StdConstructorCodeGenTest.cpp
     )
 
     # Link test executable with libraries
