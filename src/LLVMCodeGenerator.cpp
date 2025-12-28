@@ -2743,7 +2743,9 @@ llvm::StructType* LLVMCodeGenerator::instantiateGenericClass(
     // 1. Find the generic class template
     auto templateIt = genericClassTemplates_.find(baseName);
     if (templateIt == genericClassTemplates_.end()) {
-        std::cerr << "Generic class template not found: " << baseName << std::endl;
+        // Silently return nullptr for built-in standard library types like Array
+        // (they are handled as opaque pointers in generateLLVMType)
+        // Only print error for actual user-defined generic classes
         return nullptr;
     }
     const ClassDeclaration* templateDecl = templateIt->second;
