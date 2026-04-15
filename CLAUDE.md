@@ -1,371 +1,417 @@
-# CLAUDE.md
+# Hooc Project Guide for Claude
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This document provides a comprehensive guide for AI assistants (like Claude) working on the Hooc compiler project. It covers the architecture, conventions, and best practices for contributing to the codebase.
 
 ## Project Overview
 
-**hooc** is a compiler for the **hoo** programming language - a modern, safe, and expressive language designed as an evolution of C's philosophy. It removes C's unsafe constructs while preserving clarity, predictability, and performance. The compiler is written in C++17 and targets LLVM for code generation.
+Hooc is a modern, statically-typed programming language compiler that compiles to LLVM IR and provides JIT execution. The project is written in C++17 and uses ANTLR4 for parsing.
 
-**Current Status (v0.6):** Full ANTLR4 grammar, complete AST → LLVM IR pipeline, primitive types, strings, classes with methods, automatic reference counting (ARC), and C#-style generics with monomorphization. 577 comprehensive unit tests with 100% pass rate.
-
-## Build & Development Commands
-
-### Build the project
-
-**Windows:**
-```cmd
-cmake -S . -B build -G "Ninja" -DCMAKE_TOOLCHAIN_FILE="%VCPKG_ROOT%\scripts\buildsystems\vcpkg.cmake" -DCMAKE_BUILD_TYPE=RelWithDebInfo
-cmake --build build --config RelWithDebInfo
-```
-
-**macOS/Linux:**
-```bash
-# Initial configuration (replace <path/to/vcpkg> with your vcpkg installation)
-cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=<path/to/vcpkg>/scripts/buildsystems/vcpkg.cmake
-
-# Build
-cmake --build build
-
-# Build with Release configuration (recommended for performance)
-cmake --build build --config Release
-```
-
-See `docs/11-building-on-windows.md` for detailed Windows setup instructions.
-
-### Run tests
-```bash
-# Run all tests using ctest (recommended)
-ctest --test-dir=build --progress --verbose
-
-# Or using cmake
-cmake --build build --target run_tests
-
-# Or directly
-./build/hoo-tests
-```
-
-### Run single test
-```bash
-# List available tests
-./build/hoo-tests --gtest_list_tests
-
-# Run a specific test
-./build/hoo-tests --gtest_filter="TestClassName.TestMethodName"
-
-# Run tests matching a pattern
-./build/hoo-tests --gtest_filter="*Generic*"
-```
-
-### Compile a .hoo program
-```bash
-# Compile and print LLVM IR
-./build/hooc tests/examples/arithmetic.hoo
-
-# Help and options
-./build/hooc --help
-```
-
-### Regenerate ANTLR4 parser files
-```bash
-# After modifying src/Hooc.g4
-cmake --build build --target generate_parser
-```
-
-### Clean generated ANTLR4 files
-```bash
-cmake --build build --target clean_generated
-```
+**Key Technologies:**
+- **ANTLR4**: Parser generation (grammar in `src/Hooc.g4`)
+- **LLVM**: Code generation, optimization, and JIT execution
+- **C++17**: Implementation language
+- **GoogleTest**: Testing framework
+- **CMake**: Build system
 
 ## Architecture Overview
 
-The compilation pipeline follows this flow:
+### Compilation Pipeline
 
 ```
 Source Code (.hoo)
     ↓
-ProcessIsolatedParser (ANTLR4 parsing)
+[ANTLR4 Lexer/Parser] → Parse Tree
     ↓
-Parse Tree
+[SimpleASTBuilder] → Abstract Syntax Tree (AST)
     ↓
-SimpleASTBuilder (tree → AST conversion)
+[LLVMCodeGenerator] → LLVM IR Module
     ↓
-AST (CompilationUnit)
+[LLVM Optimizer] → Optimized IR
     ↓
-LLVMCodeGenerator (AST → LLVM IR)
-    ↓
-LLVM IR Module
-    ↓
-(Output to stdout or JIT execution)
+[LLVM OrcJIT] → Machine Code (JIT)
 ```
 
-### Key Components
+### Core Components
 
-**ProcessIsolatedParser** (`src/ProcessIsolatedParser.{h,cpp}`)
-- Parses .hoo source code using ANTLR4 grammar
-- Provides `parseForAST()` for direct parse tree access (needed for AST building)
-- Handles ANTLR4 state isolation to prevent parser corruption
+1. **HooCompiler** (`src/HooCompiler.h/cpp`)
+   - Main compiler interface
+   - Orchestrates the entire compilation pipeline
+   - Entry point: `compile(moduleName, sourceCode)`
 
-**SimpleASTBuilder** (`src/SimpleASTBuilder.{h,cpp}`)
-- Converts ANTLR4 parse tree to type-safe AST
-- Builds declarations, statements, expressions, types
-- Key method: `buildAST()` converts parse tree to `ast::CompilationUnit`
+2. **ProcessIsolatedParser** (`src/ProcessIsolatedParser.h/cpp`)
+   - Wraps ANTLR4 parser to isolate parsing errors
+   - Converts source code to ANTLR4 parse tree
 
-**LLVMCodeGenerator** (`src/LLVMCodeGenerator.{h,cpp}`)
-- Concrete implementation of `CodeGenerator` interface
-- Generates LLVM IR from AST nodes
-- Manages type conversion, function/variable scoping, operator dispatch
-- Main entry: `generateModule()` for compilation units
+3. **SimpleASTBuilder** (`src/SimpleASTBuilder.h/cpp`)
+   - Visitor pattern implementation for ANTLR4 parse tree
+   - Converts parse tree to typed AST nodes
+   - Located in `src/ast/` directory
 
-**HooCompiler** (`src/HooCompiler.{h,cpp}`)
-- High-level compilation interface orchestrating the entire pipeline
-- Single method: `compile(moduleName, sourceCode)` → LLVM Module
-- Used by `src/main.cpp` (compiler executable)
+4. **LLVMCodeGenerator** (`src/LLVMCodeGenerator.h/cpp`)
+   - Generates LLVM IR from AST
+   - Handles type checking, name mangling, and code emission
+   - Implements generics via monomorphization
 
-**Runtime Class Injection Framework** (`src/runtime/`)
-- X-Macro pattern for adding runtime types without boilerplate
-- `RuntimeClassRegistry.h`: Central registry of all runtime classes (String, Array, etc.)
-- `RuntimeClassCodeGen.h`: Documentation and patterns
-- `MacroHelpers.h`: Variadic argument handling utilities
-- Used by `HoocJIT.cpp` for JIT registration and `LLVMCodeGenerator.cpp` for LLVM declarations
+5. **ModuleSystem** (`src/ModuleSystem.h/cpp`)
+   - Manages module imports and exports
+   - Resolves qualified names (e.g., `std.String`)
+   - Provides standard library integration
+
+6. **Runtime Library** (`src/rt/`)
+   - **hoo_runtime.c**: Reference counting and memory management
+   - **hoo_string.cpp**: UTF-8 string implementation
+   - **hoo_generic_array.cpp**: Generic array using `std::any`
+   - **Runtime Registry**: Dynamic class registration for FFI
 
 ### AST Structure
 
-All AST nodes are in `src/ast/`. Key files:
-
-- `AST.h`: Type declarations and hierarchy
-- `ASTNode.h`: Base class for all AST nodes
-- `CompilationUnit.h`: Root node containing functions and class declarations
-- `Expression.h`, `Statement.h`, `Declaration.h`: Base classes for expression/statement/declaration nodes
-- `Type.h`: Type system (PrimitiveType, ArrayType, OptionalType, BaseType, UnionType)
-- `ClassDeclaration.h`: Class definitions with members and methods
-- `QualifiedIdentifier.h`: Module-qualified identifiers for module system
-
-### Generic Type Implementation
-
-C#-style generics use monomorphization (code duplication) via type parameter name mangling:
-
-- `mangleClassName()`: Converts `Array<int64>` → `Array_int64`
-- `mangleFunctionNameWithTypes()`: Converts `swap<string, int64>` → `swap_string_int64`
-- `typeToMangledString()`: Utility for type → mangled string conversion
-- Type parameter scope stack: `pushTypeParameterScope()` / `popTypeParameterScope()`
-- See `docs/09-generics-implementation-guide.md` for design details
-
-## Code Organization
+All AST nodes inherit from `ASTNode` and are defined in `src/ast/`:
 
 ```
-src/
-  ├── Hooc.g4                    # ANTLR4 grammar (language definition)
-  ├── HooCompiler.{h,cpp}        # Main compilation interface
-  ├── ProcessIsolatedParser.{h,cpp} # ANTLR4 parsing with state isolation
-  ├── SimpleASTBuilder.{h,cpp}   # Parse tree → AST conversion
-  ├── LLVMCodeGenerator.{h,cpp}  # AST → LLVM IR generation
-  ├── HoocJIT.{h,cpp}           # LLVM ORC JIT infrastructure
-  ├── CodeGenerator.h            # Abstract code generator interface
-  ├── ModuleSystem.{h,cpp}       # Module resolution (partial implementation)
-  ├── main.cpp                   # Compiler executable entry point
-  ├── ast/                       # AST node definitions
-  │   ├── AST.h, ASTNode.h
-  │   ├── Expression.h, Statement.h, Declaration.h
-  │   ├── Type.h, ClassDeclaration.h
-  │   ├── QualifiedIdentifier.h, ImportStatement.h
-  │   └── ASTImpl.cpp
-  ├── rt/                        # Runtime support (reference counting, strings, arrays)
-  │   ├── hoo_runtime.{h,c}
-  │   ├── hoo_string.{h,cpp}
-  │   ├── hoo_string_registration.cpp       # String runtime self-registration
-  │   └── hoo_generic_array.{h,cpp}
-  └── runtime/                   # Runtime registration framework
-      ├── RuntimeRegistry.{h,cpp}           # Central registry (v0.6+)
-      ├── RuntimeFunctionStorage.h          # Runtime function pointer storage (v0.6+)
-      ├── RuntimeClassRegistry.h            # X-Macro metadata (deprecated, for reference)
-      ├── RuntimeClassCodeGen.h             # Code generation patterns (deprecated)
-      └── MacroHelpers.h                    # Macro utilities
-
-tests/
-  ├── test_main.cpp              # Test entry point
-  ├── *ParsingTest.cpp           # Grammar parsing tests
-  ├── *CodeGenTest.cpp           # LLVM code generation tests
-  ├── *IntegrationTest.cpp       # End-to-end tests
-  └── examples/                  # .hoo example programs (many deleted, used for testing)
-
-docs/
-  ├── 01-language-specification.md    # Language design (v0.6)
-  ├── 03-implementation-status.md     # Detailed progress tracking
-  ├── 06-object-creation-guide.md     # Classes and object instantiation
-  ├── 07-memory-management-design.md  # ARC implementation details
-  ├── 08-string-integration-guide.md  # String type architecture
-  ├── 09-generics-implementation-guide.md # Generics with monomorphization
-  └── 11-module-system.md             # Module system design
+ASTNode (base)
+├── Declaration
+│   ├── FunctionDeclaration
+│   ├── ClassDeclaration
+│   ├── InterfaceDeclaration
+│   └── VariableDeclaration
+├── Statement
+│   ├── Block
+│   ├── IfStatement
+│   ├── WhileStatement
+│   ├── ForStatement
+│   ├── ReturnStatement
+│   └── ExpressionStatement
+├── Expression
+│   ├── BinaryExpression
+│   ├── UnaryExpression
+│   ├── CallExpression
+│   ├── MemberAccessExpression
+│   ├── NewExpression
+│   └── Primary (literals, identifiers)
+└── Type
+    ├── PrimitiveType
+    ├── ArrayType
+    ├── OptionalType
+    └── UnionType
 ```
 
-## Testing Strategy
+## Coding Conventions
 
-Tests use Google Test framework:
+### File Organization
 
-- **Parsing Tests**: Verify ANTLR4 grammar and AST building (e.g., `ClassDeclarationParsingTest`)
-- **Code Gen Tests**: Verify LLVM IR generation (e.g., `FunctionCallCodeGenTest`)
-- **Integration Tests**: End-to-end tests (e.g., `GenericIntegrationTest`)
-- **Generic Tests**: Specific to C#-style generics (49 tests covering monomorphization)
+- Header files: `.h` extension
+- Implementation files: `.cpp` extension
+- Test files: `*Test.cpp` in `tests/` directory
+- Runtime files: `src/rt/` (C files use `.c`, C++ use `.cpp`)
 
-Run tests frequently during development. The test suite is comprehensive (577 tests) and fast (~few seconds).
+### Naming Conventions
 
-## Important Architectural Patterns
+- **Classes**: PascalCase (e.g., `HooCompiler`, `LLVMCodeGenerator`)
+- **Functions/Methods**: camelCase (e.g., `generateCode`, `buildAST`)
+- **Variables**: camelCase with trailing underscore for private members (e.g., `context_`, `lastError_`)
+- **Constants**: UPPER_SNAKE_CASE
+- **Namespaces**: lowercase (e.g., `hooc`, `hooc::ast`)
 
-### Runtime Registration Callback System
+### Memory Management
 
-Runtime libraries (hoort) now self-register with the compiler via a **centralized callback system**, giving developers full control:
+- Use `std::unique_ptr` for exclusive ownership
+- Use `std::shared_ptr` sparingly
+- Runtime objects use manual reference counting via `hoo_retain`/`hoo_release`
+- LLVM objects follow LLVM ownership conventions (see LLVM documentation)
 
-**How it works:**
+### Error Handling
 
-1. Each runtime library defines two callbacks:
-   - **JIT Callback**: `void callback(LLJIT& jit, JITDylib& mainDylib)` - registers symbols
-   - **LLVM Callback**: `void callback(Module& module, LLVMContext& ctx, void* userData)` - declares functions
+- Compilation errors stored in `HooCompiler::lastError_`
+- Return `nullptr` for failed operations
+- Use GoogleTest assertions (`ASSERT_*`, `EXPECT_*`) in tests
+- Runtime errors should be descriptive
 
-2. Runtime libraries register using: `HOOC_REGISTER_RUNTIME(Name, jit_callback, llvm_callback)`
-   - Registration happens automatically via static initialization
-   - No need to modify HoocJIT or LLVMCodeGenerator
+## Working with ANTLR4
 
-3. During initialization:
-   - HoocJIT invokes all registered JIT callbacks
-   - LLVMCodeGenerator invokes all registered LLVM callbacks
-   - Each runtime populates its function storage
+### Grammar File Location
 
-**Example: String Runtime**
+`src/Hooc.g4` - Main grammar definition
+
+### Regenerating Parser
+
+```bash
+cd build
+make clean_generated  # Clean old files
+make generate_parser  # Generate new parser files
+make                  # Rebuild project
+```
+
+### Adding New Syntax
+
+1. Update `src/Hooc.g4` with new grammar rules
+2. Regenerate parser
+3. Add AST node type in `src/ast/`
+4. Implement visitor method in `SimpleASTBuilder`
+5. Add code generation in `LLVMCodeGenerator`
+6. Add comprehensive tests
+
+### Parser Rules Naming
+
+- Lexer rules: UPPERCASE (e.g., `FUNC`, `IDENTIFIER`)
+- Parser rules: camelCase (e.g., `functionDeclaration`, `expression`)
+
+## Working with LLVM
+
+### Context and Module Management
+
+- Each compilation creates a fresh `LLVMContext`
+- Each source file generates one `llvm::Module`
+- Functions and types are registered in the module
+
+### Type Mapping
+
+Hooc Type → LLVM Type:
+- `int64` → `i64`
+- `double` → `double`
+- `bool` → `i1`
+- `char` → `i8`
+- `string` → `i8*` (pointer to HooString)
+- `T[]` → `i8*` (pointer to HooArray)
+- `T?` → `i8*` (pointer, null allowed)
+- Classes → `i8*` (opaque pointer to object)
+
+### Name Mangling
+
+- Generic functions: `functionName_Type1_Type2` (e.g., `identity_int64`)
+- Generic classes: `ClassName_Type` (e.g., `Box_string`)
+- Member functions: `ClassName_methodName`
+
+### Code Generation Patterns
+
+**Variable Declaration:**
+```cpp
+llvm::AllocaInst* alloca = builder->CreateAlloca(type, nullptr, varName);
+llvm::Value* initValue = /* generate initializer */;
+builder->CreateStore(initValue, alloca);
+```
+
+**Function Call:**
+```cpp
+std::vector<llvm::Value*> args = { /* arguments */ };
+llvm::Function* func = module->getFunction(funcName);
+llvm::Value* result = builder->CreateCall(func, args);
+```
+
+**Reference Counting:**
+```cpp
+// Retain: increment refcount
+llvm::Function* retainFunc = module->getFunction("hoo_retain");
+builder->CreateCall(retainFunc, {objPtr});
+
+// Release: decrement refcount
+llvm::Function* releaseFunc = module->getFunction("hoo_release");
+builder->CreateCall(releaseFunc, {objPtr});
+```
+
+## Testing Guidelines
+
+### Test Structure
+
+All tests follow GoogleTest conventions:
 
 ```cpp
-// src/rt/hoo_string_registration.cpp
+#include <gtest/gtest.h>
+#include "../src/HooCompiler.h"
 
-static void hoo_string_register_jit(LLJIT& jit, JITDylib& mainDylib) {
-    // Register all String functions with JIT
-    SymbolMap symbols;
-    symbols[jit.mangleAndIntern("hoo_string_concat")] = ...;
-    mainDylib.define(absoluteSymbols(symbols));
+class MyFeatureTest : public ::testing::Test {
+protected:
+    void SetUp() override {
+        compiler_ = std::make_unique<HooCompiler>();
+    }
+
+    std::unique_ptr<HooCompiler> compiler_;
+};
+
+TEST_F(MyFeatureTest, TestCase) {
+    std::string code = R"(
+        func test() -> int64 {
+            return 42;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    // More assertions...
 }
-
-static void hoo_string_declare_llvm(Module& module, LLVMContext& ctx, void* userData) {
-    // Declare LLVM function prototypes
-    auto& storage = static_cast<RuntimeFunctionStorage*>(userData)->strings;
-    storage.hoo_string_concat_func = Function::Create(...);
-}
-
-HOOC_REGISTER_RUNTIME(String, hoo_string_register_jit, hoo_string_declare_llvm)
 ```
 
-**Key Benefits:**
-- Runtime developers have **full control** over registration
-- **Zero coupling** between compiler and specific runtime types
-- Adding new runtimes requires **no compiler changes**
-- **Hybrid support** for both auto-generated and manual callbacks
+### Test Categories
 
-**Related Files:**
-- `src/runtime/RuntimeRegistry.h` - Central registry interface and callback typedefs
-- `src/runtime/RuntimeFunctionStorage.h` - Storage structure for all runtime functions
-- `src/rt/hoo_string_registration.cpp` - String library's self-registration implementation
+- **Parsing tests**: Verify correct parse tree construction
+- **AST tests**: Verify AST building from parse tree
+- **Code generation tests**: Verify LLVM IR generation
+- **Integration tests**: End-to-end compilation and execution
+- **Runtime tests**: Test runtime library functions
 
-### Generic Type Monomorphization
+### Running Tests
 
-Generics are handled via **compile-time code duplication**:
-- `Box<int64>` and `Box<string>` generate separate LLVM functions
-- Type parameters are mangled into function/class names
-- No runtime overhead, full specialization per type
+```bash
+cd build
+./hoo-tests                    # Run all tests
+./hoo-tests --gtest_filter=ClassName.TestName  # Run specific test
+ctest --verbose                # Run via CTest
+```
 
-### Reference Counting (ARC)
+## Common Tasks
 
-Objects use automatic reference counting:
-- Implemented in `src/rt/hoo_runtime.c` and `.cpp`
-- Classes have implicit reference counting on creation/destruction
-- No manual memory management required
+### Adding a New Language Feature
 
-### Type System
-
-- **Primitive types**: byte, uint8, int64, float, double, f64, bool, char, void
-- **Nullable types**: `T?` syntax creates tagged union (value + null bit)
-- **Array types**: `T[]` with multi-dimensional support
-- **Union types**: `T | U` for multiple possible types
-- **Generics**: `T`, `K`, `V` as type parameters
-
-## Common Development Patterns
-
-### Adding a parsing feature
-
-1. Modify `src/Hooc.g4` (ANTLR4 grammar)
-2. Run `cmake --build build --target generate_parser`
-3. Add AST building method to `SimpleASTBuilder`
-4. Add code generation to `LLVMCodeGenerator`
-5. Write parsing test, then code gen test
-
-### Adding a new runtime type (e.g., Dict, HashMap)
-
-1. Implement C API in `src/rt/hoo_xxx.{h,cpp}`
-   ```cpp
-   typedef void* HooDict;  // Opaque handle
-   HooDict hoo_dict_new(void);
-   void hoo_dict_set(HooDict dict, const char* key, void* value);
-   // ... other functions ...
+1. **Update Grammar** (`src/Hooc.g4`)
+   ```antlr
+   myNewStatement: MY_KEYWORD expression SEMICOLON;
    ```
 
-2. Create `src/rt/hoo_xxx_registration.cpp` with two callbacks:
+2. **Add AST Node** (`src/ast/MyNewStatement.h`)
    ```cpp
-   static void hoo_dict_register_jit(LLJIT& jit, JITDylib& mainDylib) {
-       // Register all functions with JIT
-   }
-
-   static void hoo_dict_declare_llvm(Module& module, LLVMContext& ctx, void* userData) {
-       // Declare LLVM function prototypes
-   }
-
-   HOOC_REGISTER_RUNTIME(Dict, hoo_dict_register_jit, hoo_dict_declare_llvm)
+   class MyNewStatement : public Statement {
+   public:
+       MyNewStatement(std::unique_ptr<Expression> expr);
+       // Accessors...
+   };
    ```
 
-3. Add `src/rt/hoo_xxx_registration.cpp` to `hoort` library in `CMakeLists.txt`
+3. **Update AST Builder** (`src/SimpleASTBuilder.cpp`)
+   ```cpp
+   std::any SimpleASTBuilder::visitMyNewStatement(
+       HoocParser::MyNewStatementContext* ctx) {
+       // Build AST node from parse tree
+   }
+   ```
 
-4. Rebuild - no changes to HoocJIT or LLVMCodeGenerator needed!
+4. **Add Code Generation** (`src/LLVMCodeGenerator.cpp`)
+   ```cpp
+   llvm::Value* LLVMCodeGenerator::generateMyNewStatement(
+       const MyNewStatement* stmt) {
+       // Generate LLVM IR
+   }
+   ```
 
-5. Write tests and examples
+5. **Add Tests** (`tests/MyNewStatementTest.cpp`)
+   ```cpp
+   TEST_F(MyFeatureTest, BasicMyNewStatement) {
+       // Test cases
+   }
+   ```
 
-**That's it!** The registry automatically discovers and invokes your callbacks.
+### Adding Runtime Functions
 
-### Debugging code generation
+1. Declare in header (`src/rt/hoo_myfeature.h`)
+2. Implement in C/C++ (`src/rt/hoo_myfeature.cpp`)
+3. Register with LLVM in code generator
+4. Add to CMakeLists.txt if new file
 
-Check generated LLVM IR directly:
-```bash
-./build/hooc tests/examples/your_program.hoo | less
+### Debugging Tips
+
+**Print LLVM IR:**
+```cpp
+module->print(llvm::errs(), nullptr);
 ```
 
-Verify IR structure with LLVM tools:
-```bash
-./build/hooc tests/examples/your_program.hoo | opt -S -o /tmp/opt.ll
+**Check function exists:**
+```cpp
+llvm::Function* func = module->getFunction("functionName");
+assert(func != nullptr && "Function not found");
 ```
 
-## Known Limitations & TODOs
+**Memory debugging:**
+```cpp
+// In Debug builds, enable memory tracking
+hoo_print_memory_stats();
+```
 
-- **JIT Execution**: LLVM ORC JIT infrastructure present but execution not integrated into `main.cpp`
-- **Module System**: Import/export parsing complete, resolution logic incomplete
-- **Class Inheritance**: `extends` keyword parsed but code generation pending
-- **Interfaces**: Grammar complete, code generation pending
-- **Member Assignment**: `obj.field = value` parsed but not generated
-- **Design Patterns**: Keywords parsed (singleton, factory, etc.) but code generation pending
-- **Type Casting**: `as` keyword reserved but not implemented
+**AST debugging:**
+```cpp
+// Add debug output in visitor methods
+std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
+```
 
-See `docs/04-roadmap.md` for v0.7+ plans.
+## Current Implementation Status
 
-## Dependencies
+### Fully Implemented
+- ✅ Basic types (int64, double, bool, char, string, void)
+- ✅ Variables and assignments
+- ✅ Arithmetic and logical operations
+- ✅ Functions with parameters and return values
+- ✅ If/else statements
+- ✅ While loops
+- ✅ Classes with constructors
+- ✅ Object creation (new expressions)
+- ✅ Member access and method calls
+- ✅ Generics (functions and classes)
+- ✅ Arrays (including generic arrays)
+- ✅ Nullable types
+- ✅ Reference counting (ARC)
+- ✅ String library
+- ✅ Module system basics
 
-- **LLVM 21.1.8+**: Code generation and JIT
-- **ANTLR4 C++ Runtime**: Parsing
-- **CMake 3.16+**: Build system
-- **C++17**: Language standard
-- **Google Test (gtest)**: Test framework (optional, tests disabled if not found)
-- **vcpkg**: Dependency management (recommended)
+### Partially Implemented
+- 🟡 For loops (range syntax needs work)
+- 🟡 Import statements (parsing done, full resolution WIP)
+- 🟡 Interfaces (parsing done, implementation WIP)
+- 🟡 Union types (parsing done, codegen WIP)
 
-## Documentation Files
+### Not Yet Implemented
+- ❌ Lambda expressions
+- ❌ Pattern matching
+- ❌ Traits/mixins
+- ❌ Async/await
+- ❌ Standard library modules (std.io, std.collections, etc.)
+- ❌ Error handling (try/catch)
+- ❌ Operator overloading
+- ❌ Properties/getters/setters
 
-Key docs for understanding the language and implementation:
+## Important Notes for AI Assistants
 
-- `docs/01-language-specification.md`: Complete language design (v0.6 with generics)
-- `docs/03-implementation-status.md`: Feature-by-feature status
-- `docs/06-object-creation-guide.md`: How classes and objects work
-- `docs/07-memory-management-design.md`: ARC implementation details
-- `docs/08-string-integration-guide.md`: String type architecture and runtime class injection
-- `docs/09-generics-implementation-guide.md`: How C#-style generics with monomorphization work
-- `docs/11-module-system.md`: Module system design
+### When Adding Features
+
+1. **Always add tests first** - Write failing tests, then implement
+2. **Follow existing patterns** - Study similar features before implementing
+3. **Update all layers** - Grammar → AST → Code generation → Tests
+4. **Check memory management** - Ensure proper retain/release for objects
+5. **Verify LLVM IR** - Print and inspect generated IR for correctness
+
+### When Fixing Bugs
+
+1. **Add regression test** - Create test that reproduces the bug
+2. **Identify the layer** - Is it parsing, AST building, or code generation?
+3. **Check ANTLR4 output** - Use ANTLR4 visualizer if needed
+4. **Verify LLVM IR** - Ensure generated IR is valid
+
+### When Refactoring
+
+1. **Run tests frequently** - Ensure no regressions
+2. **Maintain API compatibility** - Don't break existing tests
+3. **Update documentation** - Keep this file and others in sync
+4. **Use small commits** - Incremental changes are easier to debug
+
+### Common Pitfalls
+
+- **LLVM ownership**: Don't delete LLVM objects manually
+- **String literals**: Use `builder->CreateGlobalStringPtr()` for constants
+- **Type checking**: Always verify types before code generation
+- **Memory leaks**: Test with memory debugging enabled
+- **Generic instantiation**: Cache instantiated types/functions
+
+## Resources
+
+- [LLVM Programmer's Manual](https://llvm.org/docs/ProgrammersManual.html)
+- [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
+- [GoogleTest Primer](https://google.github.io/googletest/primer.html)
+- Grammar: `src/Hooc.g4`
+- Tests: `tests/` directory (comprehensive examples)
+
+## Questions?
+
+When working on this project:
+1. Read existing tests to understand feature behavior
+2. Check the grammar file for syntax rules
+3. Look at similar features for implementation patterns
+4. Run tests after every change
+5. Ask for clarification when needed
+
+This is a living document. Update it as the project evolves.
