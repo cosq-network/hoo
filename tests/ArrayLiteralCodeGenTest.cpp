@@ -531,3 +531,98 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralStorageLocation) {
     }
     EXPECT_GT(globalConstCount, 0);
 }
+
+// Test: Array as return type
+TEST_F(ArrayLiteralCodeGenTest, ArrayReturnType) {
+    std::string code = R"(
+        func getNumbers() -> int64[] {
+            return [1, 2, 3];
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto module = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(module, nullptr);
+
+    // Check function exists with correct signature
+    Function* func = module->getFunction("getNumbers");
+    ASSERT_NE(func, nullptr);
+
+    // Function should return pointer (arrays are passed by reference)
+    EXPECT_TRUE(func->getReturnType()->isPointerTy());
+
+    // Verify module is valid
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+// Test: Multi-dimensional array as return type
+TEST_F(ArrayLiteralCodeGenTest, MultiDimensionalArrayReturnType) {
+    std::string code = R"(
+        func getMatrix() -> int64[][] {
+            return [[1, 2], [3, 4]];
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto module = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(module, nullptr);
+
+    Function* func = module->getFunction("getMatrix");
+    ASSERT_NE(func, nullptr);
+
+    // Function should return pointer
+    EXPECT_TRUE(func->getReturnType()->isPointerTy());
+
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+// Test: Array return type with array assignment
+TEST_F(ArrayLiteralCodeGenTest, ArrayReturnAndAssignment) {
+    std::string code = R"(
+        func test() -> void {
+            var result = [10, 20, 30];
+            return;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto module = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(module, nullptr);
+
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}
+
+// Test: Array as function parameter and return
+TEST_F(ArrayLiteralCodeGenTest, ArrayParameterAndReturn) {
+    std::string code = R"(
+        func process(arr: int64[]) -> int64[] {
+            return arr;
+        }
+    )";
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto module = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(module, nullptr);
+
+    Function* func = module->getFunction("process");
+    ASSERT_NE(func, nullptr);
+
+    // Should have one parameter (pointer) and return pointer
+    EXPECT_EQ(func->arg_size(), static_cast<size_t>(1));
+    EXPECT_TRUE(func->getReturnType()->isPointerTy());
+    EXPECT_TRUE(func->getArg(0)->getType()->isPointerTy());
+
+    std::string errorMsg;
+    raw_string_ostream errorStream(errorMsg);
+    EXPECT_FALSE(verifyModule(*module, &errorStream));
+}

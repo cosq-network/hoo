@@ -290,13 +290,6 @@ if(HOOC_BUILD_TESTS)
         tests/NullableCodeGenTest.cpp
         tests/ModuleLevelVariableParsingTest.cpp
         tests/ClassDeclarationParsingTest.cpp
-        tests/GenericSyntaxParsingTest.cpp
-        tests/GenericASTBuildingTest.cpp
-        tests/GenericNameManglingTest.cpp
-        tests/GenericClassCodeGenTest.cpp
-        tests/GenericFunctionCodeGenTest.cpp
-        tests/GenericIntegrationTest.cpp
-        tests/GenericErrorHandlingTest.cpp
         tests/OptionalReturnTypeTest.cpp
         tests/NewExpressionParsingTest.cpp
         tests/NewExpressionCodeGenTest.cpp

@@ -62,27 +62,7 @@ TEST_F(QualifiedNewExpressionParsingTest, NestedQualifiedNewExpression) {
     ASSERT_GT(ast->getDeclarations().size(), 0);
 }
 
-TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithGenericArguments) {
-    std::string code = R"(
-        func test() -> void {
-            var arr = new std.Array<int64>();
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
 
-TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithNestedGenerics) {
-    std::string code = R"(
-        func test() -> void {
-            var map = new std.collections.Map<std.String, int64>();
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInAssignment) {
     std::string code = R"(
@@ -118,18 +98,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInReturnStatemen
     ASSERT_GT(ast->getDeclarations().size(), 0);
 }
 
-TEST_F(QualifiedNewExpressionParsingTest, MultipleQualifiedNewExpressions) {
-    std::string code = R"(
-        func test() -> void {
-            var s1 = new std.String("first");
-            var s2 = new std.String("second");
-            var arr = new std.Array<int64>();
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
+
 
 // Test backward compatibility - simple new expressions should still work
 TEST_F(QualifiedNewExpressionParsingTest, SimpleNewExpressionStillWorks) {
@@ -154,26 +123,4 @@ TEST_F(QualifiedNewExpressionParsingTest, SimpleNewExpressionWithArguments) {
     ASSERT_GT(ast->getDeclarations().size(), 0);
 }
 
-TEST_F(QualifiedNewExpressionParsingTest, SimpleNewExpressionWithGenerics) {
-    std::string code = R"(
-        func test() -> void {
-            var arr = new Array<int64>();
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
 
-TEST_F(QualifiedNewExpressionParsingTest, MixedQualifiedAndSimpleNewExpressions) {
-    std::string code = R"(
-        func test() -> void {
-            var s = new std.String("test");
-            var p = new Point(10, 20);
-            var arr = new std.Array<int64>();
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}

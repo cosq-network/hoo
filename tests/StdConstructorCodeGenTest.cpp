@@ -128,13 +128,13 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringInFunctionCall) {
 }
 
 // ============================================================================
-// std.Array Constructor Tests - Qualified Names
+// std.Array Constructor Tests - Using array literals and standard types
 // ============================================================================
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayIntConstructor) {
     std::string code = R"(
-        func test() -> std.Array<int64> {
-            return new std.Array<int64>();
+        func test() -> void {
+            var arr: int64[] = [1, 2, 3, 4, 5];
         }
     )";
 
@@ -144,15 +144,12 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayIntConstructor) {
     auto llvmModule = codeGen->generateLLVMModule(*ast);
     ASSERT_NE(llvmModule, nullptr);
     EXPECT_TRUE(isModuleValid(llvmModule.get()));
-
-    // Should call hoo_array_new
-    EXPECT_TRUE(moduleContains(llvmModule.get(), "hoo_array_new"));
 }
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayStringConstructor) {
     std::string code = R"(
-        func test() -> std.Array<std.String> {
-            return new std.Array<std.String>();
+        func test() -> void {
+            var arr: std.String[] = [new std.String("a"), new std.String("b")];
         }
     )";
 
@@ -166,8 +163,8 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayStringConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedNestedArrayConstructor) {
     std::string code = R"(
-        func test() -> std.Array<std.Array<int64>> {
-            return new std.Array<std.Array<int64>>();
+        func test() -> void {
+            var arr: int64[][] = [[1, 2], [3, 4]];
         }
     )";
 
@@ -182,7 +179,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedNestedArrayConstructor) {
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayVariableDeclaration) {
     std::string code = R"(
         func test() -> void {
-            var arr: std.Array<int64> = new std.Array<int64>();
+            var arr: int64[] = [1, 2, 3];
         }
     )";
 
@@ -220,10 +217,8 @@ TEST_F(StdConstructorCodeGenTest, ImportedStringConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, ImportedArrayConstructor) {
     std::string code = R"(
-        from std import Array;
-
-        func test() -> Array<int64> {
-            return new Array<int64>();
+        func test() -> void {
+            var arr: int64[] = [1, 2, 3];
         }
     )";
 
@@ -237,11 +232,8 @@ TEST_F(StdConstructorCodeGenTest, ImportedArrayConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, ImportedStringAndArray) {
     std::string code = R"(
-        from std import String, Array;
-
-        func test() -> Array<String> {
-            var arr: Array<String> = new Array<String>();
-            return arr;
+        func test() -> void {
+            var arr: std.String[] = [new std.String("a"), new std.String("b")];
         }
     )";
 
@@ -288,11 +280,9 @@ TEST_F(StdConstructorCodeGenTest, MixedQualifiedAndImported) {
 
 TEST_F(StdConstructorCodeGenTest, MixedArrayAndString) {
     std::string code = R"(
-        from std import String, Array;
-
         func main() -> void {
             var s: std.String = new std.String("hello");
-            var arr: Array<String> = new Array<String>();
+            var arr: int64[] = [1, 2, 3];
         }
     )";
 
@@ -328,9 +318,9 @@ TEST_F(StdConstructorCodeGenTest, MultipleStringConstructions) {
 TEST_F(StdConstructorCodeGenTest, MultipleArrayConstructions) {
     std::string code = R"(
         func test() -> void {
-            var arr1: std.Array<int64> = new std.Array<int64>();
-            var arr2: std.Array<double> = new std.Array<double>();
-            var arr3: std.Array<bool> = new std.Array<bool>();
+            var arr1: int64[] = [1, 2, 3];
+            var arr2: double[] = [1.0, 2.0, 3.0];
+            var arr3: bool[] = [true, false];
         }
     )";
 
@@ -425,6 +415,215 @@ TEST_F(StdConstructorCodeGenTest, SimpleIdentifierStillWorks) {
 
         func test() -> void {
             var obj = new SimpleClass();
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+// ============================================================================
+// Qualified Array Types Tests
+// ============================================================================
+
+TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayDeclaration) {
+    std::string code = R"(
+        func test() -> void {
+            var strings: std.String[] = [new std.String("a"), new std.String("b")];
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+
+    // Should have array runtime functions
+    EXPECT_TRUE(moduleContains(llvmModule.get(), "hoo_array"));
+}
+
+TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayWithLoop) {
+    std::string code = R"(
+        func test() -> void {
+            var strings: std.String[] = [new std.String("hello"), new std.String("world")];
+            var total: int64 = 0;
+            var i: int64 = 0;
+            while i < 2 {
+                total = total + 1;
+                i = i + 1;
+            }
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+TEST_F(StdConstructorCodeGenTest, NestedQualifiedArrayType) {
+    std::string code = R"(
+        func test() -> void {
+            var nested: std.String[][] = [[new std.String("a"), new std.String("b")], [new std.String("c")]];
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsFunctionParameter) {
+    std::string code = R"(
+        func processStrings(arr: std.String[]) -> void {
+            return;
+        }
+
+        func test() -> void {
+            var strings: std.String[] = [new std.String("test")];
+            processStrings(strings);
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+
+    // Both functions should exist
+    EXPECT_NE(llvmModule->getFunction("processStrings"), nullptr);
+    EXPECT_NE(llvmModule->getFunction("test"), nullptr);
+}
+
+TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsReturnType) {
+    std::string code = R"(
+        func getStrings() -> std.String[] {
+            return [new std.String("a"), new std.String("b")];
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+
+    // Function should exist
+    Function* func = llvmModule->getFunction("getStrings");
+    ASSERT_NE(func, nullptr);
+    EXPECT_TRUE(func->getReturnType()->isPointerTy());
+}
+
+// ============================================================================
+// Union with Arrays Tests
+// ============================================================================
+
+TEST_F(StdConstructorCodeGenTest, UnionWithArrayAndString) {
+    std::string code = R"(
+        func test() -> void {
+            var data: int64[] | std.String = [1, 2, 3];
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+TEST_F(StdConstructorCodeGenTest, UnionWithArrayVariableAssignment) {
+    std::string code = R"(
+        func test() -> void {
+            var value: int64[] | std.String = [10, 20, 30];
+            value = [1, 2];
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+TEST_F(StdConstructorCodeGenTest, UnionWithMultiDimensionalArray) {
+    std::string code = R"(
+        func test() -> void {
+            var data: int64[][] | std.String = [[1, 2], [3, 4]];
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+TEST_F(StdConstructorCodeGenTest, UnionWithArrayAsFunctionParameter) {
+    std::string code = R"(
+        func process(data: int64[] | std.String) -> void {
+            return;
+        }
+
+        func test() -> void {
+            process([1, 2, 3]);
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+}
+
+TEST_F(StdConstructorCodeGenTest, UnionWithArrayReturnType) {
+    std::string code = R"(
+        func getValue(flag: bool) -> int64[] | std.String {
+            if flag {
+                return [1, 2, 3];
+            }
+            return new std.String("default");
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto llvmModule = codeGen->generateLLVMModule(*ast);
+    ASSERT_NE(llvmModule, nullptr);
+    EXPECT_TRUE(isModuleValid(llvmModule.get()));
+
+    Function* func = llvmModule->getFunction("getValue");
+    ASSERT_NE(func, nullptr);
+    EXPECT_TRUE(func->getReturnType()->isPointerTy());
+}
+
+TEST_F(StdConstructorCodeGenTest, MixedQualifiedAndUnionArray) {
+    std::string code = R"(
+        func test() -> void {
+            var arr1: std.String[] = [new std.String("a")];
+            var arr2: int64[] | std.String[] = [1, 2];
         }
     )";
 

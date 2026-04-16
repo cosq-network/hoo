@@ -525,3 +525,134 @@ TEST_F(NullableTypeParsingTest, ComplexNullableUnionType) {
         ASSERT_EQ(optTypes.size(), 3) << "Union should have 3 types";
     }
 }
+
+// Test 16: Union with array type (int64[] | string)
+TEST_F(NullableTypeParsingTest, UnionWithArrayType) {
+    std::string code = R"(
+        func process(data: int64[] | string) -> void {
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    auto* funcDecl = getFunctionDeclaration(*ast);
+    ASSERT_NE(funcDecl, nullptr);
+
+    auto& params = funcDecl->getParameters();
+    ASSERT_EQ(params.size(), 1);
+
+    auto* param = params[0].get();
+    ASSERT_NE(param, nullptr);
+
+    const Type* paramTypePtr = &param->getType();
+
+    // Should be a UnionType with 2 types
+    auto* unionType = dynamic_cast<const UnionType*>(paramTypePtr);
+    ASSERT_NE(unionType, nullptr);
+
+    auto& optTypes = unionType->getTypes();
+    ASSERT_EQ(optTypes.size(), 2) << "Union should have 2 types";
+}
+
+// Test 17: Union with multi-dimensional array
+TEST_F(NullableTypeParsingTest, UnionWithMultiDimensionalArray) {
+    std::string code = R"(
+        func process(data: int64[][] | string) -> void {
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    auto* funcDecl = getFunctionDeclaration(*ast);
+    ASSERT_NE(funcDecl, nullptr);
+
+    auto& params = funcDecl->getParameters();
+    ASSERT_EQ(params.size(), 1);
+
+    auto* param = params[0].get();
+    ASSERT_NE(param, nullptr);
+
+    const Type* paramTypePtr = &param->getType();
+
+    // Should be a UnionType
+    auto* unionType = dynamic_cast<const UnionType*>(paramTypePtr);
+    ASSERT_NE(unionType, nullptr);
+
+    auto& optTypes = unionType->getTypes();
+    ASSERT_EQ(optTypes.size(), 2);
+}
+
+// Test 18: Union with array return type
+TEST_F(NullableTypeParsingTest, UnionWithArrayReturnType) {
+    std::string code = R"(
+        func getValue() -> int64[] | string {
+            return [1, 2, 3];
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    auto* funcDecl = getFunctionDeclaration(*ast);
+    ASSERT_NE(funcDecl, nullptr);
+
+    // Check return type is UnionType
+    auto* returnType = funcDecl->getReturnType();
+    ASSERT_NE(returnType, nullptr);
+
+    auto* unionType = dynamic_cast<const UnionType*>(returnType);
+    ASSERT_NE(unionType, nullptr);
+
+    auto& optTypes = unionType->getTypes();
+    ASSERT_EQ(optTypes.size(), 2);
+}
+
+// Test 19: Union with nullable array and regular array
+TEST_F(NullableTypeParsingTest, UnionWithNullableAndRegularArray) {
+    std::string code = R"(
+        func process(data: int64[] | int64[][]?) -> void {
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    auto* funcDecl = getFunctionDeclaration(*ast);
+    ASSERT_NE(funcDecl, nullptr);
+
+    auto& params = funcDecl->getParameters();
+    ASSERT_EQ(params.size(), 1);
+
+    auto* param = params[0].get();
+    const Type* paramTypePtr = &param->getType();
+
+    auto* unionType = dynamic_cast<const UnionType*>(paramTypePtr);
+    ASSERT_NE(unionType, nullptr);
+    ASSERT_EQ(unionType->getTypes().size(), 2);
+}

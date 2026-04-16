@@ -2,7 +2,7 @@
 
 This document tracks the current implementation status of the Hooc compiler and runtime. It provides a detailed breakdown of completed features, work-in-progress items, and planned additions.
 
-**Last Updated:** April 15, 2026
+**Last Updated:** April 16, 2026
 
 ## Overview
 
@@ -97,21 +97,20 @@ These features are fully implemented, tested, and production-ready:
 
 #### Generic Programming
 
+> **Note:** Generics have been removed from the language. Use concrete types and array literals for type-safe collections.
+
 - **Generic Functions**
-  - ✅ Type parameters (`<T>`, `<T, U>`)
-  - ✅ Type argument inference
-  - ✅ Explicit type arguments
-  - ✅ Function monomorphization
-  - ✅ Name mangling for instantiated functions
-  - ✅ Multiple type parameters
+  - ❌ Removed - Was: Type parameters (`<T>`, `<T, U>`)
+  - ❌ Removed - Was: Type argument inference
+  - ❌ Removed - Was: Explicit type arguments
+  - ❌ Removed - Was: Function monomorphization
+  - ❌ Removed - Was: Name mangling for instantiated functions
 
 - **Generic Classes**
-  - ✅ Generic class declarations
-  - ✅ Type parameters in class definitions
-  - ✅ Generic member functions
-  - ✅ Class instantiation with type arguments
-  - ✅ Monomorphization of generic classes
-  - ✅ Nested generic types
+  - ❌ Removed - Was: Generic class declarations
+  - ❌ Removed - Was: Type parameters in class definitions
+  - ❌ Removed - Was: Class instantiation with type arguments
+  - ❌ Removed - Was: Monomorphization of generic classes
 
 #### Type System
 
@@ -127,7 +126,6 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Array types (`T[]`, `T[][]`)
   - ✅ Union types (`T | U`) - parsing complete
   - 🟡 Union type code generation (partial)
-  - ✅ Generic types (`Box<T>`)
 
 - **Arrays**
   - ✅ Array literals `[1, 2, 3]`
@@ -410,13 +408,12 @@ These features are planned but not yet started:
 
 | Component | Test Files | Test Cases | Coverage |
 |-----------|-----------|------------|----------|
-| Parsing | 12 | 150+ | High |
-| AST Building | 8 | 100+ | High |
-| Code Generation | 15 | 200+ | High |
-| Generics | 6 | 80+ | High |
+| Parsing | 10 | 140+ | High |
+| AST Building | 7 | 90+ | High |
+| Code Generation | 14 | 190+ | High |
 | Runtime | 5 | 60+ | Medium |
 | Integration | 10 | 120+ | High |
-| **Total** | **56+** | **710+** | **High** |
+| **Total** | **46+** | **600+** | **High** |
 
 ### Lines of Code
 
@@ -424,11 +421,11 @@ These features are planned but not yet started:
 |-----------|-------|-------|----------|
 | Compiler Core | 20+ | 8,000+ | C++ |
 | AST Definitions | 15+ | 3,000+ | C++ |
-| Code Generator | 3 | 5,000+ | C++ |
+| Code Generator | 3 | 4,500+ | C++ |
 | Runtime Library | 6 | 3,500+ | C/C++ |
-| Tests | 30+ | 10,000+ | C++ |
-| Grammar | 1 | 300 | ANTLR4 |
-| **Total** | **75+** | **29,800+** | - |
+| Tests | 25+ | 8,000+ | C++ |
+| Grammar | 1 | 280 | ANTLR4 |
+| **Total** | **70+** | **27,280+** | - |
 
 ### Performance Characteristics
 
@@ -439,42 +436,41 @@ These features are planned but not yet started:
 
 ## Recent Progress
 
-### Phase 7 (Current)
+### Phase 8 (Current)
+- ✅ Removed generic type parameters from language
+- ✅ Simplified type system with concrete types
+- ✅ Array types for type-safe collections
+- 🟡 Standard library expansion (ongoing)
+
+### Phase 7 (Completed)
 - ✅ Generic array system refactored
 - ✅ Runtime class injection framework
 - ✅ Module system basics
 - ✅ String integration complete
-- 🟡 Standard library expansion (ongoing)
 
 ### Phase 6 (Completed)
-- ✅ Generic functions and classes
-- ✅ Name mangling for generics
-- ✅ Monomorphization
-- ✅ Multiple type parameters
-
-### Phase 5 (Completed)
 - ✅ Object-oriented programming
 - ✅ Classes and constructors
 - ✅ Member access and method calls
 - ✅ Inheritance basics
 
-### Phase 4 (Completed)
+### Phase 5 (Completed)
 - ✅ LLVM code generation
 - ✅ Basic types and operations
 - ✅ Control flow
 - ✅ Functions
 
-### Phase 3 (Completed)
+### Phase 4 (Completed)
 - ✅ AST building from parse tree
 - ✅ Type system design
 - ✅ Symbol tables
 
-### Phase 2 (Completed)
+### Phase 3 (Completed)
 - ✅ ANTLR4 grammar
 - ✅ Lexer and parser
 - ✅ Parse tree generation
 
-### Phase 1 (Completed)
+### Phase 2 (Completed)
 - ✅ Project setup
 - ✅ Build system (CMake)
 - ✅ Dependencies (LLVM, ANTLR4)

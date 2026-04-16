@@ -46,19 +46,13 @@ private:
 class BaseType : public Type {
 public:
     BaseType(std::unique_ptr<PrimitiveType> primitiveType)
-        : primitiveType_(std::move(primitiveType)), identifier_(nullptr), typeArguments_() {}
+        : primitiveType_(std::move(primitiveType)), identifier_(nullptr) {}
 
     BaseType(const std::string& identifier)
-        : primitiveType_(nullptr), identifier_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{identifier})), typeArguments_() {}
+        : primitiveType_(nullptr), identifier_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{identifier})) {}
 
     BaseType(std::unique_ptr<QualifiedIdentifier> identifier)
-        : primitiveType_(nullptr), identifier_(std::move(identifier)), typeArguments_() {}
-
-    BaseType(const std::string& identifier, std::vector<std::unique_ptr<Type>> typeArguments)
-        : primitiveType_(nullptr), identifier_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{identifier})), typeArguments_(std::move(typeArguments)) {}
-
-    BaseType(std::unique_ptr<QualifiedIdentifier> identifier, std::vector<std::unique_ptr<Type>> typeArguments)
-        : primitiveType_(nullptr), identifier_(std::move(identifier)), typeArguments_(std::move(typeArguments)) {}
+        : primitiveType_(nullptr), identifier_(std::move(identifier)) {}
 
     std::string toString() const override;
 
@@ -72,14 +66,11 @@ public:
     // Get qualified identifier (new API)
     const QualifiedIdentifier* getQualifiedIdentifier() const { return identifier_.get(); }
 
-    const std::vector<std::unique_ptr<Type>>& getTypeArguments() const { return typeArguments_; }
     bool isPrimitive() const { return primitiveType_ != nullptr; }
-    bool hasTypeArguments() const { return !typeArguments_.empty(); }
 
 private:
     std::unique_ptr<PrimitiveType> primitiveType_;
     std::unique_ptr<QualifiedIdentifier> identifier_;
-    std::vector<std::unique_ptr<Type>> typeArguments_;
 };
 
 // Array type

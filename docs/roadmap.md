@@ -2,7 +2,7 @@
 
 This document outlines the planned development trajectory for the Hooc programming language and compiler. It provides a timeline of features, priorities, and milestones for future development.
 
-**Last Updated:** April 15, 2026
+**Last Updated:** April 16, 2026
 
 ## Vision and Goals
 
@@ -11,7 +11,7 @@ This document outlines the planned development trajectory for the Hooc programmi
 Hooc aims to be a modern, productive programming language that combines:
 - **Safety**: Strong static typing with nullable types and memory safety
 - **Performance**: Native code generation via LLVM
-- **Expressiveness**: Modern syntax with generics, pattern matching, and functional features
+- **Expressiveness**: Modern syntax with pattern matching and functional features
 - **Simplicity**: Clean, intuitive design without unnecessary complexity
 - **Interoperability**: Easy FFI with C/C++ and other languages
 
@@ -23,11 +23,11 @@ Hooc aims to be a modern, productive programming language that combines:
 4. **Gradual Adoption**: Can start simple and use advanced features as needed
 5. **Excellent Tooling**: First-class IDE support, debugger, and package manager
 
-## Current Status (Phase 7)
+## Current Status (Phase 8)
 
 - ✅ Core language features complete
 - ✅ Object-oriented programming working
-- ✅ Generics fully functional
+- ✅ Simplified type system (generics removed)
 - ✅ Runtime library operational
 - 🟡 Standard library in progress
 - 🟡 Module system partially complete
@@ -43,11 +43,11 @@ Hooc aims to be a modern, productive programming language that combines:
 #### Deliverables
 
 **Collections Module** (`std.collections`)
-- [ ] `List<T>` - Dynamic array/list
-- [ ] `Map<K, V>` - Hash map with generic keys/values
-- [ ] `Set<T>` - Hash set for unique values
-- [ ] `Queue<T>` - FIFO queue
-- [ ] `Stack<T>` - LIFO stack
+- [ ] `List` - Dynamic array/list using built-in array types
+- [ ] `Map` - Hash map with string keys
+- [ ] `Set` - Hash set for unique values
+- [ ] `Queue` - FIFO queue
+- [ ] `Stack` - LIFO stack
 - [ ] Iterator protocol
 - [ ] Range types
 - [ ] Collection utilities (sort, filter, map, reduce)
@@ -290,9 +290,16 @@ print(counter());  // 2
 
 **Priority:** Medium
 **Duration:** 2-3 months
-**Focus:** Generic constraints, traits, and advanced types
+**Focus:** Adding generics back with constraints, traits, and advanced types
 
 #### Deliverables
+
+**Generic Programming (Redesign)**
+- [ ] Generic type parameters (`<T>`)
+- [ ] Type argument inference
+- [ ] Explicit type arguments
+- [ ] Monomorphization
+- [ ] Multiple type parameters
 
 **Generic Constraints**
 - [ ] Interface constraints (`T: Interface`)
@@ -523,11 +530,11 @@ async func consumer() {
 - [ ] Dead code elimination improvements
 
 **Runtime Optimizations**
-- [ ] Generational reference counting
 - [ ] Object pooling
 - [ ] String interning
 - [ ] Array allocation optimization
 - [ ] Cache-friendly data structures
+- [ ] Generational GC (future consideration)
 
 **Benchmarking**
 - [ ] Comprehensive benchmark suite
@@ -539,7 +546,7 @@ async func consumer() {
 **Language Features for Performance**
 - [ ] `inline` keyword
 - [ ] `const` evaluation
-- [ ] Compile-time function execution
+- [ ] Compile-time function execution (when generics return)
 - [ ] SIMD intrinsics
 - [ ] Manual memory management options
 

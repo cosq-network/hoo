@@ -8,13 +8,12 @@ This guide provides comprehensive documentation for all features of the Hooc pro
 2. [Variables](#variables)
 3. [Functions](#functions)
 4. [Classes and Objects](#classes-and-objects)
-5. [Generics](#generics)
-6. [Arrays](#arrays)
-7. [Control Flow](#control-flow)
-8. [Module System](#module-system)
-9. [Memory Management](#memory-management)
-10. [String Operations](#string-operations)
-11. [Advanced Features](#advanced-features)
+5. [Arrays](#arrays)
+6. [Control Flow](#control-flow)
+7. [Module System](#module-system)
+8. [Memory Management](#memory-management)
+9. [String Operations](#string-operations)
+10. [Advanced Features](#advanced-features)
 
 ## Type System
 
@@ -270,10 +269,6 @@ var result = calculate(15, 5, "add");
 var value = square(add(2, 3));  // square(5) = 25
 ```
 
-### Generic Functions
-
-See [Generics](#generics) section for details.
-
 ## Classes and Objects
 
 ### Class Declaration
@@ -495,113 +490,6 @@ class Circle implements Drawable, Printable {
 }
 ```
 
-## Generics
-
-### Generic Functions
-
-```hoo
-// Simple generic function
-func identity<T>(value: T) -> T {
-    return value;
-}
-
-// Usage with explicit type
-var intValue = identity<int64>(42);
-var strValue = identity<string>("hello");
-
-// Multiple type parameters
-func pair<T, U>(first: T, second: U) -> void {
-    print(first);
-    print(second);
-}
-
-pair<int64, string>(42, "answer");
-```
-
-### Generic Classes
-
-```hoo
-class Box<T> {
-    var value: T;
-
-    constructor(val: T) {
-        var value = val;
-    }
-
-    func get() -> T {
-        return value;
-    }
-
-    func set(val: T) {
-        value = val;
-    }
-}
-
-// Usage
-var intBox = new Box<int64>(42);
-var strBox = new Box<string>("hello");
-
-print(intBox.get());  // 42
-print(strBox.get());  // "hello"
-```
-
-### Generic Arrays
-
-```hoo
-class Stack<T> {
-    var items: T[];
-
-    constructor() {
-        var items = [];
-    }
-
-    func push(item: T) {
-        // Add to array
-    }
-
-    func pop() -> T? {
-        // Remove from array
-        return null;
-    }
-
-    func isEmpty() -> bool {
-        return items.length() == 0;
-    }
-}
-
-var intStack = new Stack<int64>();
-intStack.push(1);
-intStack.push(2);
-
-var strStack = new Stack<string>();
-strStack.push("hello");
-```
-
-### Multiple Type Parameters
-
-```hoo
-class Pair<K, V> {
-    var key: K;
-    var value: V;
-
-    constructor(k: K, v: V) {
-        var key = k;
-        var value = v;
-    }
-
-    func getKey() -> K {
-        return key;
-    }
-
-    func getValue() -> V {
-        return value;
-    }
-}
-
-var stringIntPair = new Pair<string, int64>("age", 30);
-var boolDoublePair = new Pair<bool, double>(true, 3.14);
-```
-
 ## Arrays
 
 ### Array Literals
@@ -658,9 +546,9 @@ arr.clear();              // []
 var isEmpty = arr.empty(); // true
 ```
 
-### Generic Arrays
+### Arrays with Custom Types
 
-Arrays are fully generic and type-safe:
+Arrays can hold custom types:
 
 ```hoo
 // Array of custom types
@@ -676,7 +564,7 @@ points.push(new Point(10, 20));
 // Array of nullable types
 var maybeValues: int64?[] = [null, 42, null, 100];
 
-// Nested generic arrays
+// Nested arrays
 var listOfLists: int64[][] = [[1, 2], [3, 4], [5, 6]];
 ```
 
@@ -815,7 +703,7 @@ Modules use dot notation for hierarchical organization:
 ```hoo
 import std;                    // Top-level std module
 import std.io;                 // std.io submodule
-import std.collections.generic; // Nested module
+import std.collections; // Nested module
 
 // Using qualified names
 var str = new std.String("hello");
@@ -1052,10 +940,14 @@ if value is int64 {
 }
 ```
 
-### Generic Constraints (Planned)
+### Type Constraints (Planned)
 
 ```hoo
 // Future feature: constrain type parameters
+interface Comparable {
+    func compare(other: Self) -> int64;
+}
+
 func sortable<T: Comparable>(items: T[]) -> void {
     // T must implement Comparable interface
 }
@@ -1142,23 +1034,6 @@ func processFile(filename: string) {
         // Process file
         // File automatically closed at end of scope
     }
-}
-```
-
-### Generic Code
-
-Prefer generic functions and classes for reusable code:
-
-```hoo
-// Instead of separate functions for each type
-func swapInt(a: int64, b: int64) { }
-func swapString(a: string, b: string) { }
-
-// Use generic function
-func swap<T>(a: T, b: T) {
-    var temp = a;
-    a = b;
-    b = temp;
 }
 ```
 

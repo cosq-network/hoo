@@ -73,14 +73,6 @@ std::string FromImport::toString() const {
 std::string FunctionDeclaration::toString() const {
     std::stringstream ss;
     ss << "FunctionDeclaration " << name_;
-    if (isGeneric()) {
-        ss << "<";
-        for (size_t i = 0; i < typeParameters_.size(); ++i) {
-            if (i > 0) ss << ", ";
-            ss << typeParameters_[i];
-        }
-        ss << ">";
-    }
     return ss.str();
 }
 
@@ -112,14 +104,6 @@ std::string ClassBody::toString() const {
 std::string ClassDeclaration::toString() const {
     std::stringstream ss;
     ss << "ClassDeclaration " << name_;
-    if (isGeneric()) {
-        ss << "<";
-        for (size_t i = 0; i < typeParameters_.size(); ++i) {
-            if (i > 0) ss << ", ";
-            ss << typeParameters_[i];
-        }
-        ss << ">";
-    }
     return ss.str();
 }
 
@@ -156,11 +140,7 @@ std::string BaseType::toString() const {
     if (isPrimitive()) {
         ss << "(primitive)";
     } else if (identifier_) {
-        if (hasTypeArguments()) {
-            ss << "(" << identifier_->toString() << "<...>)";
-        } else {
-            ss << "(" << identifier_->toString() << ")";
-        }
+        ss << "(" << identifier_->toString() << ")";
     }
     return ss.str();
 }
@@ -242,9 +222,6 @@ std::string NewArrayExpression::toString() const {
 std::string NewObjectExpression::toString() const {
     std::stringstream ss;
     ss << "NewObjectExpression " << className_;
-    if (hasTypeArguments()) {
-        ss << "<...>";
-    }
     return ss.str();
 }
 

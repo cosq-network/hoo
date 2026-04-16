@@ -243,7 +243,7 @@ from std.collections import List as ArrayList;
 modulePath: IDENTIFIER (DOT IDENTIFIER)*
 ```
 
-Examples: `std`, `std.io`, `std.collections.generic`
+Examples: `std`, `std.io`, `std.collections`
 
 ### Declarations
 
@@ -251,12 +251,11 @@ Examples: `std`, `std.io`, `std.collections.generic`
 
 ```antlr
 functionDeclaration:
-    FUNC IDENTIFIER typeParameterList? LPAREN parameterList? RPAREN (ARROW type)? block
+    FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)? block
 ```
 
 **Components:**
 - Function name (identifier)
-- Optional type parameters for generics: `<T, U>`
 - Parameter list: `(param1: type1, param2: type2)`
 - Optional return type: `-> type`
 - Function body (block)
@@ -273,16 +272,6 @@ func greet() {
 func add(a: int64, b: int64) -> int64 {
     return a + b;
 }
-
-// Generic function
-func identity<T>(value: T) -> T {
-    return value;
-}
-
-// Multiple type parameters
-func swap<T, U>(a: T, b: U) -> void {
-    // Implementation
-}
 ```
 
 **Parameter list:**
@@ -295,8 +284,7 @@ parameter: IDENTIFIER COLON type
 
 ```antlr
 classDeclaration:
-    classModifier* CLASS IDENTIFIER typeParameterList?
-    (EXTENDS IDENTIFIER typeArgumentList?)?
+    classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)?
     (IMPLEMENTS interfaceList)?
     classBody
 ```
@@ -304,7 +292,6 @@ classDeclaration:
 **Components:**
 - Optional modifiers: `singleton`, `immutable`, `final`, etc.
 - Class name
-- Optional type parameters: `<T>`
 - Optional base class: `extends BaseClass`
 - Optional interfaces: `implements Interface1, Interface2`
 - Class body
@@ -333,15 +320,6 @@ class Rectangle {
     constructor(w: int64, h: int64) {
         var width = w;
         var height = h;
-    }
-}
-
-// Generic class
-class Box<T> {
-    var value: T;
-
-    constructor(val: T) {
-        var value = val;
     }
 }
 
@@ -445,7 +423,7 @@ arrayType: baseType (LBRACKET RBRACKET)*
 
 baseType:
     | primitiveType
-    | qualifiedIdentifier typeArgumentList?
+    | qualifiedIdentifier
 
 primitiveType:
     BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 |
@@ -473,14 +451,8 @@ var optionalStr: string?;
 var value: int64 | string;
 var result: bool | null;
 
-// Generic types
-var box: Box<int64>;
-var list: List<string>;
-
-// Complex types
-var data: Map<string, List<int64>>;
-var optional: Box<int64>?;
-var arrays: int64[]?;
+// Complex types using arrays
+var arrays: int64[][]?;
 ```
 
 **Qualified identifiers (for modules):**
@@ -489,13 +461,6 @@ qualifiedIdentifier: IDENTIFIER (DOT IDENTIFIER)*
 ```
 
 Examples: `String`, `std.String`, `std.collections.List`
-
-**Type arguments (for generics):**
-```antlr
-typeArgumentList: LESS type (COMMA type)* GREATER
-```
-
-Examples: `<int64>`, `<string, bool>`, `<List<int64>>`
 
 ### Statements
 
@@ -669,9 +634,9 @@ unaryExpression:
 
 postfixExpression:
     primary (
-        DOT IDENTIFIER typeArgumentList?          // Member access
+        DOT IDENTIFIER                             // Member access
       | LBRACKET expression RBRACKET              // Array indexing
-      | typeArgumentList? LPAREN argumentList? RPAREN  // Function call
+      | LPAREN argumentList? RPAREN               // Function call
     )*
 
 primary:
@@ -692,7 +657,7 @@ primary:
 
 ```antlr
 newExpression:
-    NEW qualifiedIdentifier typeArgumentList? LPAREN argumentList? RPAREN
+    NEW qualifiedIdentifier LPAREN argumentList? RPAREN
 ```
 
 **Examples:**
@@ -700,7 +665,6 @@ newExpression:
 ```hoo
 var obj = new Object();
 var point = new Point(10, 20);
-var box = new Box<int64>(42);
 var rect = new geometry.Rectangle(5, 10);
 ```
 
@@ -724,7 +688,7 @@ var matrix = [[1, 2], [3, 4]];
 #### Function Calls
 
 ```antlr
-typeArgumentList? LPAREN argumentList? RPAREN
+LPAREN argumentList? RPAREN
 
 argumentList: expression (COMMA expression)*
 ```
@@ -737,9 +701,6 @@ print("hello");
 
 // With multiple arguments
 add(10, 20);
-
-// Generic function call
-var result = identity<int64>(42);
 
 // Method call
 obj.method(arg1, arg2);
@@ -797,35 +758,6 @@ func main() {
 }
 ```
 
-### Example 3: Generics
-
-```hoo
-class Stack<T> {
-    var items: T[];
-
-    constructor() {
-        var items = [];
-    }
-
-    func push(item: T) -> void {
-        // Add to array
-    }
-
-    func pop() -> T? {
-        // Remove from array
-        return null;
-    }
-}
-
-func main() {
-    var intStack = new Stack<int64>();
-    intStack.push(42);
-
-    var strStack = new Stack<string>();
-    strStack.push("hello");
-}
-```
-
 ### Example 4: Control Flow
 
 ```hoo
@@ -856,18 +788,15 @@ func main() {
 ### Example 5: Module System
 
 ```hoo
-from std.collections import List, Map;
 import std.io as io;
 
 func main() {
-    var numbers = new List<int64>();
-    numbers.add(1);
-    numbers.add(2);
-
-    var config = new Map<string, string>();
-    config.set("name", "app");
-
-    io.println("Application started");
+    var arr: int64[] = [1, 2, 3, 4, 5];
+    var total = 0;
+    for item in arr {
+        total = total + item;
+    }
+    io.println("Sum: " + total);
 }
 ```
 

@@ -544,3 +544,87 @@ TEST_F(ArrayLiteralParsingTest, LargeArrayLiteral) {
     ASSERT_NE(elements, nullptr);
     EXPECT_EQ(elements->getExpressions().size(), static_cast<size_t>(15));
 }
+
+// Test 13: Array as return type
+TEST_F(ArrayLiteralParsingTest, ArrayReturnType) {
+    std::string code = R"(
+        func getNumbers() -> int64[] {
+            return [1, 2, 3];
+        }
+    )";
+
+    auto ast = parseCode(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto* func = getFirstFunction(ast.get());
+    ASSERT_NE(func, nullptr);
+    EXPECT_EQ(func->getName(), "getNumbers");
+
+    // Check return type is ArrayType
+    auto* returnType = func->getReturnType();
+    ASSERT_NE(returnType, nullptr);
+
+    auto* arrayType = dynamic_cast<const ArrayType*>(returnType);
+    ASSERT_NE(arrayType, nullptr);
+
+    // Should be 1D array
+    EXPECT_EQ(arrayType->getDimensions().size(), static_cast<size_t>(1));
+}
+
+// Test 14: Multi-dimensional array as return type
+TEST_F(ArrayLiteralParsingTest, MultiDimensionalArrayReturnType) {
+    std::string code = R"(
+        func getMatrix() -> int64[][] {
+            return [[1, 2], [3, 4]];
+        }
+    )";
+
+    auto ast = parseCode(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto* func = getFirstFunction(ast.get());
+    ASSERT_NE(func, nullptr);
+    EXPECT_EQ(func->getName(), "getMatrix");
+
+    // Check return type is ArrayType with 2 dimensions
+    auto* returnType = func->getReturnType();
+    ASSERT_NE(returnType, nullptr);
+
+    auto* arrayType = dynamic_cast<const ArrayType*>(returnType);
+    ASSERT_NE(arrayType, nullptr);
+
+    // Should be 2D array
+    EXPECT_EQ(arrayType->getDimensions().size(), static_cast<size_t>(2));
+}
+
+// Test 15: Array return type with qualified base type
+TEST_F(ArrayLiteralParsingTest, QualifiedArrayReturnType) {
+    std::string code = R"(
+        func getStrings() -> std.String[] {
+            return [new std.String("a"), new std.String("b")];
+        }
+    )";
+
+    auto ast = parseCode(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto* func = getFirstFunction(ast.get());
+    ASSERT_NE(func, nullptr);
+    EXPECT_EQ(func->getName(), "getStrings");
+
+    // Check return type is ArrayType
+    auto* returnType = func->getReturnType();
+    ASSERT_NE(returnType, nullptr);
+
+    auto* arrayType = dynamic_cast<const ArrayType*>(returnType);
+    ASSERT_NE(arrayType, nullptr);
+
+    // Check base type is qualified identifier (std.String)
+    auto* baseType = dynamic_cast<const BaseType*>(&arrayType->getBaseType());
+    ASSERT_NE(baseType, nullptr);
+
+    // The identifier may be "String" or "std.String" depending on how it's stored
+    std::string id = baseType->getIdentifier();
+    EXPECT_TRUE(id == "String" || id == "std.String")
+        << "Expected identifier to be 'String' or 'std.String', got '" << id << "'";
+}

@@ -82,27 +82,7 @@ TEST_F(QualifiedIdentifierParsingTest, MultipleQualifiedTypeParameters) {
     ASSERT_GT(ast->getDeclarations().size(), 0);
 }
 
-TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeWithGenericArguments) {
-    std::string code = R"(
-        func test() -> void {
-            var arr: std.Array<int64>;
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
 
-TEST_F(QualifiedIdentifierParsingTest, NestedQualifiedTypeWithGenericArguments) {
-    std::string code = R"(
-        func test() -> void {
-            var map: std.collections.Map<std.String, int64>;
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
 
 TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInArrayType) {
     std::string code = R"(
@@ -186,13 +166,4 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleIdentifierInUnionType) {
     ASSERT_GT(ast->getDeclarations().size(), 0);
 }
 
-TEST_F(QualifiedIdentifierParsingTest, QualifiedIdentifierInUnionType) {
-    std::string code = R"(
-        func test() -> void {
-            var x: std.String | std.Array<int64>;
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
+

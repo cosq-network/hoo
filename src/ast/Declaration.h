@@ -25,31 +25,18 @@ public:
                        std::vector<std::unique_ptr<Parameter>> parameters,
                        std::unique_ptr<Type> returnType,
                        std::unique_ptr<Block> body)
-        : name_(name), typeParameters_(), parameters_(std::move(parameters)),
-          returnType_(std::move(returnType)), body_(std::move(body)) {}
-
-    FunctionDeclaration(const std::string& name,
-                       std::vector<std::string> typeParameters,
-                       std::vector<std::unique_ptr<Parameter>> parameters,
-                       std::unique_ptr<Type> returnType,
-                       std::unique_ptr<Block> body)
-        : name_(name), typeParameters_(std::move(typeParameters)),
-          parameters_(std::move(parameters)),
+        : name_(name), parameters_(std::move(parameters)),
           returnType_(std::move(returnType)), body_(std::move(body)) {}
 
     std::string toString() const override;
 
     const std::string& getName() const { return name_; }
-    const std::vector<std::string>& getTypeParameters() const { return typeParameters_; }
     const std::vector<std::unique_ptr<Parameter>>& getParameters() const { return parameters_; }
     const Type* getReturnType() const { return returnType_.get(); }
     const Block& getBody() const { return *body_; }
 
-    bool isGeneric() const { return !typeParameters_.empty(); }
-
 private:
     std::string name_;
-    std::vector<std::string> typeParameters_;
     std::vector<std::unique_ptr<Parameter>> parameters_;
     std::unique_ptr<Type> returnType_;
     std::unique_ptr<Block> body_;

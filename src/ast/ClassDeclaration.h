@@ -99,32 +99,27 @@ class ClassDeclaration : public Declaration {
 public:
     ClassDeclaration(std::vector<ClassModifier> modifiers,
                     const std::string& name,
-                    std::vector<std::string> typeParameters,
                     const std::string& baseClass,
                     std::vector<std::string> interfaces,
                     std::unique_ptr<ClassBody> body)
         : modifiers_(modifiers), name_(name),
-          typeParameters_(std::move(typeParameters)),
           baseClass_(baseClass), interfaces_(interfaces), body_(std::move(body)) {}
 
     std::string toString() const override;
 
     const std::vector<ClassModifier>& getModifiers() const { return modifiers_; }
     const std::string& getName() const { return name_; }
-    const std::vector<std::string>& getTypeParameters() const { return typeParameters_; }
     const std::string& getBaseClass() const { return baseClass_; }
     const std::vector<std::string>& getInterfaces() const { return interfaces_; }
     const ClassBody& getBody() const { return *body_; }
 
     bool hasModifier(ClassModifier modifier) const;
-    bool isGeneric() const { return !typeParameters_.empty(); }
     bool hasBaseClass() const { return !baseClass_.empty(); }
     bool hasInterfaces() const { return !interfaces_.empty(); }
 
 private:
     std::vector<ClassModifier> modifiers_;
     std::string name_;
-    std::vector<std::string> typeParameters_;
     std::string baseClass_;
     std::vector<std::string> interfaces_;
     std::unique_ptr<ClassBody> body_;
