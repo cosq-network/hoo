@@ -21,7 +21,8 @@
       "Bash(chmod:*)",
       "Bash(/tmp/test_for_parsing.sh)",
       "Bash(./hoo-tests:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(grep:*)"
     ]
   }
 }

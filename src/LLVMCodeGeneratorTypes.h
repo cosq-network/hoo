@@ -111,39 +111,4 @@ private:
     llvm::Type* type_;
 };
 
-/**
- * Helper functions for safe casting from base types to LLVM types
- */
-namespace llvm_cast {
-
-inline llvm::Module* toModule(GeneratedModule* module) {
-    if (auto* llvmModule = dynamic_cast<LLVMGeneratedModule*>(module)) {
-        return llvmModule->getLLVMModule();
-    }
-    return nullptr;
-}
-
-inline llvm::Function* toFunction(GeneratedFunction* function) {
-    if (auto* llvmFunc = dynamic_cast<LLVMGeneratedFunction*>(function)) {
-        return llvmFunc->getLLVMFunction();
-    }
-    return nullptr;
-}
-
-inline llvm::Value* toValue(GeneratedValue* value) {
-    if (auto* llvmValue = dynamic_cast<LLVMGeneratedValue*>(value)) {
-        return llvmValue->getLLVMValue();
-    }
-    return nullptr;
-}
-
-inline llvm::Type* toType(GeneratedType* type) {
-    if (auto* llvmType = dynamic_cast<LLVMGeneratedType*>(type)) {
-        return llvmType->getLLVMType();
-    }
-    return nullptr;
-}
-
-} // namespace llvm_cast
-
 } // namespace hooc

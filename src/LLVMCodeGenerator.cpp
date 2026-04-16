@@ -1638,29 +1638,6 @@ llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
     return hoo_array_new_func_;
 }
 
-llvm::Function* LLVMCodeGenerator::getArrayPushFunc() {
-    if (!hoo_array_push_func_) {
-        // Declare: int64_t hoo_array_push(HooArray arr, const void* value)
-        // Note: This is deprecated - use type-specific push functions instead
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // array
-            llvm::PointerType::get(context_, 0)   // value pointer
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),  // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push",
-            module_.get()
-        );
-    }
-    return hoo_array_push_func_;
-}
-
 // ============================================================================
 // Phase 7: Type-Specific Array Push Function Getters
 // ============================================================================
@@ -1770,27 +1747,6 @@ llvm::Function* LLVMCodeGenerator::getArrayPushCharFunc() {
     return hoo_array_push_char_func_;
 }
 
-llvm::Function* LLVMCodeGenerator::getArrayPushStringFunc() {
-    if (!hoo_array_push_string_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            llvm::PointerType::get(context_, 0)   // const char* (string pointer)
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_string_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_string",
-            module_.get()
-        );
-    }
-    return hoo_array_push_string_func_;
-}
-
 llvm::Function* LLVMCodeGenerator::getArrayPushObjectFunc() {
     if (!hoo_array_push_object_func_) {
         std::vector<LLVMType*> params = {
@@ -1810,27 +1766,6 @@ llvm::Function* LLVMCodeGenerator::getArrayPushObjectFunc() {
         );
     }
     return hoo_array_push_object_func_;
-}
-
-llvm::Function* LLVMCodeGenerator::getArrayPushArrayFunc() {
-    if (!hoo_array_push_array_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray (outer array)
-            llvm::PointerType::get(context_, 0)   // HooArray (nested array to push)
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_array_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_array",
-            module_.get()
-        );
-    }
-    return hoo_array_push_array_func_;
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushFuncForType(llvm::Type* elementType) {
@@ -2091,14 +2026,12 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     hoo_array_length_func_ = arrayStorage.hoo_array_length_func;
     hoo_array_get_func_ = arrayStorage.hoo_array_get_func;
     hoo_array_set_func_ = arrayStorage.hoo_array_set_func;
-    hoo_array_push_func_ = arrayStorage.hoo_array_push_func;
     hoo_array_pop_func_ = arrayStorage.hoo_array_pop_func;
     hoo_array_push_int64_func_ = arrayStorage.hoo_array_push_int64_func;
     hoo_array_push_double_func_ = arrayStorage.hoo_array_push_double_func;
     hoo_array_push_float_func_ = arrayStorage.hoo_array_push_float_func;
     hoo_array_push_bool_func_ = arrayStorage.hoo_array_push_bool_func;
     hoo_array_push_char_func_ = arrayStorage.hoo_array_push_char_func;
-    hoo_array_push_byte_func_ = arrayStorage.hoo_array_push_byte_func;
     hoo_array_get_int64_func_ = arrayStorage.hoo_array_get_int64_func;
     hoo_array_get_double_func_ = arrayStorage.hoo_array_get_double_func;
     hoo_array_get_float_func_ = arrayStorage.hoo_array_get_float_func;

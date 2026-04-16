@@ -64,79 +64,6 @@ HoocJIT::HoocJIT() {
 
 HoocJIT::~HoocJIT() {}
 
-void HoocJIT::createSimpleFunction() {
-    // Create a simple module with a function that returns 42
-    auto M = std::make_unique<llvm::Module>("hooc_module", Context);
-    
-    // Create function: int add(int a, int b)
-    FunctionType *FT = FunctionType::get(Type::getInt32Ty(Context),
-                                        {Type::getInt32Ty(Context), Type::getInt32Ty(Context)},
-                                        false);
-    Function *F = Function::Create(FT, Function::ExternalLinkage, "add", M.get());
-    
-    // Create basic block
-    BasicBlock *BB = BasicBlock::Create(Context, "entry", F);
-    IRBuilder<> Builder(BB);
-    
-    // Get function arguments
-    auto ArgIt = F->arg_begin();
-    Value *A = &*ArgIt++;
-    Value *B = &*ArgIt;
-    A->setName("a");
-    B->setName("b");
-    
-    // Create add instruction and return
-    Value *Sum = Builder.CreateAdd(A, B, "sum");
-    Builder.CreateRet(Sum);
-    
-    // Verify function
-    if (verifyFunction(*F, &errs())) {
-        errs() << "Error: Function verification failed!\n";
-        return;
-    }
-    
-    // Print the generated IR
-    std::cout << "Generated LLVM IR:\n";
-    M->print(outs(), nullptr);
-    
-    // Add module to JIT
-    auto TSM = ThreadSafeModule(std::move(M), std::make_unique<LLVMContext>());
-    auto Err = JIT->addIRModule(std::move(TSM));
-    if (Err) {
-        errs() << "Failed to add module: " << toString(std::move(Err)) << "\n";
-        return;
-    }
-    
-    std::cout << "Module added to JIT successfully!\n";
-}
-
-void HoocJIT::executeFunction() {
-    // Look up the function
-    auto AddSymbol = JIT->lookup("add");
-    if (!AddSymbol) {
-        errs() << "Failed to lookup function: " << toString(AddSymbol.takeError()) << "\n";
-        return;
-    }
-    
-    // Cast to function pointer and call
-    auto AddFn = (int(*)(int, int))AddSymbol->getValue();
-    int result = AddFn(15, 27);
-    
-    std::cout << "Result: add(15, 27) = " << result << "\n";
-}
-
-void HoocJIT::parseHoocCode(const std::string& code) {
-    std::cout << "\nParsing Hooc code: \"" << code << "\"\n";
-    
-    if (parser_->parse(code)) {
-        std::cout << "Parse successful!\n";
-        std::cout << "Parse tree children: " << parser_->getParseTreeChildCount() << "\n";
-        std::cout << "Parse tree: " << parser_->getParseTreeString() << "\n";
-    } else {
-        std::cout << "Parse failed: " << parser_->getLastError() << "\n";
-    }
-}
-
 bool HoocJIT::compileHoocCode(const std::string& code) {
     std::cout << "\n=== Compiling Hooc Code ===\n";
     std::cout << "Source: \"" << code << "\"\n";
@@ -181,24 +108,4 @@ bool HoocJIT::executeFunction(const std::string& functionName) {
     std::cout << "✅ Function executed successfully\n";
     
     return true;
-}
-
-std::unique_ptr<llvm::Module> HoocJIT::generateModuleFromAST(const ast::CompilationUnit& ast) {
-    std::cout << "\n=== Generating LLVM IR from AST ===\n";
-
-    // Since we know we're using LLVM backend, use the LLVM-specific API
-    auto* llvmCodeGen = static_cast<LLVMCodeGenerator*>(codeGenerator_.get());
-    auto module = llvmCodeGen->generateLLVMModule(ast);
-
-    if (module) {
-        std::cout << "✅ LLVM IR generation successful\n";
-
-        // Print the generated IR
-        std::cout << "Generated LLVM IR:\n";
-        module->print(outs(), nullptr);
-    } else {
-        std::cout << "❌ LLVM IR generation failed\n";
-    }
-
-    return module;
 }

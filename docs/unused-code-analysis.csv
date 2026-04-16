@@ -1,0 +1,33 @@
+category,item_type,file_path,line_number,item_name,status,usage_count,reason,priority,safety,estimated_lines
+Orphaned Files,Source File,src/CustomHoocParser.cpp,1-63,CustomHoocParser,Not compiled,0,Not in CMakeLists.txt; redundant with ProcessIsolatedParser,1,High,63
+Orphaned Files,Header File,src/CustomHoocParser.h,1-43,CustomHoocParser,Not compiled,0,Not in CMakeLists.txt; no references found,1,High,43
+Orphaned Files,Source File,src/comprehensive_test.cpp,1-143,comprehensive_test,Not compiled,0,Old test using deprecated CodeGenerator API,1,High,143
+Orphaned Files,Source File,src/hooc_parse.cpp,1-49,hooc_parse,Not compiled,0,Old standalone parser utility; absorbed into ProcessIsolatedParser,1,High,49
+Orphaned Files,Source File,src/test_codegen.cpp,1-58,test_codegen,Not compiled,0,Old standalone codegen test; replaced by GoogleTest suite,1,High,58
+Unused Functions,Virtual Method,src/LLVMCodeGenerator.cpp,43,generateFunction,Never called,0,Override of abstract method; not used in codebase,2,Medium,8
+Unused Functions,Virtual Method,src/LLVMCodeGenerator.cpp,51,generateExpression,Never called,0,Override of abstract method; not used in codebase,2,Medium,8
+Unused Functions,Virtual Method,src/LLVMCodeGenerator.cpp,63,generateType,Never called,0,Override of abstract method; not used in codebase,2,Medium,8
+Unused Functions,Helper Function,src/LLVMCodeGenerator.cpp,1641,getArrayPushFunc,Never called,0,Helper function defined but never invoked,1,High,10
+Unused Functions,Helper Function,src/LLVMCodeGenerator.cpp,1773,getArrayPushStringFunc,Never called,0,Helper function defined but never invoked,1,High,10
+Unused Functions,Helper Function,src/LLVMCodeGenerator.cpp,1815,getArrayPushArrayFunc,Never called,0,Helper function defined but never invoked,1,High,10
+Unused Functions,Legacy Method,src/HoocJIT.cpp,67,createSimpleFunction,Never called,0,Legacy demo function; marked unused in header,1,High,15
+Unused Functions,Legacy Method,src/HoocJIT.cpp,113,executeFunction,Never called,0,Legacy demo function; marked unused in header,1,High,12
+Unused Functions,Legacy Method,src/HoocJIT.cpp,128,parseHoocCode,Never called,0,Utility method not used anywhere,1,High,8
+Unused Functions,Legacy Method,src/HoocJIT.cpp,186,generateModuleFromAST,Never called,0,Utility method not used anywhere,1,High,12
+Unused Functions,Cast Helper,src/LLVMCodeGeneratorTypes.h,119,llvm_cast::toModule,Never called,0,Cast helper never used in codebase,2,High,6
+Unused Functions,Cast Helper,src/LLVMCodeGeneratorTypes.h,126,llvm_cast::toFunction,Never called,0,Cast helper never used in codebase,2,High,6
+Unused Functions,Cast Helper,src/LLVMCodeGeneratorTypes.h,133,llvm_cast::toValue,Never called,0,Cast helper never used in codebase,2,High,6
+Unused Functions,Cast Helper,src/LLVMCodeGeneratorTypes.h,140,llvm_cast::toType,Never called,0,Cast helper never used in codebase,2,High,6
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,248,hoo_array_push_byte_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,250,hoo_array_push_string_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,251,hoo_array_push_array_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,256,hoo_array_get_float_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,255,hoo_array_get_double_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,257,hoo_array_get_bool_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,258,hoo_array_get_char_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,259,hoo_array_get_string_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,260,hoo_array_get_object_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Unused Variables,Function Pointer,src/LLVMCodeGenerator.h,261,hoo_array_get_array_func_,Never called,0,Initialized but never invoked in code,2,Medium,1
+Deprecated Code,Member Variables,src/LLVMCodeGenerator.h,198-231,32 string function pointers,Deprecated,Multiple,Marked DEPRECATED in comments; use runtimeFunctionStorage_.strings instead,2,Low,32
+Incomplete Features,AST Class,src/ast/ClassDeclaration.h,45,EventDeclaration,Parsed only,0,Grammar and AST exist; no code generation implemented,3,Medium,N/A
+Incomplete Features,AST Class,src/ast/InterfaceDeclaration.h,49,InterfaceDeclaration,Parsed only,0,Grammar and AST exist; marked PARTIALLY IMPLEMENTED,3,Low,N/A

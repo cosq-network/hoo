@@ -35,17 +35,9 @@ public:
     HoocJIT();
     ~HoocJIT();
 
-    // Legacy demo functions
-    void createSimpleFunction();
-    void executeFunction();
-
-    // New AST-based compilation
+    // AST-based compilation
     bool compileHoocCode(const std::string& code);
     bool executeFunction(const std::string& functionName);
-
-    // Utility methods
-    void parseHoocCode(const std::string& code);
-    std::unique_ptr<llvm::Module> generateModuleFromAST(const ast::CompilationUnit& ast);
 };
 
 } // namespace hooc // namespace hooc
