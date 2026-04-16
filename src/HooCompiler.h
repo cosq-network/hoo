@@ -3,64 +3,76 @@
 
 #include <string>
 #include <memory>
+
 #include "llvm/IR/Module.h"
 #include "llvm/IR/LLVMContext.h"
 
 namespace hooc {
 
-// Forward declarations
+// ============================================================================
+// Forward Declarations
+// ============================================================================
+
 class ProcessIsolatedParser;
 class SimpleASTBuilder;
 class CodeGenerator;
 
-/**
- * HooCompiler - Main compilation interface
- * 
- * Provides a high-level interface for compiling hoo source code
- * to LLVM IR modules. Abstracts the entire compilation pipeline:
- * Source Code -> Parse -> AST -> LLVM IR Module
- */
+// ============================================================================
+// HooCompiler - Main Compilation Interface
+// ============================================================================
+
 class HooCompiler {
+
 public:
+
+    // ========================================================================
+    // Construction / Destruction
+    // ========================================================================
+
     HooCompiler();
     ~HooCompiler();
 
-    /**
-     * Compile hoo source code to LLVM IR module
-     * 
-     * @param moduleName Name for the LLVM module
-     * @param sourceCode The hoo source code to compile
-     * @return Unique pointer to LLVM Module, or nullptr on failure
-     */
-    std::unique_ptr<llvm::Module> compile(const std::string& moduleName, 
-                                        const std::string& sourceCode);
+    // ========================================================================
+    // Compilation API
+    // ========================================================================
 
-    /**
-     * Get the last compilation error message
-     * @return Error message from last failed compilation
-     */
-    const std::string& getLastError() const { return lastError_; }
+    std::unique_ptr<llvm::Module> compile(const std::string& moduleName,
+                                         const std::string& sourceCode);
 
-    /**
-     * Check if last compilation was successful
-     * @return true if last compilation succeeded
-     */
-    bool wasLastCompilationSuccessful() const { return lastCompilationSuccessful_; }
+    const std::string& getLastError() const {
+        return lastError_;
+    }
+
+    bool wasLastCompilationSuccessful() const {
+        return lastCompilationSuccessful_;
+    }
 
 private:
+
+    // ========================================================================
+    // Compilation Pipeline Components
+    // ========================================================================
+
     std::unique_ptr<ProcessIsolatedParser> parser_;
-    std::unique_ptr<SimpleASTBuilder> astBuilder_;
-    std::unique_ptr<CodeGenerator> codeGenerator_;
-    std::unique_ptr<llvm::LLVMContext> context_;
-    
+    std::unique_ptr<SimpleASTBuilder>      astBuilder_;
+    std::unique_ptr<CodeGenerator>         codeGenerator_;
+    std::unique_ptr<llvm::LLVMContext>     context_;
+
+    // ========================================================================
+    // Error State
+    // ========================================================================
+
     std::string lastError_;
-    bool lastCompilationSuccessful_;
-    
-    // Non-copyable
-    HooCompiler(const HooCompiler&) = delete;
+    bool        lastCompilationSuccessful_;
+
+    // ========================================================================
+    // Non-Copyable
+    // ========================================================================
+
+    HooCompiler(const HooCompiler&)            = delete;
     HooCompiler& operator=(const HooCompiler&) = delete;
 };
 
-} // namespace hooc
+}  // namespace hooc
 
-#endif // HOO_COMPILER_H
+#endif  // HOO_COMPILER_H

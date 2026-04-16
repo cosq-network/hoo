@@ -1,12 +1,12 @@
 # Hooc Test Status Report
 
-**Report Date:** April 16, 2026 17:30 (Updated)
+**Report Date:** April 16, 2026 18:00 (Updated)
 **Build Configuration:** macOS Homebrew Ninja
 **Total Test Suites:** 36
 **Total Test Cases:** 658
 **Last Execution:** After full build and test run
 **Execution Time:** 77 ms
-**Last Update:** After comprehensive build using CMakePresets.json
+**Last Update:** After HoocJIT fixes - inverted execute() logic corrected, executeTyped<T>() template added
 
 **Detailed Results:** See `docs/test-results.csv` for complete test-by-test breakdown
 
@@ -133,7 +133,14 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 
 ## Code Cleanup History
 
-### April 16, 2026 - Current
+### April 16, 2026 18:00 - Current
+
+- Fixed inverted HoocJIT::execute() return logic (was returning result on failure, nullopt on success)
+- Added executeTyped<T>() template method for typed function execution
+- Updated main.cpp to match corrected execute() semantics
+- All 658 tests passing after fixes
+
+### April 16, 2026 17:30 - Earlier
 
 - Removed union types with arrays (incomplete feature)
 - Removed generic type parameters (simplified language)

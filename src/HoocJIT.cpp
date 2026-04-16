@@ -1,16 +1,21 @@
 #include "HoocJIT.h"
 #include "HooCompiler.h"
 #include "runtime/RuntimeRegistry.h"
+
 #include "llvm/IR/Verifier.h"
 #include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
-#include <iostream>
+
 #include <sstream>
 
 using namespace llvm;
 using namespace llvm::orc;
 using namespace hooc;
+
+// ============================================================================
+// Construction / Destruction
+// ============================================================================
 
 HoocJIT::HoocJIT() {
     if (!initializeJIT()) {
@@ -28,12 +33,16 @@ HoocJIT::HoocJIT(HoocJIT&& other) noexcept
 
 HoocJIT& HoocJIT::operator=(HoocJIT&& other) noexcept {
     if (this != &other) {
-        jit_ = std::move(other.jit_);
+        jit_      = std::move(other.jit_);
         compiler_ = std::move(other.compiler_);
         lastError_ = std::move(other.lastError_);
     }
     return *this;
 }
+
+// ============================================================================
+// JIT Initialization
+// ============================================================================
 
 bool HoocJIT::initializeJIT() {
     lastError_.clear();
@@ -42,17 +51,19 @@ bool HoocJIT::initializeJIT() {
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
 
-    auto JITExpected = LLJITBuilder().create();
-    if (!JITExpected) {
+    auto jitExpected = LLJITBuilder().create();
+
+    if (!jitExpected) {
         std::ostringstream oss;
-        oss << "Failed to create JIT: " << toString(JITExpected.takeError());
+        oss << "Failed to create JIT: " << toString(jitExpected.takeError());
         lastError_ = oss.str();
         return false;
     }
-    jit_ = std::move(*JITExpected);
+
+    jit_ = std::move(*jitExpected);
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
-    auto& mainJD = jit_->getMainJITDylib();
+    auto& mainJD  = jit_->getMainJITDylib();
     registry.registerAllWithJIT(*jit_, mainJD);
 
     compiler_ = std::make_unique<HooCompiler>();
@@ -60,11 +71,18 @@ bool HoocJIT::initializeJIT() {
     return true;
 }
 
-HoocJIT::CompileResult HoocJIT::compile(const std::string& moduleName,
-                                         const std::string& sourceCode) {
+// ============================================================================
+// Compilation API
+// ============================================================================
+
+HoocJIT::CompileResult HoocJIT::compile(
+    const std::string& moduleName,
+    const std::string& sourceCode) {
+
     lastError_.clear();
 
     auto module = compiler_->compile(moduleName, sourceCode);
+
     if (!module) {
         lastError_ = compiler_->getLastError();
         return {false, lastError_, {}};
@@ -94,8 +112,8 @@ bool HoocJIT::addModule(std::unique_ptr<Module> module) {
     }
 
     ThreadSafeModule tsm(std::move(module), std::make_unique<LLVMContext>());
-
     auto error = jit_->addIRModule(std::move(tsm));
+
     if (error) {
         std::ostringstream oss;
         oss << "Failed to add module to JIT: " << toString(std::move(error));
@@ -106,8 +124,13 @@ bool HoocJIT::addModule(std::unique_ptr<Module> module) {
     return true;
 }
 
+// ============================================================================
+// Execution API
+// ============================================================================
+
 HoocJIT::ExecutionResult HoocJIT::executeRaw(const std::string& functionName) {
     auto symbolOrError = jit_->lookup(functionName);
+
     if (!symbolOrError) {
         std::ostringstream oss;
         oss << "Function '" << functionName << "' not found: "
@@ -125,6 +148,7 @@ HoocJIT::ExecutionResult HoocJIT::executeRaw(const std::string& functionName) {
 
 std::optional<HoocJIT::Symbol> HoocJIT::lookup(const std::string& symbolName) {
     auto symbolOrError = jit_->lookup(symbolName);
+
     if (!symbolOrError) {
         std::ostringstream oss;
         oss << "Symbol lookup failed for '" << symbolName << "': "
@@ -132,5 +156,6 @@ std::optional<HoocJIT::Symbol> HoocJIT::lookup(const std::string& symbolName) {
         lastError_ = oss.str();
         return std::nullopt;
     }
+
     return Symbol(*symbolOrError, JITSymbolFlags::Exported);
 }
