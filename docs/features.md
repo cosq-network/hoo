@@ -65,25 +65,6 @@ if value == null {
 }
 ```
 
-### Union Types
-
-Combine multiple types with the pipe operator:
-
-```hoo
-var value: int64 | string;
-
-value = 42;         // OK: int64
-value = "hello";    // OK: string
-
-// Union with null
-var result: bool | null;
-result = true;
-result = null;
-
-// Multiple types
-var data: int64 | double | string;
-```
-
 ### Array Types
 
 Arrays are denoted with square brackets:
@@ -112,7 +93,10 @@ class Point {
 var p: Point;                   // Variable of type Point
 var maybePoint: Point?;         // Nullable Point
 var points: Point[];            // Array of Points
+var boxes: Box[];               // Array of custom type
 ```
+
+**Note:** Generic type parameters (e.g., `class Box<T>`) have been removed from the language. Use array types (`T[]`) for type-safe collections.
 
 ### Type Inference
 
@@ -948,10 +932,13 @@ interface Comparable {
     func compare(other: Self) -> int64;
 }
 
+// Note: This feature requires generics to be re-introduced
 func sortable<T: Comparable>(items: T[]) -> void {
     // T must implement Comparable interface
 }
 ```
+
+**Current Status:** Type constraints are not available because generics have been removed. Use concrete array types instead.
 
 ### Pattern Matching (Planned)
 

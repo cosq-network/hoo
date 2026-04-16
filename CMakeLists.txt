@@ -306,6 +306,8 @@ if(HOOC_BUILD_TESTS)
         tests/QualifiedNewExpressionParsingTest.cpp
         tests/ModuleRegistryTest.cpp
         tests/StdConstructorCodeGenTest.cpp
+        tests/QualifiedIdentifierCodeGenTest.cpp
+        tests/ImportStatementCodeGenTest.cpp
     )
 
     target_link_libraries(hoo-tests

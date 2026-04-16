@@ -124,8 +124,7 @@ These features are fully implemented, tested, and production-ready:
 - **Advanced Types**
   - ✅ Nullable types (`T?`)
   - ✅ Array types (`T[]`, `T[][]`)
-  - ✅ Union types (`T | U`) - parsing complete
-  - 🟡 Union type code generation (partial)
+  - ❌ Union types (`T | U`) - removed
 
 - **Arrays**
   - ✅ Array literals `[1, 2, 3]`
@@ -256,13 +255,6 @@ These features are in progress or have incomplete implementations:
 - ✅ Basic `for-range` syntax
 - 🟡 Range expressions need refinement
 - ❌ Iterator protocol not implemented
-
-#### Union Types
-- ✅ Union type parsing (`T | U`)
-- ✅ AST representation
-- 🟡 Type checking (basic)
-- 🟡 Code generation (limited)
-- ❌ Runtime type discrimination
 
 #### Import System
 - ✅ Import statement parsing
@@ -408,24 +400,24 @@ These features are planned but not yet started:
 
 | Component | Test Files | Test Cases | Coverage |
 |-----------|-----------|------------|----------|
-| Parsing | 10 | 140+ | High |
-| AST Building | 7 | 90+ | High |
-| Code Generation | 14 | 190+ | High |
-| Runtime | 5 | 60+ | Medium |
-| Integration | 10 | 120+ | High |
-| **Total** | **46+** | **600+** | **High** |
+| Parsing | 15 | 245+ | High |
+| AST Building | - | - | High |
+| Code Generation | 16 | 244+ | High |
+| Runtime | 4 | 113+ | High |
+| Integration | 2 | 56+ | High |
+| **Total** | **37** | **658** | **High** |
 
 ### Lines of Code
 
 | Component | Files | Lines | Language |
 |-----------|-------|-------|----------|
-| Compiler Core | 20+ | 8,000+ | C++ |
+| Compiler Core | 20+ | 8,500+ | C++ |
 | AST Definitions | 15+ | 3,000+ | C++ |
 | Code Generator | 3 | 4,500+ | C++ |
 | Runtime Library | 6 | 3,500+ | C/C++ |
-| Tests | 25+ | 8,000+ | C++ |
+| Tests | 37 | 9,000+ | C++ |
 | Grammar | 1 | 280 | ANTLR4 |
-| **Total** | **70+** | **27,280+** | - |
+| **Total** | **82** | **28,780+** | - |
 
 ### Performance Characteristics
 

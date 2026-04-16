@@ -51,7 +51,7 @@ Expressions with property/method access or function calls.
 | Member access | `expression '.' IDENTIFIER` | `obj.name`, `point.x` |
 | Index access | `expression '[' expression ']'` | `arr[0]`, `items[i]` |
 | Function call | `expression '(' argumentList? ')'` | `print(x)`, `obj.method()` |
-| New expression | `'new' IDENTIFIER typeArgs? '(' args? ')'` | `new Box()`, `new Pair<string, int64>()` |
+| New expression | `'new' IDENTIFIER '(' args? ')'` | `new Box()`, `new Point(1, 2)` |
 | Function call (postfix) | `IDENTIFIER '(' argumentList? ')'` | `foo()`, `bar(1, 2)` |
 | Array literal | `'[' expressionList? ']'` | `[]`, `[1, 2, 3]`, `['a', 'b']` |
 
@@ -102,7 +102,7 @@ Callable units that can be compiled independently (may reference imports).
 | Function (void, no params) | `'func' IDENTIFIER '(' ')' '->' 'void' block` | `func main() -> void { return; }` |
 | Function (with params) | `'func' IDENTIFIER '(' params ')' '->' type block` | `func add(a: int64, b: int64) -> int64 { return a + b; }` |
 | Function (no return type) | `'func' IDENTIFIER '(' params? ')' block` | `func greet(name: string) { print(name); }` |
-| Generic function | `'func' IDENTIFIER '<' typeParams '>' '(' params ')' '->' type block` | `func identity<T>(x: T) -> T { return x; }` |
+| Generic function | ~~`'func' IDENTIFIER '<' typeParams '>' '(' params ')' '->' type block`~~ | **Removed** |
 | Constructor | `'constructor' '(' params? ')' block` | `constructor(x: int64, y: int64) { this.x = x; this.y = y; }` |
 | Event declaration | `'event' IDENTIFIER ';'` | `event onClick;`, `event onUpdate;` |
 
@@ -132,7 +132,7 @@ User-defined types that group related functionality.
 | Simple class | `'class' IDENTIFIER classBody` | `class Point { constructor() {} }` |
 | Class with constructor | `'class' IDENTIFIER classBody` | `class Counter { constructor() { this.count = 0; } }` |
 | Class with members | `'class' IDENTIFIER classBody` | `class Calculator { func add(a: int64, b: int64) -> int64 { return a + b; } }` |
-| Generic class | `'class' IDENTIFIER '<' typeParams '>' classBody` | `class Box<T> { constructor() {} }` |
+| Generic class | ~~`'class' IDENTIFIER '<' typeParams '>' classBody`~~ | **Removed** |
 | Class with inheritance | `'class' IDENTIFIER 'extends' IDENTIFIER classBody` | `class Dog extends Animal { }` |
 | Class with implements | `'class' IDENTIFIER 'implements' IDENTIFIER (',' IDENTIFIER)* classBody` | `class Rect implements Drawable { }` |
 | Class with modifiers | `modifiers 'class' IDENTIFIER classBody` | `singleton class Config { }`, `immutable class User { }` |
@@ -317,7 +317,7 @@ Compilation Unit (heavy)
 | Array (multi-dim) | `type '[][]'` | `var m: int64[][]` |
 | Nullable | `type '?'` | `var x: int64?` |
 | Union | `type '|' type` | `var x: int64 \| string?` |
-| Generic type | `TypeName<type>` | `var list: Array<int64>` |
+| Generic type | ~~`TypeName<type>`~~ | **Removed** (use arrays) |
 | Qualified type | `Identifier ('.' Identifier)*` | `var x: std.List<string>` |
 
 ---
@@ -416,7 +416,7 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | Top-level function | Yes | `CALL`, `RET` | Full function body |
 | Method function | Yes | `CALLVIRT`, `RET` | Method with implicit `this` |
 | Static function | Yes | `CALL`, `RET` | Class static method |
-| Generic function | Partial | (monomorphized) | Requires type instantiation |
+| Generic function | No | N/A | Generics removed from language |
 | Constructor | Yes | `NEW`, field inits, `RET` | Object initialization |
 | Destructor | Yes | field cleanup, `RET` | Object cleanup |
 | Event declaration | N/A | (metadata) | Not executable, metadata only |
@@ -436,7 +436,7 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | Class with fields | Yes | Field layout + `NEW` | Field offsets calculated |
 | Class with methods | Yes | Method dispatch + bodies | Vtable generation |
 | Class inheritance | Yes | `NEW`, vtable setup | Parent fields + new fields |
-| Generic class | Partial | (monomorphized) | Requires type instantiation |
+| Generic class | No | N/A | Generics removed from language |
 | Class modifiers | Partial | (runtime checks) | `singleton`, `immutable`, etc. |
 | Interface | Yes | `CALLINTF`, metadata | Interface dispatch table |
 | Interface method | N/A | (metadata) | Signature only, not body |

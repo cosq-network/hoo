@@ -126,7 +126,6 @@ void      - No return value
 ( )  Parentheses
 { }  Braces
 [ ]  Brackets (arrays, indexing)
-|    Pipe (union types)
 ```
 
 ### Literals
@@ -413,9 +412,7 @@ var maybeValue: int64? = null;
 ### Type System
 
 ```antlr
-type: unionType
-
-unionType: optionalType (PIPE optionalType)*
+type: optionalType
 
 optionalType: arrayType QUESTION?
 
@@ -446,10 +443,6 @@ var matrix: double[][];
 // Nullable types
 var maybe: int64?;
 var optionalStr: string?;
-
-// Union types
-var value: int64 | string;
-var result: bool | null;
 
 // Complex types using arrays
 var arrays: int64[][]?;

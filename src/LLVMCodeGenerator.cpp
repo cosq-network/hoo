@@ -911,7 +911,10 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // We need to cast it to the struct type and use GEP to access the member
 
     // Cast void* to struct pointer using PointerType::get
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     auto structPtrType = llvm::PointerType::get(classType, 0);
+    #pragma clang diagnostic pop
     auto castPtr = builder_->CreateBitCast(objectValue, structPtrType, "struct_ptr_cast");
 
     // Use GEP to access the field

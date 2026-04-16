@@ -155,15 +155,4 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleIdentifierAsReturnType) {
     ASSERT_GT(ast->getDeclarations().size(), 0);
 }
 
-TEST_F(QualifiedIdentifierParsingTest, SimpleIdentifierInUnionType) {
-    std::string code = R"(
-        func test() -> void {
-            var x: String | int64;
-        }
-    )";
-    auto ast = parseCode(code);
-    ASSERT_NE(ast, nullptr);
-    ASSERT_GT(ast->getDeclarations().size(), 0);
-}
-
 

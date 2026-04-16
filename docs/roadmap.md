@@ -174,7 +174,7 @@ match result {
 **Integration**
 - [ ] Pattern matching in function parameters
 - [ ] Pattern matching in variable bindings
-- [ ] Pattern matching with union types
+- [ ] Pattern matching
 - [ ] Pattern matching with Option/Result types
 
 #### Example Syntax
