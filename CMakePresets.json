@@ -1,0 +1,185 @@
+{
+  "version": 2,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 20,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "ninja-relwithdebinfo",
+      "displayName": "Ninja RelWithDebInfo",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "HOOC_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "ninja-release-no-tests",
+      "displayName": "Ninja Release without tests",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "HOOC_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "macos-homebrew-ninja",
+      "displayName": "macOS Homebrew Ninja",
+      "inherits": "ninja-relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_PREFIX_PATH": "/opt/homebrew/opt/llvm;/opt/homebrew"
+      }
+    },
+    {
+      "name": "ubuntu-ninja",
+      "displayName": "Ubuntu Ninja",
+      "inherits": "ninja-relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    },
+    {
+      "name": "windows-vs-relwithdebinfo",
+      "displayName": "Windows Visual Studio RelWithDebInfo",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "HOOC_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "windows-ninja",
+      "displayName": "Windows Ninja RelWithDebInfo",
+      "inherits": "ninja-relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ninja-relwithdebinfo",
+      "configurePreset": "ninja-relwithdebinfo",
+      "targets": [
+        "hooc"
+      ]
+    },
+    {
+      "name": "ninja-release-no-tests",
+      "configurePreset": "ninja-release-no-tests",
+      "targets": [
+        "hooc"
+      ]
+    },
+    {
+      "name": "macos-homebrew-ninja",
+      "configurePreset": "macos-homebrew-ninja",
+      "targets": [
+        "hooc"
+      ]
+    },
+    {
+      "name": "ubuntu-ninja",
+      "configurePreset": "ubuntu-ninja",
+      "targets": [
+        "hooc"
+      ]
+    },
+    {
+      "name": "windows-vs-relwithdebinfo",
+      "configurePreset": "windows-vs-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "targets": [
+        "hooc"
+      ]
+    },
+    {
+      "name": "windows-ninja",
+      "configurePreset": "windows-ninja",
+      "targets": [
+        "hooc"
+      ]
+    },
+    {
+      "name": "ninja-relwithdebinfo-tests",
+      "configurePreset": "ninja-relwithdebinfo",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "macos-homebrew-ninja-tests",
+      "configurePreset": "macos-homebrew-ninja",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "ubuntu-ninja-tests",
+      "configurePreset": "ubuntu-ninja",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "windows-vs-relwithdebinfo-tests",
+      "configurePreset": "windows-vs-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "windows-ninja-tests",
+      "configurePreset": "windows-ninja",
+      "targets": [
+        "hoo-tests"
+      ]
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "ninja-relwithdebinfo",
+      "configurePreset": "ninja-relwithdebinfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-homebrew-ninja",
+      "configurePreset": "macos-homebrew-ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ubuntu-ninja",
+      "configurePreset": "ubuntu-ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-vs-relwithdebinfo",
+      "configurePreset": "windows-vs-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-ninja",
+      "configurePreset": "windows-ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

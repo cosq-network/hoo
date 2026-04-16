@@ -5,7 +5,7 @@
 
 // Include ANTLR4 generated headers
 #include "HoocLexer.h"
-#include "antlr4/generated/HoocParser.h"
+#include "HoocParser.h"
 #include "antlr4-runtime.h"
 
 namespace hooc {

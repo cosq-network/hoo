@@ -3,8 +3,8 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include "../antlr4/generated/HoocParser.h"
-#include "../antlr4/generated/HoocLexer.h"
+#include "HoocParser.h"
+#include "HoocLexer.h"
 #include "antlr4-runtime.h"
 
 namespace hooc {

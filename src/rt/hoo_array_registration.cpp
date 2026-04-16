@@ -60,6 +60,16 @@ void hoo_array_register_with_jit(
     REGISTER_ARRAY_FUNC(empty)
     REGISTER_ARRAY_FUNC(clear)
 
+    // Type-specific get functions
+    REGISTER_ARRAY_FUNC(get_int64)
+    REGISTER_ARRAY_FUNC(get_double)
+    REGISTER_ARRAY_FUNC(get_float)
+    REGISTER_ARRAY_FUNC(get_bool)
+    REGISTER_ARRAY_FUNC(get_char)
+    REGISTER_ARRAY_FUNC(get_string)
+    REGISTER_ARRAY_FUNC(get_object)
+    REGISTER_ARRAY_FUNC(get_array)
+
     #undef REGISTER_ARRAY_FUNC
 
     // Define all symbols in the JIT
@@ -147,6 +157,16 @@ void hoo_array_declare_llvm_functions(
     DECLARE_ARRAY_FN(empty, i64Ty, ptrTy)
     DECLARE_ARRAY_FN(clear, voidTy, ptrTy)
 
+    // Type-specific get functions
+    DECLARE_ARRAY_FN(get_int64, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_double, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_float, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_bool, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_char, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_string, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_object, i64Ty, ptrTy, i64Ty, ptrTy)
+    DECLARE_ARRAY_FN(get_array, i64Ty, ptrTy, i64Ty, ptrTy)
+
     #undef DECLARE_ARRAY_FN
 }
 
@@ -179,7 +199,11 @@ HOOC_REGISTER_RUNTIME(
  * This function exists to ensure the static object is linked in.
  * It can be called from LLVMCodeGenerator to force registration.
  */
+namespace hooc {
+
 void _hoo_array_ensure_registration() {
     // This function forces the linker to include hoo_array_registration.cpp
     // The static object initialization in this file will run when this is called.
 }
+
+} // namespace hooc

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "../src/ProcessIsolatedParser.h"
-#include "../antlr4/generated/HoocParser.h"
+#include "HoocParser.h"
 
 using namespace hooc;
 

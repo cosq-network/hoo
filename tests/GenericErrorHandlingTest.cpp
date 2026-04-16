@@ -4,7 +4,7 @@
 #include "../src/LLVMCodeGenerator.h"
 #include "../src/ProcessIsolatedParser.h"
 #include "../src/SimpleASTBuilder.h"
-#include "../antlr4/generated/HoocParser.h"
+#include "HoocParser.h"
 #include "../src/ast/AST.h"
 #include "antlr4-runtime.h"
 

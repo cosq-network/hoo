@@ -28,7 +28,6 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
             declarations.push_back(std::move(decl));
         }
     }
-
     return std::make_unique<CompilationUnit>(std::move(imports), std::move(declarations));
 }
 
@@ -63,8 +62,8 @@ std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(
     }
 }
 
-std::unique_ptr<VariableDeclarationStatement> SimpleASTBuilder::buildVariableDeclarationStatement(HoocParser::VariableDeclarationContext* ctx) {
-    auto varDecl = buildVariableDeclaration(ctx);
+std::unique_ptr<VariableDeclarationStatement> SimpleASTBuilder::buildVariableDeclarationStatement(HoocParser::VariableDeclarationStatementContext* ctx) {
+    auto varDecl = buildVariableDeclaration(ctx->variableDeclaration());
     return std::make_unique<VariableDeclarationStatement>(std::move(varDecl));
 }
 
@@ -260,8 +259,8 @@ std::unique_ptr<ArrayType> SimpleASTBuilder::buildArrayType(HoocParser::ArrayTyp
 }
 
 std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::StatementContext* ctx) {
-    if (ctx->variableDeclaration()) {
-        return buildVariableDeclarationStatement(ctx->variableDeclaration());
+    if (ctx->variableDeclarationStatement()) {
+        return buildVariableDeclarationStatement(ctx->variableDeclarationStatement());
     } else if (ctx->expressionStatement()) {
         auto expr = buildExpression(ctx->expressionStatement()->expression());
         return std::make_unique<ExpressionStatement>(std::move(expr));
@@ -279,10 +278,17 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildWhileStatement(ctx->whileStatement());
     } else if (ctx->forStatement()) {
         auto forCtx = ctx->forStatement();
-        if (auto forInCtx = dynamic_cast<HoocParser::ForInStatementContext*>(forCtx)) {
-            return buildForInStatement(forInCtx);
-        } else if (auto forRangeCtx = dynamic_cast<HoocParser::ForRangeStatementContext*>(forCtx)) {
-            return buildForRangeStatement(forRangeCtx);
+        // Check if it's a for-range loop (has 2 expressions) or for-in loop (has 1 expression)
+        auto exprs = forCtx->expression();
+        if (exprs.size() == 2) {
+            // for-range: for i in start..end { }
+            return buildForRangeStatement(forCtx);
+        } else if (exprs.size() == 1) {
+            // for-in: for item in iterable { }
+            return buildForInStatement(forCtx);
+        } else {
+            std::cerr << "Error: forStatement has unexpected number of expressions: " << exprs.size() << std::endl;
+            return nullptr;
         }
     }
 
@@ -305,19 +311,79 @@ std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser
     return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
 }
 
-std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser::ForInStatementContext* ctx) {
+std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser::ForStatementContext* ctx) {
+    if (!ctx) {
+        std::cerr << "Error: ForStatementContext is null" << std::endl;
+        return nullptr;
+    }
+
+    if (!ctx->IDENTIFIER()) {
+        std::cerr << "Error: ForInStatement missing IDENTIFIER" << std::endl;
+        return nullptr;
+    }
+
     std::string variable = ctx->IDENTIFIER()->getText();
-    auto iterable = buildExpression(ctx->expression());
+
+    // For-in loop has exactly 1 expression (the iterable)
+    auto exprs = ctx->expression();
+    if (exprs.size() != 1) {
+        std::cerr << "Error: ForInStatement expected 1 expression, got " << exprs.size() << std::endl;
+        return nullptr;
+    }
+
+    auto iterable = buildExpression(exprs[0]);
+    if (!iterable) {
+        std::cerr << "Error: Failed to build iterable expression for for-in loop" << std::endl;
+        return nullptr;
+    }
+
     auto body = buildBlock(ctx->block());
+    if (!body) {
+        std::cerr << "Error: Failed to build body block for for-in loop" << std::endl;
+        return nullptr;
+    }
+
     return std::make_unique<ForInStatement>(variable, std::move(iterable), std::move(body));
 }
 
-std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(HoocParser::ForRangeStatementContext* ctx) {
+std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(HoocParser::ForStatementContext* ctx) {
+    if (!ctx) {
+        std::cerr << "Error: ForStatementContext is null" << std::endl;
+        return nullptr;
+    }
+
+    if (!ctx->IDENTIFIER()) {
+        std::cerr << "Error: ForRangeStatement missing IDENTIFIER" << std::endl;
+        return nullptr;
+    }
+
     std::string variable = ctx->IDENTIFIER()->getText();
+
+    // For-range loop has exactly 2 expressions (start and end)
     auto exprs = ctx->expression();
+    if (exprs.size() != 2) {
+        std::cerr << "Error: ForRangeStatement needs 2 expressions, got " << exprs.size() << std::endl;
+        return nullptr;
+    }
+
     auto start = buildExpression(exprs[0]);
+    if (!start) {
+        std::cerr << "Error: Failed to build start expression for for-range loop" << std::endl;
+        return nullptr;
+    }
+
     auto end = buildExpression(exprs[1]);
+    if (!end) {
+        std::cerr << "Error: Failed to build end expression for for-range loop" << std::endl;
+        return nullptr;
+    }
+
     auto body = buildBlock(ctx->block());
+    if (!body) {
+        std::cerr << "Error: Failed to build body block for for-range loop" << std::endl;
+        return nullptr;
+    }
+
     return std::make_unique<ForRangeStatement>(variable, std::move(start), std::move(end), std::move(body));
 }
 
@@ -430,52 +496,17 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildUnaryExpression(HoocParser::U
 std::unique_ptr<Expression> SimpleASTBuilder::buildPostfixExpression(HoocParser::PostfixExpressionContext* ctx) {
     auto result = buildPrimary(ctx->primary());
 
-    // Process postfix operators in order
-    // We need to track which operators appear and in what order
-    // For simplicity, we'll handle them based on their token positions
-
-    // Handle member access (.member)
-    for (size_t i = 0; i < ctx->DOT().size(); i++) {
-        if (i < ctx->IDENTIFIER().size()) {
-            std::string member = ctx->IDENTIFIER(i)->getText();
-            result = std::make_unique<MemberAccess>(std::move(result), member);
-        }
-    }
-
-    // Handle array access ([index])
-    for (size_t i = 0; i < ctx->LBRACKET().size(); i++) {
-        if (i < ctx->expression().size()) {
-            auto index = buildExpression(ctx->expression(i));
+    for (auto suffix : ctx->postfixSuffix()) {
+        if (suffix->DOT()) {
+            result = std::make_unique<MemberAccess>(std::move(result), suffix->IDENTIFIER()->getText());
+        } else if (suffix->LBRACKET()) {
+            auto index = buildExpression(suffix->expression());
             result = std::make_unique<ArrayAccess>(std::move(result), std::move(index));
-        }
-    }
+        } else if (suffix->LPAREN()) {
+            auto argList = suffix->argumentList()
+                ? buildArgumentList(suffix->argumentList())
+                : std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
 
-    // Handle function calls (func<T>(args)) with optional type arguments
-    // Note: We need to match typeArgumentList with LPAREN in the correct sequence
-    size_t typeArgIdx = 0;
-    for (size_t i = 0; i < ctx->LPAREN().size(); i++) {
-        auto argList = (i < ctx->argumentList().size())
-            ? buildArgumentList(ctx->argumentList(i))
-            : std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
-
-        // Check if there's a typeArgumentList for this function call
-        // The grammar allows: typeArgumentList? LPAREN argumentList? RPAREN
-        std::vector<std::unique_ptr<Type>> typeArgs;
-        if (typeArgIdx < ctx->typeArgumentList().size()) {
-            auto typeArgCtx = ctx->typeArgumentList(typeArgIdx);
-            for (auto typeCtx : typeArgCtx->type()) {
-                auto type = buildType(typeCtx);
-                if (type) {
-                    typeArgs.push_back(std::move(type));
-                }
-            }
-            typeArgIdx++;
-        }
-
-        // Create FunctionCall with or without type arguments
-        if (!typeArgs.empty()) {
-            result = std::make_unique<FunctionCall>(std::move(result), std::move(typeArgs), std::move(argList));
-        } else {
             result = std::make_unique<FunctionCall>(std::move(result), std::move(argList));
         }
     }

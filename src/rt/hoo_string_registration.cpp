@@ -227,7 +227,11 @@ HOOC_REGISTER_RUNTIME(
  * This function exists to ensure the static object is linked in.
  * It can be called from LLVMCodeGenerator to force registration.
  */
+namespace hooc {
+
 void _hoo_string_ensure_registration() {
     // This function forces the linker to include hoo_string_registration.cpp
     // The static object initialization in this file will run when this is called.
 }
+
+} // namespace hooc

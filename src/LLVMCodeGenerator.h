@@ -250,6 +250,16 @@ private:
     llvm::Function* hoo_array_push_object_func_ = nullptr;
     llvm::Function* hoo_array_push_array_func_ = nullptr;
 
+    // Type-specific array get functions
+    llvm::Function* hoo_array_get_int64_func_ = nullptr;
+    llvm::Function* hoo_array_get_double_func_ = nullptr;
+    llvm::Function* hoo_array_get_float_func_ = nullptr;
+    llvm::Function* hoo_array_get_bool_func_ = nullptr;
+    llvm::Function* hoo_array_get_char_func_ = nullptr;
+    llvm::Function* hoo_array_get_string_func_ = nullptr;
+    llvm::Function* hoo_array_get_object_func_ = nullptr;
+    llvm::Function* hoo_array_get_array_func_ = nullptr;
+
     // Callback-based Array function pointers (synced from registry)
     llvm::Function* hoo_array_from_buffer_func_ = nullptr;
     llvm::Function* hoo_array_repeat_func_ = nullptr;

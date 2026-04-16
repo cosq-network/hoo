@@ -1,10 +1,9 @@
 #include "ProcessIsolatedParser.h"
-#include "../antlr4/generated/HoocLexer.h"
-#include "../antlr4/generated/HoocParser.h"
+#include "HoocLexer.h"
+#include "HoocParser.h"
 #include "antlr4-runtime.h"
 #include <iostream>
 #include <sstream>
-#include <cstdlib>
 #include <array>
 #include <memory>
 #include <stdexcept>
@@ -99,23 +98,29 @@ std::vector<std::string> ProcessIsolatedParser::executeParser(const std::string&
 }
 
 HoocParser::CompilationUnitContext* ProcessIsolatedParser::parseForAST(const std::string& source) {
+    const char* stage = "initializing";
     try {
         // Clean up previous parse state
         currentParseTree_ = nullptr;
         
         // Create ANTLR4 input stream from source
+        stage = "creating ANTLR input stream";
         input_ = std::make_unique<antlr4::ANTLRInputStream>(source);
         
         // Create lexer
+        stage = "creating Hooc lexer";
         lexer_ = std::make_unique<HoocLexer>(input_.get());
         
         // Create token stream
+        stage = "creating token stream";
         tokens_ = std::make_unique<antlr4::CommonTokenStream>(lexer_.get());
         
         // Create parser
+        stage = "creating Hooc parser";
         parser_ = std::make_unique<HoocParser>(tokens_.get());
         
         // Parse the compilation unit
+        stage = "parsing compilation unit";
         currentParseTree_ = parser_->compilationUnit();
         
         // Check for parsing errors
@@ -135,7 +140,7 @@ HoocParser::CompilationUnitContext* ProcessIsolatedParser::parseForAST(const std
         return currentParseTree_;
         
     } catch (const std::exception& e) {
-        lastError_ = std::string("Parse error: ") + e.what();
+        lastError_ = std::string("Parse error while ") + stage + ": " + e.what();
         lastParseSuccessful_ = false;
         return nullptr;
     }

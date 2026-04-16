@@ -2,7 +2,7 @@
 #include "ProcessIsolatedParser.h"
 #include "SimpleASTBuilder.h"
 #include "LLVMCodeGenerator.h"
-#include "../antlr4/generated/HoocParser.h"
+#include "HoocParser.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include <iostream>

@@ -4,7 +4,7 @@
 #include "ProcessIsolatedParser.h"
 #include "ast/AST.h"
 #include "ast/ClassDeclaration.h"
-#include "../antlr4/generated/HoocParser.h"
+#include "HoocParser.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Function.h"

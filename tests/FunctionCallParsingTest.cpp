@@ -2,7 +2,7 @@
 #include <memory>
 #include "../src/SimpleASTBuilder.h"
 #include "../src/ProcessIsolatedParser.h"
-#include "../antlr4/generated/HoocParser.h"
+#include "HoocParser.h"
 #include "../src/ast/Expression.h"
 #include "../src/ast/Primary.h"
 #include "antlr4-runtime.h"

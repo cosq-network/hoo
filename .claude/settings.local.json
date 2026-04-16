@@ -13,7 +13,13 @@
       "Bash(ctest:*)",
       "Bash(findstr:*)",
       "Bash(build\\\\hoo-tests.exe:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(ninja:*)",
+      "Bash(./hoo-tests)",
+      "Bash(./build/macos-homebrew-ninja/hoo-tests:*)",
+      "Bash(ls:*)",
+      "Bash(chmod:*)",
+      "Bash(/tmp/test_for_parsing.sh)"
     ]
   }
 }

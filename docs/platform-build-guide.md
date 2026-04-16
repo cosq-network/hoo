@@ -12,6 +12,8 @@ The examples assume the platform already has these tools available in `PATH`:
 
 Hooc also needs development packages for LLVM and the ANTLR4 C++ runtime. GoogleTest is optional for building the compiler, but it is required if unit tests should be configured.
 
+The project includes `CMakePresets.json` for common configure and build flows. Presets require CMake 3.20 or newer. Developers with older CMake versions can use the explicit `cmake -S . -B ...` commands shown below.
+
 ## Dependency Summary
 
 The compiler build depends on these components:
@@ -34,10 +36,10 @@ The repository already includes:
 tools/antlr-4.13.2-complete.jar
 ```
 
-Generated parser sources are checked into:
+Generated parser sources are written to the build tree by default:
 
 ```text
-antlr4/generated/
+build/<build-dir>/generated/antlr4/
 ```
 
 Even when generated sources already exist, CMake still needs the ANTLR4 C++ runtime headers and library to compile `hoo-parser`.
@@ -61,7 +63,7 @@ For the full target list, see [build-targets.md](build-targets.md).
 
 The project uses C++17 and CMake 3.16 or newer.
 
-The ANTLR grammar is `src/Hooc.g4`. Generated parser sources are written to `antlr4/generated/`. The repository includes `tools/antlr-4.13.2-complete.jar`, and CMake uses that path by default through `ANTLR4_JAR_PATH`.
+The ANTLR grammar is `src/Hooc.g4`. Generated parser sources are written to `${CMAKE_BINARY_DIR}/generated/antlr4` by default. The repository includes `tools/antlr-4.13.2-complete.jar`, and CMake uses that path by default through `ANTLR4_JAR_PATH`.
 
 If CMake cannot find LLVM automatically, pass `LLVM_DIR`:
 
@@ -130,7 +132,7 @@ Install:
 - LLVM for Windows
 - ANTLR4 C++ runtime built or installed locally
 
-Recommended dependency locations for the current CMake file:
+Example dependency locations:
 
 ```text
 C:\Program Files\LLVM\lib\cmake\llvm
@@ -138,7 +140,7 @@ D:\antlr4\runtime\cpp\include\antlr4-runtime
 D:\antlr4\runtime\cpp\lib\antlr4-runtime.lib
 ```
 
-The `D:\antlr4` layout matches the paths currently hard-coded in `CMakeLists.txt`. Other locations are fine when passed explicitly during configuration.
+Any local ANTLR4 runtime location is fine when passed explicitly during configuration with `ANTLR4_ROOT`, or with `ANTLR4_INCLUDE_DIR` and `ANTLR4_LIBRARY`.
 
 ### Windows with vcpkg
 
@@ -214,15 +216,21 @@ Install the development dependencies if they are not already present:
 brew install llvm antlr4-cpp-runtime googletest ninja
 ```
 
-The project already adds `/opt/homebrew/opt/llvm` to `CMAKE_PREFIX_PATH`, which matches the default Homebrew prefix on Apple Silicon.
+The `macos-homebrew-ninja` preset points CMake at the default Apple Silicon Homebrew prefixes for LLVM and ANTLR4.
+
+### Configure with the Preset
+
+```bash
+cmake --preset macos-homebrew-ninja
+cmake --build --preset macos-homebrew-ninja
+```
 
 ### Configure with Ninja
 
 ```bash
 cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang \
-  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+  -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm;/opt/homebrew"
 ```
 
 Build the compiler:
@@ -236,8 +244,7 @@ cmake --build build --target hooc
 ```bash
 cmake -S . -B build -G "Unix Makefiles" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang \
-  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+  -DCMAKE_PREFIX_PATH="/opt/homebrew/opt/llvm;/opt/homebrew"
 ```
 
 Build the compiler:
@@ -272,6 +279,13 @@ sudo apt install llvm-dev libantlr4-runtime-dev libgtest-dev ninja-build
 ```
 
 The exact LLVM version depends on the package set installed on the machine. If multiple LLVM versions are installed, use the matching `LLVM_DIR` for the version you want CMake to use.
+
+### Configure with the Preset
+
+```bash
+cmake --preset ubuntu-ninja
+cmake --build --preset ubuntu-ninja
+```
 
 ### Configure with Ninja
 
@@ -336,14 +350,14 @@ The project has Windows-specific CMake settings:
 
 ### Required Dependency Layout
 
-The current CMake search paths include this ANTLR runtime location:
+When using manual dependency paths, keep track of the ANTLR runtime include directory and library file. For example:
 
 ```text
 D:\antlr4\runtime\cpp\include\antlr4-runtime
 D:\antlr4\runtime\cpp\lib
 ```
 
-If ANTLR4 is installed somewhere else, pass `ANTLR4_INCLUDE_DIR` and `ANTLR4_LIBRARY` during configuration.
+If ANTLR4 is installed somewhere else, pass `ANTLR4_ROOT`, or pass `ANTLR4_INCLUDE_DIR` and `ANTLR4_LIBRARY` during configuration.
 
 LLVM for Windows normally provides `LLVMConfig.cmake` under a path like:
 
@@ -356,6 +370,16 @@ Pass `LLVM_DIR` if CMake does not find it automatically.
 ### Configure with Visual Studio
 
 From the repository root:
+
+```powershell
+cmake --preset windows-vs-relwithdebinfo `
+  -DLLVM_DIR="C:\Program Files\LLVM\lib\cmake\llvm" `
+  -DANTLR4_INCLUDE_DIR="D:\antlr4\runtime\cpp\include\antlr4-runtime" `
+  -DANTLR4_LIBRARY="D:\antlr4\runtime\cpp\lib\antlr4-runtime.lib"
+cmake --build --preset windows-vs-relwithdebinfo
+```
+
+Equivalent explicit configuration:
 
 ```powershell
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
@@ -379,6 +403,16 @@ build\RelWithDebInfo\hooc.exe
 ### Configure with Ninja on Windows
 
 Use this option when Ninja is installed and you want a single-config build directory:
+
+```powershell
+cmake --preset windows-ninja `
+  -DLLVM_DIR="C:\Program Files\LLVM\lib\cmake\llvm" `
+  -DANTLR4_INCLUDE_DIR="D:\antlr4\runtime\cpp\include\antlr4-runtime" `
+  -DANTLR4_LIBRARY="D:\antlr4\runtime\cpp\lib\antlr4-runtime.lib"
+cmake --build --preset windows-ninja
+```
+
+Equivalent explicit configuration:
 
 ```powershell
 cmake -S . -B build-ninja -G Ninja `
@@ -410,148 +444,19 @@ If the linker cannot find LLVM libraries, verify that `LLVM_DIR` points to the d
 
 If DLLs are required at runtime, put the matching LLVM and ANTLR runtime DLL directories in `PATH`, or copy the required DLLs beside `hooc.exe`.
 
-## Build System Improvement Suggestions
+## Build System Notes
 
-The current build works, but a few changes would make it easier to configure consistently across platforms.
+The build now uses these cross-platform conventions:
 
-### Prefer CMake Packages Over Hard-Coded Paths
+- Dependency paths are provided through `CMAKE_PREFIX_PATH`, `LLVM_DIR`, `ANTLR4_ROOT`, `ANTLR4_INCLUDE_DIR`, `ANTLR4_LIBRARY`, or a toolchain file.
+- `CMakePresets.json` defines common macOS, Ubuntu, Windows Visual Studio, and Windows Ninja flows.
+- ANTLR4 parser output is generated under the build tree by default.
+- `HOOC_BUILD_TESTS` controls GoogleTest discovery and test target creation.
+- Debug-only runtime memory tracking uses a generator expression, so it works with single-config and multi-config generators.
+- Install rules include `hooc`, `hoo-compiler`, `hoo-parser`, `hoort`, generated parser headers, and project headers.
+- `HOOC_BUILD_SHARED_RUNTIME` can switch `hoort` from a static runtime library to a shared runtime library.
 
-Current behavior:
-
-- LLVM is found with `find_package(LLVM REQUIRED CONFIG)`, but the project prepends `/opt/homebrew/opt/llvm` to `CMAKE_PREFIX_PATH`.
-- ANTLR4 runtime is found with hard-coded macOS and Windows paths.
-- GoogleTest has several fallback paths, including a specific Homebrew Cellar version.
-
-Suggested improvement:
-
-- Let users provide `CMAKE_PREFIX_PATH`, `LLVM_DIR`, or a toolchain file instead of changing `CMAKE_PREFIX_PATH` inside the project.
-- Add cache variables for dependency roots, such as `ANTLR4_ROOT`, and derive include/library paths from those roots.
-- Prefer imported CMake targets when dependency packages provide them.
-
-Example direction:
-
-```cmake
-set(ANTLR4_ROOT "" CACHE PATH "ANTLR4 C++ runtime installation prefix")
-find_path(ANTLR4_INCLUDE_DIR antlr4-runtime.h
-    HINTS "${ANTLR4_ROOT}/include/antlr4-runtime"
-)
-find_library(ANTLR4_LIBRARY antlr4-runtime
-    HINTS "${ANTLR4_ROOT}/lib"
-)
-```
-
-### Add CMake Presets
-
-Suggested improvement:
-
-- Add `CMakePresets.json` for common configurations.
-- Include presets for macOS Homebrew Ninja, Ubuntu Ninja, Windows Visual Studio, and Windows Ninja.
-- Keep platform-specific path assumptions in presets instead of requiring every user to remember long configure commands.
-
-Example preset names:
-
-```text
-macos-ninja-release
-ubuntu-ninja-release
-windows-vs-relwithdebinfo
-windows-ninja-relwithdebinfo
-```
-
-### Use Out-of-Source Generated Parser Files
-
-Current behavior:
-
-- Generated parser files are written to `antlr4/generated/` under the source tree.
-
-Suggested improvement:
-
-- Generate parser files under the build tree, for example `${CMAKE_BINARY_DIR}/generated/antlr4`.
-- Include that generated directory from targets that need it.
-- Avoid source-tree churn during local builds and CI builds.
-
-This would make `clean` remove generated parser files as part of the build directory cleanup and reduce accidental commits of regenerated parser output.
-
-### Make Test Configuration Explicit
-
-Current behavior:
-
-- GoogleTest is optional.
-- If it is missing, CMake configures the compiler and skips test targets with a warning.
-
-Suggested improvement:
-
-- Add an option such as `HOOC_BUILD_TESTS`.
-- When `HOOC_BUILD_TESTS=ON`, make missing GoogleTest a fatal configuration error.
-- When `HOOC_BUILD_TESTS=OFF`, skip all GoogleTest discovery.
-
-Example direction:
-
-```cmake
-option(HOOC_BUILD_TESTS "Build Hooc unit tests" ON)
-if(HOOC_BUILD_TESTS)
-    enable_testing()
-    find_package(GTest REQUIRED)
-endif()
-```
-
-### Avoid Configuration-Specific Logic for Multi-Config Generators
-
-Current behavior:
-
-- Runtime debug memory tracking is enabled only when `CMAKE_BUILD_TYPE` equals `Debug`.
-
-Issue:
-
-- `CMAKE_BUILD_TYPE` is not used by Visual Studio multi-config builds in the same way it is used by Ninja or Makefile single-config builds.
-
-Suggested improvement:
-
-- Use generator expressions for configuration-specific definitions.
-
-Example direction:
-
-```cmake
-target_compile_definitions(hoort PRIVATE
-    $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
-)
-```
-
-### Install All User-Facing Artifacts
-
-Current behavior:
-
-- Install rules include `hoo-compiler`, `hoo-parser`, and generated parser headers.
-- The `hooc` executable and `hoort` runtime library are not listed in the install target.
-
-Suggested improvement:
-
-- Install `hooc` and `hoort` if they are intended to be distributed.
-- Install public headers from `src/` and `src/rt/` if downstream projects are expected to link against Hooc libraries.
-
-Example direction:
-
-```cmake
-install(TARGETS hooc hoo-compiler hoo-parser hoort
-    RUNTIME DESTINATION bin
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-)
-```
-
-### Keep Runtime Library Type Configurable
-
-Current behavior:
-
-- `hoort` is always built as a static library.
-
-Suggested improvement:
-
-- Respect `BUILD_SHARED_LIBS`, or add a project-specific option such as `HOOC_BUILD_SHARED_RUNTIME`.
-- Document runtime DLL or shared-library search paths for Windows and Linux if shared builds are enabled.
-
-### Add CI Matrix Coverage
-
-Suggested improvement:
+Remaining improvement to consider:
 
 - Add CI jobs for macOS, Ubuntu, and Windows.
 - Configure each platform with at least one generator.
@@ -590,7 +495,15 @@ cmake --build build --config RelWithDebInfo --target generate_parser
 
 ## Optional: Unit Tests
 
-GoogleTest is optional at configure time. If CMake finds it, the project also creates the `hoo-tests`, `test`, and `run_tests` targets.
+Unit tests are controlled by `HOOC_BUILD_TESTS`, which defaults to `OFF` for manual CMake configuration. Test-oriented presets set it to `ON`. When tests are enabled, GoogleTest is required and CMake fails during configuration if it cannot be found.
+
+Enable tests when configuring manually:
+
+```bash
+cmake -S . -B build -G Ninja -DHOOC_BUILD_TESTS=ON
+```
+
+When tests are enabled, the project creates the `hoo-tests`, `test`, and `run_tests` targets.
 
 Run tests with:
 
@@ -604,7 +517,7 @@ For Visual Studio builds:
 cmake --build build --config RelWithDebInfo --target run_tests
 ```
 
-If GoogleTest is not found, CMake prints a warning and configures the compiler targets without unit-test targets.
+If GoogleTest is not installed and you only need the compiler, configure with `-DHOOC_BUILD_TESTS=OFF`.
 
 ## Clean Builds
 

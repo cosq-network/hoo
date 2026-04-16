@@ -195,9 +195,9 @@ primitiveType: BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRIN
 // Statements
 statement
     : block
-    | variableDeclaration SEMICOLON
-    | expressionStatement SEMICOLON
-    | returnStatement SEMICOLON
+    | variableDeclarationStatement
+    | expressionStatement
+    | returnStatement
     | ifStatement
     | whileStatement
     | forStatement
@@ -206,18 +206,19 @@ statement
 
 block: LBRACE statement* RBRACE;
 
-expressionStatement: expression;
+variableDeclarationStatement: variableDeclaration SEMICOLON;
+
+expressionStatement: expression SEMICOLON;
 
 ifStatement: IF expression block (ELSE block)?;
 
 forStatement
-    : FOR IDENTIFIER IN expression block                    # forInStatement
-    | FOR IDENTIFIER IN expression RANGE expression block   # forRangeStatement
+    : FOR IDENTIFIER IN expression (RANGE expression)? block
     ;
 
 whileStatement: WHILE expression block;
 
-returnStatement: RETURN expression?;
+returnStatement: RETURN expression? SEMICOLON;
 
 scopeStatement: SCOPE block;
 
@@ -255,11 +256,13 @@ unaryExpression
     ;
 
 postfixExpression
-    : primary (
-        DOT IDENTIFIER typeArgumentList?
-      | LBRACKET expression RBRACKET
-      | typeArgumentList? LPAREN argumentList? RPAREN
-    )*
+    : primary postfixSuffix*
+    ;
+
+postfixSuffix
+    : DOT IDENTIFIER
+    | LBRACKET expression RBRACKET
+    | LPAREN argumentList? RPAREN
     ;
 
 primary

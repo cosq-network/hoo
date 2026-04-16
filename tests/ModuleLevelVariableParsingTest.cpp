@@ -8,8 +8,8 @@
 
 // ANTLR4 runtime headers for parsing
 #include "antlr4-runtime.h"
-#include "antlr4/generated/HoocLexer.h"
-#include "antlr4/generated/HoocParser.h"
+#include "HoocLexer.h"
+#include "HoocParser.h"
 
 #include <string>
 #include <vector>

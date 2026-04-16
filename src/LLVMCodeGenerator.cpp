@@ -1082,72 +1082,88 @@ void LLVMCodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
 
 void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     Function* currentFunc = builder_->GetInsertBlock()->getParent();
-    
+
     // Evaluate the iterable expression
     Value* iterableValue = generateLLVMExpression(stmt.getIterable());
     if (!iterableValue) {
-        std::cerr << "Failed to generate iterable expression" << std::endl;
+        std::cerr << "Failed to generate iterable expression for for-in loop" << std::endl;
         return;
     }
-    
-    // For now, assume the iterable is an array (pointer)
-    // In a full implementation, we'd check the type and handle different iterables
-    
+
+    // Check that we have the array runtime functions
+    if (!hoo_array_length_func_ || !hoo_array_get_int64_func_) {
+        std::cerr << "Error: Array runtime functions not available for for-in loop" << std::endl;
+        return;
+    }
+
+    // Get the actual array length by calling hoo_array_length(arr)
+    Value* arrayLength = builder_->CreateCall(hoo_array_length_func_, {iterableValue}, "array.length");
+
     // Create loop variable - assume int64 elements for now
+    // TODO: In future, query array element type and use appropriate get function
     LLVMType* elementType = LLVMType::getInt64Ty(context_);
-    // In newer LLVM, we can't easily get pointer element type, so use default
-    
     AllocaInst* loopVar = createEntryBlockAlloca(currentFunc, stmt.getVariable(), elementType);
-    
+
     // Create index variable
     AllocaInst* indexVar = createEntryBlockAlloca(currentFunc, "for.index", LLVMType::getInt64Ty(context_));
     builder_->CreateStore(ConstantInt::get(LLVMType::getInt64Ty(context_), 0), indexVar);
-    
-    // Create blocks
+
+    // Create blocks for loop structure
     BasicBlock* condBlock = BasicBlock::Create(context_, "for.cond", currentFunc);
     BasicBlock* bodyBlock = BasicBlock::Create(context_, "for.body", currentFunc);
     BasicBlock* incrBlock = BasicBlock::Create(context_, "for.incr", currentFunc);
     BasicBlock* endBlock = BasicBlock::Create(context_, "for.end", currentFunc);
-    
-    // Branch to condition
+
+    // Branch to condition check
     builder_->CreateBr(condBlock);
-    
-    // Condition block - for simplicity, assume we iterate 10 times (should be array length)
+
+    // Condition block: check if currentIndex < arrayLength
     builder_->SetInsertPoint(condBlock);
     Value* currentIndex = builder_->CreateLoad(LLVMType::getInt64Ty(context_), indexVar, "index");
-    Value* arrayLength = ConstantInt::get(LLVMType::getInt64Ty(context_), 10); // hardcoded for now
-    Value* cond = builder_->CreateICmpSLT(currentIndex, arrayLength, "loopcond");
+    Value* cond = builder_->CreateICmpSLT(currentIndex, arrayLength, "loop.cond");
     builder_->CreateCondBr(cond, bodyBlock, endBlock);
-    
-    // Body block
+
+    // Body block: get element and execute loop body
     builder_->SetInsertPoint(bodyBlock);
-    
-    // Load current element (array[index])
-    if (iterableValue->getType()->isPointerTy()) {
-        Value* elementPtr = builder_->CreateGEP(elementType, iterableValue, currentIndex, "elem.ptr");
-        Value* element = builder_->CreateLoad(elementType, elementPtr, "elem");
-        
-        // Store current element in loop variable
-        builder_->CreateStore(element, loopVar);
-        namedValues_[stmt.getVariable()] = loopVar;
-    }
-    
-    // Generate loop body
+
+    // Allocate space for the element value to be retrieved
+    AllocaInst* elemDest = createEntryBlockAlloca(currentFunc, "elem.dest", elementType);
+
+    // Call hoo_array_get_int64(arr, index, &dest)
+    // Returns 1 if successful, 0 if out of bounds
+    Value* getResult = builder_->CreateCall(
+        hoo_array_get_int64_func_,
+        {iterableValue, currentIndex, elemDest},
+        "get.result"
+    );
+
+    // Load the retrieved element value
+    Value* element = builder_->CreateLoad(elementType, elemDest, "elem");
+
+    // Store element in loop variable and add to scope
+    builder_->CreateStore(element, loopVar);
+    namedValues_[stmt.getVariable()] = loopVar;
+
+    // Generate the loop body statements
     generateBlock(stmt.getBody());
-    
+
     // Branch to increment
     builder_->CreateBr(incrBlock);
-    
-    // Increment block
+
+    // Increment block: increment index and loop back to condition
     builder_->SetInsertPoint(incrBlock);
-    Value* nextIndex = builder_->CreateAdd(currentIndex, ConstantInt::get(LLVMType::getInt64Ty(context_), 1), "nextindex");
+    Value* nextIndex = builder_->CreateAdd(
+        currentIndex,
+        ConstantInt::get(LLVMType::getInt64Ty(context_), 1),
+        "next.index"
+    );
     builder_->CreateStore(nextIndex, indexVar);
     builder_->CreateBr(condBlock);
-    
-    // End block
+
+    // End block: clean up and continue
     builder_->SetInsertPoint(endBlock);
-    
-    // Clean up loop variable from scope
+
+    // Remove loop variable from scope
     namedValues_.erase(stmt.getVariable());
 }
 
@@ -2083,6 +2099,14 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     hoo_array_push_bool_func_ = arrayStorage.hoo_array_push_bool_func;
     hoo_array_push_char_func_ = arrayStorage.hoo_array_push_char_func;
     hoo_array_push_byte_func_ = arrayStorage.hoo_array_push_byte_func;
+    hoo_array_get_int64_func_ = arrayStorage.hoo_array_get_int64_func;
+    hoo_array_get_double_func_ = arrayStorage.hoo_array_get_double_func;
+    hoo_array_get_float_func_ = arrayStorage.hoo_array_get_float_func;
+    hoo_array_get_bool_func_ = arrayStorage.hoo_array_get_bool_func;
+    hoo_array_get_char_func_ = arrayStorage.hoo_array_get_char_func;
+    hoo_array_get_string_func_ = arrayStorage.hoo_array_get_string_func;
+    hoo_array_get_object_func_ = arrayStorage.hoo_array_get_object_func;
+    hoo_array_get_array_func_ = arrayStorage.hoo_array_get_array_func;
     hoo_array_retain_func_ = arrayStorage.hoo_array_retain_func;
     hoo_array_release_func_ = arrayStorage.hoo_array_release_func;
     hoo_array_refcount_func_ = arrayStorage.hoo_array_refcount_func;

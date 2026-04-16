@@ -1,5 +1,14 @@
 cmake_minimum_required(VERSION 3.16)
-project(HoocParser)
+project(HoocParser LANGUAGES C CXX)
+
+option(HOOC_BUILD_TESTS "Build Hooc unit tests" OFF)
+option(HOOC_BUILD_SHARED_RUNTIME "Build the Hooc runtime as a shared library" OFF)
+option(ANTLR4_USE_STATIC_RUNTIME "Define ANTLR4CPP_STATIC when linking a static ANTLR4 C++ runtime" OFF)
+
+set(ANTLR4_ROOT "" CACHE PATH "ANTLR4 C++ runtime installation prefix")
+set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE FILEPATH "Path to ANTLR4 JAR file")
+set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/Hooc.g4" CACHE FILEPATH "Path to the Hooc ANTLR4 grammar")
+set(ANTLR4_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated/antlr4" CACHE PATH "Directory for generated ANTLR4 C++ files")
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -27,31 +36,37 @@ if(MSVC)
 endif()
 
 # Find ANTLR4 C++ runtime
-find_path(ANTLR4_INCLUDE_DIR 
+find_path(ANTLR4_INCLUDE_DIR
     NAMES antlr4-runtime.h
-    PATHS /opt/homebrew/include/antlr4-runtime
-          /usr/local/include/antlr4-runtime
-          /opt/homebrew/opt/antlr4-cpp-runtime/include/antlr4-runtime
-          D:\\antlr4\\runtime\\cpp\\include\\antlr4-runtime
+    HINTS
+        "${ANTLR4_ROOT}/include/antlr4-runtime"
+        "$ENV{ANTLR4_ROOT}/include/antlr4-runtime"
+    PATH_SUFFIXES
+        include/antlr4-runtime
+        antlr4-runtime
 )
 
 find_library(ANTLR4_LIBRARY
     NAMES antlr4-runtime
-    PATHS /opt/homebrew/lib
-          /usr/local/lib
-          /opt/homebrew/opt/antlr4-cpp-runtime/lib
-          D:\\antlr4\\runtime\\cpp\\lib
+    HINTS
+        "${ANTLR4_ROOT}"
+        "$ENV{ANTLR4_ROOT}"
+    PATH_SUFFIXES
+        lib
+        lib64
 )
 
 if(NOT ANTLR4_INCLUDE_DIR OR NOT ANTLR4_LIBRARY)
-    message(FATAL_ERROR "ANTLR4 C++ runtime not found. Please install it with: brew install antlr4-cpp-runtime")
+    message(FATAL_ERROR
+        "ANTLR4 C++ runtime not found. Install it with a package manager or pass "
+        "-DANTLR4_ROOT=/path/to/antlr4, or pass -DANTLR4_INCLUDE_DIR=... "
+        "and -DANTLR4_LIBRARY=..."
+    )
 endif()
 
 message(STATUS "ANTLR4 Include Dir: ${ANTLR4_INCLUDE_DIR}")
 message(STATUS "ANTLR4 Library: ${ANTLR4_LIBRARY}")
 
-# Find LLVM
-set(CMAKE_PREFIX_PATH "/opt/homebrew/opt/llvm" ${CMAKE_PREFIX_PATH})
 find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -72,13 +87,7 @@ llvm_map_components_to_libnames(llvm_libs
     native
 )
 
-# Set ANTLR4 variables
-set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE STRING "Path to ANTLR4 JAR file")
-set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/Hooc.g4")
-set(ANTLR4_GENERATED_DIR "${CMAKE_SOURCE_DIR}/antlr4/generated")
-
-# Create generated directory if it doesn't exist
-file(MAKE_DIRECTORY ${ANTLR4_GENERATED_DIR})
+find_package(Java REQUIRED COMPONENTS Runtime)
 
 # ANTLR4 generation command
 set(ANTLR4_GENERATED_FILES
@@ -86,6 +95,8 @@ set(ANTLR4_GENERATED_FILES
     "${ANTLR4_GENERATED_DIR}/HoocLexer.h"
     "${ANTLR4_GENERATED_DIR}/HoocParser.cpp"
     "${ANTLR4_GENERATED_DIR}/HoocParser.h"
+    "${ANTLR4_GENERATED_DIR}/HoocVisitor.cpp"
+    "${ANTLR4_GENERATED_DIR}/HoocListener.cpp"
     "${ANTLR4_GENERATED_DIR}/HoocBaseVisitor.cpp"
     "${ANTLR4_GENERATED_DIR}/HoocBaseVisitor.h"
     "${ANTLR4_GENERATED_DIR}/HoocVisitor.h"
@@ -94,17 +105,27 @@ set(ANTLR4_GENERATED_FILES
     "${ANTLR4_GENERATED_DIR}/HoocListener.h"
 )
 
+set(ANTLR4_GENERATED_BYPRODUCTS
+    "${ANTLR4_GENERATED_DIR}/Hooc.interp"
+    "${ANTLR4_GENERATED_DIR}/Hooc.tokens"
+    "${ANTLR4_GENERATED_DIR}/HoocLexer.interp"
+    "${ANTLR4_GENERATED_DIR}/HoocLexer.tokens"
+)
+
 # Custom target to generate ANTLR4 files
 add_custom_command(
     OUTPUT ${ANTLR4_GENERATED_FILES}
-    COMMAND java -jar ${ANTLR4_JAR_PATH} 
-        -Dlanguage=Cpp 
-        -visitor 
-        -listener 
-        -o ${ANTLR4_GENERATED_DIR} 
-        -package hooc 
-        ${ANTLR4_GRAMMAR_FILE}
+    BYPRODUCTS ${ANTLR4_GENERATED_BYPRODUCTS}
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${ANTLR4_GENERATED_DIR}
+    COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANTLR4_JAR_PATH}
+        -Dlanguage=Cpp
+        -visitor
+        -listener
+        -o ${ANTLR4_GENERATED_DIR}
+        -package hooc
+        Hooc.g4
     DEPENDS ${ANTLR4_GRAMMAR_FILE}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
     COMMENT "Generating ANTLR4 C++ files from Hooc.g4"
     VERBATIM
 )
@@ -130,10 +151,11 @@ target_link_libraries(hoo-parser PUBLIC
     ${ANTLR4_LIBRARY}
 )
 
-# Set compile definitions
-target_compile_definitions(hoo-parser PUBLIC
-    ANTLR4CPP_STATIC
-)
+if(ANTLR4_USE_STATIC_RUNTIME)
+    target_compile_definitions(hoo-parser PUBLIC
+        ANTLR4CPP_STATIC
+    )
+endif()
 
 # Ensure generated files are created before building the library
 add_dependencies(hoo-parser generate_parser)
@@ -152,8 +174,14 @@ add_library(hoo-compiler
     src/rt/hoo_array_registration.cpp
 )
 
+if(HOOC_BUILD_SHARED_RUNTIME)
+    set(HOOC_RUNTIME_LIBRARY_TYPE SHARED)
+else()
+    set(HOOC_RUNTIME_LIBRARY_TYPE STATIC)
+endif()
+
 # Hooc runtime library (reference counting, memory management, string support, generic array support)
-add_library(hoort STATIC
+add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/rt/hoo_runtime.c
     src/rt/hoo_string.cpp
     src/rt/hoo_generic_array.cpp
@@ -165,10 +193,9 @@ target_include_directories(hoort PUBLIC
     ${LLVM_INCLUDE_DIRS}
 )
 
-# Add debug memory tracking in Debug builds
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(hoort PRIVATE HOO_DEBUG_MEMORY)
-endif()
+target_compile_definitions(hoort PRIVATE
+    $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
+)
 
 target_link_libraries(hoo-compiler PUBLIC
     hoo-parser
@@ -194,13 +221,18 @@ target_link_libraries(hooc
 )
 
 # Install targets
-install(TARGETS hoo-compiler hoo-parser
+install(TARGETS hooc hoo-compiler hoo-parser hoort
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
 )
 
 install(DIRECTORY ${ANTLR4_GENERATED_DIR}/
+    DESTINATION include/hooc
+    FILES_MATCHING PATTERN "*.h"
+)
+
+install(DIRECTORY src/
     DESTINATION include/hooc
     FILES_MATCHING PATTERN "*.h"
 )
@@ -213,9 +245,13 @@ message(STATUS "Generated files directory: ${ANTLR4_GENERATED_DIR}")
 # Custom target to download ANTLR4 JAR if not present
 if(NOT EXISTS ${ANTLR4_JAR_PATH})
     file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/tools")
+    find_program(CURL_EXECUTABLE curl)
+    if(NOT CURL_EXECUTABLE)
+        message(FATAL_ERROR "ANTLR4 jar not found at ${ANTLR4_JAR_PATH}, and curl is not available to download it")
+    endif()
     add_custom_target(download_antlr4
-        COMMAND curl -L -o ${ANTLR4_JAR_PATH} 
-            https://www.antlr.org/download/antlr-4.13.1-complete.jar
+        COMMAND ${CURL_EXECUTABLE} -L -o ${ANTLR4_JAR_PATH}
+            https://www.antlr.org/download/antlr-4.13.2-complete.jar
         COMMENT "Downloading ANTLR4 JAR file"
         VERBATIM
     )
@@ -229,43 +265,10 @@ add_custom_target(clean_generated
     COMMENT "Cleaning generated ANTLR4 files"
 )
 
-# Enable testing
-enable_testing()
+if(HOOC_BUILD_TESTS)
+    enable_testing()
+    find_package(GTest REQUIRED)
 
-# Find GoogleTest
-# Try vcpkg first (CONFIG mode for vcpkg-installed packages)
-find_package(GTest CONFIG QUIET)
-if(NOT GTest_FOUND)
-    # Try module mode
-    find_package(GTest MODULE QUIET)
-endif()
-
-if(NOT GTest_FOUND)
-    # Try to find via pkg-config as fallback
-    find_package(PkgConfig QUIET)
-    if(PkgConfig_FOUND)
-        pkg_check_modules(GTEST gtest)
-    endif()
-
-    if(NOT GTEST_FOUND)
-        # Manual fallback for Homebrew installation
-        set(GTEST_ROOT "/opt/homebrew/Cellar/googletest/1.17.0")
-        find_path(GTEST_INCLUDE_DIRS gtest/gtest.h
-            PATHS ${GTEST_ROOT}/include
-        )
-        find_library(GTEST_LIBRARIES gtest
-            PATHS ${GTEST_ROOT}/lib
-        )
-        find_library(GTEST_MAIN_LIBRARIES gtest_main
-            PATHS ${GTEST_ROOT}/lib
-        )
-        if(GTEST_INCLUDE_DIRS AND GTEST_LIBRARIES)
-            set(GTest_FOUND TRUE)
-        endif()
-    endif()
-endif()
-
-if(GTest_FOUND)
     # Test executable
     add_executable(hoo-tests
         tests/test_main.cpp
@@ -312,22 +315,11 @@ if(GTest_FOUND)
         tests/StdConstructorCodeGenTest.cpp
     )
 
-    # Link test executable with libraries
-    if(TARGET GTest::gtest AND TARGET GTest::gtest_main)
-        target_link_libraries(hoo-tests
-            hoo-compiler
-            GTest::gtest
-            GTest::gtest_main
-        )
-    else()
-        target_link_libraries(hoo-tests
-            hoo-compiler
-            ${GTEST_LIBRARIES}
-            ${GTEST_MAIN_LIBRARIES}
-            pthread
-        )
-        target_include_directories(hoo-tests PRIVATE ${GTEST_INCLUDE_DIRS})
-    endif()
+    target_link_libraries(hoo-tests
+        hoo-compiler
+        GTest::gtest
+        GTest::gtest_main
+    )
 
     # Include directories for tests
     target_include_directories(hoo-tests PUBLIC
@@ -337,24 +329,6 @@ if(GTest_FOUND)
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_DIR}
     )
-
-    # Copy required DLLs to build directory on Windows
-    if(WIN32)
-        # Copy GTest DLLs from vcpkg
-        add_custom_command(TARGET hoo-tests POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/gtest.dll"
-                "${CMAKE_BINARY_DIR}/"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin/gtest_main.dll"
-                "${CMAKE_BINARY_DIR}/"
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                "D:/antlr4/runtime/cpp/bin/antlr4-runtime.dll"
-                "${CMAKE_BINARY_DIR}/"
-            COMMENT "Copying required DLLs to build directory"
-            VERBATIM
-        )
-    endif()
 
     # Add test target
     add_test(NAME HooUnitTests COMMAND hoo-tests)
@@ -368,5 +342,5 @@ if(GTest_FOUND)
 
     message(STATUS "GoogleTest found - unit tests enabled")
 else()
-    message(WARNING "GoogleTest not found - unit tests disabled")
+    message(STATUS "Unit tests disabled. Configure with -DHOOC_BUILD_TESTS=ON to enable them.")
 endif()

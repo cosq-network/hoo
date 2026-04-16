@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ast/AST.h"
-#include "../antlr4/generated/HoocBaseVisitor.h"
+#include "HoocBaseVisitor.h"
 
 namespace hooc {
 
@@ -13,7 +13,7 @@ private:
     std::unique_ptr<ast::Declaration> buildDeclaration(HoocParser::DeclarationContext* ctx);
     std::unique_ptr<ast::FunctionDeclaration> buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx);
     std::unique_ptr<ast::VariableDeclaration> buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx);
-    std::unique_ptr<ast::VariableDeclarationStatement> buildVariableDeclarationStatement(HoocParser::VariableDeclarationContext* ctx);
+    std::unique_ptr<ast::VariableDeclarationStatement> buildVariableDeclarationStatement(HoocParser::VariableDeclarationStatementContext* ctx);
     std::unique_ptr<ast::ClassDeclaration> buildClassDeclaration(HoocParser::ClassDeclarationContext* ctx);
     std::unique_ptr<ast::InterfaceDeclaration> buildInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx);
     std::unique_ptr<ast::Type> buildType(HoocParser::TypeContext* ctx);
@@ -26,8 +26,8 @@ private:
     std::unique_ptr<ast::Block> buildBlock(HoocParser::BlockContext* ctx);
     std::unique_ptr<ast::IfStatement> buildIfStatement(HoocParser::IfStatementContext* ctx);
     std::unique_ptr<ast::WhileStatement> buildWhileStatement(HoocParser::WhileStatementContext* ctx);
-    std::unique_ptr<ast::ForInStatement> buildForInStatement(HoocParser::ForInStatementContext* ctx);
-    std::unique_ptr<ast::ForRangeStatement> buildForRangeStatement(HoocParser::ForRangeStatementContext* ctx);
+    std::unique_ptr<ast::ForInStatement> buildForInStatement(HoocParser::ForStatementContext* ctx);
+    std::unique_ptr<ast::ForRangeStatement> buildForRangeStatement(HoocParser::ForStatementContext* ctx);
     std::unique_ptr<ast::Expression> buildExpression(HoocParser::ExpressionContext* ctx);
     std::unique_ptr<ast::Expression> buildAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx);
     std::unique_ptr<ast::Expression> buildLogicalOrExpression(HoocParser::LogicalOrExpressionContext* ctx);

@@ -100,6 +100,16 @@ struct ArrayFunctionStorage {
     llvm::Function* hoo_array_push_char_func = nullptr;
     llvm::Function* hoo_array_push_byte_func = nullptr;
 
+    // Type-specialized get functions (for common types)
+    llvm::Function* hoo_array_get_int64_func = nullptr;
+    llvm::Function* hoo_array_get_double_func = nullptr;
+    llvm::Function* hoo_array_get_float_func = nullptr;
+    llvm::Function* hoo_array_get_bool_func = nullptr;
+    llvm::Function* hoo_array_get_char_func = nullptr;
+    llvm::Function* hoo_array_get_string_func = nullptr;
+    llvm::Function* hoo_array_get_object_func = nullptr;
+    llvm::Function* hoo_array_get_array_func = nullptr;
+
     // Reference counting
     llvm::Function* hoo_array_retain_func = nullptr;
     llvm::Function* hoo_array_release_func = nullptr;
