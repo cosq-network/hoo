@@ -1,111 +1,136 @@
 #include "HoocJIT.h"
-#include "ProcessIsolatedParser.h"
-#include "SimpleASTBuilder.h"
-#include "LLVMCodeGenerator.h"
-#include "ast/AST.h"
-#include "hoo_string.h"
+#include "HooCompiler.h"
 #include "runtime/RuntimeRegistry.h"
-#include <iostream>
-#include <memory>
-
-#include "llvm/ExecutionEngine/Orc/LLJIT.h"
-#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/Support/Error.h"
+#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/raw_ostream.h"
+#include <iostream>
+#include <sstream>
 
 using namespace llvm;
 using namespace llvm::orc;
 using namespace hooc;
 
-// Namespace aliases to avoid conflicts between hooc::Module and llvm::Module
-namespace {
-    using LLVMModule = llvm::Module;
-    using HoocModule = hooc::Module;
+HoocJIT::HoocJIT() {
+    if (!initializeJIT()) {
+        throw std::runtime_error("Failed to initialize JIT: " + lastError_);
+    }
 }
 
-HoocJIT::HoocJIT() {
-    // Initialize LLVM
+HoocJIT::~HoocJIT() = default;
+
+HoocJIT::HoocJIT(HoocJIT&& other) noexcept
+    : jit_(std::move(other.jit_))
+    , compiler_(std::move(other.compiler_))
+    , lastError_(std::move(other.lastError_)) {
+}
+
+HoocJIT& HoocJIT::operator=(HoocJIT&& other) noexcept {
+    if (this != &other) {
+        jit_ = std::move(other.jit_);
+        compiler_ = std::move(other.compiler_);
+        lastError_ = std::move(other.lastError_);
+    }
+    return *this;
+}
+
+bool HoocJIT::initializeJIT() {
+    lastError_.clear();
+
     InitializeNativeTarget();
     InitializeNativeTargetAsmPrinter();
     InitializeNativeTargetAsmParser();
 
-    // Create JIT
     auto JITExpected = LLJITBuilder().create();
     if (!JITExpected) {
-        errs() << "Failed to create JIT: " << toString(JITExpected.takeError()) << "\n";
-        exit(1);
+        std::ostringstream oss;
+        oss << "Failed to create JIT: " << toString(JITExpected.takeError());
+        lastError_ = oss.str();
+        return false;
     }
-    JIT = std::move(*JITExpected);
-
-    // ========================================================================
-    // Register runtime classes with JIT via central registry
-    // ========================================================================
-    // All runtime libraries (String, Array, etc.) self-register via the
-    // central RuntimeRegistry. Their callbacks are invoked here to register
-    // functions as JIT symbols.
+    jit_ = std::move(*JITExpected);
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
-    auto& mainJD = JIT->getMainJITDylib();
+    auto& mainJD = jit_->getMainJITDylib();
+    registry.registerAllWithJIT(*jit_, mainJD);
 
-    registry.registerAllWithJIT(*JIT, mainJD);
+    compiler_ = std::make_unique<HooCompiler>();
 
-    // Initialize parser, AST builder, and code generator
-    parser_ = std::make_unique<ProcessIsolatedParser>();
-    astBuilder_ = std::make_unique<SimpleASTBuilder>();
-    codeGenerator_ = std::make_unique<LLVMCodeGenerator>(Context);
-
-    std::cout << "HoocJIT initialized successfully!\n";
-}
-
-HoocJIT::~HoocJIT() {}
-
-bool HoocJIT::compileHoocCode(const std::string& code) {
-    std::cout << "\n=== Compiling Hooc Code ===\n";
-    std::cout << "Source: \"" << code << "\"\n";
-    
-    // Step 1: Parse the code
-    if (!parser_->parse(code)) {
-        std::cout << "Parse failed: " << parser_->getLastError() << "\n";
-        return false;
-    }
-    
-    std::cout << "✅ Parsing successful\n";
-    
-    // TODO: Step 2: Build AST from parse tree
-    // For now, we'll create a dummy compilation unit
-    // In a complete implementation, you would:
-    // 1. Get the parse tree from ProcessIsolatedParser
-    // 2. Use ASTBuilder to convert parse tree to AST
-    // 3. Generate LLVM IR from AST
-    
-    std::cout << "⚠️  AST building not yet integrated with ProcessIsolatedParser\n";
-    std::cout << "⚠️  This requires connecting ANTLR4 parse tree to ASTBuilder\n";
-    
     return true;
 }
 
-bool HoocJIT::executeFunction(const std::string& functionName) {
-    std::cout << "\n=== Executing Function: " << functionName << " ===\n";
-    
-    // Look up the function in the JIT
-    auto functionSymbol = JIT->lookup(functionName);
-    if (!functionSymbol) {
-        std::cout << "Function '" << functionName << "' not found: " 
-                 << toString(functionSymbol.takeError()) << "\n";
+HoocJIT::CompileResult HoocJIT::compile(const std::string& moduleName,
+                                         const std::string& sourceCode) {
+    lastError_.clear();
+
+    auto module = compiler_->compile(moduleName, sourceCode);
+    if (!module) {
+        lastError_ = compiler_->getLastError();
+        return {false, lastError_, {}};
+    }
+
+    if (verifyModule(*module, &errs())) {
+        lastError_ = "LLVM module verification failed";
+        return {false, lastError_, {}};
+    }
+
+    std::string ir;
+    raw_string_ostream stream(ir);
+    module->print(stream, nullptr);
+    stream.flush();
+
+    if (!addModule(std::move(module))) {
+        return {false, lastError_, {}};
+    }
+
+    return {true, {}, ir};
+}
+
+bool HoocJIT::addModule(std::unique_ptr<Module> module) {
+    if (!module) {
+        lastError_ = "Cannot add null module to JIT";
         return false;
     }
-    
-    // For now, assume it's a void function with no parameters
-    auto functionPtr = (void(*)())functionSymbol->getValue();
-    
-    std::cout << "Executing " << functionName << "()...\n";
-    functionPtr();
-    std::cout << "✅ Function executed successfully\n";
-    
+
+    ThreadSafeModule tsm(std::move(module), std::make_unique<LLVMContext>());
+
+    auto error = jit_->addIRModule(std::move(tsm));
+    if (error) {
+        std::ostringstream oss;
+        oss << "Failed to add module to JIT: " << toString(std::move(error));
+        lastError_ = oss.str();
+        return false;
+    }
+
     return true;
+}
+
+HoocJIT::ExecutionResult HoocJIT::executeRaw(const std::string& functionName) {
+    auto symbolOrError = jit_->lookup(functionName);
+    if (!symbolOrError) {
+        std::ostringstream oss;
+        oss << "Function '" << functionName << "' not found: "
+            << toString(symbolOrError.takeError());
+        return {false, oss.str()};
+    }
+
+    auto addr = symbolOrError->getValue();
+    using FuncPtr = void(*)();
+    auto funcPtr = reinterpret_cast<FuncPtr>(static_cast<uintptr_t>(addr));
+
+    funcPtr();
+    return {true, {}};
+}
+
+std::optional<HoocJIT::Symbol> HoocJIT::lookup(const std::string& symbolName) {
+    auto symbolOrError = jit_->lookup(symbolName);
+    if (!symbolOrError) {
+        std::ostringstream oss;
+        oss << "Symbol lookup failed for '" << symbolName << "': "
+            << toString(symbolOrError.takeError());
+        lastError_ = oss.str();
+        return std::nullopt;
+    }
+    return Symbol(*symbolOrError, JITSymbolFlags::Exported);
 }

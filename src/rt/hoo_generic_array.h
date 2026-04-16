@@ -4,7 +4,7 @@
 
 #ifdef __cplusplus
     #include <memory>
-    #include <list>
+    #include <vector>
     #include <any>
     #include <typeinfo>
     #include <string>
@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 // ============================================================================
-// HooArray - Generic Dynamic Array using std::list + std::any
+// HooArray - Generic Dynamic Array using std::vector + std::any
 // ============================================================================
 //
 // A truly type-agnostic dynamic array that can store elements of any type.
@@ -311,8 +311,8 @@ int64_t hoo_array_is_type(HooArray arr, const char* type_name);
 namespace hooc {
 
 /**
- * HooArrayImpl - C++ implementation using std::list + std::any
- */
+  * HooArrayImpl - C++ implementation using std::vector + std::any
+  */
 class HooArrayImpl {
 public:
     HooArrayImpl();
@@ -339,9 +339,7 @@ public:
             return false;
         }
         try {
-            auto it = elements.begin();
-            std::advance(it, index);
-            dest = std::any_cast<T>(*it);
+            dest = std::any_cast<T>(elements[index]);
             return true;
         } catch (const std::bad_any_cast&) {
             return false;
@@ -354,9 +352,7 @@ public:
             return false;
         }
         try {
-            auto it = elements.begin();
-            std::advance(it, index);
-            *it = std::any(value);
+            elements[index] = std::any(value);
             return true;
         } catch (...) {
             return false;
@@ -383,11 +379,11 @@ public:
     }
 
     // Container access
-    std::list<std::any>& getElements() { return elements; }
-    const std::list<std::any>& getElements() const { return elements; }
+    std::vector<std::any>& getElements() { return elements; }
+    const std::vector<std::any>& getElements() const { return elements; }
 
 private:
-    std::list<std::any> elements;
+    std::vector<std::any> elements;
     const std::type_info* element_type;
     int64_t refcount;
 };

@@ -30,7 +30,7 @@ static struct {
     int64_t total_deallocations;
     int64_t current_live_objects;
     int64_t total_bytes_allocated;
-} memory_stats = {0, 0, 0, 0};
+} memory_stats = {0LL, 0LL, 0LL, 0LL};
 
 // Helper: Get header from object pointer
 static inline HooObjectHeader* get_header(void* obj) {
@@ -56,7 +56,7 @@ void* hoo_alloc(size_t size, int64_t type_id) {
     // Update statistics
     memory_stats.total_allocations++;
     memory_stats.current_live_objects++;
-    memory_stats.total_bytes_allocated += (HEADER_SIZE + size);
+    memory_stats.total_bytes_allocated += (int64_t)(HEADER_SIZE + size);
 
     // Return pointer to object data (skip header)
     void* obj = (char*)header + HEADER_SIZE;

@@ -1,11 +1,11 @@
 # Hooc Test Status Report
 
-**Report Date:** April 16, 2026 (Updated)
+**Report Date:** April 16, 2026 17:30 (Updated)
 **Build Configuration:** macOS Homebrew Ninja
 **Total Test Suites:** 36
 **Total Test Cases:** 658
 **Last Execution:** After full build and test run
-**Execution Time:** 68 ms
+**Execution Time:** 77 ms
 **Last Update:** After comprehensive build using CMakePresets.json
 
 **Detailed Results:** See `docs/test-results.csv` for complete test-by-test breakdown
@@ -39,7 +39,7 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 
 ## Test Suite Breakdown (36 Suites, 658 Tests)
 
-### Parsing Tests (14 Suites, 245 Tests)
+### Parsing Tests (15 Suites, 246 Tests)
 
 | Suite | Tests | Description |
 |-------|-------|-------------|
@@ -47,11 +47,11 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 | FunctionCallParsingTest | 15 | Function call syntax |
 | NullableTypeParsingTest | 13 | Nullable type syntax |
 | VariableDeclarationParseTest | 15 | Variable declaration parsing |
-| IfElseIfParsingTest | 26 | Conditional statements |
-| WhileLoopParsingTest | 30 | While loop syntax |
+| IfElseIfParsingTest | 27 | Conditional statements |
+| WhileLoopParsingTest | 31 | While loop syntax |
 | ImportStatementParsingTest | 18 | Import statement parsing |
 | ModuleLevelVariableParsingTest | 9 | Module-level variables |
-| ClassDeclarationParsingTest | 26 | Class/interface declarations |
+| ClassDeclarationParsingTest | 25 | Class/interface declarations |
 | OptionalReturnTypeTest | 7 | Optional return types |
 | NewExpressionParsingTest | 20 | Object creation syntax |
 | MemberAccessParsingTest | 15 | Member access expressions |
@@ -59,16 +59,16 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 | QualifiedIdentifierParsingTest | 12 | Qualified identifiers |
 | QualifiedNewExpressionParsingTest | 9 | Qualified constructors |
 
-### Code Generation Tests (14 Suites, 244 Tests)
+### Code Generation Tests (16 Suites, 272 Tests)
 
 | Suite | Tests | Description |
 |-------|-------|-------------|
 | BasicCodeGenTest | 19 | Basic expressions and statements |
 | FunctionCallCodeGenTest | 8 | Function call code generation |
-| VariableDeclarationCodeGenTest | 20 | Variable declarations |
+| VariableDeclarationCodeGenTest | 19 | Variable declarations |
 | ArrayLiteralCodeGenTest | 26 | Array literal instantiation |
 | IfElseIfCodeGenTest | 25 | Conditional branches |
-| WhileLoopCodeGenTest | 31 | While loop code generation |
+| WhileLoopCodeGenTest | 32 | While loop code generation |
 | NullableCodeGenTest | 20 | Nullable type handling |
 | NewExpressionCodeGenTest | 20 | Object allocation |
 | ObjectCreationCodeGenTest | 12 | Constructor calls |
@@ -78,21 +78,21 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 | ClassArrayCodeGenTest | 10 | Arrays of class instances |
 | QualifiedIdentifierCodeGenTest | 10 | Qualified name code generation |
 | ImportStatementCodeGenTest | 8 | Import statement code generation |
-| StdConstructorCodeGenTest | 26 | Standard library constructors |
+| StdConstructorCodeGenTest | 24 | Standard library constructors |
 
-### Runtime Library Tests (4 Suites, 113 Tests)
+### Runtime Library Tests (3 Suites, 79 Tests)
 
 | Suite | Tests | Description |
 |-------|-------|-------------|
-| StringBasicsTest | 37 | String operations |
+| StringBasicsTest | 36 | String operations |
 | ArrayGenericRuntimeTest | 11 | Array runtime operations |
-| HooArrayPhase7Test | 34 | Array advanced features |
+| HooArrayPhase7Test | 32 | Array advanced features |
 
-### Integration Tests (2 Suites, 56 Tests)
+### Integration Tests (2 Suites, 51 Tests)
 
 | Suite | Tests | Description |
 |-------|-------|-------------|
-| ArrayGenericIntegrationTest | 34 | Array integration |
+| ArrayGenericIntegrationTest | 32 | Array integration |
 | ModuleRegistryTest | 19 | Module registration |
 
 ---
@@ -119,14 +119,14 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 
 ### Latest Execution
 ```
-[==========] 658 tests from 36 test suites ran. (68 ms total)
+[==========] 658 tests from 36 test suites ran. (77 ms total)
 [  PASSED  ] 658 tests.
 [  FAILED  ] 0 tests.
 ```
 
 ### Performance
-- **Total Time:** 68 ms
-- **Average per test:** 0.103 ms
+- **Total Time:** 77 ms
+- **Average per test:** 0.117 ms
 - **Performance Rating:** Excellent
 
 ---
