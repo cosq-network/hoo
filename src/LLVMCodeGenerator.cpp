@@ -2033,13 +2033,6 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     hoo_array_push_bool_func_ = arrayStorage.hoo_array_push_bool_func;
     hoo_array_push_char_func_ = arrayStorage.hoo_array_push_char_func;
     hoo_array_get_int64_func_ = arrayStorage.hoo_array_get_int64_func;
-    hoo_array_get_double_func_ = arrayStorage.hoo_array_get_double_func;
-    hoo_array_get_float_func_ = arrayStorage.hoo_array_get_float_func;
-    hoo_array_get_bool_func_ = arrayStorage.hoo_array_get_bool_func;
-    hoo_array_get_char_func_ = arrayStorage.hoo_array_get_char_func;
-    hoo_array_get_string_func_ = arrayStorage.hoo_array_get_string_func;
-    hoo_array_get_object_func_ = arrayStorage.hoo_array_get_object_func;
-    hoo_array_get_array_func_ = arrayStorage.hoo_array_get_array_func;
     hoo_array_retain_func_ = arrayStorage.hoo_array_retain_func;
     hoo_array_release_func_ = arrayStorage.hoo_array_release_func;
     hoo_array_refcount_func_ = arrayStorage.hoo_array_refcount_func;
