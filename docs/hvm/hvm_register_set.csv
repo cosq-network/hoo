@@ -1,0 +1,49 @@
+Register,Mnemonic,Width (bits),Purpose
+r0,zero,64,Hardwired to zero. Reading always returns 0; writing has no effect.
+r1,arg1/ret,64,First argument and return value register.
+r2,arg2,64,Second argument register.
+r3,arg3,64,Third argument register.
+r4,arg4,64,Fourth argument register.
+r5,arg5,64,Fifth argument register.
+r6,arg6,64,Sixth argument register.
+r7,arg7,64,Seventh argument register.
+r8,arg8,64,Eighth argument register.
+r9,temp1,64,Temporary register.
+r10,temp2,64,Temporary register.
+r11,temp3,64,Temporary register.
+r12,temp4,64,Temporary register.
+r13,temp5,64,Temporary register.
+r14,temp6,64,Temporary register.
+r15,temp7,64,Temporary register.
+r16,saved1,64,Callee-saved register.
+r17,saved2,64,Callee-saved register.
+r18,saved3,64,Callee-saved register.
+r19,saved4,64,Callee-saved register.
+r20,saved5,64,Callee-saved register.
+r21,saved6,64,Callee-saved register.
+r22,saved7,64,Callee-saved register.
+r23,saved8,64,Callee-saved register.
+r24,saved9,64,Callee-saved register.
+r25,saved10,64,Callee-saved register.
+r26,saved11,64,Callee-saved register.
+r27,saved12,64,Callee-saved register.
+r28,saved13,64,Callee-saved register.
+r29,saved14,64,Callee-saved register.
+r30,fp,64,"Frame pointer. Optional, used for debugging."
+r31,sp,64,Stack pointer.
+v0,vec1,128,First vector register (SIMD).
+v1,vec2,128,Second vector register.
+v2,vec3,128,Third vector register.
+v3,vec4,128,Fourth vector register.
+v4,vec5,128,Fifth vector register.
+v5,vec6,128,Sixth vector register.
+v6,vec7,128,Seventh vector register.
+v7,vec8,128,Eighth vector register.
+v8,vsaved1,128,Callee-saved vector register.
+v9,vsaved2,128,Callee-saved vector register.
+v10,vsaved3,128,Callee-saved vector register.
+v11,vsaved4,128,Callee-saved vector register.
+v12,vsaved5,128,Callee-saved vector register.
+v13,vsaved6,128,Callee-saved vector register.
+v14,vsaved7,128,Callee-saved vector register.
+v15,vsaved8,128,Callee-saved vector register.

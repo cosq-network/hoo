@@ -1,0 +1,144 @@
+Mnemonic,Opcode,Format,Operands,Operation,Description,Func
+MOV,0x01,R,"rd, rs, -, -",rd = rs,Move register,
+MOVI,0x02,I,"rd, rs, imm15",rd = rs + imm15,Add immediate (sign-extended),
+MOVZ,0x03,I,"rd, rs, imm15",rd = rs | zero_extend(imm15),Move with zero-extended immediate,
+LUI,0x04,I,"rd, rs, imm15",rd = rs | (imm15 << 32),Load upper immediate,
+ADDI,0x06,I,"rd, rs, imm15",rd = rs + sign_extend(imm15),Add immediate,
+SUB,0x07,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtract,0
+NEG,0x08,R,"rd, rs, -, -",rd = -rs,Negate,
+XCHG,0x0A,R,"rd, rs, -, -",swap rd, rs,Exchange registers,
+SWAP,0x0A,R,"rd, rs, -, -",swap rd, rs,Alias for XCHG,
+ADD,0x10,R,"rd, rs1, rs2, -",rd = rs1 + rs2,Add,0
+SUB,0x10,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtract,1
+MUL,0x10,R,"rd, rs1, rs2, -",rd = (rs1 * rs2)[63:0],Multiply,2
+MULH,0x10,R,"rd, rs1, rs2, -",rd = (rs1*rs2) >> 64,Multiply high,3
+DIV,0x10,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (signed),Divide,4
+DIVU,0x10,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (unsigned),Divide unsigned,5
+REM,0x10,R,"rd, rs1, rs2, -",rd = rs1 % rs2 (signed),Remainder,6
+REMU,0x10,R,"rd, rs1, rs2, -",rd = rs1 % rs2 (unsigned),Remainder unsigned,7
+SUBI,0x12,I,"rd, rs, imm15",rd = rs - sign_extend(imm15),Subtract immediate,
+MULI,0x13,I,"rd, rs, imm15",rd = rs * sign_extend(imm15),Multiply immediate,
+DIVI,0x14,I,"rd, rs, imm15",rd = rs / sign_extend(imm15) (signed),Divide immediate,
+SHL,0x15,R,"rd, rs1, rs2, -",rd = rs1 << (rs2 & 63),Shift left,0
+SHR,0x15,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (logical),Shift right logical,1
+SAR,0x15,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (arithmetic),Shift right arithmetic,2
+SHLI,0x16,I,"rd, rs, imm15",rd = rs << (imm15 & 63),Shift left immediate,
+FADD,0x20,R,"rd, rs1, rs2, -",rd = rs1 + rs2 (f64),Floating-point add,0
+FSUB,0x20,R,"rd, rs1, rs2, -",rd = rs1 - rs2 (f64),Floating-point subtract,1
+FMUL,0x20,R,"rd, rs1, rs2, -",rd = rs1 * rs2 (f64),Floating-point multiply,2
+FDIV,0x20,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (f64),Floating-point divide,3
+FSQRT,0x21,R,"rd, rs, -, -",rd = sqrt(rs),Floating-point square root,
+FABS,0x22,R,"rd, rs, -, -",rd = abs(rs),Floating-point absolute value,
+FNEG,0x23,R,"rd, rs, -, -",rd = -rs,Floating-point negate,
+FADD32,0x24,R,"rd, rs1, rs2, -",rd = rs1 + rs2 (f32),Floating-point add (32-bit),0
+FSUB32,0x24,R,"rd, rs1, rs2, -",rd = rs1 - rs2 (f32),Floating-point subtract (32-bit),1
+FMUL32,0x24,R,"rd, rs1, rs2, -",rd = rs1 * rs2 (f32),Floating-point multiply (32-bit),2
+FDIV32,0x24,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (f32),Floating-point divide (32-bit),3
+FCVT,0x25,I,"rd, rs, imm15",rd = convert(rs, imm15),Floating-point convert (imm=type),
+AND,0x30,R,"rd, rs1, rs2, -",rd = rs1 & rs2,Bitwise AND,0
+OR,0x30,R,"rd, rs1, rs2, -",rd = rs1 | rs2,Bitwise OR,1
+XOR,0x30,R,"rd, rs1, rs2, -",rd = rs1 ^ rs2,Bitwise XOR,2
+NOT,0x31,R,"rd, rs, -, -",rd = ~rs,Bitwise NOT,
+ANDI,0x32,I,"rd, rs, imm15",rd = rs & sign_extend(imm15),Bitwise AND immediate,
+ORI,0x33,I,"rd, rs, imm15",rd = rs | sign_extend(imm15),Bitwise OR immediate,
+XORI,0x34,I,"rd, rs, imm15",rd = rs ^ sign_extend(imm15),Bitwise XOR immediate,
+CLZ,0x35,R,"rd, rs, -, -",rd = count_leading_zeros(rs),Count leading zeros,
+CTZ,0x36,R,"rd, rs, -, -",rd = count_trailing_zeros(rs),Count trailing zeros,
+POPCNT,0x37,R,"rd, rs, -, -",rd = population_count(rs),Population count,
+CMPEQ,0x40,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0,Equal,0
+CMPNE,0x40,R,"rd, rs1, rs2, -",rd = (rs1 != rs2) ? 1 : 0,Not equal,1
+CMPLT,0x40,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (signed),Less than,2
+CMPLE,0x40,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (signed),Less than or equal,3
+CMPGT,0x40,R,"rd, rs1, rs2, -",rd = (rs1 > rs2) ? 1 : 0 (signed),Greater than,4
+CMPGE,0x40,R,"rd, rs1, rs2, -",rd = (rs1 >= rs2) ? 1 : 0 (signed),Greater than or equal,5
+CMPLTU,0x40,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (unsigned),Less than unsigned,6
+CMPLEU,0x40,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (unsigned),Less than or equal unsigned,7
+FCMPEQ,0x41,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0 (f64),Floating-point equal,0
+FCMPLT,0x41,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (f64),Floating-point less than,1
+FCMPLE,0x41,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (f64),Floating-point less than or equal,2
+FCMPGT,0x41,R,"rd, rs1, rs2, -",rd = (rs1 > rs2) ? 1 : 0 (f64),Floating-point greater than,4
+FCMPGE,0x41,R,"rd, rs1, rs2, -",rd = (rs1 >= rs2) ? 1 : 0 (f64),Floating-point greater than or equal,5
+SET,0x42,I,"rd, -, imm15",rd = imm15 & 1,Set boolean from immediate,
+BEQ,0x50,B,"rs1, rs2, imm15",if rs1 == rs2 then pc += sign_extend(imm15),Branch if equal,
+BNE,0x51,B,"rs1, rs2, imm15",if rs1 != rs2 then pc += sign_extend(imm15),Branch if not equal,
+BLT,0x52,B,"rs1, rs2, imm15",if rs1 < rs2 (signed) then pc += sign_extend(imm15),Branch if less than,
+BLE,0x53,B,"rs1, rs2, imm15",if rs1 <= rs2 (signed) then pc += sign_extend(imm15),Branch if less than or equal,
+BGT,0x54,B,"rs1, rs2, imm15",if rs1 > rs2 (signed) then pc += sign_extend(imm15),Branch if greater than,
+BGE,0x55,B,"rs1, rs2, imm15",if rs1 >= rs2 (signed) then pc += sign_extend(imm15),Branch if greater than or equal,
+BLTU,0x56,B,"rs1, rs2, imm15",if rs1 < rs2 (unsigned) then pc += sign_extend(imm15),Branch if less than unsigned,
+BGEU,0x57,B,"rs1, rs2, imm15",if rs1 >= rs2 (unsigned) then pc += sign_extend(imm15),Branch if greater than or equal unsigned,
+JMP,0x60,J,offset,"pc += sign_extend(offset)",Unconditional jump,
+JAL,0x61,J,"rd, offset",rd = pc+4; pc += sign_extend(offset),Jump and link,
+JALR,0x62,I,"rd, rs, imm15",rd = pc+4; pc = rs + sign_extend(imm15),Jump and link register,
+RET,0x63,R,"-, -, -, -",pc = r1,Return from subroutine,
+LD.B,0x70,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:8),Load signed byte,
+LD.BU,0x71,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:8),Load unsigned byte,
+LD.H,0x72,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:16),Load signed half,
+LD.HU,0x73,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:16),Load unsigned half,
+LD.W,0x74,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:32),Load signed word,
+LD.WU,0x75,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:32),Load unsigned word,
+LD.D,0x76,I,"rd, addr, imm15",rd = mem[addr + imm15]:64,Load double word,
+LD.X,0x77,RI,"rd, rd2, addr, imm",rd = mem[addr]:64; rd2 = mem[addr+8]:64,Load 128-bit pair,
+ST.B,0x78,I,"data, addr, imm15",mem[addr + imm15]:8 = data,Store byte,
+ST.H,0x79,I,"data, addr, imm15",mem[addr + imm15]:16 = data,Store half,
+ST.W,0x7A,I,"data, addr, imm15",mem[addr + imm15]:32 = data,Store word,
+ST.D,0x7B,I,"data, addr, imm15",mem[addr + imm15]:64 = data,Store double word,
+ST.X,0x7C,RI,"rd2, rd, addr, imm",mem[addr]:64 = rd; mem[addr+8]:64 = rd2,Store 128-bit pair,
+LDA,0x7D,I,"rd, addr, imm15",rd = addr + sign_extend(imm15),Load address,
+PUSH,0x7E,R,"rs, -, -, -",sp -= 8; mem[sp] = rs,Push register to stack,
+POP,0x7F,R,"rd, -, -, -",rd = mem[sp]; sp += 8,Pop from stack,
+ENTER,0x80,I,"rd, -, imm15",sp -= sign_extend(imm15); rd = old_sp,Enter stack frame,
+LEAVE,0x81,R,"-, -, -, -",sp = r30; r30 = mem[old_sp],Leave stack frame,
+ADJSP,0x82,I,"-, rs, imm15",sp += sign_extend(imm15),Adjust stack pointer,
+FRAME,0x83,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Get frame address,
+NEW,0x90,I,"rd, -, imm15",rd = new_object(imm15),Allocate object by class ID,
+NEWA,0x91,RI,"rd, len, type, -",rd = new_array(len, type),Allocate array,
+LDF,0x92,RI,"rd, obj, -, idx",rd = obj.field[idx],Load object field,
+STF,0x93,RI,"val, obj, -, idx",obj.field[idx] = val,Store object field,
+LDELEM,0x94,R,"rd, arr, idx, -",rd = arr[idx],Load array element,
+STELEM,0x95,R,"val, arr, idx, -",arr[idx] = val,Store array element,
+ARRAYLEN,0x96,R,"rd, arr, -, -",rd = length(arr),Get array length,
+INSTANCEOF,0x97,RI,"rd, obj, -, type",rd = (obj instanceof type) ? 1 : 0,Type check,
+CHECKCAST,0x98,RI,"rd, obj, -, type",rd = cast(obj, type),Type cast,
+MONITORENTER,0x99,R,"obj, -, -, -",lock(obj),Lock object,
+MONITOREXIT,0x9A,R,"obj, -, -, -",unlock(obj),Unlock object,
+GC,0x9B,R,"-, -, -, -",request_garbage_collection(),Request garbage collection,
+CALL,0xA0,R,"addr, -, -, -",call addr,Call function at address,
+CALLI,0xA1,I,"rd, -, imm15",rd = call symbol_table[imm15],Call by symbol table index,
+TAILCALL,0xA2,R,"addr, -, -, -",tail_call addr,Tail call,
+CALLVIRT,0xA3,RI,"rd, obj, -, method",rd = obj.vtable[method](); call rd,Virtual method call,
+CALLINTF,0xA4,RI,"rd, obj, -, method",rd = obj.intf_table[method](); call rd,Interface method call,
+IMPORT,0xA5,RI,"rd, -, -, imm10","rd = resolve(mod_table[imm10], sym)",Resolve external symbol,
+LOADMOD,0xA6,I,"rd, -, imm15",rd = load_module(imm15),Load module by index,
+RESOLVE,0xA7,RI,"rd, mod, -, sym","rd = resolve(mod, sym)",Resolve symbol from module,
+SEXT.B,0xB0,R,"rd, rs, -, -",rd = sign_extend(rs:8),Sign extend byte,
+SEXT.H,0xB1,R,"rd, rs, -, -",rd = sign_extend(rs:16),Sign extend half,
+SEXT.W,0xB2,R,"rd, rs, -, -",rd = sign_extend(rs:32),Sign extend word,
+ZEXT.B,0xB3,R,"rd, rs, -, -",rd = zero_extend(rs:8),Zero extend byte,
+ZEXT.H,0xB4,R,"rd, rs, -, -",rd = zero_extend(rs:16),Zero extend half,
+ZEXT.W,0xB5,R,"rd, rs, -, -",rd = zero_extend(rs:32),Zero extend word,
+TRUNC,0xB6,R,"rd, rs, bits, -","rd = truncate(rs, bits)",Truncate to bits,
+REINTERPRET,0xB7,R,"rd, rs, -, -",rd = bitcast(rs),Reinterpret bits,
+VADD,0xC0,R,"vd, vs1, vs2, -",vd = vs1 + vs2 (vector),Vector add,0
+VSUB,0xC0,R,"vd, vs1, vs2, -",vd = vs1 - vs2 (vector),Vector subtract,1
+VMUL,0xC0,R,"vd, vs1, vs2, -",vd = vs1 * vs2 (vector),Vector multiply,2
+VDOT,0xC1,R,"rd, vs1, vs2, -",rd = dot_product(vs1, vs2),Vector dot product,
+VLOAD,0xC2,I,"vd, addr, imm15",vd = load_vector(addr, sign_extend(imm15)),Load vector with stride,
+VSTORE,0xC3,I,"vd, addr, imm15",store_vector(vd, addr, sign_extend(imm15)),Store vector with stride,
+VSHUF,0xC4,RI,"vd, vs1, vs2, imm",vd = shuffle(vs1, vs2, imm),Vector shuffle,
+VSPLAT,0xC5,R,"vd, rs, -, -",vd = splat(rs),Broadcast scalar to vector,
+VEXTRACT,0xC6,I,"rd, vd, imm15",rd = vd[imm15 & 15],Extract lane from vector,
+VINSERT,0xC7,RI,"vd, rs, -, lane",vd[lane] = rs,Insert scalar into vector lane,
+VCMPEQ,0xC8,R,"vd, vs1, vs2, -",vd = (vs1 == vs2),Vector compare equal,0
+VCMPNE,0xC8,R,"vd, vs1, vs2, -",vd = (vs1 != vs2),Vector compare not equal,1
+VCMPLT,0xC8,R,"vd, vs1, vs2, -",vd = (vs1 < vs2),Vector compare less than,2
+VCMPLE,0xC8,R,"vd, vs1, vs2, -",vd = (vs1 <= vs2),Vector compare less or equal,3
+VREDUCE,0xC9,I,"rd, vd, imm15","rd = reduce(vd, imm15)",Vector reduction,
+VFMA,0xCA,R,"vd, vs1, vs2, -",vd = vd + vs1 * vs2,Fused multiply-add,0
+VFMS,0xCA,R,"vd, vs1, vs2, -",vd = vd - vs1 * vs2,Fused multiply-sub,1
+NOP,0xFF,R,"-, -, -, -",,No operation,
+BARRIER,0xFE,R,"-, -, -, -",memory_barrier(),Memory barrier,
+SYSCALL,0xF0,I,"rd, -, imm15",rd = syscall(imm15),Invoke system call,
+TRAP,0xF1,I,"-, -, imm15",software_breakpoint(imm15),Software breakpoint,
+DEBUG,0xF2,R,"rs, -, -, -",print_register(rs),Print register (debug),
+RDCOUNT,0xF3,I,"rd, -, imm15",rd = read_counter(imm15),Read performance counter,
