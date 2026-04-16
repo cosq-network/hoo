@@ -19,7 +19,9 @@
       "Bash(./build/macos-homebrew-ninja/hoo-tests:*)",
       "Bash(ls:*)",
       "Bash(chmod:*)",
-      "Bash(/tmp/test_for_parsing.sh)"
+      "Bash(/tmp/test_for_parsing.sh)",
+      "Bash(./hoo-tests:*)",
+      "Bash(python3:*)"
     ]
   }
 }

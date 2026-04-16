@@ -4,7 +4,11 @@
 **Build Configuration:** macOS Homebrew Ninja
 **Total Test Suites:** 41
 **Total Test Cases:** 730
+**Last Execution:** 2026-04-16 12:59:33
+**Execution Time:** 97 ms
 **Last Update:** After for-loop implementation fixes
+
+**Detailed Results:** See `docs/test-results.csv` for complete test-by-test breakdown
 
 ## Executive Summary
 
@@ -71,6 +75,27 @@ The Hooc compiler test suite shows strong overall stability with **97.0% pass ra
 **Test Results:**
 - `ArrayGenericIntegrationTest`: **32/32 passing** (was 30/32)
 - All array iteration tests now fully functional
+
+---
+
+## Detailed Test Results
+
+A comprehensive CSV file containing all test results is available at `docs/test-results.csv`.
+
+**CSV Columns:**
+- `test_suite` - Name of the test suite
+- `test_case` - Individual test case name
+- `status` - Test result (passed/failed/not executed)
+- `last_executed` - Timestamp of execution
+- `execution_time` - Time taken for the test
+- `error_description` - Detailed error message for failed tests
+- `file` - Source file containing the test
+
+**Latest Execution Statistics:**
+- **Execution Time:** 97 ms total
+- **Average per test:** 0.133 ms
+- **Pass Rate:** 97.0% (708/730)
+- **Fail Rate:** 3.0% (22/730)
 
 ---
 
@@ -547,20 +572,27 @@ An attempt was made to add `typeArgumentList? LPAREN` to the grammar, but it cau
 
 ### Test Execution Command
 ```bash
-./hoo-tests
+./hoo-tests --gtest_output=json:test_results.json
 ```
 
-### Test Execution Time
-- **Total Time:** 70 ms
-- **Average per test:** 0.096 ms
+### Latest Execution (2026-04-16 12:59:33)
+- **Total Time:** 97 ms
+- **Average per test:** 0.133 ms
 - **Performance:** Excellent (fast test suite)
+- **JSON Output:** `build/macos-homebrew-ninja/test_results.json`
+- **CSV Report:** `docs/test-results.csv`
 
 ### Test Output Summary
 ```
-[==========] 730 tests from 41 test suites ran. (70 ms total)
+[==========] 730 tests from 41 test suites ran. (97 ms total)
 [  PASSED  ] 708 tests.
 [  FAILED  ] 22 tests.
 ```
+
+### Result Files
+- **JSON (detailed):** Contains complete test execution data with timing and failure details
+- **CSV (tabular):** Structured data for analysis in spreadsheet applications
+- **Markdown (report):** This document with comprehensive analysis and recommendations
 
 ---
 
