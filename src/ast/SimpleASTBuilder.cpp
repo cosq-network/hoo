@@ -248,6 +248,8 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildIfStatement(ctx->ifStatement());
     } else if (ctx->whileStatement()) {
         return buildWhileStatement(ctx->whileStatement());
+    } else if (ctx->scopeStatement()) {
+        return buildScopeStatement(ctx->scopeStatement());
     } else if (ctx->forStatement()) {
         auto forCtx = ctx->forStatement();
         // Check if it's a for-range loop (has 2 expressions) or for-in loop (has 1 expression)
@@ -281,6 +283,17 @@ std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser
     auto condition = buildExpression(ctx->expression());
     auto body = buildBlock(ctx->block());
     return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
+}
+
+std::unique_ptr<ScopeStatement> SimpleASTBuilder::buildScopeStatement(HoocParser::ScopeStatementContext* ctx) {
+    if (!ctx) {
+        return nullptr;
+    }
+    auto body = buildBlock(ctx->block());
+    if (!body) {
+        return nullptr;
+    }
+    return std::make_unique<ScopeStatement>(std::move(body));
 }
 
 std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser::ForStatementContext* ctx) {
@@ -547,6 +560,10 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         return std::make_unique<PrimaryExpression>(std::move(floatingLiteral));
     } else if (ctx->STRING_LITERAL()) {
         std::string value = getStringValue(ctx->STRING_LITERAL());
+        if (isInterpolatedString(ctx->STRING_LITERAL())) {
+            auto interpolatedString = std::make_unique<InterpolatedString>(value);
+            return std::make_unique<PrimaryExpression>(std::move(interpolatedString));
+        }
         auto stringLiteral = std::make_unique<StringLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
     } else if (ctx->CHAR_LITERAL()) {
@@ -844,4 +861,9 @@ char SimpleASTBuilder::getCharValue(antlr4::tree::TerminalNode* node) {
 bool SimpleASTBuilder::getBoolValue(antlr4::tree::TerminalNode* node) {
     std::string text = node->getText();
     return text == "true";
+}
+
+bool SimpleASTBuilder::isInterpolatedString(antlr4::tree::TerminalNode* node) {
+    std::string text = node->getText();
+    return text.find("${") != std::string::npos;
 }

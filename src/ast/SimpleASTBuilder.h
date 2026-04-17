@@ -28,6 +28,7 @@ private:
     std::unique_ptr<ast::WhileStatement> buildWhileStatement(HoocParser::WhileStatementContext* ctx);
     std::unique_ptr<ast::ForInStatement> buildForInStatement(HoocParser::ForStatementContext* ctx);
     std::unique_ptr<ast::ForRangeStatement> buildForRangeStatement(HoocParser::ForStatementContext* ctx);
+    std::unique_ptr<ast::ScopeStatement> buildScopeStatement(HoocParser::ScopeStatementContext* ctx);
     std::unique_ptr<ast::Expression> buildExpression(HoocParser::ExpressionContext* ctx);
     std::unique_ptr<ast::Expression> buildAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx);
     std::unique_ptr<ast::Expression> buildLogicalOrExpression(HoocParser::LogicalOrExpressionContext* ctx);
@@ -69,6 +70,7 @@ private:
     double getDoubleValue(antlr4::tree::TerminalNode* node);
     char getCharValue(antlr4::tree::TerminalNode* node);
     bool getBoolValue(antlr4::tree::TerminalNode* node);
+    bool isInterpolatedString(antlr4::tree::TerminalNode* node);
 };
 
 } // namespace hooc

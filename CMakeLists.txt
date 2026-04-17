@@ -291,6 +291,7 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/ImportStatementParsingTest.cpp
         tests/parsing/ModuleLevelVariableParsingTest.cpp
         tests/parsing/ClassDeclarationParsingTest.cpp
+        tests/parsing/SimpleASTBuilderTest.cpp
         tests/parsing/OptionalReturnTypeTest.cpp
         tests/parsing/NewExpressionParsingTest.cpp
         tests/parsing/MemberAccessParsingTest.cpp
@@ -319,6 +320,7 @@ if(HOOC_BUILD_TESTS)
         tests/runtime/StringBasicsTest.cpp
         tests/integration/ArrayGenericIntegrationTest.cpp
         tests/jit/HoocJITTest.cpp
+        tests/core/HooCompilerTest.cpp
     )
 
     target_link_libraries(hoo-tests

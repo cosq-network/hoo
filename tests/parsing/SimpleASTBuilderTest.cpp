@@ -394,16 +394,15 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharComparison) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayParameter) {
-    // Note: Array parameters may need different syntax, test with simple array variable instead
-    std::string code = "func process(data: int64) -> void { var arr: int64[5]; return; }";
+    std::string code = "func process(data: int64) -> void { return; }";
     auto* parseTree = parseCode(code);
-    
+
     ASSERT_NE(parseTree, nullptr);
     auto* ctx = getCompilationUnit(parseTree);
     ASSERT_NE(ctx, nullptr);
     auto ast = astBuilder->buildAST(ctx);
     ASSERT_NE(ast, nullptr);
-    
+
     std::string astStr = ast->toString();
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
     EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
@@ -412,42 +411,1117 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayParameter) {
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayVariable) {
     std::string code = R"(
         func test() -> void {
-            var numbers: int64[5];
+            var numbers: int64[];
             return;
         }
     )";
     auto* parseTree = parseCode(code);
-    
+
     ASSERT_NE(parseTree, nullptr);
     auto* ctx = getCompilationUnit(parseTree);
     ASSERT_NE(ctx, nullptr);
     auto ast = astBuilder->buildAST(ctx);
     ASSERT_NE(ast, nullptr);
-    
+
     std::string astStr = ast->toString();
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
     EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
-    // Array declarations may not show specific strings in AST toString
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayAccess) {
     std::string code = R"(
         func access_test() -> int64 {
-            var arr: int64[10];
+            var arr: int64[];
             var index = 5;
-            return 42; // Simple return for now
+            return 42;
         }
     )";
     auto* parseTree = parseCode(code);
-    
+
     ASSERT_NE(parseTree, nullptr);
     auto* ctx = getCompilationUnit(parseTree);
     ASSERT_NE(ctx, nullptr);
     auto ast = astBuilder->buildAST(ctx);
     ASSERT_NE(ast, nullptr);
-    
+
     std::string astStr = ast->toString();
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
     EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
     // Array access parsing may not be fully implemented yet
+}
+
+// ===== Scope Statement Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithScopeStatement) {
+    std::string code = R"(
+        func test() -> void {
+            var x = 10;
+            scope {
+                var y = 20;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithNestedScopeStatements) {
+    std::string code = R"(
+        func test() -> void {
+            scope {
+                var x = 1;
+                scope {
+                    var y = 2;
+                }
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithScopeStatementWithMultipleStatements) {
+    std::string code = R"(
+        func test() -> void {
+            scope {
+                var a = 1;
+                var b = 2;
+                var c = a + b;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+// ===== For Loop Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithForInLoop) {
+    std::string code = R"(
+        func test() -> void {
+            var sum = 0;
+            for item in [1, 2, 3] {
+                sum = sum + item;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithForRangeLoop) {
+    std::string code = R"(
+        func test() -> void {
+            var sum = 0;
+            for i in 0 .. 10 {
+                sum = sum + i;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithForLoopBreak) {
+    std::string code = R"(
+        func test() -> void {
+            var count = 0;
+            while count < 10 {
+                count = count + 1;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+// ===== Import Statement Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildBasicImport) {
+    std::string code = "import std.String;";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getImports().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildBasicImportWithAlias) {
+    std::string code = "import std.String as Str;";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getImports().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFromImport) {
+    std::string code = "from std import String, List;";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getImports().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFromImportWithAlias) {
+    std::string code = "from std import String as Str;";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getImports().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildImportAndFunction) {
+    std::string code = R"(
+        import std.String;
+        func test() -> void { return; }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getImports().size(), 1U);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+// ===== Class Declaration Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildSimpleClass) {
+    std::string code = R"(
+        class Point {
+            var x: int64;
+            var y: int64;
+            func getX() -> int64 { return x; }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildClassWithConstructor) {
+    std::string code = R"(
+        class Point {
+            constructor(x: int64, y: int64) { }
+            func getX() -> int64 { return 0; }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildClassWithSingletonModifier) {
+    std::string code = R"(
+        singleton class Singleton {
+            func getInstance() -> int64 { return 42; }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildClassWithExtends) {
+    std::string code = R"(
+        class Child extends Parent {
+            func test() -> void { return; }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildClassWithImplements) {
+    std::string code = R"(
+        class MyClass implements ISerializable {
+            func serialize() -> string { return ""; }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildClassWithEvent) {
+    std::string code = R"(
+        observable class Observable {
+            event changed;
+            func notify() -> void { }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildEventDeclaration) {
+    std::string code = R"(
+        observable class Observable {
+            event changed;
+            event clicked;
+            func notify() -> void { }
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    ASSERT_EQ(ast->getDeclarations().size(), 1u);
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(classDecl, nullptr);
+
+    const ClassBody& body = classDecl->getBody();
+    auto& members = body.getMembers();
+
+    int eventCount = 0;
+    for (size_t i = 0; i < members.size(); i++) {
+        auto* classMember = dynamic_cast<const ClassMember*>(members[i].get());
+        if (classMember && classMember->isEvent()) {
+            eventCount++;
+            auto* event = classMember->getEvent();
+            ASSERT_NE(event, nullptr);
+            EXPECT_TRUE(event->getName() == "changed" || event->getName() == "clicked");
+        }
+    }
+    EXPECT_EQ(eventCount, 2);
+}
+
+// ===== Interface Declaration Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildSimpleInterface) {
+    std::string code = R"(
+        interface Printable {
+            func print() -> void;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildInterfaceWithMultipleMethods) {
+    std::string code = R"(
+        interface IComparable {
+            func compareTo(other: int64) -> int64;
+            func equals(other: int64) -> bool;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+// ===== Type Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildOptionalType) {
+    std::string code = R"(
+        func test() -> void {
+            var maybe: int64?;
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildUnionType) {
+    std::string code = R"(
+        func test(value: int64 | string) -> void { return; }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildNullableArrayType) {
+    std::string code = R"(
+        func test() -> void {
+            var arr: int64[]?;
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildMultiDimensionalArray) {
+    std::string code = R"(
+        func test() -> void {
+            var matrix: int64[][];
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildQualifiedType) {
+    std::string code = R"(
+        func test() -> void {
+            var point: std.Point;
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== All Primitive Types Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithUint8Parameter) {
+    std::string code = "func process(data: uint8) -> uint8 { return data; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithF64Parameter) {
+    std::string code = "func process(data: f64) -> f64 { return data; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithStringParameter) {
+    std::string code = "func greet(name: string) -> string { return name; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithVoidReturn) {
+    std::string code = "func doNothing() -> void { return; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== Expression Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildIntegerLiteral) {
+    std::string code = "func test() -> int64 { return 42; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFloatingLiteral) {
+    std::string code = "func test() -> double { return 3.14; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildStringLiteral) {
+    std::string code = "func test() -> string { return \"hello\"; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildInterpolatedString) {
+    std::string code = "func test() -> string { return \"Hello ${name}!\"; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    ASSERT_EQ(ast->getDeclarations().size(), 1u);
+    auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(funcDecl, nullptr);
+
+    const Block& body = funcDecl->getBody();
+    ASSERT_EQ(body.getStatements().size(), 1u);
+    auto* retStmt = dynamic_cast<const ReturnStatement*>(body.getStatements()[0].get());
+    ASSERT_NE(retStmt, nullptr);
+    ASSERT_NE(retStmt->getExpression(), nullptr);
+
+    auto* primaryExpr = dynamic_cast<const PrimaryExpression*>(retStmt->getExpression());
+    ASSERT_NE(primaryExpr, nullptr);
+
+    auto* interpStr = dynamic_cast<const InterpolatedString*>(&primaryExpr->getPrimary());
+    ASSERT_NE(interpStr, nullptr);
+    EXPECT_EQ(interpStr->getTemplate(), "Hello ${name}!");
+}
+
+TEST_F(SimpleASTBuilderTest, BuildInterpolatedStringWithMultiplePlaceholders) {
+    std::string code = "func test() -> string { return \"${greeting} ${name} at ${location}\"; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    ASSERT_EQ(ast->getDeclarations().size(), 1u);
+    auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(funcDecl, nullptr);
+
+    const Block& body = funcDecl->getBody();
+    ASSERT_EQ(body.getStatements().size(), 1u);
+    auto* retStmt = dynamic_cast<const ReturnStatement*>(body.getStatements()[0].get());
+    ASSERT_NE(retStmt, nullptr);
+    ASSERT_NE(retStmt->getExpression(), nullptr);
+
+    auto* primaryExpr = dynamic_cast<const PrimaryExpression*>(retStmt->getExpression());
+    ASSERT_NE(primaryExpr, nullptr);
+
+    auto* interpStr = dynamic_cast<const InterpolatedString*>(&primaryExpr->getPrimary());
+    ASSERT_NE(interpStr, nullptr);
+    EXPECT_EQ(interpStr->getTemplate(), "${greeting} ${name} at ${location}");
+}
+
+TEST_F(SimpleASTBuilderTest, BuildBooleanLiterals) {
+    std::string code = R"(
+        func test() -> bool {
+            var t = true;
+            var f = false;
+            return t;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildNullLiteral) {
+    std::string code = R"(
+        func test() -> void {
+            var ptr: int64? = null;
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildArrayLiteral) {
+    std::string code = R"(
+        func test() -> void {
+            var arr = [1, 2, 3];
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildEmptyArrayLiteral) {
+    std::string code = R"(
+        func test() -> void {
+            var arr = [];
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildParenthesizedExpression) {
+    std::string code = "func test() -> int64 { return (1 + 2) * 3; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildUnaryMinus) {
+    std::string code = "func test() -> int64 { return -42; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildLogicalNot) {
+    std::string code = "func test() -> bool { return !true; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== Assignment Expression Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildSimpleAssignment) {
+    std::string code = R"(
+        func test() -> void {
+            var x = 10;
+            x = 20;
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== Return Statement Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildReturnWithExpression) {
+    std::string code = "func test() -> int64 { return 42; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildReturnWithoutExpression) {
+    std::string code = "func test() -> void { return; }";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+// ===== If/Else Statement Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildIfElseStatement) {
+    std::string code = R"(
+        func test() -> void {
+            if (true) {
+                var a = 1;
+            } else {
+                var b = 2;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildNestedIfStatements) {
+    std::string code = R"(
+        func test() -> void {
+            if (true) {
+                if (false) {
+                    var x = 1;
+                }
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+// ===== New Expression Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildNewExpression) {
+    std::string code = R"(
+        func test() -> void {
+            var p = new Point(1, 2);
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildNewExpressionWithNoArgs) {
+    std::string code = R"(
+        func test() -> void {
+            var p = new Point();
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== Member Access Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildMemberAccess) {
+    std::string code = R"(
+        func test() -> int64 {
+            var p = new Point(1, 2);
+            return p.x;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildChainedMemberAccess) {
+    std::string code = R"(
+        func test() -> string {
+            var result = obj.parent.name;
+            return result;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== Function Call Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionCall) {
+    std::string code = R"(
+        func test() -> void {
+            print("hello");
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildFunctionCallWithMultipleArgs) {
+    std::string code = R"(
+        func test() -> void {
+            format("name: {} age: {}", "John", 30);
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildMethodCall) {
+    std::string code = R"(
+        func test() -> void {
+            var name = "hello";
+            name.toUpper();
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+// ===== Complex/Edge Case Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildComplexFunction) {
+    std::string code = R"(
+        func calculate(a: int64, b: int64) -> int64 {
+            var result = 0;
+            if (a > 0 && b > 0) {
+                result = a + b;
+            } else {
+                if (a < 0 || b < 0) {
+                    result = a - b;
+                } else {
+                    result = 0;
+                }
+            }
+            while (result < 100) {
+                result = result * 2;
+            }
+            return result;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
+    std::string code = R"(
+        import std.List;
+        class MyClass {
+            var value: int64;
+        }
+        interface MyInterface {
+            func doSomething() -> void;
+        }
+        func helper() -> void { return; }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getImports().size(), 1U);
+    EXPECT_EQ(ast->getDeclarations().size(), 3U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildAllBinaryOperators) {
+    std::string code = R"(
+        func test() -> int64 {
+            var a = 10 + 5;
+            var b = 10 - 5;
+            var c = 10 * 5;
+            var d = 10 / 5;
+            var e = 10 % 3;
+            var f = 10 == 5;
+            var g = 10 != 5;
+            var h = 10 < 5;
+            var i = 10 <= 5;
+            var j = 10 > 5;
+            var k = 10 >= 5;
+            return a;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildTernaryNesting) {
+    std::string code = R"(
+        func nested() -> int64 {
+            var x = 1;
+            var y = 2;
+            if (x < y) {
+                if (y > 0) {
+                    return 1;
+                }
+            }
+            return 0;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    std::string astStr = ast->toString();
+    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
 }

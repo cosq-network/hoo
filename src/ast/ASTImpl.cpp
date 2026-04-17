@@ -196,7 +196,9 @@ std::string VariableDeclarationStatement::toString() const {
 
 // Expression implementations
 std::string PrimaryExpression::toString() const {
-    return "PrimaryExpression";
+    std::stringstream ss;
+    ss << "PrimaryExpression(" << primary_->toString() << ")";
+    return ss.str();
 }
 
 std::string MemberAccess::toString() const {
