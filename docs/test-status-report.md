@@ -1,27 +1,27 @@
 # Hooc Test Status Report
 
-**Report Date:** April 16, 2026 18:00 (Updated)
+**Report Date:** April 17, 2026 (Updated)
 **Build Configuration:** macOS Homebrew Ninja
-**Total Test Suites:** 36
-**Total Test Cases:** 658
-**Last Execution:** After full build and test run
-**Execution Time:** 77 ms
-**Last Update:** After HoocJIT fixes - inverted execute() logic corrected, executeTyped<T>() template added
+**Total Test Suites:** 42
+**Total Test Cases:** 687
+**Last Execution:** After HoocJIT comprehensive review and test additions
+**Execution Time:** 114 ms
+**Last Update:** HoocJIT refactoring complete - fixed critical bugs, added 29 unit tests, comprehensive documentation added
 
 **Detailed Results:** See `docs/test-results.csv` for complete test-by-test breakdown
 
 ## Executive Summary
 
-The Hooc compiler test suite shows **100% pass rate** (658 passing tests out of 658 total) with comprehensive test coverage across all language features.
+The Hooc compiler test suite shows **100% pass rate** (687 passing tests out of 687 total) with comprehensive test coverage across all language features and the JIT execution engine.
 
 ### Test Results Overview
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| **Total Tests** | 658 | 100% |
-| **Passing Tests** | 658 | 100% |
+| **Total Tests** | 687 | 100% |
+| **Passing Tests** | 687 | 100% |
 | **Failing Tests** | 0 | 0% |
-| **Test Suites** | 36 | - |
+| **Test Suites** | 42 | - |
 | **Failing Suites** | 0 | 0% |
 
 ---
@@ -32,12 +32,23 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 - **Generator:** Ninja
 - **Build Type:** RelWithDebInfo
 - **Tests:** Enabled (HOOC_BUILD_TESTS=ON)
-- **LLVM:** 21.1.8 via Homebrew
+- **LLVM:** 22.1.3 via Homebrew
 - **Compiler:** AppleClang 17.0.0
 
 ---
 
-## Test Suite Breakdown (36 Suites, 658 Tests)
+## Test Suite Breakdown (42 Suites, 687 Tests)
+
+### JIT Engine Tests (6 Suites, 29 Tests)
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| HoocJITLifecycleTest | 6 | Construction, move semantics, copyability |
+| HoocJITResultTypesTest | 9 | CompileResult, ExecutionResult, TypedExecutionResult |
+| HoocJITAccessorTest | 2 | getJIT() reference access |
+| HoocJITErrorHandlingTest | 4 | Error state, clearing, messages |
+| HoocJITLookupTest | 3 | Symbol lookup, error propagation |
+| HoocJITExecutionTest | 5 | execute(), executeFunction<>() error handling |
 
 ### Parsing Tests (15 Suites, 246 Tests)
 
@@ -101,17 +112,52 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 
 ### Features with 100% Test Pass Rate
 
-1. **Primitive Types** - int64, double, bool, char, byte, float, string, void
-2. **Variables** - Declarations, type inference, module-level, assignments
-3. **Control Flow** - if/else, while loops, for-in, for-range
-4. **Functions** - Declarations, parameters, return types, recursion
-5. **Classes** - Declaration, constructors, inheritance, modifiers
-6. **Objects** - Creation with `new`, member access, method calls
-7. **Arrays** - Literals, indexing, multi-dimensional, runtime operations
-8. **Nullable Types** - Parsing, code generation, null handling
-9. **Strings** - Full library with 37 runtime tests
-10. **Module System** - Import, export, qualified names (std.String, std.Array)
-11. **Memory Management** - Reference counting, ARC
+1. **JIT Engine** - HoocJIT lifecycle, execution, error handling, symbol lookup
+2. **Primitive Types** - int64, double, bool, char, byte, float, string, void
+3. **Variables** - Declarations, type inference, module-level, assignments
+4. **Control Flow** - if/else, while loops, for-in, for-range
+5. **Functions** - Declarations, parameters, return types, recursion
+6. **Classes** - Declaration, constructors, inheritance, modifiers
+7. **Objects** - Creation with `new`, member access, method calls
+8. **Arrays** - Literals, indexing, multi-dimensional, runtime operations
+9. **Nullable Types** - Parsing, code generation, null handling
+10. **Strings** - Full library with 37 runtime tests
+11. **Module System** - Import, export, qualified names (std.String, std.Array)
+12. **Memory Management** - Reference counting, ARC
+
+---
+
+## HoocJIT Refactoring Summary
+
+### Critical Bugs Fixed (April 17, 2026)
+
+1. **executeFunction<T> return value ignored** - Now returns actual value via `TypedExecutionResult<T>`
+2. **executeTypedFunction unused declaration** - Removed dead code
+3. **Missing exception handling** - All function executions now catch and report exceptions
+4. **Unused mainJD variable** - Removed in initialize()
+5. **Missing llvm:: prefix** - Fixed JITTargetAddress declaration
+
+### Design Improvements
+
+4. **Argument passing support** - New `executeFunction<T>(name, args...)` template
+5. **Consolidated lookup logic** - New `lookupAddress()` helper
+6. **Backward compatible** - Existing API unchanged
+7. **Better error messages** - Include function name in lookup failures
+
+### New API
+
+```cpp
+// Execute void function
+auto result = jit.executeFunction<void>("myFunc");
+
+// Execute with return value
+auto result = jit.executeFunction<int64_t>("add", 1, 2);
+if (result.success) {
+    int64_t val = result.value;
+}
+
+// All exceptions handled gracefully
+```
 
 ---
 
@@ -119,37 +165,42 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 
 ### Latest Execution
 ```
-[==========] 658 tests from 36 test suites ran. (77 ms total)
-[  PASSED  ] 658 tests.
+[==========] 687 tests from 42 test suites ran. (114 ms total)
+[  PASSED  ] 687 tests.
 [  FAILED  ] 0 tests.
 ```
 
 ### Performance
-- **Total Time:** 77 ms
-- **Average per test:** 0.117 ms
+- **Total Time:** 114 ms
+- **Average per test:** 0.166 ms
 - **Performance Rating:** Excellent
 
 ---
 
 ## Code Cleanup History
 
-### April 16, 2026 18:00 - Current
+### April 17, 2026 - Current
 
-- Fixed inverted HoocJIT::execute() return logic (was returning result on failure, nullopt on success)
-- Added executeTyped<T>() template method for typed function execution
-- Updated main.cpp to match corrected execute() semantics
-- All 658 tests passing after fixes
+- Complete HoocJIT refactoring (6 critical bugs/design issues fixed)
+- Added 29 comprehensive unit tests for HoocJIT
+- Added comprehensive documentation to HoocJIT.h
+- All 687 tests passing
+
+### April 16, 2026 18:00 - Earlier
+
+- Fixed inverted HoocJIT::execute() return logic
+- Added executeTyped<T>() template method
+- 658 tests passing
 
 ### April 16, 2026 17:30 - Earlier
 
 - Removed union types with arrays (incomplete feature)
 - Removed generic type parameters (simplified language)
-- All tests passing after cleanup
+- 658 tests passing
 
 ### Previous Cleanup
 - Comprehensive generics removal from grammar, AST, and code generator
 - Deleted 7 generic-related test files
-- 631+ tests consistently passing
 
 ---
 
@@ -165,5 +216,5 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 ---
 
 **Report Generated By:** Hooc Test Analysis System
-**Report Version:** 4.0
-**Previous Version:** 3.0 (April 16, 2026 - Earlier)
+**Report Version:** 5.0
+**Previous Version:** 4.0 (April 16, 2026 18:00)

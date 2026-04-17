@@ -66,7 +66,26 @@ CompileResult HoocJIT::compile(const std::string& moduleName,
 // ============================================================================
 
 std::optional<ExecutionResult> HoocJIT::execute(const std::string& functionName) {
-    return executeVoidFunction(functionName);
+    auto addrOpt = lookupAddress(functionName);
+    if (!addrOpt) {
+        return std::nullopt;
+    }
+
+    using FuncPtr = void(*)();
+    auto funcPtr = reinterpret_cast<FuncPtr>(*addrOpt);
+
+    try {
+        funcPtr();
+        return ExecutionResult::ok();
+    }
+    catch (const std::exception& e) {
+        setError(std::string("Exception during execution: ") + e.what());
+        return std::nullopt;
+    }
+    catch (...) {
+        setError("Unknown exception during execution");
+        return std::nullopt;
+    }
 }
 
 // ============================================================================
@@ -74,6 +93,15 @@ std::optional<ExecutionResult> HoocJIT::execute(const std::string& functionName)
 // ============================================================================
 
 std::optional<Symbol> HoocJIT::lookup(const std::string& symbolName) {
+    auto addrOpt = lookupAddress(symbolName);
+    if (!addrOpt) {
+        return std::nullopt;
+    }
+
+    return Symbol(ExecutorAddr(*addrOpt), JITSymbolFlags::Exported);
+}
+
+std::optional<llvm::JITTargetAddress> HoocJIT::lookupAddress(const std::string& symbolName) {
     auto symbolOrError = jit_->lookup(symbolName);
 
     if (!symbolOrError) {
@@ -84,7 +112,7 @@ std::optional<Symbol> HoocJIT::lookup(const std::string& symbolName) {
         return std::nullopt;
     }
 
-    return Symbol(*symbolOrError, JITSymbolFlags::Exported);
+    return symbolOrError->getValue();
 }
 
 // ============================================================================
@@ -110,8 +138,7 @@ bool HoocJIT::initialize() {
     jit_ = std::move(*jitExpected);
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
-    auto& mainJD  = jit_->getMainJITDylib();
-    registry.registerAllWithJIT(*jit_, mainJD);
+    registry.registerAllWithJIT(*jit_, jit_->getMainJITDylib());
 
     compiler_ = std::make_unique<HooCompiler>();
 
@@ -155,24 +182,4 @@ std::string HoocJIT::getIRFromModule(const Module& module) const {
     module.print(stream, nullptr);
     stream.flush();
     return ir;
-}
-
-ExecutionResult HoocJIT::executeVoidFunction(const std::string& functionName) {
-    auto symbolOrError = jit_->lookup(functionName);
-
-    if (!symbolOrError) {
-        std::ostringstream oss;
-        oss << "Function '" << functionName << "' not found: "
-            << toString(symbolOrError.takeError());
-        return ExecutionResult::fail(oss.str());
-    }
-
-    auto addr = symbolOrError->getValue();
-    using FuncPtr = void(*)();
-    auto funcPtr = reinterpret_cast<FuncPtr>(
-        static_cast<uintptr_t>(addr)
-    );
-
-    funcPtr();
-    return ExecutionResult::ok();
 }

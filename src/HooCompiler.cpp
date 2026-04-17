@@ -66,6 +66,8 @@ std::unique_ptr<llvm::Module> HooCompiler::compile(
         return nullptr;
     }
 
+    module->setModuleIdentifier(moduleName);
+
     lastCompilationSuccessful_ = true;
     return module;
 }

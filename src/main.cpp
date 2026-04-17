@@ -17,7 +17,6 @@ using namespace hooc;
 
 constexpr const char* COMPILER_NAME = "hooc";
 constexpr const char* VERSION = "1.0.0";
-constexpr const char* SOURCE_EXTENSION = ".hoo";
 
 // ============================================================================
 // Command-Line Options
@@ -96,18 +95,16 @@ Options parseArguments(int argc, char* argv[]) {
 // ============================================================================
 
 std::optional<std::string> readFile(const std::string& filename) {
-    std::ifstream file(filename);
+    std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
         return std::nullopt;
     }
 
-    std::string content;
-    std::string line;
-
-    while (std::getline(file, line)) {
-        content += line + "\n";
-    }
+    std::string content(
+        (std::istreambuf_iterator<char>(file)),
+        std::istreambuf_iterator<char>()
+    );
 
     return content;
 }
@@ -120,6 +117,7 @@ std::string extractModuleName(const std::string& filename) {
         moduleName = moduleName.substr(lastSlash + 1);
     }
 
+    constexpr const char* SOURCE_EXTENSION = ".hoo";
     size_t extPos = moduleName.rfind(SOURCE_EXTENSION);
     if (extPos != std::string::npos && extPos + 4 == moduleName.size()) {
         moduleName = moduleName.substr(0, extPos);
@@ -214,7 +212,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::string& sourceCode = sourceOpt.value();
+    const std::string& sourceCode = sourceOpt.value();
 
     if (sourceCode.empty()) {
         std::cerr << "Error: File is empty\n";

@@ -312,6 +312,7 @@ if(HOOC_BUILD_TESTS)
         tests/StdConstructorCodeGenTest.cpp
         tests/QualifiedIdentifierCodeGenTest.cpp
         tests/ImportStatementCodeGenTest.cpp
+        tests/HoocJITTest.cpp
     )
 
     target_link_libraries(hoo-tests

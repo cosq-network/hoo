@@ -21,12 +21,11 @@ using namespace llvm;
 // Avoid namespace conflicts with LLVM
 namespace {
     using LLVMType = llvm::Type;
-    using LLVMModule = llvm::Module;
     using HoocModule = hooc::Module;
     using ASTType = hooc::ast::Type;
     using ASTBinaryOperator = hooc::ast::BinaryOperator;
-    using ASTStringLiteral = hooc::ast::StringLiteral;
     using ASTArrayType = hooc::ast::ArrayType;
+    using ASTStringLiteral = hooc::ast::StringLiteral;
 }
 
 LLVMCodeGenerator::LLVMCodeGenerator(LLVMContext& context)
@@ -95,7 +94,8 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
     hoo_release_func_ = nullptr;
 
     // Reset string function pointers
-    // TODO: Use X-Macro auto-generation once parameter handling is fixed
+    // Note: Uses X-Macro pattern to generate nullptr initializers for all string functions
+    // The registry file defines RUNTIME_FUNCTION macros, we override them to generate reset code
     #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)
     #define BEGIN_RUNTIME_FUNCTIONS
     #define END_RUNTIME_FUNCTIONS
@@ -922,11 +922,8 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // objectValue is a void* pointer to the object data (after the header)
     // We need to cast it to the struct type and use GEP to access the member
 
-    // Cast void* to struct pointer using PointerType::get
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    auto structPtrType = llvm::PointerType::get(classType, 0);
-    #pragma clang diagnostic pop
+    // Cast void* to struct pointer using PointerType::get with address space 0
+    auto structPtrType = llvm::PointerType::get(context_, 0);
     auto castPtr = builder_->CreateBitCast(objectValue, structPtrType, "struct_ptr_cast");
 
     // Use GEP to access the field
@@ -1179,9 +1176,9 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
 
     // Condition block: check if loopVar < end
     builder_->SetInsertPoint(condBlock);
-    Value* currentVal = builder_->CreateLoad(startValue->getType(), loopVar, stmt.getVariable());
+    Value* currentVal = builder_->CreateLoad(loopVar->getAllocatedType(), loopVar, stmt.getVariable());
     Value* condValue;
-    if (startValue->getType()->isIntegerTy()) {
+    if (loopVar->getAllocatedType()->isIntegerTy()) {
         condValue = builder_->CreateICmpSLT(currentVal, endValue, "forcond");
     } else {
         condValue = builder_->CreateFCmpOLT(currentVal, endValue, "forcond");
@@ -1197,12 +1194,12 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
 
     // Increment block
     builder_->SetInsertPoint(incBlock);
-    Value* curVal = builder_->CreateLoad(startValue->getType(), loopVar, stmt.getVariable());
+    Value* curVal = builder_->CreateLoad(loopVar->getAllocatedType(), loopVar, stmt.getVariable());
     Value* nextVal;
-    if (startValue->getType()->isIntegerTy()) {
-        nextVal = builder_->CreateAdd(curVal, ConstantInt::get(startValue->getType(), 1), "nextval");
+    if (loopVar->getAllocatedType()->isIntegerTy()) {
+        nextVal = builder_->CreateAdd(curVal, ConstantInt::get(loopVar->getAllocatedType(), 1), "nextval");
     } else {
-        nextVal = builder_->CreateFAdd(curVal, ConstantFP::get(startValue->getType(), 1.0), "nextval");
+        nextVal = builder_->CreateFAdd(curVal, ConstantFP::get(loopVar->getAllocatedType(), 1.0), "nextval");
     }
     builder_->CreateStore(nextVal, loopVar);
     builder_->CreateBr(condBlock);
