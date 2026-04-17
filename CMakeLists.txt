@@ -7,7 +7,7 @@ option(ANTLR4_USE_STATIC_RUNTIME "Define ANTLR4CPP_STATIC when linking a static 
 
 set(ANTLR4_ROOT "" CACHE PATH "ANTLR4 C++ runtime installation prefix")
 set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE FILEPATH "Path to ANTLR4 JAR file")
-set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/Hooc.g4" CACHE FILEPATH "Path to the Hooc ANTLR4 grammar")
+set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/parsing/Hooc.g4" CACHE FILEPATH "Path to the Hooc ANTLR4 grammar")
 set(ANTLR4_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated/antlr4" CACHE PATH "Directory for generated ANTLR4 C++ files")
 
 # Set C++ standard
@@ -125,7 +125,7 @@ add_custom_command(
         -package hooc
         Hooc.g4
     DEPENDS ${ANTLR4_GRAMMAR_FILE}
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/parsing
     COMMENT "Generating ANTLR4 C++ files from Hooc.g4"
     VERBATIM
 )
@@ -162,13 +162,13 @@ add_dependencies(hoo-parser generate_parser)
 
 # Create hoo-compiler library
 add_library(hoo-compiler
-    src/HooCompiler.cpp
-    src/HoocJIT.cpp
-    src/ProcessIsolatedParser.cpp
-    src/LLVMCodeGenerator.cpp
-    src/SimpleASTBuilder.cpp
+    src/core/HooCompiler.cpp
+    src/jit/HoocJIT.cpp
+    src/parsing/ProcessIsolatedParser.cpp
+    src/codegen/LLVMCodeGenerator.cpp
+    src/ast/SimpleASTBuilder.cpp
     src/ast/ASTImpl.cpp
-    src/ModuleSystem.cpp
+    src/modules/ModuleSystem.cpp
     src/runtime/llvm/RuntimeRegistry.cpp
     src/runtime/llvm/RuntimeMethodRegistry.cpp
     src/runtime/llvm/hoo_string_registration.cpp
@@ -208,6 +208,12 @@ target_link_libraries(hoo-compiler PUBLIC
 
 target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/jit
+    ${CMAKE_SOURCE_DIR}/src/parsing
+    ${CMAKE_SOURCE_DIR}/src/codegen
+    ${CMAKE_SOURCE_DIR}/src/modules
+    ${CMAKE_SOURCE_DIR}/src/ast
     ${CMAKE_SOURCE_DIR}/src/runtime/lib
     ${CMAKE_SOURCE_DIR}/src/runtime/llvm
     ${LLVM_INCLUDE_DIRS}
@@ -217,7 +223,7 @@ target_include_directories(hoo-compiler PUBLIC
 
 # Create main hooc compiler executable
 add_executable(hooc
-    src/main.cpp
+    src/core/main.cpp
 )
 
 target_link_libraries(hooc
@@ -276,43 +282,43 @@ if(HOOC_BUILD_TESTS)
     # Test executable
     add_executable(hoo-tests
         tests/test_main.cpp
-        tests/ArrayLiteralParsingTest.cpp
-        tests/FunctionCallParsingTest.cpp
-        tests/NullableTypeParsingTest.cpp
-        tests/VariableDeclarationParseTest.cpp
-        tests/IfElseIfParsingTest.cpp
-        tests/WhileLoopParsingTest.cpp
-        tests/ImportStatementParsingTest.cpp
-        tests/BasicCodeGenTest.cpp
-        tests/FunctionCallCodeGenTest.cpp
-        tests/VariableDeclarationCodeGenTest.cpp
-        tests/ArrayLiteralCodeGenTest.cpp
-        tests/ArrayGenericRuntimeTest.cpp
-        tests/ArrayGenericIntegrationTest.cpp
-        tests/IfElseIfCodeGenTest.cpp
-        tests/WhileLoopCodeGenTest.cpp
-        tests/NullableCodeGenTest.cpp
-        tests/ModuleLevelVariableParsingTest.cpp
-        tests/ClassDeclarationParsingTest.cpp
-        tests/OptionalReturnTypeTest.cpp
-        tests/NewExpressionParsingTest.cpp
-        tests/NewExpressionCodeGenTest.cpp
-        tests/ObjectCreationCodeGenTest.cpp
-        tests/MemberAccessParsingTest.cpp
-        tests/MemberAccessCodeGenTest.cpp
-        tests/MethodCallParsingTest.cpp
-        tests/MethodCallCodeGenTest.cpp
-        tests/StringBasicsTest.cpp
-        tests/StringCodeGenTest.cpp
-        tests/ClassArrayCodeGenTest.cpp
-        tests/HooArrayPhase7Test.cpp
-        tests/QualifiedIdentifierParsingTest.cpp
-        tests/QualifiedNewExpressionParsingTest.cpp
-        tests/ModuleRegistryTest.cpp
-        tests/StdConstructorCodeGenTest.cpp
-        tests/QualifiedIdentifierCodeGenTest.cpp
-        tests/ImportStatementCodeGenTest.cpp
-        tests/HoocJITTest.cpp
+        tests/parsing/ArrayLiteralParsingTest.cpp
+        tests/parsing/FunctionCallParsingTest.cpp
+        tests/parsing/NullableTypeParsingTest.cpp
+        tests/parsing/VariableDeclarationParseTest.cpp
+        tests/parsing/IfElseIfParsingTest.cpp
+        tests/parsing/WhileLoopParsingTest.cpp
+        tests/parsing/ImportStatementParsingTest.cpp
+        tests/parsing/ModuleLevelVariableParsingTest.cpp
+        tests/parsing/ClassDeclarationParsingTest.cpp
+        tests/parsing/OptionalReturnTypeTest.cpp
+        tests/parsing/NewExpressionParsingTest.cpp
+        tests/parsing/MemberAccessParsingTest.cpp
+        tests/parsing/MethodCallParsingTest.cpp
+        tests/parsing/QualifiedIdentifierParsingTest.cpp
+        tests/parsing/QualifiedNewExpressionParsingTest.cpp
+        tests/codegen/BasicCodeGenTest.cpp
+        tests/codegen/FunctionCallCodeGenTest.cpp
+        tests/codegen/VariableDeclarationCodeGenTest.cpp
+        tests/codegen/ArrayLiteralCodeGenTest.cpp
+        tests/codegen/IfElseIfCodeGenTest.cpp
+        tests/codegen/WhileLoopCodeGenTest.cpp
+        tests/codegen/NullableCodeGenTest.cpp
+        tests/codegen/NewExpressionCodeGenTest.cpp
+        tests/codegen/ObjectCreationCodeGenTest.cpp
+        tests/codegen/MemberAccessCodeGenTest.cpp
+        tests/codegen/MethodCallCodeGenTest.cpp
+        tests/codegen/StringCodeGenTest.cpp
+        tests/codegen/ClassArrayCodeGenTest.cpp
+        tests/codegen/StdConstructorCodeGenTest.cpp
+        tests/codegen/QualifiedIdentifierCodeGenTest.cpp
+        tests/codegen/ImportStatementCodeGenTest.cpp
+        tests/codegen/ModuleRegistryTest.cpp
+        tests/runtime/ArrayGenericRuntimeTest.cpp
+        tests/runtime/HooArrayPhase7Test.cpp
+        tests/runtime/StringBasicsTest.cpp
+        tests/integration/ArrayGenericIntegrationTest.cpp
+        tests/jit/HoocJITTest.cpp
     )
 
     target_link_libraries(hoo-tests
@@ -325,6 +331,12 @@ if(HOOC_BUILD_TESTS)
     target_include_directories(hoo-tests PUBLIC
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/jit
+        ${CMAKE_SOURCE_DIR}/src/parsing
+        ${CMAKE_SOURCE_DIR}/src/codegen
+        ${CMAKE_SOURCE_DIR}/src/modules
+        ${CMAKE_SOURCE_DIR}/src/ast
         ${LLVM_INCLUDE_DIRS}
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_DIR}
