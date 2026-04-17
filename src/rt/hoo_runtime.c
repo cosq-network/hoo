@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdatomic.h>
 
 /**
  * Object Header Layout (hidden from Hooc code):
@@ -18,7 +19,7 @@
  */
 
 typedef struct {
-    int64_t refcount;
+    _Atomic int64_t refcount;
     int64_t type_id;
 } HooObjectHeader;
 
@@ -71,18 +72,16 @@ void* hoo_alloc(size_t size, int64_t type_id) {
 
 void* hoo_retain(void* obj) {
     if (!obj) {
-        // NULL is valid - just return it
         return NULL;
     }
 
     HooObjectHeader* header = get_header(obj);
 
-    // Increment refcount
-    header->refcount++;
+    atomic_fetch_add_explicit(&header->refcount, 1, memory_order_relaxed);
 
 #ifdef HOO_DEBUG_MEMORY
     fprintf(stderr, "[RETAIN] obj=%p type=%lld refcount=%lld\n",
-            obj, (long long)header->type_id, (long long)header->refcount);
+            obj, (long long)header->type_id, (long long)atomic_load(&header->refcount));
 #endif
 
     return obj;
@@ -90,39 +89,30 @@ void* hoo_retain(void* obj) {
 
 void hoo_release(void* obj) {
     if (!obj) {
-        // NULL is valid - nothing to release
         return;
     }
 
     HooObjectHeader* header = get_header(obj);
 
-    // Decrement refcount
-    header->refcount--;
+    int64_t old_count = atomic_fetch_sub_explicit(&header->refcount, 1, memory_order_release);
 
 #ifdef HOO_DEBUG_MEMORY
     fprintf(stderr, "[RELEASE] obj=%p type=%lld refcount=%lld\n",
-            obj, (long long)header->type_id, (long long)header->refcount);
+            obj, (long long)header->type_id, (long long)old_count - 1);
 #endif
 
-    // Sanity check
-    if (header->refcount < 0) {
-        fprintf(stderr, "FATAL: Negative refcount for object %p (type %lld)\n",
+    if (old_count <= 0) {
+        fprintf(stderr, "FATAL: Double-release or negative refcount for object %p (type %lld)\n",
                 obj, (long long)header->type_id);
-        fprintf(stderr, "This indicates a double-release bug!\n");
         exit(1);
     }
 
-    // Free if refcount reaches 0
-    if (header->refcount == 0) {
+    if (old_count == 1) {
 #ifdef HOO_DEBUG_MEMORY
         fprintf(stderr, "[FREE] obj=%p type=%lld\n",
                 obj, (long long)header->type_id);
 #endif
 
-        // TODO: Call destructor if class has one
-        // For now, just free the memory
-
-        // Update statistics
         memory_stats.total_deallocations++;
         memory_stats.current_live_objects--;
 
@@ -136,7 +126,7 @@ int64_t hoo_get_refcount(void* obj) {
     }
 
     HooObjectHeader* header = get_header(obj);
-    return header->refcount;
+    return atomic_load(&header->refcount);
 }
 
 int64_t hoo_get_type_id(void* obj) {

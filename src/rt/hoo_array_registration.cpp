@@ -51,6 +51,16 @@ void hoo_array_register_with_jit(
     REGISTER_ARRAY_FUNC(push)
     REGISTER_ARRAY_FUNC(pop)
 
+    // Type-specific push functions
+    REGISTER_ARRAY_FUNC(push_int64)
+    REGISTER_ARRAY_FUNC(push_double)
+    REGISTER_ARRAY_FUNC(push_float)
+    REGISTER_ARRAY_FUNC(push_bool)
+    REGISTER_ARRAY_FUNC(push_char)
+    REGISTER_ARRAY_FUNC(push_string)
+    REGISTER_ARRAY_FUNC(push_object)
+    REGISTER_ARRAY_FUNC(push_array)
+
     // Reference counting
     REGISTER_ARRAY_FUNC(retain)
     REGISTER_ARRAY_FUNC(release)

@@ -1,4 +1,5 @@
 #include "hoo_string.h"
+#include "hoo_generic_array.h"
 #include "../runtime/RuntimeRegistry.h"
 #include "../runtime/RuntimeFunctionStorage.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -52,6 +53,7 @@ void hoo_string_register_with_jit(
     REGISTER_STRING_FUNC(to_lower)
     REGISTER_STRING_FUNC(trim)
     REGISTER_STRING_FUNC(replace)
+    REGISTER_STRING_FUNC(split)
 
     // Query
     REGISTER_STRING_FUNC(length)
@@ -160,6 +162,7 @@ void hoo_string_declare_llvm_functions(
     DECLARE_STRING_FN(to_lower, ptrTy, ptrTy)
     DECLARE_STRING_FN(trim, ptrTy, ptrTy)
     DECLARE_STRING_FN(replace, ptrTy, ptrTy, ptrTy, ptrTy)
+    DECLARE_STRING_FN(split, ptrTy, ptrTy, ptrTy)
 
     // Query
     DECLARE_STRING_FN(length, i64Ty, ptrTy)

@@ -1,5 +1,6 @@
 #include "LLVMCodeGenerator.h"
 #include "runtime/RuntimeRegistry.h"
+#include "runtime/RuntimeMethodRegistry.h"
 #include "ast/AST.h"
 #include "ast/ClassDeclaration.h"
 #include "llvm/IR/Verifier.h"
@@ -9,8 +10,12 @@
 #include <iostream>
 #include <stdexcept>
 
+// Force the runtime methods registration to be linked
+extern void _hoo_runtime_methods_ensure_registration();
+
 using namespace hooc;
 using namespace hooc::ast;
+using namespace hooc::runtime;
 using namespace llvm;
 
 // Avoid namespace conflicts with LLVM
@@ -109,6 +114,9 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
     #undef BEGIN_RUNTIME_OPERATORS
     #undef END_RUNTIME_OPERATORS
     #undef RUNTIME_OPERATOR
+
+    // Force runtime methods registration to be linked
+    _hoo_runtime_methods_ensure_registration();
 
     // Declare string functions early so they're available
     declareRuntimeFunctions();
@@ -547,25 +555,22 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
 }
 
 Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
-    // Get the function being called
     const Expression& funcExpr = call.getFunction();
 
     std::string functionName;
     Value* thisPtr = nullptr;
+    bool isRuntimeMethod = false;
+    std::string runtimeFuncName;
 
-    // Check if this is a method call (member access followed by function call)
     if (auto memberAccess = dynamic_cast<const MemberAccess*>(&funcExpr)) {
-        // Method call: obj.method()
         const std::string& methodName = memberAccess->getMember();
 
-        // Get the object value
         Value* objectValue = generateLLVMExpression(memberAccess->getObject());
         if (!objectValue) {
             std::cerr << "Failed to generate object expression for method call" << std::endl;
             return nullptr;
         }
 
-        // Determine the class type from the object
         std::string className;
         if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&memberAccess->getObject())) {
             const ASTNode& primary = primaryExpr->getPrimary();
@@ -582,12 +587,20 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
             return nullptr;
         }
 
-        // Method function names are ClassName_methodName
-        functionName = className + "_" + methodName;
-        thisPtr = objectValue;
+        const RuntimeMethodDescriptor* runtimeMethod =
+            RuntimeMethodRegistry::getInstance().findMethod(className, methodName);
+
+        if (runtimeMethod) {
+            isRuntimeMethod = true;
+            runtimeFuncName = runtimeMethod->runtimeFuncName;
+            functionName = runtimeFuncName;
+            thisPtr = objectValue;
+        } else {
+            functionName = className + "_" + methodName;
+            thisPtr = objectValue;
+        }
 
     } else if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&funcExpr)) {
-        // Regular function call via identifier
         const ASTNode& primary = primaryExpr->getPrimary();
         if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
             functionName = identifier->getName();
@@ -600,9 +613,8 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
         return nullptr;
     }
 
-    // Look up the function
     Function* calleeFunc = module_->getFunction(functionName);
-    if (!calleeFunc) {
+    if (!calleeFunc && !isRuntimeMethod) {
         std::cerr << "Unknown function: " << functionName << std::endl;
         return nullptr;
     }
@@ -610,7 +622,6 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
     // Generate argument values with type conversion
     std::vector<Value*> args;
 
-    // If this is a method call, add the 'this' pointer as the first argument
     if (thisPtr) {
         args.push_back(thisPtr);
     }
@@ -623,33 +634,25 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
                 return nullptr;
             }
 
-            // Get expected parameter type (param index = arg index + 1 if method call, else arg index)
             size_t paramIndex = thisPtr ? (i + 1) : i;
-            if (paramIndex < calleeFunc->arg_size()) {
+            if (calleeFunc && paramIndex < calleeFunc->arg_size()) {
                 llvm::Type* expectedType = calleeFunc->getFunctionType()->getParamType(paramIndex);
                 llvm::Type* actualType = argValue->getType();
 
-                // Convert if types don't match
                 if (actualType != expectedType) {
                     if (actualType->isIntegerTy() && expectedType->isIntegerTy()) {
-                        // Integer to integer conversion
                         unsigned actualBits = actualType->getIntegerBitWidth();
                         unsigned expectedBits = expectedType->getIntegerBitWidth();
 
                         if (actualBits > expectedBits) {
-                            // Truncate larger integer to smaller
                             argValue = builder_->CreateTrunc(argValue, expectedType);
                         } else if (actualBits < expectedBits) {
-                            // Sign-extend smaller integer to larger
                             argValue = builder_->CreateSExt(argValue, expectedType);
                         }
                     } else if (actualType->isFloatingPointTy() && expectedType->isFloatingPointTy()) {
-                        // Floating point to floating point conversion
                         if (actualType->isDoubleTy() && expectedType->isFloatTy()) {
-                            // Convert double to float
                             argValue = builder_->CreateFPTrunc(argValue, expectedType);
                         } else if (actualType->isFloatTy() && expectedType->isDoubleTy()) {
-                            // Convert float to double
                             argValue = builder_->CreateFPExt(argValue, expectedType);
                         }
                     }
@@ -660,19 +663,28 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
         }
     }
 
-    // Check argument count
-    if (args.size() != calleeFunc->arg_size()) {
-        std::cerr << "Incorrect number of arguments for function " << functionName
-                  << " (expected " << calleeFunc->arg_size() << ", got " << args.size() << ")" << std::endl;
-        return nullptr;
+    if (calleeFunc) {
+        if (args.size() != calleeFunc->arg_size()) {
+            std::cerr << "Incorrect number of arguments for function " << functionName
+                      << " (expected " << calleeFunc->arg_size() << ", got " << args.size() << ")" << std::endl;
+            return nullptr;
+        }
+
+        if (calleeFunc->getReturnType()->isVoidTy()) {
+            return builder_->CreateCall(calleeFunc, args);
+        } else {
+            return builder_->CreateCall(calleeFunc, args, "calltmp");
+        }
+    } else if (isRuntimeMethod) {
+        Function* runtimeFunc = module_->getFunction(runtimeFuncName);
+        if (!runtimeFunc) {
+            std::cerr << "Runtime function not declared: " << runtimeFuncName << std::endl;
+            return nullptr;
+        }
+        return builder_->CreateCall(runtimeFunc, args, "runtime_call");
     }
 
-    // Don't assign a name to void return values
-    if (calleeFunc->getReturnType()->isVoidTy()) {
-        return builder_->CreateCall(calleeFunc, args);
-    } else {
-        return builder_->CreateCall(calleeFunc, args, "calltmp");
-    }
+    return nullptr;
 }
 
 Value* LLVMCodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
@@ -1225,12 +1237,17 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
         AllocaInst* alloca = createEntryBlockAlloca(currentFunc, decl.getName(), varType);
         namedValues_[decl.getName()] = alloca;
 
-        // Track variable type if it's a user-defined class
+        // Track variable type for all named types (classes and built-in types)
         if (auto baseType = dynamic_cast<const ast::BaseType*>(decl.getType())) {
-            if (!baseType->isPrimitive()) {
-                // It's a user-defined type (class name)
-                variableTypes_[decl.getName()] = baseType->getIdentifier();
+            std::string typeId;
+            if (baseType->isPrimitive()) {
+                typeId = primitiveTypeToString(baseType->getPrimitiveType()->getKind());
+            } else {
+                typeId = baseType->getIdentifier();
             }
+            variableTypes_[decl.getName()] = typeId;
+        } else if (dynamic_cast<const hooc::ast::ArrayType*>(decl.getType())) {
+            variableTypes_[decl.getName()] = "array";
         }
 
         // Initialize if initializer present
@@ -1952,6 +1969,7 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     hoo_string_to_lower_func_ = stringStorage.hoo_string_to_lower_func;
     hoo_string_trim_func_ = stringStorage.hoo_string_trim_func;
     hoo_string_replace_func_ = stringStorage.hoo_string_replace_func;
+    hoo_string_split_func_ = stringStorage.hoo_string_split_func;
     hoo_string_length_func_ = stringStorage.hoo_string_length_func;
     hoo_string_data_func_ = stringStorage.hoo_string_data_func;
     hoo_string_byte_at_func_ = stringStorage.hoo_string_byte_at_func;

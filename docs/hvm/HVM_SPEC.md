@@ -11,6 +11,12 @@ This document is a consolidated specification covering all aspects of the HVM ar
 3. [Register Set](#3-register-set)
 4. [Instruction Encoding](#4-instruction-encoding)
 5. [Instruction Set Reference](#5-instruction-set-reference)
+   - [5.15 String Operations](#516-string-operations-instructions)
+   - [5.16 Foreign Function Interface (FFI)](#516-foreign-function-interface-ffi-instructions)
+   - [5.17 Exception Handling](#517-exception-handling-instructions)
+   - [5.18 Interrupt Handling](#518-interrupt-handling-instructions)
+   - [5.19 Threading](#519-threading-instructions)
+   - [5.20 Multi-Process](#520-multi-process-instructions)
 6. [Calling Convention](#6-calling-convention)
 7. [Object Model](#7-object-model)
 8. [Dynamic Linking](#8-dynamic-linking)
@@ -422,7 +428,463 @@ All immediates are **sign-extended** to 64 bits before use, except:
 | DEBUG    | 0xF2   | R      | rs, -, -, -     | print_register(rs)               | Print register (debug)         |
 | RDCOUNT  | 0xF3   | I      | rd, -, imm15    | rd = read_counter(imm15)         | Read performance counter       |
 | BARRIER  | 0xFE   | R      | -, -, -, -      | memory_barrier()                 | Memory barrier                 |
-| NOP      | 0xFF   | R      | -, -, -, -      |                                  | No operation                    |
+| NOP      | 0xFF   | R      | -, -, -, -      |                                  | No operation                   |
+
+### 5.16 String Operations Instructions
+
+HVM provides native string manipulation instructions for efficient text processing.
+
+#### 5.16.1 String Structure
+
+```
+String Object Layout:
++------------------+
+| Vtable Pointer   | 8 bytes
++------------------+
+| Length          | 8 bytes (character count)
++------------------+
+| Hash Code       | 8 bytes (cached hash for equality)
++------------------+
+| UTF-8 Data      | variable (null-terminated)
++------------------+
+```
+
+#### 5.16.2 String Creation & Length
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRNEW   | 0x84   | I      | rd, -, imm15       | rd = string_create(imm15)                     | Create empty string with capacity  |
+| STRNEWB  | 0x85   | RI     | rd, data, len      | rd = string_from_bytes(data, len)             | Create string from byte array      |
+| STRLEN   | 0x86   | R      | rd, str, -         | rd = string_length(str)                       | Get string length                 |
+| STREMPTY | 0x87   | R      | rd, -, -           | rd = (string_length == 0)                    | Check if string is empty          |
+
+#### 5.16.3 String Access & Modification
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRGET   | 0x88   | R      | rd, str, idx       | rd = string_char_at(str, idx)                  | Get character at index             |
+| STRSET   | 0x89   | R      | str, idx, char     | string_set_char(str, idx, char)                | Set character at index            |
+| STRAPPEND| 0x8A   | R      | rd, str, char      | rd = string_append_char(str, char)             | Append single character           |
+| STRPUSH  | 0x8B   | R      | rd, str, char      | rd = string_push_back(str, char)              | Push character to end (alias)     |
+| STRPOP   | 0x8C   | R      | rd, str, -         | rd = string_pop_back(str)                      | Remove and return last character   |
+
+#### 5.16.4 String Comparison
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRCMP   | 0x8D   | R      | rd, str1, str2    | rd = strcmp(str1, str2)                       | Compare strings (lexicographic)   |
+| STRCMPN  | 0x8E   | RI     | rd, str1, n       | rd = strncmp(str1, str2, n)                   | Compare first n characters         |
+| STREQUAL | 0x8F   | R      | rd, str1, str2    | rd = (strcmp == 0)                            | Check if strings are equal        |
+| STRSTART | 0x90   | R      | rd, str, prefix   | rd = string_starts_with(str, prefix)          | Check if string starts with prefix |
+| STREND   | 0x91   | R      | rd, str, suffix   | rd = string_ends_with(str, suffix)            | Check if string ends with suffix  |
+
+#### 5.16.5 String Searching
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRCHR   | 0x92   | R      | rd, str, char     | rd = string_index_of(str, char)               | Find character (first occurrence) |
+| STRRCHR  | 0x93   | R      | rd, str, char     | rd = string_last_index_of(str, char)           | Find character (last occurrence)   |
+| STRFIND  | 0x94   | R      | rd, str, substr  | rd = string_find(str, substr)                  | Find substring                    |
+| STRRFIND | 0x95   | R      | rd, str, substr  | rd = string_rfind(str, substr)                 | Find substring (from end)          |
+| STRCONTAINS| 0x96 | R      | rd, str, substr  | rd = (find != npos)                           | Check if substring exists         |
+
+#### 5.16.6 String Extraction & Manipulation
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRSUB   | 0x97   | RI     | rd, str, start, len| rd = string_substring(str, start, len)       | Extract substring                 |
+| STRSLICE | 0x98   | R      | rd, str, start, end| rd = string_slice(str, start, end)            | Extract slice [start, end)        |
+| STRSPLIT | 0x99   | RI     | rd, str, delim   | rd = string_split(str, delim)                 | Split string by delimiter         |
+| STRJOIN  | 0x9A   | R      | rd, str1, str2   | rd = string_concat(str1, str2)                | Concatenate two strings           |
+| STREP    | 0x9B   | RI     | rd, str, count   | rd = string_repeat(str, count)                 | Repeat string n times             |
+| STRREV   | 0x9C   | R      | rd, str, -       | rd = string_reverse(str)                       | Reverse string                    |
+
+#### 5.16.7 String Case & Whitespace
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRUPPER | 0x9D   | R      | rd, str, -        | rd = string_to_uppercase(str)                  | Convert to uppercase              |
+| STRLOWER | 0x9E   | R      | rd, str, -        | rd = string_to_lowercase(str)                  | Convert to lowercase              |
+| STRTRIM  | 0x9F   | R      | rd, str, -        | rd = string_trim(str)                         | Trim leading and trailing whitespace|
+| STRLTRIM | 0xA0   | R      | rd, str, -        | rd = string_trim_start(str)                    | Trim leading whitespace            |
+| STRRTRIM | 0xA1   | R      | rd, str, -        | rd = string_trim_end(str)                      | Trim trailing whitespace           |
+| STRPAD   | 0xA2   | RI     | rd, str, width   | rd = string_pad_right(str, width)             | Pad string to width               |
+
+#### 5.16.8 String Conversion
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| STRTOI   | 0xA3   | R      | rd, str, base     | rd = parse_int64(str, base)                   | Parse string to integer           |
+| STRTOD   | 0xA4   | R      | rd, str, -        | rd = parse_double(str)                         | Parse string to double            |
+| ITOSTR   | 0xA5   | R      | rd, num, base     | rd = int64_to_string(num, base)                | Convert integer to string          |
+| DTOSTR   | 0xA6   | R      | rd, num, -        | rd = double_to_string(num)                      | Convert double to string          |
+| STRENCODE| 0xA7   | R      | rd, str, encoding | rd = string_encode(str, encoding)              | Encode string to bytes            |
+| STRDECODE| 0xA8   | R      | rd, bytes, encoding| rd = string_decode(bytes, encoding)           | Decode bytes to string            |
+
+#### 5.16.9 String Example
+
+```asm
+; String operations example
+    STRNEWB r1, data, 13        ; r1 = "Hello, World"
+    STRLEN  r2, r1              ; r2 = 13
+    STRGET  r3, r1, 0           ; r3 = 'H' (first char)
+    STRFIND r4, r1, "World"    ; r4 = 7 (index of "World")
+    STREQUAL r5, r1, r1        ; r5 = 1 (true)
+    STRUPPER r6, r1            ; r6 = "HELLO, WORLD"
+    STRTRIM r7, r6             ; r7 = "HELLO, WORLD"
+    STRSUB  r8, r1, 0, 5       ; r8 = "Hello"
+    STRJOIN r9, r8, r6         ; r9 = "HelloHELLO, WORLD"
+
+; Parse and convert
+    ITOSTR  r10, r2, 10        ; r10 = "13"
+    STRTOI  r11, r10, 10       ; r11 = 13
+```
+
+### 5.16 Foreign Function Interface (FFI) Instructions
+
+The FFI instructions enable HVM to call functions from static runtimes and dynamically loaded modules. This provides seamless integration with native code, host runtime functions, and external libraries.
+
+#### 5.16.1 Static Runtime Calls
+
+Functions in the static runtime (e.g., HoocJIT's runtime functions like `hoo_string_from_cstr`, `hoo_alloc`) are pre-registered at VM initialization.
+
+| Mnemonic  | Opcode | Format | Operands           | Operation                                    | Description                              |
+|-----------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
+| CALLHOST  | 0xD0   | I      | rd, -, imm15       | rd = call_static_runtime(imm15)               | Call static runtime function by ID        |
+| CALLHOSTV | 0xD1   | RI     | rd, obj, -, method | rd = obj.vtable[method](); call rd          | Call virtual method via host runtime      |
+
+#### 5.16.2 Native Function Calls
+
+Native functions follow the C ABI and can be loaded from shared libraries or declared at compile time.
+
+| Mnemonic   | Opcode | Format | Operands           | Operation                                    | Description                              |
+|------------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
+| CALLNATIVE | 0xD2   | RI     | rd, addr, -, -     | rd = call_c_abi(addr)                        | Call native function with C ABI            |
+| PREPCALL   | 0xD3   | I      | -, -, imm15        | prepare_call_context(imm15)                  | Prepare stack frame for native call       |
+| FINISHCA   | 0xD4   | R      | rd, -, -, -        | rd = finish_call(); return_value             | Complete native call, retrieve return     |
+
+#### 5.16.3 Dynamic Library Loading
+
+These instructions enable loading shared libraries (.dll, .so, .dylib) and resolving symbols from them.
+
+| Mnemonic | Opcode | Format | Operands           | Operation                                    | Description                              |
+|----------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
+| LOADLIB  | 0xD5   | I      | rd, -, imm15       | rd = dlopen(imm15)                           | Load dynamic library by name/index        |
+| FREELIB  | 0xD6   | R      | -, lib, -, -       | dlclose(lib)                                 | Unload dynamic library                   |
+| GETSYM   | 0xD7   | RI     | rd, lib, -, imm10  | rd = dlsym(lib, imm10)                      | Get symbol address from library           |
+| GETFUNC   | 0xD8   | RI     | rd, lib, -, imm10  | rd = resolve_function(lib, imm10)             | Resolve function pointer from library     |
+
+#### 5.16.4 Type Conversion for FFI
+
+When calling native functions, values may need conversion between HVM types and C types.
+
+| Mnemonic   | Opcode | Format | Operands           | Operation                                    | Description                              |
+|------------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
+| I2PTR     | 0xD9   | R      | rd, rs, -, -       | rd = int_to_pointer(rs)                       | Convert integer to pointer               |
+| PTR2I     | 0xDA   | R      | rd, rs, -, -       | rd = pointer_to_int(rs)                      | Convert pointer to integer               |
+| REINTERP  | 0xDB   | R      | rd, rs, -, -       | rd = bitcast_pointer(rs)                     | Reinterpret pointer type                |
+| ADDR2FUNC | 0xDC   | R      | rd, addr, -, -      | rd = create_function_pointer(addr)           | Convert address to function pointer       |
+| FUNC2ADDR | 0xDD   | R      | rd, func, -, -     | rd = function_to_address(func)               | Extract address from function pointer     |
+
+#### 5.16.5 FFI Calling Convention
+
+When using `CALLNATIVE`, the following conventions apply:
+
+| Category              | Register/Location        | Notes                                    |
+|-----------------------|-------------------------|------------------------------------------|
+| Integer arguments     | r1 - r8                | First 8 arguments                        |
+| Pointer arguments     | r1 - r8                | Treated as integer registers               |
+| Floating-point args   | v0 - v7                | First 8 float/double arguments           |
+| Return (integer/ptr)  | r1                      | Default return register                  |
+| Return (float/double) | v0                      | Vector register for FP return            |
+| Stack                 | r31 (sp)               | 8-byte aligned, grows downward           |
+
+#### 5.16.6 FFI Example
+
+```asm
+; Call native C function: int64_t strlen(const char* str)
+; Assume string pointer is in r1
+
+    I2PTR   r2, r1              ; Ensure r1 is treated as pointer
+    GETSYM  r3, libc, strlen     ; r3 = dlsym(libc, "strlen")
+    CALLNATIVE r1, r3            ; r1 = strlen(r2)
+    ; r1 now contains the string length
+
+; Load a dynamic library and call a function
+    LOADLIB  r10, libmylib       ; r10 = dlopen("libmylib.so")
+    GETFUNC  r11, r10, myfunc    ; r11 = dlsym(r10, "myfunc")
+    MOVI     r1, 42              ; First argument = 42
+    CALLNATIVE r1, r11           ; Call myfunc(42)
+
+---
+
+### 5.17 Exception Handling Instructions
+
+HVM provides structured exception handling with try-catch-finally semantics.
+
+#### 5.17.1 Exception Structure
+
+```
+Exception Record:
++------------------+
+| Type ID          | 8 bytes (exception class)
++------------------+
+| Message          | 8 bytes (pointer to string)
++------------------+
+| Stack Trace      | 8 bytes (pointer to trace)
++------------------+
+| Target PC        | 8 bytes (handler address)
++------------------+
+```
+
+#### 5.17.2 Exception Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| TRY      | 0xE0   | I      | rd, -, imm15       | rd = handler_table.push(imm15); sp -= 16      | Begin try block, push handler    |
+| THROW    | 0xE1   | I      | -, type, imm15     | throw_exception(type, imm15)                  | Throw exception with type/message |
+| THROWV   | 0xE2   | R      | type, msg, -       | throw_exception(type, msg)                     | Throw with message register       |
+| CATCH    | 0xE3   | I      | rd, -, imm15        | rd = pop_handler(imm15)                        | Catch exception, pop handler      |
+| FINALLY  | 0xE4   | I      | -, -, imm15         | execute_finally(imm15)                          | Execute finally block            |
+| RETHROW  | 0xE5   | R      | -, exc, -          | rethrow(exc)                                    | Rethrow current exception        |
+| EXCINFO  | 0xE6   | R      | rd, exc, field     | rd = exc.field                                  | Get exception field              |
+| ENDFIN   | 0xE7   | R      | -, -, -            | end_finally()                                   | End finally block                |
+
+#### 5.17.3 Exception Example
+
+```asm
+; try {
+;     result = risky_function();
+; } catch (Error e) {
+;     print(e.message);
+; } finally {
+;     cleanup();
+; }
+
+    TRY     r10, .handler    ; Begin try block, save handler PC
+    CALL    r1, risky_func  ; Call risky function
+    MOV     r10, r1         ; result = return value
+    JMP     .finally        ; Jump to finally
+
+.handler:                    ; Exception handler
+    CATCH   r11, .finally   ; Catch exception, r11 = exception record
+    EXCINFO r1, r11, msg    ; r1 = exception message
+    CALL    print_str, r1   ; print(e.message)
+
+.finally:                    ; Finally block
+    FINALLY .end            ; Execute cleanup
+    ENDFIN                  ; End finally, restore state
+
+.end:
+```
+
+---
+
+### 5.18 Interrupt Handling Instructions
+
+HVM supports hardware interrupts and software traps for responsive execution.
+
+#### 5.18.1 Interrupt Structure
+
+```
+Interrupt Frame:
++------------------+
+| PC               | 8 bytes (interrupted PC)
++------------------+
+| Status Register  | 8 bytes
++------------------+
+| Handler Address  | 8 bytes
++------------------+
+| Interrupt ID     | 8 bytes
++------------------+
+```
+
+#### 5.18.2 Interrupt Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| DI       | 0xE8   | R      | -, -, -, -        | disable_interrupts()                            | Disable interrupts                 |
+| EI       | 0xE9   | R      | -, -, -, -        | enable_interrupts()                             | Enable interrupts                  |
+| INT      | 0xEA   | I      | -, intid, -        | software_interrupt(intid)                       | Trigger software interrupt        |
+| IRET     | 0xEB   | R      | -, -, -, -        | return_from_interrupt()                          | Return from interrupt handler      |
+| SETINT   | 0xEC   | I      | -, handler, -       | set_interrupt_handler(intid, handler)           | Set interrupt handler             |
+| GETINT   | 0xED   | R      | rd, -, -          | rd = current_interrupt_id                       | Get current interrupt ID          |
+| MASKINT  | 0xEE   | I      | -, intid, -        | mask_interrupt(intid)                           | Mask specific interrupt           |
+| UNMASKINT| 0xEF   | I      | -, intid, -        | unmask_interrupt(intid)                         | Unmask specific interrupt         |
+
+#### 5.18.3 Interrupt Example
+
+```asm
+; Set up timer interrupt handler
+    MOVI    r1, .timer_handler  ; r1 = handler address
+    SETINT  -, r1, 4           ; Set handler for timer interrupt (ID 4)
+
+.timer_loop:
+    EI                       ; Enable interrupts
+    ; ... main work ...
+    JMP    .timer_loop
+
+.timer_handler:             ; Interrupt service routine
+    PUSH   r0, .save_sp    ; Save registers
+    PUSH   r1, .save_sp+8
+    ; ... handle timer ...
+    POP    r1, .save_sp+8  ; Restore registers
+    POP    r0, .save_sp
+    IRET                     ; Return from interrupt
+```
+
+---
+
+### 5.19 Threading Instructions
+
+HVM provides native threading support with mutexes, condition variables, and thread synchronization primitives.
+
+#### 5.19.1 Thread Structure
+
+```
+Thread Control Block (TCB):
++------------------+
+| Thread ID        | 8 bytes
++------------------+
+| Stack Pointer    | 8 bytes
++------------------+
+| Status          | 8 bytes (running/blocked/exited)
++------------------+
+| TLS Base        | 8 bytes (thread-local storage)
++------------------+
+```
+
+#### 5.19.2 Thread Management Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| THCREATE| 0xA8   | RI     | rd, entry, -      | rd = create_thread(entry)                      | Create new thread                 |
+| THJOIN  | 0xA9   | R      | rd, tid, -        | rd = join_thread(tid)                          | Wait for thread to finish         |
+| THEXIT  | 0xAA   | R      | -, retval, -      | exit_thread(retval)                            | Exit current thread               |
+| THID    | 0xAB   | R      | rd, -, -          | rd = get_current_thread_id()                   | Get current thread ID             |
+| THYIELD | 0xAC   | R      | -, -, -           | yield_to_scheduler()                           | Yield execution to other threads  |
+| THWAIT  | 0xAD   | RI     | -, tid, timeout   | wait_for_thread(tid, timeout)                  | Wait with timeout                 |
+
+#### 5.19.3 Synchronization Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| MUTEXINI| 0xAE   | R      | rd, -, -          | rd = mutex_init()                             | Initialize mutex                  |
+| MUTEXLCK| 0xAF   | R      | -, mutex, -       | lock_mutex(mutex)                             | Lock mutex                        |
+| MUTEXULK| 0xB0   | R      | -, mutex, -       | unlock_mutex(mutex)                          | Unlock mutex                      |
+| MUTEXDL | 0xB1   | R      | -, mutex, -       | mutex_destroy(mutex)                           | Destroy mutex                     |
+| CONDNWI | 0xB2   | R      | rd, -, -          | rd = condition_init()                         | Initialize condition variable     |
+| CONDSIG | 0xB3   | R      | -, cond, -        | signal_condition(cond)                         | Signal one waiting thread         |
+| CONDBRO | 0xB4   | R      | -, cond, -        | broadcast_condition(cond)                       | Signal all waiting threads        |
+| CONDWT  | 0xB5   | RI     | -, cond, mutex    | wait_condition(cond, mutex)                   | Wait on condition                 |
+| CONDDST | 0xB6   | R      | -, cond, -        | condition_destroy(cond)                        | Destroy condition variable        |
+| SPININIT| 0xB7   | R      | rd, -, -          | rd = spinlock_init()                         | Initialize spinlock               |
+| SPINLCK | 0xB8   | R      | -, lock, -        | spinlock_lock(lock)                           | Acquire spinlock                  |
+| SPINULK | 0xB9   | R      | -, lock, -        | spinlock_unlock(lock)                         | Release spinlock                  |
+| BARRSET | 0xBA   | R      | rd, count, -      | rd = barrier_init(count)                      | Initialize barrier                 |
+| BARRWT  | 0xBB   | R      | -, barrier, -     | barrier_wait(barrier)                         | Wait at barrier                   |
+| ATOMADD | 0xBC   | R      | rd, addr, val     | rd = atomic_add(addr, val)                    | Atomic add                        |
+| ATOMSUB | 0xBD   | R      | rd, addr, val     | rd = atomic_sub(addr, val)                    | Atomic subtract                   |
+| ATOMCAS | 0xBE   | R      | rd, addr, old, new| rd = atomic_cas(addr, old, new)               | Atomic compare-and-swap            |
+| ATOMLD  | 0xBF   | R      | rd, addr, -       | rd = atomic_load(addr)                        | Atomic load                       |
+| ATOMST  | 0xC0   | R      | -, addr, val      | atomic_store(addr, val)                       | Atomic store                      |
+
+#### 5.19.4 Thread-Local Storage Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| TLSALLOC| 0xC1   | R      | rd, size, -       | rd = tls_allocate(size)                       | Allocate TLS slot                 |
+| TLSGET  | 0xC2   | R      | rd, slot, -       | rd = tls_read(slot)                           | Read from TLS slot                |
+| TLSSET  | 0xC3   | R      | -, slot, val      | tls_write(slot, val)                          | Write to TLS slot                 |
+| TLSFREE | 0xC4   | R      | -, slot, -        | tls_deallocate(slot)                          | Free TLS slot                     |
+
+#### 5.19.5 Threading Example
+
+```asm
+; Create two threads that synchronize with mutex
+    MUTEXINI r10               ; r10 = mutex
+    MOVI     r1, .worker      ; r1 = worker entry point
+    THCREATE r11, r1          ; r11 = thread1 ID
+    THCREATE r12, r1           ; r12 = thread2 ID
+    THJOIN   r1, r11          ; Wait for thread1
+    THJOIN   r1, r12          ; Wait for thread2
+    MUTEXDL  -, r10            ; Destroy mutex
+
+.worker:
+    MUTEXLCK -, r10            ; Lock mutex
+    ; ... critical section ...
+    MUTEXULK -, r10            ; Unlock mutex
+    THEXIT   -, r0             ; Exit thread with return value 0
+```
+
+---
+
+### 5.20 Multi-Process Instructions
+
+HVM supports multi-process execution with inter-process communication and resource isolation.
+
+#### 5.20.1 Process Structure
+
+```
+Process Control Block (PCB):
++------------------+
+| Process ID       | 8 bytes
++------------------+
+| Parent ID       | 8 bytes
++------------------+
+| Status          | 8 bytes
++------------------+
+| Exit Code       | 8 bytes
++------------------+
+| Memory Map      | 8 bytes (pointer)
++------------------+
+```
+
+#### 5.20.2 Process Management Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| PROCFORK| 0xE8   | R      | rd, -, -          | rd = fork_process()                           | Fork current process              |
+| PROCEXEC| 0xE9   | RI     | -, path, args     | exec_process(path, args)                      | Replace current process image     |
+| PROCWAIT| 0xEA   | R      | rd, pid, -        | rd = wait_for_child(pid)                      | Wait for child process           |
+| PROCEXIT| 0xEB   | R      | -, code, -        | exit_process(code)                            | Exit current process              |
+| PROCKILL| 0xEC   | R      | -, pid, -         | kill_process(pid)                             | Send termination signal           |
+| PROCID   | 0xED   | R      | rd, -, -          | rd = get_process_id()                        | Get current process ID            |
+| PROCPID  | 0xEE   | R      | rd, -, -          | rd = get_parent_process_id()                  | Get parent process ID            |
+| PROCRENICE| 0xEF   | R      | -, pid, nice      | renice_process(pid, nice)                     | Change process priority          |
+
+#### 5.20.3 Inter-Process Communication Instructions
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| PIPEOPEN| 0xF0   | R      | rd, rdv, -        | rd = create_pipe(); rdv = read_fd, write_fd   | Create pipe                       |
+| PROCSEND| 0xF1   | RI     | rd, pid, msg      | rd = send_message(pid, msg)                   | Send message to process          |
+| PROC_RECV| 0xF2   | R      | rd, -, -          | rd = receive_message()                        | Receive message (blocking)       |
+| PROCTRYRECV| 0xF3 | R      | rd, -, -          | rd = try_receive_message()                    | Non-blocking receive             |
+| PROCMSGSZ| 0xF4   | R      | rd, msg, -        | rd = message_size(msg)                       | Get message size                 |
+| PROCMSGCOPY| 0xF5  | R      | -, dst, src, len  | copy_message_data(dst, src, len)               | Copy message data                |
+| PROCSHMGET| 0xF6  | RI     | rd, key, size     | rd = shmget(key, size)                       | Get shared memory segment        |
+| PROCSHMAT | 0xF7   | RI     | rd, shmid, -      | rd = shmat(shmid)                             | Attach shared memory             |
+| PROCSHDT | 0xF8   | R      | -, shmid, -        | shmdt(shmid)                                  | Detach shared memory             |
+
+#### 5.20.4 Multi-Process Example
+
+```asm
+; Fork a child process
+    PROCFORK r10               ; r10 = child PID
+    CMPNE   r1, r10, r0      ; Is this the parent?
+    BNE     r1, r0, .parent  ; If parent, jump to parent code
+
+.child:                        ; Child process
+    PROCEXEC -, "/bin/echo", args ; Execute echo
+    PROCEXIT -, r0            ; Exit (should not reach here)
+
+.parent:                      ; Parent process
+    MOVI    r1, "Hello from parent"
+    PROCSEND r2, r10, r1     ; Send message to child
+    PROCWAIT r3, r10          ; Wait for child to finish
+```
+```
 
 ---
 
@@ -691,12 +1153,13 @@ Vector registers contain 2 x 64-bit lanes, 4 x 32-bit lanes, 8 x 16-bit lanes, o
 | 0x50-0x5F    | Branch operations            |
 | 0x60-0x6F    | Jump operations              |
 | 0x70-0x7F    | Memory load/store            |
-| 0x80-0x8F    | Stack management              |
-| 0x90-0x9F    | Object & array operations    |
-| 0xA0-0xAF    | Call & dynamic linking       |
-| 0xB0-0xBF    | Conversion & type handling   |
-| 0xC0-0xCF    | Vector/SIMD operations       |
-| 0xF0-0xFF    | System & debug operations    |
+| 0x80-0x83    | Stack management              |
+| 0x84-0xB0    | String operations            |
+| 0xB1-0xBF    | Object & array operations    |
+| 0xC0-0xCF    | Call & dynamic linking       |
+| 0xD0-0xDF    | Vector/SIMD operations       |
+| 0xE0-0xEF    | Conversion & type handling   |
+| 0xF0-0xFF    | FFI, Exceptions, System      |
 
 ---
 

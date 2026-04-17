@@ -17,6 +17,7 @@ extern "C" {
 //
 
 typedef void* HooString;
+typedef void* HooArray;
 
 // ============================================================================
 // Creation and Destruction
@@ -126,6 +127,18 @@ HooString hoo_string_trim(HooString str);
  * @return New string with replacements made
  */
 HooString hoo_string_replace(HooString str, HooString old, HooString replacement);
+
+/**
+ * Split string by delimiter
+ *
+ * Returns an array of strings split by the delimiter.
+ * Empty strings are not included in the result.
+ *
+ * @param str Source string
+ * @param delimiter Delimiter string
+ * @return HooArray of HooString (must be released by caller)
+ */
+HooArray hoo_string_split(HooString str, HooString delimiter);
 
 // ============================================================================
 // String Query

@@ -1,4 +1,5 @@
 #include "hoo_string.h"
+#include "hoo_generic_array.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -6,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
+#include <atomic>
 
 // ============================================================================
 // Internal Structure (Hidden from hoo Code)
@@ -16,10 +18,10 @@
  * The actual string data follows immediately after in memory.
  */
 struct HooStringImpl {
-    int64_t refcount;    // Reference count for ARC
-    int64_t length;      // Byte length (UTF-8)
-    int64_t capacity;    // Allocated capacity (including null terminator)
-    char data[1];        // Flexible array member - actual string data
+    std::atomic<int64_t> refcount;
+    int64_t length;
+    int64_t capacity;
+    char data[1];
 };
 
 // Size of header before the data field
@@ -43,7 +45,7 @@ static HooString from_impl(HooStringImpl* impl) {
 static HooString allocate_string(int64_t length) {
     if (length < 0) length = 0;
 
-    size_t total_size = HEADER_SIZE + length + 1;  // +1 for null terminator
+    size_t total_size = HEADER_SIZE + length + 1;
 
     HooStringImpl* impl = (HooStringImpl*)std::malloc(total_size);
     if (!impl) {
@@ -51,10 +53,10 @@ static HooString allocate_string(int64_t length) {
         std::exit(1);
     }
 
-    impl->refcount = 1;
+    impl->refcount.store(1, std::memory_order_relaxed);
     impl->length = length;
     impl->capacity = length + 1;
-    impl->data[length] = '\0';  // Always null-terminate
+    impl->data[length] = '\0';
 
     return from_impl(impl);
 }
@@ -264,6 +266,53 @@ HooString hoo_string_replace(HooString str, HooString old, HooString replacement
     return result;
 }
 
+HooArray hoo_string_split(HooString str, HooString delimiter) {
+    HooArray result = hoo_array_new();
+    if (!result) return nullptr;
+
+    if (!str) {
+        return result;
+    }
+
+    HooStringImpl* str_impl = get_impl(str);
+    HooStringImpl* delim_impl = get_impl(delimiter);
+
+    if (!delim_impl || delim_impl->length == 0) {
+        hoo_array_release(result);
+        return result;
+    }
+
+    int64_t pos = 0;
+    while (pos < str_impl->length) {
+        const char* match = std::strstr(str_impl->data + pos, delim_impl->data);
+
+        if (match) {
+            int64_t match_pos = match - str_impl->data;
+            int64_t part_len = match_pos - pos;
+
+            if (part_len > 0) {
+                HooString part = hoo_string_from_bytes(str_impl->data + pos, part_len);
+                void* ptr = part;
+                hoo_array_push(result, &ptr);
+                hoo_string_release(part);
+            }
+
+            pos = match_pos + delim_impl->length;
+        } else {
+            int64_t remaining_len = str_impl->length - pos;
+            if (remaining_len > 0) {
+                HooString part = hoo_string_from_bytes(str_impl->data + pos, remaining_len);
+                void* ptr = part;
+                hoo_array_push(result, &ptr);
+                hoo_string_release(part);
+            }
+            break;
+        }
+    }
+
+    return result;
+}
+
 // ============================================================================
 // String Query
 // ============================================================================
@@ -414,7 +463,7 @@ int64_t hoo_string_equals_ignore_case(HooString a, HooString b) {
 
 HooString hoo_string_retain(HooString str) {
     if (!str) return nullptr;
-    get_impl(str)->refcount++;
+    get_impl(str)->refcount.fetch_add(1, std::memory_order_relaxed);
     return str;
 }
 
@@ -422,19 +471,21 @@ void hoo_string_release(HooString str) {
     if (!str) return;
 
     HooStringImpl* impl = get_impl(str);
-    impl->refcount--;
+    int64_t old_count = impl->refcount.fetch_sub(1, std::memory_order_release);
 
-    if (impl->refcount == 0) {
-        std::free(impl);
-    } else if (impl->refcount < 0) {
-        std::fprintf(stderr, "ERROR: String refcount went negative! Value: %lld\n", impl->refcount);
+    if (old_count <= 0) {
+        std::fprintf(stderr, "ERROR: String refcount went negative! Value: %lld\n", (long long)old_count);
         std::exit(1);
+    }
+
+    if (old_count == 1) {
+        std::free(impl);
     }
 }
 
 int64_t hoo_string_refcount(HooString str) {
     if (!str) return 0;
-    return get_impl(str)->refcount;
+    return get_impl(str)->refcount.load(std::memory_order_relaxed);
 }
 
 // ============================================================================

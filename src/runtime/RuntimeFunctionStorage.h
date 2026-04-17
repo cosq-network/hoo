@@ -31,6 +31,7 @@ struct StringFunctionStorage {
     llvm::Function* hoo_string_to_lower_func = nullptr;
     llvm::Function* hoo_string_trim_func = nullptr;
     llvm::Function* hoo_string_replace_func = nullptr;
+    llvm::Function* hoo_string_split_func = nullptr;
 
     // Query functions
     llvm::Function* hoo_string_length_func = nullptr;

@@ -103,6 +103,10 @@ All instructions are **32-bit**, fixed-length. Five primary formats:
 
 - `CALL`, `CALLI`, `TAILCALL`, `CALLVIRT`, `CALLINTF`, `IMPORT`, `LOADMOD`, `RESOLVE`
 
+### 8.11.1 Foreign Function Interface (FFI)
+
+- `CALLHOST`, `CALLHOSTV`, `CALLNATIVE`, `PREPCALL`, `FINISHCA`, `LOADLIB`, `FREELIB`, `GETSYM`, `GETFUNC`, `I2PTR`, `PTR2I`, `REINTERP`, `ADDR2FUNC`, `FUNC2ADDR` (opcode 0xD0-0xDD)
+
 ### 8.12 Conversion & Type Handling
 
 - `SEXT.B`, `SEXT.H`, `SEXT.W`, `ZEXT.B`, `ZEXT.H`, `ZEXT.W`, `TRUNC`, `REINTERPRET`
@@ -114,6 +118,63 @@ All instructions are **32-bit**, fixed-length. Five primary formats:
 ### 8.14 System & Debug
 
 - `SYSCALL` (0xF0), `TRAP` (0xF1), `DEBUG` (0xF2), `RDCOUNT` (0xF3), `BARRIER` (0xFE), `NOP` (0xFF)
+
+### 8.15 Exception Handling
+
+- `TRY` (0xE0), `THROW` (0xE1), `THROWV` (0xE2), `CATCH` (0xE3), `FINALLY` (0xE4), `RETHROW` (0xE5), `EXCINFO` (0xE6), `ENDFIN` (0xE7)
+
+### 8.16 Interrupt Handling
+
+- `DI` (0xE8), `EI` (0xE9), `INT` (0xEA), `IRET` (0xEB), `SETINT` (0xEC), `GETINT` (0xED), `MASKINT` (0xEE), `UNMASKINT` (0xEF)
+
+### 8.17 Threading
+
+- Thread Management: `THCREATE` (0xA8), `THJOIN` (0xA9), `THEXIT` (0xAA), `THID` (0xAB), `THYIELD` (0xAC), `THWAIT` (0xAD)
+- Mutex: `MUTEXINI` (0xAE), `MUTEXLCK` (0xAF), `MUTEXULK` (0xB0), `MUTEXDL` (0xB1)
+- Condition Variables: `CONDNWI` (0xB2), `CONDSIG` (0xB3), `CONDBRO` (0xB4), `CONDWT` (0xB5), `CONDDST` (0xB6)
+- Spinlocks: `SPININIT` (0xB7), `SPINLCK` (0xB8), `SPINULK` (0xB9)
+- Barriers: `BARRSET` (0xBA), `BARRWT` (0xBB)
+- Atomics: `ATOMADD` (0xBC), `ATOMSUB` (0xBD), `ATOMCAS` (0xBE), `ATOMLD` (0xBF), `ATOMST` (0xC0)
+- TLS: `TLSALLOC` (0xC1), `TLSGET` (0xC2), `TLSSET` (0xC3), `TLSFREE` (0xC4)
+
+### 8.18 Multi-Process
+
+- Process Management: `PROCFORK` (0xE8), `PROCEXEC` (0xE9), `PROCWAIT` (0xEA), `PROCEXIT` (0xEB), `PROCKILL` (0xEC), `PROCID` (0xED), `PROCPID` (0xEE), `PROCRENICE` (0xEF)
+- IPC: `PIPEOPEN` (0xF0), `PROCSEND` (0xF1), `PROCRECV` (0xF2), `PROCTRYRECV` (0xF3), `PROCMSGSZ` (0xF4), `PROCMSGCOPY` (0xF5), `PROCSHMGET` (0xF6), `PROCSHMAT` (0xF7), `PROCSHDT` (0xF8)
+
+### 8.19 String Operations
+
+- String Creation: `STRNEW` (0x84), `STRNEWB` (0x85), `STRLEN` (0x86), `STREMPTY` (0x87)
+- String Access: `STRGET` (0x88), `STRSET` (0x89), `STRAPPEND` (0x8A), `STRPOP` (0x8C)
+- String Comparison: `STRCMP` (0x8D), `STRCMPN` (0x8E), `STREQUAL` (0x8F), `STRSTART` (0x98), `STREND` (0x99)
+- String Search: `STRCHR` (0x9A), `STRRCHR` (0x9B), `STRFIND` (0x9C), `STRRFIND` (0x9D), `STRCONTAINS` (0x9E)
+- String Manipulation: `STRSUB` (0x9F), `STRSLICE` (0xA0), `STRSPLIT` (0xA1), `STRJOIN` (0xA2), `STREPEAT` (0xA3), `STRREV` (0xA4)
+- String Case: `STRUPPER` (0xA5), `STRLOWER` (0xA6), `STRTRIM` (0xA7), `STRLTRIM` (0xA8), `STRRTRIM` (0xA9), `STRPAD` (0xAA)
+- String Conversion: `STRTOI` (0xAB), `STRTOD` (0xAC), `ITOSTR` (0xAD), `DTOSTR` (0xAE), `STRENCODE` (0xAF), `STRDECODE` (0xB0)
+
+### 8.15 Foreign Function Interface (FFI)
+
+#### Static Runtime Calls
+- `CALLHOST` (0xD0): Call pre-registered static runtime functions by ID
+- `CALLHOSTV` (0xD1): Virtual method calls via host runtime
+
+#### Native Function Calls
+- `CALLNATIVE` (0xD2): Call native C functions with C ABI
+- `PREPCALL` (0xD3): Prepare stack frame for native calls
+- `FINISHCA` (0xD4): Complete native call, retrieve return value
+
+#### Dynamic Library Loading
+- `LOADLIB` (0xD5): Load shared libraries (.dll, .so, .dylib)
+- `FREELIB` (0xD6): Unload dynamic libraries
+- `GETSYM` (0xD7): Get symbol address from loaded library
+- `GETFUNC` (0xD8): Resolve function pointer from library
+
+#### Type Conversion for FFI
+- `I2PTR` (0xD9): Convert integer to pointer
+- `PTR2I` (0xDA): Convert pointer to integer
+- `REINTERP` (0xDB): Reinterpret pointer type
+- `ADDR2FUNC` (0xDC): Convert address to function pointer
+- `FUNC2ADDR` (0xDD): Extract address from function pointer
 
 ---
 
@@ -150,12 +211,134 @@ All instructions are **32-bit**, fixed-length. Five primary formats:
 - `.hobj` files contain symbol tables, code, data, and relocation entries.
 - `IMPORT` resolves external symbols.
 
----
+### 8.19 FFI Implementation
 
-### 8.19 Summary
+#### Static Runtime Registration
+- Register runtime functions with unique IDs at VM initialization
+- Maintain a function pointer table indexed by ID
+- `CALLHOST` looks up function in this table
 
-HVM’s instruction set is designed for:
+#### Native Function Calls
+- Implement C ABI compliance for argument passing
+- Handle calling conventions for integers, floats, and pointers
+- Manage stack alignment (8-byte required, 16-byte recommended)
+
+#### Dynamic Library Loading
+- Use platform-specific APIs: `dlopen`/`dlsym` (POSIX) or `LoadLibrary`/`GetProcAddress` (Windows)
+- Track loaded libraries for cleanup on VM shutdown
+- Handle symbol resolution errors gracefully
+
+#### Type Safety
+- Implement bounds checking for pointer conversions
+- Validate function pointer types when possible
+- Consider adding runtime type information for FFI calls
+
+### 8.20 Summary
+
+HVM's instruction set is designed for:
 
 - High performance and portability.
 - Efficient JIT compilation.
 - Support for modern language features.
+- Comprehensive FFI support for native code integration.
+- Full exception handling, interrupt, threading, and multi-process support.
+
+---
+
+## 9. Exception Handling Implementation
+
+### 9.1 Exception Table
+- Maintain a stack of exception handlers
+- Each entry contains: handler PC, stack snapshot
+- Use setjmp/longjmp or custom continuation passing
+
+### 9.2 Exception Types
+- Define standard exception type IDs
+- Support for user-defined exception types
+- Exception chaining for nested throws
+
+### 9.3 Stack Unwinding
+- Walk stack frames on exception
+- Execute finally blocks in reverse order
+- Call destructors for RAII objects
+
+---
+
+## 10. Interrupt Handling Implementation
+
+### 10.1 Interrupt Controller
+- Maintain interrupt enable/disable flag
+- Support interrupt priority levels
+- Provide interrupt masking per interrupt type
+
+### 10.2 Interrupt Dispatch
+- Save current PC and state
+- Jump to handler address
+- IRET restores state and resumes execution
+
+### 10.3 Software Interrupts
+- INT instruction for cooperative multitasking
+- Use for system calls and async events
+
+---
+
+## 11. Threading Implementation
+
+### 11.1 Thread Scheduler
+- Implement round-robin or priority scheduling
+- Handle thread creation and termination
+- Manage thread states (running, blocked, terminated)
+
+### 11.2 Synchronization Primitives
+- Mutex: OS-provided or spin-based implementation
+- Condition Variables: wait queue with signal/broadcast
+- Barriers: counter-based synchronization
+- Spinlocks: atomic compare-and-swap loops
+
+### 11.3 Thread-Local Storage
+- Allocate TLS slots per thread
+- Use fs/gs segment registers or lookup table
+- Implement tls_allocate/tls_free
+
+### 11.4 Atomic Operations
+- Use CPU atomic instructions (LOCK XADD, etc.)
+- Implement atomic CAS with retry loop
+- Ensure memory ordering with barriers
+
+---
+
+## 12. Multi-Process Implementation
+
+### 12.1 Process Management
+- Use OS process creation (fork/exec on POSIX)
+- Track child processes in process table
+- Handle process termination and zombie states
+
+### 12.2 Inter-Process Communication
+- Pipes: OS pipe creation with non-blocking I/O
+- Message passing: ring buffer or message queue
+- Shared memory: OS shared memory APIs with synchronization
+
+### 12.3 Resource Isolation
+- Memory protection per process
+- Signal handling and propagation
+- Process scheduling by OS
+
+---
+
+## 13. String Operations Implementation
+
+### 13.1 String Representation
+- Strings are objects with header (vtable, length, hash) + UTF-8 data
+- Null-terminated for C compatibility
+- Small string optimization (SSO) for short strings
+
+### 13.2 String Instructions
+- Most string operations use SIMD for bulk operations
+- UTF-8 encoding/decoding with error handling
+- Unicode normalization support
+
+### 13.3 Memory Management
+- Strings are garbage collected or reference counted
+- Immutable strings share backing storage
+- Copy-on-write for modifications

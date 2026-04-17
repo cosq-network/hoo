@@ -170,8 +170,10 @@ add_library(hoo-compiler
     src/ast/ASTImpl.cpp
     src/ModuleSystem.cpp
     src/runtime/RuntimeRegistry.cpp
+    src/runtime/RuntimeMethodRegistry.cpp
     src/rt/hoo_string_registration.cpp
     src/rt/hoo_array_registration.cpp
+    src/rt/RuntimeStringMethodsRegistration.cpp
 )
 
 if(HOOC_BUILD_SHARED_RUNTIME)

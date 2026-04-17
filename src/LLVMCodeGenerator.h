@@ -122,6 +122,7 @@ private:
     llvm::Function* hoo_string_to_lower_func_ = nullptr;
     llvm::Function* hoo_string_trim_func_ = nullptr;
     llvm::Function* hoo_string_replace_func_ = nullptr;
+    llvm::Function* hoo_string_split_func_ = nullptr;
     llvm::Function* hoo_string_length_func_ = nullptr;
     llvm::Function* hoo_string_data_func_ = nullptr;
     llvm::Function* hoo_string_byte_at_func_ = nullptr;
