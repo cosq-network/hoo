@@ -65,7 +65,7 @@ All instructions are **32-bit**, fixed-length. Five primary formats:
 
 ### 8.2 Data Movement
 
-- `MOV`, `MOVI`, `MOVZ`, `LUI`, `ADDI`, `SUB`, `NEG`, `XCHG`, `SWAP`
+- `MOV`, `MOVI`, `MOVZ`, `LUI`, `ADDI`, `SUBI`, `NEG`, `XCHG`, `NOP`
 
 ### 8.3 Integer Arithmetic
 
@@ -105,76 +105,78 @@ All instructions are **32-bit**, fixed-length. Five primary formats:
 
 ### 8.11.1 Foreign Function Interface (FFI)
 
-- `CALLHOST`, `CALLHOSTV`, `CALLNATIVE`, `PREPCALL`, `FINISHCA`, `LOADLIB`, `FREELIB`, `GETSYM`, `GETFUNC`, `I2PTR`, `PTR2I`, `REINTERP`, `ADDR2FUNC`, `FUNC2ADDR` (opcode 0xD0-0xDD)
+- `CALLHOST`, `CALLHOSTV`, `CALLNATIVE`, `PREPCALL`, `FINISHCA`, `LOADLIB`, `FREELIB`, `GETSYM`, `GETFUNC`, `I2PTR`, `PTR2I`, `REINTERP`, `ADDR2FUNC`, `FUNC2ADDR` (opcode 0x120-0x12D)
 
 ### 8.12 Conversion & Type Handling
 
 - `SEXT.B`, `SEXT.H`, `SEXT.W`, `ZEXT.B`, `ZEXT.H`, `ZEXT.W`, `TRUNC`, `REINTERPRET`
 
-### 8.13 Vector / SIMD
+### 8.13 Vector / SIMD (16-bit opcodes)
 
-- `VADD`, `VSUB`, `VMUL`, `VDOT` (opcode 0xC0-0xC1), `VLOAD`, `VSTORE` (0xC2-0xC3), `VSHUF`, `VSPLAT`, `VEXTRACT`, `VINSERT`, `VCMPEQ`, `VCMPNE`, `VCMPLT`, `VCMPLE`, `VREDUCE`, `VFMA`, `VFMS` (0xC4-0xCA)
+- `VADD`, `VSUB`, `VMUL` (0x100), `VDOT` (0x101), `VLOAD`, `VSTORE` (0x102-0x103), `VSHUF`, `VSPLAT`, `VEXTRACT`, `VINSERT`, `VCMPEQ`, `VCMPNE`, `VCMPLT`, `VCMPLE`, `VREDUCE` (0x104-0x109), `VFMA`, `VFMS` (0x10A)
 
 ### 8.14 System & Debug
 
-- `SYSCALL` (0xF0), `TRAP` (0xF1), `DEBUG` (0xF2), `RDCOUNT` (0xF3), `BARRIER` (0xFE), `NOP` (0xFF)
+- `SYSCALL` (0x130), `TRAP` (0x131), `DEBUG` (0x132), `RDCOUNT` (0x133), `BARRIER` (0x134)
+- `BREAKPOINT` (0x135), `SINGLESTEP` (0x136), `GETREGS` (0x137), `SETREGS` (0x138), `GETFPOFF` (0x139)
 
 ### 8.15 Exception Handling
 
-- `TRY` (0xE0), `THROW` (0xE1), `THROWV` (0xE2), `CATCH` (0xE3), `FINALLY` (0xE4), `RETHROW` (0xE5), `EXCINFO` (0xE6), `ENDFIN` (0xE7)
+- `TRY` (0x110), `THROW` (0x111), `THROWV` (0x112), `CATCH` (0x113), `FINALLY` (0x114), `RETHROW` (0x115), `EXCINFO` (0x116), `ENDFIN` (0x117)
 
 ### 8.16 Interrupt Handling
 
-- `DI` (0xE8), `EI` (0xE9), `INT` (0xEA), `IRET` (0xEB), `SETINT` (0xEC), `GETINT` (0xED), `MASKINT` (0xEE), `UNMASKINT` (0xEF)
+- `DI` (0x118), `EI` (0x119), `INT` (0x11A), `IRET` (0x11B), `SETINT` (0x11C), `GETINT` (0x11D), `MASKINT` (0x11E), `UNMASKINT` (0x11F)
 
 ### 8.17 Threading
 
-- Thread Management: `THCREATE` (0xA8), `THJOIN` (0xA9), `THEXIT` (0xAA), `THID` (0xAB), `THYIELD` (0xAC), `THWAIT` (0xAD)
-- Mutex: `MUTEXINI` (0xAE), `MUTEXLCK` (0xAF), `MUTEXULK` (0xB0), `MUTEXDL` (0xB1)
-- Condition Variables: `CONDNWI` (0xB2), `CONDSIG` (0xB3), `CONDBRO` (0xB4), `CONDWT` (0xB5), `CONDDST` (0xB6)
-- Spinlocks: `SPININIT` (0xB7), `SPINLCK` (0xB8), `SPINULK` (0xB9)
-- Barriers: `BARRSET` (0xBA), `BARRWT` (0xBB)
-- Atomics: `ATOMADD` (0xBC), `ATOMSUB` (0xBD), `ATOMCAS` (0xBE), `ATOMLD` (0xBF), `ATOMST` (0xC0)
-- TLS: `TLSALLOC` (0xC1), `TLSGET` (0xC2), `TLSSET` (0xC3), `TLSFREE` (0xC4)
+- Thread Management: `THCREATE` (0xC0), `THJOIN` (0xC1), `THEXIT` (0xC2), `THID` (0xC3), `THYIELD` (0xC4), `THWAIT` (0xC5)
+- Mutex: `MUTEXINI` (0xC6), `MUTEXLCK` (0xC7), `MUTEXULK` (0xC8), `MUTEXDL` (0xC9)
+- Condition Variables: `CONDNWI` (0xCA), `CONDSIG` (0xCB), `CONDBRO` (0xCC), `CONDWT` (0xCD), `CONDDST` (0xCE)
+- Spinlocks: `SPININIT` (0xCF), `SPINLCK` (0xD0), `SPINULK` (0xD1)
+- Barriers: `BARRSET` (0xD2), `BARRWT` (0xD3)
+- Atomics: `ATOMADD` (0xE0), `ATOMSUB` (0xE1), `ATOMCAS` (0xE2), `ATOMLD` (0xE3), `ATOMST` (0xE4)
+- TLS: `TLSALLOC` (0xE5), `TLSGET` (0xE6), `TLSSET` (0xE7), `TLSFREE` (0xE8)
 
-### 8.18 Multi-Process
+### 8.18 Multi-Process (via FFI)
 
-- Process Management: `PROCFORK` (0xE8), `PROCEXEC` (0xE9), `PROCWAIT` (0xEA), `PROCEXIT` (0xEB), `PROCKILL` (0xEC), `PROCID` (0xED), `PROCPID` (0xEE), `PROCRENICE` (0xEF)
-- IPC: `PIPEOPEN` (0xF0), `PROCSEND` (0xF1), `PROCRECV` (0xF2), `PROCTRYRECV` (0xF3), `PROCMSGSZ` (0xF4), `PROCMSGCOPY` (0xF5), `PROCSHMGET` (0xF6), `PROCSHMAT` (0xF7), `PROCSHDT` (0xF8)
+Multi-process support is provided through native OS calls via `CALLNATIVE`/`SYSCALL`:
+- Process Management: `fork()`, `execve()`, `waitpid()`, `getpid()`, `getppid()`
+- IPC: `pipe()`, `send()`/`recv()`, `shmget()`/`shmat()`
 
-### 8.19 String Operations
+### 8.19 String Operations (0x84-0xA7)
 
 - String Creation: `STRNEW` (0x84), `STRNEWB` (0x85), `STRLEN` (0x86), `STREMPTY` (0x87)
-- String Access: `STRGET` (0x88), `STRSET` (0x89), `STRAPPEND` (0x8A), `STRPOP` (0x8C)
-- String Comparison: `STRCMP` (0x8D), `STRCMPN` (0x8E), `STREQUAL` (0x8F), `STRSTART` (0x98), `STREND` (0x99)
-- String Search: `STRCHR` (0x9A), `STRRCHR` (0x9B), `STRFIND` (0x9C), `STRRFIND` (0x9D), `STRCONTAINS` (0x9E)
-- String Manipulation: `STRSUB` (0x9F), `STRSLICE` (0xA0), `STRSPLIT` (0xA1), `STRJOIN` (0xA2), `STREPEAT` (0xA3), `STRREV` (0xA4)
-- String Case: `STRUPPER` (0xA5), `STRLOWER` (0xA6), `STRTRIM` (0xA7), `STRLTRIM` (0xA8), `STRRTRIM` (0xA9), `STRPAD` (0xAA)
-- String Conversion: `STRTOI` (0xAB), `STRTOD` (0xAC), `ITOSTR` (0xAD), `DTOSTR` (0xAE), `STRENCODE` (0xAF), `STRDECODE` (0xB0)
+- String Access: `STRGET` (0x88), `STRSET` (0x89), `STRAPPEND` (0x8A), `STRPOP` (0x8B)
+- String Comparison: `STRCMP` (0x8C), `STRCMPN` (0x8D), `STREQUAL` (0x8E), `STRSTART` (0x8F), `STREND` (0x90)
+- String Search: `STRCHR` (0x91), `STRRCHR` (0x92), `STRFIND` (0x93), `STRRFIND` (0x94), `STRCONTAINS` (0x95)
+- String Manipulation: `STRSUB` (0x96), `STRSLICE` (0x97), `STRSPLIT` (0x98), `STRJOIN` (0x99), `STREPEAT` (0x9A), `STRREV` (0x9B)
+- String Case: `STRUPPER` (0x9C), `STRLOWER` (0x9D), `STRTRIM` (0x9E), `STRLTRIM` (0x9F), `STRRTRIM` (0xA0), `STRPAD` (0xA1)
+- String Conversion: `STRTOI` (0xA2), `STRTOD` (0xA3), `ITOSTR` (0xA4), `DTOSTR` (0xA5), `STRENCODE` (0xA6), `STRDECODE` (0xA7)
 
-### 8.15 Foreign Function Interface (FFI)
+### 8.15 Foreign Function Interface (FFI) (0x120-0x12D)
 
 #### Static Runtime Calls
-- `CALLHOST` (0xD0): Call pre-registered static runtime functions by ID
-- `CALLHOSTV` (0xD1): Virtual method calls via host runtime
+- `CALLHOST` (0x120): Call pre-registered static runtime functions by ID
+- `CALLHOSTV` (0x121): Virtual method calls via host runtime
 
 #### Native Function Calls
-- `CALLNATIVE` (0xD2): Call native C functions with C ABI
-- `PREPCALL` (0xD3): Prepare stack frame for native calls
-- `FINISHCA` (0xD4): Complete native call, retrieve return value
+- `CALLNATIVE` (0x122): Call native C functions with C ABI
+- `PREPCALL` (0x123): Prepare stack frame for native calls
+- `FINISHCA` (0x124): Complete native call, retrieve return value
 
 #### Dynamic Library Loading
-- `LOADLIB` (0xD5): Load shared libraries (.dll, .so, .dylib)
-- `FREELIB` (0xD6): Unload dynamic libraries
-- `GETSYM` (0xD7): Get symbol address from loaded library
-- `GETFUNC` (0xD8): Resolve function pointer from library
+- `LOADLIB` (0x125): Load shared libraries (.dll, .so, .dylib)
+- `FREELIB` (0x126): Unload dynamic libraries
+- `GETSYM` (0x127): Get symbol address from loaded library
+- `GETFUNC` (0x128): Resolve function pointer from library
 
 #### Type Conversion for FFI
-- `I2PTR` (0xD9): Convert integer to pointer
-- `PTR2I` (0xDA): Convert pointer to integer
-- `REINTERP` (0xDB): Reinterpret pointer type
-- `ADDR2FUNC` (0xDC): Convert address to function pointer
-- `FUNC2ADDR` (0xDD): Extract address from function pointer
+- `I2PTR` (0x129): Convert integer to pointer
+- `PTR2I` (0x12A): Convert pointer to integer
+- `REINTERP` (0x12B): Reinterpret pointer type
+- `ADDR2FUNC` (0x12C): Convert address to function pointer
+- `FUNC2ADDR` (0x12D): Extract address from function pointer
 
 ---
 

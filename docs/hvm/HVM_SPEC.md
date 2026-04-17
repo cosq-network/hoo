@@ -215,68 +215,66 @@ All immediates are **sign-extended** to 64 bits before use, except:
 
 | Mnemonic | Opcode | Format | Operands          | Operation                        | Description                        |
 |----------|--------|--------|-------------------|----------------------------------|------------------------------------|
+| NOP      | 0x00   | R      | -, -, -, -        |                                  | No operation                       |
 | MOV      | 0x01   | R      | rd, rs, -, -      | rd = rs                          | Move register                      |
 | MOVI     | 0x02   | I      | rd, rs, imm15     | rd = rs + imm15                  | Add immediate (sign-extended)      |
 | MOVZ     | 0x03   | I      | rd, rs, imm15     | rd = rs \| zero_extend(imm15)    | Move with zero-extended immediate  |
 | LUI      | 0x04   | I      | rd, rs, imm15     | rd = rs \| (imm15 << 32)         | Load upper immediate               |
-| NEG      | 0x08   | R      | rd, rs, -, -      | rd = -rs                         | Negate                             |
-| XCHG     | 0x0A   | R      | rd, rs, -, -      | swap rd, rs                      | Exchange registers                  |
-| SWAP     | 0x0A   | R      | rd, rs, -, -      | swap rd, rs                      | Alias for XCHG                     |
+| ADDI     | 0x05   | I      | rd, rs, imm15     | rd = rs + sign_extend(imm15)     | Add immediate                      |
+| SUBI     | 0x06   | I      | rd, rs, imm15     | rd = rs - sign_extend(imm15)     | Subtract immediate                 |
+| NEG      | 0x07   | R      | rd, rs, -, -      | rd = -rs                         | Negate                             |
+| XCHG     | 0x08   | R      | rd, rs, -, -      | swap rd, rs                      | Exchange registers                  |
 
 ### 5.2 Integer Arithmetic Instructions
 
 | Mnemonic | Opcode | Format | Operands              | Operation                           | Description                    | Func |
 |----------|--------|--------|-----------------------|-------------------------------------|--------------------------------|------|
-| ADDI     | 0x06   | I      | rd, rs, imm15         | rd = rs + sign_extend(imm15)        | Add immediate                  | -    |
-| SUB      | 0x07   | R      | rd, rs1, rs2, -       | rd = rs1 - rs2                      | Subtract                       | 0    |
 | ADD      | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 + rs2                      | Add                            | 0    |
 | SUB      | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 - rs2                      | Subtract                       | 1    |
 | MUL      | 0x10   | R      | rd, rs1, rs2, -       | rd = (rs1 * rs2)[63:0]              | Multiply (low 64 bits)         | 2    |
-| MULH     | 0x10   | R      | rd, rs1, rs2, -       | rd = (rs1 * rs2) >> 64 (unsigned)   | Multiply high (unsigned)        | 3    |
-| MULHS    | 0x10   | R      | rd, rs1, rs2, -       | rd = (rs1 * rs2) >> 64 (signed)     | Multiply high (signed)         | -    |
-| DIV      | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 / rs2 (signed)             | Divide (signed)                | 4    |
-| DIVU     | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 / rs2 (unsigned)           | Divide (unsigned)              | 5    |
-| REM      | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 % rs2 (signed)             | Remainder (signed)             | 6    |
-| REMU     | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 % rs2 (unsigned)           | Remainder (unsigned)           | 7    |
-| SUBI     | 0x12   | I      | rd, rs, imm15         | rd = rs - sign_extend(imm15)       | Subtract immediate             | -    |
-| MULI     | 0x13   | I      | rd, rs, imm15         | rd = rs * sign_extend(imm15)        | Multiply immediate             | -    |
-| DIVI     | 0x14   | I      | rd, rs, imm15         | rd = rs / sign_extend(imm15)        | Divide immediate               | -    |
-| SHL      | 0x15   | R      | rd, rs1, rs2, -       | rd = rs1 << (rs2 & 63)              | Shift left                     | 0    |
-| SHR      | 0x15   | R      | rd, rs1, rs2, -       | rd = rs1 >> (rs2 & 63) (logical)    | Shift right (logical)          | 1    |
-| SAR      | 0x15   | R      | rd, rs1, rs2, -       | rd = rs1 >> (rs2 & 63) (arith)     | Shift right (arithmetic)        | 2    |
-| SHLI     | 0x16   | I      | rd, rs, imm15         | rd = rs << (imm15 & 63)             | Shift left immediate            | -    |
+| MULH     | 0x10   | R      | rd, rs1, rs2, -       | rd = (rs1 * rs2) >> 64 (unsigned)  | Multiply high (unsigned)       | 3    |
+| MULHS    | 0x10   | R      | rd, rs1, rs2, -       | rd = (rs1 * rs2) >> 64 (signed)    | Multiply high (signed)         | 4    |
+| DIV      | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 / rs2 (signed)             | Divide (signed)                | 5    |
+| DIVU     | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 / rs2 (unsigned)           | Divide (unsigned)              | 6    |
+| REM      | 0x10   | R      | rd, rs1, rs2, -       | rd = rs1 % rs2 (signed)             | Remainder (signed)             | 7    |
+| MULI     | 0x11   | I      | rd, rs, imm15         | rd = rs * sign_extend(imm15)        | Multiply immediate             | -    |
+| DIVI     | 0x12   | I      | rd, rs, imm15         | rd = rs / sign_extend(imm15)        | Divide immediate               | -    |
+| SHL      | 0x13   | R      | rd, rs1, rs2, -       | rd = rs1 << (rs2 & 63)              | Shift left                     | 0    |
+| SHR      | 0x13   | R      | rd, rs1, rs2, -       | rd = rs1 >> (rs2 & 63) (logical)    | Shift right (logical)          | 1    |
+| SAR      | 0x13   | R      | rd, rs1, rs2, -       | rd = rs1 >> (rs2 & 63) (arith)     | Shift right (arithmetic)       | 2    |
+| SHLI     | 0x14   | I      | rd, rs, imm15         | rd = rs << (imm15 & 63)             | Shift left immediate            | -    |
 
 ### 5.3 Floating-Point Arithmetic Instructions
 
 | Mnemonic | Opcode | Format | Operands        | Operation                 | Description                    | Func |
 |----------|--------|--------|-----------------|---------------------------|--------------------------------|------|
-| FADD     | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 + rs2 (f64)      | Floating-point add             | 0    |
-| FSUB     | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 - rs2 (f64)      | Floating-point subtract       | 1    |
-| FMUL     | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 * rs2 (f64)      | Floating-point multiply       | 2    |
-| FDIV     | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 / rs2 (f64)      | Floating-point divide         | 3    |
-| FSQRT    | 0x21   | R      | rd, rs, -, -    | rd = sqrt(rs)             | Floating-point square root    | -    |
-| FABS     | 0x22   | R      | rd, rs, -, -    | rd = abs(rs)              | Floating-point absolute value | -    |
-| FNEG     | 0x23   | R      | rd, rs, -, -    | rd = -rs                  | Floating-point negate          | -    |
-| FADD32   | 0x24   | R      | rd, rs1, rs2, - | rd = rs1 + rs2 (f32)      | Floating-point add (32-bit)    | 0    |
-| FSUB32   | 0x24   | R      | rd, rs1, rs2, - | rd = rs1 - rs2 (f32)      | Floating-point subtract (32)   | 1    |
-| FMUL32   | 0x24   | R      | rd, rs1, rs2, - | rd = rs1 * rs2 (f32)      | Floating-point multiply (32)   | 2    |
-| FDIV32   | 0x24   | R      | rd, rs1, rs2, - | rd = rs1 / rs2 (f32)      | Floating-point divide (32)     | 3    |
-| FCVT     | 0x25   | I      | rd, rs, imm15   | rd = convert(rs, imm15)   | Floating-point convert         | -    |
+| FADD     | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 + rs2 (f64)      | Floating-point add             | 0    |
+| FSUB     | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 - rs2 (f64)      | Floating-point subtract       | 1    |
+| FMUL     | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 * rs2 (f64)      | Floating-point multiply       | 2    |
+| FDIV     | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 / rs2 (f64)      | Floating-point divide         | 3    |
+| FSQRT    | 0x31   | R      | rd, rs, -, -    | rd = sqrt(rs)             | Floating-point square root    | -    |
+| FABS     | 0x32   | R      | rd, rs, -, -    | rd = abs(rs)              | Floating-point absolute value | -    |
+| FNEG     | 0x33   | R      | rd, rs, -, -    | rd = -rs                  | Floating-point negate          | -    |
+| FADD32   | 0x34   | R      | rd, rs1, rs2, - | rd = rs1 + rs2 (f32)      | Floating-point add (32-bit)    | 0    |
+| FSUB32   | 0x34   | R      | rd, rs1, rs2, - | rd = rs1 - rs2 (f32)      | Floating-point subtract (32)   | 1    |
+| FMUL32   | 0x34   | R      | rd, rs1, rs2, - | rd = rs1 * rs2 (f32)      | Floating-point multiply (32)   | 2    |
+| FDIV32   | 0x34   | R      | rd, rs1, rs2, - | rd = rs1 / rs2 (f32)      | Floating-point divide (32)     | 3    |
+| FCVT     | 0x35   | I      | rd, rs, imm15   | rd = convert(rs, imm15)   | Floating-point convert         | -    |
 
 ### 5.4 Logical & Bitwise Instructions
 
 | Mnemonic | Opcode | Format | Operands        | Operation                      | Description                | Func |
 |----------|--------|--------|-----------------|--------------------------------|----------------------------|------|
-| AND      | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 & rs2                | Bitwise AND                | 0    |
-| OR       | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 \| rs2               | Bitwise OR                 | 1    |
-| XOR      | 0x30   | R      | rd, rs1, rs2, - | rd = rs1 ^ rs2                | Bitwise XOR                | 2    |
-| NOT      | 0x31   | R      | rd, rs, -, -    | rd = ~rs                      | Bitwise NOT                | -    |
-| ANDI     | 0x32   | I      | rd, rs, imm15   | rd = rs & sign_extend(imm15) | Bitwise AND immediate      | -    |
-| ORI      | 0x33   | I      | rd, rs, imm15   | rd = rs \| sign_extend(imm15) | Bitwise OR immediate       | -    |
-| XORI     | 0x34   | I      | rd, rs, imm15   | rd = rs ^ sign_extend(imm15) | Bitwise XOR immediate      | -    |
-| CLZ      | 0x35   | R      | rd, rs, -, -    | rd = count_leading_zeros(rs)  | Count leading zeros         | -    |
-| CTZ      | 0x36   | R      | rd, rs, -, -    | rd = count_trailing_zeros(rs) | Count trailing zeros       | -    |
-| POPCNT   | 0x37   | R      | rd, rs, -, -    | rd = population_count(rs)     | Population count           | -    |
+| AND      | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 & rs2                | Bitwise AND                | 0    |
+| OR       | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 \| rs2               | Bitwise OR                 | 1    |
+| XOR      | 0x20   | R      | rd, rs1, rs2, - | rd = rs1 ^ rs2                | Bitwise XOR                | 2    |
+| NOT      | 0x21   | R      | rd, rs, -, -    | rd = ~rs                      | Bitwise NOT                | -    |
+| ANDI     | 0x22   | I      | rd, rs, imm15   | rd = rs & sign_extend(imm15) | Bitwise AND immediate      | -    |
+| ORI      | 0x23   | I      | rd, rs, imm15   | rd = rs \| sign_extend(imm15) | Bitwise OR immediate       | -    |
+| XORI     | 0x24   | I      | rd, rs, imm15   | rd = rs ^ sign_extend(imm15) | Bitwise XOR immediate      | -    |
+| CLZ      | 0x25   | R      | rd, rs, -, -    | rd = count_leading_zeros(rs)  | Count leading zeros         | -    |
+| CTZ      | 0x26   | R      | rd, rs, -, -    | rd = count_trailing_zeros(rs) | Count trailing zeros       | -    |
+| POPCNT   | 0x27   | R      | rd, rs, -, -    | rd = population_count(rs)     | Population count           | -    |
 
 ### 5.5 Comparison Instructions
 
@@ -358,77 +356,81 @@ All immediates are **sign-extended** to 64 bits before use, except:
 
 | Mnemonic    | Opcode | Format | Operands              | Operation                                | Description              |
 |-------------|--------|--------|-----------------------|------------------------------------------|--------------------------|
-| NEW         | 0x90   | I      | rd, -, imm15          | rd = new_object(imm15)                   | Allocate object by class ID |
-| NEWA        | 0x91   | RI     | rd, len, type, -      | rd = new_array(len, type)                 | Allocate array            |
-| LDF         | 0x92   | RI     | rd, obj, -, idx       | rd = obj.field[idx]                       | Load object field         |
-| STF         | 0x93   | RI     | val, obj, -, idx      | obj.field[idx] = val                      | Store object field        |
-| LDELEM      | 0x94   | R      | rd, arr, idx, -       | rd = arr[idx]                             | Load array element        |
-| STELEM      | 0x95   | R      | val, arr, idx, -       | arr[idx] = val                            | Store array element       |
-| ARRAYLEN    | 0x96   | R      | rd, arr, -, -         | rd = length(arr)                          | Get array length          |
-| INSTANCEOF  | 0x97   | RI     | rd, obj, -, type      | rd = (obj instanceof type) ? 1 : 0        | Type check                |
-| CHECKCAST   | 0x98   | RI     | rd, obj, -, type      | rd = cast(obj, type)                      | Type cast                 |
-| MONITORENTER| 0x99   | R      | obj, -, -, -          | lock(obj)                                  | Lock object               |
-| MONITOREXIT | 0x9A   | R      | obj, -, -, -          | unlock(obj)                               | Unlock object             |
-| GC          | 0x9B   | R      | -, -, -, -            | request_garbage_collection()               | Request garbage collection|
+| NEW         | 0xA8   | I      | rd, -, imm15          | rd = new_object(imm15)                   | Allocate object by class ID |
+| NEWA        | 0xA9   | RI     | rd, len, type, -      | rd = new_array(len, type)                 | Allocate array            |
+| LDF         | 0xAA   | RI     | rd, obj, -, idx       | rd = obj.field[idx]                       | Load object field         |
+| STF         | 0xAB   | RI     | val, obj, -, idx      | obj.field[idx] = val                      | Store object field        |
+| LDELEM      | 0xAC   | R      | rd, arr, idx, -       | rd = arr[idx]                             | Load array element        |
+| STELEM      | 0xAD   | R      | val, arr, idx, -       | arr[idx] = val                            | Store array element       |
+| ARRAYLEN    | 0xAE   | R      | rd, arr, -, -         | rd = length(arr)                          | Get array length          |
+| INSTANCEOF  | 0xAF   | RI     | rd, obj, -, type      | rd = (obj instanceof type) ? 1 : 0        | Type check                |
+| CHECKCAST   | 0xB0   | RI     | rd, obj, -, type      | rd = cast(obj, type)                      | Type cast                 |
+| MONITORENTER| 0xB1   | R      | obj, -, -, -           | monitor_enter(obj)                         | Lock object for sync      |
+| MONITOREXIT | 0xB2   | R      | obj, -, -, -           | monitor_exit(obj)                          | Unlock object from sync   |
+| GC          | 0xB3   | R      | -, -, -, -             | request_garbage_collection()              | Request garbage collection|
 
 ### 5.12 Call & Dynamic Linking Instructions
 
 | Mnemonic   | Opcode | Format | Operands              | Operation                                        | Description                |
 |------------|--------|--------|-----------------------|--------------------------------------------------|----------------------------|
-| CALL       | 0xA0   | R      | addr, -, -, -         | call addr                                       | Call function at address   |
-| CALLI      | 0xA1   | I      | rd, -, imm15          | rd = call symbol_table[imm15]                  | Call by symbol table index |
-| TAILCALL   | 0xA2   | R      | addr, -, -, -         | tail_call addr                                  | Tail call                  |
-| CALLVIRT   | 0xA3   | RI     | rd, obj, -, method    | rd = obj.vtable[method](); call rd              | Virtual method call        |
-| CALLINTF   | 0xA4   | RI     | rd, obj, -, method    | rd = obj.intf_table[method](); call rd          | Interface method call      |
-| IMPORT     | 0xA5   | RI     | rd, -, -, imm10       | rd = resolve(mod_table[imm10], sym)             | Resolve external symbol    |
-| LOADMOD    | 0xA6   | I      | rd, -, imm15          | rd = load_module(imm15)                         | Load module by index       |
-| RESOLVE    | 0xA7   | RI     | rd, mod, -, sym       | rd = resolve(mod, sym)                          | Resolve symbol from module |
+| CALL       | 0xB4   | R      | addr, -, -, -         | call addr                                       | Call function at address   |
+| CALLI      | 0xB5   | I      | rd, -, imm15          | rd = call symbol_table[imm15]                  | Call by symbol table index |
+| TAILCALL   | 0xB6   | R      | addr, -, -, -         | tail_call addr                                  | Tail call                  |
+| CALLVIRT   | 0xB7   | RI     | rd, obj, -, method    | rd = obj.vtable[method](); call rd              | Virtual method call        |
+| CALLINTF   | 0xB8   | RI     | rd, obj, -, method    | rd = obj.intf_table[method](); call rd          | Interface method call      |
+| IMPORT     | 0xB9   | RI     | rd, -, -, imm15       | rd = resolve(mod_table[imm15], sym)             | Resolve external symbol    |
+| LOADMOD    | 0xBA   | I      | rd, -, imm15          | rd = load_module(imm15)                         | Load module by index       |
+| RESOLVE    | 0xBB   | RI     | rd, mod, -, sym       | rd = resolve(mod, sym)                          | Resolve symbol from module |
 
 ### 5.13 Conversion & Type Handling Instructions
 
 | Mnemonic   | Opcode | Format | Operands        | Operation                        | Description               |
 |------------|--------|--------|-----------------|----------------------------------|---------------------------|
-| SEXT.B     | 0xB0   | R      | rd, rs, -, -    | rd = sign_extend(rs:8)            | Sign extend byte          |
-| SEXT.H     | 0xB1   | R      | rd, rs, -, -    | rd = sign_extend(rs:16)          | Sign extend half          |
-| SEXT.W     | 0xB2   | R      | rd, rs, -, -    | rd = sign_extend(rs:32)          | Sign extend word          |
-| ZEXT.B     | 0xB3   | R      | rd, rs, -, -    | rd = zero_extend(rs:8)           | Zero extend byte          |
-| ZEXT.H     | 0xB4   | R      | rd, rs, -, -    | rd = zero_extend(rs:16)          | Zero extend half          |
-| ZEXT.W     | 0xB5   | R      | rd, rs, -, -    | rd = zero_extend(rs:32)          | Zero extend word          |
-| TRUNC      | 0xB6   | R      | rd, rs, bits, - | rd = truncate(rs, bits)          | Truncate to bits          |
-| REINTERPRET| 0xB7   | R      | rd, rs, -, -    | rd = bitcast(rs)                  | Reinterpret bits          |
+| SEXT.B     | 0xF0   | R      | rd, rs, -, -    | rd = sign_extend(rs:8)            | Sign extend byte          |
+| SEXT.H     | 0xF1   | R      | rd, rs, -, -    | rd = sign_extend(rs:16)          | Sign extend half          |
+| SEXT.W     | 0xF2   | R      | rd, rs, -, -    | rd = sign_extend(rs:32)          | Sign extend word          |
+| ZEXT.B     | 0xF3   | R      | rd, rs, -, -    | rd = zero_extend(rs:8)           | Zero extend byte          |
+| ZEXT.H     | 0xF4   | R      | rd, rs, -, -    | rd = zero_extend(rs:16)          | Zero extend half          |
+| ZEXT.W     | 0xF5   | R      | rd, rs, -, -    | rd = zero_extend(rs:32)          | Zero extend word          |
+| TRUNC      | 0xF6   | R      | rd, rs, bits, - | rd = truncate(rs, bits)          | Truncate to bits          |
+| REINTERPRET| 0xF7   | R      | rd, rs, -, -    | rd = bitcast(rs)                  | Reinterpret bits          |
 
-### 5.14 Vector / SIMD Instructions
+### 5.14 Vector / SIMD Instructions (16-bit opcodes 0x100-0x10A)
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                  | Description                    | Func |
 |----------|--------|--------|-------------------|--------------------------------------------|--------------------------------|------|
-| VADD     | 0xC0   | R      | vd, vs1, vs2, -   | vd = vs1 + vs2 (vector)                   | Vector add                     | 0    |
-| VSUB     | 0xC0   | R      | vd, vs1, vs2, -   | vd = vs1 - vs2 (vector)                   | Vector subtract                | 1    |
-| VMUL     | 0xC0   | R      | vd, vs1, vs2, -   | vd = vs1 * vs2 (vector)                   | Vector multiply                | 2    |
-| VDOT     | 0xC1   | R      | rd, vs1, vs2, -   | rd = dot_product(vs1, vs2)                | Vector dot product             | -    |
-| VLOAD    | 0xC2   | I      | vd, addr, imm15   | vd = load_vector(addr, sign_extend(imm15)) | Load vector with stride        |
-| VSTORE   | 0xC3   | I      | vd, addr, imm15   | store_vector(vd, addr, sign_extend(imm15)) | Store vector with stride       |
-| VSHUF    | 0xC4   | RI     | vd, vs1, vs2, imm | vd = shuffle(vs1, vs2, imm)              | Vector shuffle                 | -    |
-| VSPLAT   | 0xC5   | R      | vd, rs, -, -      | vd = splat(rs)                            | Broadcast scalar to vector     | -    |
-| VEXTRACT | 0xC6   | I      | rd, vd, imm15     | rd = vd[imm15 & 15]                       | Extract lane from vector       | -    |
-| VINSERT  | 0xC7   | RI     | vd, rs, -, lane   | vd[lane] = rs                             | Insert scalar into vector lane | -    |
-| VCMPEQ   | 0xC8   | R      | vd, vs1, vs2, -   | vd = (vs1 == vs2)                         | Vector compare equal           | 0    |
-| VCMPNE   | 0xC8   | R      | vd, vs1, vs2, -   | vd = (vs1 != vs2)                         | Vector compare not equal       | 1    |
-| VCMPLT   | 0xC8   | R      | vd, vs1, vs2, -   | vd = (vs1 < vs2)                          | Vector compare less than       | 2    |
-| VCMPLE   | 0xC8   | R      | vd, vs1, vs2, -   | vd = (vs1 <= vs2)                        | Vector compare less or equal   | 3    |
-| VREDUCE  | 0xC9   | I      | rd, vd, imm15     | rd = reduce(vd, imm15)                    | Vector reduction              | -    |
-| VFMA     | 0xCA   | R      | vd, vs1, vs2, -   | vd = vd + vs1 * vs2                      | Fused multiply-add             | 0    |
-| VFMS     | 0xCA   | R      | vd, vs1, vs2, -   | vd = vd - vs1 * vs2                      | Fused multiply-sub             | 1    |
+| VADD     | 0x100  | R      | vd, vs1, vs2, -   | vd = vs1 + vs2 (vector)                   | Vector add                     | 0    |
+| VSUB     | 0x100  | R      | vd, vs1, vs2, -   | vd = vs1 - vs2 (vector)                   | Vector subtract                | 1    |
+| VMUL     | 0x100  | R      | vd, vs1, vs2, -   | vd = vs1 * vs2 (vector)                   | Vector multiply                | 2    |
+| VDOT     | 0x101  | R      | rd, vs1, vs2, -   | rd = dot_product(vs1, vs2)                | Vector dot product             | -    |
+| VLOAD    | 0x102  | I      | vd, addr, imm15   | vd = load_vector(addr, sign_extend(imm15)) | Load vector with stride        |
+| VSTORE   | 0x103  | I      | vd, addr, imm15   | store_vector(vd, addr, sign_extend(imm15)) | Store vector with stride       |
+| VSHUF    | 0x104  | RI     | vd, vs1, vs2, imm | vd = shuffle(vs1, vs2, imm)              | Vector shuffle                 | -    |
+| VSPLAT   | 0x105  | R      | vd, rs, -, -      | vd = splat(rs)                            | Broadcast scalar to vector     | -    |
+| VEXTRACT | 0x106  | I      | rd, vd, imm15     | rd = vd[imm15 & 15]                       | Extract lane from vector       | -    |
+| VINSERT  | 0x107  | RI     | vd, rs, -, lane   | vd[lane] = rs                             | Insert scalar into vector lane | -    |
+| VCMPEQ   | 0x108  | R      | vd, vs1, vs2, -   | vd = (vs1 == vs2)                         | Vector compare equal           | 0    |
+| VCMPNE   | 0x108  | R      | vd, vs1, vs2, -   | vd = (vs1 != vs2)                         | Vector compare not equal       | 1    |
+| VCMPLT   | 0x108  | R      | vd, vs1, vs2, -   | vd = (vs1 < vs2)                          | Vector compare less than       | 2    |
+| VCMPLE   | 0x108  | R      | vd, vs1, vs2, -   | vd = (vs1 <= vs2)                        | Vector compare less or equal   | 3    |
+| VREDUCE  | 0x109  | I      | rd, vd, imm15     | rd = reduce(vd, imm15)                    | Vector reduction              | -    |
+| VFMA     | 0x10A  | R      | vd, vs1, vs2, -   | vd = vd + vs1 * vs2                      | Fused multiply-add             | 0    |
+| VFMS     | 0x10A  | R      | vd, vs1, vs2, -   | vd = vd - vs1 * vs2                      | Fused multiply-sub             | 1    |
 
 ### 5.15 System & Debug Instructions
 
 | Mnemonic | Opcode | Format | Operands        | Operation                        | Description                    |
 |----------|--------|--------|-----------------|----------------------------------|--------------------------------|
-| SYSCALL  | 0xF0   | I      | rd, -, imm15    | rd = syscall(imm15)             | Invoke system call             |
-| TRAP     | 0xF1   | I      | -, -, imm15     | software_breakpoint(imm15)       | Software breakpoint            |
-| DEBUG    | 0xF2   | R      | rs, -, -, -     | print_register(rs)               | Print register (debug)         |
-| RDCOUNT  | 0xF3   | I      | rd, -, imm15    | rd = read_counter(imm15)         | Read performance counter       |
-| BARRIER  | 0xFE   | R      | -, -, -, -      | memory_barrier()                 | Memory barrier                 |
-| NOP      | 0xFF   | R      | -, -, -, -      |                                  | No operation                   |
+| SYSCALL  | 0x130  | I      | rd, -, imm15    | rd = syscall(imm15)             | Invoke system call             |
+| TRAP     | 0x131  | I      | -, -, imm15     | software_breakpoint(imm15)       | Software breakpoint            |
+| DEBUG    | 0x132  | R      | rs, -, -, -     | print_register(rs)               | Print register (debug)         |
+| RDCOUNT  | 0x133  | I      | rd, -, imm15    | rd = read_counter(imm15)         | Read performance counter       |
+| BARRIER  | 0x134  | R      | -, -, -, -      | memory_barrier()                 | Memory barrier                 |
+| BREAKPOINT| 0x135  | I      | -, -, imm15     | trigger_breakpoint(imm15)        | Source-level breakpoint        |
+| SINGLESTEP| 0x136  | R      | rd, -, -, -     | rd = single_step()               | Single-step instruction        |
+| GETREGS  | 0x137  | R      | addr, -, -, -   | read_registers(addr)              | Read all registers             |
+| SETREGS  | 0x138  | R      | addr, -, -, -   | write_registers(addr)             | Write all registers            |
+| GETFPOFF | 0x139  | R      | rd, -, -, -     | rd = get_frame_pointer_offset()  | Get frame pointer offset       |
 
 ### 5.16 String Operations Instructions
 
@@ -465,61 +467,60 @@ String Object Layout:
 | STRGET   | 0x88   | R      | rd, str, idx       | rd = string_char_at(str, idx)                  | Get character at index             |
 | STRSET   | 0x89   | R      | str, idx, char     | string_set_char(str, idx, char)                | Set character at index            |
 | STRAPPEND| 0x8A   | R      | rd, str, char      | rd = string_append_char(str, char)             | Append single character           |
-| STRPUSH  | 0x8B   | R      | rd, str, char      | rd = string_push_back(str, char)              | Push character to end (alias)     |
-| STRPOP   | 0x8C   | R      | rd, str, -         | rd = string_pop_back(str)                      | Remove and return last character   |
+| STRPOP   | 0x8B   | R      | rd, str, -         | rd = string_pop_back(str)                      | Remove and return last character   |
 
 #### 5.16.4 String Comparison
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| STRCMP   | 0x8D   | R      | rd, str1, str2    | rd = strcmp(str1, str2)                       | Compare strings (lexicographic)   |
-| STRCMPN  | 0x8E   | RI     | rd, str1, n       | rd = strncmp(str1, str2, n)                   | Compare first n characters         |
-| STREQUAL | 0x8F   | R      | rd, str1, str2    | rd = (strcmp == 0)                            | Check if strings are equal        |
-| STRSTART | 0x90   | R      | rd, str, prefix   | rd = string_starts_with(str, prefix)          | Check if string starts with prefix |
-| STREND   | 0x91   | R      | rd, str, suffix   | rd = string_ends_with(str, suffix)            | Check if string ends with suffix  |
+| STRCMP   | 0x8C   | R      | rd, str1, str2    | rd = strcmp(str1, str2)                       | Compare strings (lexicographic)   |
+| STRCMPN  | 0x8D   | RI     | rd, str1, n       | rd = strncmp(str1, str2, n)                   | Compare first n characters         |
+| STREQUAL | 0x8E   | R      | rd, str1, str2    | rd = (strcmp == 0)                            | Check if strings are equal        |
+| STRSTART | 0x8F   | R      | rd, str, prefix   | rd = string_starts_with(str, prefix)          | Check if string starts with prefix |
+| STREND   | 0x90   | R      | rd, str, suffix   | rd = string_ends_with(str, suffix)            | Check if string ends with suffix  |
 
 #### 5.16.5 String Searching
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| STRCHR   | 0x92   | R      | rd, str, char     | rd = string_index_of(str, char)               | Find character (first occurrence) |
-| STRRCHR  | 0x93   | R      | rd, str, char     | rd = string_last_index_of(str, char)           | Find character (last occurrence)   |
-| STRFIND  | 0x94   | R      | rd, str, substr  | rd = string_find(str, substr)                  | Find substring                    |
-| STRRFIND | 0x95   | R      | rd, str, substr  | rd = string_rfind(str, substr)                 | Find substring (from end)          |
-| STRCONTAINS| 0x96 | R      | rd, str, substr  | rd = (find != npos)                           | Check if substring exists         |
+| STRCHR   | 0x91   | R      | rd, str, char     | rd = string_index_of(str, char)               | Find character (first occurrence) |
+| STRRCHR  | 0x92   | R      | rd, str, char     | rd = string_last_index_of(str, char)           | Find character (last occurrence)   |
+| STRFIND  | 0x93   | R      | rd, str, substr  | rd = string_find(str, substr)                  | Find substring                    |
+| STRRFIND | 0x94   | R      | rd, str, substr  | rd = string_rfind(str, substr)                 | Find substring (from end)          |
+| STRCONTAINS| 0x95 | R      | rd, str, substr  | rd = (find != npos)                           | Check if substring exists         |
 
 #### 5.16.6 String Extraction & Manipulation
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| STRSUB   | 0x97   | RI     | rd, str, start, len| rd = string_substring(str, start, len)       | Extract substring                 |
-| STRSLICE | 0x98   | R      | rd, str, start, end| rd = string_slice(str, start, end)            | Extract slice [start, end)        |
-| STRSPLIT | 0x99   | RI     | rd, str, delim   | rd = string_split(str, delim)                 | Split string by delimiter         |
-| STRJOIN  | 0x9A   | R      | rd, str1, str2   | rd = string_concat(str1, str2)                | Concatenate two strings           |
-| STREP    | 0x9B   | RI     | rd, str, count   | rd = string_repeat(str, count)                 | Repeat string n times             |
-| STRREV   | 0x9C   | R      | rd, str, -       | rd = string_reverse(str)                       | Reverse string                    |
+| STRSUB   | 0x96   | RI     | rd, str, start, len| rd = string_substring(str, start, len)       | Extract substring                 |
+| STRSLICE | 0x97   | R      | rd, str, start, end| rd = string_slice(str, start, end)            | Extract slice [start, end)        |
+| STRSPLIT | 0x98   | RI     | rd, str, delim   | rd = string_split(str, delim)                 | Split string by delimiter         |
+| STRJOIN  | 0x99   | R      | rd, str1, str2   | rd = string_concat(str1, str2)                | Concatenate two strings           |
+| STREPEAT | 0x9A   | RI     | rd, str, count   | rd = string_repeat(str, count)                 | Repeat string n times             |
+| STRREV   | 0x9B   | R      | rd, str, -       | rd = string_reverse(str)                       | Reverse string                    |
 
 #### 5.16.7 String Case & Whitespace
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| STRUPPER | 0x9D   | R      | rd, str, -        | rd = string_to_uppercase(str)                  | Convert to uppercase              |
-| STRLOWER | 0x9E   | R      | rd, str, -        | rd = string_to_lowercase(str)                  | Convert to lowercase              |
-| STRTRIM  | 0x9F   | R      | rd, str, -        | rd = string_trim(str)                         | Trim leading and trailing whitespace|
-| STRLTRIM | 0xA0   | R      | rd, str, -        | rd = string_trim_start(str)                    | Trim leading whitespace            |
-| STRRTRIM | 0xA1   | R      | rd, str, -        | rd = string_trim_end(str)                      | Trim trailing whitespace           |
-| STRPAD   | 0xA2   | RI     | rd, str, width   | rd = string_pad_right(str, width)             | Pad string to width               |
+| STRUPPER | 0x9C   | R      | rd, str, -        | rd = string_to_uppercase(str)                  | Convert to uppercase              |
+| STRLOWER | 0x9D   | R      | rd, str, -        | rd = string_to_lowercase(str)                  | Convert to lowercase              |
+| STRTRIM  | 0x9E   | R      | rd, str, -        | rd = string_trim(str)                         | Trim leading and trailing whitespace|
+| STRLTRIM | 0x9F   | R      | rd, str, -        | rd = string_trim_start(str)                    | Trim leading whitespace            |
+| STRRTRIM | 0xA0   | R      | rd, str, -        | rd = string_trim_end(str)                      | Trim trailing whitespace           |
+| STRPAD   | 0xA1   | RI     | rd, str, width   | rd = string_pad_right(str, width)             | Pad string to width               |
 
 #### 5.16.8 String Conversion
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| STRTOI   | 0xA3   | R      | rd, str, base     | rd = parse_int64(str, base)                   | Parse string to integer           |
-| STRTOD   | 0xA4   | R      | rd, str, -        | rd = parse_double(str)                         | Parse string to double            |
-| ITOSTR   | 0xA5   | R      | rd, num, base     | rd = int64_to_string(num, base)                | Convert integer to string          |
-| DTOSTR   | 0xA6   | R      | rd, num, -        | rd = double_to_string(num)                      | Convert double to string          |
-| STRENCODE| 0xA7   | R      | rd, str, encoding | rd = string_encode(str, encoding)              | Encode string to bytes            |
-| STRDECODE| 0xA8   | R      | rd, bytes, encoding| rd = string_decode(bytes, encoding)           | Decode bytes to string            |
+| STRTOI   | 0xA2   | R      | rd, str, base     | rd = parse_int64(str, base)                   | Parse string to integer           |
+| STRTOD   | 0xA3   | R      | rd, str, -        | rd = parse_double(str)                         | Parse string to double            |
+| ITOSTR   | 0xA4   | R      | rd, num, base     | rd = int64_to_string(num, base)                | Convert integer to string          |
+| DTOSTR   | 0xA5   | R      | rd, num, -        | rd = double_to_string(num)                      | Convert double to string          |
+| STRENCODE| 0xA6   | R      | rd, str, encoding | rd = string_encode(str, encoding)              | Encode string to bytes            |
+| STRDECODE| 0xA7   | R      | rd, bytes, encoding| rd = string_decode(bytes, encoding)           | Decode bytes to string            |
 
 #### 5.16.9 String Example
 
@@ -550,8 +551,8 @@ Functions in the static runtime (e.g., HoocJIT's runtime functions like `hoo_str
 
 | Mnemonic  | Opcode | Format | Operands           | Operation                                    | Description                              |
 |-----------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
-| CALLHOST  | 0xD0   | I      | rd, -, imm15       | rd = call_static_runtime(imm15)               | Call static runtime function by ID        |
-| CALLHOSTV | 0xD1   | RI     | rd, obj, -, method | rd = obj.vtable[method](); call rd          | Call virtual method via host runtime      |
+| CALLHOST  | 0x120  | I      | rd, -, imm15       | rd = call_static_runtime(imm15)               | Call static runtime function by ID        |
+| CALLHOSTV | 0x121  | RI     | rd, obj, -, method | rd = obj.vtable[method](); call rd          | Call virtual method via host runtime      |
 
 #### 5.16.2 Native Function Calls
 
@@ -559,9 +560,9 @@ Native functions follow the C ABI and can be loaded from shared libraries or dec
 
 | Mnemonic   | Opcode | Format | Operands           | Operation                                    | Description                              |
 |------------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
-| CALLNATIVE | 0xD2   | RI     | rd, addr, -, -     | rd = call_c_abi(addr)                        | Call native function with C ABI            |
-| PREPCALL   | 0xD3   | I      | -, -, imm15        | prepare_call_context(imm15)                  | Prepare stack frame for native call       |
-| FINISHCA   | 0xD4   | R      | rd, -, -, -        | rd = finish_call(); return_value             | Complete native call, retrieve return     |
+| CALLNATIVE | 0x122  | RI     | rd, addr, -, -     | rd = call_c_abi(addr)                        | Call native function with C ABI            |
+| PREPCALL   | 0x123  | I      | -, -, imm15        | prepare_call_context(imm15)                  | Prepare stack frame for native call       |
+| FINISHCA   | 0x124  | R      | rd, -, -, -        | rd = finish_call(); return_value             | Complete native call, retrieve return     |
 
 #### 5.16.3 Dynamic Library Loading
 
@@ -569,10 +570,10 @@ These instructions enable loading shared libraries (.dll, .so, .dylib) and resol
 
 | Mnemonic | Opcode | Format | Operands           | Operation                                    | Description                              |
 |----------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
-| LOADLIB  | 0xD5   | I      | rd, -, imm15       | rd = dlopen(imm15)                           | Load dynamic library by name/index        |
-| FREELIB  | 0xD6   | R      | -, lib, -, -       | dlclose(lib)                                 | Unload dynamic library                   |
-| GETSYM   | 0xD7   | RI     | rd, lib, -, imm10  | rd = dlsym(lib, imm10)                      | Get symbol address from library           |
-| GETFUNC   | 0xD8   | RI     | rd, lib, -, imm10  | rd = resolve_function(lib, imm10)             | Resolve function pointer from library     |
+| LOADLIB  | 0x125  | I      | rd, -, imm15       | rd = dlopen(imm15)                           | Load dynamic library by name/index        |
+| FREELIB  | 0x126  | R      | -, lib, -, -       | dlclose(lib)                                 | Unload dynamic library                   |
+| GETSYM   | 0x127  | RI     | rd, lib, -, imm10  | rd = dlsym(lib, imm10)                      | Get symbol address from library           |
+| GETFUNC  | 0x128  | RI     | rd, lib, -, imm10  | rd = resolve_function(lib, imm10)             | Resolve function pointer from library     |
 
 #### 5.16.4 Type Conversion for FFI
 
@@ -580,11 +581,11 @@ When calling native functions, values may need conversion between HVM types and 
 
 | Mnemonic   | Opcode | Format | Operands           | Operation                                    | Description                              |
 |------------|--------|--------|--------------------|----------------------------------------------|------------------------------------------|
-| I2PTR     | 0xD9   | R      | rd, rs, -, -       | rd = int_to_pointer(rs)                       | Convert integer to pointer               |
-| PTR2I     | 0xDA   | R      | rd, rs, -, -       | rd = pointer_to_int(rs)                      | Convert pointer to integer               |
-| REINTERP  | 0xDB   | R      | rd, rs, -, -       | rd = bitcast_pointer(rs)                     | Reinterpret pointer type                |
-| ADDR2FUNC | 0xDC   | R      | rd, addr, -, -      | rd = create_function_pointer(addr)           | Convert address to function pointer       |
-| FUNC2ADDR | 0xDD   | R      | rd, func, -, -     | rd = function_to_address(func)               | Extract address from function pointer     |
+| I2PTR      | 0x129  | R      | rd, rs, -, -       | rd = int_to_pointer(rs)                       | Convert integer to pointer               |
+| PTR2I      | 0x12A  | R      | rd, rs, -, -       | rd = pointer_to_int(rs)                      | Convert pointer to integer               |
+| REINTERP   | 0x12B  | R      | rd, rs, -, -       | rd = bitcast_pointer(rs)                     | Reinterpret pointer type                |
+| ADDR2FUNC  | 0x12C  | R      | rd, addr, -, -     | rd = create_function_pointer(addr)           | Convert address to function pointer       |
+| FUNC2ADDR  | 0x12D  | R      | rd, func, -, -     | rd = function_to_address(func)               | Extract address from function pointer     |
 
 #### 5.16.5 FFI Calling Convention
 
@@ -641,14 +642,14 @@ Exception Record:
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| TRY      | 0xE0   | I      | rd, -, imm15       | rd = handler_table.push(imm15); sp -= 16      | Begin try block, push handler    |
-| THROW    | 0xE1   | I      | -, type, imm15     | throw_exception(type, imm15)                  | Throw exception with type/message |
-| THROWV   | 0xE2   | R      | type, msg, -       | throw_exception(type, msg)                     | Throw with message register       |
-| CATCH    | 0xE3   | I      | rd, -, imm15        | rd = pop_handler(imm15)                        | Catch exception, pop handler      |
-| FINALLY  | 0xE4   | I      | -, -, imm15         | execute_finally(imm15)                          | Execute finally block            |
-| RETHROW  | 0xE5   | R      | -, exc, -          | rethrow(exc)                                    | Rethrow current exception        |
-| EXCINFO  | 0xE6   | R      | rd, exc, field     | rd = exc.field                                  | Get exception field              |
-| ENDFIN   | 0xE7   | R      | -, -, -            | end_finally()                                   | End finally block                |
+| TRY      | 0x110  | I      | rd, -, imm15       | rd = handler_table.push(imm15); sp -= 16      | Begin try block, push handler    |
+| THROW    | 0x111  | I      | -, type, imm15     | throw_exception(type, imm15)                  | Throw exception with type/message |
+| THROWV   | 0x112  | R      | type, msg, -       | throw_exception(type, msg)                     | Throw with message register       |
+| CATCH    | 0x113  | I      | rd, -, imm15        | rd = pop_handler(imm15)                        | Catch exception, pop handler      |
+| FINALLY  | 0x114  | I      | -, -, imm15         | execute_finally(imm15)                          | Execute finally block            |
+| RETHROW  | 0x115  | R      | -, exc, -          | rethrow(exc)                                    | Rethrow current exception        |
+| EXCINFO  | 0x116  | R      | rd, exc, field     | rd = exc.field                                  | Get exception field              |
+| ENDFIN   | 0x117  | R      | -, -, -            | end_finally()                                   | End finally block                |
 
 #### 5.17.3 Exception Example
 
@@ -703,14 +704,14 @@ Interrupt Frame:
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| DI       | 0xE8   | R      | -, -, -, -        | disable_interrupts()                            | Disable interrupts                 |
-| EI       | 0xE9   | R      | -, -, -, -        | enable_interrupts()                             | Enable interrupts                  |
-| INT      | 0xEA   | I      | -, intid, -        | software_interrupt(intid)                       | Trigger software interrupt        |
-| IRET     | 0xEB   | R      | -, -, -, -        | return_from_interrupt()                          | Return from interrupt handler      |
-| SETINT   | 0xEC   | I      | -, handler, -       | set_interrupt_handler(intid, handler)           | Set interrupt handler             |
-| GETINT   | 0xED   | R      | rd, -, -          | rd = current_interrupt_id                       | Get current interrupt ID          |
-| MASKINT  | 0xEE   | I      | -, intid, -        | mask_interrupt(intid)                           | Mask specific interrupt           |
-| UNMASKINT| 0xEF   | I      | -, intid, -        | unmask_interrupt(intid)                         | Unmask specific interrupt         |
+| DI       | 0x118  | R      | -, -, -, -        | disable_interrupts()                            | Disable interrupts                 |
+| EI       | 0x119  | R      | -, -, -, -        | enable_interrupts()                             | Enable interrupts                  |
+| INT      | 0x11A  | I      | -, intid, -        | software_interrupt(intid)                       | Trigger software interrupt        |
+| IRET     | 0x11B  | R      | -, -, -, -        | return_from_interrupt()                          | Return from interrupt handler      |
+| SETINT   | 0x11C  | I      | -, handler, -       | set_interrupt_handler(intid, handler)           | Set interrupt handler             |
+| GETINT   | 0x11D  | R      | rd, -, -          | rd = current_interrupt_id                       | Get current interrupt ID          |
+| MASKINT  | 0x11E  | I      | -, intid, -        | mask_interrupt(intid)                           | Mask specific interrupt           |
+| UNMASKINT| 0x11F  | I      | -, intid, -        | unmask_interrupt(intid)                         | Unmask specific interrupt         |
 
 #### 5.18.3 Interrupt Example
 
@@ -754,49 +755,49 @@ Thread Control Block (TCB):
 +------------------+
 ```
 
-#### 5.19.2 Thread Management Instructions
+#### 5.19.2 Thread Management Instructions (0xC0-0xC5)
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| THCREATE| 0xA8   | RI     | rd, entry, -      | rd = create_thread(entry)                      | Create new thread                 |
-| THJOIN  | 0xA9   | R      | rd, tid, -        | rd = join_thread(tid)                          | Wait for thread to finish         |
-| THEXIT  | 0xAA   | R      | -, retval, -      | exit_thread(retval)                            | Exit current thread               |
-| THID    | 0xAB   | R      | rd, -, -          | rd = get_current_thread_id()                   | Get current thread ID             |
-| THYIELD | 0xAC   | R      | -, -, -           | yield_to_scheduler()                           | Yield execution to other threads  |
-| THWAIT  | 0xAD   | RI     | -, tid, timeout   | wait_for_thread(tid, timeout)                  | Wait with timeout                 |
+| THCREATE| 0xC0   | RI     | rd, entry, -      | rd = thread_create(entry)                      | Create new thread                 |
+| THJOIN  | 0xC1   | R      | rd, tid, -        | rd = thread_join(tid)                          | Wait for thread to finish         |
+| THEXIT  | 0xC2   | R      | -, retval, -      | thread_exit(retval)                            | Exit current thread               |
+| THID    | 0xC3   | R      | rd, -, -          | rd = thread_id()                   | Get current thread ID             |
+| THYIELD | 0xC4   | R      | -, -, -           | thread_yield()                           | Yield execution to other threads  |
+| THWAIT  | 0xC5   | RI     | rd, tid, timeout  | rd = thread_wait(tid, timeout)                  | Wait with timeout                 |
 
-#### 5.19.3 Synchronization Instructions
-
-| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
-|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| MUTEXINI| 0xAE   | R      | rd, -, -          | rd = mutex_init()                             | Initialize mutex                  |
-| MUTEXLCK| 0xAF   | R      | -, mutex, -       | lock_mutex(mutex)                             | Lock mutex                        |
-| MUTEXULK| 0xB0   | R      | -, mutex, -       | unlock_mutex(mutex)                          | Unlock mutex                      |
-| MUTEXDL | 0xB1   | R      | -, mutex, -       | mutex_destroy(mutex)                           | Destroy mutex                     |
-| CONDNWI | 0xB2   | R      | rd, -, -          | rd = condition_init()                         | Initialize condition variable     |
-| CONDSIG | 0xB3   | R      | -, cond, -        | signal_condition(cond)                         | Signal one waiting thread         |
-| CONDBRO | 0xB4   | R      | -, cond, -        | broadcast_condition(cond)                       | Signal all waiting threads        |
-| CONDWT  | 0xB5   | RI     | -, cond, mutex    | wait_condition(cond, mutex)                   | Wait on condition                 |
-| CONDDST | 0xB6   | R      | -, cond, -        | condition_destroy(cond)                        | Destroy condition variable        |
-| SPININIT| 0xB7   | R      | rd, -, -          | rd = spinlock_init()                         | Initialize spinlock               |
-| SPINLCK | 0xB8   | R      | -, lock, -        | spinlock_lock(lock)                           | Acquire spinlock                  |
-| SPINULK | 0xB9   | R      | -, lock, -        | spinlock_unlock(lock)                         | Release spinlock                  |
-| BARRSET | 0xBA   | R      | rd, count, -      | rd = barrier_init(count)                      | Initialize barrier                 |
-| BARRWT  | 0xBB   | R      | -, barrier, -     | barrier_wait(barrier)                         | Wait at barrier                   |
-| ATOMADD | 0xBC   | R      | rd, addr, val     | rd = atomic_add(addr, val)                    | Atomic add                        |
-| ATOMSUB | 0xBD   | R      | rd, addr, val     | rd = atomic_sub(addr, val)                    | Atomic subtract                   |
-| ATOMCAS | 0xBE   | R      | rd, addr, old, new| rd = atomic_cas(addr, old, new)               | Atomic compare-and-swap            |
-| ATOMLD  | 0xBF   | R      | rd, addr, -       | rd = atomic_load(addr)                        | Atomic load                       |
-| ATOMST  | 0xC0   | R      | -, addr, val      | atomic_store(addr, val)                       | Atomic store                      |
-
-#### 5.19.4 Thread-Local Storage Instructions
+#### 5.19.3 Synchronization Instructions (0xC6-0xD3)
 
 | Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
 |----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| TLSALLOC| 0xC1   | R      | rd, size, -       | rd = tls_allocate(size)                       | Allocate TLS slot                 |
-| TLSGET  | 0xC2   | R      | rd, slot, -       | rd = tls_read(slot)                           | Read from TLS slot                |
-| TLSSET  | 0xC3   | R      | -, slot, val      | tls_write(slot, val)                          | Write to TLS slot                 |
-| TLSFREE | 0xC4   | R      | -, slot, -        | tls_deallocate(slot)                          | Free TLS slot                     |
+| MUTEXINI| 0xC6   | R      | rd, -, -          | rd = mutex_init()                             | Initialize mutex                  |
+| MUTEXLCK| 0xC7   | R      | rd, mutex, -      | rd = mutex_lock(mutex)                       | Lock mutex (returns 0 on success) |
+| MUTEXULK| 0xC8   | R      | -, mutex, -       | mutex_unlock(mutex)                           | Unlock mutex                     |
+| MUTEXDL | 0xC9   | R      | -, mutex, -       | mutex_destroy(mutex)                           | Destroy mutex                     |
+| CONDNWI | 0xCA   | R      | rd, -, -          | rd = condvar_init()                           | Initialize condition variable     |
+| CONDSIG | 0xCB   | R      | -, cond, -        | condvar_signal(cond)                          | Signal one waiting thread         |
+| CONDBRO | 0xCC   | R      | -, cond, -        | condvar_broadcast(cond)                       | Signal all waiting threads        |
+| CONDWT  | 0xCD   | RI     | rd, cond, mutex   | rd = condvar_wait(cond, mutex)                | Wait on condition                 |
+| CONDDST | 0xCE   | R      | -, cond, -        | condvar_destroy(cond)                         | Destroy condition variable        |
+| SPININIT| 0xCF   | R      | rd, -, -          | rd = spinlock_init()                         | Initialize spinlock               |
+| SPINLCK | 0xD0   | R      | rd, lock, -       | rd = spinlock_acquire(lock)                   | Acquire spinlock (returns 0)      |
+| SPINULK | 0xD1   | R      | -, lock, -        | spinlock_release(lock)                       | Release spinlock                  |
+| BARRSET | 0xD2   | R      | rd, count, -      | rd = barrier_init(count)                      | Initialize barrier                 |
+| BARRWT  | 0xD3   | R      | rd, barrier, -    | rd = barrier_wait(barrier)                    | Wait at barrier (returns phase)   |
+
+#### 5.19.4 Atomic & TLS Instructions (0xE0-0xE8)
+
+| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
+|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
+| ATOMADD | 0xE0   | R      | rd, addr, val     | rd = atomic_add(addr, val)                    | Atomic add                        |
+| ATOMSUB | 0xE1   | R      | rd, addr, val     | rd = atomic_sub(addr, val)                    | Atomic subtract                   |
+| ATOMCAS | 0xE2   | R      | rd, addr, old, new| rd = atomic_cas(addr, old, new)               | Atomic compare-and-swap            |
+| ATOMLD  | 0xE3   | R      | rd, addr, -       | rd = atomic_load(addr)                        | Atomic load                       |
+| ATOMST  | 0xE4   | R      | -, addr, val      | atomic_store(addr, val)                       | Atomic store                      |
+| TLSALLOC| 0xE5   | R      | rd, size, -       | rd = tls_allocate(size)                       | Allocate TLS slot                 |
+| TLSGET  | 0xE6   | R      | rd, slot, -       | rd = tls_read(slot)                           | Read from TLS slot                |
+| TLSSET  | 0xE7   | R      | -, slot, val      | tls_write(slot, val)                          | Write to TLS slot                 |
+| TLSFREE | 0xE8   | R      | -, slot, -        | tls_deallocate(slot)                           | Free TLS slot                     |
 
 #### 5.19.5 Threading Example
 
@@ -819,70 +820,51 @@ Thread Control Block (TCB):
 
 ---
 
-### 5.20 Multi-Process Instructions
+### 5.20 Multi-Process Support
 
-HVM supports multi-process execution with inter-process communication and resource isolation.
+HVM supports multi-process execution via FFI calls to native OS APIs rather than dedicated instructions.
 
-#### 5.20.1 Process Structure
+#### 5.20.1 Process Management via FFI
 
-```
-Process Control Block (PCB):
-+------------------+
-| Process ID       | 8 bytes
-+------------------+
-| Parent ID       | 8 bytes
-+------------------+
-| Status          | 8 bytes
-+------------------+
-| Exit Code       | 8 bytes
-+------------------+
-| Memory Map      | 8 bytes (pointer)
-+------------------+
-```
+Multi-process operations are provided through native system calls:
 
-#### 5.20.2 Process Management Instructions
+| Category          | Native API                | Via Instruction         |
+|-------------------|--------------------------|------------------------|
+| Fork process      | fork()                   | CALLNATIVE             |
+| Execute program   | execve()                 | CALLNATIVE             |
+| Wait for child    | waitpid()                | CALLNATIVE             |
+| Exit process      | _exit()                  | SYSCALL                |
+| Get process ID    | getpid()                 | CALLNATIVE             |
+| Get parent PID     | getppid()                | CALLNATIVE             |
 
-| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
-|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| PROCFORK| 0xE8   | R      | rd, -, -          | rd = fork_process()                           | Fork current process              |
-| PROCEXEC| 0xE9   | RI     | -, path, args     | exec_process(path, args)                      | Replace current process image     |
-| PROCWAIT| 0xEA   | R      | rd, pid, -        | rd = wait_for_child(pid)                      | Wait for child process           |
-| PROCEXIT| 0xEB   | R      | -, code, -        | exit_process(code)                            | Exit current process              |
-| PROCKILL| 0xEC   | R      | -, pid, -         | kill_process(pid)                             | Send termination signal           |
-| PROCID   | 0xED   | R      | rd, -, -          | rd = get_process_id()                        | Get current process ID            |
-| PROCPID  | 0xEE   | R      | rd, -, -          | rd = get_parent_process_id()                  | Get parent process ID            |
-| PROCRENICE| 0xEF   | R      | -, pid, nice      | renice_process(pid, nice)                     | Change process priority          |
+#### 5.20.2 Inter-Process Communication via FFI
 
-#### 5.20.3 Inter-Process Communication Instructions
+| Category          | Native API                | Via Instruction         |
+|-------------------|--------------------------|------------------------|
+| Create pipe       | pipe()                   | CALLNATIVE             |
+| Send message      | send() / write()         | CALLNATIVE             |
+| Receive message   | recv() / read()          | CALLNATIVE             |
+| Shared memory     | shmget() / shmat()       | CALLNATIVE             |
 
-| Mnemonic | Opcode | Format | Operands          | Operation                                      | Description                       |
-|----------|--------|--------|-------------------|------------------------------------------------|-----------------------------------|
-| PIPEOPEN| 0xF0   | R      | rd, rdv, -        | rd = create_pipe(); rdv = read_fd, write_fd   | Create pipe                       |
-| PROCSEND| 0xF1   | RI     | rd, pid, msg      | rd = send_message(pid, msg)                   | Send message to process          |
-| PROC_RECV| 0xF2   | R      | rd, -, -          | rd = receive_message()                        | Receive message (blocking)       |
-| PROCTRYRECV| 0xF3 | R      | rd, -, -          | rd = try_receive_message()                    | Non-blocking receive             |
-| PROCMSGSZ| 0xF4   | R      | rd, msg, -        | rd = message_size(msg)                       | Get message size                 |
-| PROCMSGCOPY| 0xF5  | R      | -, dst, src, len  | copy_message_data(dst, src, len)               | Copy message data                |
-| PROCSHMGET| 0xF6  | RI     | rd, key, size     | rd = shmget(key, size)                       | Get shared memory segment        |
-| PROCSHMAT | 0xF7   | RI     | rd, shmid, -      | rd = shmat(shmid)                             | Attach shared memory             |
-| PROCSHDT | 0xF8   | R      | -, shmid, -        | shmdt(shmid)                                  | Detach shared memory             |
-
-#### 5.20.4 Multi-Process Example
+#### 5.20.3 Multi-Process Example
 
 ```asm
-; Fork a child process
-    PROCFORK r10               ; r10 = child PID
-    CMPNE   r1, r10, r0      ; Is this the parent?
-    BNE     r1, r0, .parent  ; If parent, jump to parent code
+; Fork a child process using native call
+    GETSYM  r10, libc, fork    ; r10 = fork function address
+    CALLNATIVE r1, r10         ; r1 = fork() result
+    CMPNE   r2, r1, r0         ; Is this the parent?
+    BNE     r2, r0, .parent    ; If parent, jump to parent code
 
 .child:                        ; Child process
-    PROCEXEC -, "/bin/echo", args ; Execute echo
-    PROCEXIT -, r0            ; Exit (should not reach here)
+    GETSYM  r10, libc, execlp  ; Load execlp
+    ; ... set up arguments ...
+    CALLNATIVE r1, r10         ; execve("/bin/echo", args)
+    THEXIT   -, r0             ; Exit if exec fails
 
 .parent:                      ; Parent process
     MOVI    r1, "Hello from parent"
-    PROCSEND r2, r10, r1     ; Send message to child
-    PROCWAIT r3, r10          ; Wait for child to finish
+    ; ... send message to child ...
+    THWAIT  r2, r1, -1         ; Wait for child (blocking)
 ```
 ```
 
@@ -1145,21 +1127,29 @@ Vector registers contain 2 x 64-bit lanes, 4 x 32-bit lanes, 8 x 16-bit lanes, o
 
 | Opcode Range | Category                     |
 |--------------|------------------------------|
-| 0x01-0x0F    | Data movement & basic ALU    |
-| 0x10-0x1F    | Extended integer arithmetic  |
-| 0x20-0x2F    | Floating-point operations    |
-| 0x30-0x3F    | Logical & bitwise operations |
-| 0x40-0x4F    | Comparison operations        |
-| 0x50-0x5F    | Branch operations            |
-| 0x60-0x6F    | Jump operations              |
+| 0x00         | NOP                          |
+| 0x01-0x08    | Data movement                |
+| 0x10         | Integer ALU (add/sub/mul/div)|
+| 0x11-0x14    | Immediate arithmetic/shifts  |
+| 0x20-0x27    | Bitwise operations           |
+| 0x30-0x35    | Floating-point operations     |
+| 0x40-0x42    | Comparison operations        |
+| 0x50-0x57    | Branch operations            |
+| 0x60-0x63    | Jump operations              |
 | 0x70-0x7F    | Memory load/store            |
 | 0x80-0x83    | Stack management              |
-| 0x84-0xB0    | String operations            |
-| 0xB1-0xBF    | Object & array operations    |
-| 0xC0-0xCF    | Call & dynamic linking       |
-| 0xD0-0xDF    | Vector/SIMD operations       |
-| 0xE0-0xEF    | Conversion & type handling   |
-| 0xF0-0xFF    | FFI, Exceptions, System      |
+| 0x84-0xA7    | String operations            |
+| 0xA8-0xBB    | Object/Array/Call operations |
+| 0xC0-0xCE    | Thread management/Sync       |
+| 0xCF-0xD3    | Spinlock/Barrier             |
+| 0xE0-0xE8    | Atomics & TLS                |
+| 0xF0-0xF7    | Conversion/Type handling      |
+| 0x100-0x10A  | Vector/SIMD (16-bit ops)     |
+| 0x110-0x117  | Exception handling           |
+| 0x118-0x11F  | Interrupt handling           |
+| 0x120-0x12D  | FFI instructions             |
+| 0x130-0x134  | System instructions           |
+| 0x135-0x139  | Debug instructions            |
 
 ---
 

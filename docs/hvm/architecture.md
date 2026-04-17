@@ -16,14 +16,38 @@ The Hooc Virtual Machine (HVM) is a lightweight, register-based virtual machine 
   - `r30`: Frame pointer (FP), optional for debugging.
 - Registers can hold integers (64-bit), floating-point numbers (double precision), object references, or SIMD vectors.
 
-### 2.2 Memory Model
+### 2.2 Instruction Encoding
+
+HVM uses **32-bit fixed-width instructions** with an **escape prefix** for extended operations:
+
+| Format | Width | Description |
+|--------|-------|-------------|
+| Standard | 32 bits | Most instructions (opcodes 0x00-0xFF) |
+| Extended | 64 bits | Vector/SIMD, Exceptions, Interrupts, FFI, Debug (opcodes 0x100+) |
+
+**Extended Opcode Prefix:** `0x10`
+- Prepend `0x10` to create 64-bit extended instruction
+- Extended opcode range: `0x100-0x1FF`
+
+**Opcode Map:**
+| Range | Category | Width |
+|-------|----------|-------|
+| 0x00-0x0F | Control/Data movement | 32-bit |
+| 0x10-0xF7 | ALU, Memory, etc. | 32-bit |
+| 0x100-0x10A | Vector/SIMD | 64-bit |
+| 0x110-0x117 | Exception handling | 64-bit |
+| 0x118-0x11F | Interrupt handling | 64-bit |
+| 0x120-0x12D | FFI instructions | 64-bit |
+| 0x130-0x139 | System/Debug | 64-bit |
+
+### 2.3 Memory Model
 
 - **Byte-addressable, little-endian** memory.
 - **Stack**: Grows downward, holds activation records.
 - **Heap**: Managed by a garbage collector or reference counting.
 - **Static data**: For constants, vtables, and module metadata.
 
-### 2.3 Calling Conventions
+### 2.4 Calling Conventions
 
 - **Integer/pointer arguments**: First 8 in `r1`–`r8`.
 - **Floating-point arguments**: First 8 in `v0`–`v7` (or reuse `r1`–`r8` for scalar floats).
@@ -53,7 +77,7 @@ The Hooc Virtual Machine (HVM) is a lightweight, register-based virtual machine 
 
 ## 4.1 String Operations
 
-HVM provides native string manipulation instructions for efficient text processing (opcodes 0x84-0xB0).
+HVM provides native string manipulation instructions for efficient text processing (opcodes 0x84-0xA7).
 
 ### 4.1.1 String Creation & Access
 - `STRNEW`/`STRNEWB`: Create strings from bytes or capacity
@@ -92,31 +116,39 @@ HVM provides comprehensive FFI support for calling native code and integrating w
 
 ### 5.1 Static Runtime Calls
 
-- `CALLHOST` (0xD0): Call pre-registered runtime functions (HoocJIT runtime)
-- `CALLHOSTV` (0xD1): Virtual method calls via host runtime
+- `CALLHOST` (0x120): Call pre-registered runtime functions (HoocJIT runtime)
+- `CALLHOSTV` (0x121): Virtual method calls via host runtime
 
 ### 5.2 Native Function Calls
 
-- `CALLNATIVE` (0xD2): Call native functions with C ABI
-- `PREPCALL` (0xD3): Prepare stack frame for native calls
-- `FINISHCA` (0xD4): Complete native call and retrieve return value
+- `CALLNATIVE` (0x122): Call native functions with C ABI
+- `PREPCALL` (0x123): Prepare stack frame for native calls
+- `FINISHCA` (0x124): Complete native call and retrieve return value
 
 ### 5.3 Dynamic Library Loading
 
-- `LOADLIB` (0xD5): Load shared libraries (.dll, .so, .dylib)
-- `FREELIB` (0xD6): Unload dynamic libraries
-- `GETSYM` (0xD7): Get symbol address from loaded library
-- `GETFUNC` (0xD8): Resolve function pointer from library
+- `LOADLIB` (0x125): Load shared libraries (.dll, .so, .dylib)
+- `FREELIB` (0x126): Unload dynamic libraries
+- `GETSYM` (0x127): Get symbol address from loaded library
+- `GETFUNC` (0x128): Resolve function pointer from library
 
 ### 5.4 Type Conversion
 
-- `I2PTR` (0xD9): Convert integer to pointer
-- `PTR2I` (0xDA): Convert pointer to integer
-- `REINTERP` (0xDB): Reinterpret pointer type
-- `ADDR2FUNC` (0xDC): Convert address to function pointer
-- `FUNC2ADDR` (0xDD): Extract address from function pointer
+- `I2PTR` (0x129): Convert integer to pointer
+- `PTR2I` (0x12A): Convert pointer to integer
+- `REINTERP` (0x12B): Reinterpret pointer type
+- `ADDR2FUNC` (0x12C): Convert address to function pointer
+- `FUNC2ADDR` (0x12D): Extract address from function pointer
 
-### 5.5 FFI Calling Convention
+### 5.5 Debugging Support
+
+- `BREAKPOINT` (0x135): Source-level breakpoint using debug info
+- `SINGLESTEP` (0x136): Single-step execution
+- `GETREGS` (0x137): Read all registers
+- `SETREGS` (0x138): Write all registers
+- `GETFPOFF` (0x139): Get current frame pointer offset
+
+### 5.6 FFI Calling Convention
 
 When calling native functions (C ABI):
 
@@ -137,26 +169,38 @@ When calling native functions (C ABI):
 - JIT compiler translates HVM instructions to LLVM IR, then to native code.
 - Instructions are RISC-like, enabling efficient JIT.
 
+### 6.1 Debug Information
+
+HVM supports DWARF-style debug information for GDB/LLDB compatibility:
+
+- **Line numbers**: `.debug_line` section maps addresses to source lines
+- **Variable locations**: `.debug_info` DIEs with location expressions
+- **Call frames**: `.debug_frame` for stack unwinding
+- **Type info**: `.debug_abbrev` + `.debug_str` for type descriptions
+
+The debug info is preserved through JIT compilation with address remapping.
+
 ---
 
-## 7. Exception Handling
+## 7. Exception Handling (0x110-0x117)
 
 HVM provides structured exception handling with try-catch-finally semantics.
 
-- `TRY`/`CATCH`/`FINALLY` instructions for exception boundaries
+- `TRY`/`CATCH`/`FINALLY` (0x113-0x114): instructions for exception boundaries
+- `THROW`/`THROWV` (0x111-0x112): throw exceptions
 - Exception records contain type, message, and stack trace
 - Hardware-assisted exception dispatch
 
 ---
 
-## 8. Interrupt Handling
+## 8. Interrupt Handling (0x118-0x11F)
 
 HVM supports hardware and software interrupts for responsive execution.
 
-- `DI`/`EI` for enable/disable interrupts
-- `INT` for software interrupts
-- `SETINT`/`IRET` for interrupt service routines
-- Interrupt masking support
+- `DI`/`EI` (0x118-0x119): enable/disable interrupts
+- `INT` (0x11A): software interrupts
+- `SETINT`/`IRET` (0x11C-0x11B): interrupt service routines
+- `MASKINT`/`UNMASKINT` (0x11E-0x11F): interrupt masking
 
 ---
 
@@ -164,38 +208,40 @@ HVM supports hardware and software interrupts for responsive execution.
 
 HVM provides native threading support with synchronization primitives.
 
-### 9.1 Thread Management
+### 9.1 Thread Management (0xC0-0xC5)
 - `THCREATE`/`THJOIN`/`THEXIT` for thread lifecycle
 - `THYIELD` for cooperative scheduling
-- Thread-local storage (`TLSALLOC`/`TLSGET`/`TLSSET`)
+- `THWAIT` for wait with timeout
 
 ### 9.2 Synchronization
-- Mutexes: `MUTEXINI`/`MUTEXLCK`/`MUTEXULK`
-- Condition variables: `CONDNWI`/`CONDSIG`/`CONDBRO`/`CONDWT`
-- Spinlocks: `SPININIT`/`SPINLCK`/`SPINULK`
-- Barriers: `BARRSET`/`BARRWT`
+- Mutexes (0xC6-0xC9): `MUTEXINI`/`MUTEXLCK`/`MUTEXULK`/`MUTEXDL`
+- Condition variables (0xCA-0xCE): `CONDNWI`/`CONDSIG`/`CONDBRO`/`CONDWT`/`CONDDST`
+- Spinlocks (0xCF-0xD1): `SPININIT`/`SPINLCK`/`SPINULK`
+- Barriers (0xD2-0xD3): `BARRSET`/`BARRWT`
 
-### 9.3 Atomic Operations
+### 9.3 Atomic Operations & TLS (0xE0-0xE8)
 - `ATOMADD`/`ATOMSUB` for atomic arithmetic
 - `ATOMCAS` for compare-and-swap
 - `ATOMLD`/`ATOMST` for atomic memory operations
+- Thread-local storage: `TLSALLOC`/`TLSGET`/`TLSSET`/`TLSFREE`
 
 ---
 
 ## 10. Multi-Process
 
-HVM supports multi-process execution with inter-process communication.
+HVM supports multi-process execution with inter-process communication via FFI calls to OS APIs.
 
 ### 10.1 Process Management
-- `PROCFORK` for creating child processes
-- `PROCEXEC` for replacing process image
-- `PROCWAIT`/`PROCEXIT` for process lifecycle
-- `PROCKILL` for termination signals
+Multi-process support is provided through native OS calls via `CALLNATIVE`/`SYSCALL`:
+- `fork()`/`exec()` for process creation
+- `waitpid()` for process lifecycle
+- `kill()` for termination signals
 
 ### 10.2 Inter-Process Communication
-- Pipes: `PIPEOPEN`
-- Message passing: `PROCSEND`/`PROCRECV`
-- Shared memory: `PROCSHMGET`/`PROCSHMAT`/`PROCSHDT`
+IPC is provided through native OS APIs:
+- Pipes: `pipe()` via native calls
+- Message passing: OS message queue APIs
+- Shared memory: `shmget()`/`shmat()` via native calls
 
 ---
 
@@ -211,4 +257,4 @@ HVM is designed for:
 - Exception handling with try-catch-finally semantics.
 - Hardware and software interrupt support.
 - Native threading with synchronization primitives.
-- Multi-process execution with IPC mechanisms.
+- SIMD/vector operations for data-parallel workloads.
