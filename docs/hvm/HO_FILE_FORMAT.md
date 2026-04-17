@@ -1885,9 +1885,88 @@ When JIT-compiling debug-enabled bytecode:
 
 ---
 
-## 18. Extended LEB128 Reference
+## 18. HVM-Specific Debug Extensions
 
-### 18.1 ULEB128 Quick Reference
+### 18.1 HVM Location Expression Opcodes
+
+These location expression opcodes extend DWARF for HVM-specific types:
+
+| Opcode | Name | Args | Description |
+|--------|------|------|-------------|
+| `0xE0` | `DW_OP_hvm_reg` | reg | Push register value (HVM register number) |
+| `0xE1` | `DW_OP_hvm_frame` | offset | CFA is at frame pointer + offset |
+| `0xE2` | `DW_OP_hvm_slot` | slot | Thread-local storage slot |
+| `0xE3` | `DW_OP_hvm_obj` | offset | Object field at [object + offset] |
+| `0xE4` | `DW_OP_hvm_array` | offset | Array element at [array + index*element_size + offset] |
+| `0xE5` | `DW_OP_hvm_vtable` | - | Virtual method table pointer |
+| `0xE6` | `DW_OP_hvm_string` | - | String handle (reference type) |
+| `0xE7` | `DW_OP_hvm_closure` | - | Closure/captured variable |
+
+### 18.2 HVM Register Number Mapping
+
+For `DW_OP_hvm_reg`, register numbers map to HVM registers:
+
+| DWARF Reg | HVM Reg | Purpose |
+|-----------|---------|---------|
+| 0-31 | r0-r31 | General-purpose registers |
+| 32-47 | v0-v15 | Vector registers |
+| 48 | pc | Program counter |
+| 49 | sp | Stack pointer (r31) |
+| 50 | fp | Frame pointer (r30) |
+
+### 18.3 Example: HVM Variable Location
+
+**Source:**
+```hooc
+class Point {
+    x: int64,
+    y: int64
+}
+
+func distance(p: Point) -> double {
+    dx := p.x;  // Variable 'dx' in register r9
+    dy := p.y;  // Variable 'dy' in register r10
+    return sqrt(dx*dx + dy*dy);
+}
+```
+
+**Debug Info:**
+```
+DW_TAG_variable "dx":
+    DW_AT_location: DW_OP_hvm_reg(9)
+    DW_AT_type: ref to int64
+
+DW_TAG_variable "dy":
+    DW_AT_location: DW_OP_hvm_reg(10)
+    DW_AT_type: ref to int64
+
+DW_TAG_formal_parameter "p":
+    DW_AT_location: DW_OP_hvm_frame(-16)
+    DW_AT_type: ref to Point
+```
+
+### 18.4 JIT Address Remapping
+
+When JIT compiling with debug info:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Address Remapping Table                                       │
+├─────────────────────────────────────────────────────────────┤
+│ 4 bytes: entry_count                                         │
+├─────────────────────────────────────────────────────────────┤
+│ For each entry:                                              │
+│   8 bytes: hvm_address (original bytecode address)           │
+│   8 bytes: native_address (compiled native address)         │
+│   4 bytes: hvm_length (bytes of bytecode)                   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 19. Extended LEB128 Reference
+
+### 19.1 ULEB128 Quick Reference
 
 | Value Range | Bytes Needed |
 |-------------|--------------|

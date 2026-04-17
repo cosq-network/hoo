@@ -1247,24 +1247,67 @@ sum_array:
 
 ---
 
-## Appendix D: Glossary
+## Appendix D: Undefined and Implementation-Defined Behaviors
 
-| Term | Definition |
-|------|------------|
-| **GPR** | General Purpose Register |
-| **Vtable** | Virtual method table for dynamic dispatch |
-| **ABI** | Application Binary Interface |
-| **SSA** | Static Single Assignment (IR form) |
-| **JIT** | Just-In-Time compilation |
-| **AOT** | Ahead-Of-Time compilation |
-| **GC** | Garbage Collector |
-| **SIMD** | Single Instruction, Multiple Data |
-| **Lane** | Single element within a vector register |
-| **Sign-extend** | Extend value with sign bit to fill higher bits |
-| **Zero-extend** | Fill higher bits with zeros |
-| **PC** | Program Counter (instruction pointer) |
-| **SP** | Stack Pointer |
-| **FP** | Frame Pointer |
+### D.1 Arithmetic Operations
+
+| Operation | Behavior when Undefined |
+|-----------|------------------------|
+| **DIV, DIVI** (signed) | If divisor is 0, result is 0 and exception thrown |
+| **DIVU** (unsigned) | If divisor is 0, result is all-ones (0xFFFFFFFFFFFFFFFF) |
+| **REM, REMU** | If divisor is 0, result is dividend value |
+| **Shift by >= 64** | Shift amount masked to 63 (bits 0-5 of shift amount used) |
+| **Shift by negative** | Treated as shift by 0 (no shift) |
+| **MUL overflow** | Low 64 bits stored (wrapping) |
+| **ADD/SUB overflow** | Wrapping behavior (two's complement) |
+
+### D.2 Floating-Point Operations
+
+| Operation | Behavior |
+|-----------|----------|
+| **Division by zero** | Returns ±Infinity (IEEE 754 compliant) |
+| **Square root of negative** | Returns NaN |
+| **Overflow** | Returns ±Infinity or rounded value based on rounding mode |
+| **Underflow** | Returns denormalized number or zero |
+| **NaN operand** | Result is NaN (specific NaN implementation-defined) |
+| **Infinity - Infinity** | Returns NaN |
+| **Infinity / Infinity** | Returns NaN |
+| **0 / 0** | Returns NaN |
+
+### D.3 Memory Operations
+
+| Operation | Behavior |
+|-----------|----------|
+| **Load from unmapped memory** | Implementation may: (1) return 0, (2) trap, (3) return garbage |
+| **Store to unmapped memory** | Implementation may: (1) silently fail, (2) grow heap, (3) trap |
+| **Misaligned access** | Implementation may: (1) split into multiple accesses, (2) trap |
+| **LD.X/ST.X alignment** | Must be 16-byte aligned; misaligned access traps |
+
+### D.4 Control Flow
+
+| Operation | Behavior |
+|-----------|----------|
+| **Jump to non-instruction address** | Implementation-defined; may trap or interpret as NOPs |
+| **RET with no matching CALL** | Undefined; may trap or continue execution |
+| **Divide by zero** | Traps to exception handler (exception type 1: `DIVISION_BY_ZERO`) |
+
+---
+
+## Appendix E: Standard Exception Types
+
+HVM defines the following standard exception types for structured exception handling:
+
+| Type ID | Mnemonic | Description |
+|---------|----------|-------------|
+| `0x01` | `DIVISION_BY_ZERO` | Integer division by zero |
+| `0x02` | `NULL_POINTER` | Null pointer dereference |
+| `0x03` | `INDEX_OUT_OF_BOUNDS` | Array/string index out of valid range |
+| `0x04` | `INVALID_CAST` | Type cast failed (CHECKCAST) |
+| `0x05` | `STACK_OVERFLOW` | Stack pointer exceeds limit |
+| `0x06` | `STACK_UNDERFLOW` | Stack pointer below valid range |
+| `0x07` | `HEAP_OVERFLOW` | Heap allocation failed |
+| `0x08` | `TYPE_MISMATCH` | Operation on incompatible types |
+| `0x09` | | |
 
 ---
 
