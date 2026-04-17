@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../runtime/RuntimeMethodRegistry.h"
+#include "RuntimeMethodRegistry.h"
 
 namespace hooc {
 namespace runtime {

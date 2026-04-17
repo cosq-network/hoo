@@ -1,6 +1,6 @@
 #include "LLVMCodeGenerator.h"
-#include "runtime/RuntimeRegistry.h"
-#include "runtime/RuntimeMethodRegistry.h"
+#include "runtime/llvm/RuntimeRegistry.h"
+#include "runtime/llvm/RuntimeMethodRegistry.h"
 #include "ast/AST.h"
 #include "ast/ClassDeclaration.h"
 #include "llvm/IR/Verifier.h"
@@ -105,7 +105,7 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
     #define END_RUNTIME_OPERATORS
     #define RUNTIME_OPERATOR(...)
 
-    #include "runtime/RuntimeClassRegistry.h"
+    #include "runtime/llvm/RuntimeClassRegistry.h"
 
     #undef DEFINE_RUNTIME_CLASS
     #undef BEGIN_RUNTIME_FUNCTIONS

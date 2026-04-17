@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "../src/rt/hoo_generic_array.h"
+#include "../src/runtime/lib/hoo_generic_array.h"
 #include <cstring>
 #include <cmath>
 

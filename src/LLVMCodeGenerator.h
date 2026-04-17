@@ -10,8 +10,8 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Value.h"
-#include "runtime/RuntimeClassRegistry.h"
-#include "runtime/RuntimeFunctionStorage.h"
+#include "runtime/llvm/RuntimeClassRegistry.h"
+#include "runtime/llvm/RuntimeFunctionStorage.h"
 #include <memory>
 #include <unordered_map>
 #include <unordered_set>

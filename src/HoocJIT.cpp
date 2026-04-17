@@ -1,7 +1,7 @@
 #include "HoocJIT.h"
 
 #include "HooCompiler.h"
-#include "runtime/RuntimeRegistry.h"
+#include "runtime/llvm/RuntimeRegistry.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"

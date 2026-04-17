@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <src/rt/hoo_string.h>
+#include <src/runtime/lib/hoo_string.h>
 
 /**
  * Test suite for HooString (UTF-8 String with ARC)
