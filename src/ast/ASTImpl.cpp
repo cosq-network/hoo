@@ -231,7 +231,7 @@ std::string NewArrayExpression::toString() const {
 
 std::string NewObjectExpression::toString() const {
     std::stringstream ss;
-    ss << "NewObjectExpression " << className_;
+    ss << "NewObjectExpression " << className_->toString();
     return ss.str();
 }
 
