@@ -90,12 +90,51 @@ jobs:
           sudo apt install -y \
             cmake ninja-build make \
             clang llvm-dev \
-            libantlr4-runtime-dev libgtest-dev
+            libgtest-dev uuid-dev
+
+      - name: Cache ANTLR4 Runtime
+        id: cache-antlr4-ubuntu
+        uses: actions/cache@v4
+        with:
+          path: /tmp/antlr4-runtime
+          key: ${{ runner.os }}-antlr4-4.13.2
+
+      - name: Build ANTLR4 C++ Runtime
+        if: steps.cache-antlr4-ubuntu.outputs.cache-hit != 'true'
+        run: |
+          # Download and build ANTLR4 C++ runtime to match jar version
+          ANTLR_VERSION="4.13.2"
+          DOWNLOAD_URL="https://www.antlr.org/download/antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip"
+
+          echo "Downloading ANTLR4 C++ runtime ${ANTLR_VERSION}..."
+          wget -q ${DOWNLOAD_URL} -O antlr4-cpp-runtime.zip
+
+          echo "Extracting..."
+          unzip -q antlr4-cpp-runtime.zip -d antlr4-src
+
+          echo "Building ANTLR4 runtime..."
+          mkdir -p antlr4-build
+          cd antlr4-build
+
+          cmake -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=/tmp/antlr4-runtime \
+            -DANTLR_BUILD_SHARED=OFF \
+            -DANTLR_BUILD_CPP_TESTS=OFF \
+            ../antlr4-src
+
+          ninja
+          ninja install
+
+          cd ..
+          rm -rf antlr4-src antlr4-build antlr4-cpp-runtime.zip
 
       - name: Configure CMake
         run: |
           cmake --preset ubuntu-ninja \
-            -DHOOC_BUILD_TESTS=ON
+            -DHOOC_BUILD_TESTS=ON \
+            -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime \
+            -DANTLR4_LIBRARY=/tmp/antlr4-runtime/lib/libantlr4-runtime.a
 
       - name: Build compiler
         run: |
