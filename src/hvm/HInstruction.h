@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <optional>
 #include <variant>
+#include <memory>
 
 namespace hvm {
 
