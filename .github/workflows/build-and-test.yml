@@ -223,52 +223,14 @@ jobs:
           # Verify installation
           & "$llvmPath\clang.exe" --version
 
-      - name: Cache ANTLR4 Runtime
-        id: cache-antlr4
-        uses: actions/cache@v4
-        with:
-          path: D:\antlr4-runtime
-          key: ${{ runner.os }}-antlr4-4.13.2
-
-      - name: Build ANTLR4 C++ Runtime
-        if: steps.cache-antlr4.outputs.cache-hit != 'true'
-        shell: pwsh
-        run: |
-          # Download and build ANTLR4 C++ runtime
-          $antlrVersion = "4.13.2"
-          $downloadUrl = "https://www.antlr.org/download/antlr4-cpp-runtime-$antlrVersion-source.zip"
-          $zipFile = "antlr4-cpp-runtime.zip"
-
-          Write-Host "Downloading ANTLR4 C++ runtime..."
-          Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
-
-          Write-Host "Extracting..."
-          Expand-Archive -Path $zipFile -DestinationPath "antlr4-src"
-
-          Write-Host "Building ANTLR4 runtime..."
-          New-Item -ItemType Directory -Force -Path "antlr4-build"
-          cd antlr4-build
-
-          cmake -G "Visual Studio 17 2022" -A x64 `
-            -DCMAKE_INSTALL_PREFIX="D:\antlr4-runtime" `
-            -DCMAKE_CXX_FLAGS="/W0" `
-            -DANTLR_BUILD_SHARED=OFF `
-            -DANTLR_BUILD_CPP_TESTS=OFF `
-            ../antlr4-src
-
-          cmake --build . --config Release --target install 2>&1 | Select-String -Pattern "error" -Context 2
-
-          cd ..
-          Remove-Item -Recurse -Force antlr4-src, antlr4-build, $zipFile
-
-      - name: Setup vcpkg for GoogleTest
+      - name: Setup vcpkg for GoogleTest and ANTLR4
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4ff5e63e'
 
-      - name: Install GoogleTest via vcpkg
+      - name: Install dependencies via vcpkg
         run: |
-          vcpkg install gtest:x64-windows
+          vcpkg install gtest:x64-windows antlr4-cpp-runtime:x64-windows
 
       - name: Configure CMake
         shell: pwsh
@@ -284,9 +246,7 @@ jobs:
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DHOOC_BUILD_TESTS=ON `
             -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" `
-            -DLLVM_DIR="$llvmDir" `
-            -DANTLR4_INCLUDE_DIR="D:\antlr4-runtime\include\antlr4-runtime" `
-            -DANTLR4_LIBRARY="D:\antlr4-runtime\lib\antlr4-runtime.lib"
+            -DLLVM_DIR="$llvmDir"
 
       - name: Build compiler
         shell: pwsh
