@@ -292,17 +292,6 @@ These features are planned but not yet started:
 
 #### Language Features
 
-- **Lambda Expressions**
-  - Anonymous functions
-  - Closures
-  - Lambda syntax (`=>`)
-  - Capture semantics
-
-- **Pattern Matching**
-  - `match` expressions
-  - Pattern destructuring
-  - Exhaustiveness checking
-
 - **Error Handling**
   - `try-catch` blocks
   - Exception types
@@ -319,23 +308,6 @@ These features are planned but not yet started:
   - Computed properties
   - Getters and setters
   - Property observers
-
-- **Operator Overloading**
-  - Custom operator definitions
-  - Operator traits
-  - Special operators
-
-- **Async/Await**
-  - Asynchronous functions
-  - Await expressions
-  - Future/Promise types
-  - Async runtime
-
-- **Traits/Mixins**
-  - Trait definitions
-  - Trait implementation
-  - Default implementations
-  - Trait composition
 
 #### Standard Library
 

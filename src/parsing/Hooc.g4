@@ -66,7 +66,6 @@ OR: '||';
 NOT: '!';
 QUESTION: '?';
 ARROW: '->';
-LAMBDA_ARROW: '=>';
 RANGE: '..';
 
 // Delimiters
@@ -80,7 +79,6 @@ LBRACE: '{';
 RBRACE: '}';
 LBRACKET: '[';
 RBRACKET: ']';
-PIPE: '|';
 
 // String Literals
 STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"';
@@ -175,9 +173,7 @@ variableDeclaration
     ;
 
 // Types
-type: unionType;
-
-unionType: optionalType (PIPE optionalType)*;
+type: optionalType;
 
 optionalType: arrayType QUESTION?;
 

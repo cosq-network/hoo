@@ -1361,33 +1361,6 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
 }
 
 LLVMType* LLVMCodeGenerator::generateLLVMType(const ASTType& type) {
-    if (auto unionType = dynamic_cast<const UnionType*>(&type)) {
-        // For union types, check if any type is nullable
-        const auto& types = unionType->getTypes();
-        if (!types.empty()) {
-            // If the union contains optional types, create a tagged union
-            bool hasOptional = false;
-            for (const auto& t : types) {
-                if (t->isOptional()) {
-                    hasOptional = true;
-                    break;
-                }
-            }
-
-            if (hasOptional && types.size() == 1) {
-                // Single optional type in union - wrap it in nullable type
-                auto valueType = generateLLVMType(*types[0]);
-                return createNullableType(valueType);
-            } else if (hasOptional) {
-                // Multiple types with optional - use first type for now
-                return generateLLVMType(*types[0]);
-            } else {
-                // Non-optional union - just use first type
-                return generateLLVMType(*types[0]);
-            }
-        }
-    }
-
     if (auto optionalType = dynamic_cast<const OptionalType*>(&type)) {
         // Handle optional types with tagged union pattern
         if (optionalType->isOptional()) {
@@ -1971,15 +1944,8 @@ llvm::Value* LLVMCodeGenerator::extractNullFlagFromNullable(llvm::Value* nullabl
 }
 
 bool LLVMCodeGenerator::isTypeNullable(const ast::Type& type) {
-    // Check if the type is an optional type
     if (auto optionalType = dynamic_cast<const ast::OptionalType*>(&type)) {
         return optionalType->isOptional();
-    }
-    if (auto unionType = dynamic_cast<const ast::UnionType*>(&type)) {
-        // Union types containing at least one optional type are nullable
-        for (const auto& t : unionType->getTypes()) {
-            if (t->isOptional()) return true;
-        }
     }
     return false;
 }

@@ -353,17 +353,8 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 - 🟡 For loops (range syntax needs work)
 - 🟡 Import statements (parsing done, full resolution WIP)
 - 🟡 Interfaces (parsing done, implementation WIP)
-- 🟡 Union types (parsing done, codegen WIP)
 
 ### Not Yet Implemented
-- ❌ Lambda expressions
-- ❌ Pattern matching
-- ❌ Traits/mixins
-- ❌ Async/await
-- ❌ Standard library modules (std.io, std.collections, etc.)
-- ❌ Error handling (try/catch)
-- ❌ Operator overloading
-- ❌ Properties/getters/setters
 
 ## Important Notes for AI Assistants
 

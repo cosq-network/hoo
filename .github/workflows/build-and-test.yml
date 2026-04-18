@@ -1,0 +1,280 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    name: Build macOS (Apple Silicon)
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install build tools and dependencies
+        run: |
+          brew install cmake ninja
+          brew install llvm antlr4-cpp-runtime googletest
+
+      - name: Configure CMake
+        run: |
+          cmake --preset macos-homebrew-ninja \
+            -DHOOC_BUILD_TESTS=ON
+
+      - name: Build all targets
+        run: |
+          cmake --build --preset macos-homebrew-ninja
+
+      - name: Run tests
+        run: |
+          cd build/macos-homebrew-ninja
+          ctest --verbose --output-on-failure
+
+      - name: Package artifacts
+        run: |
+          mkdir -p package/bin
+          mkdir -p package/lib
+          cp build/macos-homebrew-ninja/hooc package/bin/
+          cp build/macos-homebrew-ninja/libhvm.a package/lib/ || true
+          cp build/macos-homebrew-ninja/libhoo-compiler.a package/lib/ || true
+          cp build/macos-homebrew-ninja/libhoo-parser.a package/lib/ || true
+          cp build/macos-homebrew-ninja/libhoort.* package/lib/ || true
+          tar -czf hooc-macos-arm64.tar.gz -C package .
+
+      - name: Verify package contents
+        run: |
+          ls -la package/bin/
+          ls -la package/lib/
+          test -f package/bin/hooc || (echo "ERROR: hooc binary missing!" && exit 1)
+          echo "Package verification successful"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hooc-macos-arm64
+          path: hooc-macos-arm64.tar.gz
+          retention-days: 30
+
+  build-ubuntu:
+    name: Build Ubuntu 24.04
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install build tools and dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            cmake ninja-build make \
+            clang llvm-dev \
+            libantlr4-runtime-dev libgtest-dev
+
+      - name: Configure CMake
+        run: |
+          cmake --preset ubuntu-ninja \
+            -DHOOC_BUILD_TESTS=ON
+
+      - name: Build all targets
+        run: |
+          cmake --build --preset ubuntu-ninja
+
+      - name: Run tests
+        run: |
+          cd build/ubuntu-ninja
+          ctest --verbose --output-on-failure
+
+      - name: Package artifacts
+        run: |
+          mkdir -p package/bin
+          mkdir -p package/lib
+          cp build/ubuntu-ninja/hooc package/bin/
+          cp build/ubuntu-ninja/libhvm.a package/lib/ || true
+          cp build/ubuntu-ninja/libhoo-compiler.a package/lib/ || true
+          cp build/ubuntu-ninja/libhoo-parser.a package/lib/ || true
+          cp build/ubuntu-ninja/libhoort.* package/lib/ || true
+          tar -czf hooc-ubuntu-x86_64.tar.gz -C package .
+
+      - name: Verify package contents
+        run: |
+          ls -la package/bin/
+          ls -la package/lib/
+          test -f package/bin/hooc || (echo "ERROR: hooc binary missing!" && exit 1)
+          echo "Package verification successful"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hooc-ubuntu-x86_64
+          path: hooc-ubuntu-x86_64.tar.gz
+          retention-days: 30
+
+  build-windows:
+    name: Build Windows (Visual Studio)
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install build tools
+        run: |
+          choco install cmake ninja -y
+
+      - name: Setup LLVM
+        run: |
+          choco install llvm --version=18.1.8 -y
+          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Cache ANTLR4 Runtime
+        id: cache-antlr4
+        uses: actions/cache@v4
+        with:
+          path: D:\antlr4-runtime
+          key: ${{ runner.os }}-antlr4-4.13.2
+
+      - name: Build ANTLR4 C++ Runtime
+        if: steps.cache-antlr4.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          # Download and build ANTLR4 C++ runtime
+          $antlrVersion = "4.13.2"
+          $downloadUrl = "https://www.antlr.org/download/antlr4-cpp-runtime-$antlrVersion-source.zip"
+          $zipFile = "antlr4-cpp-runtime.zip"
+
+          Write-Host "Downloading ANTLR4 C++ runtime..."
+          Invoke-WebRequest -Uri $downloadUrl -OutFile $zipFile
+
+          Write-Host "Extracting..."
+          Expand-Archive -Path $zipFile -DestinationPath "antlr4-src"
+
+          Write-Host "Building ANTLR4 runtime..."
+          New-Item -ItemType Directory -Force -Path "antlr4-build"
+          cd antlr4-build
+
+          cmake -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_INSTALL_PREFIX="D:\antlr4-runtime" `
+            -DANTLR_BUILD_SHARED=OFF `
+            -DANTLR_BUILD_CPP_TESTS=OFF `
+            ../antlr4-src
+
+          cmake --build . --config Release --target install
+
+          cd ..
+          Remove-Item -Recurse -Force antlr4-src, antlr4-build, $zipFile
+
+      - name: Setup vcpkg for GoogleTest
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4ff5e63e'
+
+      - name: Install GoogleTest via vcpkg
+        run: |
+          vcpkg install gtest:x64-windows
+
+      - name: Configure CMake
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
+            -DHOOC_BUILD_TESTS=ON `
+            -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" `
+            -DLLVM_DIR="C:\Program Files\LLVM\lib\cmake\llvm" `
+            -DANTLR4_INCLUDE_DIR="D:\antlr4-runtime\include\antlr4-runtime" `
+            -DANTLR4_LIBRARY="D:\antlr4-runtime\lib\antlr4-runtime.lib"
+
+      - name: Build all targets
+        shell: pwsh
+        run: |
+          cmake --build build --config RelWithDebInfo
+
+      - name: Run tests
+        shell: pwsh
+        run: |
+          cd build
+          ctest -C RelWithDebInfo --verbose --output-on-failure
+
+      - name: Package artifacts
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package\bin
+          New-Item -ItemType Directory -Force -Path package\lib
+
+          Copy-Item build\RelWithDebInfo\hooc.exe package\bin\
+          Copy-Item build\RelWithDebInfo\hvm.lib package\lib\ -ErrorAction SilentlyContinue
+          Copy-Item build\RelWithDebInfo\hoo-compiler.lib package\lib\ -ErrorAction SilentlyContinue
+          Copy-Item build\RelWithDebInfo\hoo-parser.lib package\lib\ -ErrorAction SilentlyContinue
+          Copy-Item build\RelWithDebInfo\hoort.lib package\lib\ -ErrorAction SilentlyContinue
+          Copy-Item build\RelWithDebInfo\hoort.dll package\lib\ -ErrorAction SilentlyContinue
+
+          tar -czf hooc-windows-x64.tar.gz -C package .
+
+      - name: Verify package contents
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path package\bin -Recurse
+          Get-ChildItem -Path package\lib -Recurse
+          if (-not (Test-Path package\bin\hooc.exe)) {
+            Write-Error "ERROR: hooc.exe binary missing!"
+            exit 1
+          }
+          Write-Host "Package verification successful"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hooc-windows-x64
+          path: hooc-windows-x64.tar.gz
+          retention-days: 30
+
+  create-release-bundle:
+    name: Create Release Bundle
+    runs-on: ubuntu-latest
+    needs: [build-macos, build-ubuntu, build-windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create combined archive
+        run: |
+          mkdir -p release
+          cp artifacts/hooc-macos-arm64/hooc-macos-arm64.tar.gz release/
+          cp artifacts/hooc-ubuntu-x86_64/hooc-ubuntu-x86_64.tar.gz release/
+          cp artifacts/hooc-windows-x64/hooc-windows-x64.tar.gz release/
+
+          cd release
+          tar -czf hooc-all-platforms.tar.gz *.tar.gz
+
+      - name: Upload combined bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: hooc-all-platforms
+          path: release/hooc-all-platforms.tar.gz
+          retention-days: 90

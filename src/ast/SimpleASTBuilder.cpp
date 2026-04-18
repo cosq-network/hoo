@@ -104,65 +104,30 @@ std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::Paramete
 }
 
 std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) {
-    if (!ctx || !ctx->unionType()) {
+    if (!ctx || !ctx->optionalType()) {
         return std::make_unique<BaseType>("unknown");
     }
 
-    auto unionCtx = ctx->unionType();
-    auto optionalTypes = unionCtx->optionalType();
+    auto optionalCtx = ctx->optionalType();
 
-    // Check if this is actually a union (multiple types with |) or a single type
-    if (optionalTypes.size() > 1) {
-        // This is a union type - build and return UnionType
-        return buildUnionType(unionCtx);
-    } else if (optionalTypes.size() == 1) {
-        // Single type - maintain backward compatibility by returning ArrayType/BaseType directly
-        auto optCtx = optionalTypes[0];
-        if (!optCtx->arrayType()) {
-            return std::make_unique<BaseType>("unknown");
+    if (!optionalCtx || !optionalCtx->arrayType()) {
+        return std::make_unique<BaseType>("unknown");
+    }
+
+    auto arrayCtx = optionalCtx->arrayType();
+
+    // Check if this is actually an array (has brackets) or just a base type
+    if (arrayCtx->LBRACKET().empty()) {
+        // No brackets - just a base type like "int64"
+        if (arrayCtx->baseType()) {
+            return buildBaseType(arrayCtx->baseType());
         }
-
-        auto arrayCtx = optCtx->arrayType();
-
-        // Check if this is actually an array (has brackets) or just a base type
-        if (arrayCtx->LBRACKET().empty()) {
-            // No brackets - just a base type like "int64"
-            if (arrayCtx->baseType()) {
-                return buildBaseType(arrayCtx->baseType());
-            }
-        } else {
-            // Has brackets - this is an array type like "int64[]" or "int64[]?"
-            return buildArrayType(arrayCtx);
-        }
+    } else {
+        // Has brackets - this is an array type like "int64[]" or "int64[]?"
+        return buildArrayType(arrayCtx);
     }
 
     return std::make_unique<BaseType>("unknown");
-}
-
-std::unique_ptr<UnionType> SimpleASTBuilder::buildUnionType(HoocParser::UnionTypeContext* ctx) {
-    if (!ctx) {
-        return nullptr;
-    }
-
-    auto optionalTypes = ctx->optionalType();
-    if (optionalTypes.empty()) {
-        return nullptr;
-    }
-
-    // Build all optional types in the union
-    std::vector<std::unique_ptr<OptionalType>> types;
-    for (auto optTypeCtx : optionalTypes) {
-        auto optType = buildOptionalType(optTypeCtx);
-        if (optType) {
-            types.push_back(std::move(optType));
-        }
-    }
-
-    if (types.empty()) {
-        return nullptr;
-    }
-
-    return std::make_unique<UnionType>(std::move(types));
 }
 
 std::unique_ptr<OptionalType> SimpleASTBuilder::buildOptionalType(HoocParser::OptionalTypeContext* ctx) {

@@ -89,7 +89,7 @@ Structural elements that contain statements.
 |---------|--------|---------|
 | Block | `'{' statement* '}'` | `{ var x = 1; return x; }` |
 
-**Compilation**: A block with statements can be a function body or a lambda body.
+**Compilation**: A block with statements is a function body.
 
 ---
 
@@ -316,7 +316,6 @@ Compilation Unit (heavy)
 | Array (slice) | `type '[]'` | `var arr: int64[]` |
 | Array (multi-dim) | `type '[][]'` | `var m: int64[][]` |
 | Nullable | `type '?'` | `var x: int64?` |
-| Union | `type '|' type` | `var x: int64 \| string?` |
 | Generic type | ~~`TypeName<type>`~~ | **Removed** (use arrays) |
 | Qualified type | `Identifier ('.' Identifier)*` | `var x: std.List<string>` |
 

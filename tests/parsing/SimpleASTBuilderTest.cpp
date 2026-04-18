@@ -962,23 +962,7 @@ TEST_F(SimpleASTBuilderTest, BuildOptionalType) {
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
 }
 
-TEST_F(SimpleASTBuilderTest, BuildUnionType) {
-    std::string code = R"(
-        func test(value: int64 | string) -> void { return; }
-    )";
-    auto* parseTree = parseCode(code);
-
-    ASSERT_NE(parseTree, nullptr);
-    auto* ctx = getCompilationUnit(parseTree);
-    ASSERT_NE(ctx, nullptr);
-    auto ast = astBuilder->buildAST(ctx);
-    ASSERT_NE(ast, nullptr);
-
-    std::string astStr = ast->toString();
-    EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
-}
-
-TEST_F(SimpleASTBuilderTest, BuildNullableArrayType) {
+TEST_F(SimpleASTBuilderTest, BuildOptionalArrayType) {
     std::string code = R"(
         func test() -> void {
             var arr: int64[]?;

@@ -116,13 +116,6 @@ private:
     std::unique_ptr<ast::Type> buildType(HoocParser::TypeContext* ctx);
 
     /**
-     * @brief Builds a UnionType (e.g., int64 | string).
-     * @param ctx Union type context.
-     * @return Unique pointer to UnionType, or nullptr on failure.
-     */
-    std::unique_ptr<ast::UnionType> buildUnionType(HoocParser::UnionTypeContext* ctx);
-
-    /**
      * @brief Builds an OptionalType (with optional ? suffix).
      * @param ctx Optional type context.
      * @return Unique pointer to OptionalType, or nullptr on failure.

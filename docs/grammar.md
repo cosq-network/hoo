@@ -112,7 +112,6 @@ void      - No return value
 ```
 ?    Nullable type marker
 ->   Function return type
-=>   Lambda arrow (reserved)
 ..   Range operator
 .    Member access
 ```

@@ -1042,20 +1042,6 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Optional) {
     ASSERT_NE(func, nullptr);
 }
 
-TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Union) {
-    std::string code = R"(
-        func test(value: int64 | string) -> void {
-            return;
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    auto module = codeGen->generateLLVMModule(*ast);
-    ASSERT_NE(module, nullptr);
-    Function* func = module->getFunction("test");
-    ASSERT_NE(func, nullptr);
-}
-
 // ============================================================================
 // DECLARATION TESTS
 // ============================================================================

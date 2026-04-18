@@ -14,6 +14,7 @@ This guide provides comprehensive documentation for all features of the Hooc pro
 8. [Memory Management](#memory-management)
 9. [String Operations](#string-operations)
 10. [Advanced Features](#advanced-features)
+11. [Command-Line Interface](#command-line-interface)
 
 ## Type System
 
@@ -940,17 +941,6 @@ func sortable<T: Comparable>(items: T[]) -> void {
 
 **Current Status:** Type constraints are not available because generics have been removed. Use concrete array types instead.
 
-### Pattern Matching (Planned)
-
-```hoo
-// Future feature: pattern matching
-var result = match value {
-    0 => "zero",
-    1 => "one",
-    _ => "other"
-};
-```
-
 ### Properties (Planned)
 
 ```hoo
@@ -960,66 +950,6 @@ class Circle {
 
     property area: double {
         get { return 3.14 * radius * radius; }
-    }
-}
-```
-
-### Async/Await (Planned)
-
-```hoo
-// Future feature: asynchronous operations
-async func fetchData() -> string {
-    var data = await http.get("https://api.example.com");
-    return data;
-}
-```
-
-## Best Practices
-
-### Naming Conventions
-
-```hoo
-// Classes: PascalCase
-class UserAccount { }
-
-// Functions and variables: camelCase
-func calculateTotal() { }
-var currentValue = 0;
-
-// Constants: UPPER_SNAKE_CASE
-var MAX_SIZE: int64 = 100;
-```
-
-### Error Handling
-
-Use nullable types for operations that may fail:
-
-```hoo
-func divide(a: int64, b: int64) -> int64? {
-    if b == 0 {
-        return null;
-    }
-    return a / b;
-}
-
-var result = divide(10, 0);
-if result == null {
-    print("Error: division by zero");
-} else {
-    print(result);
-}
-```
-
-### Resource Management
-
-Use scope blocks for resources:
-
-```hoo
-func processFile(filename: string) {
-    scope {
-        var file = openFile(filename);
-        // Process file
-        // File automatically closed at end of scope
     }
 }
 ```
