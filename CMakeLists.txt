@@ -157,6 +157,21 @@ if(ANTLR4_USE_STATIC_RUNTIME)
     )
 endif()
 
+# HVM (Hooc Virtual Machine) library - object file format and module management
+add_library(hvm STATIC
+    src/hvm/HoModule.cpp
+    src/hvm/HInstruction.cpp
+)
+
+target_include_directories(hvm PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/hvm
+)
+
+target_link_libraries(hvm PUBLIC
+    ${llvm_libs}
+)
+
 # Ensure generated files are created before building the library
 add_dependencies(hoo-parser generate_parser)
 
@@ -175,6 +190,13 @@ add_library(hoo-compiler
     src/runtime/llvm/hoo_array_registration.cpp
     src/runtime/llvm/hoo_io_registration.cpp
     src/runtime/llvm/RuntimeStringMethodsRegistration.cpp
+)
+
+target_link_libraries(hoo-compiler PUBLIC
+    hvm
+    hoo-parser
+    hoort
+    ${llvm_libs}
 )
 
 if(HOOC_BUILD_SHARED_RUNTIME)
@@ -212,6 +234,7 @@ target_link_libraries(hoo-compiler PUBLIC
 target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/core
+    ${CMAKE_SOURCE_DIR}/src/hvm
     ${CMAKE_SOURCE_DIR}/src/jit
     ${CMAKE_SOURCE_DIR}/src/parsing
     ${CMAKE_SOURCE_DIR}/src/codegen
@@ -326,9 +349,12 @@ if(HOOC_BUILD_TESTS)
         tests/jit/HoocJITTest.cpp
         tests/jit/IOFunctionTest.cpp
         tests/core/HooCompilerTest.cpp
+        tests/hvm/HInstructionTest.cpp
+        tests/hvm/HoModuleTest.cpp
     )
 
     target_link_libraries(hoo-tests
+        hvm
         hoo-compiler
         GTest::gtest
         GTest::gtest_main
@@ -339,6 +365,7 @@ if(HOOC_BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/hvm
         ${CMAKE_SOURCE_DIR}/src/jit
         ${CMAKE_SOURCE_DIR}/src/parsing
         ${CMAKE_SOURCE_DIR}/src/codegen
