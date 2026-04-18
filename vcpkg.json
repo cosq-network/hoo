@@ -5,5 +5,5 @@
     "gtest",
     "antlr4-cpp-runtime"
   ],
-  "builtin-baseline": "a4221a8658e6f1f45618f080df73295db2839d48"
+  "builtin-baseline": "5503038d728565aa04d9b233a01053b8118029c9"
 }

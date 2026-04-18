@@ -224,7 +224,10 @@ jobs:
           & "$llvmPath\clang.exe" --version
 
       - name: Install dependencies via vcpkg
+        shell: pwsh
         run: |
+          # Fetch vcpkg history to ensure the baseline commit is available
+          git -C $env:VCPKG_INSTALLATION_ROOT fetch --unshallow --quiet
           vcpkg install --triplet x64-windows
 
       - name: Configure CMake
