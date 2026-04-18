@@ -463,6 +463,10 @@ private:
     /// @param decl Variable declaration node
     void generateVariableDeclaration(const ast::VariableDeclaration& decl);
 
+    /// @brief Generate global variable declaration
+    void generateGlobalVariable(const ast::VariableDeclaration& decl);
+
+
     /// @brief Generate variable declaration statement
     /// @param stmt Variable declaration statement node
     void generateVariableDeclarationStatement(const ast::VariableDeclarationStatement& stmt);

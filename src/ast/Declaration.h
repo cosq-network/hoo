@@ -46,12 +46,16 @@ private:
 class VariableDeclaration : public Declaration {
 public:
     VariableDeclaration(std::unique_ptr<Type> type, const std::string& name,
-                       std::unique_ptr<Expression> initializer = nullptr)
-        : type_(std::move(type)), name_(name), initializer_(std::move(initializer)) {}
+                       std::unique_ptr<Expression> initializer = nullptr,
+                       bool isGlobal = false)
+        : type_(std::move(type)), name_(name), 
+          initializer_(std::move(initializer)), isGlobal_(isGlobal) {}
 
     // Constructor for 'var' declarations with type inference
-    VariableDeclaration(const std::string& name, std::unique_ptr<Expression> initializer)
-        : type_(nullptr), name_(name), initializer_(std::move(initializer)) {}
+    VariableDeclaration(const std::string& name, std::unique_ptr<Expression> initializer,
+                       bool isGlobal = false)
+        : type_(nullptr), name_(name), 
+          initializer_(std::move(initializer)), isGlobal_(isGlobal) {}
 
     std::string toString() const override;
 
@@ -59,11 +63,14 @@ public:
     const std::string& getName() const { return name_; }
     const Expression* getInitializer() const { return initializer_.get(); }
     bool hasTypeInference() const { return type_ == nullptr; }
+    bool isGlobal() const { return isGlobal_; }
+    void setGlobal(bool global) { isGlobal_ = global; }
 
 private:
     std::unique_ptr<Type> type_;
     std::string name_;
     std::unique_ptr<Expression> initializer_;
+    bool isGlobal_;
 };
 
 // Function parameter

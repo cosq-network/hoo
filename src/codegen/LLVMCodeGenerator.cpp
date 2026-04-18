@@ -138,15 +138,23 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
         }
     }
 
+    if (hasErrors()) return nullptr;
+
     // Second pass: process functions and variables
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             generateLLVMFunction(*funcDecl);
         } else if (auto varDecl = dynamic_cast<const VariableDeclaration*>(decl.get())) {
-            generateVariableDeclaration(*varDecl);
+            if (varDecl->isGlobal()) {
+                generateGlobalVariable(*varDecl);
+            } else {
+                generateVariableDeclaration(*varDecl);
+            }
         }
         // Class declarations already handled in first pass
     }
+    
+    if (hasErrors()) return nullptr;
     
     // Verify the module
     std::string errorStr;
@@ -2013,6 +2021,99 @@ std::string LLVMCodeGenerator::mangleFunctionName(const std::string& name, const
         }
     }
     return mangledName;
+}
+
+void LLVMCodeGenerator::generateGlobalVariable(const VariableDeclaration& decl) {
+    // Determine type
+    LLVMType* varType;
+    if (decl.hasTypeInference()) {
+        if (!decl.getInitializer()) {
+            addError("Global type inference requires initializer");
+            return;
+        }
+
+        // Special check for string literals which currently crash at global scope
+        if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
+            if (dynamic_cast<const ast::StringLiteral*>(&primaryExpr->getPrimary())) {
+                addError("Global variable '" + decl.getName() + "' with string initializer not yet supported (requires module initializer)");
+                return;
+            }
+        }
+
+        // Evaluate initializer - this will crash if it's not a constant and tries to use builder_
+        Value* initValue = generateLLVMExpression(*decl.getInitializer());
+        if (!initValue) return;
+        varType = initValue->getType();
+        
+        Constant* constInit = llvm::dyn_cast<Constant>(initValue);
+        if (!constInit) {
+            addError("Global variable '" + decl.getName() + "' must have a constant initializer");
+            return;
+        }
+
+        auto* globalVar = new GlobalVariable(
+            *module_,
+            varType,
+            false, // isConstant
+            GlobalValue::ExternalLinkage,
+            constInit,
+            decl.getName()
+        );
+        namedValues_[decl.getName()] = globalVar;
+    } else {
+        varType = generateLLVMType(*decl.getType());
+        
+        Constant* constInit = nullptr;
+        if (decl.getInitializer()) {
+            // Special check for string literals
+            bool isStringLit = false;
+            if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
+                if (dynamic_cast<const ast::StringLiteral*>(&primaryExpr->getPrimary())) {
+                    isStringLit = true;
+                }
+            }
+
+            if (isStringLit) {
+                addError("Global variable '" + decl.getName() + "' with string initializer not yet supported");
+                return;
+            }
+
+            Value* initValue = generateLLVMExpression(*decl.getInitializer());
+            if (initValue) {
+                initValue = ensureTypeMatch(initValue, varType);
+                constInit = llvm::dyn_cast<Constant>(initValue);
+                if (!constInit) {
+                    addError("Global variable '" + decl.getName() + "' must have a constant initializer");
+                    return;
+                }
+            }
+        }
+
+        if (!constInit) {
+            constInit = Constant::getNullValue(varType);
+        }
+
+        auto* globalVar = new GlobalVariable(
+            *module_,
+            varType,
+            false, // isConstant
+            GlobalValue::ExternalLinkage,
+            constInit,
+            decl.getName()
+        );
+        namedValues_[decl.getName()] = globalVar;
+
+        // Track type info
+        if (auto baseType = dynamic_cast<const ast::BaseType*>(decl.getType())) {
+            std::string typeId;
+            if (baseType->isPrimitive()) {
+                typeId = primitiveTypeToString(baseType->getPrimitiveType()->getKind());
+            } else {
+                typeId = baseType->getIdentifier();
+            }
+            variableTypes_[decl.getName()] = typeId;
+        }
+    }
 }
 
 void LLVMCodeGenerator::generateVariableDeclarationStatement(const VariableDeclarationStatement& stmt) {

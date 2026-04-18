@@ -35,7 +35,11 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
     if (ctx->functionDeclaration()) {
         return buildFunctionDeclaration(ctx->functionDeclaration());
     } else if (ctx->variableDeclaration()) {
-        return buildVariableDeclaration(ctx->variableDeclaration());
+        auto varDecl = buildVariableDeclaration(ctx->variableDeclaration());
+        if (varDecl) {
+            varDecl->setGlobal(true);
+        }
+        return varDecl;
     } else if (ctx->classDeclaration()) {
         return buildClassDeclaration(ctx->classDeclaration());
     }

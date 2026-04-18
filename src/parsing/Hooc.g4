@@ -104,7 +104,7 @@ MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip;
 // ===== PARSER RULES =====
 
 // Compilation Unit
-compilationUnit: importStatement* declaration* EOF;
+compilationUnit: importStatement* (declaration SEMICOLON?)* EOF;
 
 // Import Statements (Python-style)
 importStatement

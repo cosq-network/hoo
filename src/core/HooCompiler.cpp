@@ -66,7 +66,13 @@ std::unique_ptr<llvm::Module> HooCompiler::compile(
     // ========================================================================
 
     auto* llvmCodeGen = static_cast<LLVMCodeGenerator*>(codeGenerator_.get());
+    llvmCodeGen->clearErrors();
     auto module = llvmCodeGen->generateLLVMModule(*ast);
+
+    if (llvmCodeGen->hasErrors()) {
+        lastError_ = "Code generation failed: " + llvmCodeGen->getLastError();
+        return nullptr;
+    }
 
     if (!module) {
         lastError_ = "LLVM IR generation failed";
