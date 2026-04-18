@@ -147,6 +147,9 @@ jobs:
       - name: Run tests
         run: |
           cd build/ubuntu-ninja
+          # Run tests with extra verbosity to diagnose failures
+          GTEST_COLOR=1 ./hoo-tests --gtest_print_time=0 2>&1 | head -200 || true
+          echo "==== Running CTest ===="
           ctest --verbose --output-on-failure
 
       - name: Package artifacts

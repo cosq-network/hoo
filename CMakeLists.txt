@@ -85,6 +85,10 @@ llvm_map_components_to_libnames(llvm_libs
     Target
     TargetParser
     native
+    AllTargetsInfos
+    AllTargetsDescs
+    AllTargetsAsmParsers
+    AllTargetsAsmPrinters
 )
 
 find_package(Java REQUIRED COMPONENTS Runtime)
