@@ -360,6 +360,11 @@ private:
     /// @return Generated LLVM value
     llvm::Value* generatePrimaryExpression(const ast::PrimaryExpression& expr);
 
+    /// @brief Generate this literal expression
+    /// @param expr ThisLiteral expression node
+    /// @return Pointer to current object instance (this)
+    llvm::Value* generateThisLiteral(const ast::ThisLiteral& expr);
+
     /// @brief Generate binary expression (arithmetic, comparison)
     /// @param expr Binary expression node
     /// @return Generated LLVM value

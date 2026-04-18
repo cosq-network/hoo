@@ -519,6 +519,9 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
     } else if (ctx->IDENTIFIER()) {
         auto identifier = std::make_unique<Identifier>(ctx->IDENTIFIER()->getText());
         return std::make_unique<PrimaryExpression>(std::move(identifier));
+    } else if (ctx->THIS()) {
+        auto thisLiteral = std::make_unique<ThisLiteral>();
+        return std::make_unique<PrimaryExpression>(std::move(thisLiteral));
     } else if (ctx->INTEGER_LITERAL()) {
         int value = getIntValue(ctx->INTEGER_LITERAL());
         auto intLiteral = std::make_unique<IntegerLiteral>(value);

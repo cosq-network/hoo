@@ -55,6 +55,7 @@ Hooc reserves the following keywords:
 **Special:**
 - `scope` - Scope management
 - `event` - Event declaration
+- `this` - Current object instance
 
 **Literals:**
 - `true`, `false` - Boolean literals
@@ -144,9 +145,8 @@ Examples: `3.14`, `0.5`, `100.0`
 **String Literals:**
 ```antlr
 STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"'
-MULTILINE_STRING: '"""' .*? '"""'
 ```
-Examples: `"hello"`, `"line 1\nline 2"`, `"""multi-line text"""`
+Examples: `"hello"`, `"line 1\nline 2"`
 
 **Character Literals:**
 ```antlr
@@ -316,8 +316,8 @@ class Rectangle {
     var height: int64;
 
     constructor(w: int64, h: int64) {
-        var width = w;
-        var height = h;
+        this.width = w;
+        this.height = h;
     }
 }
 
@@ -735,8 +735,8 @@ class Person {
     var age: int64;
 
     constructor(name: string, age: int64) {
-        var self.name = name;
-        var self.age = age;
+        this.name = name;
+        this.age = age;
     }
 
     func greet() -> void {

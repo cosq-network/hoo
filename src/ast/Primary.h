@@ -103,6 +103,14 @@ public:
     std::string toString() const override;
 };
 
+// This literal
+class ThisLiteral : public Primary {
+public:
+    ThisLiteral() {}
+
+    std::string toString() const override;
+};
+
 // Interpolated string (placeholder)
 class InterpolatedString : public Primary {
 public:

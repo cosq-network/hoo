@@ -94,10 +94,7 @@ class Point {
 var p: Point;                   // Variable of type Point
 var maybePoint: Point?;         // Nullable Point
 var points: Point[];            // Array of Points
-var boxes: Box[];               // Array of custom type
 ```
-
-**Note:** Generic type parameters (e.g., `class Box<T>`) have been removed from the language. Use array types (`T[]`) for type-safe collections.
 
 ### Type Inference
 
@@ -286,8 +283,8 @@ class Point {
     var y: int64;
 
     constructor(x: int64, y: int64) {
-        var self.x = x;
-        var self.y = y;
+        this.x = x;
+        this.y = y;
     }
 }
 
@@ -296,8 +293,8 @@ class Rectangle {
     var height: int64;
 
     constructor(w: int64, h: int64) {
-        var width = w;
-        var height = h;
+        width = w;
+        height = h;
     }
 
     func area() -> int64 {
@@ -332,7 +329,7 @@ class Counter {
     var count: int64;
 
     constructor() {
-        var count = 0;
+        count = 0;
     }
 
     func increment() {
@@ -414,7 +411,7 @@ class Animal {
     var name: string;
 
     constructor(name: string) {
-        var self.name = name;
+        this.name = name;
     }
 
     func makeSound() -> void {
@@ -427,8 +424,8 @@ class Dog extends Animal {
 
     constructor(name: string, breed: string) {
         // Call parent constructor
-        var self.name = name;
-        var self.breed = breed;
+        this.name = name;
+        this.breed = breed;
     }
 
     func makeSound() -> void {
@@ -458,7 +455,7 @@ class Circle implements Drawable, Printable {
     var radius: double;
 
     constructor(r: double) {
-        var radius = r;
+        radius = r;
     }
 
     func draw() -> void {
@@ -692,7 +689,6 @@ import std.collections; // Nested module
 
 // Using qualified names
 var str = new std.String("hello");
-var arr = new std.collections.List<int64>();
 ```
 
 ### Standard Library Modules
@@ -704,16 +700,13 @@ var s = new String("hello");
 
 // Array module
 from std import Array;
-var arr = new Array<int64>();
+var arr = new Array();
 
 // IO module (planned)
 from std.io import File, Console;
-var file = new File("data.txt");
 
 // Collections (planned)
 from std.collections import List, Map, Set;
-var list = new List<string>();
-var map = new Map<string, int64>();
 ```
 
 ### Creating Modules
@@ -823,13 +816,6 @@ Hooc provides a comprehensive string library with UTF-8 support.
 var s1 = "hello";
 var s2 = "world";
 
-// Multi-line strings
-var multiline = """
-    This is a
-    multi-line
-    string
-""";
-
 // Empty string
 var empty = "";
 ```
@@ -889,7 +875,7 @@ var number = String.format("Value: %.2f", 3.14159);
 
 ## Advanced Features
 
-### Nullable Chaining
+### Null Handling
 
 ```hoo
 class Person {
@@ -908,48 +894,6 @@ var person: Person? = getPerson();
 if person != null {
     if person.address != null {
         print(person.address.city);
-    }
-}
-```
-
-### Type Guards
-
-```hoo
-var value: int64 | string;
-
-// Type checking (future feature)
-if value is int64 {
-    var number = value;  // Treated as int64
-} else {
-    var text = value;    // Treated as string
-}
-```
-
-### Type Constraints (Planned)
-
-```hoo
-// Future feature: constrain type parameters
-interface Comparable {
-    func compare(other: Self) -> int64;
-}
-
-// Note: This feature requires generics to be re-introduced
-func sortable<T: Comparable>(items: T[]) -> void {
-    // T must implement Comparable interface
-}
-```
-
-**Current Status:** Type constraints are not available because generics have been removed. Use concrete array types instead.
-
-### Properties (Planned)
-
-```hoo
-// Future feature: computed properties
-class Circle {
-    var radius: double;
-
-    property area: double {
-        get { return 3.14 * radius * radius; }
     }
 }
 ```

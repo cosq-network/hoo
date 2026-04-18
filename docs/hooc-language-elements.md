@@ -51,7 +51,7 @@ Expressions with property/method access or function calls.
 | Member access | `expression '.' IDENTIFIER` | `obj.name`, `point.x` |
 | Index access | `expression '[' expression ']'` | `arr[0]`, `items[i]` |
 | Function call | `expression '(' argumentList? ')'` | `print(x)`, `obj.method()` |
-| New expression | `'new' IDENTIFIER '(' args? ')'` | `new Box()`, `new Point(1, 2)` |
+| New expression | `'new' qualifiedIdentifier '(' args? ')'` | `new Point(1, 2)`, `new std.String("hi")` |
 | Function call (postfix) | `IDENTIFIER '(' argumentList? ')'` | `foo()`, `bar(1, 2)` |
 | Array literal | `'[' expressionList? ']'` | `[]`, `[1, 2, 3]`, `['a', 'b']` |
 
@@ -71,9 +71,9 @@ Statements that perform assignments or control flow.
 | Expression statement | `expression ';'` | `foo();`, `x = 10;` |
 | Return statement (with value) | `'return' expression ';'` | `return x + 1;` |
 | Return statement (void) | `'return' ';'` | `return;` |
-| If statement (no else) | `'if' '(' expression ')' block` | `if (x > 0) { return x; }` |
-| If statement (with else) | `'if' '(' expression ')' block 'else' block` | `if (x > 0) { ... } else { ... }` |
-| While statement | `'while' '(' expression ')' block` | `while (i < 10) { i = i + 1; }` |
+| If statement (no else) | `'if' expression block` | `if x > 0 { return x; }` |
+| If statement (with else) | `'if' expression block 'else' block` | `if x > 0 { ... } else { ... }` |
+| While statement | `'while' expression block` | `while i < 10 { i = i + 1; }` |
 | For statement | `'for' IDENTIFIER 'in' expression ('..' expression)? block` | `for i in 0..10 { sum = sum + i; }` |
 | Scope statement | `'scope' block` | `scope { var temp = x; x = y; y = temp; }` |
 
@@ -102,7 +102,6 @@ Callable units that can be compiled independently (may reference imports).
 | Function (void, no params) | `'func' IDENTIFIER '(' ')' '->' 'void' block` | `func main() -> void { return; }` |
 | Function (with params) | `'func' IDENTIFIER '(' params ')' '->' type block` | `func add(a: int64, b: int64) -> int64 { return a + b; }` |
 | Function (no return type) | `'func' IDENTIFIER '(' params? ')' block` | `func greet(name: string) { print(name); }` |
-| Generic function | ~~`'func' IDENTIFIER '<' typeParams '>' '(' params ')' '->' type block`~~ | **Removed** |
 | Constructor | `'constructor' '(' params? ')' block` | `constructor(x: int64, y: int64) { this.x = x; this.y = y; }` |
 | Event declaration | `'event' IDENTIFIER ';'` | `event onClick;`, `event onUpdate;` |
 
@@ -132,7 +131,6 @@ User-defined types that group related functionality.
 | Simple class | `'class' IDENTIFIER classBody` | `class Point { constructor() {} }` |
 | Class with constructor | `'class' IDENTIFIER classBody` | `class Counter { constructor() { this.count = 0; } }` |
 | Class with members | `'class' IDENTIFIER classBody` | `class Calculator { func add(a: int64, b: int64) -> int64 { return a + b; } }` |
-| Generic class | ~~`'class' IDENTIFIER '<' typeParams '>' classBody`~~ | **Removed** |
 | Class with inheritance | `'class' IDENTIFIER 'extends' IDENTIFIER classBody` | `class Dog extends Animal { }` |
 | Class with implements | `'class' IDENTIFIER 'implements' IDENTIFIER (',' IDENTIFIER)* classBody` | `class Rect implements Drawable { }` |
 | Class with modifiers | `modifiers 'class' IDENTIFIER classBody` | `singleton class Config { }`, `immutable class User { }` |
@@ -235,7 +233,7 @@ class Circle implements Drawable {
 }
 
 func main() -> void {
-    var config = Config();
+    var config = new Config();
     var version = config.getVersion();
 
     var p1 = new Point(0, 0);
@@ -317,7 +315,7 @@ Compilation Unit (heavy)
 | Array (multi-dim) | `type '[][]'` | `var m: int64[][]` |
 | Nullable | `type '?'` | `var x: int64?` |
 | Generic type | ~~`TypeName<type>`~~ | **Removed** (use arrays) |
-| Qualified type | `Identifier ('.' Identifier)*` | `var x: std.List<string>` |
+| Qualified type | `Identifier ('.' Identifier)*` | `var x: std.collections.List` |
 
 ---
 
@@ -469,7 +467,7 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | `char` | 8 bits | Register | UTF-8 code unit |
 | `string` | variable | Pointer (i8*) | Heap-allocated object |
 | `object` | variable | Pointer (i8*) | Heap-allocated with vtable |
-| `array<T>` | variable | Pointer (i8*) | Heap-allocated with length |
+| `array` | variable | Pointer (i8*) | Heap-allocated with length |
 | `T?` (nullable) | 64 bits | Pointer (nullable) | Null allowed |
 
 ---
@@ -507,4 +505,3 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 5. **Classes** require their member functions, but member functions can reference the class
 6. **Interfaces** require their method signatures but no implementation
 7. **Imports** create dependencies but don't affect the ability to compile the importing unit
-8. **Generic types** like `Array<T>` and `Box<T>` require type argument instantiation at use site

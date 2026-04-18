@@ -347,6 +347,9 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
         // happens in variable declaration and function parameter contexts
         return ConstantPointerNull::get(llvm::PointerType::get(context_, 0));
 
+    } else if (auto thisLiteral = dynamic_cast<const ThisLiteral*>(&primary)) {
+        return generateThisLiteral(*thisLiteral);
+
     } else if (auto stringLiteral = dynamic_cast<const ASTStringLiteral*>(&primary)) {
         // Create global string constant
         Value* cstr = builder_->CreateGlobalString(stringLiteral->getValue(), "str");
@@ -401,6 +404,19 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
     }
 
     addError("Unsupported primary expression type");
+    return nullptr;
+}
+
+Value* LLVMCodeGenerator::generateThisLiteral(const ThisLiteral& expr) {
+    auto it = namedValues_.find("this");
+    if (it != namedValues_.end()) {
+        // 'this' is already a pointer (the implicit first parameter),
+        // so we don't need to load it if it's stored directly in namedValues_.
+        // In our implementation, 'this' is stored as the Value* of the argument.
+        return it->second;
+    }
+
+    addError("'this' keyword used outside of class context");
     return nullptr;
 }
 
@@ -876,16 +892,93 @@ Value* LLVMCodeGenerator::generateLogicalOr(const LogicalOr& expr) {
 }
 
 Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
-    // Get the lvalue (must be an identifier for now)
     const Expression& lhs = expr.getLeft();
+
+    // Handle member assignment: obj.member = value
+    if (auto memberAccess = dynamic_cast<const MemberAccess*>(&lhs)) {
+        Value* objectValue = generateLLVMExpression(memberAccess->getObject());
+        if (!objectValue) {
+            addError("Failed to generate object expression for assignment");
+            return nullptr;
+        }
+
+        std::string className;
+        if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&memberAccess->getObject())) {
+            const ASTNode& primary = primaryExpr->getPrimary();
+            if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
+                auto it = variableTypes_.find(identifier->getName());
+                if (it != variableTypes_.end()) {
+                    className = it->second;
+                }
+            } else if (dynamic_cast<const ThisLiteral*>(&primary)) {
+                auto it = variableTypes_.find("this");
+                if (it != variableTypes_.end()) {
+                    className = it->second;
+                }
+            }
+        }
+
+        if (className.empty()) {
+            addError("Cannot determine class type for member assignment");
+            return nullptr;
+        }
+
+        auto classTypeIt = classTypes_.find(className);
+        if (classTypeIt == classTypes_.end()) {
+            addError("Unknown class type: " + className);
+            return nullptr;
+        }
+        llvm::StructType* classType = classTypeIt->second;
+
+        auto declIt = classDeclarations_.find(className);
+        if (declIt == classDeclarations_.end()) {
+            addError("Missing class declaration for: " + className);
+            return nullptr;
+        }
+        const ast::ClassDeclaration* classDecl = declIt->second;
+
+        const std::string& memberName = memberAccess->getMember();
+        int memberIndex = -1;
+        int fieldIdx = 0;
+
+        for (const auto& member : classDecl->getBody().getMembers()) {
+            if (auto decl = member->getDeclaration()) {
+                if (auto varMember = dynamic_cast<const ast::VariableDeclaration*>(decl)) {
+                    if (varMember->getName() == memberName) {
+                        memberIndex = fieldIdx;
+                        break;
+                    }
+                    fieldIdx++;
+                }
+            }
+        }
+
+        if (memberIndex == -1) {
+            addError("Member not found: " + memberName + " in class " + className);
+            return nullptr;
+        }
+
+        auto structPtrType = llvm::PointerType::get(context_, 0);
+        auto fieldPtr = builder_->CreateStructGEP(classType, objectValue, memberIndex, "field_ptr");
+
+        Value* rvalue = generateLLVMExpression(expr.getRight());
+        if (!rvalue) return nullptr;
+
+        builder_->CreateStore(rvalue, fieldPtr);
+        return rvalue;
+    }
+
+    // Get the lvalue (must be an identifier or this for now)
     std::string varName;
 
     if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&lhs)) {
         const ASTNode& primary = primaryExpr->getPrimary();
         if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
             varName = identifier->getName();
+        } else if (dynamic_cast<const ThisLiteral*>(&primary)) {
+            varName = "this";
         } else {
-            addError("Assignment target must be an identifier");
+            addError("Assignment target must be an identifier or 'this'");
             return nullptr;
         }
     } else {
@@ -920,11 +1013,20 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // Try to determine the class type from the object
     std::string className;
 
-    // If the object is a primary identifier, look it up in variable types
+    // If the object is a primary expression (identifier or this), look it up
     if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&expr.getObject())) {
         const ASTNode& primary = primaryExpr->getPrimary();
         if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
             auto it = variableTypes_.find(identifier->getName());
+            if (it != variableTypes_.end()) {
+                className = it->second;
+            }
+        } else if (dynamic_cast<const ThisLiteral*>(&primary)) {
+            // Find current class context
+            // In our current implementation, when generating class methods,
+            // we could store the current class name. 
+            // Let's check how class methods are generated.
+            auto it = variableTypes_.find("this");
             if (it != variableTypes_.end()) {
                 className = it->second;
             }
@@ -2210,11 +2312,15 @@ void LLVMCodeGenerator::generateClassDeclaration(const ClassDeclaration& classDe
 
                 // Set up local scope with parameters
                 namedValues_.clear();
+                variableTypes_.clear();
 
-                // Add 'this' as a local variable (skip it, it's used directly)
-                // Add explicit parameters to symbol table
+                // Add 'this' to symbol table
                 auto argIt = methodFunc->arg_begin();
-                ++argIt; // Skip 'this' pointer
+                Value* thisPtr = &*argIt;
+                thisPtr->setName("this");
+                namedValues_["this"] = thisPtr;
+                variableTypes_["this"] = className;
+                ++argIt;
 
                 for (const auto& param : funcDecl->getParameters()) {
                     auto& arg = *argIt++;
@@ -2299,6 +2405,7 @@ void LLVMCodeGenerator::generateConstructor(const ClassDeclaration& classDecl,
 
     // Store 'this' in namedValues for access in constructor body
     namedValues_["this"] = thisPtr;
+    variableTypes_["this"] = className;
 
     // Add remaining parameters to symbol table
     auto paramIt = constructor.getParameters().begin();

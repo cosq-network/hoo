@@ -21,7 +21,7 @@
  * - Convert ANTLR4 parse tree contexts to strongly-typed AST nodes
  * - Handle all grammar elements: declarations, statements, expressions, types
  * - Support Hooc language features: classes, interfaces, functions, control flow,
- *   arrays, optional/nullable types, union types, string interpolation
+ *   arrays, optional/nullable types, union types, string interpolation, 'this' keyword
  * - Validate grammar constraints (e.g., single constructor per class)
  *
  * @section Usage

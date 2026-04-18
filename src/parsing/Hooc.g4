@@ -32,6 +32,7 @@ SERVICE: 'service';
 STRATEGY: 'strategy';
 ACTOR: 'actor';
 AS: 'as';
+THIS: 'this';
 TRUE: 'true';
 FALSE: 'false';
 NULL: 'null';
@@ -267,6 +268,7 @@ postfixSuffix
 
 primary
     : IDENTIFIER                                             // Simple identifier or function call
+    | THIS                                                   // Current object instance
     | INTEGER_LITERAL
     | FLOATING_LITERAL
     | STRING_LITERAL

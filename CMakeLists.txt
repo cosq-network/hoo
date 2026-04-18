@@ -331,12 +331,14 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/MethodCallParsingTest.cpp
         tests/parsing/QualifiedIdentifierParsingTest.cpp
         tests/parsing/QualifiedNewExpressionParsingTest.cpp
+        tests/parsing/ThisKeywordParsingTest.cpp
         tests/codegen/BasicCodeGenTest.cpp
         tests/codegen/FunctionCallCodeGenTest.cpp
         tests/codegen/VariableDeclarationCodeGenTest.cpp
         tests/codegen/ArrayLiteralCodeGenTest.cpp
         tests/codegen/IfElseIfCodeGenTest.cpp
         tests/codegen/WhileLoopCodeGenTest.cpp
+        tests/codegen/ThisKeywordCodeGenTest.cpp
         tests/codegen/NullableCodeGenTest.cpp
         tests/codegen/NewExpressionCodeGenTest.cpp
         tests/codegen/ObjectCreationCodeGenTest.cpp

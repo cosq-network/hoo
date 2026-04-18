@@ -1,12 +1,11 @@
 # Hooc - The Hoo Programming Language Compiler
 
-Hooc is a modern, statically-typed programming language with automatic memory management, generics, and a clean syntax. It combines the best features of modern languages with a focus on safety, performance, and developer productivity.
+Hooc is a modern, statically-typed programming language with automatic memory management and a clean syntax. It combines the best features of modern languages with a focus on safety, performance, and developer productivity.
 
 ## Features
 
 - **Automatic Reference Counting (ARC)**: Built-in memory management with zero-cost abstractions
-- **Generics**: Full generic support for functions and classes with type parameter inference
-- **Static Type System**: Strong typing with nullable types, union types, and type safety
+- **Static Type System**: Strong typing with nullable types and type safety
 - **Modern Syntax**: Clean, expressive syntax inspired by modern languages
 - **LLVM Backend**: Leverages LLVM for optimization and native code generation
 - **Module System**: Python-style imports with hierarchical module organization
@@ -108,8 +107,8 @@ class Point {
     var y: int64;
 
     constructor(x: int64, y: int64) {
-        var self.x = x;
-        var self.y = y;
+        this.x = x;
+        this.y = y;
     }
 
     func distance() -> double {
@@ -120,31 +119,6 @@ class Point {
 func main() {
     var p = new Point(10, 20);
     var dist = p.distance();
-}
-```
-
-### Generics
-
-```hoo
-func identity<T>(value: T) -> T {
-    return value;
-}
-
-class Box<T> {
-    var value: T;
-
-    constructor(value: T) {
-        var self.value = value;
-    }
-
-    func get() -> T {
-        return value;
-    }
-}
-
-func main() {
-    var intBox = new Box<int64>(42);
-    var strBox = new Box<string>("hello");
 }
 ```
 

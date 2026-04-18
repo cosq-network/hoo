@@ -320,6 +320,10 @@ std::string NullLiteral::toString() const {
     return "NullLiteral(null)";
 }
 
+std::string ThisLiteral::toString() const {
+    return "ThisLiteral(this)";
+}
+
 std::string InterpolatedString::toString() const {
     return "InterpolatedString";
 }

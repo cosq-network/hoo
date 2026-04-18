@@ -79,7 +79,7 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Member variables
   - ✅ Constructors with parameters
   - ✅ Member functions (methods)
-  - ✅ `this`/`self` reference
+  - ✅ `this` reference
   - ✅ Class inheritance (`extends`)
   - ✅ Class modifiers (singleton, immutable, final, etc.)
 
