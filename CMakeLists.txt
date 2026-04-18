@@ -178,6 +178,8 @@ add_dependencies(hoo-parser generate_parser)
 # Create hoo-compiler library
 add_library(hoo-compiler
     src/core/HooCompiler.cpp
+    src/core/DefaultIOProvider.cpp
+    src/core/HooCLI.cpp
     src/jit/HoocJIT.cpp
     src/parsing/ProcessIsolatedParser.cpp
     src/codegen/LLVMCodeGenerator.cpp
@@ -254,6 +256,11 @@ add_executable(hooc
 
 target_link_libraries(hooc
     hoo-compiler
+)
+
+target_include_directories(hooc PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/core
 )
 
 # Install targets
@@ -349,6 +356,7 @@ if(HOOC_BUILD_TESTS)
         tests/jit/HoocJITTest.cpp
         tests/jit/IOFunctionTest.cpp
         tests/core/HooCompilerTest.cpp
+        tests/core/HooCLITest.cpp
         tests/hvm/HInstructionTest.cpp
         tests/hvm/HoModuleTest.cpp
     )

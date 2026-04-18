@@ -1,49 +1,57 @@
 # Hooc Test Status Report
 
-**Report Date:** April 17, 2026 (Updated)
+**Report Date:** April 18, 2026
 **Build Configuration:** macOS Homebrew Ninja
-**Total Test Suites:** 43
-**Total Test Cases:** 721
-**Last Execution:** After HooCompiler unit tests added
-**Execution Time:** 107 ms
-**Last Update:** Added 34 explicit unit tests for HooCompiler class
-
-**Detailed Results:** See `docs/test-results.csv` for complete test-by-test breakdown
+**Total Test Suites:** 49
+**Total Test Cases:** 981
+**Execution Time:** ~180 ms
+**Last Update:** Added 7 HooCLI tests; Fixed null pointer dereference bug in HooCLITest
 
 ## Executive Summary
 
-The Hooc compiler test suite shows **100% pass rate** (721 passing tests out of 721 total) with comprehensive test coverage across all language features, the JIT execution engine, and the HooCompiler class.
+The Hooc compiler test suite shows **100% pass rate** (981 passing tests out of 981 total) with comprehensive test coverage across all language features, the JIT execution engine, and the CLI.
 
 ### Test Results Overview
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| **Total Tests** | 721 | 100% |
-| **Passing Tests** | 721 | 100% |
+| **Total Tests** | 981 | 100% |
+| **Passing Tests** | 981 | 100% |
 | **Failing Tests** | 0 | 0% |
-| **Test Suites** | 43 | - |
+| **Test Suites** | 49 | - |
 | **Failing Suites** | 0 | 0% |
 
 ---
 
-## Build Configuration
+## Bug Fix: HooCLITest Null Pointer Dereference
 
-Using CMakePresets.json with `macos-homebrew-ninja` preset:
-- **Generator:** Ninja
-- **Build Type:** RelWithDebInfo
-- **Tests:** Enabled (HOOC_BUILD_TESTS=ON)
-- **LLVM:** 22.1.3 via Homebrew
-- **Compiler:** AppleClang 17.0.0
+**Issue:** Tests were calling methods on moved-from `std::unique_ptr<FakeIOProvider>` after transferring ownership to `HooCLI`, causing undefined behavior.
+
+**Fix:** 
+1. Added `getIOProvider()` method to `HooCLI` class to access the underlying IOProvider
+2. Added virtual `getStdout()` and `getStderr()` methods to `IOProvider` base class
+3. Updated tests to use `cli->getIOProvider()` instead of the moved-from pointer
+
+**Files Modified:**
+- `src/core/HooCLI.h` - Added `getIOProvider()` method
+- `src/core/IOProvider.h` - Added `getStdout()` / `getStderr()` virtual methods
+- `tests/core/HooCLITest.cpp` - Updated all 7 tests to use new accessor method
 
 ---
 
-## Test Suite Breakdown (43 Suites, 721 Tests)
+## Test Suite Breakdown (49 Suites, 981 Tests)
+
+### Core CLI Tests (1 Suite, 7 Tests)
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| HooCLITest | 7 | Command-line interface, argument parsing, file handling |
 
 ### Core Compiler Tests (1 Suite, 34 Tests)
 
 | Suite | Tests | Description |
 |-------|-------|-------------|
-| HooCompilerTest | 34 | Compilation API, error handling, module generation, multiple compilations |
+| HooCompilerTest | 34 | Compilation API, error handling, module generation |
 
 ### JIT Engine Tests (6 Suites, 29 Tests)
 
@@ -55,6 +63,13 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 | HoocJITErrorHandlingTest | 4 | Error state, clearing, messages |
 | HoocJITLookupTest | 3 | Symbol lookup, error propagation |
 | HoocJITExecutionTest | 5 | execute(), executeFunction<>() error handling |
+
+### HVM Tests (2 Suites, 33 Tests)
+
+| Suite | Tests | Description |
+|-------|-------|-------------|
+| HoModuleTest | 27 | Module parsing, encoding/decoding |
+| HInstructionTest | 6 | Instruction encoding |
 
 ### Parsing Tests (15 Suites, 246 Tests)
 
@@ -114,57 +129,76 @@ Using CMakePresets.json with `macos-homebrew-ninja` preset:
 
 ---
 
-## Feature Coverage
+## HooCLI Component Documentation
 
-### Features with 100% Test Pass Rate
+### Overview
 
-1. **HooCompiler** - Compilation pipeline, error handling, module generation
-2. **JIT Engine** - HoocJIT lifecycle, execution, error handling, symbol lookup
-3. **Primitive Types** - int64, double, bool, char, byte, float, string, void
-4. **Variables** - Declarations, type inference, module-level, assignments
-5. **Control Flow** - if/else, while loops, for-in, for-range
-6. **Functions** - Declarations, parameters, return types, recursion
-7. **Classes** - Declaration, constructors, inheritance, modifiers
-8. **Objects** - Creation with `new`, member access, method calls
-9. **Arrays** - Literals, indexing, multi-dimensional, runtime operations
-10. **Nullable Types** - Parsing, code generation, null handling
-11. **Strings** - Full library with 37 runtime tests
-12. **Module System** - Import, export, qualified names (std.String, std.Array)
-13. **Memory Management** - Reference counting, ARC
+`HooCLI` is the command-line interface for the Hooc compiler. It handles argument parsing, file I/O, compilation, and execution.
 
----
+### Files
 
-## HoocJIT Refactoring Summary
+- `src/core/HooCLI.h` - Header with class definition
+- `src/core/HooCLI.cpp` - Implementation
+- `src/core/IOProvider.h` - Abstract I/O interface
+- `src/core/DefaultIOProvider.h` - Default file I/O implementation
 
-### Critical Bugs Fixed (April 17, 2026)
-
-1. **executeFunction<T> return value ignored** - Now returns actual value via `TypedExecutionResult<T>`
-2. **executeTypedFunction unused declaration** - Removed dead code
-3. **Missing exception handling** - All function executions now catch and report exceptions
-4. **Unused mainJD variable** - Removed in initialize()
-5. **Missing llvm:: prefix** - Fixed JITTargetAddress declaration
-
-### Design Improvements
-
-4. **Argument passing support** - New `executeFunction<T>(name, args...)` template
-5. **Consolidated lookup logic** - New `lookupAddress()` helper
-6. **Backward compatible** - Existing API unchanged
-7. **Better error messages** - Include function name in lookup failures
-
-### New API
+### Class: HooCLI
 
 ```cpp
-// Execute void function
-auto result = jit.executeFunction<void>("myFunc");
+namespace hooc {
 
-// Execute with return value
-auto result = jit.executeFunction<int64_t>("add", 1, 2);
-if (result.success) {
-    int64_t val = result.value;
+class HooCLI {
+public:
+    explicit HooCLI(std::unique_ptr<IOProvider> ioProvider);
+    ~HooCLI();
+
+    int run(int argc, char* argv[]);
+    IOProvider* getIOProvider();
+
+private:
+    struct Options { /* ... */ };
+    std::unique_ptr<IOProvider> ioProvider_;
+    // ... private methods
+};
 }
-
-// All exceptions handled gracefully
 ```
+
+### Supported Options
+
+| Option | Description |
+|--------|-------------|
+| `-h`, `--help` | Display help message and exit |
+| `-v`, `--version` | Display version information and exit |
+| `--verbose` | Enable verbose logging |
+| `--print-ir` | Print generated LLVM IR |
+
+### IOProvider Interface
+
+```cpp
+class IOProvider {
+public:
+    virtual ~IOProvider() = default;
+
+    virtual std::optional<std::string> readFile(const std::string& filename) = 0;
+    virtual bool writeFile(const std::string& filename, const std::string& content) = 0;
+    virtual std::string readStdin() = 0;
+    virtual void writeStdout(const std::string& output) = 0;
+    virtual void writeStderr(const std::string& output) = 0;
+    virtual std::string getStdout() const { return {}; }
+    virtual std::string getStderr() const { return {}; }
+};
+```
+
+### Test Coverage
+
+The `HooCLITest` suite includes 7 tests:
+1. `ShowsHelpWithNoArguments` - No args shows help
+2. `ReturnsErrorWhenNoInputFile` - Missing input returns error
+3. `ReturnsErrorWhenFileNotFound` - Non-existent file returns error
+4. `ReturnsErrorWhenFileIsEmpty` - Empty file returns error
+5. `ShowsVersion` - `--version` displays version
+6. `ShowsHelp` - `--help` displays help
+7. `VerboseLogsToStderr` - `--verbose` enables logging
 
 ---
 
@@ -172,63 +206,36 @@ if (result.success) {
 
 ### Latest Execution
 ```
-[==========] 721 tests from 43 test suites ran. (107 ms total)
-[  PASSED  ] 721 tests.
+[==========] 981 tests from 49 test suites ran. (180 ms total)
+[  PASSED  ] 981 tests.
 [  FAILED  ] 0 tests.
 ```
 
 ### Performance
-- **Total Time:** 107 ms
-- **Average per test:** 0.148 ms
+- **Total Time:** ~180 ms
+- **Average per test:** ~0.18 ms
 - **Performance Rating:** Excellent
 
 ---
 
 ## Code Cleanup History
 
-### April 17, 2026 - Current
+### April 18, 2026 - Current
 
-- Added 34 explicit unit tests for HooCompiler class
-- Reorganized src/ into logical subdirectories (core, jit, parsing, codegen, modules)
-- Reorganized tests/ into logical subdirectories (parsing, codegen, jit, runtime, integration)
-- All 721 tests passing
+- Fixed null pointer dereference in HooCLITest (7 tests)
+- Added getIOProvider() method to HooCLI
+- Added getStdout()/getStderr() to IOProvider base class
+- Added 7 new HooCLI tests
+- All 981 tests passing
 
 ### April 17, 2026 - Earlier
 
-- Complete HoocJIT refactoring (6 critical bugs/design issues fixed)
+- Added 34 explicit unit tests for HooCompiler class
+- HoocJIT refactoring (6 critical bugs fixed)
 - Added 29 comprehensive unit tests for HoocJIT
-- Added comprehensive documentation to HoocJIT.h
-- All 687 tests passing
-
-### April 16, 2026 18:00 - Earlier
-
-- Fixed inverted HoocJIT::execute() return logic
-- Added executeTyped<T>() template method
-- 658 tests passing
-
-### April 16, 2026 17:30 - Earlier
-
-- Removed union types with arrays (incomplete feature)
-- Removed generic type parameters (simplified language)
-- 658 tests passing
-
-### Previous Cleanup
-- Comprehensive generics removal from grammar, AST, and code generator
-- Deleted 7 generic-related test files
-
----
-
-## Future Considerations
-
-### Potential Features for Future
-
-1. **Generics Reintroduction** - Consider Turbofish syntax (`identity::<int64>(42)`)
-2. **Pattern Matching** - `match` expressions
-3. **Error Handling** - try/catch blocks
-4. **Async/Await** - Asynchronous operations
 
 ---
 
 **Report Generated By:** Hooc Test Analysis System
-**Report Version:** 6.0
-**Previous Version:** 5.0 (April 17, 2026)
+**Report Version:** 7.0
+**Previous Version:** 6.0 (April 17, 2026)

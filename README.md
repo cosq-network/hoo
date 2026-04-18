@@ -214,6 +214,10 @@ hooc/
 │   ├── LLVMCodeGenerator.h/cpp  # LLVM IR code generator
 │   ├── SimpleASTBuilder.h/cpp   # AST construction
 │   ├── ModuleSystem.h/cpp       # Module resolution
+│   ├── core/           # Core CLI and I/O utilities
+│   │   ├── HooCLI.h/cpp         # Command-line interface
+│   │   ├── IOProvider.h         # I/O abstraction interface
+│   │   └── DefaultIOProvider.h/cpp  # Default file/stdin/stdout/stderr
 │   ├── ast/          # AST node definitions
 │   └── rt/           # Runtime library (ARC, strings, arrays)
 ├── tests/            # Comprehensive test suite
@@ -221,6 +225,19 @@ hooc/
 ├── antlr4/           # Generated parser code
 └── CMakeLists.txt    # Build configuration
 ```
+
+### Core CLI Components
+
+- **HooCLI** (`src/core/HooCLI.h`): Command-line interface for the compiler
+- **IOProvider** (`src/core/IOProvider.h`): Abstract interface for I/O operations
+- **DefaultIOProvider** (`src/core/DefaultIOProvider.h`): Default implementation using file I/O and stdio
+
+The CLI supports:
+- Compiling and executing `.hoo` source files
+- `--help` / `-h`: Display usage information
+- `--version` / `-v`: Display version information
+- `--verbose`: Enable verbose logging
+- `--print-ir`: Print generated LLVM IR
 
 ## Architecture
 
