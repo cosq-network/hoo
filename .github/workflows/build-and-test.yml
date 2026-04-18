@@ -223,9 +223,19 @@ jobs:
           # Verify installation
           & "$llvmPath\clang.exe" --version
 
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.VCPKG_INSTALLATION_ROOT }}/installed
+            ~/.cache/vcpkg
+          key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+          restore-keys: |
+            ${{ runner.os }}-vcpkg-
+
       - name: Install dependencies via vcpkg
         run: |
-          vcpkg install gtest:x64-windows antlr4-cpp-runtime:x64-windows
+          vcpkg install --triplet x64-windows
 
       - name: Configure CMake
         shell: pwsh
