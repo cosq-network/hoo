@@ -223,10 +223,9 @@ jobs:
           # Verify installation
           & "$llvmPath\clang.exe" --version
 
-      - name: Run vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: 'a4221a8658e6f1f45618f080df73295db2839d48'
+      - name: Install dependencies via vcpkg
+        run: |
+          vcpkg install --triplet x64-windows
 
       - name: Configure CMake
         shell: pwsh
@@ -241,7 +240,7 @@ jobs:
 
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DHOOC_BUILD_TESTS=ON `
-            -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
             -DLLVM_DIR="$llvmDir"
 
       - name: Build compiler
