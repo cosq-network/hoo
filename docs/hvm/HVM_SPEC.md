@@ -37,7 +37,7 @@ The Hooc Virtual Machine (HVM) is a lightweight, register-based virtual machine 
 - High performance and portability
 - Static compilation and dynamic linking
 - Seamless integration with C/C++ and LLVM toolchains
-- Support for modern language features (classes, interfaces)
+- Support for modern language features (classes, inheritance)
 - RISC-like instruction set enabling efficient JIT compilation
 
 ### 1.2 Architecture Type
@@ -377,7 +377,6 @@ All immediates are **sign-extended** to 64 bits before use, except:
 | CALLI      | 0xB5   | I      | rd, -, imm15          | rd = call symbol_table[imm15]                  | Call by symbol table index |
 | TAILCALL   | 0xB6   | R      | addr, -, -, -         | tail_call addr                                  | Tail call                  |
 | CALLVIRT   | 0xB7   | RI     | rd, obj, -, method    | rd = obj.vtable[method](); call rd              | Virtual method call        |
-| CALLINTF   | 0xB8   | RI     | rd, obj, -, method    | rd = obj.intf_table[method](); call rd          | Interface method call      |
 | IMPORT     | 0xB9   | RI     | rd, -, -, imm15       | rd = resolve(mod_table[imm15], sym)             | Resolve external symbol    |
 | LOADMOD    | 0xBA   | I      | rd, -, imm15          | rd = load_module(imm15)                         | Load module by index       |
 | RESOLVE    | 0xBB   | RI     | rd, mod, -, sym       | rd = resolve(mod, sym)                          | Resolve symbol from module |
@@ -954,7 +953,6 @@ Array Layout:
 
 - Methods are invoked via vtables
 - Virtual method call (`CALLVIRT`): Look up method in object's vtable
-- Interface call (`CALLINTF`): Use interface table for dispatch
 - Virtual method dispatch via vtables
 
 ### 7.5 String Representation
@@ -1311,5 +1309,5 @@ HVM defines the following standard exception types for structured exception hand
 
 ---
 
-*Document Version: 1.2*
+*Document Version: 1.3*
 *Last Updated: April 2026*

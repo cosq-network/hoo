@@ -11,7 +11,7 @@ This document outlines the planned development trajectory for the Hooc programmi
 Hooc aims to be a modern, productive programming language that combines:
 - **Safety**: Strong static typing with nullable types and memory safety
 - **Performance**: Native code generation via LLVM
-- **Expressiveness**: Clean, intuitive design with classes and interfaces
+- **Expressiveness**: Clean, intuitive design with classes
 - **Simplicity**: Clean, intuitive design without unnecessary complexity
 - **Interoperability**: Easy FFI with C/C++ and other languages
 
@@ -62,7 +62,7 @@ Hooc aims to be a modern, productive programming language that combines:
 - [ ] `File` - File reading/writing
 - [ ] `Directory` - Directory operations
 - [ ] `Console` - Standard input/output
-- [ ] `Stream` - Abstract stream interface
+- [ ] `Stream` - Stream-based I/O
 - [ ] Path utilities
 - [ ] File system operations
 

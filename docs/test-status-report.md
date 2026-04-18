@@ -3,20 +3,21 @@
 **Report Date:** April 18, 2026
 **Build Configuration:** macOS Homebrew Ninja
 **Total Test Suites:** 49
-**Total Test Cases:** 981
+**Total Test Cases:** 965
 **Execution Time:** ~180 ms
-**Last Update:** Added 7 HooCLI tests; Fixed null pointer dereference bug in HooCLITest
+**Last Update:** Removed interfaces and union types; Updated test suite for language modernization
 
 ## Executive Summary
 
-The Hooc compiler test suite shows **100% pass rate** (981 passing tests out of 981 total) with comprehensive test coverage across all language features, the JIT execution engine, and the CLI.
+The Hooc compiler test suite shows **100% pass rate** (965 passing tests out of 965 total)
+ with comprehensive test coverage across all language features, the JIT execution engine, and the CLI.
 
 ### Test Results Overview
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| **Total Tests** | 981 | 100% |
-| **Passing Tests** | 981 | 100% |
+| **Total Tests** | 965 | 100% |
+| **Passing Tests** | 965 | 100% |
 | **Failing Tests** | 0 | 0% |
 | **Test Suites** | 49 | - |
 | **Failing Suites** | 0 | 0% |
@@ -77,13 +78,13 @@ The Hooc compiler test suite shows **100% pass rate** (981 passing tests out of 
 |-------|-------|-------------|
 | ArrayLiteralParsingTest | 15 | Array literal syntax parsing |
 | FunctionCallParsingTest | 15 | Function call syntax |
-| NullableTypeParsingTest | 13 | Nullable type syntax |
+| NullableTypeParsingTest | 7 | Nullable type syntax |
 | VariableDeclarationParseTest | 15 | Variable declaration parsing |
 | IfElseIfParsingTest | 27 | Conditional statements |
 | WhileLoopParsingTest | 31 | While loop syntax |
 | ImportStatementParsingTest | 18 | Import statement parsing |
 | ModuleLevelVariableParsingTest | 9 | Module-level variables |
-| ClassDeclarationParsingTest | 25 | Class/interface declarations |
+| ClassDeclarationParsingTest | 19 | Class declarations |
 | OptionalReturnTypeTest | 7 | Optional return types |
 | NewExpressionParsingTest | 20 | Object creation syntax |
 | MemberAccessParsingTest | 15 | Member access expressions |

@@ -13,8 +13,6 @@ IN: 'in';
 BREAK: 'break';
 CONTINUE: 'continue';
 CLASS: 'class';
-INTERFACE: 'interface';
-IMPLEMENTS: 'implements';
 EXTENDS: 'extends';
 IMPORT: 'import';
 FROM: 'from';
@@ -124,7 +122,6 @@ importItem: IDENTIFIER (AS IDENTIFIER)?;
 declaration
     : functionDeclaration
     | classDeclaration
-    | interfaceDeclaration
     | variableDeclaration
     ;
 
@@ -138,12 +135,10 @@ parameter: IDENTIFIER COLON type;
 
 // Class Declaration
 classDeclaration
-    : classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? (IMPLEMENTS interfaceList)? classBody
+    : classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? classBody
     ;
 
 classModifier: SINGLETON | IMMUTABLE | FACTORY | OBSERVABLE | SERVICE | STRATEGY | ACTOR | FINAL;
-
-interfaceList: IDENTIFIER (COMMA IDENTIFIER)*;
 
 classBody: LBRACE classMember* RBRACE;
 
@@ -157,15 +152,6 @@ classMember
 constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block;
 
 eventDeclaration: EVENT IDENTIFIER;
-
-// Interface Declaration
-interfaceDeclaration
-    : INTERFACE IDENTIFIER LBRACE interfaceMember* RBRACE
-    ;
-
-interfaceMember: functionSignature SEMICOLON;
-
-functionSignature: FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN;
 
 // Variable Declaration
 variableDeclaration

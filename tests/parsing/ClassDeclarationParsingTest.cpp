@@ -5,22 +5,19 @@
 #include "HoocParser.h"
 #include "src/ast/Declaration.h"
 #include "src/ast/ClassDeclaration.h"
-#include "src/ast/InterfaceDeclaration.h"
 #include "antlr4-runtime.h"
 
 using namespace hooc;
 using namespace hooc::ast;
 
 /**
- * Test suite for class and interface declaration parsing in SimpleASTBuilder.
+ * Test suite for class declaration parsing in SimpleASTBuilder.
  *
  * This suite tests:
  * - Class declarations with various modifiers
  * - Primary constructors
  * - Base class inheritance (extends)
- * - Interface implementation (implements)
  * - Class members (functions, events)
- * - Interface declarations and members
  */
 class ClassDeclarationParsingTest : public ::testing::Test {
 protected:
@@ -78,9 +75,6 @@ TEST_F(ClassDeclarationParsingTest, SimpleClassDeclaration) {
 
     // Verify no base class
     EXPECT_FALSE(classDecl->hasBaseClass());
-
-    // Verify no interfaces
-    EXPECT_FALSE(classDecl->hasInterfaces());
 
     // Verify empty body (no constructor or other members)
     EXPECT_TRUE(classDecl->getBody().getMembers().empty());
@@ -211,52 +205,6 @@ TEST_F(ClassDeclarationParsingTest, ClassWithBaseClass) {
     EXPECT_EQ(classDecl->getBaseClass(), "Parent");
 }
 
-// Test 7: Class with interfaces (implements)
-TEST_F(ClassDeclarationParsingTest, ClassWithInterfaces) {
-    std::string code = R"(
-        class MyClass implements Drawable, Serializable {
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(classDecl, nullptr);
-
-    // Verify interfaces
-    EXPECT_TRUE(classDecl->hasInterfaces());
-    EXPECT_EQ(classDecl->getInterfaces().size(), 2);
-    EXPECT_EQ(classDecl->getInterfaces()[0], "Drawable");
-    EXPECT_EQ(classDecl->getInterfaces()[1], "Serializable");
-}
-
-// Test 8: Class with base class and interfaces
-TEST_F(ClassDeclarationParsingTest, ClassWithBaseClassAndInterfaces) {
-    std::string code = R"(
-        class MyClass extends BaseClass implements Interface1, Interface2 {
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(classDecl, nullptr);
-
-    // Verify base class and interfaces
-    EXPECT_TRUE(classDecl->hasBaseClass());
-    EXPECT_EQ(classDecl->getBaseClass(), "BaseClass");
-    EXPECT_TRUE(classDecl->hasInterfaces());
-    EXPECT_EQ(classDecl->getInterfaces().size(), 2);
-}
-
 // Test 9: Class with function member
 TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
     std::string code = R"(
@@ -353,128 +301,6 @@ TEST_F(ClassDeclarationParsingTest, ClassWithMixedMembers) {
     EXPECT_EQ(func2->getName(), "update");
 }
 
-// Test 12: Simple interface with no members
-TEST_F(ClassDeclarationParsingTest, SimpleInterfaceDeclaration) {
-    std::string code = R"(
-        interface Empty {
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* decl = getFirstDeclaration(*ast);
-    ASSERT_NE(decl, nullptr);
-
-    auto* interfaceDecl = dynamic_cast<const InterfaceDeclaration*>(decl);
-    ASSERT_NE(interfaceDecl, nullptr) << "Declaration should be an InterfaceDeclaration";
-
-    // Verify interface name
-    EXPECT_EQ(interfaceDecl->getName(), "Empty");
-
-    // Verify no members
-    EXPECT_TRUE(interfaceDecl->getMembers().empty());
-}
-
-// Test 13: Interface with single method signature
-TEST_F(ClassDeclarationParsingTest, InterfaceWithSingleMethod) {
-    std::string code = R"(
-        interface Drawable {
-            func draw();
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* interfaceDecl = dynamic_cast<const InterfaceDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(interfaceDecl, nullptr);
-
-    // Verify method signature
-    auto& members = interfaceDecl->getMembers();
-    EXPECT_EQ(members.size(), 1);
-
-    auto& signature = members[0]->getSignature();
-    EXPECT_EQ(signature.getName(), "draw");
-    EXPECT_TRUE(signature.getParameters().empty());
-
-    // Verify return type is void
-    auto* returnType = signature.getReturnType();
-    ASSERT_NE(returnType, nullptr);
-}
-
-// Test 14: Interface with multiple method signatures
-TEST_F(ClassDeclarationParsingTest, InterfaceWithMultipleMethods) {
-    std::string code = R"(
-        interface Repository {
-            func:bool save(data: int64);
-            func:int64 load(id: int64);
-            func delete(id: int64);
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* interfaceDecl = dynamic_cast<const InterfaceDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(interfaceDecl, nullptr);
-
-    // Verify multiple method signatures
-    auto& members = interfaceDecl->getMembers();
-    EXPECT_EQ(members.size(), 3);
-
-    // First method: save
-    EXPECT_EQ(members[0]->getSignature().getName(), "save");
-    EXPECT_EQ(members[0]->getSignature().getParameters().size(), 1);
-
-    // Second method: load
-    EXPECT_EQ(members[1]->getSignature().getName(), "load");
-    EXPECT_EQ(members[1]->getSignature().getParameters().size(), 1);
-
-    // Third method: delete
-    EXPECT_EQ(members[2]->getSignature().getName(), "delete");
-    EXPECT_EQ(members[2]->getSignature().getParameters().size(), 1);
-}
-
-// Test 15: Interface method with various return types
-TEST_F(ClassDeclarationParsingTest, InterfaceMethodWithVariousReturnTypes) {
-    std::string code = R"(
-        interface TypeTest {
-            func:int64 getInt();
-            func:double getDouble();
-            func:bool getBool();
-            func doNothing();
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* interfaceDecl = dynamic_cast<const InterfaceDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(interfaceDecl, nullptr);
-
-    // Verify all methods are present with correct return types
-    auto& members = interfaceDecl->getMembers();
-    EXPECT_EQ(members.size(), 4);
-
-    EXPECT_EQ(members[0]->getSignature().getName(), "getInt");
-    EXPECT_EQ(members[1]->getSignature().getName(), "getDouble");
-    EXPECT_EQ(members[2]->getSignature().getName(), "getBool");
-    EXPECT_EQ(members[3]->getSignature().getName(), "doNothing");
-}
-
 // Test 16: Class with all modifiers
 TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
     std::string code = R"(
@@ -506,7 +332,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
 // Test 17: Complex class with all features
 TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     std::string code = R"(
-        immutable class ComplexClass extends BaseClass implements Interface1, Interface2 {
+        immutable class ComplexClass extends BaseClass {
             constructor(id: int64, name: int64) {
             }
             func method1() {
@@ -536,10 +362,6 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     // Verify base class
     EXPECT_TRUE(classDecl->hasBaseClass());
     EXPECT_EQ(classDecl->getBaseClass(), "BaseClass");
-
-    // Verify interfaces
-    EXPECT_TRUE(classDecl->hasInterfaces());
-    EXPECT_EQ(classDecl->getInterfaces().size(), 2);
 
     // Verify members (constructor + 2 methods + 1 event = 4 members)
     auto& members = classDecl->getBody().getMembers();

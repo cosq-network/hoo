@@ -277,6 +277,11 @@ void LLVMCodeGenerator::generateLLVMStatement(const Statement& stmt) {
 void LLVMCodeGenerator::generateReturnStatement(const ReturnStatement& ret) {
     if (ret.hasExpression()) {
         Value* retValue = generateLLVMExpression(*ret.getExpression());
+        
+        // Ensure return value matches function return type (handle nullable wrapping)
+        Function* currentFunc = builder_->GetInsertBlock()->getParent();
+        retValue = ensureTypeMatch(retValue, currentFunc->getReturnType());
+        
         builder_->CreateRet(retValue);
     } else {
         builder_->CreateRetVoid();
@@ -713,8 +718,11 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
             size_t paramIndex = thisPtr ? (i + 1) : i;
             if (calleeFunc && paramIndex < calleeFunc->arg_size()) {
                 llvm::Type* expectedType = calleeFunc->getFunctionType()->getParamType(paramIndex);
+                
+                // Handle implicit conversions (numeric and nullable)
+                argValue = ensureTypeMatch(argValue, expectedType);
+                
                 llvm::Type* actualType = argValue->getType();
-
                 if (actualType != expectedType) {
                     if (actualType->isIntegerTy() && expectedType->isIntegerTy()) {
                         unsigned actualBits = actualType->getIntegerBitWidth();
@@ -964,6 +972,10 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
         Value* rvalue = generateLLVMExpression(expr.getRight());
         if (!rvalue) return nullptr;
 
+        // Get the field type
+        llvm::Type* fieldType = classType->getElementType(memberIndex);
+        rvalue = ensureTypeMatch(rvalue, fieldType);
+
         builder_->CreateStore(rvalue, fieldPtr);
         return rvalue;
     }
@@ -995,6 +1007,11 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     if (it == namedValues_.end()) {
         addError("Unknown variable: " + varName);
         return nullptr;
+    }
+
+    // Ensure type match (handle nullable wrapping)
+    if (auto alloca = llvm::dyn_cast<AllocaInst>(it->second)) {
+        rvalue = ensureTypeMatch(rvalue, alloca->getAllocatedType());
     }
 
     // Store the value
@@ -1456,6 +1473,7 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
         if (decl.getInitializer()) {
             Value* initValue = generateLLVMExpression(*decl.getInitializer());
             if (initValue) {
+                initValue = ensureTypeMatch(initValue, varType);
                 builder_->CreateStore(initValue, alloca);
             }
         }
@@ -2004,6 +2022,11 @@ llvm::StructType* LLVMCodeGenerator::createNullableType(llvm::Type* valueType) {
         }
     } else {
         typeName += "_unknown";
+    }
+
+    // Reuse existing type if available in current context
+    if (auto* existingType = llvm::StructType::getTypeByName(context_, typeName)) {
+        return existingType;
     }
 
     return llvm::StructType::create(context_, elements, typeName);
@@ -2725,4 +2748,21 @@ void LLVMCodeGenerator::processFromImport(const ast::FromImport& import) {
         std::string importName = alias.empty() ? name : alias;
         importedNames_[importName] = export_;
     }
+}
+Value* LLVMCodeGenerator::ensureTypeMatch(Value* value, llvm::Type* targetType) {
+    if (!value || !targetType) return value;
+    if (value->getType() == targetType) return value;
+
+    // Handle implicit conversion to nullable (tagged union pattern: { i1 flag, T value })
+    if (targetType->isStructTy() && targetType->getStructName().starts_with("nullable")) {
+        auto structTy = llvm::cast<llvm::StructType>(targetType);
+        if (structTy->getNumElements() == 2 && structTy->getElementType(0)->isIntegerTy(1)) {
+            auto innerType = structTy->getElementType(1);
+            if (value->getType() == innerType) {
+                return wrapValueInNullable(value, targetType);
+            }
+        }
+    }
+
+    return value;
 }

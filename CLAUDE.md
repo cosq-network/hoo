@@ -50,7 +50,6 @@ Source Code (.hoo)
 4. **LLVMCodeGenerator** (`src/LLVMCodeGenerator.h/cpp`)
    - Generates LLVM IR from AST
    - Handles type checking, name mangling, and code emission
-   - Implements generics via monomorphization
 
 5. **ModuleSystem** (`src/ModuleSystem.h/cpp`)
    - Manages module imports and exports
@@ -72,7 +71,6 @@ ASTNode (base)
 ├── Declaration
 │   ├── FunctionDeclaration
 │   ├── ClassDeclaration
-│   ├── InterfaceDeclaration
 │   └── VariableDeclaration
 ├── Statement
 │   ├── Block
@@ -91,8 +89,7 @@ ASTNode (base)
 └── Type
     ├── PrimitiveType
     ├── ArrayType
-    ├── OptionalType
-    └── UnionType
+    └── OptionalType
 ```
 
 ## Coding Conventions
@@ -177,8 +174,6 @@ Hooc Type → LLVM Type:
 
 ### Name Mangling
 
-- Generic functions: `functionName_Type1_Type2` (e.g., `identity_int64`)
-- Generic classes: `ClassName_Type` (e.g., `Box_string`)
 - Member functions: `ClassName_methodName`
 
 ### Code Generation Patterns
@@ -342,8 +337,7 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 - ✅ Classes with constructors
 - ✅ Object creation (new expressions)
 - ✅ Member access and method calls
-- ✅ Generics (functions and classes)
-- ✅ Arrays (including generic arrays)
+- ✅ Arrays
 - ✅ Nullable types
 - ✅ Reference counting (ARC)
 - ✅ String library
@@ -352,7 +346,6 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 ### Partially Implemented
 - 🟡 For loops (range syntax needs work)
 - 🟡 Import statements (parsing done, full resolution WIP)
-- 🟡 Interfaces (parsing done, implementation WIP)
 
 ### Not Yet Implemented
 
@@ -386,7 +379,6 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 - **String literals**: Use `builder->CreateGlobalStringPtr()` for constants
 - **Type checking**: Always verify types before code generation
 - **Memory leaks**: Test with memory debugging enabled
-- **Generic instantiation**: Cache instantiated types/functions
 
 ## Resources
 

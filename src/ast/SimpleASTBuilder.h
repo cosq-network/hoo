@@ -20,8 +20,8 @@
  * @section Responsibility
  * - Convert ANTLR4 parse tree contexts to strongly-typed AST nodes
  * - Handle all grammar elements: declarations, statements, expressions, types
- * - Support Hooc language features: classes, interfaces, functions, control flow,
- *   arrays, optional/nullable types, union types, string interpolation, 'this' keyword
+ * - Support Hooc language features: classes, functions, control flow,
+ *   arrays, optional/nullable types, string interpolation, 'this' keyword
  * - Validate grammar constraints (e.g., single constructor per class)
  *
  * @section Usage
@@ -63,7 +63,7 @@ private:
 
     /**
      * @brief Builds a Declaration from any declaration context.
-     * @param ctx Declaration context (function, class, interface, or variable).
+     * @param ctx Declaration context (function, class, or variable).
      * @return The appropriate Declaration subtype, or nullptr.
      */
     std::unique_ptr<ast::Declaration> buildDeclaration(HoocParser::DeclarationContext* ctx);
@@ -92,18 +92,11 @@ private:
 
     /**
      * @brief Builds a ClassDeclaration from its context.
-     * Extracts modifiers, base class, interfaces, and class body.
+     * Extracts modifiers, base class, and class body.
      * @param ctx Class declaration context.
      * @return Unique pointer to ClassDeclaration.
      */
     std::unique_ptr<ast::ClassDeclaration> buildClassDeclaration(HoocParser::ClassDeclarationContext* ctx);
-
-    /**
-     * @brief Builds an InterfaceDeclaration from its context.
-     * @param ctx Interface declaration context.
-     * @return Unique pointer to InterfaceDeclaration.
-     */
-    std::unique_ptr<ast::InterfaceDeclaration> buildInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx);
 
     // ===== Type Building =====
 
@@ -352,7 +345,7 @@ private:
      */
     std::unique_ptr<ast::ImportItem> buildImportItem(HoocParser::ImportItemContext* ctx);
 
-    // ===== Class and Interface Building =====
+    // ===== Class Building =====
 
     /**
      * @brief Builds a ConstructorDeclaration from its context.
@@ -381,20 +374,6 @@ private:
      * @return Unique pointer to EventDeclaration.
      */
     std::unique_ptr<ast::EventDeclaration> buildEventDeclaration(HoocParser::EventDeclarationContext* ctx);
-
-    /**
-     * @brief Builds an InterfaceMember from its context.
-     * @param ctx Interface member context.
-     * @return Unique pointer to InterfaceMember.
-     */
-    std::unique_ptr<ast::InterfaceMember> buildInterfaceMember(HoocParser::InterfaceMemberContext* ctx);
-
-    /**
-     * @brief Builds a FunctionSignature from its context.
-     * @param ctx Function signature context.
-     * @return Unique pointer to FunctionSignature.
-     */
-    std::unique_ptr<ast::FunctionSignature> buildFunctionSignature(HoocParser::FunctionSignatureContext* ctx);
 
     /**
      * @brief Converts a classModifier context to ClassModifier enum.

@@ -142,7 +142,6 @@ CALL,0xB4,R,"addr, -, -, -",call addr,Call function at address,-
 CALLI,0xB5,I,"rd, -, imm15",rd = call symbol_table[imm15],Call by symbol table index,-
 TAILCALL,0xB6,R,"addr, -, -, -",tail_call addr,Tail call,-
 CALLVIRT,0xB7,RI,"rd, obj, -, method",rd = obj.vtable[method](); call rd,Virtual method call,-
-CALLINTF,0xB8,RI,"rd, obj, -, method",rd = obj.intf_table[method](); call rd,Interface method call,-
 IMPORT,0xB9,RI,"rd, -, -, imm15","rd = resolve(mod_table[imm15], sym)",Resolve external symbol,-
 LOADMOD,0xBA,I,"rd, -, imm15",rd = load_module(imm15),Load module by index,-
 RESOLVE,0xBB,RI,"rd, mod, -, sym","rd = resolve(mod, sym)",Resolve symbol from module,-

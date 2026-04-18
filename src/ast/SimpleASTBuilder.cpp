@@ -38,8 +38,6 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
         return buildVariableDeclaration(ctx->variableDeclaration());
     } else if (ctx->classDeclaration()) {
         return buildClassDeclaration(ctx->classDeclaration());
-    } else if (ctx->interfaceDeclaration()) {
-        return buildInterfaceDeclaration(ctx->interfaceDeclaration());
     }
     return nullptr;
 }
@@ -109,25 +107,44 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
     }
 
     auto optionalCtx = ctx->optionalType();
-
-    if (!optionalCtx || !optionalCtx->arrayType()) {
+    auto arrayCtx = optionalCtx->arrayType();
+    if (!arrayCtx) {
         return std::make_unique<BaseType>("unknown");
     }
 
-    auto arrayCtx = optionalCtx->arrayType();
-
-    // Check if this is actually an array (has brackets) or just a base type
-    if (arrayCtx->LBRACKET().empty()) {
-        // No brackets - just a base type like "int64"
-        if (arrayCtx->baseType()) {
-            return buildBaseType(arrayCtx->baseType());
-        }
-    } else {
-        // Has brackets - this is an array type like "int64[]" or "int64[]?"
-        return buildArrayType(arrayCtx);
+    auto baseCtx = arrayCtx->baseType();
+    if (!baseCtx) {
+        return std::make_unique<BaseType>("unknown");
     }
 
-    return std::make_unique<BaseType>("unknown");
+    auto baseType = buildBaseType(baseCtx);
+
+    // Build dimensions
+    size_t dimensionCount = arrayCtx->LBRACKET().size();
+    
+    // Check if it is optional
+    bool isOptional = optionalCtx->QUESTION() != nullptr;
+
+    if (isOptional) {
+        // Always wrap in OptionalType(ArrayType(...))
+        std::vector<std::unique_ptr<Expression>> dimensions;
+        for (size_t i = 0; i < dimensionCount; i++) {
+            dimensions.push_back(nullptr);
+        }
+        auto arrayType = std::make_unique<ArrayType>(std::move(baseType), std::move(dimensions));
+        return std::make_unique<OptionalType>(std::move(arrayType), true);
+    } else {
+        // Not optional, return ArrayType or BaseType directly
+        if (dimensionCount > 0) {
+            std::vector<std::unique_ptr<Expression>> dimensions;
+            for (size_t i = 0; i < dimensionCount; i++) {
+                dimensions.push_back(nullptr);
+            }
+            return std::make_unique<ArrayType>(std::move(baseType), std::move(dimensions));
+        } else {
+            return baseType;
+        }
+    }
 }
 
 std::unique_ptr<OptionalType> SimpleASTBuilder::buildOptionalType(HoocParser::OptionalTypeContext* ctx) {
@@ -636,7 +653,7 @@ std::unique_ptr<ImportItem> SimpleASTBuilder::buildImportItem(HoocParser::Import
     return std::make_unique<ImportItem>(name, alias);
 }
 
-// Class and interface building methods
+// Class building methods
 std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocParser::ClassDeclarationContext* ctx) {
     // Build modifiers
     std::vector<ClassModifier> modifiers;
@@ -654,14 +671,6 @@ std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocPa
         baseClass = ctx->IDENTIFIER(1)->getText();
     }
 
-    // Get interface names (optional)
-    std::vector<std::string> interfaces;
-    if (ctx->interfaceList()) {
-        for (auto idNode : ctx->interfaceList()->IDENTIFIER()) {
-            interfaces.push_back(idNode->getText());
-        }
-    }
-
     // Build class body (which may now contain a constructor)
     auto body = buildClassBody(ctx->classBody());
 
@@ -669,23 +678,8 @@ std::unique_ptr<ClassDeclaration> SimpleASTBuilder::buildClassDeclaration(HoocPa
         std::move(modifiers),
         name,
         baseClass,
-        std::move(interfaces),
         std::move(body)
     );
-}
-
-std::unique_ptr<InterfaceDeclaration> SimpleASTBuilder::buildInterfaceDeclaration(HoocParser::InterfaceDeclarationContext* ctx) {
-    std::string name = ctx->IDENTIFIER()->getText();
-
-    std::vector<std::unique_ptr<InterfaceMember>> members;
-    for (auto memberCtx : ctx->interfaceMember()) {
-        auto member = buildInterfaceMember(memberCtx);
-        if (member) {
-            members.push_back(std::move(member));
-        }
-    }
-
-    return std::make_unique<InterfaceDeclaration>(name, std::move(members));
 }
 
 std::unique_ptr<ConstructorDeclaration> SimpleASTBuilder::buildConstructorDeclaration(HoocParser::ConstructorDeclarationContext* ctx) {
@@ -744,37 +738,6 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
 std::unique_ptr<EventDeclaration> SimpleASTBuilder::buildEventDeclaration(HoocParser::EventDeclarationContext* ctx) {
     std::string name = ctx->IDENTIFIER()->getText();
     return std::make_unique<EventDeclaration>(name);
-}
-
-std::unique_ptr<InterfaceMember> SimpleASTBuilder::buildInterfaceMember(HoocParser::InterfaceMemberContext* ctx) {
-    auto signature = buildFunctionSignature(ctx->functionSignature());
-    return std::make_unique<InterfaceMember>(std::move(signature));
-}
-
-std::unique_ptr<FunctionSignature> SimpleASTBuilder::buildFunctionSignature(HoocParser::FunctionSignatureContext* ctx) {
-    std::string name = ctx->IDENTIFIER()->getText();
-
-    std::vector<std::unique_ptr<Parameter>> parameters;
-    if (ctx->parameterList()) {
-        for (auto paramCtx : ctx->parameterList()->parameter()) {
-            auto param = buildParameter(paramCtx);
-            if (param) {
-                parameters.push_back(std::move(param));
-            }
-        }
-    }
-
-    // Return type is optional - defaults to void if not specified
-    std::unique_ptr<Type> returnType;
-    if (ctx->type()) {
-        returnType = buildType(ctx->type());
-    } else {
-        // Create void type as default
-        auto voidPrimitive = std::make_unique<PrimitiveType>(PrimitiveTypeKind::VOID);
-        returnType = std::make_unique<BaseType>(std::move(voidPrimitive));
-    }
-
-    return std::make_unique<FunctionSignature>(name, std::move(parameters), std::move(returnType));
 }
 
 ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContext* ctx) {

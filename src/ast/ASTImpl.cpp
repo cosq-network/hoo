@@ -116,19 +116,6 @@ bool ClassDeclaration::hasModifier(ClassModifier modifier) const {
     return false;
 }
 
-// Interface implementations
-std::string FunctionSignature::toString() const {
-    return "FunctionSignature " + name_;
-}
-
-std::string InterfaceMember::toString() const {
-    return "InterfaceMember";
-}
-
-std::string InterfaceDeclaration::toString() const {
-    return "InterfaceDeclaration " + name_;
-}
-
 // Type implementations
 std::string PrimitiveType::toString() const {
     return "PrimitiveType";
@@ -151,10 +138,6 @@ std::string ArrayType::toString() const {
 
 std::string OptionalType::toString() const {
     return "OptionalType";
-}
-
-std::string UnionType::toString() const {
-    return "UnionType";
 }
 
 // Statement implementations

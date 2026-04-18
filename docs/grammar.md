@@ -28,14 +28,12 @@ Hooc reserves the following keywords:
 **Declarations:**
 - `func` - Function declaration
 - `class` - Class declaration
-- `interface` - Interface declaration
 - `constructor` - Class constructor
 - `var` - Variable declaration
 
 **Object-Oriented:**
 - `new` - Object instantiation
 - `extends` - Class inheritance
-- `implements` - Interface implementation
 
 **Modifiers:**
 - `final` - Prevent inheritance/reassignment
@@ -210,7 +208,7 @@ compilationUnit: importStatement* declaration* EOF;
 
 A file consists of:
 1. Zero or more import statements
-2. Zero or more declarations (functions, classes, interfaces, variables)
+2. Zero or more declarations (functions, classes, variables)
 
 ### Import Statements
 
@@ -282,16 +280,13 @@ parameter: IDENTIFIER COLON type
 
 ```antlr
 classDeclaration:
-    classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)?
-    (IMPLEMENTS interfaceList)?
-    classBody
+    classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? classBody
 ```
 
 **Components:**
 - Optional modifiers: `singleton`, `immutable`, `final`, etc.
 - Class name
 - Optional base class: `extends BaseClass`
-- Optional interfaces: `implements Interface1, Interface2`
 - Class body
 
 **Class modifiers:**
@@ -352,37 +347,6 @@ classMember:
 **Constructor:**
 ```antlr
 constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block
-```
-
-#### Interface Declaration
-
-```antlr
-interfaceDeclaration:
-    INTERFACE IDENTIFIER LBRACE interfaceMember* RBRACE
-
-interfaceMember: functionSignature SEMICOLON
-
-functionSignature:
-    FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN
-```
-
-**Example:**
-
-```hoo
-interface Drawable {
-    func draw();
-    func:double getArea();
-}
-
-class Circle implements Drawable {
-    func draw() {
-        // Implementation
-    }
-
-    func:double getArea() {
-        return 3.14 * radius * radius;
-    }
-}
 ```
 
 #### Variable Declaration

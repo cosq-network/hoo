@@ -1,6 +1,6 @@
 # HVM Object File Format Specification (HO)
 
-**Version:** 1.2
+**Version:** 1.3
 **File Extension:** `.ho`
 **Endianness:** Little-endian
 
@@ -65,7 +65,7 @@ HVM Virtual Address Space
 ├─────────────────────────────────────────────────────────────┤
 │                         │  Read-Write Data (data)          │
 │                         │  - Global variables              │
-│                         │  - Tables (vtable, itable)       │
+│                         │  - Tables (vtable)               │
 ├─────────────────────────────────────────────────────────────┤
 │                         │  BSS (uninitialized)             │
 │                         │  - Zero-initialized globals      │
@@ -522,7 +522,6 @@ Contains initialized writable data.
 **Contents:**
 - Global variable initializers
 - Virtual method tables (vtable)
-- Interface method tables (itable)
 - Runtime type information (RTTI)
 
 **Alignment:** 8 bytes
@@ -995,12 +994,9 @@ Offset  Size  Field              Description
 | `0x03` | `TYPE_ARRAY` | Fixed-size array |
 | `0x04` | `TYPE_DYNAMIC_ARRAY` | Dynamic/slice type |
 | `0x05` | `TYPE_STRUCT` | Struct/class type |
-| `0x06` | `TYPE_UNION` | Union type |
 | `0x07` | `TYPE_ENUM` | Enumeration type |
 | `0x08` | `TYPE_FUNCTION` | Function type |
 | `0x09` | `TYPE_OPTIONAL` | Optional/nullable type |
-| `0x0A` | `TYPE_INTERFACE` | Interface type |
-| `0x0B` | `TYPE_TYPARAM` | Type parameter (generics) |
 
 ### 12.3 Type Example: Struct
 

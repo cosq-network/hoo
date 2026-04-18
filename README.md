@@ -184,17 +184,13 @@ import std.collections as coll;
 ```
 hooc/
 ├── src/              # Compiler source code
-│   ├── Hooc.g4       # ANTLR4 grammar definition
-│   ├── HooCompiler.h/cpp   # Main compiler interface
-│   ├── LLVMCodeGenerator.h/cpp  # LLVM IR code generator
-│   ├── SimpleASTBuilder.h/cpp   # AST construction
-│   ├── ModuleSystem.h/cpp       # Module resolution
-│   ├── core/           # Core CLI and I/O utilities
-│   │   ├── HooCLI.h/cpp         # Command-line interface
-│   │   ├── IOProvider.h         # I/O abstraction interface
-│   │   └── DefaultIOProvider.h/cpp  # Default file/stdin/stdout/stderr
+│   ├── parsing/      # Lexer and parser (Hooc.g4)
+│   ├── codegen/      # LLVM IR code generator
 │   ├── ast/          # AST node definitions
-│   └── rt/           # Runtime library (ARC, strings, arrays)
+│   ├── core/         # Core CLI and I/O utilities
+│   ├── modules/      # Module resolution
+│   ├── jit/          # JIT execution
+│   └── runtime/      # Runtime library (ARC, strings, arrays)
 ├── tests/            # Comprehensive test suite
 ├── docs/             # Documentation
 ├── antlr4/           # Generated parser code
@@ -230,7 +226,7 @@ Hooc uses a multi-stage compilation pipeline:
 The runtime provides:
 - **Reference Counting**: `hoo_retain()`, `hoo_release()`, `hoo_alloc()`
 - **String Library**: UTF-8 strings with comprehensive operations
-- **Generic Arrays**: Type-safe dynamic arrays using `std::any`
+- **Dynamic Arrays**: Type-safe dynamic arrays
 - **Runtime Class Registry**: Dynamic type information for reflection
 
 ## Development

@@ -91,12 +91,6 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Nested member access
   - ✅ Qualified constructors (e.g., `new std.String()`)
 
-- **Interfaces** (Partial)
-  - ✅ Interface declarations (parsing)
-  - ✅ Method signatures
-  - 🟡 Interface implementation (WIP)
-  - ❌ Interface type checking (not started)
-
 #### Generic Programming
 
 > **Note:** Generics have been removed from the language to simplify the type system. Use concrete types and array types (`T[]`) for collections.
@@ -262,13 +256,6 @@ These features are in progress or have incomplete implementations:
 - 🟡 Symbol table integration
 - 🟡 Cross-module references
 - ❌ Circular dependency handling
-
-#### Interfaces
-- ✅ Interface declaration parsing
-- ✅ Method signatures
-- 🟡 Implementation checking
-- ❌ Virtual dispatch
-- ❌ Interface casting
 
 #### Standard Library
 - ✅ String class
@@ -447,7 +434,6 @@ These features are planned but not yet started:
 ### Medium Priority
 - For-range syntax could be more intuitive
 - Union type code generation incomplete
-- Interface implementation checking needed
 
 ### Low Priority
 - Better error messages for type mismatches

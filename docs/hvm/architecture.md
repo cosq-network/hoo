@@ -74,7 +74,6 @@ HVM uses **32-bit fixed-width instructions** as the primary encoding format, wit
 | Header size | 24 bytes | refcount (8B) + type_id (8B) + vtable (8B) |
 | Reference counting | `hoo_retain()` / `hoo_release()` | Atomic operations for thread safety |
 | Vtables | Per-type virtual table | Method dispatch via vtable offset |
-| Generics | Monomorphized at compile time | `Box<int64>` ≠ `Box<string>` |
 
 ---
 
@@ -179,4 +178,4 @@ HVM supports multi-process execution through native OS system calls via FFI:
 | **Interoperability** | C ABI compatibility, dynamic library loading |
 | **Modern Features** | Exceptions, threads, atomic operations, SIMD |
 | **Debugging** | DWARF debug info, source-level breakpoints |
-| **Language Support** | Classes, generics (monomorphized), interfaces |
+| **Language Support** | Classes, basic inheritance |

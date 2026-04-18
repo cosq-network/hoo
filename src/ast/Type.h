@@ -83,6 +83,7 @@ public:
     std::string toString() const override;
 
     const BaseType& getBaseType() const { return *baseType_; }
+    std::unique_ptr<BaseType> takeBaseType() { return std::move(baseType_); }
     const std::vector<std::unique_ptr<Expression>>& getDimensions() const { return dimensions_; }
     size_t getDimensionCount() const { return dimensions_.size(); }
 
@@ -100,26 +101,12 @@ public:
     std::string toString() const override;
 
     const ArrayType& getArrayType() const { return *arrayType_; }
+    std::unique_ptr<ArrayType> takeArrayType() { return std::move(arrayType_); }
     bool isOptional() const { return isOptional_; }
 
 private:
     std::unique_ptr<ArrayType> arrayType_;
     bool isOptional_;
-};
-
-// Union type (type | type | ...)
-class UnionType : public Type {
-public:
-    UnionType(std::vector<std::unique_ptr<OptionalType>> types)
-        : types_(std::move(types)) {}
-
-    std::string toString() const override;
-
-    const std::vector<std::unique_ptr<OptionalType>>& getTypes() const { return types_; }
-    bool isUnion() const { return types_.size() > 1; }
-
-private:
-    std::vector<std::unique_ptr<OptionalType>> types_;
 };
 
 } // namespace ast

@@ -6,7 +6,6 @@
 #include "ImportStatement.h"
 #include "Declaration.h"
 #include "ClassDeclaration.h"
-#include "InterfaceDeclaration.h"
 #include "Type.h"
 #include "Statement.h"
 #include "Expression.h"

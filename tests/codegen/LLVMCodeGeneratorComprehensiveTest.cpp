@@ -1100,18 +1100,6 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_ClassWithExtends) {
     ASSERT_NE(module, nullptr);
 }
 
-TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_Interface) {
-    std::string code = R"(
-        interface Printable {
-            func print();
-        }
-    )";
-    auto ast = parseAndBuildAST(code);
-    ASSERT_NE(ast, nullptr);
-    auto module = codeGen->generateLLVMModule(*ast);
-    ASSERT_NE(module, nullptr);
-}
-
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_MultipleFunctions) {
     std::string code = R"(
         func:int64 first() { return 1; }

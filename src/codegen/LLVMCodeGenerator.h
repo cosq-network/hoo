@@ -548,6 +548,12 @@ private:
                                               const std::string& varName,
                                               llvm::Type* type);
 
+    /// @brief Ensure value matches target type, applying implicit conversions
+    /// @param value The value to check/convert
+    /// @param targetType The required LLVM type
+    /// @return The converted value, or original if types already match
+    llvm::Value* ensureTypeMatch(llvm::Value* value, llvm::Type* targetType);
+
     // ========================================================================
     // Array Runtime Helpers
     // ========================================================================

@@ -439,39 +439,6 @@ func main() {
 }
 ```
 
-### Interfaces
-
-```hoo
-interface Drawable {
-    func draw();
-    func:double getArea();
-}
-
-interface Printable {
-    func print();
-}
-
-class Circle implements Drawable, Printable {
-    var radius: double;
-
-    constructor(r: double) {
-        radius = r;
-    }
-
-    func draw() {
-        print("Drawing circle");
-    }
-
-    func:double getArea() {
-        return 3.14159 * radius * radius;
-    }
-
-    func print() {
-        print("Circle with radius: " + radius);
-    }
-}
-```
-
 ## Arrays
 
 ### Array Literals

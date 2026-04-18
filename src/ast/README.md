@@ -33,9 +33,6 @@ ASTNode (base)
 │   │   ├── EventDeclaration
 │   │   ├── ClassMember
 │   │   └── ClassBody
-│   └── InterfaceDeclaration
-│       ├── FunctionSignature
-│       └── InterfaceMember
 ├── Statement
 │   ├── Block
 │   ├── ExpressionStatement
@@ -83,8 +80,7 @@ ASTNode (base)
 │   ├── PrimitiveType
 │   ├── BaseType
 │   ├── ArrayType
-│   ├── OptionalType
-│   └── UnionType
+│   └── OptionalType
 ├── ImportStatement
 │   ├── BasicImport
 │   ├── FromImport
@@ -108,7 +104,6 @@ ASTNode (base)
 | `Statement.h` | All statement types |
 | `Type.h` | Type system representation |
 | `ClassDeclaration.h` | Class-related AST nodes |
-| `InterfaceDeclaration.h` | Interface-related AST nodes |
 | `ImportStatement.h` | Import statement types |
 | `CompilationUnit.h` | Root AST node |
 | `Primary.h` | Primary expression literals |
@@ -136,7 +131,7 @@ std::unique_ptr<T> makeAST(Args&&... args) {
 
 ### Declaration
 
-Base class for declarations (functions, variables, parameters, classes, interfaces).
+Base class for declarations (functions, variables, parameters, classes).
 
 ### Statement
 
@@ -226,17 +221,6 @@ Nullable types (e.g., `int64?`):
 class OptionalType : public Type {
     const ArrayType& getArrayType() const;
     bool isOptional() const;
-};
-```
-
-### UnionType
-
-Union types (e.g., `int64 | string`):
-
-```cpp
-class UnionType : public Type {
-    const std::vector<std::unique_ptr<OptionalType>>& getTypes() const;
-    bool isUnion() const;
 };
 ```
 
@@ -416,11 +400,9 @@ class ClassDeclaration : public Declaration {
     const std::vector<ClassModifier>& getModifiers() const;
     const std::string& getName() const;
     const std::string& getBaseClass() const;
-    const std::vector<std::string>& getInterfaces() const;
     const ClassBody& getBody() const;
     bool hasModifier(ClassModifier modifier) const;
     bool hasBaseClass() const;
-    bool hasInterfaces() const;
 };
 ```
 

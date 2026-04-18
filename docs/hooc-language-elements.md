@@ -132,12 +132,9 @@ User-defined types that group related functionality.
 | Class with constructor | `'class' IDENTIFIER classBody` | `class Counter { constructor() { this.count = 0; } }` |
 | Class with members | `'class' IDENTIFIER classBody` | `class Calculator { func:int64 add(a: int64, b: int64) { return a + b; } }` |
 | Class with inheritance | `'class' IDENTIFIER 'extends' IDENTIFIER classBody` | `class Dog extends Animal { }` |
-| Class with implements | `'class' IDENTIFIER 'implements' IDENTIFIER (',' IDENTIFIER)* classBody` | `class Rect implements Drawable { }` |
 | Class with modifiers | `modifiers 'class' IDENTIFIER classBody` | `singleton class Config { }`, `immutable class User { }` |
-| Interface | `'interface' IDENTIFIER '{' interfaceMember* '}'` | `interface Drawable { func draw(); }` |
-| Interface with methods | `'interface' IDENTIFIER '{' interfaceMember* '}'` | `interface Repository { func:bool save(d: int64); func:int64 load(id: int64); }` |
 
-**Compilation**: Classes and interfaces can be compiled independently with:
+**Compilation**: Classes can be compiled independently with:
 - Full method implementations
 - Required imports for parent/super types
 - Relocations for referenced types
@@ -217,11 +214,7 @@ class Calculator {
     }
 }
 
-interface Drawable {
-    func draw();
-}
-
-class Circle implements Drawable {
+class Circle {
     var radius: int64;
 
     constructor(radius: int64) {
@@ -262,7 +255,6 @@ Compilation Unit (heavy)
 ├── Class declarations
 │   ├── Modifiers: singleton, immutable, factory, observable, service, strategy, actor, final
 │   ├── Extends: extends BaseClass
-│   ├── Implements: implements Interface1, Interface2
 │   ├── Constructor
 │   ├── Event declarations
 │   ├── Variable declarations
@@ -270,8 +262,6 @@ Compilation Unit (heavy)
 │       └── Block
 │           └── Statements
 │               └── Expressions (lightest)
-├── Interface declarations
-│   └── Function signatures
 ├── Global variable declarations
 └── Top-level function declarations
     └── Block
@@ -293,7 +283,6 @@ Compilation Unit (heavy)
 | Global variable | Yes | Maybe | Yes |
 | Event | No (needs class) | No | No |
 | Class | Yes | Yes | Yes |
-| Interface | Yes | Maybe | Yes |
 | Import | N/A | Yes | No |
 | Compilation unit | Yes | Yes | Yes |
 
@@ -376,7 +365,6 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | Index access (array) | Yes | `LDELEM`, `STELEM` | Array element access |
 | Function call | Yes | `CALL`, `CALLI` | Direct function call |
 | Method call | Yes | `CALLVIRT` | Virtual method dispatch |
-| Interface call | Yes | `CALLINTF` | Interface method dispatch |
 | New expression | Yes | `NEW`, `NEWA` | Object/array allocation |
 | New with constructor | Yes | `NEW` + `CALL` | Allocate then call constructor |
 | Array literal | Yes | `NEWA` + `STELEM` | Allocate and initialize |
@@ -435,8 +423,6 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | Class inheritance | Yes | `NEW`, vtable setup | Parent fields + new fields |
 | Generic class | No | N/A | Generics removed from language |
 | Class modifiers | Partial | (runtime checks) | `singleton`, `immutable`, etc. |
-| Interface | Yes | `CALLINTF`, metadata | Interface dispatch table |
-| Interface method | N/A | (metadata) | Signature only, not body |
 
 ### Tier 9: Module Elements
 
@@ -489,7 +475,7 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | **Stack** | `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP` | Local variables, stack frames |
 | **Objects/Arrays** | `NEW`, `NEWA`, `LDF`, `STF`, `LDELEM`, `STELEM`, `ARRAYLEN` | Classes, arrays |
 | **Type Operations** | `INSTANCEOF`, `CHECKCAST` | Type checking |
-| **Virtual Calls** | `CALLVIRT`, `CALLINTF` | Method dispatch |
+| **Virtual Calls** | `CALLVIRT` | Method dispatch |
 | **Dynamic Linking** | `IMPORT`, `LOADMOD`, `RESOLVE` | Module imports |
 | **Conversions** | `SEXT`, `ZEXT`, `TRUNC`, `FCVT` | Type conversions |
 | **Vector/SIMD** | `VADD`, `VSUB`, `VMUL`, `VDOT`, etc. | SIMD operations |
@@ -503,5 +489,4 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 3. **Local variables** are fully contained within their block
 4. **Functions** can be compiled independently if they don't reference external types
 5. **Classes** require their member functions, but member functions can reference the class
-6. **Interfaces** require their method signatures but no implementation
-7. **Imports** create dependencies but don't affect the ability to compile the importing unit
+6. **Imports** create dependencies but don't affect the ability to compile the importing unit

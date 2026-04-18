@@ -837,22 +837,6 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithExtends) {
     EXPECT_EQ(ast->getDeclarations().size(), 1U);
 }
 
-TEST_F(SimpleASTBuilderTest, BuildClassWithImplements) {
-    std::string code = R"(
-        class MyClass implements ISerializable {
-            func:string serialize() { return ""; }
-        }
-    )";
-    auto* parseTree = parseCode(code);
-
-    ASSERT_NE(parseTree, nullptr);
-    auto* ctx = getCompilationUnit(parseTree);
-    ASSERT_NE(ctx, nullptr);
-    auto ast = astBuilder->buildAST(ctx);
-    ASSERT_NE(ast, nullptr);
-    EXPECT_EQ(ast->getDeclarations().size(), 1U);
-}
-
 TEST_F(SimpleASTBuilderTest, BuildClassWithEvent) {
     std::string code = R"(
         observable class Observable {
@@ -904,41 +888,6 @@ TEST_F(SimpleASTBuilderTest, BuildEventDeclaration) {
         }
     }
     EXPECT_EQ(eventCount, 2);
-}
-
-// ===== Interface Declaration Tests =====
-
-TEST_F(SimpleASTBuilderTest, BuildSimpleInterface) {
-    std::string code = R"(
-        interface Printable {
-            func print();
-        }
-    )";
-    auto* parseTree = parseCode(code);
-
-    ASSERT_NE(parseTree, nullptr);
-    auto* ctx = getCompilationUnit(parseTree);
-    ASSERT_NE(ctx, nullptr);
-    auto ast = astBuilder->buildAST(ctx);
-    ASSERT_NE(ast, nullptr);
-    EXPECT_EQ(ast->getDeclarations().size(), 1U);
-}
-
-TEST_F(SimpleASTBuilderTest, BuildInterfaceWithMultipleMethods) {
-    std::string code = R"(
-        interface IComparable {
-            func:int64 compareTo(other: int64);
-            func:bool equals(other: int64);
-        }
-    )";
-    auto* parseTree = parseCode(code);
-
-    ASSERT_NE(parseTree, nullptr);
-    auto* ctx = getCompilationUnit(parseTree);
-    ASSERT_NE(ctx, nullptr);
-    auto ast = astBuilder->buildAST(ctx);
-    ASSERT_NE(ast, nullptr);
-    EXPECT_EQ(ast->getDeclarations().size(), 1U);
 }
 
 // ===== Type Tests =====
@@ -1565,9 +1514,6 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
         class MyClass {
             var value: int64;
         }
-        interface MyInterface {
-            func doSomething();
-        }
         func helper() { return; }
     )";
     auto* parseTree = parseCode(code);
@@ -1578,7 +1524,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
     auto ast = astBuilder->buildAST(ctx);
     ASSERT_NE(ast, nullptr);
     EXPECT_EQ(ast->getImports().size(), 1U);
-    EXPECT_EQ(ast->getDeclarations().size(), 3U);
+    EXPECT_EQ(ast->getDeclarations().size(), 2U);
 }
 
 TEST_F(SimpleASTBuilderTest, BuildAllBinaryOperators) {
