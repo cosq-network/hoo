@@ -53,6 +53,10 @@ Hooc aims to be a modern, productive programming language that combines:
 - [ ] Collection utilities (sort, filter, map, reduce)
 
 **IO Module** (`std.io`)
+- [x] `hoo.print()` - Print without newline (implemented)
+- [x] `hoo.println()` - Print with newline (implemented)
+- [x] `hoo.readline()` - Read line from stdin (implemented)
+- [x] `hoo.readchar()` - Read single character (implemented)
 - [ ] `File` - File reading/writing
 - [ ] `Directory` - Directory operations
 - [ ] `Console` - Standard input/output

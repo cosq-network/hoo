@@ -17,6 +17,7 @@ The runtime library provides fundamental data types and memory management for Ho
 | `hoo_runtime.h` / `hoo_runtime.c` | Core memory management (ARC) - allocation, retain/release, type IDs |
 | `hoo_string.h` / `hoo_string.cpp` | UTF-8 string implementation with ARC |
 | `hoo_generic_array.h` / `hoo_generic_array.cpp` | Generic dynamic array using `std::any` |
+| `hoo_io.h` / `hoo_io.cpp` | I/O functions (print, println, readline, readchar) |
 
 ## What Belongs Here
 

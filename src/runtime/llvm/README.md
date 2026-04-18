@@ -24,6 +24,7 @@ The LLVM integration layer provides:
 | `MacroHelpers.h` | Utility macros for variadic parameter handling |
 | `hoo_string_registration.cpp` | String type registration (JIT + LLVM) |
 | `hoo_array_registration.cpp` | Array type registration (JIT + LLVM) |
+| `hoo_io_registration.cpp` | I/O type registration (JIT + LLVM) |
 | `RuntimeStringMethods.h` | String method descriptors |
 | `RuntimeArrayMethods.h` | Array method descriptors |
 | `RuntimeStringMethodsRegistration.cpp` | Force-linking method registry |

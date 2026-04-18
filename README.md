@@ -61,7 +61,15 @@ See [docs/building-on-windows.md](docs/building-on-windows.md) for detailed Wind
 ```hoo
 func main() {
     var message: string = "Hello, World!";
-    print(message);
+    hoo.println(message);
+}
+```
+
+Or with direct print:
+
+```hoo
+func main() {
+    hoo.println("Hello, World!");
 }
 ```
 
@@ -88,7 +96,7 @@ func add(a: int64, b: int64) -> int64 {
 
 func greet(name: string) -> void {
     var message = "Hello, " + name;
-    print(message);
+    hoo.println(message);
 }
 ```
 

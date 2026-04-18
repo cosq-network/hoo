@@ -57,6 +57,8 @@ These features are fully implemented, tested, and production-ready:
   - ✅ `while` loops
   - ✅ `for-in` loops
   - ✅ `for-range` loops (basic implementation)
+  - ✅ `break` statements
+  - ✅ `continue` statements
   - ✅ `return` statements
   - ✅ Block statements
   - ✅ Nested control structures
@@ -181,6 +183,12 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Type ID tracking
   - ✅ Memory statistics
   - ✅ Debug utilities
+
+- **I/O Runtime** (`hoo_io.h/cpp`)
+  - ✅ `hoo.print()` - Print without newline
+  - ✅ `hoo.println()` - Print with newline
+  - ✅ `hoo.readline()` - Read line from stdin
+  - ✅ `hoo.readchar()` - Read single character
 
 #### Module System
 
