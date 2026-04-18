@@ -126,9 +126,17 @@ bool HoocJIT::initialize() {
     // These are idempotent operations - LLVM internally guards against
     // multiple initialization, but we call them here for completeness
     static bool llvmInitialized = []() {
-        InitializeNativeTarget();
-        InitializeNativeTargetAsmPrinter();
-        InitializeNativeTargetAsmParser();
+        auto nativeTargetResult = InitializeNativeTarget();
+        auto asmPrinterResult = InitializeNativeTargetAsmPrinter();
+        auto asmParserResult = InitializeNativeTargetAsmParser();
+
+        #ifdef DEBUG_JIT_INIT
+        std::cerr << "LLVM Initialization Results:" << std::endl;
+        std::cerr << "  InitializeNativeTarget: " << nativeTargetResult << std::endl;
+        std::cerr << "  InitializeNativeTargetAsmPrinter: " << asmPrinterResult << std::endl;
+        std::cerr << "  InitializeNativeTargetAsmParser: " << asmParserResult << std::endl;
+        #endif
+
         return true;
     }();
     (void)llvmInitialized; // Suppress unused variable warning

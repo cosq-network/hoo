@@ -133,6 +133,7 @@ jobs:
         run: |
           cmake --preset ubuntu-ninja \
             -DHOOC_BUILD_TESTS=ON \
+            -DCMAKE_CXX_FLAGS="-DDEBUG_JIT_INIT" \
             -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime \
             -DANTLR4_LIBRARY=/tmp/antlr4-runtime/lib/libantlr4-runtime.a
 
@@ -147,10 +148,18 @@ jobs:
       - name: Run tests
         run: |
           cd build/ubuntu-ninja
-          # Run tests with extra verbosity to diagnose failures
-          GTEST_COLOR=1 ./hoo-tests --gtest_print_time=0 2>&1 | head -200 || true
-          echo "==== Running CTest ===="
-          ctest --verbose --output-on-failure
+
+          echo "==== Test Environment ===="
+          uname -a
+          ldd ./hoo-tests | grep -i llvm || echo "No LLVM libraries in ldd output"
+
+          echo ""
+          echo "==== Running Single Test for Diagnosis ===="
+          ./hoo-tests --gtest_filter=HoocJITLifecycleTest.DefaultConstruction --gtest_print_time=0 2>&1 || true
+
+          echo ""
+          echo "==== Running All Tests ===="
+          ctest --verbose --output-on-failure 2>&1 | tail -100
 
       - name: Package artifacts
         run: |
@@ -242,11 +251,12 @@ jobs:
 
           cmake -G "Visual Studio 17 2022" -A x64 `
             -DCMAKE_INSTALL_PREFIX="D:\antlr4-runtime" `
+            -DCMAKE_CXX_FLAGS="/W0" `
             -DANTLR_BUILD_SHARED=OFF `
             -DANTLR_BUILD_CPP_TESTS=OFF `
             ../antlr4-src
 
-          cmake --build . --config Release --target install
+          cmake --build . --config Release --target install 2>&1 | Select-String -Pattern "error" -Context 2
 
           cd ..
           Remove-Item -Recurse -Force antlr4-src, antlr4-build, $zipFile
