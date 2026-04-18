@@ -32,9 +32,13 @@ jobs:
           cmake --preset macos-homebrew-ninja \
             -DHOOC_BUILD_TESTS=ON
 
-      - name: Build all targets
+      - name: Build compiler
         run: |
-          cmake --build --preset macos-homebrew-ninja
+          cmake --build --preset macos-homebrew-ninja --target hooc
+
+      - name: Build tests
+        run: |
+          cmake --build --preset macos-homebrew-ninja --target hoo-tests
 
       - name: Run tests
         run: |
@@ -93,9 +97,13 @@ jobs:
           cmake --preset ubuntu-ninja \
             -DHOOC_BUILD_TESTS=ON
 
-      - name: Build all targets
+      - name: Build compiler
         run: |
-          cmake --build --preset ubuntu-ninja
+          cmake --build --preset ubuntu-ninja --target hooc
+
+      - name: Build tests
+        run: |
+          cmake --build --preset ubuntu-ninja --target hoo-tests
 
       - name: Run tests
         run: |
@@ -206,10 +214,15 @@ jobs:
             -DANTLR4_INCLUDE_DIR="D:\antlr4-runtime\include\antlr4-runtime" `
             -DANTLR4_LIBRARY="D:\antlr4-runtime\lib\antlr4-runtime.lib"
 
-      - name: Build all targets
+      - name: Build compiler
         shell: pwsh
         run: |
-          cmake --build build --config RelWithDebInfo
+          cmake --build build --config RelWithDebInfo --target hooc
+
+      - name: Build tests
+        shell: pwsh
+        run: |
+          cmake --build build --config RelWithDebInfo --target hoo-tests
 
       - name: Run tests
         shell: pwsh
