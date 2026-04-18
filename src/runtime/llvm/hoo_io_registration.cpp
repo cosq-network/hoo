@@ -152,24 +152,12 @@ void hoo_io_declare_llvm_functions(
 // Auto-Registration
 // ============================================================================
 
-// Force IO runtime registration at static initialization time
-// This ensures the IO runtime is registered when RuntimeRegistry is first used
-namespace {
-    struct ForceIORegistration {
-        ForceIORegistration() {
-            std::cerr << "[IO Runtime] ForceIORegistration constructor called\n";
-            auto& registry = hooc::runtime::RuntimeRegistry::getInstance();
-            registry.registerRuntime({
-                "IO",
-                hoo_io_register_with_jit,
-                hoo_io_declare_llvm_functions
-            });
-            std::cerr << "[IO Runtime] Registration complete\n";
-        }
-    };
-    static ForceIORegistration forceIO;
-}
-
+/**
+ * Static registration of IO runtime with the central registry.
+ *
+ * This macro creates a static object that registers the IO runtime
+ * callbacks during C++ static initialization (before main()).
+ */
 HOOC_REGISTER_RUNTIME(
     IO,
     hoo_io_register_with_jit,

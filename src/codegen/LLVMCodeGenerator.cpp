@@ -2051,11 +2051,13 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     // and populate the runtimeFunctionStorage_.
     // This replaces the manual declareRuntimeFunctions() approach.
 
-    // Force String and Array runtimes to be linked and registered (works around linker optimization)
+    // Force String, Array, and IO runtimes to be linked and registered (works around linker optimization)
     extern void _hoo_string_ensure_registration();
     extern void _hoo_array_ensure_registration();
+    extern void _hoo_io_ensure_registration();
     _hoo_string_ensure_registration();
     _hoo_array_ensure_registration();
+    _hoo_io_ensure_registration();
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
     registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);
