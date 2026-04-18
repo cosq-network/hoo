@@ -59,6 +59,8 @@ Hooc aims to be a modern, productive programming language that combines:
 - [x] `hoo.readline()` - Read line from stdin (implemented)
 - [x] `hoo.readchar()` - Read single character (implemented)
 - [x] CLI components (`HooCLI`, `IOProvider`, `DefaultIOProvider`)
+- [ ] AOT Bytecode Generation - Compile `.hoo` source to `.ho` bytecode files
+- [ ] Native AOT Execution - Direct execution of `.ho` bytecode files via JIT or interpreter
 - [ ] `File` - File reading/writing
 - [ ] `Directory` - Directory operations
 - [ ] `Console` - Standard input/output

@@ -3,6 +3,7 @@
 #include "IOProvider.h"
 #include <memory>
 #include <string>
+#include <string_view>
 #include <optional>
 
 namespace hooc {
@@ -12,9 +13,9 @@ public:
     explicit HooCLI(std::unique_ptr<IOProvider> ioProvider);
     ~HooCLI();
 
-    int run(int argc, char* argv[]);
+    [[nodiscard]] int run(int argc, char* argv[]);
 
-    IOProvider* getIOProvider();
+    [[nodiscard]] IOProvider* getIOProvider() const;
 
 private:
     struct Options {
@@ -22,17 +23,23 @@ private:
         bool showHelp = false;
         bool showVersion = false;
         bool printIR = false;
+        bool compileOnly = false;
         std::optional<std::string> inputFile;
+        std::optional<std::string> outputFile;
+        
+        bool isBytecode = false;
+        bool hasError = false;
+        std::string errorMessage;
     };
 
     std::unique_ptr<IOProvider> ioProvider_;
 
-    Options parseArguments(int argc, char* argv[]);
-    std::string getUsage(const char* programName);
-    std::string getVersion();
-    void verboseLog(const Options& opts, const std::string& message);
-    std::string extractModuleName(const std::string& filename);
-    int compileAndExecute(const Options& opts, const std::string& filename, const std::string& sourceCode);
+    [[nodiscard]] Options parseArguments(int argc, char* argv[]) const;
+    [[nodiscard]] std::string getUsage(std::string_view programName) const;
+    [[nodiscard]] std::string getVersion() const;
+    void verboseLog(const Options& opts, std::string_view message) const;
+    [[nodiscard]] std::string extractModuleName(std::string_view filename) const;
+    [[nodiscard]] int compileAndExecute(const Options& opts, std::string_view filename, std::string_view sourceCode) const;
 };
 
 }

@@ -71,20 +71,6 @@ class HooCLITest : public ::testing::Test {
 protected:
 };
 
-TEST_F(HooCLITest, ShowsHelpWithNoArguments) {
-    auto fakeIO = std::make_unique<FakeIOProvider>();
-    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
-
-    std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
-
-    int result = cli->run(1, args.data());
-
-    EXPECT_EQ(result, 1);
-    EXPECT_FALSE(cli->getIOProvider()->getStderr().empty());
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("No input file") != std::string::npos);
-}
-
 TEST_F(HooCLITest, ReturnsErrorWhenNoInputFile) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
@@ -96,6 +82,7 @@ TEST_F(HooCLITest, ReturnsErrorWhenNoInputFile) {
 
     EXPECT_EQ(result, 1);
     EXPECT_FALSE(cli->getIOProvider()->getStderr().empty());
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("No input file") != std::string::npos);
 }
 
 TEST_F(HooCLITest, ReturnsErrorWhenFileNotFound) {
@@ -161,23 +148,95 @@ TEST_F(HooCLITest, ShowsHelp) {
     EXPECT_TRUE(cli->getIOProvider()->getStdout().find("Options:") != std::string::npos);
 }
 
-TEST_F(HooCLITest, VerboseLogsToStderr) {
+TEST_F(HooCLITest, ReturnsErrorOnMultipleInputFiles) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
-    fakeIO->setFile("test.hoo", R"(
-        func main() {
-            return;
-        }
-    )");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("file1.hoo"));
+    args.push_back(const_cast<char*>("file2.hoo"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Multiple input files") != std::string::npos);
+}
+
+TEST_F(HooCLITest, ReturnsErrorOnInvalidExtension) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("script.txt"));
+
+    int result = cli->run(2, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Invalid file extension") != std::string::npos);
+}
+
+TEST_F(HooCLITest, ReturnsErrorOnBytecodeWithCompileFlags) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("-c"));
+    args.push_back(const_cast<char*>("script.ho"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Cannot use compilation flags") != std::string::npos);
+}
+
+TEST_F(HooCLITest, CompileOnlyMode) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("test.hoo", "func main() {}");
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
     args.push_back(const_cast<char*>("hooc"));
     args.push_back(const_cast<char*>("--verbose"));
+    args.push_back(const_cast<char*>("-c"));
     args.push_back(const_cast<char*>("test.hoo"));
 
-    int result = cli->run(3, args.data());
+    int result = cli->run(4, args.data());
 
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("[VERBOSE]") != std::string::npos);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Compile-only mode") != std::string::npos);
+}
+
+TEST_F(HooCLITest, OutputOptionReservedForFuture) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("test.hoo", "func main() {}");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("-o"));
+    args.push_back(const_cast<char*>("out.ho"));
+    args.push_back(const_cast<char*>("test.hoo"));
+
+    int result = cli->run(4, args.data());
+
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("AOT build and output emission") != std::string::npos);
+}
+
+TEST_F(HooCLITest, BytecodeFileExecutionReservedForFuture) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("script.ho", "bytecode content");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("script.ho"));
+
+    int result = cli->run(2, args.data());
+
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("AOT JIT execution") != std::string::npos);
 }

@@ -179,3 +179,30 @@ HVM supports multi-process execution through native OS system calls via FFI:
 | **Modern Features** | Exceptions, threads, atomic operations, SIMD |
 | **Debugging** | DWARF debug info, source-level breakpoints |
 | **Language Support** | Classes, basic inheritance |
+
+---
+
+## 6. Toolchain and Execution
+
+The Hooc toolchain provides a unified command-line interface (`hooc`) for both source compilation and bytecode execution.
+
+### 6.1 Unified CLI (`hooc`)
+
+The `hooc` executable manages the entire lifecycle of a program:
+- **JIT Run**: Executing `.hoo` source files directly via the LLVM-based JIT engine.
+- **AOT Build**: Compiling `.hoo` source to `.ho` bytecode files (reserved for future implementation).
+- **AOT Run**: Executing pre-compiled `.ho` bytecode files (reserved for future implementation).
+
+### 6.2 Input Constraints
+
+To ensure clarity and prevent ambiguous execution paths, the CLI enforces a strict **single-input file** rule:
+- Exactly one file must be provided (either `.hoo` or `.ho`).
+- Compilation flags (`-c`, `-o`) are only valid when providing a `.hoo` source file.
+- Providing a `.ho` file implies direct execution of the pre-compiled bytecode.
+
+### 6.3 Implementation Status
+
+As of version 1.1.0:
+- ✅ JIT execution of `.hoo` files is fully supported.
+- 🟡 AOT compilation (`-o out.ho`) is reserved and will emit an informational message.
+- 🟡 AOT execution of `.ho` files is reserved and will emit an informational message.

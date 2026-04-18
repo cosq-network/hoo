@@ -12,7 +12,12 @@
 
 ### 3.1 HooCompiler
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 350 120" style="font-family:monospace;font-size:11px"><rect width="350" height="120" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="12">HooCompiler</text><rect x="0" y="0" width="350" height="95" fill="#fff" stroke="#e0e0e0" rx="2"/><g transform="translate(15,30)"><rect x="0" y="0" width="80" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="40" y="20" text-anchor="middle" font-weight="bold" font-size="10">parser_</text><text x="40" y="35" text-anchor="middle" font-size="9" fill="#666">ProcessIsoParser</text><text x="40" y="47" text-anchor="middle" font-size="8" fill="#999">ANTLR4</text></g><g transform="translate(105,30)"><rect x="0" y="0" width="80" height="50" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="40" y="20" text-anchor="middle" font-weight="bold" font-size="10">astBuilder_</text><text x="40" y="35" text-anchor="middle" font-size="9" fill="#666">SimpleAST</text><text x="40" y="47" text-anchor="middle" font-size="8" fill="#999">Visitor</text></g><g transform="translate(195,30)"><rect x="0" y="0" width="80" height="50" fill="#d4edda" stroke="#28a745" rx="2"/><text x="40" y="20" text-anchor="middle" font-weight="bold" font-size="10">codeGen_</text><text x="40" y="35" text-anchor="middle" font-size="9" fill="#666">LLVMCodeGen</text><text x="40" y="47" text-anchor="middle" font-size="8" fill="#999">IR Builder</text></g><g transform="translate(285,30)"><rect x="0" y="0" width="50" height="50" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="25" y="20" text-anchor="middle" font-weight="bold" font-size="10">ctx_</text><text x="25" y="35" text-anchor="middle" font-size="9" fill="#666">LLVM</text><text x="25" y="47" text-anchor="middle" font-size="8" fill="#999">Context</text></g><path d="M55 55 L55 85 M145 55 L145 85 M235 55 L235 85" stroke="#ccc" stroke-width="1" stroke-dasharray="2"/><text x="175" y="100" text-anchor="middle" font-size="9" fill="#666">compile(moduleName, source) → llvm::Module</text></svg>
+The main entry point for the compilation pipeline. It coordinates the parsing (via `ProcessIsolatedParser`), AST building (via `SimpleASTBuilder`), and LLVM IR generation (via `LLVMCodeGenerator`).
+
+- **Context Management**: Can be initialized with an existing `llvm::LLVMContext` to support shared memory and symbol resolution when used within the JIT engine.
+- **Error Handling**: Maintains an internal error state that can be queried after failed compilation attempts.
+- **Output**: Produces a `std::unique_ptr<llvm::Module>` containing the optimized LLVM IR.
+
 
 ### 3.2 LLVMCodeGenerator Symbol Tables
 
@@ -20,7 +25,13 @@
 
 ### 3.3 HoocJIT
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 650 200" style="font-family:monospace;font-size:11px"><rect width="650" height="200" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="12">HoocJIT Execution</text><g transform="translate(10,35)"><rect x="0" y="0" width="630" height="155" fill="#fff" stroke="#e0e0e0" rx="4"/><g transform="translate(10,15)"><rect x="0" y="0" width="280" height="55" fill="#e8f4fd" stroke="#4a90d9" rx="3"/><text x="140" y="20" text-anchor="middle" font-weight="bold" fill="#4a90d9">compile(moduleName, source)</text><rect x="10" y="30" width="260" height="20" fill="#fff" rx="2"/><text x="20" y="44" font-size="9">HooCompiler::compile() → llvm::Module</text></g><g transform="translate(330,15)"><rect x="0" y="0" width="290" height="55" fill="#fff3cd" stroke="#ffc107" rx="3"/><text x="145" y="20" text-anchor="middle" font-weight="bold" fill="#856404">execute(functionName)</text><rect x="10" y="30" width="270" height="20" fill="#fff" rx="2"/><text x="20" y="44" font-size="9">lookupAddress() → Cast → Call → ExecutionResult</text></g><rect x="10" y="85" width="290" height="55" fill="#d4edda" stroke="#28a745" rx="3"/><text x="155" y="105" text-anchor="middle" font-weight="bold" fill="#28a745">executeFunction&lt;T&gt;(name)</text><rect x="20" y="115" width="270" height="20" fill="#fff" rx="2"/><text x="30" y="129" font-size="9">lookupAddress() → Cast to T(*)() → TypedExecutionResult&lt;T&gt;</text><rect x="330" y="85" width="290" height="55" fill="#f8d7da" stroke="#dc3545" rx="3"/><text x="475" y="105" text-anchor="middle" font-weight="bold" fill="#dc3545">executeFunction&lt;T,Args...&gt;(name,args...)</text><rect x="340" y="115" width="270" height="20" fill="#fff" rx="2"/><text x="350" y="129" font-size="9">lookupAddress() → Cast to T(*)(Args...) → Call(args)</text><g transform="translate(0,0)"><text x="620" y="20" text-anchor="end" font-size="9" fill="#666">LLVM ORC JIT</text></g></g></svg>
+The JIT execution engine that compiles and executes Hooc code in-memory. It leverages LLVM ORC (Object Retrieval Compilation) JIT infrastructure.
+
+- **Thread-Safe Context**: Manages a `llvm::orc::ThreadSafeContext` to ensure all compilation and execution happens within a consistent and thread-safe environment.
+- **Shared Architecture**: Owns the `ThreadSafeContext` and passes it to its internal `HooCompiler` instance. This prevents context-mismatch errors when moving modules from the compiler to the JIT engine.
+- **Symbol Resolution**: Automatically registers all standard library functions (String, Array, IO) with the JIT's main dynamic library (Dylib).
+- **Flexible Execution**: Supports executing void functions (`execute`) and functions with return values and arguments (`executeFunction<T>`).
+
 
 ## 4. Runtime System
 

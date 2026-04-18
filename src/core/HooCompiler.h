@@ -70,8 +70,8 @@ public:
     // ========================================================================
 
     /// @brief Construct a new Hooc compiler
-    /// @details Initializes parser, AST builder, and LLVM context
-    HooCompiler();
+    /// @param context Optional pointer to an external LLVMContext. If null, a new one is created.
+    explicit HooCompiler(llvm::LLVMContext* context = nullptr);
 
     /// @brief Destructor
     ~HooCompiler();
@@ -117,8 +117,11 @@ private:
     /// @brief LLVM code generator
     std::unique_ptr<CodeGenerator>         codeGenerator_;
 
-    /// @brief LLVM context for IR generation
-    std::unique_ptr<llvm::LLVMContext>     context_;
+    /// @brief Pointer to the LLVM context being used
+    llvm::LLVMContext*                     context_;
+
+    /// @brief Owned LLVM context (only used if no external context provided)
+    std::unique_ptr<llvm::LLVMContext>     ownedContext_;
 
     // ========================================================================
     // Error State

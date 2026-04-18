@@ -3,50 +3,65 @@
 **Report Date:** April 18, 2026
 **Build Configuration:** macOS Homebrew Ninja
 **Total Test Suites:** 49
-**Total Test Cases:** 980
-**Execution Time:** ~180 ms
-**Last Update:** Full implementation of for-range syntax with steps and reverse ranges
+**Total Test Cases:** 984
+**Execution Time:** ~200 ms
+**Last Update:** Modernized HooCLI and JIT LLVMContext sharing fix
 
 ## Executive Summary
 
-The Hooc compiler test suite shows **100% pass rate** (980 passing tests out of 980 total)
+The Hooc compiler test suite shows **100% pass rate** (984 passing tests out of 984 total)
  with comprehensive test coverage across all language features, the JIT execution engine, and the CLI.
 
 ### Test Results Overview
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| **Total Tests** | 980 | 100% |
-| **Passing Tests** | 980 | 100% |
+| **Total Tests** | 984 | 100% |
+| **Passing Tests** | 984 | 100% |
 | **Failing Tests** | 0 | 0% |
 | **Test Suites** | 51 | - |
 | **Failing Suites** | 0 | 0% |
 
 ---
 
-## Bug Fix: HooCLITest Null Pointer Dereference
+## Architecture Improvement: JIT LLVMContext Sharing
 
-**Issue:** Tests were calling methods on moved-from `std::unique_ptr<FakeIOProvider>` after transferring ownership to `HooCLI`, causing undefined behavior.
+**Issue:** A segmentation fault occurred in the JIT engine when moving compiled modules from `HooCompiler` to `HoocJIT`. This was caused by a `LLVMContext` mismatch, where the module was being added to the JIT with a different context than the one it was created in.
 
-**Fix:** 
-1. Added `getIOProvider()` method to `HooCLI` class to access the underlying IOProvider
-2. Added virtual `getStdout()` and `getStderr()` methods to `IOProvider` base class
-3. Updated tests to use `cli->getIOProvider()` instead of the moved-from pointer
-
-**Files Modified:**
-- `src/core/HooCLI.h` - Added `getIOProvider()` method
-- `src/core/IOProvider.h` - Added `getStdout()` / `getStderr()` virtual methods
-- `tests/core/HooCLITest.cpp` - Updated all 7 tests to use new accessor method
+**Fix:**
+1. Updated `HooCompiler` to accept an optional external `LLVMContext*`.
+2. Updated `HoocJIT` to manage a `llvm::orc::ThreadSafeContext`.
+3. `HoocJIT` now shares its internal context with its `HooCompiler` instance.
+4. Modules are wrapped in `ThreadSafeModule` using the correct shared context.
 
 ---
 
-## Test Suite Breakdown (49 Suites, 981 Tests)
+## Bug Fix: HooCLI Modernization
 
-### Core CLI Tests (1 Suite, 7 Tests)
+**Issue:** The CLI used `std::exit`, making it hard to test and less robust. It also lacked strict input validation for future AOT support.
+
+**Fix:**
+1. Modernized `HooCLI` to use C++17 `std::string_view` and `std::filesystem`.
+2. Replaced `std::exit` with structured error reporting in the `Options` struct.
+3. Implemented strict single-file input validation (only one `.hoo` or `.ho`).
+4. Added reserved support for AOT compilation flags and bytecode execution.
+
+**Files Modified:**
+- `src/core/HooCLI.h/cpp` - Modernized implementation
+- `src/core/HooCompiler.h/cpp` - Shared context support
+- `src/jit/HoocJIT.h/cpp` - ThreadSafeContext management
+- `tests/core/HooCLITest.cpp` - Updated and expanded to 11 tests
+
+---
+
+## Test Suite Breakdown (49 Suites, 984 Tests)
+
+### Core CLI Tests (1 Suite, 11 Tests)
 
 | Suite | Tests | Description |
 |-------|-------|-------------|
-| HooCLITest | 7 | Command-line interface, argument parsing, file handling |
+| HooCLITest | 11 | Modernized interface, strict input validation, AOT reserved flags |
+
 
 ### Core Compiler Tests (1 Suite, 34 Tests)
 
@@ -194,14 +209,18 @@ public:
 
 ### Test Coverage
 
-The `HooCLITest` suite includes 7 tests:
-1. `ShowsHelpWithNoArguments` - No args shows help
-2. `ReturnsErrorWhenNoInputFile` - Missing input returns error
-3. `ReturnsErrorWhenFileNotFound` - Non-existent file returns error
-4. `ReturnsErrorWhenFileIsEmpty` - Empty file returns error
-5. `ShowsVersion` - `--version` displays version
-6. `ShowsHelp` - `--help` displays help
-7. `VerboseLogsToStderr` - `--verbose` enables logging
+The `HooCLITest` suite includes 11 tests:
+1. `ReturnsErrorWhenNoInputFile` - Missing input returns error
+2. `ReturnsErrorWhenFileNotFound` - Non-existent file returns error
+3. `ReturnsErrorWhenFileIsEmpty` - Empty file returns error
+4. `ShowsVersion` - `--version` displays version
+5. `ShowsHelp` - `--help` displays help
+6. `ReturnsErrorOnMultipleInputFiles` - Strict single-file input check
+7. `ReturnsErrorOnInvalidExtension` - Only .hoo and .ho allowed
+8. `ReturnsErrorOnBytecodeWithCompileFlags` - No -c/-o for .ho files
+9. `CompileOnlyMode` - `-c` flag for validation
+10. `OutputOptionReservedForFuture` - `-o` flag placeholder
+11. `BytecodeFileExecutionReservedForFuture` - Running .ho files placeholder
 
 ---
 

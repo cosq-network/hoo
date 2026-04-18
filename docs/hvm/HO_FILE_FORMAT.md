@@ -1037,7 +1037,7 @@ Field Descriptors (at offset 0x200):
 
 **Example:**
 ```
-hooc run app.ho
+hooc app.ho
 ```
 
 ### 13.2 Shared Object (file_type = 0x02)
@@ -1075,7 +1075,7 @@ Import table specifies required libraries:
 **Example:**
 ```
 ; Compile to object file
-hooc compile -c module_a.hoo -o module_a.o.ho
+hooc module_a.hoo -c -o module_a.o.ho
 
 ; Static link
 hooc link module_a.o.ho module_b.o.ho -o final.ho
@@ -1202,7 +1202,7 @@ func:int64 main() {
 
 **Compile to Executable:**
 ```bash
-hooc compile main.hoo -o main.ho
+hooc main.hoo -o main.ho
 ```
 
 **Generated File Structure:**
@@ -1228,7 +1228,7 @@ main.ho
 
 **Run:**
 ```bash
-hooc run main.ho
+hooc main.ho
 # Output: Hello, World!
 ```
 
@@ -1251,7 +1251,7 @@ export Math;
 
 **Compile to Shared Library:**
 ```bash
-hooc compile --shared math.hoo -o libmath.ho
+hooc math.hoo --shared -o libmath.ho
 ```
 
 **Generated File Structure:**
@@ -1297,8 +1297,8 @@ export bar;
 
 **Compile and Link:**
 ```bash
-hooc compile -c a.hoo -o a.o.ho
-hooc compile -c b.hoo -o b.o.ho
+hooc a.hoo -c -o a.o.ho
+hooc b.hoo -c -o b.o.ho
 hooc link a.o.ho b.o.ho -o program.ho
 ```
 
@@ -1330,12 +1330,12 @@ export main;
 
 **Compile:**
 ```bash
-hooc compile main.hoo -o main.ho
+hooc main.hoo -o main.ho
 ```
 
 **At runtime:**
 ```
-hooc run main.ho --require libmath.ho
+hooc main.ho --require libmath.ho
 ```
 
 **Runtime loading:**

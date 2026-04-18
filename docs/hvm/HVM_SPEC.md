@@ -979,7 +979,7 @@ String Layout:
 
 ### 8.1 Module Format
 
-- Modules are compiled to `.hobj` files
+- Modules are compiled to `.ho` files
 - Contains: code, data, symbol tables, relocation info
 
 ### 8.2 Import Resolution

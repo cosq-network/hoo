@@ -10,12 +10,19 @@ namespace hooc {
 // Construction / Destruction
 // ============================================================================
 
-HooCompiler::HooCompiler()
+HooCompiler::HooCompiler(llvm::LLVMContext* context)
     : lastCompilationSuccessful_(false) {
 
     parser_      = std::make_unique<ProcessIsolatedParser>();
     astBuilder_  = std::make_unique<SimpleASTBuilder>();
-    context_     = std::make_unique<llvm::LLVMContext>();
+    
+    if (context) {
+        context_ = context;
+    } else {
+        ownedContext_ = std::make_unique<llvm::LLVMContext>();
+        context_ = ownedContext_.get();
+    }
+    
     codeGenerator_ = std::make_unique<LLVMCodeGenerator>(*context_);
 }
 

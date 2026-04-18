@@ -26,6 +26,7 @@ HoocJIT::~HoocJIT() = default;
 
 HoocJIT::HoocJIT(HoocJIT&& other) noexcept
     : jit_(std::move(other.jit_))
+    , tsc_(std::move(other.tsc_))
     , compiler_(std::move(other.compiler_))
     , lastError_(std::move(other.lastError_)) {
 }
@@ -33,6 +34,7 @@ HoocJIT::HoocJIT(HoocJIT&& other) noexcept
 HoocJIT& HoocJIT::operator=(HoocJIT&& other) noexcept {
     if (this != &other) {
         jit_       = std::move(other.jit_);
+        tsc_       = std::move(other.tsc_);
         compiler_  = std::move(other.compiler_);
         lastError_ = std::move(other.lastError_);
     }
@@ -155,7 +157,14 @@ bool HoocJIT::initialize() {
     auto& registry = runtime::RuntimeRegistry::getInstance();
     registry.registerAllWithJIT(*jit_, jit_->getMainJITDylib());
 
-    compiler_ = std::make_unique<HooCompiler>();
+    tsc_ = ThreadSafeContext(std::make_unique<LLVMContext>());
+    
+    llvm::LLVMContext* contextPtr = nullptr;
+    tsc_.withContextDo([&contextPtr](llvm::LLVMContext* ctx) {
+        contextPtr = ctx;
+    });
+    
+    compiler_ = std::make_unique<HooCompiler>(contextPtr);
 
     return true;
 }
@@ -178,7 +187,7 @@ bool HoocJIT::addModuleToJIT(std::unique_ptr<Module> module) {
         return false;
     }
 
-    ThreadSafeModule tsm(std::move(module), std::make_unique<LLVMContext>());
+    ThreadSafeModule tsm(std::move(module), tsc_);
     auto error = jit_->addIRModule(std::move(tsm));
 
     if (error) {

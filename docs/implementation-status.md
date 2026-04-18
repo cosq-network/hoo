@@ -327,9 +327,9 @@ These features are planned but not yet started:
 
 - **Compiler CLI**
   - ✅ Basic compilation
-  - ❌ File-based compilation
+  - ✅ File-based compilation (.hoo and .ho)
   - ❌ Build system integration
-  - ❌ Error reporting improvements
+  - ✅ Error reporting improvements (Modernized)
   - ❌ Warning system
   - ❌ Optimization levels
 

@@ -876,7 +876,47 @@ if person != null {
 }
 ```
 
+## Command-Line Interface
+
+The Hooc compiler provides a unified command-line tool `hooc` for compiling and running Hooc source code.
+
+### Usage
+
+```bash
+hooc [options] <input_file>
+```
+
+- `<input_file>`: A `.hoo` source file or a `.ho` bytecode file (reserved).
+
+### Options
+
+| Option | Alias | Description |
+|--------|--------|-------------|
+| `--help` | `-h` | Display help message and exit |
+| `--version` | `-v` | Display version information and exit |
+| `--compile` | `-c` | Compile and validate source without execution (only for `.hoo`) |
+| `--output` | `-o` | Specify output `.ho` path (implies `-c`, reserved for future) |
+| `--verbose` | | Enable verbose logging for debugging |
+| `--print-ir` | | Print generated LLVM IR to stdout |
+
+### Examples
+
+```bash
+# Run a script directly via JIT
+hooc main.hoo
+
+# Compile and validate source
+hooc main.hoo -c
+
+# Reserved: Build AOT bytecode
+hooc main.hoo -o main.ho
+
+# Reserved: Run pre-compiled bytecode
+hooc main.ho
+```
+
 ## See Also
+
 
 - [Grammar Specification](grammar.md) - Complete language grammar
 - [Implementation Status](implementation-status.md) - Current implementation status

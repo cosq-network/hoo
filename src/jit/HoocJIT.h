@@ -141,6 +141,7 @@
 #include <utility>
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/IR/LLVMContext.h"
 
 namespace hooc {
@@ -496,7 +497,8 @@ private:
     // ========================================================================
 
     std::unique_ptr<llvm::orc::LLJIT> jit_;
-    std::unique_ptr<HooCompiler>       compiler_;
+    llvm::orc::ThreadSafeContext      tsc_;
+    std::unique_ptr<HooCompiler>      compiler_;
     std::string                       lastError_;
 };
 

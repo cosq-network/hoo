@@ -204,11 +204,27 @@ hooc/
 - **DefaultIOProvider** (`src/core/DefaultIOProvider.h`): Default implementation using file I/O and stdio
 
 The CLI supports:
-- Compiling and executing `.hoo` source files
+- Compiling and executing `.hoo` source files via JIT
+- Executing pre-compiled `.ho` bytecode files (planned AOT support)
+- `-c`, `--compile`: Validate and compile source without execution
+- `-o`, `--output`: Specify output `.ho` bytecode path (planned AOT support)
 - `--help` / `-h`: Display usage information
 - `--version` / `-v`: Display version information
 - `--verbose`: Enable verbose logging
 - `--print-ir`: Print generated LLVM IR
+
+### Example Usage
+
+```bash
+# Run source directly
+hooc main.hoo
+
+# Compile and validate source
+hooc main.hoo -c
+
+# Run bytecode (planned)
+hooc main.ho
+```
 
 ## Architecture
 
