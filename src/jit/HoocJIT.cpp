@@ -122,9 +122,16 @@ std::optional<llvm::JITTargetAddress> HoocJIT::lookupAddress(const std::string& 
 bool HoocJIT::initialize() {
     lastError_.clear();
 
-    InitializeNativeTarget();
-    InitializeNativeTargetAsmPrinter();
-    InitializeNativeTargetAsmParser();
+    // Initialize LLVM targets (safe to call multiple times)
+    // These are idempotent operations - LLVM internally guards against
+    // multiple initialization, but we call them here for completeness
+    static bool llvmInitialized = []() {
+        InitializeNativeTarget();
+        InitializeNativeTargetAsmPrinter();
+        InitializeNativeTargetAsmParser();
+        return true;
+    }();
+    (void)llvmInitialized; // Suppress unused variable warning
 
     auto jitExpected = LLJITBuilder().create();
 
