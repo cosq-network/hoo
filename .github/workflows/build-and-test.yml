@@ -223,11 +223,6 @@ jobs:
           # Verify installation
           & "$llvmPath\clang.exe" --version
 
-      - name: Setup vcpkg for GoogleTest and ANTLR4
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: 'c8696863d371ab7f46e213d8f5ca923c4ff5e63e'
-
       - name: Install dependencies via vcpkg
         run: |
           vcpkg install gtest:x64-windows antlr4-cpp-runtime:x64-windows
@@ -245,7 +240,7 @@ jobs:
 
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DHOOC_BUILD_TESTS=ON `
-            -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
             -DLLVM_DIR="$llvmDir"
 
       - name: Build compiler
