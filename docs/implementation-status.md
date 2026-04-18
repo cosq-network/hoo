@@ -56,7 +56,7 @@ These features are fully implemented, tested, and production-ready:
   - ✅ `if-else` statements
   - ✅ `while` loops
   - ✅ `for-in` loops
-  - ✅ `for-range` loops (basic implementation)
+  - ✅ `for-range` loops (full implementation with `by` step and reverse ranges)
   - ✅ `break` statements
   - ✅ `continue` statements
   - ✅ `return` statements
@@ -432,7 +432,6 @@ These features are planned but not yet started:
 - None currently blocking development
 
 ### Medium Priority
-- For-range syntax could be more intuitive
 - Union type code generation incomplete
 
 ### Low Priority

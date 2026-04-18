@@ -3,23 +3,23 @@
 **Report Date:** April 18, 2026
 **Build Configuration:** macOS Homebrew Ninja
 **Total Test Suites:** 49
-**Total Test Cases:** 965
+**Total Test Cases:** 980
 **Execution Time:** ~180 ms
-**Last Update:** Removed interfaces and union types; Updated test suite for language modernization
+**Last Update:** Full implementation of for-range syntax with steps and reverse ranges
 
 ## Executive Summary
 
-The Hooc compiler test suite shows **100% pass rate** (965 passing tests out of 965 total)
+The Hooc compiler test suite shows **100% pass rate** (980 passing tests out of 980 total)
  with comprehensive test coverage across all language features, the JIT execution engine, and the CLI.
 
 ### Test Results Overview
 
 | Metric | Count | Percentage |
 |--------|-------|------------|
-| **Total Tests** | 965 | 100% |
-| **Passing Tests** | 965 | 100% |
+| **Total Tests** | 980 | 100% |
+| **Passing Tests** | 980 | 100% |
 | **Failing Tests** | 0 | 0% |
-| **Test Suites** | 49 | - |
+| **Test Suites** | 51 | - |
 | **Failing Suites** | 0 | 0% |
 
 ---
@@ -82,6 +82,8 @@ The Hooc compiler test suite shows **100% pass rate** (965 passing tests out of 
 | VariableDeclarationParseTest | 15 | Variable declaration parsing |
 | IfElseIfParsingTest | 27 | Conditional statements |
 | WhileLoopParsingTest | 31 | While loop syntax |
+| ForLoopParsingTest | 7 | For-in and For-range parsing |
+| ForRangeCodeGenTest | 4 | For-range with step codegen |
 | ImportStatementParsingTest | 18 | Import statement parsing |
 | ModuleLevelVariableParsingTest | 9 | Module-level variables |
 | ClassDeclarationParsingTest | 19 | Class declarations |

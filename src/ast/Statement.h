@@ -91,21 +91,25 @@ public:
     ForRangeStatement(const std::string& variable,
                      std::unique_ptr<Expression> start,
                      std::unique_ptr<Expression> end,
+                     std::unique_ptr<Expression> step,
                      std::unique_ptr<Block> body)
         : variable_(variable), start_(std::move(start)), 
-          end_(std::move(end)), body_(std::move(body)) {}
+          end_(std::move(end)), step_(std::move(step)), body_(std::move(body)) {}
 
     std::string toString() const override;
 
     const std::string& getVariable() const { return variable_; }
     const Expression& getStart() const { return *start_; }
     const Expression& getEnd() const { return *end_; }
+    const Expression* getStep() const { return step_.get(); }
+    bool hasStep() const { return step_ != nullptr; }
     const Block& getBody() const { return *body_; }
 
 private:
     std::string variable_;
     std::unique_ptr<Expression> start_;
     std::unique_ptr<Expression> end_;
+    std::unique_ptr<Expression> step_;
     std::unique_ptr<Block> body_;
 };
 

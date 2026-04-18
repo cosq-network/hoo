@@ -594,10 +594,21 @@ for i in 0..10 {
     print(i);  // Prints 0 through 9
 }
 
+// For-range with step
+for i in 0 .. 10 by 2 {
+    print(i);  // Prints 0, 2, 4, 6, 8
+}
+
+// Reverse range
+for i in 10 .. 0 by -1 {
+    print(i);  // Prints 10, 9, 8, 7, 6, 5, 4, 3, 2, 1
+}
+
 // With variable range
 var start = 5;
 var end = 15;
-for i in start..end {
+var step = 3;
+for i in start..end by step {
     print(i);
 }
 ```

@@ -234,17 +234,13 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildScopeStatement(ctx->scopeStatement());
     } else if (ctx->forStatement()) {
         auto forCtx = ctx->forStatement();
-        // Check if it's a for-range loop (has 2 expressions) or for-in loop (has 1 expression)
-        auto exprs = forCtx->expression();
-        if (exprs.size() == 2) {
-            // for-range: for i in start..end { }
+        // Check if it's a for-range loop (has RANGE ..) or for-in loop (has 1 expression)
+        if (forCtx->RANGE()) {
+            // for-range: for i in start..end [by step] { }
             return buildForRangeStatement(forCtx);
-        } else if (exprs.size() == 1) {
+        } else {
             // for-in: for item in iterable { }
             return buildForInStatement(forCtx);
-        } else {
-            std::cerr << "Error: forStatement has unexpected number of expressions: " << exprs.size() << std::endl;
-            return nullptr;
         }
     } else if (ctx->breakStatement()) {
         return std::make_unique<BreakStatement>();
@@ -330,23 +326,31 @@ std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(Hooc
 
     std::string variable = ctx->IDENTIFIER()->getText();
 
-    // For-range loop has exactly 2 expressions (start and end)
+    // For-range loop expressions: start .. end [by step]
     auto exprs = ctx->expression();
-    if (exprs.size() != 2) {
-        std::cerr << "Error: ForRangeStatement needs 2 expressions, got " << exprs.size() << std::endl;
-        return nullptr;
-    }
-
+    
+    // expression(0) is start
     auto start = buildExpression(exprs[0]);
     if (!start) {
         std::cerr << "Error: Failed to build start expression for for-range loop" << std::endl;
         return nullptr;
     }
 
+    // expression(1) is end
     auto end = buildExpression(exprs[1]);
     if (!end) {
         std::cerr << "Error: Failed to build end expression for for-range loop" << std::endl;
         return nullptr;
+    }
+
+    // expression(2) is optional step (if BY exists)
+    std::unique_ptr<Expression> step;
+    if (ctx->BY()) {
+        if (exprs.size() < 3) {
+            std::cerr << "Error: ForRangeStatement with BY missing step expression" << std::endl;
+            return nullptr;
+        }
+        step = buildExpression(exprs[2]);
     }
 
     auto body = buildBlock(ctx->block());
@@ -355,7 +359,7 @@ std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(Hooc
         return nullptr;
     }
 
-    return std::make_unique<ForRangeStatement>(variable, std::move(start), std::move(end), std::move(body));
+    return std::make_unique<ForRangeStatement>(variable, std::move(start), std::move(end), std::move(step), std::move(body));
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildExpression(HoocParser::ExpressionContext* ctx) {

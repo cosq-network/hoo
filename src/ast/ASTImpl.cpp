@@ -158,7 +158,7 @@ std::string ForInStatement::toString() const {
 }
 
 std::string ForRangeStatement::toString() const {
-    return "ForRangeStatement " + variable_;
+    return "ForRangeStatement " + variable_ + (hasStep() ? " (with step)" : "");
 }
 
 std::string WhileStatement::toString() const {

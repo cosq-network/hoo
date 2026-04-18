@@ -30,6 +30,7 @@ SERVICE: 'service';
 STRATEGY: 'strategy';
 ACTOR: 'actor';
 AS: 'as';
+BY: 'by';
 THIS: 'this';
 TRUE: 'true';
 FALSE: 'false';
@@ -196,7 +197,7 @@ expressionStatement: expression SEMICOLON;
 ifStatement: IF expression block (ELSE block)?;
 
 forStatement
-    : FOR IDENTIFIER IN expression (RANGE expression)? block
+    : FOR IDENTIFIER IN expression (RANGE expression (BY expression)?)? block
     ;
 
 whileStatement: WHILE expression block;

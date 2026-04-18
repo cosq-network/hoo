@@ -1356,6 +1356,19 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
     Value* endValue = generateLLVMExpression(stmt.getEnd());
     if (!startValue || !endValue) return;
 
+    // Evaluate optional step, default to 1
+    Value* stepValue = nullptr;
+    if (stmt.hasStep()) {
+        stepValue = generateLLVMExpression(*stmt.getStep());
+    } else {
+        if (startValue->getType()->isIntegerTy()) {
+            stepValue = ConstantInt::get(startValue->getType(), 1);
+        } else {
+            stepValue = ConstantFP::get(startValue->getType(), 1.0);
+        }
+    }
+    if (!stepValue) return;
+
     // Allocate loop variable
     AllocaInst* loopVar = createEntryBlockAlloca(currentFunc, stmt.getVariable(), startValue->getType());
     builder_->CreateStore(startValue, loopVar);
@@ -1373,15 +1386,30 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
     // Jump to condition
     builder_->CreateBr(condBlock);
 
-    // Condition block: check if loopVar < end
+    // Condition block: check if loopVar reaches end
     builder_->SetInsertPoint(condBlock);
     Value* currentVal = builder_->CreateLoad(loopVar->getAllocatedType(), loopVar, stmt.getVariable());
+    
+    // Logic: if step > 0, condition is current < end
+    //        if step < 0, condition is current > end
+    Value* isPositiveStep;
+    if (stepValue->getType()->isIntegerTy()) {
+        isPositiveStep = builder_->CreateICmpSGT(stepValue, ConstantInt::get(stepValue->getType(), 0), "is_pos_step");
+    } else {
+        isPositiveStep = builder_->CreateFCmpOGT(stepValue, ConstantFP::get(stepValue->getType(), 0.0), "is_pos_step");
+    }
+
     Value* condValue;
     if (loopVar->getAllocatedType()->isIntegerTy()) {
-        condValue = builder_->CreateICmpSLT(currentVal, endValue, "forcond");
+        Value* posCond = builder_->CreateICmpSLT(currentVal, endValue, "pos_cond");
+        Value* negCond = builder_->CreateICmpSGT(currentVal, endValue, "neg_cond");
+        condValue = builder_->CreateSelect(isPositiveStep, posCond, negCond, "forcond");
     } else {
-        condValue = builder_->CreateFCmpOLT(currentVal, endValue, "forcond");
+        Value* posCond = builder_->CreateFCmpOLT(currentVal, endValue, "pos_cond");
+        Value* negCond = builder_->CreateFCmpOGT(currentVal, endValue, "neg_cond");
+        condValue = builder_->CreateSelect(isPositiveStep, posCond, negCond, "forcond");
     }
+
     builder_->CreateCondBr(condValue, bodyBlock, afterBlock);
 
     // Body block
@@ -1391,14 +1419,14 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
         builder_->CreateBr(incBlock);
     }
 
-    // Increment block
+    // Increment block: currentVal + stepValue
     builder_->SetInsertPoint(incBlock);
     Value* curVal = builder_->CreateLoad(loopVar->getAllocatedType(), loopVar, stmt.getVariable());
     Value* nextVal;
     if (loopVar->getAllocatedType()->isIntegerTy()) {
-        nextVal = builder_->CreateAdd(curVal, ConstantInt::get(loopVar->getAllocatedType(), 1), "nextval");
+        nextVal = builder_->CreateAdd(curVal, stepValue, "nextval");
     } else {
-        nextVal = builder_->CreateFAdd(curVal, ConstantFP::get(loopVar->getAllocatedType(), 1.0), "nextval");
+        nextVal = builder_->CreateFAdd(curVal, stepValue, "nextval");
     }
     builder_->CreateStore(nextVal, loopVar);
     builder_->CreateBr(condBlock);

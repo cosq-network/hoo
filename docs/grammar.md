@@ -501,7 +501,7 @@ while count < 10 {
 ```antlr
 forStatement:
     | FOR IDENTIFIER IN expression block              // For-in
-    | FOR IDENTIFIER IN expression RANGE expression block  // For-range
+    | FOR IDENTIFIER IN expression RANGE expression (BY expression)? block  // For-range
 ```
 
 **Examples:**
@@ -512,10 +512,21 @@ for item in collection {
     print(item);
 }
 
-// For-range
-for i in 0..10 {
+// For-range loop
+for i in 0 .. 10 {
     print(i);
 }
+
+// For-range with step
+for i in 0 .. 10 by 2 {
+    print(i);
+}
+
+// Reverse range
+for i in 10 .. 0 by -1 {
+    print(i);
+}
+
 ```
 
 #### Return Statement
