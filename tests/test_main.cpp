@@ -8,28 +8,26 @@ int main(int argc, char **argv) {
     // This is required for JIT functionality and must be done before any
     // HoocJIT instances are created
 
-    // Initialize all targets (not just native) for maximum compatibility
-    llvm::InitializeAllTargetInfos();
-    llvm::InitializeAllTargets();
-    llvm::InitializeAllTargetMCs();
-    llvm::InitializeAllAsmParsers();
-    llvm::InitializeAllAsmPrinters();
-
-    // Also initialize native target specifically
+    // Initialize native target with error checking
     if (llvm::InitializeNativeTarget()) {
-        std::cerr << "Failed to initialize native target" << std::endl;
-        return 1;
-    }
-    if (llvm::InitializeNativeTargetAsmPrinter()) {
-        std::cerr << "Failed to initialize native target ASM printer" << std::endl;
-        return 1;
-    }
-    if (llvm::InitializeNativeTargetAsmParser()) {
-        std::cerr << "Failed to initialize native target ASM parser" << std::endl;
-        return 1;
+        std::cerr << "ERROR: Failed to initialize native target" << std::endl;
+        std::cerr << "JIT tests will likely fail" << std::endl;
+        // Continue anyway to see what happens
+    } else {
+        std::cout << "Native target initialized successfully" << std::endl;
     }
 
-    std::cout << "LLVM targets initialized successfully" << std::endl;
+    if (llvm::InitializeNativeTargetAsmPrinter()) {
+        std::cerr << "ERROR: Failed to initialize native target ASM printer" << std::endl;
+    } else {
+        std::cout << "Native ASM printer initialized successfully" << std::endl;
+    }
+
+    if (llvm::InitializeNativeTargetAsmParser()) {
+        std::cerr << "ERROR: Failed to initialize native target ASM parser" << std::endl;
+    } else {
+        std::cout << "Native ASM parser initialized successfully" << std::endl;
+    }
 
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
