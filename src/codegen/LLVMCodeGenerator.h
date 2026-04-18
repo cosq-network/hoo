@@ -341,12 +341,12 @@ private:
     llvm::Value* generateStdClassConstructor(const ModuleExport& moduleExport,
                                             const ast::NewObjectExpression& newExpr);
 
-    /// @brief Generate std.String constructor
+    /// @brief Generate hoo.String constructor
     /// @param newExpr NewObjectExpression for String
     /// @return Constructed string value
     llvm::Value* generateStringConstructor(const ast::NewObjectExpression& newExpr);
 
-    /// @brief Generate std.Array constructor
+    /// @brief Generate hoo.Array constructor
     /// @param newExpr NewObjectExpression for Array
     /// @return Constructed array value
     llvm::Value* generateArrayConstructor(const ast::NewObjectExpression& newExpr);

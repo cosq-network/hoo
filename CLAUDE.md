@@ -53,7 +53,7 @@ Source Code (.hoo)
 
 5. **ModuleSystem** (`src/ModuleSystem.h/cpp`)
    - Manages module imports and exports
-   - Resolves qualified names (e.g., `std.String`)
+   - Resolves qualified names (e.g., `hoo.String`)
    - Provides standard library integration
 
 6. **Runtime Library** (`src/rt/`)

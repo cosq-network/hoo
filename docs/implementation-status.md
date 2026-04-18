@@ -2,7 +2,7 @@
 
 This document tracks the current implementation status of the Hooc compiler and runtime. It provides a detailed breakdown of completed features, work-in-progress items, and planned additions.
 
-**Last Updated:** April 16, 2026
+**Last Updated:** April 18, 2026
 
 ## Overview
 
@@ -12,9 +12,9 @@ This document tracks the current implementation status of the Hooc compiler and 
 | AST Building | ✅ Complete | 95% |
 | Type System | ✅ Complete | 90% |
 | Code Generation | ✅ Complete | 85% |
-| Runtime Library | ✅ Complete | 80% |
-| Standard Library | 🟡 Partial | 30% |
-| Module System | 🟡 Partial | 60% |
+| Runtime Library | ✅ Complete | 85% |
+| Standard Library | 🟡 Partial | 35% |
+| Module System | 🟡 Partial | 70% |
 | Testing | ✅ Complete | High |
 
 ## Detailed Status
@@ -89,7 +89,7 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Member access (`.` operator)
   - ✅ Method calls
   - ✅ Nested member access
-  - ✅ Qualified constructors (e.g., `new std.String()`)
+  - ✅ Qualified constructors (e.g., `new hoo.String()`)
 
 #### Generic Programming
 
@@ -180,24 +180,24 @@ These features are fully implemented, tested, and production-ready:
 
 - **Import Statements** (Partial)
   - ✅ `import module` syntax parsing
-  - ✅ `from module import item` syntax parsing
+  - ✅ `from module import symbol` syntax parsing (Selective imports)
   - ✅ Import aliases (`as` keyword)
   - ✅ Module path resolution
-  - 🟡 Full symbol resolution (partial)
-  - 🟡 Standard library modules (partial)
+  - 🟡 Full symbol resolution (ongoing)
+  - 🟡 Standard library modules (ongoing)
 
 - **Module Registry**
-  - ✅ Module registration system
+  - ✅ Module registration system (Rebranded to `hoo` namespace)
   - ✅ Hierarchical module structure
   - ✅ Qualified name resolution
   - ✅ Export metadata tracking
   - ✅ Runtime class injection
 
 - **Standard Modules**
-  - ✅ `std.String` - String class
-  - ✅ `std.Array` - Generic array class
-  - 🟡 `std.io` - IO operations (planned)
-  - 🟡 `std.collections` - Collections (planned)
+  - ✅ `hoo.String` - String class
+  - ✅ `hoo.Array` - Generic array class
+  - ✅ `hoo.io` - IO operations (Implemented in runtime)
+  - 🟡 `hoo.collections` - Collections (planned)
 
 #### Code Generation
 
@@ -223,20 +223,20 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Inline expansion
 
 - **Execution**
-  - ✅ JIT compilation (LLVM OrcJIT)
+  - ✅ JIT compilation (LLVM OrcJIT with shared context stability)
   - ✅ Native code execution
   - ✅ Runtime function linking
 
 #### Testing Infrastructure
 
 - ✅ GoogleTest framework integration
-- ✅ 30+ test suites
+- ✅ 50+ test suites
+- ✅ 970+ test cases
 - ✅ Parsing tests
 - ✅ AST building tests
 - ✅ Code generation tests
 - ✅ Integration tests
 - ✅ Runtime library tests
-- ✅ Generic instantiation tests
 - ✅ Memory management tests
 - ✅ Continuous testing via CTest
 
@@ -244,24 +244,17 @@ These features are fully implemented, tested, and production-ready:
 
 These features are in progress or have incomplete implementations:
 
-#### For Loops
-- ✅ Basic `for-in` syntax
-- ✅ Basic `for-range` syntax
-- 🟡 Range expressions need refinement
-- ❌ Iterator protocol not implemented
-
-#### Import System
-- ✅ Import statement parsing
-- ✅ Module path resolution
-- 🟡 Symbol table integration
-- 🟡 Cross-module references
-- ❌ Circular dependency handling
+#### Module System
+- ✅ Comprehensive Module System Design completed
+- ✅ Hierarchical filesystem mapping defined
+- 🟡 Selective symbol import implementation
+- 🟡 Cross-module symbol mangling
 
 #### Standard Library
 - ✅ String class
 - ✅ Array class
+- ✅ Basic IO (print, readline)
 - 🟡 Collection types (planned)
-- ❌ IO operations
 - ❌ File system access
 - ❌ Network operations
 
@@ -290,7 +283,7 @@ These features are planned but not yet started:
 
 #### Standard Library
 
-- **Collections Module** (`std.collections`)
+- **Collections Module** (`hoo.collections`)
   - `List` - Dynamic list
   - `Map` - Hash map
   - `Set` - Hash set
@@ -298,26 +291,26 @@ These features are planned but not yet started:
   - `Stack` - Stack
   - Iterator protocol
 
-- **IO Module** (`std.io`)
+- **IO Module** (`hoo.io`)
   - `File` - File operations
   - `Directory` - Directory operations
   - `Console` - Console I/O
   - `Stream` - Abstract streams
   - File system utilities
 
-- **Math Module** (`std.math`)
+- **Math Module** (`hoo.math`)
   - Trigonometric functions
   - Logarithmic functions
   - Constants (PI, E)
   - Random number generation
 
-- **Network Module** (`std.net`)
+- **Network Module** (`hoo.net`)
   - HTTP client/server
   - WebSocket support
   - TCP/UDP sockets
   - URL parsing
 
-- **Time Module** (`std.time`)
+- **Time Module** (`hoo.time`)
   - Date and time types
   - Duration calculations
   - Timezone support
@@ -326,10 +319,11 @@ These features are planned but not yet started:
 #### Tooling
 
 - **Compiler CLI**
-  - ✅ Basic compilation
+  - ✅ Modernized CLI (C++17, strict validation)
   - ✅ File-based compilation (.hoo and .ho)
+  - ✅ AOT Reserved flags (-o, --output)
   - ❌ Build system integration
-  - ✅ Error reporting improvements (Modernized)
+  - ✅ Error reporting improvements
   - ❌ Warning system
   - ❌ Optimization levels
 
@@ -340,18 +334,11 @@ These features are planned but not yet started:
   - Stack traces
 
 - **Package Manager**
-  - Dependency management
-  - Package registry
-  - Version resolution
-  - Build scripts
-
-- **Language Server**
-  - Autocomplete
-  - Go to definition
-  - Find references
-  - Rename refactoring
-  - Syntax highlighting
-  - Error diagnostics
+  - ✅ Package management strategy designed
+  - ❌ Dependency management implementation
+  - ❌ Package registry
+  - ❌ Version resolution
+  - ❌ Build scripts
 
 ## Implementation Metrics
 
@@ -364,7 +351,8 @@ These features are planned but not yet started:
 | Code Generation | 16 | 244+ | High |
 | Runtime | 4 | 113+ | High |
 | Integration | 2 | 56+ | High |
-| **Total** | **37** | **658** | **High** |
+| CLI & Core | 2 | 45+ | High |
+| **Total** | **40+** | **973** | **High** |
 
 ### Lines of Code
 
@@ -374,24 +362,18 @@ These features are planned but not yet started:
 | AST Definitions | 15+ | 3,000+ | C++ |
 | Code Generator | 3 | 4,500+ | C++ |
 | Runtime Library | 6 | 3,500+ | C/C++ |
-| Tests | 37 | 9,000+ | C++ |
+| Tests | 40+ | 9,500+ | C++ |
 | Grammar | 1 | 280 | ANTLR4 |
-| **Total** | **82** | **28,780+** | - |
-
-### Performance Characteristics
-
-- **Compilation Speed**: Fast (LLVM bottleneck)
-- **Runtime Performance**: Native code via LLVM
-- **Memory Overhead**: Minimal (reference counting)
-- **Startup Time**: Fast (JIT compilation)
+| **Total** | **85+** | **29,280+** | - |
 
 ## Recent Progress
 
 ### Phase 8 (Current)
-- ✅ Removed generic type parameters from language
-- ✅ Simplified type system with concrete types
-- ✅ Array types for type-safe collections
-- 🟡 Standard library expansion (ongoing)
+- ✅ Modernized HooCLI with C++17 and strict input rules.
+- ✅ Fixed JIT stability issues using shared `ThreadSafeContext`.
+- ✅ Rebranded built-in namespace from `std` to `hoo`.
+- ✅ Completed comprehensive Module System Design ([docs/module-system-design.md](module-system-design.md)).
+- ✅ Verified all 973 unit tests pass.
 
 ### Phase 7 (Completed)
 - ✅ Generic array system refactored
@@ -399,89 +381,18 @@ These features are planned but not yet started:
 - ✅ Module system basics
 - ✅ String integration complete
 
-### Phase 6 (Completed)
-- ✅ Object-oriented programming
-- ✅ Classes and constructors
-- ✅ Member access and method calls
-- ✅ Inheritance basics
-
-### Phase 5 (Completed)
-- ✅ LLVM code generation
-- ✅ Basic types and operations
-- ✅ Control flow
-- ✅ Functions
-
-### Phase 4 (Completed)
-- ✅ AST building from parse tree
-- ✅ Type system design
-- ✅ Symbol tables
-
-### Phase 3 (Completed)
-- ✅ ANTLR4 grammar
-- ✅ Lexer and parser
-- ✅ Parse tree generation
-
-### Phase 2 (Completed)
-- ✅ Project setup
-- ✅ Build system (CMake)
-- ✅ Dependencies (LLVM, ANTLR4)
-
 ## Known Issues
 
 ### High Priority
 - None currently blocking development
 
 ### Medium Priority
-- Union type code generation incomplete
+- Cross-module linking implementation for AOT
 
 ### Low Priority
 - Better error messages for type mismatches
 - Optimization opportunities in code generator
 - Memory profiling tools
-
-## Blockers and Dependencies
-
-### External Dependencies
-- ✅ LLVM 14+ (satisfied)
-- ✅ ANTLR4 C++ runtime (satisfied)
-- ✅ GoogleTest (satisfied)
-- ✅ CMake 3.16+ (satisfied)
-
-### Internal Dependencies
-- Standard library depends on runtime
-- Module system depends on symbol resolution
-
-## Testing Strategy
-
-### Test Categories
-
-1. **Unit Tests**
-   - Individual component testing
-   - Isolated functionality
-   - Fast execution
-
-2. **Integration Tests**
-   - End-to-end compilation
-   - Runtime execution
-   - Feature interactions
-
-3. **Regression Tests**
-   - Bug reproduction
-   - Fixed issue verification
-   - Prevent regressions
-
-4. **Performance Tests**
-   - Compilation speed
-   - Runtime performance
-   - Memory usage
-
-### Test Automation
-
-- ✅ GoogleTest framework
-- ✅ CTest integration
-- ✅ Automated test discovery
-- ✅ Continuous testing
-- 🟡 CI/CD pipeline (planned)
 
 ## Platform Support
 
@@ -491,7 +402,6 @@ These features are planned but not yet started:
 | macOS (Intel) | ✅ | ✅ | Fully Supported |
 | Linux (x64) | ✅ | ✅ | Tested |
 | Windows (x64) | ✅ | ✅ | Supported |
-| Other | 🟡 | 🟡 | Untested |
 
 ## Documentation Status
 
@@ -503,22 +413,12 @@ These features are planned but not yet started:
 | Features Guide | ✅ | Complete |
 | Implementation Status | ✅ | Complete |
 | Roadmap | ✅ | Complete |
+| Module System Design | ✅ | Complete |
 | API Documentation | ❌ | Not Started |
-| Tutorial Series | ❌ | Not Started |
-
-## Contributing
-
-To contribute to Hooc development:
-
-1. Check this document for unimplemented features
-2. Review the [Roadmap](roadmap.md) for priorities
-3. Read [CLAUDE.md](../CLAUDE.md) for development guidelines
-4. Add tests before implementing features
-5. Ensure all tests pass before submitting
 
 ## See Also
 
 - [Grammar Specification](grammar.md) - Language grammar details
 - [Features Guide](features.md) - Feature documentation
 - [Roadmap](roadmap.md) - Future development plans
-- [CLAUDE.md](../CLAUDE.md) - Developer guide
+- [Module System Design](module-system-design.md) - Detailed module system specification

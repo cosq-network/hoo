@@ -426,15 +426,15 @@ class ClassMember : public ASTNode {
 
 ### QualifiedIdentifier
 
-Represents module-qualified names like `std.String`:
+Represents module-qualified names like `hoo.String`:
 
 ```cpp
 class QualifiedIdentifier : public ASTNode {
-    const std::vector<std::string>& getComponents() const;  // ["std", "String"]
+    const std::vector<std::string>& getComponents() const;  // ["hoo", "String"]
     const std::string& getName() const;                     // "String"
-    std::vector<std::string> getModulePath() const;         // ["std"]
+    std::vector<std::string> getModulePath() const;         // ["hoo"]
     bool isQualified() const;                               // true
-    std::string getFullName() const;                        // "std.String"
+    std::string getFullName() const;                        // "hoo.String"
 };
 ```
 

@@ -78,7 +78,7 @@ bool Module::hasSubmodule(const std::string& name) const {
 
 ModuleRegistry::ModuleRegistry()
     : stdModule_(nullptr) {
-    initializeStdModule();
+    initializeHooModule();
 }
 
 const ModuleExport* ModuleRegistry::resolveQualifiedName(const ast::QualifiedIdentifier& qid) const {
@@ -91,14 +91,14 @@ const ModuleExport* ModuleRegistry::resolveQualifiedName(const ast::QualifiedIde
     // Multi-component identifier - navigate module hierarchy
     Module* currentModule = nullptr;
 
-    // Get the root module (e.g., "std" from "std.String" or "std.io.File")
+    // Get the root module (e.g., "hoo" from "hoo.String" or "hoo.io.File")
     auto rootIt = rootModules_.find(components[0]);
     if (rootIt == rootModules_.end()) {
         return nullptr;
     }
     currentModule = rootIt->second.get();
 
-    // Navigate through intermediate modules (e.g., "io" in "std.io.File")
+    // Navigate through intermediate modules (e.g., "io" in "hoo.io.File")
     for (size_t i = 1; i < components.size() - 1; ++i) {
         currentModule = currentModule->getSubmodule(components[i]);
         if (!currentModule) {
@@ -106,7 +106,7 @@ const ModuleExport* ModuleRegistry::resolveQualifiedName(const ast::QualifiedIde
         }
     }
 
-    // Get the final export (e.g., "File" from "std.io.File")
+    // Get the final export (e.g., "File" from "hoo.io.File")
     return currentModule->getExport(components.back());
 }
 
@@ -118,7 +118,7 @@ Module* ModuleRegistry::resolveModulePath(const std::vector<std::string>& path) 
     return navigateModulePath(path);
 }
 
-const Module* ModuleRegistry::getStdModule() const {
+const Module* ModuleRegistry::getHooModule() const {
     return stdModule_;
 }
 
@@ -181,20 +181,20 @@ Module* ModuleRegistry::navigateModulePath(const std::vector<std::string>& path)
     return currentModule;
 }
 
-void ModuleRegistry::initializeStdModule() {
-    // Create the std module
-    auto stdModule = std::make_unique<Module>("std");
+void ModuleRegistry::initializeHooModule() {
+    // Create the hoo module
+    auto hooModule = std::make_unique<Module>("hoo");
 
-    // Add String class to std module
-    stdModule->addExport(ModuleExport(
+    // Add String class to hoo module
+    hooModule->addExport(ModuleExport(
         ModuleExport::Kind::CLASS,
         "String",
         "HooString",  // Runtime class name
         false         // Not generic
     ));
 
-    // Add Array class to std module (generic)
-    stdModule->addExport(ModuleExport(
+    // Add Array class to hoo module (generic)
+    hooModule->addExport(ModuleExport(
         ModuleExport::Kind::CLASS,
         "Array",
         "HooArray",   // Runtime class name
@@ -202,13 +202,10 @@ void ModuleRegistry::initializeStdModule() {
     ));
 
     // Cache the pointer before moving the unique_ptr
-    stdModule_ = stdModule.get();
+    stdModule_ = hooModule.get();
 
     // Add to registry
-    rootModules_["std"] = std::move(stdModule);
-
-    // Optionally, you can add nested modules like std.io.File here
-    // For now, we'll keep it simple and add them later as needed
+    rootModules_["hoo"] = std::move(hooModule);
 }
 
 } // namespace hooc

@@ -600,8 +600,8 @@ TEST_F(ArrayLiteralParsingTest, MultiDimensionalArrayReturnType) {
 // Test 15: Array return type with qualified base type
 TEST_F(ArrayLiteralParsingTest, QualifiedArrayReturnType) {
     std::string code = R"(
-        func:std.String[] getStrings() {
-            return [new std.String("a"), new std.String("b")];
+        func:hoo.String[] getStrings() {
+            return [new hoo.String("a"), new hoo.String("b")];
         }
     )";
 
@@ -619,12 +619,12 @@ TEST_F(ArrayLiteralParsingTest, QualifiedArrayReturnType) {
     auto* arrayType = dynamic_cast<const ArrayType*>(returnType);
     ASSERT_NE(arrayType, nullptr);
 
-    // Check base type is qualified identifier (std.String)
+    // Check base type is qualified identifier (hoo.String)
     auto* baseType = dynamic_cast<const BaseType*>(&arrayType->getBaseType());
     ASSERT_NE(baseType, nullptr);
 
-    // The identifier may be "String" or "std.String" depending on how it's stored
+    // The identifier may be "String" or "hoo.String" depending on how it's stored
     std::string id = baseType->getIdentifier();
-    EXPECT_TRUE(id == "String" || id == "std.String")
-        << "Expected identifier to be 'String' or 'std.String', got '" << id << "'";
+    EXPECT_TRUE(id == "String" || id == "hoo.String")
+        << "Expected identifier to be 'String' or 'hoo.String', got '" << id << "'";
 }

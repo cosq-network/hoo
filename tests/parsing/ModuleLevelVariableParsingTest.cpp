@@ -43,7 +43,7 @@ protected:
 // Test case for a simple module-level variable declaration with type inference
 TEST_F(ModuleLevelVariableParsingTest, SimpleDeclarationInferredType) {
     std::string code = R"(
-        import std; // Example import to ensure it's handled
+        import hoo; // Example import to ensure it's handled
         var module_var = 10
     )";
 
@@ -56,7 +56,7 @@ TEST_F(ModuleLevelVariableParsingTest, SimpleDeclarationInferredType) {
     ASSERT_NE(basicImport, nullptr) << "Expected BasicImport type.";
     ASSERT_NE(basicImport->getModule(), nullptr) << "Import module path should not be null.";
     ASSERT_EQ(basicImport->getModule()->getComponents().size(), 1);
-    EXPECT_EQ(basicImport->getModule()->getComponents()[0], "std");
+    EXPECT_EQ(basicImport->getModule()->getComponents()[0], "hoo");
 
     // Check for declarations
     ASSERT_EQ(ast->getDeclarations().size(), 1) << "Expected one top-level declaration.";

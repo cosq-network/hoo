@@ -21,7 +21,7 @@ protected:
 TEST_F(QualifiedNewExpressionParsingTest, SimpleQualifiedNewExpression) {
     std::string code = R"(
         func test() {
-            var x = new std.String();
+            var x = new hoo.String();
         }
     )";
     auto ast = parseCode(code);
@@ -32,7 +32,7 @@ TEST_F(QualifiedNewExpressionParsingTest, SimpleQualifiedNewExpression) {
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithArguments) {
     std::string code = R"(
         func test() {
-            var x = new std.String("hello");
+            var x = new hoo.String("hello");
         }
     )";
     auto ast = parseCode(code);
@@ -43,7 +43,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithArguments) {
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithMultipleArguments) {
     std::string code = R"(
         func test() {
-            var x = new std.Point(10, 20);
+            var x = new hoo.Point(10, 20);
         }
     )";
     auto ast = parseCode(code);
@@ -54,7 +54,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithMultipleArgu
 TEST_F(QualifiedNewExpressionParsingTest, NestedQualifiedNewExpression) {
     std::string code = R"(
         func test() {
-            var x = new std.io.File("/path");
+            var x = new hoo.io.File("/path");
         }
     )";
     auto ast = parseCode(code);
@@ -67,7 +67,7 @@ TEST_F(QualifiedNewExpressionParsingTest, NestedQualifiedNewExpression) {
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInAssignment) {
     std::string code = R"(
         func test() {
-            var x: std.String = new std.String("test");
+            var x: hoo.String = new hoo.String("test");
         }
     )";
     auto ast = parseCode(code);
@@ -77,9 +77,9 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInAssignment) {
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInFunctionCall) {
     std::string code = R"(
-        func process(s: std.String) {}
+        func process(s: hoo.String) {}
         func test() {
-            process(new std.String("hello"));
+            process(new hoo.String("hello"));
         }
     )";
     auto ast = parseCode(code);
@@ -89,8 +89,8 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInFunctionCall) 
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInReturnStatement) {
     std::string code = R"(
-        func:std.String createString() {
-            return new std.String("created");
+        func:hoo.String createString() {
+            return new hoo.String("created");
         }
     )";
     auto ast = parseCode(code);

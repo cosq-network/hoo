@@ -25,25 +25,27 @@ Hooc aims to be a modern, productive programming language that combines:
 
 ## Current Status (Phase 8)
 
-- ✅ Core language features complete
-- ✅ Object-oriented programming working
-- ✅ Simplified type system (generics removed)
-- ✅ Runtime library operational
-- ✅ CLI components (HooCLI, IOProvider, DefaultIOProvider)
-- 🟡 Standard library in progress
-- 🟡 Module system partially complete
+- ✅ Core language features (Lexer/Parser/AST)
+- ✅ Object-oriented programming (Parsing and AST support)
+- ✅ Simplified type system (Generics removed, `std::any` fallback)
+- ✅ Runtime library (ARC, Strings, Arrays, IO)
+- ✅ Modernized CLI (HooCLI with C++17, AOT reserved flags)
+- ✅ Stable JIT Engine (Shared ThreadSafeContext)
+- ✅ Module System Design ([docs/module-system-design.md](module-system-design.md))
+- 🟡 Standard library implementation in progress (Basic IO and Strings complete)
+- 🟡 Module resolution implementation in progress (Built-in `hoo` resolution complete)
 
 ## Development Phases
 
-### Phase 8: Complete Standard Library (Q2 2026)
+### Phase 8: Standard Library and AOT Infrastructure (Q2 2026)
 
 **Priority:** High
 **Duration:** 2-3 months
-**Focus:** Essential standard library modules
+**Focus:** Essential standard library modules and binary output preparation.
 
 #### Deliverables
 
-**Collections Module** (`std.collections`)
+**Collections Module** (`hoo.collections`)
 - [ ] `List` - Dynamic array/list using built-in array types
 - [ ] `Map` - Hash map with string keys
 - [ ] `Set` - Hash set for unique values
@@ -53,14 +55,15 @@ Hooc aims to be a modern, productive programming language that combines:
 - [ ] Range types
 - [ ] Collection utilities (sort, filter, map, reduce)
 
-**IO Module** (`std.io`)
+**IO Module** (`hoo.io`)
 - [x] `hoo.print()` - Print without newline (implemented)
 - [x] `hoo.println()` - Print with newline (implemented)
 - [x] `hoo.readline()` - Read line from stdin (implemented)
 - [x] `hoo.readchar()` - Read single character (implemented)
 - [x] CLI components (`HooCLI`, `IOProvider`, `DefaultIOProvider`)
-- [ ] AOT Bytecode Generation - Compile `.hoo` source to `.ho` bytecode files
-- [ ] Native AOT Execution - Direct execution of `.ho` bytecode files via JIT or interpreter
+- [ ] AOT Bytecode Generation - Compile `.hoo` source to `.ho` bytecode files (CLI reserved)
+- [ ] Native AOT Execution - Direct execution of `.ho` bytecode files (CLI reserved)
+- [x] Module System Design - [docs/module-system-design.md](module-system-design.md)
 - [ ] `File` - File reading/writing
 - [ ] `Directory` - Directory operations
 - [ ] `Console` - Standard input/output
@@ -68,20 +71,13 @@ Hooc aims to be a modern, productive programming language that combines:
 - [ ] Path utilities
 - [ ] File system operations
 
-**String Enhancements** (`std.string`)
-- [ ] Regular expressions
-- [ ] String builder
-- [ ] Unicode utilities
-- [ ] Encoding conversion
-- [ ] String interpolation syntax
-
-**Math Module** (`std.math`)
-- [ ] Trigonometric functions (sin, cos, tan, etc.)
-- [ ] Logarithmic functions (log, exp)
-- [ ] Power and root functions
-- [ ] Constants (PI, E, etc.)
-- [ ] Random number generation
-- [ ] Statistical functions
+**Module System Implementation**
+- [x] Rebranded built-in namespace from `std` to `hoo`
+- [x] Basic selective import parsing (`from ... import ...`)
+- [ ] Filesystem-based `ModuleResolver` (mapping logical paths to files)
+- [ ] Cross-module symbol mangling (`_H_<module>_<symbol>`)
+- [ ] Recursive dependency discovery and compilation
+- [ ] Package manifest (`hooc.json`) support
 
 #### Success Criteria
 - All standard library modules tested
@@ -91,79 +87,57 @@ Hooc aims to be a modern, productive programming language that combines:
 
 ---
 
-### Phase 9: Error Handling and Exceptions (Q3 2026)
+### Phase 9: Advanced OOP and Compiler Completion (Q3 2026)
 
 **Priority:** High
 **Duration:** 1-2 months
-**Focus:** Robust error handling mechanisms
+**Focus:** Full implementation of existing grammar features and backend optimizations.
 
 #### Deliverables
 
-**Exception System**
-- [ ] `try-catch` syntax
-- [ ] Exception types and hierarchy
-- [ ] Stack unwinding
-- [ ] Exception propagation
-- [ ] Custom exception classes
-- [ ] `finally` blocks for cleanup
+**Object-Oriented Features** (Grammar supported)
+- [ ] Class Inheritance (`extends`) implementation in codegen
+- [ ] Virtual method tables (VTable) for inheritance
+- [ ] Class Modifiers (Singleton, Actor, Immutable) logic
+- [ ] Event System implementation
 
-**Result Types**
-- [ ] Better error handling (Result-like patterns)
-- [ ] Improved optional values
-- [ ] Pattern matching on results
-- [ ] Error propagation operators
+**Advanced Language Support**
+- [ ] Type-safe Dynamic Arrays (moving beyond `std::any` for primitives)
+- [ ] String interpolation runtime support
+- [ ] Complex function expressions (function pointers)
+- [ ] Full AOT Linking and Bytecode emission
 
-**Error Reporting**
-- [ ] Detailed error messages
-- [ ] Source location tracking
-- [ ] Stack traces
-- [ ] Error recovery suggestions
-
-#### Example Syntax
-```hoo
-// Exception handling
-try {
-    var file = openFile("data.txt");
-    processFile(file);
-} catch IOException e {
-    print("IO error: " + e.message);
-} catch e {
-    print("Unknown error: " + e);
-} finally {
-    cleanup();
-}
-
-// Error handling example (conceptual)
-func:int64? divide(a: int64, b: int64) {
-    if b == 0 {
-        return null;
-    }
-    return a / b;
-}
-
-var result = divide(10, 0);
-match result {
-    Ok(value) => print(value),
-    Err(msg) => print("Error: " + msg)
-}
-```
-
-#### Success Criteria
-- Exception handling fully functional
-- Result types integrated
-- Performance impact measured
-- Documentation and examples complete
+**Optimizations**
+- [ ] LLVM Optimization pass integration
+- [ ] Dead code elimination
+- [ ] Inlining support
 
 ---
 
-## Long-term Features (2028+)
+### Phase 10: Error Handling and Future Extensions (Q4 2026+)
 
-### Advanced Language Features
-- Dependent types (exploration)
-- Effect systems
-- Linear types for resource management
-- Compile-time metaprogramming
-- Macro system
+**Priority:** Medium
+**Duration:** Ongoing
+**Focus:** New language syntax and robust error management.
+
+#### Planned Deliverables
+
+**Exception System** (Grammar Update Required)
+- [ ] `try-catch` syntax
+- [ ] Exception types and hierarchy
+- [ ] Stack unwinding
+- [ ] Custom exception classes
+
+**Result Types** (Grammar Update Required)
+- [ ] `match` syntax for Result patterns
+- [ ] Error propagation operators (`?`)
+
+**Long-term Features (2028+)**
+- [ ] Dependent types (exploration)
+- [ ] Effect systems
+- [ ] Linear types for resource management
+- [ ] Compile-time metaprogramming
+- [ ] Macro system
 
 ### Ecosystem Development
 - Rich standard library expansion

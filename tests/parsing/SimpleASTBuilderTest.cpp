@@ -705,7 +705,7 @@ TEST_F(SimpleASTBuilderTest, BuildNestedLoopWithBreak) {
 // ===== Import Statement Tests =====
 
 TEST_F(SimpleASTBuilderTest, BuildBasicImport) {
-    std::string code = "import std.String;";
+    std::string code = "import hoo.String;";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -717,7 +717,7 @@ TEST_F(SimpleASTBuilderTest, BuildBasicImport) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildBasicImportWithAlias) {
-    std::string code = "import std.String as Str;";
+    std::string code = "import hoo.String as Str;";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -754,7 +754,7 @@ TEST_F(SimpleASTBuilderTest, BuildFromImportWithAlias) {
 
 TEST_F(SimpleASTBuilderTest, BuildImportAndFunction) {
     std::string code = R"(
-        import std.String;
+        import hoo.String;
         func test() { return; }
     )";
     auto* parseTree = parseCode(code);
@@ -952,7 +952,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultiDimensionalArray) {
 TEST_F(SimpleASTBuilderTest, BuildQualifiedType) {
     std::string code = R"(
         func test() {
-            var point: std.Point;
+            var point: hoo.Point;
             return;
         }
     )";
@@ -1510,7 +1510,7 @@ TEST_F(SimpleASTBuilderTest, BuildComplexFunction) {
 
 TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
     std::string code = R"(
-        import std.List;
+        import hoo.List;
         class MyClass {
             var value: int64;
         }

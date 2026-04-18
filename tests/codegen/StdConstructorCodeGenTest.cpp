@@ -55,13 +55,13 @@ protected:
 };
 
 // ============================================================================
-// std.String Constructor Tests - Qualified Names
+// hoo.String Constructor Tests - Qualified Names
 // ============================================================================
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringEmptyConstructor) {
     std::string code = R"(
-        func:std.String test() {
-            return new std.String();
+        func:hoo.String test() {
+            return new hoo.String();
         }
     )";
 
@@ -79,8 +79,8 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringEmptyConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringLiteralConstructor) {
     std::string code = R"(
-        func:std.String test() {
-            return new std.String("hello");
+        func:hoo.String test() {
+            return new hoo.String("hello");
         }
     )";
 
@@ -98,7 +98,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringLiteralConstructor) {
 TEST_F(StdConstructorCodeGenTest, QualifiedStringVariableDeclaration) {
     std::string code = R"(
         func test() {
-            var s: std.String = new std.String("world");
+            var s: hoo.String = new hoo.String("world");
         }
     )";
 
@@ -112,10 +112,10 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringVariableDeclaration) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringInFunctionCall) {
     std::string code = R"(
-        func process(s: std.String) {}
+        func process(s: hoo.String) {}
 
         func test() {
-            process(new std.String("test"));
+            process(new hoo.String("test"));
         }
     )";
 
@@ -128,7 +128,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringInFunctionCall) {
 }
 
 // ============================================================================
-// std.Array Constructor Tests - Using array literals and standard types
+// hoo.Array Constructor Tests - Using array literals and standard types
 // ============================================================================
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayIntConstructor) {
@@ -149,7 +149,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayIntConstructor) {
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayStringConstructor) {
     std::string code = R"(
         func test() {
-            var arr: std.String[] = [new std.String("a"), new std.String("b")];
+            var arr: hoo.String[] = [new hoo.String("a"), new hoo.String("b")];
         }
     )";
 
@@ -233,7 +233,7 @@ TEST_F(StdConstructorCodeGenTest, ImportedArrayConstructor) {
 TEST_F(StdConstructorCodeGenTest, ImportedStringAndArray) {
     std::string code = R"(
         func test() {
-            var arr: std.String[] = [new std.String("a"), new std.String("b")];
+            var arr: hoo.String[] = [new hoo.String("a"), new hoo.String("b")];
         }
     )";
 
@@ -255,7 +255,7 @@ TEST_F(StdConstructorCodeGenTest, MixedQualifiedAndImported) {
 
         func test() {
             var s1: String = new String("imported");
-            var s2: std.String = new std.String("qualified");
+            var s2: hoo.String = new hoo.String("qualified");
         }
     )";
 
@@ -281,7 +281,7 @@ TEST_F(StdConstructorCodeGenTest, MixedQualifiedAndImported) {
 TEST_F(StdConstructorCodeGenTest, MixedArrayAndString) {
     std::string code = R"(
         func main() {
-            var s: std.String = new std.String("hello");
+            var s: hoo.String = new hoo.String("hello");
             var arr: int64[] = [1, 2, 3];
         }
     )";
@@ -301,9 +301,9 @@ TEST_F(StdConstructorCodeGenTest, MixedArrayAndString) {
 TEST_F(StdConstructorCodeGenTest, MultipleStringConstructions) {
     std::string code = R"(
         func test() {
-            var s1 = new std.String("first");
-            var s2 = new std.String("second");
-            var s3 = new std.String("third");
+            var s1 = new hoo.String("first");
+            var s2 = new hoo.String("second");
+            var s3 = new hoo.String("third");
         }
     )";
 
@@ -334,12 +334,12 @@ TEST_F(StdConstructorCodeGenTest, MultipleArrayConstructions) {
 
 TEST_F(StdConstructorCodeGenTest, StringInComplexExpression) {
     std::string code = R"(
-        func:std.String createMessage(name: std.String) {
-            return new std.String("Hello");
+        func:hoo.String createMessage(name: hoo.String) {
+            return new hoo.String("Hello");
         }
 
         func test() {
-            var greeting: std.String = createMessage(new std.String("World"));
+            var greeting: hoo.String = createMessage(new hoo.String("World"));
         }
     )";
 
@@ -362,7 +362,7 @@ TEST_F(StdConstructorCodeGenTest, MixedStdAndUserClasses) {
         }
 
         func test() {
-            var s: std.String = new std.String("name");
+            var s: hoo.String = new hoo.String("name");
             var p: Person = new Person();
         }
     )";
@@ -374,7 +374,7 @@ TEST_F(StdConstructorCodeGenTest, MixedStdAndUserClasses) {
     ASSERT_NE(llvmModule, nullptr);
     EXPECT_TRUE(isModuleValid(llvmModule.get()));
 
-    // Should have hoo_string_from_cstr for std.String
+    // Should have hoo_string_from_cstr for hoo.String
     EXPECT_TRUE(moduleContains(llvmModule.get(), "hoo_string_from_cstr"));
 
     // Should have hoo_alloc for user class
@@ -433,7 +433,7 @@ TEST_F(StdConstructorCodeGenTest, SimpleIdentifierStillWorks) {
 TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayDeclaration) {
     std::string code = R"(
         func test() {
-            var strings: std.String[] = [new std.String("a"), new std.String("b")];
+            var strings: hoo.String[] = [new hoo.String("a"), new hoo.String("b")];
         }
     )";
 
@@ -451,7 +451,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayDeclaration) {
 TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayWithLoop) {
     std::string code = R"(
         func test() {
-            var strings: std.String[] = [new std.String("hello"), new std.String("world")];
+            var strings: hoo.String[] = [new hoo.String("hello"), new hoo.String("world")];
             var total: int64 = 0;
             var i: int64 = 0;
             while i < 2 {
@@ -472,7 +472,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayWithLoop) {
 TEST_F(StdConstructorCodeGenTest, NestedQualifiedArrayType) {
     std::string code = R"(
         func test() {
-            var nested: std.String[][] = [[new std.String("a"), new std.String("b")], [new std.String("c")]];
+            var nested: hoo.String[][] = [[new hoo.String("a"), new hoo.String("b")], [new hoo.String("c")]];
         }
     )";
 
@@ -486,12 +486,12 @@ TEST_F(StdConstructorCodeGenTest, NestedQualifiedArrayType) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsFunctionParameter) {
     std::string code = R"(
-        func processStrings(arr: std.String[]) {
+        func processStrings(arr: hoo.String[]) {
             return;
         }
 
         func test() {
-            var strings: std.String[] = [new std.String("test")];
+            var strings: hoo.String[] = [new hoo.String("test")];
             processStrings(strings);
         }
     )";
@@ -510,8 +510,8 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsFunctionParameter) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsReturnType) {
     std::string code = R"(
-        func:std.String[] getStrings() {
-            return [new std.String("a"), new std.String("b")];
+        func:hoo.String[] getStrings() {
+            return [new hoo.String("a"), new hoo.String("b")];
         }
     )";
 

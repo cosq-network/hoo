@@ -165,7 +165,7 @@ TEST_F(ImportStatementParsingTest, FromImportSingleNameWithAlias) {
 
 TEST_F(ImportStatementParsingTest, FromImportMultipleNames) {
     std::string code = R"(
-        from std.io import read, write, close;
+        from hoo.io import read, write, close;
 
         func main() {
         }
@@ -180,7 +180,7 @@ TEST_F(ImportStatementParsingTest, FromImportMultipleNames) {
     auto* fromImport = dynamic_cast<const FromImport*>(imports[0].get());
     ASSERT_NE(fromImport, nullptr);
 
-    EXPECT_EQ(fromImport->getModule()->toString(), "std.io");
+    EXPECT_EQ(fromImport->getModule()->toString(), "hoo.io");
 
     const auto& items = fromImport->getItems();
     ASSERT_EQ(items.size(), 3u);

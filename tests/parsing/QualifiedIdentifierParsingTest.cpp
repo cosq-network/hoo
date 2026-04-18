@@ -21,7 +21,7 @@ protected:
 TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInVariableDeclaration) {
     std::string code = R"(
         func test() {
-            var x: std.String;
+            var x: hoo.String;
         }
     )";
     auto ast = parseCode(code);
@@ -32,7 +32,7 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInVariableDeclaration)
 TEST_F(QualifiedIdentifierParsingTest, NestedQualifiedTypeInVariableDeclaration) {
     std::string code = R"(
         func test() {
-            var x: std.io.File;
+            var x: hoo.io.File;
         }
     )";
     auto ast = parseCode(code);
@@ -43,7 +43,7 @@ TEST_F(QualifiedIdentifierParsingTest, NestedQualifiedTypeInVariableDeclaration)
 TEST_F(QualifiedIdentifierParsingTest, DeeplyNestedQualifiedType) {
     std::string code = R"(
         func test() {
-            var x: std.collections.generic.List;
+            var x: hoo.collections.generic.List;
         }
     )";
     auto ast = parseCode(code);
@@ -53,7 +53,7 @@ TEST_F(QualifiedIdentifierParsingTest, DeeplyNestedQualifiedType) {
 
 TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsReturnType) {
     std::string code = R"(
-        func:std.String getValue() {
+        func:hoo.String getValue() {
             return nullptr;
         }
     )";
@@ -64,7 +64,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsReturnType) {
 
 TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsFunctionParameter) {
     std::string code = R"(
-        func process(value: std.String) {
+        func process(value: hoo.String) {
         }
     )";
     auto ast = parseCode(code);
@@ -74,7 +74,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsFunctionParameter) {
 
 TEST_F(QualifiedIdentifierParsingTest, MultipleQualifiedTypeParameters) {
     std::string code = R"(
-        func process(a: std.String, b: std.io.File) {
+        func process(a: hoo.String, b: hoo.io.File) {
         }
     )";
     auto ast = parseCode(code);
@@ -87,7 +87,7 @@ TEST_F(QualifiedIdentifierParsingTest, MultipleQualifiedTypeParameters) {
 TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInArrayType) {
     std::string code = R"(
         func test() {
-            var arr: std.String[];
+            var arr: hoo.String[];
         }
     )";
     auto ast = parseCode(code);
@@ -98,7 +98,7 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInArrayType) {
 TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeWithNullable) {
     std::string code = R"(
         func test() {
-            var opt: std.String?;
+            var opt: hoo.String?;
         }
     )";
     auto ast = parseCode(code);
@@ -109,7 +109,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeWithNullable) {
 TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInClassField) {
     std::string code = R"(
         class Person {
-            var name: std.String;
+            var name: hoo.String;
             constructor() {}
         }
     )";
@@ -122,7 +122,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeInClassMethod) {
     std::string code = R"(
         class Person {
             constructor() {}
-            func:std.String getName() {
+            func:hoo.String getName() {
                 return nullptr;
             }
         }

@@ -170,13 +170,13 @@ if name != null {
 
 ```hoo
 // Import entire module
-import std.collections;
+import hoo.collections;
 
 // Import specific items
-from std.io import File, Directory;
+from hoo.io import File, Directory;
 
 // Import with alias
-import std.collections as coll;
+import hoo.collections as coll;
 ```
 
 ## Project Structure

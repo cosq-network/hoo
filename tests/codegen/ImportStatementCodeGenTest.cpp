@@ -51,7 +51,7 @@ protected:
 
 TEST_F(ImportStatementCodeGenTest, BasicImportWithFunction) {
     std::string code = R"(
-        import std.io;
+        import hoo.io;
 
         func test() {
             return;
@@ -92,7 +92,7 @@ TEST_F(ImportStatementCodeGenTest, FromImportWithFunction) {
 
 TEST_F(ImportStatementCodeGenTest, DottedModuleImport) {
     std::string code = R"(
-        import std.collections;
+        import hoo.collections;
 
         func test() {
             return;
@@ -112,8 +112,8 @@ TEST_F(ImportStatementCodeGenTest, DottedModuleImport) {
 
 TEST_F(ImportStatementCodeGenTest, MultipleImports) {
     std::string code = R"(
-        import std.io;
-        import std.collections;
+        import hoo.io;
+        import hoo.collections;
 
         func test() {
             return;
@@ -133,7 +133,7 @@ TEST_F(ImportStatementCodeGenTest, MultipleImports) {
 
 TEST_F(ImportStatementCodeGenTest, ImportWithClassDefinition) {
     std::string code = R"(
-        import std.io;
+        import hoo.io;
 
         class MyClass {
             var value: int64;
@@ -179,10 +179,10 @@ TEST_F(ImportStatementCodeGenTest, FromImportWithMultipleNames) {
 
 TEST_F(ImportStatementCodeGenTest, ImportWithStringUsage) {
     std::string code = R"(
-        import std.io;
+        import hoo.io;
 
         func test() {
-            var msg: std.String = new std.String("hello");
+            var msg: hoo.String = new hoo.String("hello");
         }
     )";
 
@@ -199,7 +199,7 @@ TEST_F(ImportStatementCodeGenTest, ImportWithStringUsage) {
 
 TEST_F(ImportStatementCodeGenTest, ImportWithArrayUsage) {
     std::string code = R"(
-        import std.io;
+        import hoo.io;
 
         func test() {
             var arr: int64[] = [1, 2, 3];

@@ -126,24 +126,24 @@ public:
     Module* resolveModulePath(const std::vector<std::string>& path) const;
 
     /**
-     * Get the std module (always exists)
+     * Get the hoo module (always exists)
      */
-    const Module* getStdModule() const;
+    const Module* getHooModule() const;
 
     /**
      * Add a module to the registry at a specific path
-     * Path: {"std", "io"} creates std.io module
+     * Path: {"hoo", "io"} creates hoo.io module
      */
     void addModule(const std::vector<std::string>& path, std::unique_ptr<Module> module);
 
 private:
     std::unordered_map<std::string, std::unique_ptr<Module>> rootModules_;
-    const Module* stdModule_;  // Cached pointer to std module for fast access
+    const Module* stdModule_;  // Cached pointer to hoo module for fast access
 
     /**
-     * Initialize standard library modules (std.String, std.Array, etc.)
+     * Initialize standard library modules (hoo.String, hoo.Array, etc.)
      */
-    void initializeStdModule();
+    void initializeHooModule();
 
     /**
      * Helper to navigate module hierarchy

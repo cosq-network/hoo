@@ -52,7 +52,7 @@ protected:
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringTypeDeclaration) {
     std::string code = R"(
         func test() {
-            var name: std.String = new std.String("hello");
+            var name: hoo.String = new hoo.String("hello");
         }
     )";
 
@@ -69,7 +69,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringTypeDeclaration) {
 
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringParameter) {
     std::string code = R"(
-        func greet(msg: std.String) {
+        func greet(msg: hoo.String) {
             return;
         }
     )";
@@ -90,8 +90,8 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringParameter) {
 
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringReturnType) {
     std::string code = R"(
-        func:std.String getMessage() {
-            return new std.String("hello");
+        func:hoo.String getMessage() {
+            return new hoo.String("hello");
         }
     )";
 
@@ -110,7 +110,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringReturnType) {
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringArrayDeclaration) {
     std::string code = R"(
         func test() {
-            var names: std.String[] = [new std.String("a"), new std.String("b")];
+            var names: hoo.String[] = [new hoo.String("a"), new hoo.String("b")];
         }
     )";
 
@@ -128,7 +128,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringArrayDeclaration) {
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringNullableType) {
     std::string code = R"(
         func test() {
-            var name: std.String? = null;
+            var name: hoo.String? = null;
         }
     )";
 
@@ -143,7 +143,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringNullableType) {
 TEST_F(QualifiedIdentifierCodeGenTest, NestedQualifiedType) {
     std::string code = R"(
         func test() {
-            var path: std.io.File;
+            var path: hoo.io.File;
         }
     )";
 
@@ -158,7 +158,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, NestedQualifiedType) {
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedTypeInClass) {
     std::string code = R"(
         class Person {
-            var name: std.String;
+            var name: hoo.String;
             constructor() {}
         }
 
@@ -177,7 +177,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedTypeInClass) {
 
 TEST_F(QualifiedIdentifierCodeGenTest, MultipleQualifiedParameters) {
     std::string code = R"(
-        func process(first: std.String, second: std.String) {
+        func process(first: hoo.String, second: hoo.String) {
             return;
         }
     )";
@@ -199,7 +199,7 @@ TEST_F(QualifiedIdentifierCodeGenTest, MultipleQualifiedParameters) {
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringArrayWithLoop) {
     std::string code = R"(
         func test() {
-            var names: std.String[] = [new std.String("hello"), new std.String("world")];
+            var names: hoo.String[] = [new hoo.String("hello"), new hoo.String("world")];
             var i: int64 = 0;
             while i < 2 {
                 i = i + 1;
@@ -217,12 +217,12 @@ TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringArrayWithLoop) {
 
 TEST_F(QualifiedIdentifierCodeGenTest, QualifiedStringAsFunctionArgument) {
     std::string code = R"(
-        func printMessage(msg: std.String) {
+        func printMessage(msg: hoo.String) {
             return;
         }
 
         func test() {
-            printMessage(new std.String("test"));
+            printMessage(new hoo.String("test"));
         }
     )";
 

@@ -2511,7 +2511,7 @@ Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression&
     // ========================================================================
 
     if (qualifiedName && qualifiedName->isQualified()) {
-        // This is a qualified name like std.String
+        // This is a qualified name like hoo.String
         const ModuleExport* moduleExport = moduleRegistry_.resolveQualifiedName(*qualifiedName);
         if (moduleExport && moduleExport->kind == ModuleExport::Kind::CLASS) {
             // This is a standard library class - use runtime constructor
@@ -2519,7 +2519,7 @@ Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression&
         }
     }
 
-    // Try to resolve as an imported name (e.g., "String" after "import std.String")
+    // Try to resolve as an imported name (e.g., "String" after "import hoo.String")
     auto importedIt = importedNames_.find(className);
     if (importedIt != importedNames_.end()) {
         const ModuleExport* moduleExport = importedIt->second;
@@ -2630,9 +2630,9 @@ llvm::Value* LLVMCodeGenerator::generateStdClassConstructor(const ModuleExport& 
 }
 
 llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectExpression& newExpr) {
-    // std.String() -> hoo_string_new()
-    // std.String("hello") -> hoo_string_from_cstr("hello")
-    // std.String(other_string) -> hoo_string_from_cstr(hoo_string_data(other_string))
+    // hoo.String() -> hoo_string_new()
+    // hoo.String("hello") -> hoo_string_from_cstr("hello")
+    // hoo.String(other_string) -> hoo_string_from_cstr(hoo_string_data(other_string))
 
     const ast::ArgumentList* args = newExpr.getArguments();
 
@@ -2640,7 +2640,7 @@ llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectEx
     declareRuntimeFunctions();
 
     if (!args || args->getArguments().empty()) {
-        // new std.String() - create empty string
+        // new hoo.String() - create empty string
         auto* newStringFunc = getStringFunc("new");
         if (!newStringFunc) {
             addError("hoo_string_new function not declared");
@@ -2671,19 +2671,19 @@ llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectEx
     }
 
     // If it's a HooString pointer, return as-is (already a string)
-    // This handles: new std.String(existingString)
+    // This handles: new hoo.String(existingString)
     if (argType->isPointerTy()) {
         return argValue;
     }
 
-    addError("Invalid argument type for std.String constructor");
+    addError("Invalid argument type for hoo.String constructor");
     return nullptr;
 }
 
 llvm::Value* LLVMCodeGenerator::generateArrayConstructor(const ast::NewObjectExpression& newExpr) {
-    // std.Array() -> hoo_array_new()
-    // std.Array<T>() -> hoo_array_new()
-    // std.Array can also be initialized with array literal in future
+    // hoo.Array() -> hoo_array_new()
+    // hoo.Array<T>() -> hoo_array_new()
+    // hoo.Array can also be initialized with array literal in future
 
     // Get the array_new function (declares it if needed)
     llvm::Function* arrayNewFunc = getArrayNewFunc(0);  // elementSize parameter ignored in Phase 7
@@ -2711,7 +2711,7 @@ void LLVMCodeGenerator::processImports(const std::vector<std::unique_ptr<ast::Im
 }
 
 void LLVMCodeGenerator::processBasicImport(const ast::BasicImport& import) {
-    // For basic imports like "import std.String as String" or "import std.io.File"
+    // For basic imports like "import hoo.String as String" or "import hoo.io.File"
     // Extract the module path from the ModulePath
     const ast::ModulePath* modulePath = import.getModule();
     if (!modulePath) {
@@ -2743,7 +2743,7 @@ void LLVMCodeGenerator::processBasicImport(const ast::BasicImport& import) {
 }
 
 void LLVMCodeGenerator::processFromImport(const ast::FromImport& import) {
-    // For from imports like "from std import String, Array" or "from std.io import File"
+    // For from imports like "from hoo import String, Array" or "from hoo.io import File"
     // Extract the module path
     const ast::ModulePath* modulePath = import.getModule();
     if (!modulePath) {

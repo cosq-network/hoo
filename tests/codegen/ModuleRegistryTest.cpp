@@ -10,14 +10,14 @@ protected:
 
 // Test basic std module initialization
 TEST_F(ModuleRegistryTest, StdModuleInitialized) {
-    auto stdModule = registry.getStdModule();
+    auto stdModule = registry.getHooModule();
     ASSERT_NE(stdModule, nullptr);
-    EXPECT_EQ(stdModule->getName(), "std");
+    EXPECT_EQ(stdModule->getName(), "hoo");
 }
 
 // Test that std module contains String export
 TEST_F(ModuleRegistryTest, StdModuleHasStringExport) {
-    auto stdModule = registry.getStdModule();
+    auto stdModule = registry.getHooModule();
     ASSERT_NE(stdModule, nullptr);
 
     auto stringExport = stdModule->getExport("String");
@@ -30,7 +30,7 @@ TEST_F(ModuleRegistryTest, StdModuleHasStringExport) {
 
 // Test that std module contains Array export
 TEST_F(ModuleRegistryTest, StdModuleHasArrayExport) {
-    auto stdModule = registry.getStdModule();
+    auto stdModule = registry.getHooModule();
     ASSERT_NE(stdModule, nullptr);
 
     auto arrayExport = stdModule->getExport("Array");
@@ -43,7 +43,7 @@ TEST_F(ModuleRegistryTest, StdModuleHasArrayExport) {
 
 // Test resolveQualifiedName with std.String
 TEST_F(ModuleRegistryTest, ResolveQualifiedNameStdString) {
-    auto qid = ast::QualifiedIdentifier({"std", "String"});
+    auto qid = ast::QualifiedIdentifier({"hoo", "String"});
     auto export_ = registry.resolveQualifiedName(qid);
 
     ASSERT_NE(export_, nullptr);
@@ -53,7 +53,7 @@ TEST_F(ModuleRegistryTest, ResolveQualifiedNameStdString) {
 
 // Test resolveQualifiedName with std.Array
 TEST_F(ModuleRegistryTest, ResolveQualifiedNameStdArray) {
-    auto qid = ast::QualifiedIdentifier({"std", "Array"});
+    auto qid = ast::QualifiedIdentifier({"hoo", "Array"});
     auto export_ = registry.resolveQualifiedName(qid);
 
     ASSERT_NE(export_, nullptr);
@@ -63,7 +63,7 @@ TEST_F(ModuleRegistryTest, ResolveQualifiedNameStdArray) {
 
 // Test resolveQualifiedName with invalid name
 TEST_F(ModuleRegistryTest, ResolveQualifiedNameInvalid) {
-    auto qid = ast::QualifiedIdentifier({"std", "InvalidClass"});
+    auto qid = ast::QualifiedIdentifier({"hoo", "InvalidClass"});
     auto export_ = registry.resolveQualifiedName(qid);
 
     EXPECT_EQ(export_, nullptr);
@@ -88,7 +88,7 @@ TEST_F(ModuleRegistryTest, ResolveQualifiedNameSingleComponent) {
 
 // Test resolveQualifiedName with nested path (std.io.File) - currently not in registry
 TEST_F(ModuleRegistryTest, ResolveQualifiedNameNestedNotFound) {
-    auto qid = ast::QualifiedIdentifier({"std", "io", "File"});
+    auto qid = ast::QualifiedIdentifier({"hoo", "io", "File"});
     auto export_ = registry.resolveQualifiedName(qid);
 
     EXPECT_EQ(export_, nullptr);
@@ -96,10 +96,10 @@ TEST_F(ModuleRegistryTest, ResolveQualifiedNameNestedNotFound) {
 
 // Test resolveModulePath for std
 TEST_F(ModuleRegistryTest, ResolveModulePathStd) {
-    auto module = registry.resolveModulePath({"std"});
+    auto module = registry.resolveModulePath({"hoo"});
 
     ASSERT_NE(module, nullptr);
-    EXPECT_EQ(module->getName(), "std");
+    EXPECT_EQ(module->getName(), "hoo");
 }
 
 // Test resolveModulePath for invalid path
@@ -111,14 +111,14 @@ TEST_F(ModuleRegistryTest, ResolveModulePathInvalid) {
 
 // Test resolveModulePath for non-existent nested path
 TEST_F(ModuleRegistryTest, ResolveModulePathNested) {
-    auto module = registry.resolveModulePath({"std", "io"});
+    auto module = registry.resolveModulePath({"hoo", "io"});
 
     EXPECT_EQ(module, nullptr);
 }
 
 // Test Module::hasExport
 TEST_F(ModuleRegistryTest, ModuleHasExport) {
-    auto stdModule = registry.getStdModule();
+    auto stdModule = registry.getHooModule();
     ASSERT_NE(stdModule, nullptr);
 
     EXPECT_TRUE(stdModule->hasExport("String"));
@@ -128,7 +128,7 @@ TEST_F(ModuleRegistryTest, ModuleHasExport) {
 
 // Test Module::hasSubmodule
 TEST_F(ModuleRegistryTest, ModuleHasSubmodule) {
-    auto stdModule = registry.getStdModule();
+    auto stdModule = registry.getHooModule();
     ASSERT_NE(stdModule, nullptr);
 
     // By default, std has no submodules
@@ -157,16 +157,16 @@ TEST_F(ModuleRegistryTest, AddCustomModule) {
 // Test QualifiedIdentifier integration with module resolution
 TEST_F(ModuleRegistryTest, QualifiedIdentifierIntegration) {
     // Create a QualifiedIdentifier for std.String
-    std::vector<std::string> components = {"std", "String"};
+    std::vector<std::string> components = {"hoo", "String"};
     auto qid = ast::QualifiedIdentifier(components);
 
     // Verify the QualifiedIdentifier properties
-    EXPECT_EQ(qid.getFullName(), "std.String");
+    EXPECT_EQ(qid.getFullName(), "hoo.String");
     EXPECT_EQ(qid.getName(), "String");
 
     auto modulePath = qid.getModulePath();
     ASSERT_EQ(modulePath.size(), 1);
-    EXPECT_EQ(modulePath[0], "std");
+    EXPECT_EQ(modulePath[0], "hoo");
 
     // Resolve through registry
     auto export_ = registry.resolveQualifiedName(qid);
@@ -176,14 +176,14 @@ TEST_F(ModuleRegistryTest, QualifiedIdentifierIntegration) {
 
 // Test deeply nested qualified identifiers
 TEST_F(ModuleRegistryTest, DeeplyNestedQualifiedIdentifier) {
-    auto qid = ast::QualifiedIdentifier({"std", "collections", "generic", "List"});
+    auto qid = ast::QualifiedIdentifier({"hoo", "collections", "generic", "List"});
 
-    EXPECT_EQ(qid.getFullName(), "std.collections.generic.List");
+    EXPECT_EQ(qid.getFullName(), "hoo.collections.generic.List");
     EXPECT_EQ(qid.getName(), "List");
 
     auto modulePath = qid.getModulePath();
     ASSERT_EQ(modulePath.size(), 3);
-    EXPECT_EQ(modulePath[0], "std");
+    EXPECT_EQ(modulePath[0], "hoo");
     EXPECT_EQ(modulePath[1], "collections");
     EXPECT_EQ(modulePath[2], "generic");
 
@@ -194,8 +194,8 @@ TEST_F(ModuleRegistryTest, DeeplyNestedQualifiedIdentifier) {
 
 // Test that the registry can resolve multiple different qualified names
 TEST_F(ModuleRegistryTest, MultipleQualifiedNameResolution) {
-    auto qid1 = ast::QualifiedIdentifier({"std", "String"});
-    auto qid2 = ast::QualifiedIdentifier({"std", "Array"});
+    auto qid1 = ast::QualifiedIdentifier({"hoo", "String"});
+    auto qid2 = ast::QualifiedIdentifier({"hoo", "Array"});
 
     auto export1 = registry.resolveQualifiedName(qid1);
     auto export2 = registry.resolveQualifiedName(qid2);
@@ -210,7 +210,7 @@ TEST_F(ModuleRegistryTest, MultipleQualifiedNameResolution) {
 
 // Test Module's export iteration
 TEST_F(ModuleRegistryTest, ModuleExportIteration) {
-    auto stdModule = registry.getStdModule();
+    auto stdModule = registry.getHooModule();
     ASSERT_NE(stdModule, nullptr);
 
     const auto& exports = stdModule->getExports();

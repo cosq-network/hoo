@@ -19,18 +19,53 @@ The runtime library provides fundamental data types and memory management for Ho
 | `hoo_generic_array.h` / `hoo_generic_array.cpp` | Generic dynamic array using `std::any` |
 | `hoo_io.h` / `hoo_io.cpp` | I/O functions (print, println, readline, readchar) |
 
-## What Belongs Here
+## Module and Class Reference
 
-**DO add files here if they:**
-- Implement runtime functionality (String, Array, future types like Dict, Set, etc.)
-- Are written in C or C++ with no LLVM dependencies
-- Need to be callable from JIT-compiled code
-- Provide fundamental types used across the runtime
+The runtime library implements the builtized standard library under the `hoo` namespace.
 
-**DO NOT add files here if they:**
-- Depend on LLVM headers or IR generation
-- Are compiler infrastructure (AST, code generation, etc.)
-- Register types with the runtime system (use `src/runtime/llvm` instead)
+### Core Module: `hoo`
+
+| Class / Type | Implementation | Description |
+|--------------|----------------|-------------|
+| `hoo.String` | `hoo_string.cpp` | Immutable UTF-8 string with ARC management. |
+| `hoo.Array`  | `hoo_generic_array.cpp` | Dynamic array using `std::any` for heterogeneous element support. |
+
+### IO Module: `hoo.io`
+
+The IO module provides standard input and output functions.
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `hoo.print` | `(string) -> void` | Prints a string to stdout. |
+| `hoo.println` | `(string) -> void` | Prints a string followed by a newline to stdout. |
+| `hoo.readline` | `() -> string` | Reads a line from stdin. |
+| `hoo.readchar` | `() -> int64` | Reads a single character/byte from stdin. |
+
+### Usage Examples
+
+```hoo
+// Strings and Printing
+var message: string = "Hello, Hooc!";
+hoo.println(message);
+
+// String Concatenation
+var name = "Alice";
+hoo.println("Welcome, " + name + "!");
+
+// Arrays
+var scores: int64[] = [95, 88, 72];
+var first = scores[0];
+hoo.println("Count: " + scores.length());
+
+// Input
+hoo.print("What is your name? ");
+var inputName = hoo.readline();
+hoo.println("Greetings, " + inputName);
+
+// Object Creation (Standard Library Classes)
+var strObj = new hoo.String("Custom String");
+var arrObj = new hoo.Array(); // Empty dynamic array
+```
 
 ## Implementation Guidelines
 
