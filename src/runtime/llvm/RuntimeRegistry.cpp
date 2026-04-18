@@ -14,6 +14,7 @@ RuntimeRegistry& RuntimeRegistry::getInstance() {
 }
 
 void RuntimeRegistry::registerRuntime(const RuntimeRegistrationEntry& entry) {
+    std::cout << "[RuntimeRegistry] registerRuntime called for: " << entry.runtimeName << "\n";
     runtimes_.push_back(entry);
 }
 

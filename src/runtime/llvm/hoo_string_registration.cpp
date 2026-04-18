@@ -233,8 +233,10 @@ HOOC_REGISTER_RUNTIME(
 namespace hooc {
 
 void _hoo_string_ensure_registration() {
-    // This function forces the linker to include hoo_string_registration.cpp
-    // The static object initialization in this file will run when this is called.
+    // Force the linker to include hoo_string_registration.cpp
+    // The static RuntimeAutoRegister will run during this call
+    auto& registry = runtime::RuntimeRegistry::getInstance();
+    (void)registry.getRegisteredRuntimes();
 }
 
 } // namespace hooc

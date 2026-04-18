@@ -264,6 +264,10 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
             std::cerr << "Error: forStatement has unexpected number of expressions: " << exprs.size() << std::endl;
             return nullptr;
         }
+    } else if (ctx->breakStatement()) {
+        return std::make_unique<BreakStatement>();
+    } else if (ctx->continueStatement()) {
+        return std::make_unique<ContinueStatement>();
     }
 
     return nullptr;

@@ -10,6 +10,8 @@ ELSE: 'else';
 FOR: 'for';
 WHILE: 'while';
 IN: 'in';
+BREAK: 'break';
+CONTINUE: 'continue';
 CLASS: 'class';
 INTERFACE: 'interface';
 IMPLEMENTS: 'implements';
@@ -198,6 +200,8 @@ statement
     | whileStatement
     | forStatement
     | scopeStatement
+    | breakStatement
+    | continueStatement
     ;
 
 block: LBRACE statement* RBRACE;
@@ -217,6 +221,10 @@ whileStatement: WHILE expression block;
 returnStatement: RETURN expression? SEMICOLON;
 
 scopeStatement: SCOPE block;
+
+breakStatement: BREAK SEMICOLON;
+
+continueStatement: CONTINUE SEMICOLON;
 
 // Expressions (with operator precedence)
 expression

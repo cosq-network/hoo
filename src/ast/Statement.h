@@ -168,5 +168,21 @@ private:
     std::unique_ptr<VariableDeclaration> declaration_;
 };
 
+// Break statement (exit loop)
+class BreakStatement : public Statement {
+public:
+    BreakStatement() {}
+
+    std::string toString() const override;
+};
+
+// Continue statement (skip to next iteration)
+class ContinueStatement : public Statement {
+public:
+    ContinueStatement() {}
+
+    std::string toString() const override;
+};
+
 } // namespace ast
 } // namespace hooc

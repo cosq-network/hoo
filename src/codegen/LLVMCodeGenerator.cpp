@@ -35,6 +35,35 @@ LLVMCodeGenerator::LLVMCodeGenerator(LLVMContext& context)
 
 LLVMCodeGenerator::~LLVMCodeGenerator() {}
 
+// ============================================================================
+// Error Handling
+// ============================================================================
+
+void LLVMCodeGenerator::addError(const std::string& message) {
+    errors_.push_back(message);
+    std::cerr << "Error: " << message << std::endl;
+}
+
+void LLVMCodeGenerator::addError(const std::string& message, int line, int column) {
+    std::string fullMessage = message + " at line " + std::to_string(line) + ", column " + std::to_string(column);
+    errors_.push_back(fullMessage);
+    std::cerr << "Error: " << fullMessage << std::endl;
+}
+
+// ============================================================================
+// Runtime Function Accessors
+// ============================================================================
+
+Function* LLVMCodeGenerator::getStringFunc(const std::string& name) {
+    std::string fullName = "hoo_string_" + name;
+    return module_->getFunction(fullName);
+}
+
+Function* LLVMCodeGenerator::getArrayFunc(const std::string& name) {
+    std::string fullName = "hoo_array_" + name;
+    return module_->getFunction(fullName);
+}
+
 // Abstract interface implementation - returns wrapped types
 std::unique_ptr<GeneratedModule> LLVMCodeGenerator::generateModule(const CompilationUnit& compilationUnit) {
     auto llvmModule = generateLLVMModule(compilationUnit);
@@ -93,27 +122,8 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
     hoo_retain_func_ = nullptr;
     hoo_release_func_ = nullptr;
 
-    // Reset string function pointers
-    // Note: Uses X-Macro pattern to generate nullptr initializers for all string functions
-    // The registry file defines RUNTIME_FUNCTION macros, we override them to generate reset code
-    #define DEFINE_RUNTIME_CLASS(ClassName, HandleType, DetectionPredicate)
-    #define BEGIN_RUNTIME_FUNCTIONS
-    #define END_RUNTIME_FUNCTIONS
-    #define RUNTIME_FUNCTION(FuncName, RetType, LLVMRetType, ...) \
-        hoo_string_##FuncName##_func_ = nullptr;
-    #define BEGIN_RUNTIME_OPERATORS
-    #define END_RUNTIME_OPERATORS
-    #define RUNTIME_OPERATOR(...)
-
-    #include "runtime/llvm/RuntimeClassRegistry.h"
-
-    #undef DEFINE_RUNTIME_CLASS
-    #undef BEGIN_RUNTIME_FUNCTIONS
-    #undef END_RUNTIME_FUNCTIONS
-    #undef RUNTIME_FUNCTION
-    #undef BEGIN_RUNTIME_OPERATORS
-    #undef END_RUNTIME_OPERATORS
-    #undef RUNTIME_OPERATOR
+    // Reset runtime function storage
+    runtimeFunctionStorage_ = {};
 
     // Force runtime methods registration to be linked
     _hoo_runtime_methods_ensure_registration();
@@ -251,10 +261,16 @@ void LLVMCodeGenerator::generateLLVMStatement(const Statement& stmt) {
         generateForInStatement(*forInStmt);
     } else if (auto forRangeStmt = dynamic_cast<const ForRangeStatement*>(&stmt)) {
         generateForRangeStatement(*forRangeStmt);
+    } else if (auto scopeStmt = dynamic_cast<const ScopeStatement*>(&stmt)) {
+        generateScopeStatement(*scopeStmt);
     } else if (auto varDeclStmt = dynamic_cast<const VariableDeclarationStatement*>(&stmt)) {
         generateVariableDeclarationStatement(*varDeclStmt);
+    } else if (auto breakStmt = dynamic_cast<const BreakStatement*>(&stmt)) {
+        generateBreakStatement(*breakStmt);
+    } else if (auto continueStmt = dynamic_cast<const ContinueStatement*>(&stmt)) {
+        generateContinueStatement(*continueStmt);
     } else {
-        std::cerr << "Unsupported statement type" << std::endl;
+        addError("Unsupported statement type");
     }
 }
 
@@ -298,7 +314,7 @@ Value* LLVMCodeGenerator::generateLLVMExpression(const Expression& expr) {
         return generateNewObjectExpression(*newObjExpr);
     }
 
-    std::cerr << "Unsupported expression type in generateExpression" << std::endl;
+    addError("Unsupported expression type in generateExpression");
     return nullptr;
 }
 
@@ -314,7 +330,7 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
             return builder_->CreateLoad(alloca->getAllocatedType(), alloca, identifier->getName());
         }
 
-        std::cerr << "Unknown variable: " << identifier->getName() << std::endl;
+        addError("Unknown variable: " + identifier->getName());
         return nullptr;
         
     } else if (auto intLiteral = dynamic_cast<const IntegerLiteral*>(&primary)) {
@@ -339,21 +355,52 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
         declareRuntimeFunctions();
 
         // Call hoo_string_from_cstr(cstr) to create HooString object
-        if (!hoo_string_from_cstr_func_) {
-            std::cerr << "Error: hoo_string_from_cstr not declared" << std::endl;
+        auto* fromCstrFunc = getStringFunc("from_cstr");
+        if (!fromCstrFunc) {
+            addError("hoo_string_from_cstr not declared");
             return nullptr;
         }
 
-        Value* hooString = builder_->CreateCall(hoo_string_from_cstr_func_, {cstr}, "hoo_str");
+        Value* hooString = builder_->CreateCall(fromCstrFunc, {cstr}, "hoo_str");
         return hooString;
 
     } else if (auto charLiteral = dynamic_cast<const CharacterLiteral*>(&primary)) {
         return ConstantInt::get(LLVMType::getInt32Ty(context_), static_cast<uint32_t>(charLiteral->getValue()));
     } else if (auto arrayLiteral = dynamic_cast<const ArrayLiteral*>(&primary)) { // Handle ArrayLiteral
         return generateArrayLiteral(*arrayLiteral);
+    } else if (auto interpolatedString = dynamic_cast<const InterpolatedString*>(&primary)) {
+        // For now, treat interpolated strings as regular strings by stripping ${...} placeholders
+        // TODO: Implement full runtime substitution for ${...} expressions
+        std::string template_ = interpolatedString->getTemplate();
+        size_t start = 0;
+        std::string result;
+        while (true) {
+            size_t dollarPos = template_.find("${", start);
+            if (dollarPos == std::string::npos) {
+                result += template_.substr(start);
+                break;
+            }
+            result += template_.substr(start, dollarPos - start);
+            size_t endPos = template_.find("}", dollarPos);
+            if (endPos == std::string::npos) {
+                result += template_.substr(dollarPos);
+                break;
+            }
+            result += "<placeholder>";
+            start = endPos + 1;
+        }
+
+        Value* cstr = builder_->CreateGlobalString(result, "interp_str");
+        declareRuntimeFunctions();
+        auto* fromCstrFunc = getStringFunc("from_cstr");
+        if (!fromCstrFunc) {
+            addError("hoo_string_from_cstr not declared");
+            return nullptr;
+        }
+        return builder_->CreateCall(fromCstrFunc, {cstr}, "hoo_interp_str");
     }
 
-    std::cerr << "Unsupported primary expression type" << std::endl;
+    addError("Unsupported primary expression type");
     return nullptr;
 }
 
@@ -373,12 +420,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_concat(left, right)
-                if (!hoo_string_concat_func_) {
-                    std::cerr << "Error: hoo_string_concat not declared" << std::endl;
+                auto* concatFunc = getStringFunc("concat");
+                if (!concatFunc) {
+                    addError("hoo_string_concat not declared");
                     return nullptr;
                 }
 
-                Value* result = builder_->CreateCall(hoo_string_concat_func_, {left, right}, "concat");
+                Value* result = builder_->CreateCall(concatFunc, {left, right}, "concat");
                 return result;
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateAdd(left, right, "addtmp");
@@ -424,12 +472,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns <0 if left < right
-                if (!hoo_string_compare_func_) {
-                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                auto* compareFunc = getStringFunc("compare");
+                if (!compareFunc) {
+                    addError("hoo_string_compare not declared");
                     return nullptr;
                 }
 
-                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                Value* cmpResult = builder_->CreateCall(compareFunc, {left, right}, "strcmp");
                 return builder_->CreateICmpSLT(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "ltmp");
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSLT(left, right, "cmptmp");
@@ -445,12 +494,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns <=0 if left <= right
-                if (!hoo_string_compare_func_) {
-                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                auto* compareFunc = getStringFunc("compare");
+                if (!compareFunc) {
+                    addError("hoo_string_compare not declared");
                     return nullptr;
                 }
 
-                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                Value* cmpResult = builder_->CreateCall(compareFunc, {left, right}, "strcmp");
                 return builder_->CreateICmpSLE(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "letmp");
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSLE(left, right, "cmptmp");
@@ -466,12 +516,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns >0 if left > right
-                if (!hoo_string_compare_func_) {
-                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                auto* compareFunc = getStringFunc("compare");
+                if (!compareFunc) {
+                    addError("hoo_string_compare not declared");
                     return nullptr;
                 }
 
-                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                Value* cmpResult = builder_->CreateCall(compareFunc, {left, right}, "strcmp");
                 return builder_->CreateICmpSGT(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "gtmp");
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSGT(left, right, "cmptmp");
@@ -487,12 +538,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_compare(left, right) - returns >=0 if left >= right
-                if (!hoo_string_compare_func_) {
-                    std::cerr << "Error: hoo_string_compare not declared" << std::endl;
+                auto* compareFunc = getStringFunc("compare");
+                if (!compareFunc) {
+                    addError("hoo_string_compare not declared");
                     return nullptr;
                 }
 
-                Value* cmpResult = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "strcmp");
+                Value* cmpResult = builder_->CreateCall(compareFunc, {left, right}, "strcmp");
                 return builder_->CreateICmpSGE(cmpResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "getmp");
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
                 return builder_->CreateICmpSGE(left, right, "cmptmp");
@@ -508,12 +560,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_equals(left, right) - returns 1 if equal, 0 if not
-                if (!hoo_string_equals_func_) {
-                    std::cerr << "Error: hoo_string_equals not declared" << std::endl;
+                auto* equalsFunc = getStringFunc("equals");
+                if (!equalsFunc) {
+                    addError("hoo_string_equals not declared");
                     return nullptr;
                 }
 
-                Value* equalResult = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "streq");
+                Value* equalResult = builder_->CreateCall(equalsFunc, {left, right}, "streq");
                 // Convert i64 result to i1 (bool)
                 return builder_->CreateICmpNE(equalResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "eqtmp");
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
@@ -530,12 +583,13 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
                 declareRuntimeFunctions();
 
                 // Call hoo_string_equals(left, right) - returns 1 if equal, 0 if not
-                if (!hoo_string_equals_func_) {
-                    std::cerr << "Error: hoo_string_equals not declared" << std::endl;
+                auto* equalsFunc = getStringFunc("equals");
+                if (!equalsFunc) {
+                    addError("hoo_string_equals not declared");
                     return nullptr;
                 }
 
-                Value* equalResult = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "strneq");
+                Value* equalResult = builder_->CreateCall(equalsFunc, {left, right}, "strneq");
                 // Convert i64 result to i1 (bool) - return true if NOT equal (equalResult == 0)
                 return builder_->CreateICmpEQ(equalResult, ConstantInt::get(LLVMType::getInt64Ty(context_), 0), "neqtmp");
             } else if (left->getType()->isIntegerTy() && right->getType()->isIntegerTy()) {
@@ -546,11 +600,11 @@ Value* LLVMCodeGenerator::generateBinaryExpression(const BinaryExpression& expr)
             break;
 
         default:
-            std::cerr << "Unsupported binary operator" << std::endl;
+            addError("Unsupported binary operator");
             return nullptr;
     }
     
-    std::cerr << "Type mismatch in binary expression" << std::endl;
+    addError("Type mismatch in binary expression");
     return nullptr;
 }
 
@@ -567,7 +621,7 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
 
         Value* objectValue = generateLLVMExpression(memberAccess->getObject());
         if (!objectValue) {
-            std::cerr << "Failed to generate object expression for method call" << std::endl;
+            addError("Failed to generate object expression for method call");
             return nullptr;
         }
 
@@ -583,7 +637,7 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
         }
 
         if (className.empty()) {
-            std::cerr << "Cannot determine class type for method call" << std::endl;
+            addError("Cannot determine class type for method call");
             return nullptr;
         }
 
@@ -604,18 +658,24 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
         const ASTNode& primary = primaryExpr->getPrimary();
         if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
             functionName = identifier->getName();
+
+            // Handle built-in I/O functions - redirect to hoo.* prefixed versions
+            if (functionName == "print" || functionName == "println" ||
+                functionName == "readline" || functionName == "readchar") {
+                functionName = "hoo." + functionName;
+            }
         } else {
-            std::cerr << "Function call must use identifier" << std::endl;
+            addError("Function call must use identifier");
             return nullptr;
         }
     } else {
-        std::cerr << "Complex function expressions not yet supported" << std::endl;
+        addError("Complex function expressions not yet supported");
         return nullptr;
     }
 
     Function* calleeFunc = module_->getFunction(functionName);
     if (!calleeFunc && !isRuntimeMethod) {
-        std::cerr << "Unknown function: " << functionName << std::endl;
+        addError("Unknown function: " + functionName);
         return nullptr;
     }
 
@@ -665,8 +725,8 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
 
     if (calleeFunc) {
         if (args.size() != calleeFunc->arg_size()) {
-            std::cerr << "Incorrect number of arguments for function " << functionName
-                      << " (expected " << calleeFunc->arg_size() << ", got " << args.size() << ")" << std::endl;
+            addError("Incorrect number of arguments for function " + functionName
+                      + " (expected " + std::to_string(calleeFunc->arg_size()) + ", got " + std::to_string(args.size()) + ")");
             return nullptr;
         }
 
@@ -678,7 +738,7 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
     } else if (isRuntimeMethod) {
         Function* runtimeFunc = module_->getFunction(runtimeFuncName);
         if (!runtimeFunc) {
-            std::cerr << "Runtime function not declared: " << runtimeFuncName << std::endl;
+            addError("Runtime function not declared: " + runtimeFuncName);
             return nullptr;
         }
         return builder_->CreateCall(runtimeFunc, args, "runtime_call");
@@ -697,7 +757,7 @@ Value* LLVMCodeGenerator::generateUnaryExpression(const UnaryMinus& expr) {
         return builder_->CreateFNeg(operand, "negtmp");
     }
 
-    std::cerr << "Unsupported type for unary minus" << std::endl;
+    addError("Unsupported type for unary minus");
     return nullptr;
 }
 
@@ -825,11 +885,11 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
         if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
             varName = identifier->getName();
         } else {
-            std::cerr << "Assignment target must be an identifier" << std::endl;
+            addError("Assignment target must be an identifier");
             return nullptr;
         }
     } else {
-        std::cerr << "Complex assignment targets not yet supported" << std::endl;
+        addError("Complex assignment targets not yet supported");
         return nullptr;
     }
 
@@ -840,7 +900,7 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     // Look up the variable
     auto it = namedValues_.find(varName);
     if (it == namedValues_.end()) {
-        std::cerr << "Unknown variable: " << varName << std::endl;
+        addError("Unknown variable: " + varName);
         return nullptr;
     }
 
@@ -853,7 +913,7 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // Get the object value
     Value* objectValue = generateLLVMExpression(expr.getObject());
     if (!objectValue) {
-        std::cerr << "Failed to generate object expression" << std::endl;
+        addError("Failed to generate object expression");
         return nullptr;
     }
 
@@ -872,14 +932,14 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     }
 
     if (className.empty()) {
-        std::cerr << "Cannot determine class type for member access" << std::endl;
+        addError("Cannot determine class type for member access");
         return nullptr;
     }
 
     // Get the class struct type
     auto classTypeIt = classTypes_.find(className);
     if (classTypeIt == classTypes_.end()) {
-        std::cerr << "Unknown class type: " << className << std::endl;
+        addError("Unknown class type: " + className);
         return nullptr;
     }
     llvm::StructType* classType = classTypeIt->second;
@@ -887,7 +947,7 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // Get the class declaration to find member info
     auto declIt = classDeclarations_.find(className);
     if (declIt == classDeclarations_.end()) {
-        std::cerr << "Missing class declaration for: " << className << std::endl;
+        addError("Missing class declaration for: " + className);
         return nullptr;
     }
     const ast::ClassDeclaration* classDecl = declIt->second;
@@ -915,7 +975,7 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     }
 
     if (memberIndex == -1) {
-        std::cerr << "Member not found: " << memberName << " in class " << className << std::endl;
+        addError("Member not found: " + memberName + " in class " + className);
         return nullptr;
     }
 
@@ -931,7 +991,7 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
 
     // Load the field value
     if (!memberType) {
-        std::cerr << "Member type is null for: " << memberName << std::endl;
+        addError("Member type is null for: " + memberName);
         return nullptr;
     }
     auto loadedValue = builder_->CreateLoad(memberType, fieldPtr, memberName);
@@ -944,7 +1004,7 @@ Value* LLVMCodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
     Value* indexValue = generateLLVMExpression(expr.getIndex());
     
     if (!arrayValue || !indexValue) {
-        std::cerr << "Failed to generate array or index expression" << std::endl;
+        addError("Failed to generate array or index expression");
         return nullptr;
     }
     
@@ -953,7 +1013,7 @@ Value* LLVMCodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
         if (indexValue->getType()->isIntegerTy()) {
             indexValue = builder_->CreateSExt(indexValue, LLVMType::getInt64Ty(context_), "index_ext");
         } else {
-            std::cerr << "Array index must be integer type" << std::endl;
+            addError("Array index must be integer type");
             return nullptr;
         }
     }
@@ -972,7 +1032,7 @@ Value* LLVMCodeGenerator::generateArrayAccess(const ArrayAccess& expr) {
             elementType, 
             elementPtr, "arrayval");
     } else {
-        std::cerr << "Array access on non-pointer type not supported" << std::endl;
+        addError("Array access on non-pointer type not supported");
         return nullptr;
     }
 }
@@ -1035,13 +1095,19 @@ void LLVMCodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
     BasicBlock* bodyBlock = BasicBlock::Create(context_, "while.body", currentFunc);
     BasicBlock* afterBlock = BasicBlock::Create(context_, "while.end", currentFunc);
 
+    // Push loop context for break/continue
+    loopStack_.push_back({afterBlock, condBlock});
+
     // Jump to condition block
     builder_->CreateBr(condBlock);
 
     // Condition block
     builder_->SetInsertPoint(condBlock);
     Value* condValue = generateLLVMExpression(stmt.getCondition());
-    if (!condValue) return;
+    if (!condValue) {
+        loopStack_.pop_back();
+        return;
+    }
 
     // Convert condition to boolean if needed
     if (!condValue->getType()->isIntegerTy(1)) {
@@ -1061,6 +1127,9 @@ void LLVMCodeGenerator::generateWhileStatement(const WhileStatement& stmt) {
         builder_->CreateBr(condBlock);
     }
 
+    // Pop loop context
+    loopStack_.pop_back();
+
     // Continue after loop
     builder_->SetInsertPoint(afterBlock);
 }
@@ -1071,18 +1140,20 @@ void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     // Evaluate the iterable expression
     Value* iterableValue = generateLLVMExpression(stmt.getIterable());
     if (!iterableValue) {
-        std::cerr << "Failed to generate iterable expression for for-in loop" << std::endl;
+        addError("Failed to generate iterable expression for for-in loop");
         return;
     }
 
     // Check that we have the array runtime functions
-    if (!hoo_array_length_func_ || !hoo_array_get_int64_func_) {
-        std::cerr << "Error: Array runtime functions not available for for-in loop" << std::endl;
+    auto* lengthFunc = getArrayFunc("length");
+    auto* getInt64Func = runtimeFunctionStorage_.arrays.hoo_array_get_int64_func;
+    if (!lengthFunc || !getInt64Func) {
+        addError("Array runtime functions not available for for-in loop");
         return;
     }
 
     // Get the actual array length by calling hoo_array_length(arr)
-    Value* arrayLength = builder_->CreateCall(hoo_array_length_func_, {iterableValue}, "array.length");
+    Value* arrayLength = builder_->CreateCall(lengthFunc, {iterableValue}, "array.length");
 
     // Create loop variable - assume int64 elements for now
     // TODO: In future, query array element type and use appropriate get function
@@ -1098,6 +1169,9 @@ void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     BasicBlock* bodyBlock = BasicBlock::Create(context_, "for.body", currentFunc);
     BasicBlock* incrBlock = BasicBlock::Create(context_, "for.incr", currentFunc);
     BasicBlock* endBlock = BasicBlock::Create(context_, "for.end", currentFunc);
+
+    // Push loop context for break/continue
+    loopStack_.push_back({endBlock, incrBlock});
 
     // Branch to condition check
     builder_->CreateBr(condBlock);
@@ -1117,7 +1191,7 @@ void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     // Call hoo_array_get_int64(arr, index, &dest)
     // Returns 1 if successful, 0 if out of bounds
     Value* getResult = builder_->CreateCall(
-        hoo_array_get_int64_func_,
+        getInt64Func,
         {iterableValue, currentIndex, elemDest},
         "get.result"
     );
@@ -1145,6 +1219,9 @@ void LLVMCodeGenerator::generateForInStatement(const ForInStatement& stmt) {
     builder_->CreateStore(nextIndex, indexVar);
     builder_->CreateBr(condBlock);
 
+    // Pop loop context
+    loopStack_.pop_back();
+
     // End block: clean up and continue
     builder_->SetInsertPoint(endBlock);
 
@@ -1170,6 +1247,9 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
     BasicBlock* bodyBlock = BasicBlock::Create(context_, "for.body", currentFunc);
     BasicBlock* incBlock = BasicBlock::Create(context_, "for.inc", currentFunc);
     BasicBlock* afterBlock = BasicBlock::Create(context_, "for.end", currentFunc);
+
+    // Push loop context for break/continue
+    loopStack_.push_back({afterBlock, incBlock});
 
     // Jump to condition
     builder_->CreateBr(condBlock);
@@ -1204,9 +1284,32 @@ void LLVMCodeGenerator::generateForRangeStatement(const ForRangeStatement& stmt)
     builder_->CreateStore(nextVal, loopVar);
     builder_->CreateBr(condBlock);
 
+    // Pop loop context
+    loopStack_.pop_back();
+
     // Continue after loop
     builder_->SetInsertPoint(afterBlock);
     namedValues_.erase(stmt.getVariable());
+}
+
+void LLVMCodeGenerator::generateScopeStatement(const ScopeStatement& stmt) {
+    generateBlock(stmt.getBody());
+}
+
+void LLVMCodeGenerator::generateBreakStatement(const BreakStatement& stmt) {
+    if (loopStack_.empty()) {
+        addError("break statement outside of loop");
+        return;
+    }
+    builder_->CreateBr(loopStack_.back().breakBlock);
+}
+
+void LLVMCodeGenerator::generateContinueStatement(const ContinueStatement& stmt) {
+    if (loopStack_.empty()) {
+        addError("continue statement outside of loop");
+        return;
+    }
+    builder_->CreateBr(loopStack_.back().continueBlock);
 }
 
 void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& decl) {
@@ -1217,7 +1320,7 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
     if (decl.hasTypeInference()) {
         // Infer type from initializer
         if (!decl.getInitializer()) {
-            std::cerr << "Type inference requires initializer" << std::endl;
+            addError("Type inference requires initializer");
             return;
         }
         Value* initValue = generateLLVMExpression(*decl.getInitializer());
@@ -1352,7 +1455,7 @@ LLVMType* LLVMCodeGenerator::convertArrayType(const ASTArrayType& arrayType) {
     for (int i = dimensions.size() - 1; i >= 0; i--) {
         // Verify dimension is nullptr (should be unsized after grammar change)
         if (dimensions[i] != nullptr) {
-            std::cerr << "Error: Fixed-size array syntax no longer supported. Use array literals." << std::endl;
+            addError("Fixed-size array syntax no longer supported. Use array literals.");
             return nullptr;
         }
         // Treat all arrays as slices (pointers)
@@ -1393,7 +1496,7 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
     for (const auto& expr : expressions) {
         Value* elemValue = generateLLVMExpression(*expr);
         if (!elemValue) {
-            std::cerr << "Failed to generate array element expression" << std::endl;
+            addError("Failed to generate array element expression");
             return nullptr;
         }
 
@@ -1401,7 +1504,7 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
         if (elementType == nullptr) {
             elementType = elemValue->getType();
         } else if (elemValue->getType() != elementType) {
-            std::cerr << "Array literal elements must have uniform type" << std::endl;
+            addError("Array literal elements must have uniform type");
             return nullptr;
         }
 
@@ -1424,7 +1527,7 @@ Value* LLVMCodeGenerator::generateArrayLiteral(const ArrayLiteral& literal) {
             return generateDynamicArrayLiteral(dynamicElements, elementType);
         } else {
             // Non-constant elements that aren't pointers are not supported
-            std::cerr << "Array literal elements must be compile-time constants (unless they are class instances)" << std::endl;
+            addError("Array literal elements must be compile-time constants (unless they are class instances)");
             return nullptr;
         }
     }
@@ -1470,30 +1573,32 @@ Constant* LLVMCodeGenerator::createGlobalArrayConstant(
 
 llvm::Function* LLVMCodeGenerator::getArrayFromBufferFunc(llvm::Type* elementType) {
     if (elementType->isIntegerTy(64)) {
-        // Declare hoo_int64_array_from_buffer if not already done
-        if (!hoo_int64_array_from_buffer_func_) {
-            std::vector<LLVMType*> params = {
-                llvm::PointerType::get(context_, 0),  // data pointer
-                LLVMType::getInt64Ty(context_)         // length
-            };
-            FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-            hoo_int64_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_.get());
+        // Check if already declared
+        if (auto* f = module_->getFunction("hoo_int64_array_from_buffer")) {
+            return f;
         }
-        return hoo_int64_array_from_buffer_func_;
+        // Declare hoo_int64_array_from_buffer
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // data pointer
+            LLVMType::getInt64Ty(context_)         // length
+        };
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        return Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_.get());
     } else if (elementType->isDoubleTy()) {
-        // Declare hoo_double_array_from_buffer if not already done
-        if (!hoo_double_array_from_buffer_func_) {
-            std::vector<LLVMType*> params = {
-                llvm::PointerType::get(context_, 0),  // data pointer
-                LLVMType::getInt64Ty(context_)         // length
-            };
-            FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-            hoo_double_array_from_buffer_func_ = Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_.get());
+        // Check if already declared
+        if (auto* f = module_->getFunction("hoo_double_array_from_buffer")) {
+            return f;
         }
-        return hoo_double_array_from_buffer_func_;
+        // Declare hoo_double_array_from_buffer
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),  // data pointer
+            LLVMType::getInt64Ty(context_)         // length
+        };
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        return Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_.get());
     }
 
-    std::cerr << "Error: No array from_buffer function for element type" << std::endl;
+    addError("No array from_buffer function for element type");
     return nullptr;
 }
 
@@ -1537,7 +1642,7 @@ llvm::Value* LLVMCodeGenerator::generateArrayLiteralWithRuntime(
     // Get the array creation function for this element type
     auto arrayFunc = getArrayFromBufferFunc(elementType);
     if (!arrayFunc) {
-        std::cerr << "Error: No array creation function for element type" << std::endl;
+        addError("No array creation function for element type");
         return nullptr;
     }
 
@@ -1567,7 +1672,7 @@ llvm::Value* LLVMCodeGenerator::generateDynamicArrayLiteral(
     // Phase 7: New API - hoo_array_new() takes no parameters
     auto arrayNewFunc = getArrayNewFunc(0);  // elementSize parameter ignored
     if (!arrayNewFunc) {
-        std::cerr << "Error: Failed to declare hoo_array_new function" << std::endl;
+        addError("Failed to declare hoo_array_new function");
         return nullptr;
     }
 
@@ -1578,7 +1683,7 @@ llvm::Value* LLVMCodeGenerator::generateDynamicArrayLiteral(
     // Get the type-specific push function for this element type
     auto arrayPushFunc = getArrayPushFuncForType(elementType);
     if (!arrayPushFunc) {
-        std::cerr << "Error: Failed to get type-specific array push function" << std::endl;
+        addError("Failed to get type-specific array push function");
         return nullptr;
     }
 
@@ -1592,23 +1697,24 @@ llvm::Value* LLVMCodeGenerator::generateDynamicArrayLiteral(
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
-    if (!hoo_array_new_func_) {
-        // Phase 7: New API - hoo_array_new(void) with no parameters
-        // elementSize parameter is now ignored - the array uses std::any internally
-        std::vector<LLVMType*> params;  // No parameters
-        FunctionType* funcType = FunctionType::get(
-            llvm::PointerType::get(context_, 0),  // return HooArray (void*)
-            params,
-            false
-        );
-        hoo_array_new_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_new",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_new")) {
+        return f;
     }
-    return hoo_array_new_func_;
+    // Phase 7: New API - hoo_array_new(void) with no parameters
+    // elementSize parameter is now ignored - the array uses std::any internally
+    std::vector<LLVMType*> params;  // No parameters
+    FunctionType* funcType = FunctionType::get(
+        llvm::PointerType::get(context_, 0),  // return HooArray (void*)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_new",
+        module_.get()
+    );
 }
 
 // ============================================================================
@@ -1616,129 +1722,135 @@ llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
 // ============================================================================
 
 llvm::Function* LLVMCodeGenerator::getArrayPushInt64Func() {
-    if (!hoo_array_push_int64_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            LLVMType::getInt64Ty(context_)        // int64_t value
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_int64_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_int64",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_push_int64")) {
+        return f;
     }
-    return hoo_array_push_int64_func_;
+    std::vector<LLVMType*> params = {
+        llvm::PointerType::get(context_, 0),  // HooArray
+        LLVMType::getInt64Ty(context_)        // int64_t value
+    };
+    FunctionType* funcType = FunctionType::get(
+        LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_push_int64",
+        module_.get()
+    );
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushDoubleFunc() {
-    if (!hoo_array_push_double_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            LLVMType::getDoubleTy(context_)       // double value
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_double_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_double",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_push_double")) {
+        return f;
     }
-    return hoo_array_push_double_func_;
+    std::vector<LLVMType*> params = {
+        llvm::PointerType::get(context_, 0),  // HooArray
+        LLVMType::getDoubleTy(context_)       // double value
+    };
+    FunctionType* funcType = FunctionType::get(
+        LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_push_double",
+        module_.get()
+    );
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushFloatFunc() {
-    if (!hoo_array_push_float_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            LLVMType::getFloatTy(context_)        // float value
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_float_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_float",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_push_float")) {
+        return f;
     }
-    return hoo_array_push_float_func_;
+    std::vector<LLVMType*> params = {
+        llvm::PointerType::get(context_, 0),  // HooArray
+        LLVMType::getFloatTy(context_)        // float value
+    };
+    FunctionType* funcType = FunctionType::get(
+        LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_push_float",
+        module_.get()
+    );
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushBoolFunc() {
-    if (!hoo_array_push_bool_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            LLVMType::getInt64Ty(context_)        // int64_t bool (0 or 1)
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_bool_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_bool",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_push_bool")) {
+        return f;
     }
-    return hoo_array_push_bool_func_;
+    std::vector<LLVMType*> params = {
+        llvm::PointerType::get(context_, 0),  // HooArray
+        LLVMType::getInt64Ty(context_)        // int64_t bool (0 or 1)
+    };
+    FunctionType* funcType = FunctionType::get(
+        LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_push_bool",
+        module_.get()
+    );
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushCharFunc() {
-    if (!hoo_array_push_char_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            LLVMType::getInt8Ty(context_)         // char value (i8)
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_char_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_char",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_push_char")) {
+        return f;
     }
-    return hoo_array_push_char_func_;
+    std::vector<LLVMType*> params = {
+        llvm::PointerType::get(context_, 0),  // HooArray
+        LLVMType::getInt8Ty(context_)         // char value (i8)
+    };
+    FunctionType* funcType = FunctionType::get(
+        LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_push_char",
+        module_.get()
+    );
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushObjectFunc() {
-    if (!hoo_array_push_object_func_) {
-        std::vector<LLVMType*> params = {
-            llvm::PointerType::get(context_, 0),  // HooArray
-            llvm::PointerType::get(context_, 0)   // void* (object pointer)
-        };
-        FunctionType* funcType = FunctionType::get(
-            LLVMType::getInt64Ty(context_),       // return int64_t (new length)
-            params,
-            false
-        );
-        hoo_array_push_object_func_ = Function::Create(
-            funcType,
-            Function::ExternalLinkage,
-            "hoo_array_push_object",
-            module_.get()
-        );
+    // Check if already declared
+    if (auto* f = module_->getFunction("hoo_array_push_object")) {
+        return f;
     }
-    return hoo_array_push_object_func_;
+    std::vector<LLVMType*> params = {
+        llvm::PointerType::get(context_, 0),  // HooArray
+        llvm::PointerType::get(context_, 0)   // void* (object pointer)
+    };
+    FunctionType* funcType = FunctionType::get(
+        LLVMType::getInt64Ty(context_),       // return int64_t (new length)
+        params,
+        false
+    );
+    return Function::Create(
+        funcType,
+        Function::ExternalLinkage,
+        "hoo_array_push_object",
+        module_.get()
+    );
 }
 
 llvm::Function* LLVMCodeGenerator::getArrayPushFuncForType(llvm::Type* elementType) {
@@ -1947,71 +2059,6 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
     registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);
-
-    // ========================================================================
-    // Sync Legacy Function Pointers (for backward compatibility)
-    // ========================================================================
-    // The new architecture uses runtimeFunctionStorage_.strings, but the rest
-    // of the code still uses individual function pointers. Sync them here.
-    // This will be removed once all code is refactored to use storage.
-
-    auto& stringStorage = runtimeFunctionStorage_.strings;
-    hoo_string_from_cstr_func_ = stringStorage.hoo_string_from_cstr_func;
-    hoo_string_new_func_ = stringStorage.hoo_string_new_func;
-    hoo_string_from_bytes_func_ = stringStorage.hoo_string_from_bytes_func;
-    hoo_string_repeat_func_ = stringStorage.hoo_string_repeat_func;
-    hoo_string_concat_func_ = stringStorage.hoo_string_concat_func;
-    hoo_string_substring_func_ = stringStorage.hoo_string_substring_func;
-    hoo_string_to_upper_func_ = stringStorage.hoo_string_to_upper_func;
-    hoo_string_to_lower_func_ = stringStorage.hoo_string_to_lower_func;
-    hoo_string_trim_func_ = stringStorage.hoo_string_trim_func;
-    hoo_string_replace_func_ = stringStorage.hoo_string_replace_func;
-    hoo_string_split_func_ = stringStorage.hoo_string_split_func;
-    hoo_string_length_func_ = stringStorage.hoo_string_length_func;
-    hoo_string_data_func_ = stringStorage.hoo_string_data_func;
-    hoo_string_byte_at_func_ = stringStorage.hoo_string_byte_at_func;
-    hoo_string_is_empty_func_ = stringStorage.hoo_string_is_empty_func;
-    hoo_string_index_of_func_ = stringStorage.hoo_string_index_of_func;
-    hoo_string_last_index_of_func_ = stringStorage.hoo_string_last_index_of_func;
-    hoo_string_contains_func_ = stringStorage.hoo_string_contains_func;
-    hoo_string_starts_with_func_ = stringStorage.hoo_string_starts_with_func;
-    hoo_string_ends_with_func_ = stringStorage.hoo_string_ends_with_func;
-    hoo_string_compare_func_ = stringStorage.hoo_string_compare_func;
-    hoo_string_equals_func_ = stringStorage.hoo_string_equals_func;
-    hoo_string_equals_ignore_case_func_ = stringStorage.hoo_string_equals_ignore_case_func;
-    hoo_string_retain_func_ = stringStorage.hoo_string_retain_func;
-    hoo_string_release_func_ = stringStorage.hoo_string_release_func;
-    hoo_string_refcount_func_ = stringStorage.hoo_string_refcount_func;
-    hoo_string_from_int64_func_ = stringStorage.hoo_string_from_int64_func;
-    hoo_string_from_double_func_ = stringStorage.hoo_string_from_double_func;
-    hoo_string_from_bool_func_ = stringStorage.hoo_string_from_bool_func;
-    hoo_string_to_int64_func_ = stringStorage.hoo_string_to_int64_func;
-    hoo_string_to_double_func_ = stringStorage.hoo_string_to_double_func;
-    hoo_string_format_func_ = stringStorage.hoo_string_format_func;
-    hoo_string_print_func_ = stringStorage.hoo_string_print_func;
-    hoo_string_println_func_ = stringStorage.hoo_string_println_func;
-    hoo_string_debug_func_ = stringStorage.hoo_string_debug_func;
-
-    // Sync Array function pointers from storage
-    auto& arrayStorage = runtimeFunctionStorage_.arrays;
-    hoo_array_new_func_ = arrayStorage.hoo_array_new_func;
-    hoo_array_from_buffer_func_ = arrayStorage.hoo_array_from_buffer_func;
-    hoo_array_repeat_func_ = arrayStorage.hoo_array_repeat_func;
-    hoo_array_length_func_ = arrayStorage.hoo_array_length_func;
-    hoo_array_get_func_ = arrayStorage.hoo_array_get_func;
-    hoo_array_set_func_ = arrayStorage.hoo_array_set_func;
-    hoo_array_pop_func_ = arrayStorage.hoo_array_pop_func;
-    hoo_array_push_int64_func_ = arrayStorage.hoo_array_push_int64_func;
-    hoo_array_push_double_func_ = arrayStorage.hoo_array_push_double_func;
-    hoo_array_push_float_func_ = arrayStorage.hoo_array_push_float_func;
-    hoo_array_push_bool_func_ = arrayStorage.hoo_array_push_bool_func;
-    hoo_array_push_char_func_ = arrayStorage.hoo_array_push_char_func;
-    hoo_array_get_int64_func_ = arrayStorage.hoo_array_get_int64_func;
-    hoo_array_retain_func_ = arrayStorage.hoo_array_retain_func;
-    hoo_array_release_func_ = arrayStorage.hoo_array_release_func;
-    hoo_array_refcount_func_ = arrayStorage.hoo_array_refcount_func;
-    hoo_array_empty_func_ = arrayStorage.hoo_array_empty_func;
-    hoo_array_clear_func_ = arrayStorage.hoo_array_clear_func;
 }
 
 // ============================================================================
@@ -2034,50 +2081,52 @@ Value* LLVMCodeGenerator::tryStringOperator(
     // Dispatch to appropriate operator
     switch (op) {
         case ASTBinaryOperator::PLUS:
-            if (!hoo_string_concat_func_) return nullptr;
-            return builder_->CreateCall(hoo_string_concat_func_, {left, right}, "concat_result");
+            if (auto* f = getStringFunc("concat")) {
+                return builder_->CreateCall(f, {left, right}, "concat_result");
+            }
+            return nullptr;
 
         case ASTBinaryOperator::EQUALS:
-            if (!hoo_string_equals_func_) return nullptr;
-            {
-                Value* result = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "equals_result");
+            if (auto* f = getStringFunc("equals")) {
+                Value* result = builder_->CreateCall(f, {left, right}, "equals_result");
                 return builder_->CreateICmpNE(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
             }
+            return nullptr;
 
         case ASTBinaryOperator::NOT_EQUALS:
-            if (!hoo_string_equals_func_) return nullptr;
-            {
-                Value* result = builder_->CreateCall(hoo_string_equals_func_, {left, right}, "neq_result");
+            if (auto* f = getStringFunc("equals")) {
+                Value* result = builder_->CreateCall(f, {left, right}, "neq_result");
                 return builder_->CreateICmpEQ(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
             }
+            return nullptr;
 
         case ASTBinaryOperator::LESS:
-            if (!hoo_string_compare_func_) return nullptr;
-            {
-                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+            if (auto* f = getStringFunc("compare")) {
+                Value* result = builder_->CreateCall(f, {left, right}, "cmp_result");
                 return builder_->CreateICmpSLT(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
             }
+            return nullptr;
 
         case ASTBinaryOperator::LESS_EQUALS:
-            if (!hoo_string_compare_func_) return nullptr;
-            {
-                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+            if (auto* f = getStringFunc("compare")) {
+                Value* result = builder_->CreateCall(f, {left, right}, "cmp_result");
                 return builder_->CreateICmpSLE(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
             }
+            return nullptr;
 
         case ASTBinaryOperator::GREATER:
-            if (!hoo_string_compare_func_) return nullptr;
-            {
-                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+            if (auto* f = getStringFunc("compare")) {
+                Value* result = builder_->CreateCall(f, {left, right}, "cmp_result");
                 return builder_->CreateICmpSGT(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
             }
+            return nullptr;
 
         case ASTBinaryOperator::GREATER_EQUALS:
-            if (!hoo_string_compare_func_) return nullptr;
-            {
-                Value* result = builder_->CreateCall(hoo_string_compare_func_, {left, right}, "cmp_result");
+            if (auto* f = getStringFunc("compare")) {
+                Value* result = builder_->CreateCall(f, {left, right}, "cmp_result");
                 return builder_->CreateICmpSGE(result, ConstantInt::get(LLVMType::getInt64Ty(context_), 0));
             }
+            return nullptr;
 
         default:
             return nullptr;
@@ -2388,7 +2437,7 @@ Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression&
             for (size_t i = 0; i < argsList.size(); ++i) {
                 Value* argValue = generateLLVMExpression(*argsList[i]);
                 if (!argValue) {
-                    std::cerr << "Failed to generate constructor argument" << std::endl;
+                    addError("Failed to generate constructor argument");
                     return nullptr;
                 }
 
@@ -2450,7 +2499,7 @@ llvm::Value* LLVMCodeGenerator::generateStdClassConstructor(const ModuleExport& 
     }
 
     // Unknown standard library class - should not reach here
-    std::cerr << "Unknown standard library class: " << moduleExport.runtimeClassName << std::endl;
+    addError("Unknown standard library class: " + moduleExport.runtimeClassName);
     return nullptr;
 }
 
@@ -2466,18 +2515,19 @@ llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectEx
 
     if (!args || args->getArguments().empty()) {
         // new std.String() - create empty string
-        if (!hoo_string_new_func_) {
-            std::cerr << "hoo_string_new function not declared" << std::endl;
+        auto* newStringFunc = getStringFunc("new");
+        if (!newStringFunc) {
+            addError("hoo_string_new function not declared");
             return nullptr;
         }
-        return builder_->CreateCall(hoo_string_new_func_, {}, "new_string");
+        return builder_->CreateCall(newStringFunc, {}, "new_string");
     }
 
     // Get the first argument
     const auto& firstArg = args->getArguments()[0];
     llvm::Value* argValue = generateLLVMExpression(*firstArg);
     if (!argValue) {
-        std::cerr << "Failed to generate String constructor argument" << std::endl;
+        addError("Failed to generate String constructor argument");
         return nullptr;
     }
 
@@ -2486,11 +2536,12 @@ llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectEx
 
     // If it's a string literal or pointer to i8 (C string), use hoo_string_from_cstr
     if (argType->isPointerTy()) {
-        if (!hoo_string_from_cstr_func_) {
-            std::cerr << "hoo_string_from_cstr function not declared" << std::endl;
+        auto* fromCstrFunc = getStringFunc("from_cstr");
+        if (!fromCstrFunc) {
+            addError("hoo_string_from_cstr function not declared");
             return nullptr;
         }
-        return builder_->CreateCall(hoo_string_from_cstr_func_, {argValue}, "new_string");
+        return builder_->CreateCall(fromCstrFunc, {argValue}, "new_string");
     }
 
     // If it's a HooString pointer, return as-is (already a string)
@@ -2499,7 +2550,7 @@ llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectEx
         return argValue;
     }
 
-    std::cerr << "Invalid argument type for std.String constructor" << std::endl;
+    addError("Invalid argument type for std.String constructor");
     return nullptr;
 }
 
@@ -2511,7 +2562,7 @@ llvm::Value* LLVMCodeGenerator::generateArrayConstructor(const ast::NewObjectExp
     // Get the array_new function (declares it if needed)
     llvm::Function* arrayNewFunc = getArrayNewFunc(0);  // elementSize parameter ignored in Phase 7
     if (!arrayNewFunc) {
-        std::cerr << "hoo_array_new function could not be declared" << std::endl;
+        addError("hoo_array_new function could not be declared");
         return nullptr;
     }
 

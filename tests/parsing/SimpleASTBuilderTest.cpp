@@ -577,6 +577,131 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithForLoopBreak) {
     EXPECT_EQ(ast->getDeclarations().size(), 1U);
 }
 
+// ===== Break/Continue Statement Tests =====
+
+TEST_F(SimpleASTBuilderTest, BuildWhileWithBreak) {
+    std::string code = R"(
+        func test() -> void {
+            var count = 0;
+            while count < 10 {
+                count = count + 1;
+                if (count == 5) {
+                    break;
+                }
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildWhileWithContinue) {
+    std::string code = R"(
+        func test() -> void {
+            var count = 0;
+            var sum = 0;
+            while count < 10 {
+                count = count + 1;
+                if (count % 2 == 0) {
+                    continue;
+                }
+                sum = sum + count;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildForRangeWithBreak) {
+    std::string code = R"(
+        func test() -> void {
+            var sum = 0;
+            for i in 0 .. 100 {
+                sum = sum + i;
+                if (sum > 100) {
+                    break;
+                }
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildForInWithContinue) {
+    std::string code = R"(
+        func test() -> void {
+            var arr = [1, 2, 3, 4, 5];
+            var sum = 0;
+            for item in arr {
+                if (item == 3) {
+                    continue;
+                }
+                sum = sum + item;
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildNestedLoopWithBreak) {
+    std::string code = R"(
+        func test() -> void {
+            var found = false;
+            for i in 0 .. 10 {
+                for j in 0 .. 10 {
+                    if (i * j == 25) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    break;
+                }
+            }
+            return;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1U);
+}
+
 // ===== Import Statement Tests =====
 
 TEST_F(SimpleASTBuilderTest, BuildBasicImport) {

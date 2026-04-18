@@ -147,7 +147,61 @@ public:
     /// @note Must be called before generating code that uses runtime functions
     void declareRuntimeFunctions();
 
+// ========================================================================
+    // Runtime Function Access
+    // ========================================================================
+
+    /// @brief Get a string runtime function by name
+    /// @param name Function name suffix (e.g., "from_cstr" for hoo_string_from_cstr)
+    /// @return Function pointer, or nullptr if not found
+    llvm::Function* getStringFunc(const std::string& name);
+
+    /// @brief Get an array runtime function by name
+    /// @param name Function name suffix (e.g., "length" for hoo_array_length)
+    /// @return Function pointer, or nullptr if not found
+    llvm::Function* getArrayFunc(const std::string& name);
+
+    /// @brief Get core allocation function
+    llvm::Function* getAllocFunc() const { return hoo_alloc_func_; }
+
+    /// @brief Get core retain function
+    llvm::Function* getRetainFunc() const { return hoo_retain_func_; }
+
+    /// @brief Get core release function
+    llvm::Function* getReleaseFunc() const { return hoo_release_func_; }
+
+    // ========================================================================
+    // Error Handling
+    // ========================================================================
+
+    /// @brief Add an error message
+    void addError(const std::string& message);
+
+    /// @brief Add an error with location info
+    void addError(const std::string& message, int line, int column);
+
+    /// @brief Get all accumulated errors
+    const std::vector<std::string>& getErrors() const { return errors_; }
+
+    /// @brief Check if any errors occurred
+    bool hasErrors() const { return !errors_.empty(); }
+
+    /// @brief Clear all errors
+    void clearErrors() { errors_.clear(); }
+
+    /// @brief Get last error message
+    std::string getLastError() const {
+        return errors_.empty() ? "" : errors_.back();
+    }
+
 private:
+
+    // ========================================================================
+    // Error State
+    // ========================================================================
+
+    /// @brief Accumulated error messages
+    std::vector<std::string> errors_;
 
     // ========================================================================
     // Core State
@@ -161,6 +215,17 @@ private:
 
     /// @brief IR builder for instruction emission
     std::unique_ptr<llvm::IRBuilder<>> builder_;
+
+    // ========================================================================
+    // Loop Context for break/continue
+    // ========================================================================
+
+    struct LoopContext {
+        llvm::BasicBlock* breakBlock;
+        llvm::BasicBlock* continueBlock;
+    };
+
+    std::vector<LoopContext> loopStack_;
 
     // ========================================================================
     // Symbol Tables
@@ -211,152 +276,6 @@ private:
     /// @brief Central storage for runtime function pointers
     /// @details Populated by RuntimeRegistry callbacks during declareRuntimeFunctions()
     runtime::RuntimeFunctionStorage runtimeFunctionStorage_;
-
-    // ========================================================================
-    // String Runtime Function Pointers (Legacy)
-    // ========================================================================
-
-    /// @brief hoo_string_from_cstr(cstr) - Create string from C string
-    llvm::Function* hoo_string_from_cstr_func_ = nullptr;
-
-    /// @brief hoo_string_new() - Create empty string
-    llvm::Function* hoo_string_new_func_ = nullptr;
-
-    /// @brief hoo_string_from_bytes(bytes, length) - Create string from bytes
-    llvm::Function* hoo_string_from_bytes_func_ = nullptr;
-
-    /// @brief hoo_string_repeat(str, count) - Repeat string
-    llvm::Function* hoo_string_repeat_func_ = nullptr;
-
-    /// @brief hoo_string_concat(left, right) - Concatenate strings
-    llvm::Function* hoo_string_concat_func_ = nullptr;
-
-    /// @brief hoo_string_substring(str, start, length) - Extract substring
-    llvm::Function* hoo_string_substring_func_ = nullptr;
-
-    /// @brief hoo_string_to_upper(str) - Convert to uppercase
-    llvm::Function* hoo_string_to_upper_func_ = nullptr;
-
-    /// @brief hoo_string_to_lower(str) - Convert to lowercase
-    llvm::Function* hoo_string_to_lower_func_ = nullptr;
-
-    /// @brief hoo_string_trim(str) - Remove whitespace
-    llvm::Function* hoo_string_trim_func_ = nullptr;
-
-    /// @brief hoo_string_replace(str, old, new) - Find and replace
-    llvm::Function* hoo_string_replace_func_ = nullptr;
-
-    /// @brief hoo_string_split(str, delim) - Split into array
-    llvm::Function* hoo_string_split_func_ = nullptr;
-
-    /// @brief hoo_string_length(str) - Get string length
-    llvm::Function* hoo_string_length_func_ = nullptr;
-
-    /// @brief hoo_string_data(str) - Get C string data pointer
-    llvm::Function* hoo_string_data_func_ = nullptr;
-
-    /// @brief hoo_string_byte_at(str, index) - Get byte at index
-    llvm::Function* hoo_string_byte_at_func_ = nullptr;
-
-    /// @brief hoo_string_is_empty(str) - Check if empty
-    llvm::Function* hoo_string_is_empty_func_ = nullptr;
-
-    /// @brief hoo_string_index_of(str, char) - Find character index
-    llvm::Function* hoo_string_index_of_func_ = nullptr;
-
-    /// @brief hoo_string_last_index_of(str, char) - Find last occurrence
-    llvm::Function* hoo_string_last_index_of_func_ = nullptr;
-
-    /// @brief hoo_string_contains(str, substring) - Check containment
-    llvm::Function* hoo_string_contains_func_ = nullptr;
-
-    /// @brief hoo_string_starts_with(str, prefix) - Check prefix
-    llvm::Function* hoo_string_starts_with_func_ = nullptr;
-
-    /// @brief hoo_string_ends_with(str, suffix) - Check suffix
-    llvm::Function* hoo_string_ends_with_func_ = nullptr;
-
-    /// @brief hoo_string_compare(left, right) - Compare strings, returns <0, 0, >0
-    llvm::Function* hoo_string_compare_func_ = nullptr;
-
-    /// @brief hoo_string_equals(left, right) - Check equality
-    llvm::Function* hoo_string_equals_func_ = nullptr;
-
-    /// @brief hoo_string_equals_ignore_case(left, right) - Case-insensitive equality
-    llvm::Function* hoo_string_equals_ignore_case_func_ = nullptr;
-
-    /// @brief hoo_string_retain(str) - Retain ownership
-    llvm::Function* hoo_string_retain_func_ = nullptr;
-
-    /// @brief hoo_string_release(str) - Release ownership
-    llvm::Function* hoo_string_release_func_ = nullptr;
-
-    /// @brief hoo_string_refcount(str) - Get reference count
-    llvm::Function* hoo_string_refcount_func_ = nullptr;
-
-    /// @brief hoo_string_from_int64(value) - Convert int64 to string
-    llvm::Function* hoo_string_from_int64_func_ = nullptr;
-
-    /// @brief hoo_string_from_double(value) - Convert double to string
-    llvm::Function* hoo_string_from_double_func_ = nullptr;
-
-    /// @brief hoo_string_from_bool(value) - Convert bool to string
-    llvm::Function* hoo_string_from_bool_func_ = nullptr;
-
-    /// @brief hoo_string_to_int64(str) - Parse int64 from string
-    llvm::Function* hoo_string_to_int64_func_ = nullptr;
-
-    /// @brief hoo_string_to_double(str) - Parse double from string
-    llvm::Function* hoo_string_to_double_func_ = nullptr;
-
-    /// @brief hoo_string_format(format, ...) - Format string
-    llvm::Function* hoo_string_format_func_ = nullptr;
-
-    /// @brief hoo_string_print(str) - Print to stdout
-    llvm::Function* hoo_string_print_func_ = nullptr;
-
-    /// @brief hoo_string_println(str) - Print line to stdout
-    llvm::Function* hoo_string_println_func_ = nullptr;
-
-    /// @brief hoo_string_debug(str) - Debug representation
-    llvm::Function* hoo_string_debug_func_ = nullptr;
-
-    // ========================================================================
-    // Array Runtime Function Pointers
-    // ========================================================================
-
-    /// @brief hoo_int64_array_from_buffer(data, length) - Create from int64 buffer
-    llvm::Function* hoo_int64_array_from_buffer_func_ = nullptr;
-
-    /// @brief hoo_double_array_from_buffer(data, length) - Create from double buffer
-    llvm::Function* hoo_double_array_from_buffer_func_ = nullptr;
-
-    /// @brief hoo_array_new() - Create empty dynamic array
-    llvm::Function* hoo_array_new_func_ = nullptr;
-
-    // Type-specific push functions for generic array
-    llvm::Function* hoo_array_push_int64_func_ = nullptr;
-    llvm::Function* hoo_array_push_double_func_ = nullptr;
-    llvm::Function* hoo_array_push_float_func_ = nullptr;
-    llvm::Function* hoo_array_push_bool_func_ = nullptr;
-    llvm::Function* hoo_array_push_char_func_ = nullptr;
-    llvm::Function* hoo_array_push_object_func_ = nullptr;
-
-    // Type-specific get functions
-    llvm::Function* hoo_array_get_int64_func_ = nullptr;
-
-    // Callback-synced array functions
-    llvm::Function* hoo_array_from_buffer_func_ = nullptr;
-    llvm::Function* hoo_array_repeat_func_ = nullptr;
-    llvm::Function* hoo_array_length_func_ = nullptr;
-    llvm::Function* hoo_array_get_func_ = nullptr;
-    llvm::Function* hoo_array_set_func_ = nullptr;
-    llvm::Function* hoo_array_pop_func_ = nullptr;
-    llvm::Function* hoo_array_retain_func_ = nullptr;
-    llvm::Function* hoo_array_release_func_ = nullptr;
-    llvm::Function* hoo_array_refcount_func_ = nullptr;
-    llvm::Function* hoo_array_empty_func_ = nullptr;
-    llvm::Function* hoo_array_clear_func_ = nullptr;
 
     // ========================================================================
     // Operator Dispatch (Auto-generated via X-Macro)
@@ -522,6 +441,18 @@ private:
     /// @brief Generate for-range loop (iterate numeric range)
     /// @param stmt ForRange statement node
     void generateForRangeStatement(const ast::ForRangeStatement& stmt);
+
+    /// @brief Generate scope statement (explicit block scope)
+    /// @param stmt Scope statement node
+    void generateScopeStatement(const ast::ScopeStatement& stmt);
+
+    /// @brief Generate break statement (exit enclosing loop)
+    /// @param stmt Break statement node
+    void generateBreakStatement(const ast::BreakStatement& stmt);
+
+    /// @brief Generate continue statement (skip to next iteration)
+    /// @param stmt Continue statement node
+    void generateContinueStatement(const ast::ContinueStatement& stmt);
 
     /// @brief Generate variable declaration
     /// @param decl Variable declaration node

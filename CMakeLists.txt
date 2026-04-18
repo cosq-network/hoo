@@ -173,6 +173,7 @@ add_library(hoo-compiler
     src/runtime/llvm/RuntimeMethodRegistry.cpp
     src/runtime/llvm/hoo_string_registration.cpp
     src/runtime/llvm/hoo_array_registration.cpp
+    src/runtime/llvm/hoo_io_registration.cpp
     src/runtime/llvm/RuntimeStringMethodsRegistration.cpp
 )
 
@@ -182,11 +183,13 @@ else()
     set(HOOC_RUNTIME_LIBRARY_TYPE STATIC)
 endif()
 
-# Hooc runtime library (reference counting, memory management, string support, generic array support)
+# Hooc runtime library (reference counting, memory management, string support, generic array support, I/O)
 add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_string.cpp
     src/runtime/lib/hoo_generic_array.cpp
+    src/runtime/lib/hoo_io.cpp
+    src/runtime/llvm/hoo_io_registration.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -315,11 +318,13 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/QualifiedIdentifierCodeGenTest.cpp
         tests/codegen/ImportStatementCodeGenTest.cpp
         tests/codegen/ModuleRegistryTest.cpp
+        tests/codegen/LLVMCodeGeneratorComprehensiveTest.cpp
         tests/runtime/ArrayGenericRuntimeTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp
         tests/integration/ArrayGenericIntegrationTest.cpp
         tests/jit/HoocJITTest.cpp
+        tests/jit/IOFunctionTest.cpp
         tests/core/HooCompilerTest.cpp
     )
 

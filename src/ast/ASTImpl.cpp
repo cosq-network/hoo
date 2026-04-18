@@ -194,6 +194,14 @@ std::string VariableDeclarationStatement::toString() const {
     return "VariableDeclarationStatement(" + declaration_->toString() + ")";
 }
 
+std::string BreakStatement::toString() const {
+    return "BreakStatement";
+}
+
+std::string ContinueStatement::toString() const {
+    return "ContinueStatement";
+}
+
 // Expression implementations
 std::string PrimaryExpression::toString() const {
     std::stringstream ss;
