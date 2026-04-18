@@ -194,8 +194,22 @@ jobs:
 
       - name: Setup LLVM
         run: |
-          choco install llvm --version=18.1.8 -y
-          echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Check if LLVM is already installed (GitHub runners often have it pre-installed)
+          $llvmPath = "C:\Program Files\LLVM\bin"
+          if (Test-Path $llvmPath) {
+            Write-Host "LLVM already installed, using existing installation"
+            $llvmVersion = & "$llvmPath\clang.exe" --version | Select-String -Pattern "version\s+(\d+\.\d+\.\d+)" | ForEach-Object { $_.Matches.Groups[1].Value }
+            Write-Host "LLVM version: $llvmVersion"
+          } else {
+            Write-Host "Installing LLVM..."
+            choco install llvm -y
+          }
+
+          # Add LLVM to PATH
+          echo "$llvmPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+          # Verify installation
+          & "$llvmPath\clang.exe" --version
 
       - name: Cache ANTLR4 Runtime
         id: cache-antlr4
@@ -246,10 +260,18 @@ jobs:
       - name: Configure CMake
         shell: pwsh
         run: |
+          # Find LLVM installation directory
+          $llvmDir = "C:\Program Files\LLVM\lib\cmake\llvm"
+          if (-not (Test-Path $llvmDir)) {
+            Write-Error "LLVM CMake directory not found at: $llvmDir"
+            exit 1
+          }
+          Write-Host "Using LLVM_DIR: $llvmDir"
+
           cmake -S . -B build -G "Visual Studio 17 2022" -A x64 `
             -DHOOC_BUILD_TESTS=ON `
             -DCMAKE_TOOLCHAIN_FILE="${env:VCPKG_ROOT}\scripts\buildsystems\vcpkg.cmake" `
-            -DLLVM_DIR="C:\Program Files\LLVM\lib\cmake\llvm" `
+            -DLLVM_DIR="$llvmDir" `
             -DANTLR4_INCLUDE_DIR="D:\antlr4-runtime\include\antlr4-runtime" `
             -DANTLR4_LIBRARY="D:\antlr4-runtime\lib\antlr4-runtime.lib"
 
