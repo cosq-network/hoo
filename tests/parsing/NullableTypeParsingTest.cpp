@@ -22,7 +22,7 @@ using namespace hooc::ast;
  * - var x: int64? = null;           // nullable integer
  * - var name: string? = null;       // nullable string
  * - var items: int64[]? = null;     // nullable array
- * - func process(val: int64?) -> void  // nullable parameter
+ * - func process(val: int64?)  // nullable parameter
  */
 class NullableTypeParsingTest : public ::testing::Test {
 protected:
@@ -64,7 +64,7 @@ protected:
 // Test 1: Simple nullable primitive type in function
 TEST_F(NullableTypeParsingTest, SimpleNullableInt64Type) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: int64? = 0;
         }
     )";
@@ -97,7 +97,7 @@ TEST_F(NullableTypeParsingTest, SimpleNullableInt64Type) {
 // Test 2: Nullable type in function parameter
 TEST_F(NullableTypeParsingTest, NullableTypeInFunctionParameter) {
     std::string code = R"(
-        func process(value: int64?) -> void {
+        func process(value: int64?) {
         }
     )";
 
@@ -140,7 +140,7 @@ TEST_F(NullableTypeParsingTest, NullableTypeInFunctionParameter) {
 // Test 3: Nullable array type in function parameter
 TEST_F(NullableTypeParsingTest, NullableArrayTypeInParameter) {
     std::string code = R"(
-        func processArray(items: int64[]?) -> void {
+        func processArray(items: int64[]?) {
         }
     )";
 
@@ -180,7 +180,7 @@ TEST_F(NullableTypeParsingTest, NullableArrayTypeInParameter) {
 // Test 4: Multiple nullable parameters
 TEST_F(NullableTypeParsingTest, MultipleNullableParameters) {
     std::string code = R"(
-        func multiParam(a: int64?, b: string?, c: double?) -> void {
+        func multiParam(a: int64?, b: string?, c: double?) {
         }
     )";
 
@@ -208,7 +208,7 @@ TEST_F(NullableTypeParsingTest, MultipleNullableParameters) {
 // Test 5: Non-nullable type (should work as before)
 TEST_F(NullableTypeParsingTest, NonNullableTypeInParameter) {
     std::string code = R"(
-        func nonNull(value: int64) -> void {
+        func nonNull(value: int64) {
         }
     )";
 
@@ -245,7 +245,7 @@ TEST_F(NullableTypeParsingTest, NonNullableTypeInParameter) {
 // Test 6: Nullable array with multiple dimensions - int64[][]?
 TEST_F(NullableTypeParsingTest, NullableMultiDimensionalArray) {
     std::string code = R"(
-        func matrix(data: int64[][]?) -> void {
+        func matrix(data: int64[][]?) {
         }
     )";
 
@@ -284,7 +284,7 @@ TEST_F(NullableTypeParsingTest, NullableMultiDimensionalArray) {
 // Test 8: Nullable string type
 TEST_F(NullableTypeParsingTest, NullableStringType) {
     std::string code = R"(
-        func greet(message: string?) -> void {
+        func greet(message: string?) {
         }
     )";
 
@@ -311,7 +311,7 @@ TEST_F(NullableTypeParsingTest, NullableStringType) {
 // Test 9: Nullable boolean type
 TEST_F(NullableTypeParsingTest, NullableBoolType) {
     std::string code = R"(
-        func validateFlag(flag: bool?) -> void {
+        func validateFlag(flag: bool?) {
         }
     )";
 
@@ -334,7 +334,7 @@ TEST_F(NullableTypeParsingTest, NullableBoolType) {
 // Test 10: Nullable char type
 TEST_F(NullableTypeParsingTest, NullableCharType) {
     std::string code = R"(
-        func processChar(ch: char?) -> void {
+        func processChar(ch: char?) {
         }
     )";
 
@@ -357,7 +357,7 @@ TEST_F(NullableTypeParsingTest, NullableCharType) {
 // Test 11: Function return type as nullable
 TEST_F(NullableTypeParsingTest, NullableReturnType) {
     std::string code = R"(
-        func getValue() -> int64? {
+        func:int64? getValue() {
         }
     )";
 
@@ -381,7 +381,7 @@ TEST_F(NullableTypeParsingTest, NullableReturnType) {
 // Test 12: Multiple parameters with mixed nullable and non-nullable
 TEST_F(NullableTypeParsingTest, MixedNullabilityInMultipleParameters) {
     std::string code = R"(
-        func mixed(a: int64, b: int64?, c: string, d: string?) -> void {
+        func mixed(a: int64, b: int64?, c: string, d: string?) {
         }
     )";
 
@@ -410,7 +410,7 @@ TEST_F(NullableTypeParsingTest, MixedNullabilityInMultipleParameters) {
 // Test 13: Nullable float type
 TEST_F(NullableTypeParsingTest, NullableFloatType) {
     std::string code = R"(
-        func floatOp(val: float?) -> void {
+        func floatOp(val: float?) {
         }
     )";
 
@@ -434,7 +434,7 @@ TEST_F(NullableTypeParsingTest, NullableFloatType) {
 // Test 14: Nullable double/f64 type
 TEST_F(NullableTypeParsingTest, NullableDoubleType) {
     std::string code = R"(
-        func doubleOp(val: double?) -> void {
+        func doubleOp(val: double?) {
         }
     )";
 

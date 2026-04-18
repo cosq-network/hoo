@@ -47,11 +47,11 @@ protected:
 
 TEST_F(FunctionCallCodeGenTest, SimpleFunctionCall) {
     std::string code = R"(
-        func helper() -> int64 {
+        func:int64 helper() {
             return 42;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var result = helper();
             return result;
         }
@@ -75,11 +75,11 @@ TEST_F(FunctionCallCodeGenTest, SimpleFunctionCall) {
 
 TEST_F(FunctionCallCodeGenTest, FunctionCallWithParameters) {
     std::string code = R"(
-        func add(a: int64, b: int64) -> int64 {
+        func:int64 add(a: int64, b: int64) {
             return a + b;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var result = add(10, 20);
             return result;
         }
@@ -105,11 +105,11 @@ TEST_F(FunctionCallCodeGenTest, FunctionCallWithParameters) {
 
 TEST_F(FunctionCallCodeGenTest, FunctionCallWithMultipleParameters) {
     std::string code = R"(
-        func multiply(x: int64, y: int64, z: int64) -> int64 {
+        func:int64 multiply(x: int64, y: int64, z: int64) {
             return x * y * z;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var result = multiply(2, 3, 4);
             return result;
         }
@@ -130,11 +130,11 @@ TEST_F(FunctionCallCodeGenTest, FunctionCallWithMultipleParameters) {
 
 TEST_F(FunctionCallCodeGenTest, NestedFunctionCalls) {
     std::string code = R"(
-        func add(a: int64, b: int64) -> int64 {
+        func:int64 add(a: int64, b: int64) {
             return a + b;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var result = add(add(1, 2), add(3, 4));
             return result;
         }
@@ -161,7 +161,7 @@ TEST_F(FunctionCallCodeGenTest, NestedFunctionCalls) {
 
 TEST_F(FunctionCallCodeGenTest, RecursiveFunctionCall) {
     std::string code = R"(
-        func factorial(n: int64) -> int64 {
+        func:int64 factorial(n: int64) {
             if n <= 1 {
                 return 1;
             } else {
@@ -170,7 +170,7 @@ TEST_F(FunctionCallCodeGenTest, RecursiveFunctionCall) {
             }
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var result = factorial(5);
             return result;
         }
@@ -191,11 +191,11 @@ TEST_F(FunctionCallCodeGenTest, RecursiveFunctionCall) {
 
 TEST_F(FunctionCallCodeGenTest, FunctionCallInReturnStatement) {
     std::string code = R"(
-        func getValue() -> int64 {
+        func:int64 getValue() {
             return 100;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             return getValue();
         }
     )";
@@ -214,11 +214,11 @@ TEST_F(FunctionCallCodeGenTest, FunctionCallInReturnStatement) {
 
 TEST_F(FunctionCallCodeGenTest, FunctionCallInExpression) {
     std::string code = R"(
-        func getValue() -> int64 {
+        func:int64 getValue() {
             return 10;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var result = getValue() + 5;
             return result;
         }
@@ -239,11 +239,11 @@ TEST_F(FunctionCallCodeGenTest, FunctionCallInExpression) {
 
 TEST_F(FunctionCallCodeGenTest, MultipleFunctionCallsInOneFunction) {
     std::string code = R"(
-        func getA() -> int64 { return 10; }
-        func getB() -> int64 { return 20; }
-        func getC() -> int64 { return 30; }
+        func:int64 getA() { return 10; }
+        func:int64 getB() { return 20; }
+        func:int64 getC() { return 30; }
 
-        func test() -> int64 {
+        func:int64 test() {
             var a = getA();
             var b = getB();
             var c = getC();

@@ -57,7 +57,7 @@ protected:
 
 TEST_F(StringCodeGenTest, StringLiteralSimple) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var greeting = "Hello";
             return;
         }
@@ -81,7 +81,7 @@ TEST_F(StringCodeGenTest, StringLiteralSimple) {
 
 TEST_F(StringCodeGenTest, StringLiteralMultiple) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var greeting = "Hello";
             var name = "World";
             var punct = "!";
@@ -105,7 +105,7 @@ TEST_F(StringCodeGenTest, StringLiteralMultiple) {
 
 TEST_F(StringCodeGenTest, StringLiteralEmpty) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var empty = "";
             return;
         }
@@ -123,7 +123,7 @@ TEST_F(StringCodeGenTest, StringLiteralEmpty) {
 
 TEST_F(StringCodeGenTest, StringLiteralWithSpaces) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var message = "Hello, World!";
             return;
         }
@@ -145,7 +145,7 @@ TEST_F(StringCodeGenTest, StringLiteralWithSpaces) {
 
 TEST_F(StringCodeGenTest, StringConcatenationSimple) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var greeting = "Hello";
             var name = "World";
             var message = greeting + name;
@@ -169,7 +169,7 @@ TEST_F(StringCodeGenTest, StringConcatenationSimple) {
 
 TEST_F(StringCodeGenTest, StringConcatenationLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var message = "Hello" + "World";
             return;
         }
@@ -188,7 +188,7 @@ TEST_F(StringCodeGenTest, StringConcatenationLiteral) {
 
 TEST_F(StringCodeGenTest, StringConcatenationChained) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var result = "Hello" + ", " + "World" + "!";
             return;
         }
@@ -216,7 +216,7 @@ TEST_F(StringCodeGenTest, StringConcatenationChained) {
 
 TEST_F(StringCodeGenTest, StringConcatenationThreeOperands) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var greeting = "Hello";
             var comma = ", ";
             var name = "World";
@@ -241,7 +241,7 @@ TEST_F(StringCodeGenTest, StringConcatenationThreeOperands) {
 
 TEST_F(StringCodeGenTest, StringEqualityComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "hello";
             var s2 = "hello";
             if (s1 == s2) {
@@ -268,7 +268,7 @@ TEST_F(StringCodeGenTest, StringEqualityComparison) {
 
 TEST_F(StringCodeGenTest, StringEqualityWithLiterals) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var name = "Alice";
             if (name == "Alice") {
                 return;
@@ -289,7 +289,7 @@ TEST_F(StringCodeGenTest, StringEqualityWithLiterals) {
 
 TEST_F(StringCodeGenTest, StringEqualityTwoLiterals) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if ("hello" == "hello") {
                 return;
             }
@@ -313,7 +313,7 @@ TEST_F(StringCodeGenTest, StringEqualityTwoLiterals) {
 
 TEST_F(StringCodeGenTest, StringInequalityComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "hello";
             var s2 = "world";
             if (s1 != s2) {
@@ -336,7 +336,7 @@ TEST_F(StringCodeGenTest, StringInequalityComparison) {
 
 TEST_F(StringCodeGenTest, StringInequalityWithLiterals) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if ("hello" != "world") {
                 return;
             }
@@ -360,7 +360,7 @@ TEST_F(StringCodeGenTest, StringInequalityWithLiterals) {
 
 TEST_F(StringCodeGenTest, StringLessThanComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "apple";
             var s2 = "banana";
             if (s1 < s2) {
@@ -383,7 +383,7 @@ TEST_F(StringCodeGenTest, StringLessThanComparison) {
 
 TEST_F(StringCodeGenTest, StringLessThanLiterals) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if ("apple" < "banana") {
                 return;
             }
@@ -407,7 +407,7 @@ TEST_F(StringCodeGenTest, StringLessThanLiterals) {
 
 TEST_F(StringCodeGenTest, StringGreaterThanComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "zebra";
             var s2 = "apple";
             if (s1 > s2) {
@@ -434,7 +434,7 @@ TEST_F(StringCodeGenTest, StringGreaterThanComparison) {
 
 TEST_F(StringCodeGenTest, StringLessThanOrEqual) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "apple";
             var s2 = "apple";
             if (s1 <= s2) {
@@ -461,7 +461,7 @@ TEST_F(StringCodeGenTest, StringLessThanOrEqual) {
 
 TEST_F(StringCodeGenTest, StringGreaterThanOrEqual) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "zebra";
             var s2 = "zebra";
             if (s1 >= s2) {
@@ -488,7 +488,7 @@ TEST_F(StringCodeGenTest, StringGreaterThanOrEqual) {
 
 TEST_F(StringCodeGenTest, StringComplexExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var greeting = "Hello";
             var name = "World";
             var message = greeting + ", " + name + "!";
@@ -516,11 +516,11 @@ TEST_F(StringCodeGenTest, StringComplexExpression) {
 
 TEST_F(StringCodeGenTest, StringPassedToFunction) {
     std::string code = R"(
-        func print_string(s: string) -> void {
+        func print_string(s: string) {
             return;
         }
 
-        func test() -> void {
+        func test() {
             var msg = "Hello";
             print_string(msg);
             return;
@@ -543,12 +543,12 @@ TEST_F(StringCodeGenTest, StringPassedToFunction) {
 
 TEST_F(StringCodeGenTest, StringReturnType) {
     std::string code = R"(
-        func get_greeting() -> string {
+        func:string get_greeting() {
             var msg = "Hello";
             return msg;
         }
 
-        func test() -> void {
+        func test() {
             var greeting = get_greeting();
             return;
         }
@@ -573,7 +573,7 @@ TEST_F(StringCodeGenTest, StringReturnType) {
 
 TEST_F(StringCodeGenTest, MultipleStringOperations) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = "hello";
             var s2 = "world";
 
@@ -598,7 +598,7 @@ TEST_F(StringCodeGenTest, MultipleStringOperations) {
 
 TEST_F(StringCodeGenTest, StringVariableReuse) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var msg = "test";
 
             if (msg == "test") {
@@ -629,7 +629,7 @@ TEST_F(StringCodeGenTest, StringVariableReuse) {
 
 TEST_F(StringCodeGenTest, EmptyStringLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var empty = "";
             if (empty == "") {
                 return;
@@ -648,7 +648,7 @@ TEST_F(StringCodeGenTest, EmptyStringLiteral) {
 
 TEST_F(StringCodeGenTest, LongStringLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var longStr = "This is a very long string with many characters and spaces";
             return;
         }
@@ -664,7 +664,7 @@ TEST_F(StringCodeGenTest, LongStringLiteral) {
 
 TEST_F(StringCodeGenTest, SpecialCharactersInString) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var special = "!@#$%^&*()_+-=[]{}|;:,.<>?";
             return;
         }
@@ -680,7 +680,7 @@ TEST_F(StringCodeGenTest, SpecialCharactersInString) {
 
 TEST_F(StringCodeGenTest, StringInWhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             var msg = "hello";
 
@@ -705,7 +705,7 @@ TEST_F(StringCodeGenTest, StringInWhileLoop) {
 
 TEST_F(StringCodeGenTest, StringInForLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var name = "Alice";
 
             for i in 0..5 {
@@ -733,7 +733,7 @@ TEST_F(StringCodeGenTest, StringInForLoop) {
 
 TEST_F(StringCodeGenTest, AllStringOperators) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = "apple";
             var b = "banana";
             var c = "apple";

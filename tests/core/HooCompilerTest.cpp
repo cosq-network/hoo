@@ -20,7 +20,7 @@ TEST_F(HooCompilerTest, DefaultConstruction) {
 }
 
 TEST_F(HooCompilerTest, CompilationSuccessFlagOnValidCode) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto module = compiler->compile("test_module", code);
 
     ASSERT_NE(module, nullptr);
@@ -29,7 +29,7 @@ TEST_F(HooCompilerTest, CompilationSuccessFlagOnValidCode) {
 }
 
 TEST_F(HooCompilerTest, CompilationSuccessFlagOnInvalidCode) {
-    std::string code = "func test() -> void { return; } invalid syntax";
+    std::string code = "func test() { return; } invalid syntax";
     auto module = compiler->compile("test_module", code);
 
     EXPECT_EQ(module, nullptr);
@@ -38,7 +38,7 @@ TEST_F(HooCompilerTest, CompilationSuccessFlagOnInvalidCode) {
 }
 
 TEST_F(HooCompilerTest, ModuleNameMatchesInput) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto module = compiler->compile("my_custom_module", code);
 
     ASSERT_NE(module, nullptr);
@@ -46,35 +46,35 @@ TEST_F(HooCompilerTest, ModuleNameMatchesInput) {
 }
 
 TEST_F(HooCompilerTest, ModuleNotNullOnValidVoidFunction) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto module = compiler->compile("test", code);
 
     EXPECT_NE(module, nullptr);
 }
 
 TEST_F(HooCompilerTest, ModuleNotNullOnValidInt64Function) {
-    std::string code = "func getValue() -> int64 { return 42; }";
+    std::string code = "func:int64 getValue() { return 42; }";
     auto module = compiler->compile("test", code);
 
     EXPECT_NE(module, nullptr);
 }
 
 TEST_F(HooCompilerTest, ModuleNotNullOnValidDoubleFunction) {
-    std::string code = "func getPi() -> double { return 3.14; }";
+    std::string code = "func:double getPi() { return 3.14; }";
     auto module = compiler->compile("test", code);
 
     EXPECT_NE(module, nullptr);
 }
 
 TEST_F(HooCompilerTest, ModuleNotNullOnValidBoolFunction) {
-    std::string code = "func isValid() -> bool { return true; }";
+    std::string code = "func:bool isValid() { return true; }";
     auto module = compiler->compile("test", code);
 
     EXPECT_NE(module, nullptr);
 }
 
 TEST_F(HooCompilerTest, ModuleNotNullOnValidCharFunction) {
-    std::string code = "func getChar() -> char { return 'a'; }";
+    std::string code = "func:char getChar() { return 'a'; }";
     auto module = compiler->compile("test", code);
 
     EXPECT_NE(module, nullptr);
@@ -82,7 +82,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnValidCharFunction) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnFunctionWithParameters) {
     std::string code = R"(
-        func add(a: int64, b: int64) -> int64 {
+        func:int64 add(a: int64, b: int64) {
             return a + b;
         }
     )";
@@ -93,7 +93,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnFunctionWithParameters) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnFunctionWithArithmetic) {
     std::string code = R"(
-        func calculate(x: int64) -> int64 {
+        func:int64 calculate(x: int64) {
             var result = x * 2 + 10;
             return result;
         }
@@ -105,9 +105,9 @@ TEST_F(HooCompilerTest, ModuleNotNullOnFunctionWithArithmetic) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnMultipleFunctions) {
     std::string code = R"(
-        func first() -> int64 { return 1; }
-        func second() -> int64 { return 2; }
-        func third() -> int64 { return 3; }
+        func:int64 first() { return 1; }
+        func:int64 second() { return 2; }
+        func:int64 third() { return 3; }
     )";
     auto module = compiler->compile("test", code);
 
@@ -124,7 +124,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnMultipleFunctions) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnIfStatement) {
     std::string code = R"(
-        func condTest(x: int64) -> int64 {
+        func:int64 condTest(x: int64) {
             if x > 0 {
                 return 1;
             }
@@ -138,7 +138,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnIfStatement) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnIfElseStatement) {
     std::string code = R"(
-        func condTest(x: int64) -> int64 {
+        func:int64 condTest(x: int64) {
             if x > 0 {
                 return 1;
             } else {
@@ -153,7 +153,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnIfElseStatement) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnWhileLoop) {
     std::string code = R"(
-        func loopTest() -> int64 {
+        func:int64 loopTest() {
             var count = 0;
             while count < 10 {
                 count = count + 1;
@@ -168,7 +168,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnWhileLoop) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnVariableDeclaration) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10;
             var y = 20;
             return x + y;
@@ -180,7 +180,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnVariableDeclaration) {
 }
 
 TEST_F(HooCompilerTest, ErrorMessageOnMissingParenthesis) {
-    std::string code = "func test() -> void { return;";
+    std::string code = "func test() { return;";
     auto module = compiler->compile("test", code);
 
     EXPECT_EQ(module, nullptr);
@@ -188,7 +188,7 @@ TEST_F(HooCompilerTest, ErrorMessageOnMissingParenthesis) {
 }
 
 TEST_F(HooCompilerTest, ErrorMessageOnInvalidToken) {
-    std::string code = "func test() -> void { return; } @@invalid";
+    std::string code = "func test() { return; } @@invalid";
     auto module = compiler->compile("test", code);
 
     EXPECT_EQ(module, nullptr);
@@ -196,7 +196,7 @@ TEST_F(HooCompilerTest, ErrorMessageOnInvalidToken) {
 }
 
 TEST_F(HooCompilerTest, ErrorMessageOnMismatchedBraces) {
-    std::string code = "func test() -> void { return; ";
+    std::string code = "func test() { return; ";
     auto module = compiler->compile("test", code);
 
     EXPECT_EQ(module, nullptr);
@@ -205,8 +205,8 @@ TEST_F(HooCompilerTest, ErrorMessageOnMismatchedBraces) {
 
 TEST_F(HooCompilerTest, ModuleContainsExpectedFunctionCount) {
     std::string code = R"(
-        func one() -> int64 { return 1; }
-        func two() -> int64 { return 2; }
+        func:int64 one() { return 1; }
+        func:int64 two() { return 2; }
     )";
     auto module = compiler->compile("test", code);
 
@@ -216,7 +216,7 @@ TEST_F(HooCompilerTest, ModuleContainsExpectedFunctionCount) {
 
 TEST_F(HooCompilerTest, ErrorMessageOnMissingSemicolon) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10
             return x;
         }
@@ -234,7 +234,7 @@ TEST_F(HooCompilerTest, MultipleCompilationsResetErrorState) {
     EXPECT_EQ(badModule, nullptr);
     EXPECT_FALSE(compiler->wasLastCompilationSuccessful());
 
-    std::string goodCode = "func test() -> void { return; }";
+    std::string goodCode = "func test() { return; }";
     auto goodModule = compiler->compile("test", goodCode);
 
     EXPECT_NE(goodModule, nullptr);
@@ -243,9 +243,9 @@ TEST_F(HooCompilerTest, MultipleCompilationsResetErrorState) {
 }
 
 TEST_F(HooCompilerTest, MultipleCompilationsIndependent) {
-    std::string code1 = "func func1() -> int64 { return 1; }";
-    std::string code2 = "func func2() -> int64 { return 2; }";
-    std::string code3 = "func func3() -> int64 { return 3; }";
+    std::string code1 = "func:int64 func1() { return 1; }";
+    std::string code2 = "func:int64 func2() { return 2; }";
+    std::string code3 = "func:int64 func3() { return 3; }";
 
     auto module1 = compiler->compile("module1", code1);
     auto module2 = compiler->compile("module2", code2);
@@ -261,7 +261,7 @@ TEST_F(HooCompilerTest, MultipleCompilationsIndependent) {
 }
 
 TEST_F(HooCompilerTest, EachCompilationCreatesNewModule) {
-    std::string code = "func test() -> int64 { return 42; }";
+    std::string code = "func:int64 test() { return 42; }";
 
     auto module1 = compiler->compile("test", code);
     auto module2 = compiler->compile("test", code);
@@ -273,7 +273,7 @@ TEST_F(HooCompilerTest, EachCompilationCreatesNewModule) {
 }
 
 TEST_F(HooCompilerTest, FunctionExistsInModule) {
-    std::string code = "func myFunction() -> int64 { return 100; }";
+    std::string code = "func:int64 myFunction() { return 100; }";
     auto module = compiler->compile("test", code);
 
     ASSERT_NE(module, nullptr);
@@ -283,7 +283,7 @@ TEST_F(HooCompilerTest, FunctionExistsInModule) {
 }
 
 TEST_F(HooCompilerTest, FunctionReturnType) {
-    std::string code = "func getFive() -> int64 { return 5; }";
+    std::string code = "func:int64 getFive() { return 5; }";
     auto module = compiler->compile("test", code);
 
     ASSERT_NE(module, nullptr);
@@ -294,7 +294,7 @@ TEST_F(HooCompilerTest, FunctionReturnType) {
 }
 
 TEST_F(HooCompilerTest, EmptyModuleName) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto module = compiler->compile("", code);
 
     EXPECT_NE(module, nullptr);
@@ -302,7 +302,7 @@ TEST_F(HooCompilerTest, EmptyModuleName) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnLogicalOperations) {
     std::string code = R"(
-        func test(a: bool, b: bool) -> bool {
+        func:bool test(a: bool, b: bool) {
             return a && b;
         }
     )";
@@ -313,7 +313,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnLogicalOperations) {
 
 TEST_F(HooCompilerTest, ModuleNotNullOnComparisonOperations) {
     std::string code = R"(
-        func compare(a: int64, b: int64) -> bool {
+        func:bool compare(a: int64, b: int64) {
             return a > b;
         }
     )";
@@ -327,7 +327,7 @@ TEST_F(HooCompilerTest, ErrorClearedAfterSuccessfulCompilation) {
     compiler->compile("test", badCode);
     ASSERT_FALSE(compiler->wasLastCompilationSuccessful());
 
-    std::string goodCode = "func test() -> void { return; }";
+    std::string goodCode = "func test() { return; }";
     auto module = compiler->compile("test", goodCode);
 
     ASSERT_NE(module, nullptr);

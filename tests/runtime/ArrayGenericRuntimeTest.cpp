@@ -66,7 +66,7 @@ protected:
 // Test that int64 array literals call hoo_int64_array_from_buffer
 TEST_F(ArrayGenericRuntimeTest, Int64ArrayCallsHooInt64ArrayFromBuffer) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             return;
         }
@@ -94,7 +94,7 @@ TEST_F(ArrayGenericRuntimeTest, Int64ArrayCallsHooInt64ArrayFromBuffer) {
 // Test that double array literals call hoo_double_array_from_buffer
 TEST_F(ArrayGenericRuntimeTest, DoubleArrayCallsHooDoubleArrayFromBuffer) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1.5, 2.5, 3.5];
             return;
         }
@@ -122,7 +122,7 @@ TEST_F(ArrayGenericRuntimeTest, DoubleArrayCallsHooDoubleArrayFromBuffer) {
 // Test that array literals with explicit int64 type use runtime function
 TEST_F(ArrayGenericRuntimeTest, ExplicitInt64ArrayUsesRuntime) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [10, 20, 30];
             return;
         }
@@ -145,7 +145,7 @@ TEST_F(ArrayGenericRuntimeTest, ExplicitInt64ArrayUsesRuntime) {
 // Test that multiple arrays create separate data buffers
 TEST_F(ArrayGenericRuntimeTest, MultipleArraysCreatySeparateBuffers) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr1 = [1, 2, 3];
             var arr2 = [4.0, 5.0, 6.0];
             var arr3 = [7, 8, 9];
@@ -177,7 +177,7 @@ TEST_F(ArrayGenericRuntimeTest, MultipleArraysCreatySeparateBuffers) {
 // Test that runtime function receives correct parameters (buffer and length)
 TEST_F(ArrayGenericRuntimeTest, RuntimeFunctionParametersCorrect) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             return;
         }
@@ -201,7 +201,7 @@ TEST_F(ArrayGenericRuntimeTest, RuntimeFunctionParametersCorrect) {
 // Test that generic array handle is returned and stored
 TEST_F(ArrayGenericRuntimeTest, ArrayLiteralReturnsPointer) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3];
             return;
         }
@@ -222,11 +222,11 @@ TEST_F(ArrayGenericRuntimeTest, ArrayLiteralReturnsPointer) {
 // Test array literal in function parameter context
 TEST_F(ArrayGenericRuntimeTest, ArrayLiteralWithFunctionParameter) {
     std::string code = R"(
-        func process(arr: int64[]) -> void {
+        func process(arr: int64[]) {
             return;
         }
 
-        func test() -> void {
+        func test() {
             process([1, 2, 3]);
             return;
         }
@@ -251,7 +251,7 @@ TEST_F(ArrayGenericRuntimeTest, ArrayLiteralWithFunctionParameter) {
 // Test that array type inference works for different element types
 TEST_F(ArrayGenericRuntimeTest, TypeInferenceForDifferentElements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ints = [1, 2, 3];
             var floats = [1.5, 2.5, 3.5];
             return;
@@ -275,7 +275,7 @@ TEST_F(ArrayGenericRuntimeTest, TypeInferenceForDifferentElements) {
 // Test empty array handling
 TEST_F(ArrayGenericRuntimeTest, EmptyArrayHandling) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [];
             return;
         }
@@ -295,7 +295,7 @@ TEST_F(ArrayGenericRuntimeTest, EmptyArrayHandling) {
 // Test array literal with expressions (constant-folded)
 TEST_F(ArrayGenericRuntimeTest, ArrayLiteralWithConstantExpressions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1 + 1, 2 + 2, 3 + 3];
             return;
         }
@@ -320,7 +320,7 @@ TEST_F(ArrayGenericRuntimeTest, ArrayLiteralWithConstantExpressions) {
 // Test that arrays in different scopes get separate buffers
 TEST_F(ArrayGenericRuntimeTest, ArraysInDifferentScopes) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if (true) {
                 var arr1 = [1, 2, 3];
             }

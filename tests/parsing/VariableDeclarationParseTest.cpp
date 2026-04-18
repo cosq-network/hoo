@@ -64,7 +64,7 @@ protected:
 // Test 1: Variable declaration with explicit int64 type
 TEST_F(VariableDeclarationParseTest, ExplicitInt64Declaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: int64 = 42;
         }
     )";
@@ -107,7 +107,7 @@ TEST_F(VariableDeclarationParseTest, ExplicitInt64Declaration) {
 // Test 2: Variable declaration with type inference (int64)
 TEST_F(VariableDeclarationParseTest, Int64TypeInference) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var num = 100;
         }
     )";
@@ -142,7 +142,7 @@ TEST_F(VariableDeclarationParseTest, Int64TypeInference) {
 // Test 3: Variable declaration with explicit double type
 TEST_F(VariableDeclarationParseTest, ExplicitDoubleDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var pi: double = 3.14159;
         }
     )";
@@ -184,7 +184,7 @@ TEST_F(VariableDeclarationParseTest, ExplicitDoubleDeclaration) {
 // Test 4: Variable declaration with type inference (double)
 TEST_F(VariableDeclarationParseTest, DoubleTypeInference) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var value = 2.718;
         }
     )";
@@ -219,7 +219,7 @@ TEST_F(VariableDeclarationParseTest, DoubleTypeInference) {
 // Test 5: Variable declaration with explicit bool type
 TEST_F(VariableDeclarationParseTest, ExplicitBoolDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag: bool = true;
         }
     )";
@@ -261,7 +261,7 @@ TEST_F(VariableDeclarationParseTest, ExplicitBoolDeclaration) {
 // Test 6: Variable declaration with type inference (bool)
 TEST_F(VariableDeclarationParseTest, BoolTypeInference) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var isReady = false;
         }
     )";
@@ -296,7 +296,7 @@ TEST_F(VariableDeclarationParseTest, BoolTypeInference) {
 // Test 7: Variable declaration with explicit char type
 TEST_F(VariableDeclarationParseTest, ExplicitCharDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ch: char = 'A';
         }
     )";
@@ -338,7 +338,7 @@ TEST_F(VariableDeclarationParseTest, ExplicitCharDeclaration) {
 // Test 8: Variable declaration with type inference (char)
 TEST_F(VariableDeclarationParseTest, CharTypeInference) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var letter = 'z';
         }
     )";
@@ -373,7 +373,7 @@ TEST_F(VariableDeclarationParseTest, CharTypeInference) {
 // Test 9: Variable declaration with explicit byte type
 TEST_F(VariableDeclarationParseTest, ExplicitByteDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var b: byte = 255;
         }
     )";
@@ -415,7 +415,7 @@ TEST_F(VariableDeclarationParseTest, ExplicitByteDeclaration) {
 // Test 10: Variable declaration with expression initializer
 TEST_F(VariableDeclarationParseTest, VariableWithExpressionInitializer) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum: int64 = 10 + 20;
         }
     )";
@@ -454,7 +454,7 @@ TEST_F(VariableDeclarationParseTest, VariableWithExpressionInitializer) {
 // Test 11: Multiple variable declarations in sequence
 TEST_F(VariableDeclarationParseTest, MultipleVariableDeclarations) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: int64 = 10;
             var y: int64 = 20;
             var z: int64 = 30;
@@ -502,7 +502,7 @@ TEST_F(VariableDeclarationParseTest, MultipleVariableDeclarations) {
 // Test 12: Variable declaration with complex expression
 TEST_F(VariableDeclarationParseTest, VariableWithComplexExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var result: int64 = (5 + 3) * 2;
         }
     )";
@@ -534,7 +534,7 @@ TEST_F(VariableDeclarationParseTest, VariableWithComplexExpression) {
 // Test 13: Variable declaration with boolean expression
 TEST_F(VariableDeclarationParseTest, VariableWithBooleanExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var isValid: bool = true && false;
         }
     )";
@@ -573,7 +573,7 @@ TEST_F(VariableDeclarationParseTest, VariableWithBooleanExpression) {
 // Test 14: Variable declaration with comparison expression
 TEST_F(VariableDeclarationParseTest, VariableWithComparisonExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var isGreater = 10 > 5;
         }
     )";
@@ -605,7 +605,7 @@ TEST_F(VariableDeclarationParseTest, VariableWithComparisonExpression) {
 // Test 15: Variable declaration with negative number
 TEST_F(VariableDeclarationParseTest, VariableWithNegativeNumber) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var negative: int64 = -42;
         }
     )";

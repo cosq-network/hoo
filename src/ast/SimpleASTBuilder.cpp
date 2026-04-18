@@ -764,7 +764,15 @@ std::unique_ptr<FunctionSignature> SimpleASTBuilder::buildFunctionSignature(Hooc
         }
     }
 
-    auto returnType = buildType(ctx->type());
+    // Return type is optional - defaults to void if not specified
+    std::unique_ptr<Type> returnType;
+    if (ctx->type()) {
+        returnType = buildType(ctx->type());
+    } else {
+        // Create void type as default
+        auto voidPrimitive = std::make_unique<PrimitiveType>(PrimitiveTypeKind::VOID);
+        returnType = std::make_unique<BaseType>(std::move(voidPrimitive));
+    }
 
     return std::make_unique<FunctionSignature>(name, std::move(parameters), std::move(returnType));
 }

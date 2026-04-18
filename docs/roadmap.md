@@ -106,8 +106,8 @@ Hooc aims to be a modern, productive programming language that combines:
 - [ ] `finally` blocks for cleanup
 
 **Result Types**
-- [ ] `Result<T, E>` type for explicit error handling
-- [ ] `Option<T>` type for optional values
+- [ ] Better error handling (Result-like patterns)
+- [ ] Improved optional values
 - [ ] Pattern matching on results
 - [ ] Error propagation operators
 
@@ -131,12 +131,12 @@ try {
     cleanup();
 }
 
-// Result types
-func divide(a: int64, b: int64) -> Result<int64, string> {
+// Error handling example (conceptual)
+func:int64? divide(a: int64, b: int64) {
     if b == 0 {
-        return Err("Division by zero");
+        return null;
     }
-    return Ok(a / b);
+    return a / b;
 }
 
 var result = divide(10, 0);

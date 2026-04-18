@@ -56,7 +56,7 @@ TEST_F(BasicCodeGenTest, GenerateEmptyModule) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateSingleVoidFunction) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -77,8 +77,8 @@ TEST_F(BasicCodeGenTest, GenerateSingleVoidFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateMultipleFunctions) {
     std::string code = R"(
-        func first() -> void { return; }
-        func second() -> void { return; }
+        func first() { return; }
+        func second() { return; }
     )";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
@@ -105,7 +105,7 @@ TEST_F(BasicCodeGenTest, GenerateMultipleFunctions) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateFunctionWithReturnStatement) {
-    std::string code = "func getValue() -> void { return; }";
+    std::string code = "func getValue() { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -127,7 +127,7 @@ TEST_F(BasicCodeGenTest, GenerateFunctionWithReturnStatement) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateFunctionWithExpressionStatement) {
-    std::string code = "func calculate() -> void { 42; }";
+    std::string code = "func calculate() { 42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -145,7 +145,7 @@ TEST_F(BasicCodeGenTest, GenerateFunctionWithExpressionStatement) {
 }
 
 TEST_F(BasicCodeGenTest, VerifyModuleStructure) {
-    std::string code = "func main() -> void { return; }";
+    std::string code = "func main() { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -177,7 +177,7 @@ TEST_F(BasicCodeGenTest, HandleEmptyAST) {
 
 TEST_F(BasicCodeGenTest, GenerateModuleWithComplexFunction) {
     std::string code = R"(
-        func complex() -> void {
+        func complex() {
             var x = 10;
             if (x > 5) {
                 return;
@@ -204,7 +204,7 @@ TEST_F(BasicCodeGenTest, GenerateModuleWithComplexFunction) {
 }
 
 TEST_F(BasicCodeGenTest, VerifyGeneratedIRFormat) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -221,7 +221,7 @@ TEST_F(BasicCodeGenTest, VerifyGeneratedIRFormat) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateByteFunction) {
-    std::string code = "func process(data: byte) -> byte { return data; }";
+    std::string code = "func:byte process(data: byte) { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -239,7 +239,7 @@ TEST_F(BasicCodeGenTest, GenerateByteFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
     std::string code = R"(
-        func calculate(a: byte, b: byte) -> byte {
+        func:byte calculate(a: byte, b: byte) {
             var result = a + b;
             return result;
         }
@@ -264,7 +264,7 @@ TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateFloatFunction) {
-    std::string code = "func process(data: float) -> float { return data; }";
+    std::string code = "func:float process(data: float) { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -282,7 +282,7 @@ TEST_F(BasicCodeGenTest, GenerateFloatFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateFloatArithmetic) {
     std::string code = R"(
-        func calculate(a: float, b: float) -> float {
+        func:float calculate(a: float, b: float) {
             var sum = a + b;
             var product = a * b;
             return sum;
@@ -309,7 +309,7 @@ TEST_F(BasicCodeGenTest, GenerateFloatArithmetic) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateBoolFunction) {
-    std::string code = "func process(flag: bool) -> bool { return flag; }";
+    std::string code = "func:bool process(flag: bool) { return flag; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -327,7 +327,7 @@ TEST_F(BasicCodeGenTest, GenerateBoolFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateBoolLogic) {
     std::string code = R"(
-        func logic(a: bool, b: bool) -> bool {
+        func:bool logic(a: bool, b: bool) {
             var and_result = a && b;
             var or_result = a || b;
             var not_result = !a;
@@ -354,7 +354,7 @@ TEST_F(BasicCodeGenTest, GenerateBoolLogic) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateCharFunction) {
-    std::string code = "func process(ch: char) -> char { return ch; }";
+    std::string code = "func:char process(ch: char) { return ch; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -372,7 +372,7 @@ TEST_F(BasicCodeGenTest, GenerateCharFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateCharComparison) {
     std::string code = R"(
-        func compare(a: char, b: char) -> bool {
+        func:bool compare(a: char, b: char) {
             var equal = a == b;
             var less = a < b;
             return equal;
@@ -399,7 +399,7 @@ TEST_F(BasicCodeGenTest, GenerateCharComparison) {
 }
 
 TEST_F(BasicCodeGenTest, GenerateArrayFunction) {
-    std::string code = "func process(data: int64) -> void { var arr = [1, 2, 3, 4, 5]; return; }";
+    std::string code = "func process(data: int64) { var arr = [1, 2, 3, 4, 5]; return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
 
@@ -421,7 +421,7 @@ TEST_F(BasicCodeGenTest, GenerateArrayFunction) {
 
 TEST_F(BasicCodeGenTest, GenerateArrayAccess) {
     std::string code = R"(
-        func access_test() -> int64 {
+        func:int64 access_test() {
             var arr = [10, 20, 30, 40, 50];
             var index = 2;
             var value = arr[index];

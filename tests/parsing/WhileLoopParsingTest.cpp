@@ -27,7 +27,7 @@ protected:
 // Basic while loop tests
 TEST_F(WhileLoopParsingTest, SimpleWhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             while (true) {
                 return;
             }
@@ -41,7 +41,7 @@ TEST_F(WhileLoopParsingTest, SimpleWhileLoop) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithVariableCondition) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 x = x + 1;
@@ -56,7 +56,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithVariableCondition) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithComplexCondition) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             var y = 10;
             while (x < y && y > 0) {
@@ -72,7 +72,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithComplexCondition) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithLogicalOr) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = true;
             var b = false;
             while (a || b) {
@@ -88,7 +88,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithLogicalOr) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithNegation) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             while (!flag) {
                 flag = true;
@@ -104,7 +104,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithNegation) {
 // Multiple statements in while loop
 TEST_F(WhileLoopParsingTest, WhileLoopWithMultipleStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 5) {
                 var y = x * 2;
@@ -121,7 +121,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithMultipleStatements) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithMultipleAssignments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             var y = 0;
             while (x < 10) {
@@ -140,7 +140,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithMultipleAssignments) {
 // Nested while loops
 TEST_F(WhileLoopParsingTest, NestedWhileLoops) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var i = 0;
             while (i < 5) {
                 var j = 0;
@@ -159,7 +159,7 @@ TEST_F(WhileLoopParsingTest, NestedWhileLoops) {
 
 TEST_F(WhileLoopParsingTest, DeeplyNestedWhileLoops) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = 0;
             while (a < 2) {
                 var b = 0;
@@ -182,7 +182,7 @@ TEST_F(WhileLoopParsingTest, DeeplyNestedWhileLoops) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithIfInside) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 if (x == 5) {
@@ -201,7 +201,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithIfInside) {
 
 TEST_F(WhileLoopParsingTest, IfWithWhileLoopInside) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             if (flag) {
                 var x = 0;
@@ -220,7 +220,7 @@ TEST_F(WhileLoopParsingTest, IfWithWhileLoopInside) {
 // Type-specific tests
 TEST_F(WhileLoopParsingTest, WhileLoopWithIntComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             while (count < 100) {
                 count = count + 10;
@@ -235,7 +235,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithIntComparison) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithFloatComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var value = 0.5;
             while (value < 10.0) {
                 value = value + 1.5;
@@ -250,7 +250,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithFloatComparison) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithBoolVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var active = true;
             while (active) {
                 active = false;
@@ -265,7 +265,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithBoolVariable) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithCharComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ch = 'a';
             while (ch != 'z') {
                 ch = 'b';
@@ -281,7 +281,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithCharComparison) {
 // Advanced conditions
 TEST_F(WhileLoopParsingTest, WhileLoopWithArithmeticCondition) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             var y = 5;
             while (x - y > 0) {
@@ -297,7 +297,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithArithmeticCondition) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithComparisonChain) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             while (x >= 0 && x <= 10) {
                 x = x - 1;
@@ -312,7 +312,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithComparisonChain) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithComplexLogic) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = 5;
             var b = 10;
             var c = true;
@@ -330,7 +330,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithComplexLogic) {
 // Control flow patterns
 TEST_F(WhileLoopParsingTest, WhileLoopWithReturn) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 0;
             while (x < 10) {
                 if (x == 5) {
@@ -349,7 +349,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithReturn) {
 
 TEST_F(WhileLoopParsingTest, MultipleWhileLoopsInFunction) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 5) {
                 x = x + 1;
@@ -369,7 +369,7 @@ TEST_F(WhileLoopParsingTest, MultipleWhileLoopsInFunction) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopFollowedByOtherStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 5) {
                 x = x + 1;
@@ -387,7 +387,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopFollowedByOtherStatements) {
 // Array operations in while loop
 TEST_F(WhileLoopParsingTest, WhileLoopWithArrayAccess) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             var index = 0;
             while (index < 5) {
@@ -405,11 +405,11 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithArrayAccess) {
 // Function calls in while loop
 TEST_F(WhileLoopParsingTest, WhileLoopWithFunctionCall) {
     std::string code = R"(
-        func helper(x: int64) -> int64 {
+        func:int64 helper(x: int64) {
             return x * 2;
         }
 
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 var y = helper(x);
@@ -426,7 +426,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithFunctionCall) {
 // Empty and minimal loops
 TEST_F(WhileLoopParsingTest, EmptyWhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             while (false) {
             }
         }
@@ -439,7 +439,7 @@ TEST_F(WhileLoopParsingTest, EmptyWhileLoop) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithSingleStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 100) {
                 x = x + 1;
@@ -455,7 +455,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithSingleStatement) {
 // Parameter-based conditions
 TEST_F(WhileLoopParsingTest, WhileLoopWithParameterCondition) {
     std::string code = R"(
-        func test(limit: int64) -> void {
+        func test(limit: int64) {
             var x = 0;
             while (x < limit) {
                 x = x + 1;
@@ -471,7 +471,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithParameterCondition) {
 // Complex nesting scenarios
 TEST_F(WhileLoopParsingTest, WhileAndIfComplexNesting) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 if (x == 3) {
@@ -495,7 +495,7 @@ TEST_F(WhileLoopParsingTest, WhileAndIfComplexNesting) {
 // Mixed type operations
 TEST_F(WhileLoopParsingTest, WhileLoopWithMixedTypes) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var intVal = 0;
             var floatVal = 0.0;
             var boolVal = true;
@@ -515,7 +515,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithMixedTypes) {
 // Multiple loop variables
 TEST_F(WhileLoopParsingTest, WhileLoopWithMultipleVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             var y = 10;
             var product = 1;
@@ -535,7 +535,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithMultipleVariables) {
 // Equality and inequality tests
 TEST_F(WhileLoopParsingTest, WhileLoopWithEqualityCheck) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             while (x != 0) {
                 x = x - 1;
@@ -550,7 +550,7 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithEqualityCheck) {
 
 TEST_F(WhileLoopParsingTest, WhileLoopWithEqualsComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             var target = 15;
 

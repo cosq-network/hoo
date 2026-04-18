@@ -48,7 +48,7 @@ protected:
 // Basic while loop code generation
 TEST_F(WhileLoopCodeGenTest, SimpleWhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             while (true) {
                 return;
             }
@@ -73,7 +73,7 @@ TEST_F(WhileLoopCodeGenTest, SimpleWhileLoop) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithVariableCondition) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 x = x + 1;
@@ -99,7 +99,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithVariableCondition) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithComplexCondition) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             var y = 10;
             while (x < y && y > 0) {
@@ -126,7 +126,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithComplexCondition) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithLogicalOr) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = true;
             var b = false;
             while (a || b) {
@@ -152,7 +152,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithLogicalOr) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithNegation) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             while (!flag) {
                 flag = true;
@@ -178,7 +178,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithNegation) {
 // Multiple statements in while loop
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithMultipleStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 5) {
                 var y = x * 2;
@@ -205,7 +205,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithMultipleStatements) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithMultipleAssignments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             var y = 0;
             while (x < 10) {
@@ -234,7 +234,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithMultipleAssignments) {
 // Nested while loops
 TEST_F(WhileLoopCodeGenTest, NestedWhileLoops) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var i = 0;
             while (i < 5) {
                 var j = 0;
@@ -263,7 +263,7 @@ TEST_F(WhileLoopCodeGenTest, NestedWhileLoops) {
 
 TEST_F(WhileLoopCodeGenTest, DeeplyNestedWhileLoops) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = 0;
             while (a < 2) {
                 var b = 0;
@@ -297,7 +297,7 @@ TEST_F(WhileLoopCodeGenTest, DeeplyNestedWhileLoops) {
 // While loop with if statement
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithIfInside) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 if (x == 5) {
@@ -326,7 +326,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithIfInside) {
 
 TEST_F(WhileLoopCodeGenTest, IfWithWhileLoopInside) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             if (flag) {
                 var x = 0;
@@ -355,7 +355,7 @@ TEST_F(WhileLoopCodeGenTest, IfWithWhileLoopInside) {
 // Type-specific tests
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithIntComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             while (count < 100) {
                 count = count + 10;
@@ -383,7 +383,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithIntComparison) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithFloatComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var value = 0.5;
             while (value < 10.0) {
                 value = value + 1.5;
@@ -411,7 +411,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithFloatComparison) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithBoolVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var active = true;
             while (active) {
                 active = false;
@@ -436,7 +436,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithBoolVariable) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithCharComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ch = 'a';
             while (ch != 'z') {
                 ch = 'b';
@@ -462,7 +462,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithCharComparison) {
 // Advanced conditions
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithArithmeticCondition) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             var y = 5;
             while (x - y > 0) {
@@ -488,7 +488,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithArithmeticCondition) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithComparisonChain) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             while (x >= 0 && x <= 10) {
                 x = x - 1;
@@ -513,7 +513,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithComparisonChain) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithComplexLogic) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = 5;
             var b = 10;
             var c = true;
@@ -541,7 +541,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithComplexLogic) {
 // Control flow patterns
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithReturn) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 0;
             while (x < 10) {
                 if (x == 5) {
@@ -571,7 +571,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithReturn) {
 
 TEST_F(WhileLoopCodeGenTest, MultipleWhileLoopsInFunction) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 5) {
                 x = x + 1;
@@ -601,7 +601,7 @@ TEST_F(WhileLoopCodeGenTest, MultipleWhileLoopsInFunction) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopFollowedByOtherStatements) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 0;
             while (x < 5) {
                 x = x + 1;
@@ -630,7 +630,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopFollowedByOtherStatements) {
 // Array operations in while loop
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithArrayAccess) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             var index = 0;
             while (index < 5) {
@@ -658,11 +658,11 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithArrayAccess) {
 // Function calls in while loop
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithFunctionCall) {
     std::string code = R"(
-        func helper(x: int64) -> int64 {
+        func:int64 helper(x: int64) {
             return x * 2;
         }
 
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 var y = helper(x);
@@ -690,7 +690,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithFunctionCall) {
 // Empty and minimal loops
 TEST_F(WhileLoopCodeGenTest, EmptyWhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             while (false) {
             }
         }
@@ -713,7 +713,7 @@ TEST_F(WhileLoopCodeGenTest, EmptyWhileLoop) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithSingleStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 100) {
                 x = x + 1;
@@ -739,7 +739,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithSingleStatement) {
 // Parameter-based conditions
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithParameterCondition) {
     std::string code = R"(
-        func test(limit: int64) -> void {
+        func test(limit: int64) {
             var x = 0;
             while (x < limit) {
                 x = x + 1;
@@ -766,7 +766,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithParameterCondition) {
 // IR structure verification
 TEST_F(WhileLoopCodeGenTest, VerifyWhileLoopIRStructure) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             while (x < 10) {
                 x = x + 1;
@@ -793,7 +793,7 @@ TEST_F(WhileLoopCodeGenTest, VerifyWhileLoopIRStructure) {
 // Complex type mixing
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithMixedTypes) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var intVal = 0;
             var floatVal = 0.0;
             var boolVal = true;
@@ -823,7 +823,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithMixedTypes) {
 // Variable scope testing
 TEST_F(WhileLoopCodeGenTest, WhileLoopVariableScope) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var outer = 100;
             var x = 0;
             while (x < 5) {
@@ -854,7 +854,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopVariableScope) {
 // Multiple loop variables
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithMultipleVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 0;
             var y = 10;
             var product = 1;
@@ -884,7 +884,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithMultipleVariables) {
 // Equality and inequality tests
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithEqualityCheck) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             while (x != 0) {
                 x = x - 1;
@@ -912,7 +912,7 @@ TEST_F(WhileLoopCodeGenTest, WhileLoopWithEqualityCheck) {
 
 TEST_F(WhileLoopCodeGenTest, WhileLoopWithEqualsComparison) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             var target = 15;
 

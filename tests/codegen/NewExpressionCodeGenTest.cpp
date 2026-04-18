@@ -254,7 +254,7 @@ TEST_F(NewExpressionCodeGenTest, NewExpressionWithExpressionArgumentsCodeGen) {
 // Test 8: New expression with function call arguments
 TEST_F(NewExpressionCodeGenTest, NewExpressionWithFunctionCallArgumentsCodeGen) {
     std::string code = R"(
-        func getValue() -> int64 {
+        func:int64 getValue() {
             return 42;
         }
 

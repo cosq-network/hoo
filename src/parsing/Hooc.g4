@@ -130,7 +130,7 @@ declaration
 
 // Function Declaration
 functionDeclaration
-    : FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)? block
+    : FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN block
     ;
 
 parameterList: parameter (COMMA parameter)*;
@@ -165,7 +165,7 @@ interfaceDeclaration
 
 interfaceMember: functionSignature SEMICOLON;
 
-functionSignature: FUNC IDENTIFIER LPAREN parameterList? RPAREN ARROW type;
+functionSignature: FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN;
 
 // Variable Declaration
 variableDeclaration

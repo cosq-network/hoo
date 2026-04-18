@@ -261,7 +261,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithBaseClassAndInterfaces) {
 TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
     std::string code = R"(
         class Calculator {
-            func add(a: int64, b: int64) -> int64 {
+            func:int64 add(a: int64, b: int64) {
                 return a + b;
             }
         }
@@ -317,10 +317,10 @@ TEST_F(ClassDeclarationParsingTest, ClassWithEventMember) {
 TEST_F(ClassDeclarationParsingTest, ClassWithMixedMembers) {
     std::string code = R"(
         class Widget {
-            func render() -> void {
+            func render() {
             }
             event onUpdate;
-            func update() -> void {
+            func update() {
             }
         }
     )";
@@ -383,7 +383,7 @@ TEST_F(ClassDeclarationParsingTest, SimpleInterfaceDeclaration) {
 TEST_F(ClassDeclarationParsingTest, InterfaceWithSingleMethod) {
     std::string code = R"(
         interface Drawable {
-            func draw() -> void;
+            func draw();
         }
     )";
 
@@ -413,9 +413,9 @@ TEST_F(ClassDeclarationParsingTest, InterfaceWithSingleMethod) {
 TEST_F(ClassDeclarationParsingTest, InterfaceWithMultipleMethods) {
     std::string code = R"(
         interface Repository {
-            func save(data: int64) -> bool;
-            func load(id: int64) -> int64;
-            func delete(id: int64) -> void;
+            func:bool save(data: int64);
+            func:int64 load(id: int64);
+            func delete(id: int64);
         }
     )";
 
@@ -449,10 +449,10 @@ TEST_F(ClassDeclarationParsingTest, InterfaceWithMultipleMethods) {
 TEST_F(ClassDeclarationParsingTest, InterfaceMethodWithVariousReturnTypes) {
     std::string code = R"(
         interface TypeTest {
-            func getInt() -> int64;
-            func getDouble() -> double;
-            func getBool() -> bool;
-            func doNothing() -> void;
+            func:int64 getInt();
+            func:double getDouble();
+            func:bool getBool();
+            func doNothing();
         }
     )";
 
@@ -509,10 +509,10 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
         immutable class ComplexClass extends BaseClass implements Interface1, Interface2 {
             constructor(id: int64, name: int64) {
             }
-            func method1() -> void {
+            func method1() {
             }
             event onEvent1;
-            func method2(param: int64) -> int64 {
+            func:int64 method2(param: int64) {
                 return param;
             }
         }
@@ -625,7 +625,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithConstructorAndMethodsWithMultipleCo
         class User {
             constructor(name: int64) {
             }
-            func greet() -> void {
+            func greet() {
             }
             constructor(name: int64, age: int64) {
             }
@@ -688,10 +688,10 @@ TEST_F(ClassDeclarationParsingTest, ClassWithSingleConstructorShouldSucceed) {
         class Point {
             constructor(x: int64, y: int64) {
             }
-            func getX() -> int64 {
+            func:int64 getX() {
                 return x;
             }
-            func getY() -> int64 {
+            func:int64 getY() {
                 return y;
             }
         }
@@ -723,7 +723,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithSingleConstructorShouldSucceed) {
 TEST_F(ClassDeclarationParsingTest, ClassWithNoConstructorShouldSucceed) {
     std::string code = R"(
         class Util {
-            func helper() -> int64 {
+            func:int64 helper() {
                 return 42;
             }
         }

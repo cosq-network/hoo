@@ -66,7 +66,7 @@ TEST_F(ClassArrayCodeGenTest, BasicClassArray) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var p1 = new Point();
             var p2 = new Point();
             var points = [p1, p2];
@@ -99,7 +99,7 @@ TEST_F(ClassArrayCodeGenTest, SingleElementClassArray) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var item = new Item();
             var items = [item];
             return;
@@ -130,7 +130,7 @@ TEST_F(ClassArrayCodeGenTest, MultipleClassArrays) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var p1 = new Point();
             var p2 = new Point();
             var points = [p1, p2];
@@ -169,7 +169,7 @@ TEST_F(ClassArrayCodeGenTest, LargeClassArray) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var i1 = new Item();
             var i2 = new Item();
             var i3 = new Item();
@@ -209,7 +209,7 @@ TEST_F(ClassArrayCodeGenTest, ClassArrayInNestedScope) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             if (true) {
                 var i1 = new Item();
                 var i2 = new Item();
@@ -239,7 +239,7 @@ TEST_F(ClassArrayCodeGenTest, ClassArrayFromFunction) {
             constructor() {}
         }
 
-        func createPoints() -> void {
+        func createPoints() {
             var p1 = new Point();
             var p2 = new Point();
             var points = [p1, p2];
@@ -267,7 +267,7 @@ TEST_F(ClassArrayCodeGenTest, ArrayElementTypeInference) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var c1 = new Container();
             var c2 = new Container();
             var c3 = new Container();
@@ -306,7 +306,7 @@ TEST_F(ClassArrayCodeGenTest, ClassArrayWithLoopConstruction) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var n1 = new Node();
             var n2 = new Node();
             var nodes = [n1, n2];
@@ -334,7 +334,7 @@ TEST_F(ClassArrayCodeGenTest, ClassArrayMixedOperations) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var v1 = new Value();
             var v2 = new Value();
             var values = [v1, v2];
@@ -358,7 +358,7 @@ TEST_F(ClassArrayCodeGenTest, ClassArrayVerification) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var o1 = new Obj();
             var o2 = new Obj();
             var objs = [o1, o2];

@@ -17,7 +17,7 @@ protected:
 
 TEST_F(IOFunctionTest, PrintlnHelloWorld) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             println("Hello, World!");
         }
     )";
@@ -31,7 +31,7 @@ TEST_F(IOFunctionTest, PrintlnHelloWorld) {
 
 TEST_F(IOFunctionTest, PrintWithoutNewline) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             print("Test");
         }
     )";
@@ -45,7 +45,7 @@ TEST_F(IOFunctionTest, PrintWithoutNewline) {
 
 TEST_F(IOFunctionTest, PrintlnWithVariable) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             var message: string = "Test message";
             println(message);
         }
@@ -60,7 +60,7 @@ TEST_F(IOFunctionTest, PrintlnWithVariable) {
 
 TEST_F(IOFunctionTest, PrintlnEmptyString) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             println("");
         }
     )";
@@ -74,7 +74,7 @@ TEST_F(IOFunctionTest, PrintlnEmptyString) {
 
 TEST_F(IOFunctionTest, MultiplePrintln) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             println("Line 1");
             println("Line 2");
             println("Line 3");
@@ -90,7 +90,7 @@ TEST_F(IOFunctionTest, MultiplePrintln) {
 
 TEST_F(IOFunctionTest, PrintlnWithStringConcat) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             var name: string = "World";
             println("Hello, " + name + "!");
         }

@@ -41,7 +41,7 @@ var ch: char = 'A';         // Single character
 var str: string = "Hello";  // UTF-8 string
 
 // Void type (no return value)
-func doSomething() -> void {
+func doSomething() {
     // No return value
 }
 ```
@@ -188,12 +188,12 @@ func greet(name: string) {
 }
 
 // With return type
-func add(a: int64, b: int64) -> int64 {
+func:int64 add(a: int64, b: int64) {
     return a + b;
 }
 
 // Multiple parameters and return
-func calculate(x: int64, y: int64, op: string) -> int64 {
+func:int64 calculate(x: int64, y: int64, op: string) {
     if op == "add" {
         return x + y;
     } else {
@@ -212,12 +212,12 @@ func doWork() {
 }
 
 // Return value
-func square(x: int64) -> int64 {
+func:int64 square(x: int64) {
     return x * x;
 }
 
 // Early return
-func divide(a: int64, b: int64) -> int64? {
+func:int64? divide(a: int64, b: int64) {
     if b == 0 {
         return null;  // Early return
     }
@@ -225,7 +225,7 @@ func divide(a: int64, b: int64) -> int64? {
 }
 
 // Multiple returns
-func abs(x: int64) -> int64 {
+func:int64 abs(x: int64) {
     if x < 0 {
         return -x;
     } else {
@@ -269,7 +269,7 @@ class Calculator {
         result = result + x;
     }
 
-    func getResult() -> int64 {
+    func:int64 getResult() {
         return result;
     }
 }
@@ -297,7 +297,7 @@ class Rectangle {
         height = h;
     }
 
-    func area() -> int64 {
+    func:int64 area() {
         return width * height;
     }
 }
@@ -340,7 +340,7 @@ class Counter {
         count = count - 1;
     }
 
-    func getValue() -> int64 {
+    func:int64 getValue() {
         return count;
     }
 
@@ -414,7 +414,7 @@ class Animal {
         this.name = name;
     }
 
-    func makeSound() -> void {
+    func makeSound() {
         print("Some sound");
     }
 }
@@ -428,7 +428,7 @@ class Dog extends Animal {
         this.breed = breed;
     }
 
-    func makeSound() -> void {
+    func makeSound() {
         print("Woof!");
     }
 }
@@ -443,12 +443,12 @@ func main() {
 
 ```hoo
 interface Drawable {
-    func draw() -> void;
-    func getArea() -> double;
+    func draw();
+    func:double getArea();
 }
 
 interface Printable {
-    func print() -> void;
+    func print();
 }
 
 class Circle implements Drawable, Printable {
@@ -458,15 +458,15 @@ class Circle implements Drawable, Printable {
         radius = r;
     }
 
-    func draw() -> void {
+    func draw() {
         print("Drawing circle");
     }
 
-    func getArea() -> double {
+    func:double getArea() {
         return 3.14159 * radius * radius;
     }
 
-    func print() -> void {
+    func print() {
         print("Circle with radius: " + radius);
     }
 }

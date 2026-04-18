@@ -164,7 +164,7 @@ TEST_F(HooCLITest, ShowsHelp) {
 TEST_F(HooCLITest, VerboseLogsToStderr) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     fakeIO->setFile("test.hoo", R"(
-        func main() -> void {
+        func main() {
             return;
         }
     )");

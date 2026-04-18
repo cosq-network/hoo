@@ -60,7 +60,7 @@ protected:
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringEmptyConstructor) {
     std::string code = R"(
-        func test() -> std.String {
+        func:std.String test() {
             return new std.String();
         }
     )";
@@ -79,7 +79,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringEmptyConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringLiteralConstructor) {
     std::string code = R"(
-        func test() -> std.String {
+        func:std.String test() {
             return new std.String("hello");
         }
     )";
@@ -97,7 +97,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringLiteralConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringVariableDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s: std.String = new std.String("world");
         }
     )";
@@ -112,9 +112,9 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringVariableDeclaration) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringInFunctionCall) {
     std::string code = R"(
-        func process(s: std.String) -> void {}
+        func process(s: std.String) {}
 
-        func test() -> void {
+        func test() {
             process(new std.String("test"));
         }
     )";
@@ -133,7 +133,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringInFunctionCall) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayIntConstructor) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [1, 2, 3, 4, 5];
         }
     )";
@@ -148,7 +148,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayIntConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayStringConstructor) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: std.String[] = [new std.String("a"), new std.String("b")];
         }
     )";
@@ -163,7 +163,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayStringConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedNestedArrayConstructor) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[][] = [[1, 2], [3, 4]];
         }
     )";
@@ -178,7 +178,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedNestedArrayConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayVariableDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [1, 2, 3];
         }
     )";
@@ -199,7 +199,7 @@ TEST_F(StdConstructorCodeGenTest, ImportedStringConstructor) {
     std::string code = R"(
         from std import String;
 
-        func test() -> String {
+        func:String test() {
             return new String("imported");
         }
     )";
@@ -217,7 +217,7 @@ TEST_F(StdConstructorCodeGenTest, ImportedStringConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, ImportedArrayConstructor) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [1, 2, 3];
         }
     )";
@@ -232,7 +232,7 @@ TEST_F(StdConstructorCodeGenTest, ImportedArrayConstructor) {
 
 TEST_F(StdConstructorCodeGenTest, ImportedStringAndArray) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: std.String[] = [new std.String("a"), new std.String("b")];
         }
     )";
@@ -253,7 +253,7 @@ TEST_F(StdConstructorCodeGenTest, MixedQualifiedAndImported) {
     std::string code = R"(
         from std import String;
 
-        func test() -> void {
+        func test() {
             var s1: String = new String("imported");
             var s2: std.String = new std.String("qualified");
         }
@@ -280,7 +280,7 @@ TEST_F(StdConstructorCodeGenTest, MixedQualifiedAndImported) {
 
 TEST_F(StdConstructorCodeGenTest, MixedArrayAndString) {
     std::string code = R"(
-        func main() -> void {
+        func main() {
             var s: std.String = new std.String("hello");
             var arr: int64[] = [1, 2, 3];
         }
@@ -300,7 +300,7 @@ TEST_F(StdConstructorCodeGenTest, MixedArrayAndString) {
 
 TEST_F(StdConstructorCodeGenTest, MultipleStringConstructions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s1 = new std.String("first");
             var s2 = new std.String("second");
             var s3 = new std.String("third");
@@ -317,7 +317,7 @@ TEST_F(StdConstructorCodeGenTest, MultipleStringConstructions) {
 
 TEST_F(StdConstructorCodeGenTest, MultipleArrayConstructions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr1: int64[] = [1, 2, 3];
             var arr2: double[] = [1.0, 2.0, 3.0];
             var arr3: bool[] = [true, false];
@@ -334,11 +334,11 @@ TEST_F(StdConstructorCodeGenTest, MultipleArrayConstructions) {
 
 TEST_F(StdConstructorCodeGenTest, StringInComplexExpression) {
     std::string code = R"(
-        func createMessage(name: std.String) -> std.String {
+        func:std.String createMessage(name: std.String) {
             return new std.String("Hello");
         }
 
-        func test() -> void {
+        func test() {
             var greeting: std.String = createMessage(new std.String("World"));
         }
     )";
@@ -361,7 +361,7 @@ TEST_F(StdConstructorCodeGenTest, MixedStdAndUserClasses) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var s: std.String = new std.String("name");
             var p: Person = new Person();
         }
@@ -391,7 +391,7 @@ TEST_F(StdConstructorCodeGenTest, UserClassConstructorStillWorks) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var obj: MyClass = new MyClass();
         }
     )";
@@ -413,7 +413,7 @@ TEST_F(StdConstructorCodeGenTest, SimpleIdentifierStillWorks) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var obj = new SimpleClass();
         }
     )";
@@ -432,7 +432,7 @@ TEST_F(StdConstructorCodeGenTest, SimpleIdentifierStillWorks) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var strings: std.String[] = [new std.String("a"), new std.String("b")];
         }
     )";
@@ -450,7 +450,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayDeclaration) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayWithLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var strings: std.String[] = [new std.String("hello"), new std.String("world")];
             var total: int64 = 0;
             var i: int64 = 0;
@@ -471,7 +471,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedStringArrayWithLoop) {
 
 TEST_F(StdConstructorCodeGenTest, NestedQualifiedArrayType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var nested: std.String[][] = [[new std.String("a"), new std.String("b")], [new std.String("c")]];
         }
     )";
@@ -486,11 +486,11 @@ TEST_F(StdConstructorCodeGenTest, NestedQualifiedArrayType) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsFunctionParameter) {
     std::string code = R"(
-        func processStrings(arr: std.String[]) -> void {
+        func processStrings(arr: std.String[]) {
             return;
         }
 
-        func test() -> void {
+        func test() {
             var strings: std.String[] = [new std.String("test")];
             processStrings(strings);
         }
@@ -510,7 +510,7 @@ TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsFunctionParameter) {
 
 TEST_F(StdConstructorCodeGenTest, QualifiedArrayAsReturnType) {
     std::string code = R"(
-        func getStrings() -> std.String[] {
+        func:std.String[] getStrings() {
             return [new std.String("a"), new std.String("b")];
         }
     )";

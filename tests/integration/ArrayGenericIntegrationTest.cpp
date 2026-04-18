@@ -52,7 +52,7 @@ protected:
 // Phase 5 Test 1: Array literal initialization compiles
 TEST_F(ArrayGenericIntegrationTest, ArrayLiteralInitialization) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3, 4, 5];
             return 5;
         }
@@ -68,7 +68,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayLiteralInitialization) {
 // Phase 5 Test 2: Array literal with type inference for int64
 TEST_F(ArrayGenericIntegrationTest, ArrayTypeInferenceInt64) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [10, 20, 30];
             return 3;
         }
@@ -85,7 +85,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayTypeInferenceInt64) {
 // Phase 5 Test 3: Array literal with type inference for double
 TEST_F(ArrayGenericIntegrationTest, ArrayTypeInferenceDouble) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1.5, 2.5, 3.5];
             return 1;
         }
@@ -102,7 +102,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayTypeInferenceDouble) {
 // Phase 5 Test 4: Array access - read element
 TEST_F(ArrayGenericIntegrationTest, ArrayAccess) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [10, 20, 30, 40, 50];
             var value = arr[2];
             return value;
@@ -121,7 +121,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAccess) {
 // Phase 5 Test 5: Array access at different indices
 TEST_F(ArrayGenericIntegrationTest, ArrayAccessMultipleIndices) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [100, 200, 300, 400, 500];
             var first = arr[0];
             var last = arr[4];
@@ -140,7 +140,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAccessMultipleIndices) {
 // Phase 5 Test 6: Array element access in expressions
 TEST_F(ArrayGenericIntegrationTest, ArrayAccessInExpressions) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [10, 20, 30];
             var result = arr[0] + arr[1] + arr[2];
             return result;
@@ -158,7 +158,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAccessInExpressions) {
 // Phase 5 Test 7: Multiple arrays with different types
 TEST_F(ArrayGenericIntegrationTest, MultipleArrayTypes) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var ints = [1, 2, 3];
             var floats = [1.5, 2.5, 3.5];
             return 42;
@@ -177,7 +177,7 @@ TEST_F(ArrayGenericIntegrationTest, MultipleArrayTypes) {
 // Phase 5 Test 8: Array with explicit type annotation
 TEST_F(ArrayGenericIntegrationTest, ExplicitArrayTypeAnnotation) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr: int64[] = [5, 10, 15, 20];
             return arr[1];
         }
@@ -194,11 +194,11 @@ TEST_F(ArrayGenericIntegrationTest, ExplicitArrayTypeAnnotation) {
 // Phase 5 Test 9: Array in function call
 TEST_F(ArrayGenericIntegrationTest, ArrayAsParameter) {
     std::string code = R"(
-        func process(data: int64[]) -> int64 {
+        func:int64 process(data: int64[]) {
             return 123;
         }
 
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3];
             return process(arr);
         }
@@ -215,7 +215,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAsParameter) {
 // Phase 5 Test 10: Array access in loop
 TEST_F(ArrayGenericIntegrationTest, ArrayAccessInLoop) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3, 4, 5];
             var sum = 0;
             var i = 0;
@@ -237,7 +237,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAccessInLoop) {
 // Phase 5 Test 11: Array with constant expressions
 TEST_F(ArrayGenericIntegrationTest, ArrayWithConstantExpressions) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1 + 1, 2 + 2, 3 + 3];
             return arr[0] + arr[1] + arr[2];
         }
@@ -254,7 +254,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayWithConstantExpressions) {
 // Phase 5 Test 12: Empty array with explicit type
 TEST_F(ArrayGenericIntegrationTest, EmptyArrayExecution) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr: int64[] = [];
             return 42;
         }
@@ -270,7 +270,7 @@ TEST_F(ArrayGenericIntegrationTest, EmptyArrayExecution) {
 // Phase 5 Test 13: Array initialization from literal in variable
 TEST_F(ArrayGenericIntegrationTest, ArrayVariableStorage) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var x = [42];
             return x[0];
         }
@@ -287,7 +287,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayVariableStorage) {
 // Phase 5 Test 14: Multiple array assignments
 TEST_F(ArrayGenericIntegrationTest, MultipleArrayVariables) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr1 = [10];
             var arr2 = [20];
             var arr3 = [30];
@@ -305,7 +305,7 @@ TEST_F(ArrayGenericIntegrationTest, MultipleArrayVariables) {
 // Phase 5 Test 15: Array access in nested expressions
 TEST_F(ArrayGenericIntegrationTest, ArrayAccessNested) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [2, 4, 6, 8, 10];
             return (arr[0] + arr[1]) * (arr[2] - arr[3]) + arr[4];
         }
@@ -321,7 +321,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAccessNested) {
 // Phase 5 Test 16: Double array access and computation
 TEST_F(ArrayGenericIntegrationTest, DoubleArrayAccess) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1.0, 2.0, 3.0];
             return 42;
         }
@@ -338,7 +338,7 @@ TEST_F(ArrayGenericIntegrationTest, DoubleArrayAccess) {
 // Phase 5 Test 17: Array in conditional
 TEST_F(ArrayGenericIntegrationTest, ArrayInConditional) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [5, 10, 15];
             if (arr[0] < arr[1]) {
                 return 1;
@@ -358,7 +358,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayInConditional) {
 // Phase 5 Test 18: Array comparison in loop condition
 TEST_F(ArrayGenericIntegrationTest, ArrayComparisonInLoop) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3, 4, 5];
             var count = 0;
             var i = 0;
@@ -380,7 +380,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayComparisonInLoop) {
 // Phase 5 Test 19: Array with for-in loop
 TEST_F(ArrayGenericIntegrationTest, ArrayWithForInLoop) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3, 4, 5];
             var sum = 0;
             for item in arr {
@@ -400,7 +400,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayWithForInLoop) {
 // Phase 5 Test 20: Array with for-range loop
 TEST_F(ArrayGenericIntegrationTest, ArrayWithForRangeLoop) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [10, 20, 30, 40, 50];
             var sum = 0;
             for i in 0..5 {
@@ -420,11 +420,11 @@ TEST_F(ArrayGenericIntegrationTest, ArrayWithForRangeLoop) {
 // Phase 5 Test 21: Array return value from function
 TEST_F(ArrayGenericIntegrationTest, ArrayReturnedFromFunction) {
     std::string code = R"(
-        func getArray() -> int64[] {
+        func:int64[] getArray() {
             return [1, 2, 3];
         }
 
-        func main() -> int64 {
+        func:int64 main() {
             var arr = getArray();
             return arr[1];
         }
@@ -441,15 +441,15 @@ TEST_F(ArrayGenericIntegrationTest, ArrayReturnedFromFunction) {
 // Phase 5 Test 22: Nested function calls with arrays
 TEST_F(ArrayGenericIntegrationTest, NestedFunctionCalls) {
     std::string code = R"(
-        func sum_array(data: int64[]) -> int64 {
+        func:int64 sum_array(data: int64[]) {
             return 21;
         }
 
-        func process() -> int64 {
+        func:int64 process() {
             return sum_array([1, 2, 3]);
         }
 
-        func main() -> int64 {
+        func:int64 main() {
             return process();
         }
     )";
@@ -465,7 +465,7 @@ TEST_F(ArrayGenericIntegrationTest, NestedFunctionCalls) {
 // Phase 5 Test 23: Array access boundary check
 TEST_F(ArrayGenericIntegrationTest, ArrayAccessBoundary) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [100, 200, 300];
             return arr[0] + arr[2];
         }
@@ -481,11 +481,11 @@ TEST_F(ArrayGenericIntegrationTest, ArrayAccessBoundary) {
 // Phase 5 Test 24: Multiple arrays in same function
 TEST_F(ArrayGenericIntegrationTest, MultipleArraysInFunction) {
     std::string code = R"(
-        func calculate(a: int64[], b: int64[]) -> int64 {
+        func:int64 calculate(a: int64[], b: int64[]) {
             return a[0] + b[0];
         }
 
-        func main() -> int64 {
+        func:int64 main() {
             var x = [5, 10, 15];
             var y = [3, 6, 9];
             return calculate(x, y);
@@ -502,11 +502,11 @@ TEST_F(ArrayGenericIntegrationTest, MultipleArraysInFunction) {
 // Phase 5 Test 25: Array element as function argument
 TEST_F(ArrayGenericIntegrationTest, ArrayElementAsArgument) {
     std::string code = R"(
-        func double_value(x: int64) -> int64 {
+        func:int64 double_value(x: int64) {
             return x * 2;
         }
 
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [5, 10, 15];
             return double_value(arr[1]);
         }
@@ -522,7 +522,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayElementAsArgument) {
 // Phase 5 Test 26: Array in complex arithmetic
 TEST_F(ArrayGenericIntegrationTest, ArrayInComplexArithmetic) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [2, 3, 4];
             return arr[0] * arr[1] + arr[2];
         }
@@ -538,7 +538,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayInComplexArithmetic) {
 // Phase 5 Test 27: Array with boolean operations
 TEST_F(ArrayGenericIntegrationTest, ArrayWithBooleanOps) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3, 4, 5];
             if (arr[0] > 0 && arr[4] < 10) {
                 return 1;
@@ -557,7 +557,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayWithBooleanOps) {
 // Phase 5 Test 28: Sequential array operations
 TEST_F(ArrayGenericIntegrationTest, SequentialArrayOperations) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr1 = [1, 2];
             var val1 = arr1[0];
             var arr2 = [3, 4];
@@ -576,7 +576,7 @@ TEST_F(ArrayGenericIntegrationTest, SequentialArrayOperations) {
 // Phase 5 Test 29: Array with variable indices
 TEST_F(ArrayGenericIntegrationTest, ArrayWithVariableIndex) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [10, 20, 30, 40, 50];
             var idx = 2;
             return arr[idx];
@@ -593,7 +593,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayWithVariableIndex) {
 // Phase 5 Test 30: Array index computed from expression
 TEST_F(ArrayGenericIntegrationTest, ArrayIndexComputed) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [10, 20, 30, 40, 50];
             var idx = 1 + 1;
             return arr[idx];
@@ -610,7 +610,7 @@ TEST_F(ArrayGenericIntegrationTest, ArrayIndexComputed) {
 // Phase 5 Test 31: Large array
 TEST_F(ArrayGenericIntegrationTest, LargeArray) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                       11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
             return arr[10];
@@ -628,7 +628,7 @@ TEST_F(ArrayGenericIntegrationTest, LargeArray) {
 // Phase 5 Test 32: Array initialization and iteration
 TEST_F(ArrayGenericIntegrationTest, ArrayInitAndIterate) {
     std::string code = R"(
-        func main() -> int64 {
+        func:int64 main() {
             var arr = [100, 200, 300, 400, 500];
             var total = 0;
             var i = 0;

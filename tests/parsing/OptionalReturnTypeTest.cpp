@@ -116,7 +116,7 @@ TEST_F(OptionalReturnTypeTest, FunctionWithParametersNoReturnType) {
 // Test 3: Function with explicit void return type
 TEST_F(OptionalReturnTypeTest, FunctionWithExplicitVoidReturnType) {
     std::string code = R"(
-        func doSomething() -> void {
+        func doSomething() {
         }
     )";
 
@@ -151,7 +151,7 @@ TEST_F(OptionalReturnTypeTest, FunctionWithExplicitVoidReturnType) {
 // Test 4: Function with explicit non-void return type
 TEST_F(OptionalReturnTypeTest, FunctionWithExplicitReturnType) {
     std::string code = R"(
-        func calculate() -> int64 {
+        func:int64 calculate() {
             return 42;
         }
     )";
@@ -190,11 +190,11 @@ TEST_F(OptionalReturnTypeTest, MultipleFunctionsWithMixedReturnTypes) {
         func noReturnType() {
         }
 
-        func withReturnType() -> int64 {
+        func:int64 withReturnType() {
             return 10;
         }
 
-        func explicitVoid() -> void {
+        func explicitVoid() {
         }
     )";
 

@@ -193,7 +193,7 @@ TEST_F(NewExpressionParsingTest, NewExpressionWithExpressionArguments) {
 // Test 8: New expression with function call arguments
 TEST_F(NewExpressionParsingTest, NewExpressionWithFunctionCallArguments) {
     std::string code = R"(
-        func getValue() -> int64 {
+        func:int64 getValue() {
             return 42;
         }
 

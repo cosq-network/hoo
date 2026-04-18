@@ -49,7 +49,7 @@ TEST_F(MethodCallParsingTest, SimpleMethodCallNoArgs) {
             var count: int64;
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 42;
             }
         }
@@ -71,7 +71,7 @@ TEST_F(MethodCallParsingTest, MethodCallSingleArg) {
         class Adder {
             constructor() {}
 
-            func add(x: int64) -> int64 {
+            func:int64 add(x: int64) {
                 return x + 10;
             }
         }
@@ -93,7 +93,7 @@ TEST_F(MethodCallParsingTest, MethodCallMultipleArgs) {
         class Calculator {
             constructor() {}
 
-            func multiply(a: int64, b: int64) -> int64 {
+            func:int64 multiply(a: int64, b: int64) {
                 return a * b;
             }
         }
@@ -137,11 +137,11 @@ TEST_F(MethodCallParsingTest, MultipleMethodCalls) {
         class Operations {
             constructor() {}
 
-            func getX() -> int64 {
+            func:int64 getX() {
                 return 10;
             }
 
-            func getY() -> int64 {
+            func:int64 getY() {
                 return 20;
             }
         }
@@ -164,7 +164,7 @@ TEST_F(MethodCallParsingTest, MethodCallInExpression) {
         class Math {
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 5;
             }
         }
@@ -186,12 +186,12 @@ TEST_F(MethodCallParsingTest, MethodCallAsArgument) {
         class Value {
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 42;
             }
         }
 
-        func process(x: int64) -> int64 {
+        func:int64 process(x: int64) {
             return x * 2;
         }
 
@@ -212,12 +212,12 @@ TEST_F(MethodCallParsingTest, MethodCallInReturn) {
         class Data {
             constructor() {}
 
-            func getData() -> int64 {
+            func:int64 getData() {
                 return 100;
             }
         }
 
-        func getResult() -> int64 {
+        func:int64 getResult() {
             var d: Data = new Data();
             return d.getData();
         }
@@ -234,7 +234,7 @@ TEST_F(MethodCallParsingTest, MethodCallInIfCondition) {
         class Checker {
             constructor() {}
 
-            func check() -> bool {
+            func:bool check() {
                 return true;
             }
         }
@@ -258,7 +258,7 @@ TEST_F(MethodCallParsingTest, MethodCallWithExpressionArgs) {
         class Calculator {
             constructor() {}
 
-            func add(a: int64, b: int64) -> int64 {
+            func:int64 add(a: int64, b: int64) {
                 return a + b;
             }
         }
@@ -282,7 +282,7 @@ TEST_F(MethodCallParsingTest, ChainedMethodCalls) {
         class Handler {
             constructor() {}
 
-            func process() -> int64 {
+            func:int64 process() {
                 return 42;
             }
         }
@@ -304,7 +304,7 @@ TEST_F(MethodCallParsingTest, MethodCallInWhileLoop) {
         class Iterator {
             constructor() {}
 
-            func hasNext() -> bool {
+            func:bool hasNext() {
                 return false;
             }
         }
@@ -328,7 +328,7 @@ TEST_F(MethodCallParsingTest, MethodCallMixedTypes) {
         class Process {
             constructor() {}
 
-            func process(i: int64, f: float, b: bool) -> double {
+            func:double process(i: int64, f: float, b: bool) {
                 return 3.14;
             }
         }
@@ -349,12 +349,12 @@ TEST_F(MethodCallParsingTest, MultipleObjectMethodCalls) {
     std::string code = R"(
         class A {
             constructor() {}
-            func methodA() -> int64 { return 1; }
+            func:int64 methodA() { return 1; }
         }
 
         class B {
             constructor() {}
-            func methodB() -> int64 { return 2; }
+            func:int64 methodB() { return 2; }
         }
 
         func test() {
@@ -376,7 +376,7 @@ TEST_F(MethodCallParsingTest, MethodCallEmptyParens) {
         class Simple {
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 99;
             }
         }

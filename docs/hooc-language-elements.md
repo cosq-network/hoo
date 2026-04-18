@@ -99,8 +99,8 @@ Callable units that can be compiled independently (may reference imports).
 
 | Element | Syntax | Example |
 |---------|--------|---------|
-| Function (void, no params) | `'func' IDENTIFIER '(' ')' '->' 'void' block` | `func main() -> void { return; }` |
-| Function (with params) | `'func' IDENTIFIER '(' params ')' '->' type block` | `func add(a: int64, b: int64) -> int64 { return a + b; }` |
+| Function (void, no params) | `'func' IDENTIFIER '(' ')' block` | `func main() { return; }` |
+| Function (with params) | `'func' ':' type IDENTIFIER '(' params ')' block` | `func:int64 add(a: int64, b: int64) { return a + b; }` |
 | Function (no return type) | `'func' IDENTIFIER '(' params? ')' block` | `func greet(name: string) { print(name); }` |
 | Constructor | `'constructor' '(' params? ')' block` | `constructor(x: int64, y: int64) { this.x = x; this.y = y; }` |
 | Event declaration | `'event' IDENTIFIER ';'` | `event onClick;`, `event onUpdate;` |
@@ -130,12 +130,12 @@ User-defined types that group related functionality.
 |---------|--------|---------|
 | Simple class | `'class' IDENTIFIER classBody` | `class Point { constructor() {} }` |
 | Class with constructor | `'class' IDENTIFIER classBody` | `class Counter { constructor() { this.count = 0; } }` |
-| Class with members | `'class' IDENTIFIER classBody` | `class Calculator { func add(a: int64, b: int64) -> int64 { return a + b; } }` |
+| Class with members | `'class' IDENTIFIER classBody` | `class Calculator { func:int64 add(a: int64, b: int64) { return a + b; } }` |
 | Class with inheritance | `'class' IDENTIFIER 'extends' IDENTIFIER classBody` | `class Dog extends Animal { }` |
 | Class with implements | `'class' IDENTIFIER 'implements' IDENTIFIER (',' IDENTIFIER)* classBody` | `class Rect implements Drawable { }` |
 | Class with modifiers | `modifiers 'class' IDENTIFIER classBody` | `singleton class Config { }`, `immutable class User { }` |
-| Interface | `'interface' IDENTIFIER '{' interfaceMember* '}'` | `interface Drawable { func draw() -> void; }` |
-| Interface with methods | `'interface' IDENTIFIER '{' interfaceMember* '}'` | `interface Repository { func save(d: int64) -> bool; func load(id: int64) -> int64; }` |
+| Interface | `'interface' IDENTIFIER '{' interfaceMember* '}'` | `interface Drawable { func draw(); }` |
+| Interface with methods | `'interface' IDENTIFIER '{' interfaceMember* '}'` | `interface Repository { func:bool save(d: int64); func:int64 load(id: int64); }` |
 
 **Compilation**: Classes and interfaces can be compiled independently with:
 - Full method implementations
@@ -184,7 +184,7 @@ singleton class Config {
         this.version = "1.0";
     }
 
-    func getVersion() -> string {
+    func:string getVersion() {
         return this.version;
     }
 }
@@ -198,7 +198,7 @@ class Point {
         this.y = y;
     }
 
-    func distanceTo(other: Point) -> int64 {
+    func:int64 distanceTo(other: Point) {
         var dx = this.x - other.x;
         var dy = this.y - other.y;
         return ((dx * dx) + (dy * dy)).sqrt();
@@ -208,17 +208,17 @@ class Point {
 class Calculator {
     constructor() {}
 
-    func add(a: int64, b: int64) -> int64 {
+    func:int64 add(a: int64, b: int64) {
         return a + b;
     }
 
-    func multiply(a: int64, b: int64) -> int64 {
+    func:int64 multiply(a: int64, b: int64) {
         return a * b;
     }
 }
 
 interface Drawable {
-    func draw() -> void;
+    func draw();
 }
 
 class Circle implements Drawable {
@@ -228,11 +228,11 @@ class Circle implements Drawable {
         this.radius = radius;
     }
 
-    func draw() -> void {
+    func draw() {
     }
 }
 
-func main() -> void {
+func main() {
     var config = new Config();
     var version = config.getVersion();
 
@@ -310,7 +310,7 @@ Compilation Unit (heavy)
 | Primitive byte | `byte` | `var b: byte` |
 | Primitive char | `char` | `var c: char` |
 | String | `string` | `var s: string` |
-| Void | `void` | `func f() -> void` |
+| Void | `void` | `func f() { }` |
 | Array (slice) | `type '[]'` | `var arr: int64[]` |
 | Array (multi-dim) | `type '[][]'` | `var m: int64[][]` |
 | Nullable | `type '?'` | `var x: int64?` |

@@ -49,7 +49,7 @@ protected:
 
 TEST_F(ArrayLiteralCodeGenTest, SimpleIntegerArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             return;
         }
@@ -76,7 +76,7 @@ TEST_F(ArrayLiteralCodeGenTest, SimpleIntegerArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, FloatArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1.5, 2.5, 3.5];
             return;
         }
@@ -96,7 +96,7 @@ TEST_F(ArrayLiteralCodeGenTest, FloatArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, BooleanArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [true, false, true, false];
             return;
         }
@@ -116,7 +116,7 @@ TEST_F(ArrayLiteralCodeGenTest, BooleanArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, CharArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = ['a', 'b', 'c', 'd'];
             return;
         }
@@ -136,7 +136,7 @@ TEST_F(ArrayLiteralCodeGenTest, CharArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, EmptyArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [];
             return;
         }
@@ -155,7 +155,7 @@ TEST_F(ArrayLiteralCodeGenTest, EmptyArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, TwoDimensionalArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
             return;
         }
@@ -175,7 +175,7 @@ TEST_F(ArrayLiteralCodeGenTest, TwoDimensionalArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, ThreeDimensionalArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var cube = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
             return;
         }
@@ -194,7 +194,7 @@ TEST_F(ArrayLiteralCodeGenTest, ThreeDimensionalArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralWithExpressions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1 + 2, 3 * 4, 10 - 5];
             return;
         }
@@ -213,7 +213,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralWithExpressions) {
 
 TEST_F(ArrayLiteralCodeGenTest, MultipleArrayLiterals) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr1 = [1, 2, 3];
             var arr2 = [4, 5, 6];
             var arr3 = [7, 8, 9];
@@ -240,7 +240,7 @@ TEST_F(ArrayLiteralCodeGenTest, MultipleArrayLiterals) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralWithFunctionContext) {
     std::string code = R"(
-func test() -> void {
+func test() {
     var data = [1, 2, 3, 4, 5];
     var count = 5;
     return;
@@ -263,7 +263,7 @@ func test() -> void {
 
 TEST_F(ArrayLiteralCodeGenTest, LargeArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
                       11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
                       21, 22, 23, 24, 25, 26, 27, 28, 29, 30];
@@ -285,7 +285,7 @@ TEST_F(ArrayLiteralCodeGenTest, LargeArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralWithExplicitType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[] = [10, 20, 30, 40, 50];
             return;
         }
@@ -305,7 +305,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralWithExplicitType) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayAccessFromLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var arr = [10, 20, 30, 40, 50];
             var value = arr[2];
             return value;
@@ -330,7 +330,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayAccessFromLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, NestedArrayAccess) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var matrix = [[1, 2], [3, 4]];
             return;
         }
@@ -352,7 +352,7 @@ TEST_F(ArrayLiteralCodeGenTest, NestedArrayAccess) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralInReturn) {
     std::string code = R"(
-        func getSize() -> int64 {
+        func:int64 getSize() {
             var arr = [1, 2, 3, 4, 5];
             return 5;
         }
@@ -374,7 +374,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralInReturn) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralTypeConsistency) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ints = [1, 2, 3];
             var floats = [1.0, 2.0, 3.0];
             var bools = [true, false, true];
@@ -399,7 +399,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralTypeConsistency) {
 
 TEST_F(ArrayLiteralCodeGenTest, GlobalConstantArrays) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr1 = [1, 2, 3];
             var arr2 = [1, 2, 3];
             return;
@@ -424,7 +424,7 @@ TEST_F(ArrayLiteralCodeGenTest, GlobalConstantArrays) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralInIfStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if (true) {
                 var arr = [1, 2, 3];
             }
@@ -445,7 +445,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralInIfStatement) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralInLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var i = 0;
             while (i < 3) {
                 var arr = [1, 2, 3];
@@ -468,7 +468,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralInLoop) {
 
 TEST_F(ArrayLiteralCodeGenTest, ByteArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: byte[] = [10, 20, 30, 40, 50];
             return;
         }
@@ -489,7 +489,7 @@ TEST_F(ArrayLiteralCodeGenTest, ByteArrayLiteral) {
 
 TEST_F(ArrayLiteralCodeGenTest, MixedDimensionalArrays) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr1 = [1, 2, 3];
             var arr2 = [[1, 2], [3, 4]];
             var arr3 = [[[1]]];
@@ -510,7 +510,7 @@ TEST_F(ArrayLiteralCodeGenTest, MixedDimensionalArrays) {
 
 TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralStorageLocation) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             return;
         }
@@ -535,7 +535,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayLiteralStorageLocation) {
 // Test: Array as return type
 TEST_F(ArrayLiteralCodeGenTest, ArrayReturnType) {
     std::string code = R"(
-        func getNumbers() -> int64[] {
+        func:int64[] getNumbers() {
             return [1, 2, 3];
         }
     )";
@@ -561,7 +561,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayReturnType) {
 // Test: Multi-dimensional array as return type
 TEST_F(ArrayLiteralCodeGenTest, MultiDimensionalArrayReturnType) {
     std::string code = R"(
-        func getMatrix() -> int64[][] {
+        func:int64[][] getMatrix() {
             return [[1, 2], [3, 4]];
         }
     )";
@@ -585,7 +585,7 @@ TEST_F(ArrayLiteralCodeGenTest, MultiDimensionalArrayReturnType) {
 // Test: Array return type with array assignment
 TEST_F(ArrayLiteralCodeGenTest, ArrayReturnAndAssignment) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var result = [10, 20, 30];
             return;
         }
@@ -604,7 +604,7 @@ TEST_F(ArrayLiteralCodeGenTest, ArrayReturnAndAssignment) {
 // Test: Array as function parameter and return
 TEST_F(ArrayLiteralCodeGenTest, ArrayParameterAndReturn) {
     std::string code = R"(
-        func process(arr: int64[]) -> int64[] {
+        func:int64[] process(arr: int64[]) {
             return arr;
         }
     )";

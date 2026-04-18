@@ -145,7 +145,7 @@ TEST_F(MemberAccessCodeGenTest, MemberAccessAsArgument) {
             constructor() {}
         }
 
-        func process(x: int64) -> int64 {
+        func:int64 process(x: int64) {
             return x;
         }
 
@@ -283,7 +283,7 @@ TEST_F(MemberAccessCodeGenTest, MemberAccessReturn) {
             constructor() {}
         }
 
-        func getValue() -> int64 {
+        func:int64 getValue() {
             var h: Holder = new Holder();
             return h.value;
         }

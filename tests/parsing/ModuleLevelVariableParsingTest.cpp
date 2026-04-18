@@ -189,7 +189,7 @@ TEST_F(ModuleLevelVariableParsingTest, MixedDeclarations) {
     std::string code = R"(
         var global_value = 100
 
-        func add(a: int64, b: int64) -> int64 {
+        func:int64 add(a: int64, b: int64) {
             return a + b;
         }
 

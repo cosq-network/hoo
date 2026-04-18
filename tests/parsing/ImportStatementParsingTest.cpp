@@ -29,7 +29,7 @@ TEST_F(ImportStatementParsingTest, BasicImport) {
     std::string code = R"(
         import os;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -52,7 +52,7 @@ TEST_F(ImportStatementParsingTest, BasicImportWithAlias) {
     std::string code = R"(
         import math as m;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -74,7 +74,7 @@ TEST_F(ImportStatementParsingTest, DottedModuleImport) {
     std::string code = R"(
         import os.path;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -95,7 +95,7 @@ TEST_F(ImportStatementParsingTest, DottedModuleImportWithAlias) {
     std::string code = R"(
         import os.path as ospath;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -118,7 +118,7 @@ TEST_F(ImportStatementParsingTest, FromImportSingleName) {
     std::string code = R"(
         from os import path;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -143,7 +143,7 @@ TEST_F(ImportStatementParsingTest, FromImportSingleNameWithAlias) {
     std::string code = R"(
         from os import path as p;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -167,7 +167,7 @@ TEST_F(ImportStatementParsingTest, FromImportMultipleNames) {
     std::string code = R"(
         from std.io import read, write, close;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -193,7 +193,7 @@ TEST_F(ImportStatementParsingTest, FromImportMixedAliases) {
     std::string code = R"(
         from lib import x, y as Y, z;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -224,7 +224,7 @@ TEST_F(ImportStatementParsingTest, FromImportDottedModule) {
     std::string code = R"(
         from os.path import join, split;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -252,7 +252,7 @@ TEST_F(ImportStatementParsingTest, MultipleImportStatements) {
         import math as m;
         from sys import argv;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -284,10 +284,10 @@ TEST_F(ImportStatementParsingTest, ImportsBeforeDeclarations) {
         import os;
         import sys;
 
-        func main() -> void {
+        func main() {
         }
 
-        func helper() -> void {
+        func helper() {
         }
     )";
 
@@ -303,7 +303,7 @@ TEST_F(ImportStatementParsingTest, ComplexDottedPath) {
     std::string code = R"(
         import a.b.c.d.e;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -323,7 +323,7 @@ TEST_F(ImportStatementParsingTest, FromImportAllAliased) {
     std::string code = R"(
         from m import a as A, b as B, c as C;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -355,7 +355,7 @@ TEST_F(ImportStatementParsingTest, MixedImportStyles) {
         import json as j;
         from os.path import join as path_join;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -395,7 +395,7 @@ TEST_F(ImportStatementParsingTest, LargeNumberOfImports) {
         from f import x, y;
         from g import p, q, r;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -410,7 +410,7 @@ TEST_F(ImportStatementParsingTest, ToStringBasicImport) {
     std::string code = R"(
         import os;
 
-        func main() -> void {
+        func main() {
         }
     )";
 
@@ -429,7 +429,7 @@ TEST_F(ImportStatementParsingTest, ToStringFromImport) {
     std::string code = R"(
         from sys import argv, path;
 
-        func main() -> void {
+        func main() {
         }
     )";
 

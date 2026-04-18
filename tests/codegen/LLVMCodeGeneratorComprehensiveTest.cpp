@@ -51,7 +51,7 @@ protected:
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_Block) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             {
                 var x = 1;
                 var y = 2;
@@ -69,7 +69,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_Block) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ReturnWithExpression) {
-    std::string code = "func test() -> int64 { return 42; }";
+    std::string code = "func:int64 test() { return 42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -80,7 +80,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ReturnWithExpression) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ReturnVoid) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -92,7 +92,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ReturnVoid) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ExpressionStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             42;
             return;
         }
@@ -107,7 +107,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ExpressionStatement) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_VariableDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             return;
         }
@@ -122,7 +122,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_VariableDeclaration) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_VariableDeclarationWithType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: int64 = 10;
             var y: double = 3.14;
             return;
@@ -138,7 +138,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_VariableDeclarationWithType
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_IfStatement) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             if (true) {
                 return 1;
             }
@@ -155,7 +155,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_IfStatement) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_IfElseStatement) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             if (true) {
                 return 1;
             } else {
@@ -173,7 +173,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_IfElseStatement) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_NestedIf) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             if (true) {
                 if (false) {
                     return 1;
@@ -192,7 +192,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_NestedIf) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_WhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var i = 0;
             while (i < 10) {
                 i = i + 1;
@@ -210,7 +210,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_WhileLoop) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ForRangeLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum = 0;
             for i in 0 .. 10 {
                 sum = sum + i;
@@ -228,7 +228,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ForRangeLoop) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ForInLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3];
             var sum = 0;
             for item in arr {
@@ -247,7 +247,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ForInLoop) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_BreakInWhile) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             while (count < 100) {
                 count = count + 1;
@@ -268,7 +268,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_BreakInWhile) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ContinueInWhile) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             var sum = 0;
             while (count < 10) {
@@ -291,7 +291,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ContinueInWhile) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_BreakInForRange) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum = 0;
             for i in 0 .. 100 {
                 sum = sum + i;
@@ -312,7 +312,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_BreakInForRange) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_NestedLoopsWithBreak) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var found = false;
             for i in 0 .. 10 {
                 for j in 0 .. 10 {
@@ -338,7 +338,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_NestedLoopsWithBreak) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ScopeBlock) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             scope {
                 var y = 20;
@@ -357,7 +357,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_ScopeBlock) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_NestedScopeBlocks) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             scope {
                 var a = 1;
                 scope {
@@ -383,7 +383,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Statement_NestedScopeBlocks) {
 // ============================================================================
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_IntegerLiteral) {
-    std::string code = "func test() -> int64 { return 42; }";
+    std::string code = "func:int64 test() { return 42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -393,7 +393,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_IntegerLiteral) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FloatingLiteral) {
-    std::string code = "func test() -> double { return 3.14159; }";
+    std::string code = "func:double test() { return 3.14159; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -404,7 +404,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FloatingLiteral) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FloatLiteral) {
-    std::string code = "func test(val: float) -> float { return val; }";
+    std::string code = "func:float test(val: float) { return val; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -415,7 +415,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FloatLiteral) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BooleanLiteral_True) {
-    std::string code = "func test() -> bool { return true; }";
+    std::string code = "func:bool test() { return true; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -425,7 +425,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BooleanLiteral_True) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BooleanLiteral_False) {
-    std::string code = "func test() -> bool { return false; }";
+    std::string code = "func:bool test() { return false; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -435,7 +435,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BooleanLiteral_False) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_CharLiteral) {
-    std::string code = "func test() -> char { return 'a'; }";
+    std::string code = "func:char test() { return 'a'; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -446,7 +446,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_CharLiteral) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_StringLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var s = "hello world";
             return;
         }
@@ -461,7 +461,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_StringLiteral) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_NullLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ptr: int64? = null;
             return;
         }
@@ -476,7 +476,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_NullLiteral) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_InterpolatedString) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var name = "world";
             var s = "Hello ${name}!";
             return;
@@ -496,7 +496,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_InterpolatedString) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_Identifier) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10;
             return x;
         }
@@ -514,7 +514,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_Identifier) {
 // ============================================================================
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Addition) {
-    std::string code = "func test() -> int64 { return 5 + 3; }";
+    std::string code = "func:int64 test() { return 5 + 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -524,7 +524,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Addition) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Subtraction) {
-    std::string code = "func test() -> int64 { return 5 - 3; }";
+    std::string code = "func:int64 test() { return 5 - 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -534,7 +534,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Subtraction) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Multiplication) {
-    std::string code = "func test() -> int64 { return 5 * 3; }";
+    std::string code = "func:int64 test() { return 5 * 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -544,7 +544,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Multiplication) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Division) {
-    std::string code = "func test() -> int64 { return 15 / 3; }";
+    std::string code = "func:int64 test() { return 15 / 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -554,7 +554,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Division) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Modulo) {
-    std::string code = "func test() -> int64 { return 17 % 5; }";
+    std::string code = "func:int64 test() { return 17 % 5; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -564,7 +564,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Modulo) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Equals) {
-    std::string code = "func test() -> bool { return 5 == 5; }";
+    std::string code = "func:bool test() { return 5 == 5; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -574,7 +574,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_Equals) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_NotEquals) {
-    std::string code = "func test() -> bool { return 5 != 3; }";
+    std::string code = "func:bool test() { return 5 != 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -584,7 +584,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_NotEquals) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_LessThan) {
-    std::string code = "func test() -> bool { return 3 < 5; }";
+    std::string code = "func:bool test() { return 3 < 5; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -594,7 +594,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_LessThan) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_LessEquals) {
-    std::string code = "func test() -> bool { return 3 <= 5; }";
+    std::string code = "func:bool test() { return 3 <= 5; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -604,7 +604,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_LessEquals) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_GreaterThan) {
-    std::string code = "func test() -> bool { return 5 > 3; }";
+    std::string code = "func:bool test() { return 5 > 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -614,7 +614,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_GreaterThan) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_GreaterEquals) {
-    std::string code = "func test() -> bool { return 5 >= 3; }";
+    std::string code = "func:bool test() { return 5 >= 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -625,7 +625,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_GreaterEquals) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_StringConcatenation) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = "Hello";
             var b = "World";
             var c = a + b;
@@ -641,7 +641,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_StringConcatenati
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_CompoundExpression) {
-    std::string code = "func test() -> int64 { return (1 + 2) * (3 - 4); }";
+    std::string code = "func:int64 test() { return (1 + 2) * (3 - 4); }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -655,7 +655,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_BinaryOp_CompoundExpressio
 // ============================================================================
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_UnaryMinus) {
-    std::string code = "func test() -> int64 { return -42; }";
+    std::string code = "func:int64 test() { return -42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -666,7 +666,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_UnaryMinus) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_UnaryMinusVariable) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10;
             return -x;
         }
@@ -680,7 +680,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_UnaryMinusVariable) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalNot) {
-    std::string code = "func test() -> bool { return !true; }";
+    std::string code = "func:bool test() { return !true; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -690,7 +690,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalNot) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalAnd) {
-    std::string code = "func test() -> bool { return true && false; }";
+    std::string code = "func:bool test() { return true && false; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -700,7 +700,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalAnd) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalOr) {
-    std::string code = "func test() -> bool { return true || false; }";
+    std::string code = "func:bool test() { return true || false; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -711,7 +711,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalOr) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalCompound) {
     std::string code = R"(
-        func test() -> bool {
+        func:bool test() {
             return (true && false) || (true || false);
         }
     )";
@@ -729,7 +729,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_LogicalCompound) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_Assignment) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10;
             x = 20;
             return x;
@@ -745,7 +745,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_Assignment) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_AssignmentCompound) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10;
             x = x + 5;
             return x;
@@ -765,8 +765,8 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_AssignmentCompound) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FunctionCall) {
     std::string code = R"(
-        func helper() -> void { }
-        func test() -> void {
+        func helper() { }
+        func test() {
             helper();
             return;
         }
@@ -783,8 +783,8 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FunctionCall) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FunctionCallWithArgs) {
     std::string code = R"(
-        func add(a: int64, b: int64) -> int64 { return a + b; }
-        func test() -> int64 {
+        func:int64 add(a: int64, b: int64) { return a + b; }
+        func:int64 test() {
             return add(1, 2);
         }
     )";
@@ -798,8 +798,8 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FunctionCallWithArgs) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FunctionCallNoArgs) {
     std::string code = R"(
-        func getValue() -> int64 { return 42; }
-        func test() -> int64 {
+        func:int64 getValue() { return 42; }
+        func:int64 test() {
             return getValue();
         }
     )";
@@ -817,7 +817,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_FunctionCallNoArgs) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayLiteral_Int64) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             return;
         }
@@ -832,7 +832,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayLiteral_Int64) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayLiteral_Double) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1.1, 2.2, 3.3];
             return;
         }
@@ -847,7 +847,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayLiteral_Double) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayLiteral_Empty) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [];
             return;
         }
@@ -866,7 +866,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayLiteral_Empty) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayAccess) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var arr = [10, 20, 30];
             return arr[1];
         }
@@ -881,7 +881,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayAccess) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_ArrayAccessWithVariable) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var arr = [10, 20, 30];
             var i = 0;
             return arr[i];
@@ -905,7 +905,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_NewObject) {
             var x: int64;
             var y: int64;
         }
-        func test() -> void {
+        func test() {
             var p = new Point();
             return;
         }
@@ -925,7 +925,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_NewObjectWithArgs) {
             var y: int64;
             constructor(x: int64, y: int64) { }
         }
-        func test() -> void {
+        func test() {
             var p = new Point(1, 2);
             return;
         }
@@ -948,7 +948,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_MemberAccess) {
             var x: int64;
             var y: int64;
         }
-        func test() -> int64 {
+        func:int64 test() {
             var p: Point = new Point();
             return p.x;
         }
@@ -966,7 +966,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_MemberAccess) {
 // ============================================================================
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_Parenthesized) {
-    std::string code = "func test() -> int64 { return (1 + 2) * 3; }";
+    std::string code = "func:int64 test() { return (1 + 2) * 3; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -980,7 +980,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Expression_Parenthesized) {
 // ============================================================================
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Primitive_Int64) {
-    std::string code = "func test() -> int64 { return 42; }";
+    std::string code = "func:int64 test() { return 42; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -991,7 +991,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Primitive_Int64) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Primitive_Double) {
-    std::string code = "func test() -> double { return 3.14; }";
+    std::string code = "func:double test() { return 3.14; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -1002,7 +1002,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Primitive_Double) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Primitive_Bool) {
-    std::string code = "func test() -> bool { return true; }";
+    std::string code = "func:bool test() { return true; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -1014,7 +1014,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Primitive_Bool) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Array) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[];
             return;
         }
@@ -1029,7 +1029,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Array) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Optional) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var val: int64? = null;
             return;
         }
@@ -1047,7 +1047,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Optional) {
 // ============================================================================
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_FunctionWithParameters) {
-    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
+    std::string code = "func:int64 add(a: int64, b: int64) { return a + b; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -1103,7 +1103,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_ClassWithExtends) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_Interface) {
     std::string code = R"(
         interface Printable {
-            func print() -> void;
+            func print();
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1114,9 +1114,9 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_Interface) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_MultipleFunctions) {
     std::string code = R"(
-        func first() -> int64 { return 1; }
-        func second() -> int64 { return 2; }
-        func third() -> int64 { return 3; }
+        func:int64 first() { return 1; }
+        func:int64 second() { return 2; }
+        func:int64 third() { return 3; }
     )";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
@@ -1133,7 +1133,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_MultipleFunctions) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Byte) {
     std::string code = R"(
-        func test() -> byte {
+        func:byte test() {
             var b: byte = 255;
             return b;
         }
@@ -1148,7 +1148,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Byte) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Uint8) {
     std::string code = R"(
-        func test() -> uint8 {
+        func:uint8 test() {
             var b: uint8 = 200;
             return b;
         }
@@ -1163,7 +1163,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Uint8) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_F64) {
     std::string code = R"(
-        func test() -> f64 {
+        func:f64 test() {
             var val: f64 = 3.14159;
             return val;
         }
@@ -1178,7 +1178,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_F64) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Char) {
     std::string code = R"(
-        func test() -> char {
+        func:char test() {
             var c: char = 'x';
             return c;
         }
@@ -1193,7 +1193,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Char) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_String) {
     std::string code = R"(
-        func test() -> string {
+        func:string test() {
             var s: string = "hello";
             return s;
         }
@@ -1207,7 +1207,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_String) {
 }
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Void) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     auto module = codeGen->generateLLVMModule(*ast);
@@ -1224,7 +1224,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Void) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Singleton) {
     std::string code = R"(
         singleton class Singleton {
-            func getInstance() -> int64 { return 42; }
+            func:int64 getInstance() { return 42; }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1248,7 +1248,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Immutable) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Factory) {
     std::string code = R"(
         factory class FactoryClass {
-            func create() -> int64 { return 0; }
+            func:int64 create() { return 0; }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1261,7 +1261,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Observable) {
     std::string code = R"(
         observable class ObservableClass {
             event changed;
-            func notify() -> void { }
+            func notify() { }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1273,7 +1273,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Observable) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Service) {
     std::string code = R"(
         service class ServiceClass {
-            func execute() -> void { }
+            func execute() { }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1285,7 +1285,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Service) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Strategy) {
     std::string code = R"(
         strategy class StrategyClass {
-            func execute() -> void { }
+            func execute() { }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1297,7 +1297,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Strategy) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Actor) {
     std::string code = R"(
         actor class ActorClass {
-            func act() -> void { }
+            func act() { }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1309,7 +1309,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Actor) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Final) {
     std::string code = R"(
         final class FinalClass {
-            func method() -> void { }
+            func method() { }
         }
     )";
     auto ast = parseAndBuildAST(code);
@@ -1324,7 +1324,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Final) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_DeepNesting) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             if (true) {
                 if (true) {
                     if (true) {
@@ -1347,7 +1347,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_DeepNesting) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_AllOperatorsTogether) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var a = 1 + 2 - 3 * 4 / 5 % 6;
             var b = 1 < 2 && 3 > 4 || 5 == 6;
             return a;
@@ -1363,7 +1363,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_AllOperatorsTogether) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_RecursiveLikePattern) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum = 0;
             var i = 0;
             while (i < 10) {
@@ -1390,14 +1390,14 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_RecursiveLikePattern) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_TernaryLikeLogic) {
     std::string code = R"(
-        func max(a: int64, b: int64) -> int64 {
+        func:int64 max(a: int64, b: int64) {
             if (a > b) {
                 return a;
             } else {
                 return b;
             }
         }
-        func test() -> int64 {
+        func:int64 test() {
             return max(10, 20);
         }
     )";
@@ -1411,7 +1411,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_TernaryLikeLogic) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_FactorialLike) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var result = 1;
             var n = 5;
             var i = 1;
@@ -1432,7 +1432,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_FactorialLike) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_SearchPattern) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var found = false;
             var target = 42;
             for i in 0 .. 100 {
@@ -1458,7 +1458,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_SearchPattern) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ModuleVerification_ValidModule) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10;
             if (x > 5) {
                 return x;
@@ -1478,9 +1478,9 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ModuleVerification_ValidModule) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ModuleVerification_MultipleFunctions) {
     std::string code = R"(
-        func first() -> int64 { return 1; }
-        func second() -> int64 { return 2; }
-        func third() -> int64 { return 3; }
+        func:int64 first() { return 1; }
+        func:int64 second() { return 2; }
+        func:int64 third() { return 3; }
     )";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
@@ -1497,10 +1497,10 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ModuleVerification_ClassWithMethods) 
         class Calculator {
             var result: int64;
             constructor() { }
-            func add(a: int64, b: int64) -> int64 {
+            func:int64 add(a: int64, b: int64) {
                 return a + b;
             }
-            func subtract(a: int64, b: int64) -> int64 {
+            func:int64 subtract(a: int64, b: int64) {
                 return a - b;
             }
         }

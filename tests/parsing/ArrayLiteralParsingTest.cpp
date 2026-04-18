@@ -47,7 +47,7 @@ protected:
 // Test 1: Simple integer array literal with type inference
 TEST_F(ArrayLiteralParsingTest, SimpleIntegerArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var numbers = [1, 2, 3, 4, 5];
             return 0;
         }
@@ -90,7 +90,7 @@ TEST_F(ArrayLiteralParsingTest, SimpleIntegerArrayLiteral) {
 // Test 2: Array literal with explicit type annotation
 TEST_F(ArrayLiteralParsingTest, ExplicitTypeArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var data: int64[] = [10, 20, 30];
             return 0;
         }
@@ -139,7 +139,7 @@ TEST_F(ArrayLiteralParsingTest, ExplicitTypeArrayLiteral) {
 // Test 3: Empty array literal (requires explicit type)
 TEST_F(ArrayLiteralParsingTest, EmptyArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var empty: int64[] = [];
             return 0;
         }
@@ -177,7 +177,7 @@ TEST_F(ArrayLiteralParsingTest, EmptyArrayLiteral) {
 // Test 4: Floating-point array literal
 TEST_F(ArrayLiteralParsingTest, FloatArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var floats = [1.0, 2.5, 3.14, 4.2];
             return 0;
         }
@@ -224,7 +224,7 @@ TEST_F(ArrayLiteralParsingTest, FloatArrayLiteral) {
 // Test 5: Boolean array literal
 TEST_F(ArrayLiteralParsingTest, BooleanArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var flags = [true, false, true, true, false];
             return 0;
         }
@@ -261,7 +261,7 @@ TEST_F(ArrayLiteralParsingTest, BooleanArrayLiteral) {
 // Test 6: Multi-dimensional array (nested array literals)
 TEST_F(ArrayLiteralParsingTest, TwoDimensionalArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var matrix = [[1, 2, 3], [4, 5, 6], [7, 8, 9]];
             return 0;
         }
@@ -310,7 +310,7 @@ TEST_F(ArrayLiteralParsingTest, TwoDimensionalArrayLiteral) {
 // Test 7: Three-dimensional array
 TEST_F(ArrayLiteralParsingTest, ThreeDimensionalArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var cube = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]];
             return 0;
         }
@@ -347,7 +347,7 @@ TEST_F(ArrayLiteralParsingTest, ThreeDimensionalArrayLiteral) {
 // Test 8: Array literal with expressions (not just literals)
 TEST_F(ArrayLiteralParsingTest, ArrayLiteralWithExpressions) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var computed = [1 + 2, 3 * 4, 5 - 1];
             return 0;
         }
@@ -391,7 +391,7 @@ TEST_F(ArrayLiteralParsingTest, ArrayLiteralWithExpressions) {
 // Test 9: Multiple array literals in same function
 TEST_F(ArrayLiteralParsingTest, MultipleArrayLiterals) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var arr1 = [1, 2, 3];
             var arr2 = [4, 5, 6];
             var arr3 = [7, 8, 9];
@@ -438,7 +438,7 @@ TEST_F(ArrayLiteralParsingTest, MultipleArrayLiterals) {
 // Test 10: Char array literal
 TEST_F(ArrayLiteralParsingTest, CharArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var chars = ['a', 'b', 'c'];
             return 0;
         }
@@ -475,7 +475,7 @@ TEST_F(ArrayLiteralParsingTest, CharArrayLiteral) {
 // Test 11: Array type in function parameter (slice syntax)
 TEST_F(ArrayLiteralParsingTest, ArrayTypeInFunctionParameter) {
     std::string code = R"(
-        func process(arr: int64[]) -> void {
+        func process(arr: int64[]) {
             return;
         }
     )";
@@ -511,7 +511,7 @@ TEST_F(ArrayLiteralParsingTest, ArrayTypeInFunctionParameter) {
 // Test 12: Large array literal
 TEST_F(ArrayLiteralParsingTest, LargeArrayLiteral) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var large = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
             return 0;
         }
@@ -548,7 +548,7 @@ TEST_F(ArrayLiteralParsingTest, LargeArrayLiteral) {
 // Test 13: Array as return type
 TEST_F(ArrayLiteralParsingTest, ArrayReturnType) {
     std::string code = R"(
-        func getNumbers() -> int64[] {
+        func:int64[] getNumbers() {
             return [1, 2, 3];
         }
     )";
@@ -574,7 +574,7 @@ TEST_F(ArrayLiteralParsingTest, ArrayReturnType) {
 // Test 14: Multi-dimensional array as return type
 TEST_F(ArrayLiteralParsingTest, MultiDimensionalArrayReturnType) {
     std::string code = R"(
-        func getMatrix() -> int64[][] {
+        func:int64[][] getMatrix() {
             return [[1, 2], [3, 4]];
         }
     )";
@@ -600,7 +600,7 @@ TEST_F(ArrayLiteralParsingTest, MultiDimensionalArrayReturnType) {
 // Test 15: Array return type with qualified base type
 TEST_F(ArrayLiteralParsingTest, QualifiedArrayReturnType) {
     std::string code = R"(
-        func getStrings() -> std.String[] {
+        func:std.String[] getStrings() {
             return [new std.String("a"), new std.String("b")];
         }
     )";

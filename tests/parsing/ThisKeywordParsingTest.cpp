@@ -144,7 +144,7 @@ TEST_F(ThisKeywordParsingTest, ThisInMethod) {
 TEST_F(ThisKeywordParsingTest, StandaloneThis) {
     std::string code = R"(
         class Box {
-            func getSelf() -> Box {
+            func:Box getSelf() {
                 return this;
             }
         }

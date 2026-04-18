@@ -249,25 +249,25 @@ Examples: `std`, `std.io`, `std.collections`
 
 ```antlr
 functionDeclaration:
-    FUNC IDENTIFIER LPAREN parameterList? RPAREN (ARROW type)? block
+    FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN block
 ```
 
 **Components:**
 - Function name (identifier)
 - Parameter list: `(param1: type1, param2: type2)`
-- Optional return type: `-> type`
+- Optional return type: `: type` (preceding name)
 - Function body (block)
 
 **Examples:**
 
 ```hoo
-// Simple function
+// Simple function (returns void)
 func greet() {
     print("Hello");
 }
 
 // With parameters and return type
-func add(a: int64, b: int64) -> int64 {
+func:int64 add(a: int64, b: int64) {
     return a + b;
 }
 ```
@@ -363,23 +363,23 @@ interfaceDeclaration:
 interfaceMember: functionSignature SEMICOLON
 
 functionSignature:
-    FUNC IDENTIFIER LPAREN parameterList? RPAREN ARROW type
+    FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN
 ```
 
 **Example:**
 
 ```hoo
 interface Drawable {
-    func draw() -> void;
-    func getArea() -> double;
+    func draw();
+    func:double getArea();
 }
 
 class Circle implements Drawable {
-    func draw() -> void {
+    func draw() {
         // Implementation
     }
 
-    func getArea() -> double {
+    func:double getArea() {
         return 3.14 * radius * radius;
     }
 }
@@ -739,7 +739,7 @@ class Person {
         this.age = age;
     }
 
-    func greet() -> void {
+    func greet() {
         print("Hello, my name is " + name);
     }
 }
@@ -753,7 +753,7 @@ func main() {
 ### Example 4: Control Flow
 
 ```hoo
-func factorial(n: int64) -> int64 {
+func:int64 factorial(n: int64) {
     if n <= 1 {
         return 1;
     } else {
@@ -761,7 +761,7 @@ func factorial(n: int64) -> int64 {
     }
 }
 
-func printNumbers(max: int64) -> void {
+func printNumbers(max: int64) {
     var i = 0;
     while i < max {
         print(i);
@@ -790,6 +790,7 @@ func main() {
     }
     io.println("Sum: " + total);
 }
+
 ```
 
 ## Grammar File Location

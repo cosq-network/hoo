@@ -99,20 +99,12 @@ These features are fully implemented, tested, and production-ready:
 
 #### Generic Programming
 
-> **Note:** Generics have been removed from the language. Use concrete types and array literals for type-safe collections.
+> **Note:** Generics have been removed from the language to simplify the type system. Use concrete types and array types (`T[]`) for collections.
 
 - **Generic Functions**
-  - ❌ Removed - Was: Type parameters (`<T>`, `<T, U>`)
-  - ❌ Removed - Was: Type argument inference
-  - ❌ Removed - Was: Explicit type arguments
-  - ❌ Removed - Was: Function monomorphization
-  - ❌ Removed - Was: Name mangling for instantiated functions
-
+  - ❌ Removed (Was: `<T>` type parameters)
 - **Generic Classes**
-  - ❌ Removed - Was: Generic class declarations
-  - ❌ Removed - Was: Type parameters in class definitions
-  - ❌ Removed - Was: Class instantiation with type arguments
-  - ❌ Removed - Was: Monomorphization of generic classes
+  - ❌ Removed (Was: `<T>` class parameters)
 
 #### Type System
 
@@ -312,11 +304,11 @@ These features are planned but not yet started:
 #### Standard Library
 
 - **Collections Module** (`std.collections`)
-  - `List<T>` - Dynamic list
-  - `Map<K, V>` - Hash map
-  - `Set<T>` - Hash set
-  - `Queue<T>` - Queue
-  - `Stack<T>` - Stack
+  - `List` - Dynamic list
+  - `Map` - Hash map
+  - `Set` - Hash set
+  - `Queue` - Queue
+  - `Stack` - Stack
   - Iterator protocol
 
 - **IO Module** (`std.io`)
@@ -473,7 +465,6 @@ These features are planned but not yet started:
 ### Internal Dependencies
 - Standard library depends on runtime
 - Module system depends on symbol resolution
-- Generics depend on name mangling
 
 ## Testing Strategy
 

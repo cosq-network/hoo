@@ -244,7 +244,7 @@ TEST_F(MemberAccessParsingTest, MemberAccessInReturn) {
             constructor() {}
         }
 
-        func getValue() -> int64 {
+        func:int64 getValue() {
             var v: Value = new Value();
             return v.data;
         }

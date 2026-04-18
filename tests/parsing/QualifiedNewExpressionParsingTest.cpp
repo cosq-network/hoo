@@ -20,7 +20,7 @@ protected:
 // Test qualified identifiers in new expressions
 TEST_F(QualifiedNewExpressionParsingTest, SimpleQualifiedNewExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = new std.String();
         }
     )";
@@ -31,7 +31,7 @@ TEST_F(QualifiedNewExpressionParsingTest, SimpleQualifiedNewExpression) {
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithArguments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = new std.String("hello");
         }
     )";
@@ -42,7 +42,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithArguments) {
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithMultipleArguments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = new std.Point(10, 20);
         }
     )";
@@ -53,7 +53,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionWithMultipleArgu
 
 TEST_F(QualifiedNewExpressionParsingTest, NestedQualifiedNewExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = new std.io.File("/path");
         }
     )";
@@ -66,7 +66,7 @@ TEST_F(QualifiedNewExpressionParsingTest, NestedQualifiedNewExpression) {
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInAssignment) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: std.String = new std.String("test");
         }
     )";
@@ -77,8 +77,8 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInAssignment) {
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInFunctionCall) {
     std::string code = R"(
-        func process(s: std.String) -> void {}
-        func test() -> void {
+        func process(s: std.String) {}
+        func test() {
             process(new std.String("hello"));
         }
     )";
@@ -89,7 +89,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInFunctionCall) 
 
 TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInReturnStatement) {
     std::string code = R"(
-        func createString() -> std.String {
+        func:std.String createString() {
             return new std.String("created");
         }
     )";
@@ -103,7 +103,7 @@ TEST_F(QualifiedNewExpressionParsingTest, QualifiedNewExpressionInReturnStatemen
 // Test backward compatibility - simple new expressions should still work
 TEST_F(QualifiedNewExpressionParsingTest, SimpleNewExpressionStillWorks) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = new String();
         }
     )";
@@ -114,7 +114,7 @@ TEST_F(QualifiedNewExpressionParsingTest, SimpleNewExpressionStillWorks) {
 
 TEST_F(QualifiedNewExpressionParsingTest, SimpleNewExpressionWithArguments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = new String("hello");
         }
     )";

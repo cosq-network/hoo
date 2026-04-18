@@ -53,7 +53,7 @@ TEST_F(ImportStatementCodeGenTest, BasicImportWithFunction) {
     std::string code = R"(
         import std.io;
 
-        func test() -> void {
+        func test() {
             return;
         }
     )";
@@ -74,7 +74,7 @@ TEST_F(ImportStatementCodeGenTest, FromImportWithFunction) {
     std::string code = R"(
         from std import io;
 
-        func test() -> void {
+        func test() {
             return;
         }
     )";
@@ -94,7 +94,7 @@ TEST_F(ImportStatementCodeGenTest, DottedModuleImport) {
     std::string code = R"(
         import std.collections;
 
-        func test() -> void {
+        func test() {
             return;
         }
     )";
@@ -115,7 +115,7 @@ TEST_F(ImportStatementCodeGenTest, MultipleImports) {
         import std.io;
         import std.collections;
 
-        func test() -> void {
+        func test() {
             return;
         }
     )";
@@ -140,7 +140,7 @@ TEST_F(ImportStatementCodeGenTest, ImportWithClassDefinition) {
             constructor() {}
         }
 
-        func test() -> void {
+        func test() {
             var obj: MyClass = new MyClass();
         }
     )";
@@ -161,7 +161,7 @@ TEST_F(ImportStatementCodeGenTest, FromImportWithMultipleNames) {
     std::string code = R"(
         from std import io, collections;
 
-        func test() -> void {
+        func test() {
             return;
         }
     )";
@@ -181,7 +181,7 @@ TEST_F(ImportStatementCodeGenTest, ImportWithStringUsage) {
     std::string code = R"(
         import std.io;
 
-        func test() -> void {
+        func test() {
             var msg: std.String = new std.String("hello");
         }
     )";
@@ -201,7 +201,7 @@ TEST_F(ImportStatementCodeGenTest, ImportWithArrayUsage) {
     std::string code = R"(
         import std.io;
 
-        func test() -> void {
+        func test() {
             var arr: int64[] = [1, 2, 3];
         }
     )";

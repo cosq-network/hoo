@@ -20,7 +20,7 @@ protected:
 // Test qualified identifiers in type contexts
 TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInVariableDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: std.String;
         }
     )";
@@ -31,7 +31,7 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInVariableDeclaration)
 
 TEST_F(QualifiedIdentifierParsingTest, NestedQualifiedTypeInVariableDeclaration) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: std.io.File;
         }
     )";
@@ -42,7 +42,7 @@ TEST_F(QualifiedIdentifierParsingTest, NestedQualifiedTypeInVariableDeclaration)
 
 TEST_F(QualifiedIdentifierParsingTest, DeeplyNestedQualifiedType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: std.collections.generic.List;
         }
     )";
@@ -53,7 +53,7 @@ TEST_F(QualifiedIdentifierParsingTest, DeeplyNestedQualifiedType) {
 
 TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsReturnType) {
     std::string code = R"(
-        func getValue() -> std.String {
+        func:std.String getValue() {
             return nullptr;
         }
     )";
@@ -64,7 +64,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsReturnType) {
 
 TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsFunctionParameter) {
     std::string code = R"(
-        func process(value: std.String) -> void {
+        func process(value: std.String) {
         }
     )";
     auto ast = parseCode(code);
@@ -74,7 +74,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeAsFunctionParameter) {
 
 TEST_F(QualifiedIdentifierParsingTest, MultipleQualifiedTypeParameters) {
     std::string code = R"(
-        func process(a: std.String, b: std.io.File) -> void {
+        func process(a: std.String, b: std.io.File) {
         }
     )";
     auto ast = parseCode(code);
@@ -86,7 +86,7 @@ TEST_F(QualifiedIdentifierParsingTest, MultipleQualifiedTypeParameters) {
 
 TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInArrayType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: std.String[];
         }
     )";
@@ -97,7 +97,7 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleQualifiedTypeInArrayType) {
 
 TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeWithNullable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var opt: std.String?;
         }
     )";
@@ -122,7 +122,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeInClassMethod) {
     std::string code = R"(
         class Person {
             constructor() {}
-            func getName() -> std.String {
+            func:std.String getName() {
                 return nullptr;
             }
         }
@@ -135,7 +135,7 @@ TEST_F(QualifiedIdentifierParsingTest, QualifiedTypeInClassMethod) {
 // Test backward compatibility - simple identifiers should still work
 TEST_F(QualifiedIdentifierParsingTest, SimpleIdentifierStillWorks) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x: String;
         }
     )";
@@ -146,7 +146,7 @@ TEST_F(QualifiedIdentifierParsingTest, SimpleIdentifierStillWorks) {
 
 TEST_F(QualifiedIdentifierParsingTest, SimpleIdentifierAsReturnType) {
     std::string code = R"(
-        func getValue() -> String {
+        func:String getValue() {
             return nullptr;
         }
     )";

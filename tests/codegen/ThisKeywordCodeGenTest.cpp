@@ -121,7 +121,7 @@ TEST_F(ThisKeywordCodeGenTest, ThisInMethodCodeGen) {
 TEST_F(ThisKeywordCodeGenTest, StandaloneThisCodeGen) {
     std::string code = R"(
         class Fluent {
-            func setSomething() -> Fluent {
+            func:Fluent setSomething() {
                 return this;
             }
         }

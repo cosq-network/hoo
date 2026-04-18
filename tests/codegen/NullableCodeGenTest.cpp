@@ -48,7 +48,7 @@ protected:
 // Test 1: Nullable integer variable declaration
 TEST_F(NullableCodeGenTest, NullableInt64VariableDeclaration) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64? = 42;
             return 0;
         }
@@ -68,7 +68,7 @@ TEST_F(NullableCodeGenTest, NullableInt64VariableDeclaration) {
 // Test 2: Null literal assignment to nullable variable
 TEST_F(NullableCodeGenTest, NullLiteralAssignment) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64? = null;
             return 0;
         }
@@ -88,7 +88,7 @@ TEST_F(NullableCodeGenTest, NullLiteralAssignment) {
 // Test 3: Nullable double variable
 TEST_F(NullableCodeGenTest, NullableDoubleVariableDeclaration) {
     std::string code = R"(
-        func test() -> double {
+        func:double test() {
             var x: double? = 3.14;
             return 0.0;
         }
@@ -108,7 +108,7 @@ TEST_F(NullableCodeGenTest, NullableDoubleVariableDeclaration) {
 // Test 4: Nullable boolean variable
 TEST_F(NullableCodeGenTest, NullableBoolVariableDeclaration) {
     std::string code = R"(
-        func test() -> bool {
+        func:bool test() {
             var x: bool? = true;
             return false;
         }
@@ -128,7 +128,7 @@ TEST_F(NullableCodeGenTest, NullableBoolVariableDeclaration) {
 // Test 5: Nullable char variable
 TEST_F(NullableCodeGenTest, NullableCharVariableDeclaration) {
     std::string code = R"(
-        func test() -> char {
+        func:char test() {
             var x: char? = 'a';
             return 'z';
         }
@@ -148,7 +148,7 @@ TEST_F(NullableCodeGenTest, NullableCharVariableDeclaration) {
 // Test 6: Multiple nullable variables in same function
 TEST_F(NullableCodeGenTest, MultipleNullableVariables) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64? = 10;
             var y: double? = 3.14;
             var z: bool? = true;
@@ -170,7 +170,7 @@ TEST_F(NullableCodeGenTest, MultipleNullableVariables) {
 // Test 7: Nullable variables with null and non-null values mixed
 TEST_F(NullableCodeGenTest, MixedNullAndNonNullValues) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var a: int64? = 42;
             var b: int64? = null;
             var c: int64? = 100;
@@ -192,7 +192,7 @@ TEST_F(NullableCodeGenTest, MixedNullAndNonNullValues) {
 // Test 8: Nullable parameter in function
 TEST_F(NullableCodeGenTest, NullableParameterFunction) {
     std::string code = R"(
-        func process(value: int64?) -> int64 {
+        func:int64 process(value: int64?) {
             return 0;
         }
     )";
@@ -213,7 +213,7 @@ TEST_F(NullableCodeGenTest, NullableParameterFunction) {
 // Test 9: Multiple nullable parameters
 TEST_F(NullableCodeGenTest, MultipleNullableParameters) {
     std::string code = R"(
-        func compare(a: int64?, b: double?, c: bool?) -> int64 {
+        func:int64 compare(a: int64?, b: double?, c: bool?) {
             return 0;
         }
     )";
@@ -234,7 +234,7 @@ TEST_F(NullableCodeGenTest, MultipleNullableParameters) {
 // Test 10: Mixed nullable and non-nullable parameters
 TEST_F(NullableCodeGenTest, MixedNullableAndNonNullableParameters) {
     std::string code = R"(
-        func process(required: int64, optional: int64?) -> int64 {
+        func:int64 process(required: int64, optional: int64?) {
             return 0;
         }
     )";
@@ -255,7 +255,7 @@ TEST_F(NullableCodeGenTest, MixedNullableAndNonNullableParameters) {
 // Test 11: Nullable return type function declaration
 TEST_F(NullableCodeGenTest, NullableReturnTypeFunction) {
     std::string code = R"(
-        func maybeValue() -> int64? {
+        func:int64? maybeValue() {
             return 42;
         }
     )";
@@ -276,7 +276,7 @@ TEST_F(NullableCodeGenTest, NullableReturnTypeFunction) {
 // Test 12: Complex nullable variable flow
 TEST_F(NullableCodeGenTest, ComplexNullableVariableFlow) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64? = null;
             var y: int64? = 50;
             var z: int64? = x;
@@ -298,7 +298,7 @@ TEST_F(NullableCodeGenTest, ComplexNullableVariableFlow) {
 // Test 13: Nullable variable in block
 TEST_F(NullableCodeGenTest, NullableVariableInBlock) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64? = null;
             {
                 var y: int64? = 10;
@@ -321,7 +321,7 @@ TEST_F(NullableCodeGenTest, NullableVariableInBlock) {
 // Test 14: Nullable byte variable
 TEST_F(NullableCodeGenTest, NullableByteVariableDeclaration) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: byte? = 255;
             return 0;
         }
@@ -341,7 +341,7 @@ TEST_F(NullableCodeGenTest, NullableByteVariableDeclaration) {
 // Test 15: Nullable float variable
 TEST_F(NullableCodeGenTest, NullableFloatVariableDeclaration) {
     std::string code = R"(
-        func test() -> double {
+        func:double test() {
             var x: float? = 1.5;
             return 0.0;
         }
@@ -361,7 +361,7 @@ TEST_F(NullableCodeGenTest, NullableFloatVariableDeclaration) {
 // Test 16: Verify nullable type IR structure
 TEST_F(NullableCodeGenTest, VerifyNullableTypeIRStructure) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64? = 42;
             return 0;
         }
@@ -388,7 +388,7 @@ TEST_F(NullableCodeGenTest, VerifyNullableTypeIRStructure) {
 // Test 17: Null literal in multiple contexts
 TEST_F(NullableCodeGenTest, NullLiteralInMultipleContexts) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var a: int64? = null;
             var b: double? = null;
             var c: bool? = null;
@@ -410,11 +410,11 @@ TEST_F(NullableCodeGenTest, NullLiteralInMultipleContexts) {
 // Test 18: Call function with nullable parameter
 TEST_F(NullableCodeGenTest, CallFunctionWithNullableParameter) {
     std::string code = R"(
-        func process(value: int64?) -> int64 {
+        func:int64 process(value: int64?) {
             return 10;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             return process(42);
         }
     )";
@@ -433,7 +433,7 @@ TEST_F(NullableCodeGenTest, CallFunctionWithNullableParameter) {
 // Test 19: Nullable int64 array
 TEST_F(NullableCodeGenTest, NullableArrayVariableDeclaration) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64[]? = [1, 2, 3];
             return 0;
         }
@@ -453,11 +453,11 @@ TEST_F(NullableCodeGenTest, NullableArrayVariableDeclaration) {
 // Test 20: Comprehensive nullable type scenario
 TEST_F(NullableCodeGenTest, ComprehensiveNullableScenario) {
     std::string code = R"(
-        func getValue(x: int64?, y: double?) -> int64 {
+        func:int64 getValue(x: int64?, y: double?) {
             return 99;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var nullable_int: int64? = null;
             var nullable_double: double? = 3.14;
             var nullable_bool: bool? = true;

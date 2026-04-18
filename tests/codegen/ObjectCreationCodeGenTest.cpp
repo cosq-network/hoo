@@ -267,7 +267,7 @@ TEST_F(ObjectCreationCodeGenTest, ClassWithMethod) {
         class Calculator {
             constructor() {}
 
-            func add(a: int64, b: int64) -> int64 {
+            func:int64 add(a: int64, b: int64) {
                 return a + b;
             }
         }

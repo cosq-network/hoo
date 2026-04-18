@@ -42,7 +42,7 @@ TEST_F(SimpleASTBuilderTest, BuildEmptyCompilationUnit) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildSingleFunctionDeclaration) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -58,8 +58,8 @@ TEST_F(SimpleASTBuilderTest, BuildSingleFunctionDeclaration) {
 
 TEST_F(SimpleASTBuilderTest, BuildMultipleFunctionDeclarations) {
     std::string code = R"(
-        func first() -> void { return; }
-        func second() -> void { 42; }
+        func first() { return; }
+        func second() { 42; }
     )";
     auto* parseTree = parseCode(code);
     
@@ -75,7 +75,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleFunctionDeclarations) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithParameters) {
-    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
+    std::string code = "func:int64 add(a: int64, b: int64) { return a + b; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -90,7 +90,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithParameters) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithExpressionStatement) {
-    std::string code = "func calculate() -> void { 42; }";
+    std::string code = "func calculate() { 42; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -105,7 +105,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithExpressionStatement) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithVariableDeclaration) {
-    std::string code = "func test() -> void { var x = 10; }";
+    std::string code = "func test() { var x = 10; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -126,7 +126,7 @@ TEST_F(SimpleASTBuilderTest, HandleInvalidParseTree) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithIfStatement) {
     std::string code = R"(
-        func conditional() -> void { 
+        func conditional() { 
             if (true) { 
                 return; 
             } 
@@ -147,7 +147,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithIfStatement) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithWhileLoop) {
     std::string code = R"(
-        func loop() -> void { 
+        func loop() { 
             while (true) { 
                 break; 
             } 
@@ -167,7 +167,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithWhileLoop) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteParameter) {
-    std::string code = "func process(data: byte) -> byte { return data; }";
+    std::string code = "func:byte process(data: byte) { return data; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -183,7 +183,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteParameter) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var b = 255;
             var typed: byte = 128;
             return;
@@ -204,7 +204,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteArithmetic) {
     std::string code = R"(
-        func calculate(a: byte, b: byte) -> byte {
+        func:byte calculate(a: byte, b: byte) {
             var result = a + b;
             return result;
         }
@@ -223,7 +223,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteArithmetic) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatParameter) {
-    std::string code = "func process(data: float) -> float { return data; }";
+    std::string code = "func:float process(data: float) { return data; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -239,7 +239,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatParameter) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var f = 3.14;
             var typed: float = 2.71;
             return;
@@ -260,7 +260,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatArithmetic) {
     std::string code = R"(
-        func calculate(a: float, b: float) -> float {
+        func:float calculate(a: float, b: float) {
             var result = a + b * 2.0;
             return result;
         }
@@ -279,7 +279,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithFloatArithmetic) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolParameter) {
-    std::string code = "func process(flag: bool) -> bool { return flag; }";
+    std::string code = "func:bool process(flag: bool) { return flag; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -295,7 +295,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolParameter) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             var explicit: bool = false;
             return;
@@ -316,7 +316,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolLogic) {
     std::string code = R"(
-        func logic(a: bool, b: bool) -> bool {
+        func:bool logic(a: bool, b: bool) {
             var and_result = a && b;
             var or_result = a || b;
             var not_result = !a;
@@ -337,7 +337,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithBoolLogic) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharParameter) {
-    std::string code = "func process(ch: char) -> char { return ch; }";
+    std::string code = "func:char process(ch: char) { return ch; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -353,7 +353,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharParameter) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ch = 'a';
             var explicit: char = 'Z';
             return;
@@ -374,7 +374,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharComparison) {
     std::string code = R"(
-        func compare(a: char, b: char) -> bool {
+        func:bool compare(a: char, b: char) {
             var equal = a == b;
             var less = a < b;
             return equal;
@@ -394,7 +394,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithCharComparison) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayParameter) {
-    std::string code = "func process(data: int64) -> void { return; }";
+    std::string code = "func process(data: int64) { return; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -410,7 +410,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayParameter) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayVariable) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var numbers: int64[];
             return;
         }
@@ -430,7 +430,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayVariable) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayAccess) {
     std::string code = R"(
-        func access_test() -> int64 {
+        func:int64 access_test() {
             var arr: int64[];
             var index = 5;
             return 42;
@@ -454,7 +454,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithArrayAccess) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithScopeStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             scope {
                 var y = 20;
@@ -474,7 +474,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithScopeStatement) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithNestedScopeStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             scope {
                 var x = 1;
                 scope {
@@ -496,7 +496,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithNestedScopeStatements) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithScopeStatementWithMultipleStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             scope {
                 var a = 1;
                 var b = 2;
@@ -519,7 +519,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithScopeStatementWithMultipleStatemen
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithForInLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum = 0;
             for item in [1, 2, 3] {
                 sum = sum + item;
@@ -539,7 +539,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithForInLoop) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithForRangeLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum = 0;
             for i in 0 .. 10 {
                 sum = sum + i;
@@ -559,7 +559,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithForRangeLoop) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithForLoopBreak) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             while count < 10 {
                 count = count + 1;
@@ -581,7 +581,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithForLoopBreak) {
 
 TEST_F(SimpleASTBuilderTest, BuildWhileWithBreak) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             while count < 10 {
                 count = count + 1;
@@ -604,7 +604,7 @@ TEST_F(SimpleASTBuilderTest, BuildWhileWithBreak) {
 
 TEST_F(SimpleASTBuilderTest, BuildWhileWithContinue) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var count = 0;
             var sum = 0;
             while count < 10 {
@@ -629,7 +629,7 @@ TEST_F(SimpleASTBuilderTest, BuildWhileWithContinue) {
 
 TEST_F(SimpleASTBuilderTest, BuildForRangeWithBreak) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var sum = 0;
             for i in 0 .. 100 {
                 sum = sum + i;
@@ -652,7 +652,7 @@ TEST_F(SimpleASTBuilderTest, BuildForRangeWithBreak) {
 
 TEST_F(SimpleASTBuilderTest, BuildForInWithContinue) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3, 4, 5];
             var sum = 0;
             for item in arr {
@@ -676,7 +676,7 @@ TEST_F(SimpleASTBuilderTest, BuildForInWithContinue) {
 
 TEST_F(SimpleASTBuilderTest, BuildNestedLoopWithBreak) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var found = false;
             for i in 0 .. 10 {
                 for j in 0 .. 10 {
@@ -755,7 +755,7 @@ TEST_F(SimpleASTBuilderTest, BuildFromImportWithAlias) {
 TEST_F(SimpleASTBuilderTest, BuildImportAndFunction) {
     std::string code = R"(
         import std.String;
-        func test() -> void { return; }
+        func test() { return; }
     )";
     auto* parseTree = parseCode(code);
 
@@ -775,7 +775,7 @@ TEST_F(SimpleASTBuilderTest, BuildSimpleClass) {
         class Point {
             var x: int64;
             var y: int64;
-            func getX() -> int64 { return x; }
+            func:int64 getX() { return x; }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -792,7 +792,7 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithConstructor) {
     std::string code = R"(
         class Point {
             constructor(x: int64, y: int64) { }
-            func getX() -> int64 { return 0; }
+            func:int64 getX() { return 0; }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -808,7 +808,7 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithConstructor) {
 TEST_F(SimpleASTBuilderTest, BuildClassWithSingletonModifier) {
     std::string code = R"(
         singleton class Singleton {
-            func getInstance() -> int64 { return 42; }
+            func:int64 getInstance() { return 42; }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -824,7 +824,7 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithSingletonModifier) {
 TEST_F(SimpleASTBuilderTest, BuildClassWithExtends) {
     std::string code = R"(
         class Child extends Parent {
-            func test() -> void { return; }
+            func test() { return; }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -840,7 +840,7 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithExtends) {
 TEST_F(SimpleASTBuilderTest, BuildClassWithImplements) {
     std::string code = R"(
         class MyClass implements ISerializable {
-            func serialize() -> string { return ""; }
+            func:string serialize() { return ""; }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -857,7 +857,7 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithEvent) {
     std::string code = R"(
         observable class Observable {
             event changed;
-            func notify() -> void { }
+            func notify() { }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -875,7 +875,7 @@ TEST_F(SimpleASTBuilderTest, BuildEventDeclaration) {
         observable class Observable {
             event changed;
             event clicked;
-            func notify() -> void { }
+            func notify() { }
         }
     )";
     auto* parseTree = parseCode(code);
@@ -911,7 +911,7 @@ TEST_F(SimpleASTBuilderTest, BuildEventDeclaration) {
 TEST_F(SimpleASTBuilderTest, BuildSimpleInterface) {
     std::string code = R"(
         interface Printable {
-            func print() -> void;
+            func print();
         }
     )";
     auto* parseTree = parseCode(code);
@@ -927,8 +927,8 @@ TEST_F(SimpleASTBuilderTest, BuildSimpleInterface) {
 TEST_F(SimpleASTBuilderTest, BuildInterfaceWithMultipleMethods) {
     std::string code = R"(
         interface IComparable {
-            func compareTo(other: int64) -> int64;
-            func equals(other: int64) -> bool;
+            func:int64 compareTo(other: int64);
+            func:bool equals(other: int64);
         }
     )";
     auto* parseTree = parseCode(code);
@@ -945,7 +945,7 @@ TEST_F(SimpleASTBuilderTest, BuildInterfaceWithMultipleMethods) {
 
 TEST_F(SimpleASTBuilderTest, BuildOptionalType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var maybe: int64?;
             return;
         }
@@ -964,7 +964,7 @@ TEST_F(SimpleASTBuilderTest, BuildOptionalType) {
 
 TEST_F(SimpleASTBuilderTest, BuildOptionalArrayType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr: int64[]?;
             return;
         }
@@ -983,7 +983,7 @@ TEST_F(SimpleASTBuilderTest, BuildOptionalArrayType) {
 
 TEST_F(SimpleASTBuilderTest, BuildMultiDimensionalArray) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var matrix: int64[][];
             return;
         }
@@ -1002,7 +1002,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultiDimensionalArray) {
 
 TEST_F(SimpleASTBuilderTest, BuildQualifiedType) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var point: std.Point;
             return;
         }
@@ -1022,7 +1022,7 @@ TEST_F(SimpleASTBuilderTest, BuildQualifiedType) {
 // ===== All Primitive Types Tests =====
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithUint8Parameter) {
-    std::string code = "func process(data: uint8) -> uint8 { return data; }";
+    std::string code = "func:uint8 process(data: uint8) { return data; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1036,7 +1036,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithUint8Parameter) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithF64Parameter) {
-    std::string code = "func process(data: f64) -> f64 { return data; }";
+    std::string code = "func:f64 process(data: f64) { return data; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1050,7 +1050,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithF64Parameter) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithStringParameter) {
-    std::string code = "func greet(name: string) -> string { return name; }";
+    std::string code = "func:string greet(name: string) { return name; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1064,7 +1064,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithStringParameter) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithVoidReturn) {
-    std::string code = "func doNothing() -> void { return; }";
+    std::string code = "func doNothing() { return; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1080,7 +1080,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithVoidReturn) {
 // ===== Expression Tests =====
 
 TEST_F(SimpleASTBuilderTest, BuildIntegerLiteral) {
-    std::string code = "func test() -> int64 { return 42; }";
+    std::string code = "func:int64 test() { return 42; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1094,7 +1094,7 @@ TEST_F(SimpleASTBuilderTest, BuildIntegerLiteral) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFloatingLiteral) {
-    std::string code = "func test() -> double { return 3.14; }";
+    std::string code = "func:double test() { return 3.14; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1108,7 +1108,7 @@ TEST_F(SimpleASTBuilderTest, BuildFloatingLiteral) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildStringLiteral) {
-    std::string code = "func test() -> string { return \"hello\"; }";
+    std::string code = "func:string test() { return \"hello\"; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1122,7 +1122,7 @@ TEST_F(SimpleASTBuilderTest, BuildStringLiteral) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildInterpolatedString) {
-    std::string code = "func test() -> string { return \"Hello ${name}!\"; }";
+    std::string code = "func:string test() { return \"Hello ${name}!\"; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1150,7 +1150,7 @@ TEST_F(SimpleASTBuilderTest, BuildInterpolatedString) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildInterpolatedStringWithMultiplePlaceholders) {
-    std::string code = "func test() -> string { return \"${greeting} ${name} at ${location}\"; }";
+    std::string code = "func:string test() { return \"${greeting} ${name} at ${location}\"; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1179,7 +1179,7 @@ TEST_F(SimpleASTBuilderTest, BuildInterpolatedStringWithMultiplePlaceholders) {
 
 TEST_F(SimpleASTBuilderTest, BuildBooleanLiterals) {
     std::string code = R"(
-        func test() -> bool {
+        func:bool test() {
             var t = true;
             var f = false;
             return t;
@@ -1199,7 +1199,7 @@ TEST_F(SimpleASTBuilderTest, BuildBooleanLiterals) {
 
 TEST_F(SimpleASTBuilderTest, BuildNullLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ptr: int64? = null;
             return;
         }
@@ -1218,7 +1218,7 @@ TEST_F(SimpleASTBuilderTest, BuildNullLiteral) {
 
 TEST_F(SimpleASTBuilderTest, BuildArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [1, 2, 3];
             return;
         }
@@ -1237,7 +1237,7 @@ TEST_F(SimpleASTBuilderTest, BuildArrayLiteral) {
 
 TEST_F(SimpleASTBuilderTest, BuildEmptyArrayLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var arr = [];
             return;
         }
@@ -1255,7 +1255,7 @@ TEST_F(SimpleASTBuilderTest, BuildEmptyArrayLiteral) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildParenthesizedExpression) {
-    std::string code = "func test() -> int64 { return (1 + 2) * 3; }";
+    std::string code = "func:int64 test() { return (1 + 2) * 3; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1269,7 +1269,7 @@ TEST_F(SimpleASTBuilderTest, BuildParenthesizedExpression) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildUnaryMinus) {
-    std::string code = "func test() -> int64 { return -42; }";
+    std::string code = "func:int64 test() { return -42; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1283,7 +1283,7 @@ TEST_F(SimpleASTBuilderTest, BuildUnaryMinus) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildLogicalNot) {
-    std::string code = "func test() -> bool { return !true; }";
+    std::string code = "func:bool test() { return !true; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1300,7 +1300,7 @@ TEST_F(SimpleASTBuilderTest, BuildLogicalNot) {
 
 TEST_F(SimpleASTBuilderTest, BuildSimpleAssignment) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             x = 20;
             return;
@@ -1321,7 +1321,7 @@ TEST_F(SimpleASTBuilderTest, BuildSimpleAssignment) {
 // ===== Return Statement Tests =====
 
 TEST_F(SimpleASTBuilderTest, BuildReturnWithExpression) {
-    std::string code = "func test() -> int64 { return 42; }";
+    std::string code = "func:int64 test() { return 42; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1333,7 +1333,7 @@ TEST_F(SimpleASTBuilderTest, BuildReturnWithExpression) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildReturnWithoutExpression) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1348,7 +1348,7 @@ TEST_F(SimpleASTBuilderTest, BuildReturnWithoutExpression) {
 
 TEST_F(SimpleASTBuilderTest, BuildIfElseStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if (true) {
                 var a = 1;
             } else {
@@ -1369,7 +1369,7 @@ TEST_F(SimpleASTBuilderTest, BuildIfElseStatement) {
 
 TEST_F(SimpleASTBuilderTest, BuildNestedIfStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if (true) {
                 if (false) {
                     var x = 1;
@@ -1392,7 +1392,7 @@ TEST_F(SimpleASTBuilderTest, BuildNestedIfStatements) {
 
 TEST_F(SimpleASTBuilderTest, BuildNewExpression) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var p = new Point(1, 2);
             return;
         }
@@ -1411,7 +1411,7 @@ TEST_F(SimpleASTBuilderTest, BuildNewExpression) {
 
 TEST_F(SimpleASTBuilderTest, BuildNewExpressionWithNoArgs) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var p = new Point();
             return;
         }
@@ -1432,7 +1432,7 @@ TEST_F(SimpleASTBuilderTest, BuildNewExpressionWithNoArgs) {
 
 TEST_F(SimpleASTBuilderTest, BuildMemberAccess) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var p = new Point(1, 2);
             return p.x;
         }
@@ -1451,7 +1451,7 @@ TEST_F(SimpleASTBuilderTest, BuildMemberAccess) {
 
 TEST_F(SimpleASTBuilderTest, BuildChainedMemberAccess) {
     std::string code = R"(
-        func test() -> string {
+        func:string test() {
             var result = obj.parent.name;
             return result;
         }
@@ -1472,7 +1472,7 @@ TEST_F(SimpleASTBuilderTest, BuildChainedMemberAccess) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionCall) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             print("hello");
             return;
         }
@@ -1491,7 +1491,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionCall) {
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionCallWithMultipleArgs) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             format("name: {} age: {}", "John", 30);
             return;
         }
@@ -1510,7 +1510,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionCallWithMultipleArgs) {
 
 TEST_F(SimpleASTBuilderTest, BuildMethodCall) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var name = "hello";
             name.toUpper();
             return;
@@ -1532,7 +1532,7 @@ TEST_F(SimpleASTBuilderTest, BuildMethodCall) {
 
 TEST_F(SimpleASTBuilderTest, BuildComplexFunction) {
     std::string code = R"(
-        func calculate(a: int64, b: int64) -> int64 {
+        func:int64 calculate(a: int64, b: int64) {
             var result = 0;
             if (a > 0 && b > 0) {
                 result = a + b;
@@ -1566,9 +1566,9 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
             var value: int64;
         }
         interface MyInterface {
-            func doSomething() -> void;
+            func doSomething();
         }
-        func helper() -> void { return; }
+        func helper() { return; }
     )";
     auto* parseTree = parseCode(code);
 
@@ -1583,7 +1583,7 @@ TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
 
 TEST_F(SimpleASTBuilderTest, BuildAllBinaryOperators) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var a = 10 + 5;
             var b = 10 - 5;
             var c = 10 * 5;
@@ -1612,7 +1612,7 @@ TEST_F(SimpleASTBuilderTest, BuildAllBinaryOperators) {
 
 TEST_F(SimpleASTBuilderTest, BuildTernaryNesting) {
     std::string code = R"(
-        func nested() -> int64 {
+        func:int64 nested() {
             var x = 1;
             var y = 2;
             if (x < y) {

@@ -15,7 +15,7 @@ protected:
 };
 
 TEST_F(ProcessIsolatedParserTest, ParseValidFunction) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto* parseTree = parser->parseForAST(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -24,8 +24,8 @@ TEST_F(ProcessIsolatedParserTest, ParseValidFunction) {
 
 TEST_F(ProcessIsolatedParserTest, ParseMultipleFunctions) {
     std::string code = R"(
-        func first() -> void { return; }
-        func second() -> void { return; }
+        func first() { return; }
+        func second() { return; }
     )";
     auto* parseTree = parser->parseForAST(code);
     
@@ -45,7 +45,7 @@ TEST_F(ProcessIsolatedParserTest, ParseEmptySource) {
 }
 
 TEST_F(ProcessIsolatedParserTest, ParseFunctionWithParameters) {
-    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
+    std::string code = "func:int64 add(a: int64, b: int64) { return a + b; }";
     auto* parseTree = parser->parseForAST(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -54,7 +54,7 @@ TEST_F(ProcessIsolatedParserTest, ParseFunctionWithParameters) {
 
 TEST_F(ProcessIsolatedParserTest, ParseFunctionWithStatements) {
     std::string code = R"(
-        func complex() -> int64 {
+        func:int64 complex() {
             var x = 10;
             if (x > 5) {
                 return x;
@@ -79,8 +79,8 @@ TEST_F(ProcessIsolatedParserTest, ParseInvalidSyntax) {
 
 TEST_F(ProcessIsolatedParserTest, ParseMultipleCalls) {
     // Test that parser can be reused
-    std::string code1 = "func first() -> void { return; }";
-    std::string code2 = "func second() -> void { return; }";
+    std::string code1 = "func first() { return; }";
+    std::string code2 = "func second() { return; }";
     
     auto* parseTree1 = parser->parseForAST(code1);
     ASSERT_NE(parseTree1, nullptr);
@@ -91,7 +91,7 @@ TEST_F(ProcessIsolatedParserTest, ParseMultipleCalls) {
 
 TEST_F(ProcessIsolatedParserTest, ParseVariableDeclarations) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 42;
             var y = x + 1;
             return y;
@@ -105,7 +105,7 @@ TEST_F(ProcessIsolatedParserTest, ParseVariableDeclarations) {
 
 TEST_F(ProcessIsolatedParserTest, ParseControlFlow) {
     std::string code = R"(
-        func controlFlow() -> void {
+        func controlFlow() {
             while (true) {
                 if (condition) {
                     break;

@@ -26,7 +26,7 @@ protected:
 
 TEST_F(IfElseIfParsingTest, SimpleIfStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if (true) {
                 var x = 1;
             }
@@ -40,7 +40,7 @@ TEST_F(IfElseIfParsingTest, SimpleIfStatement) {
 
 TEST_F(IfElseIfParsingTest, SimpleIfElseStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             if (true) {
                 var x = 1;
             } else {
@@ -56,7 +56,7 @@ TEST_F(IfElseIfParsingTest, SimpleIfElseStatement) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             if (x == 1) {
                 var result = 10;
@@ -75,7 +75,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfStatement) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfElseStatement) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             if (x == 1) {
                 var result = 10;
@@ -96,7 +96,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfElseStatement) {
 
 TEST_F(IfElseIfParsingTest, MultipleElseIfClauses) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var grade = 85;
             if (grade >= 90) {
                 var letter = 'A';
@@ -125,7 +125,7 @@ TEST_F(IfElseIfParsingTest, MultipleElseIfClauses) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithComplexConditions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             var y = 20;
             if (x > 5 && y < 30) {
@@ -147,7 +147,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithComplexConditions) {
 
 TEST_F(IfElseIfParsingTest, NestedIfInElseIf) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             if (x < 0) {
                 var result = -1;
@@ -172,7 +172,7 @@ TEST_F(IfElseIfParsingTest, NestedIfInElseIf) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithReturnStatements) {
     std::string code = R"(
-        func test(x: int64) -> int64 {
+        func:int64 test(x: int64) {
             if (x < 0) {
                 return -1;
             } else {
@@ -192,11 +192,11 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithReturnStatements) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithFunctionCalls) {
     std::string code = R"(
-        func helper(x: int64) -> int64 {
+        func:int64 helper(x: int64) {
             return x * 2;
         }
 
-        func test(x: int64) -> void {
+        func test(x: int64) {
             if (x < 10) {
                 var result = helper(x);
             } else {
@@ -216,7 +216,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithFunctionCalls) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithMultipleStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             if (x < 5) {
                 var a = 1;
@@ -243,7 +243,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithMultipleStatements) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithArithmeticConditions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             var y = 5;
             if (x + y > 20) {
@@ -269,7 +269,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithArithmeticConditions) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithBooleanVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var isActive = true;
             var isValid = false;
             if (isActive && isValid) {
@@ -295,7 +295,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithBooleanVariables) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithComparisonChains) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 15;
             if (x < 10) {
                 var range = 1;
@@ -320,7 +320,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithComparisonChains) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithNegatedConditions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             if (!flag) {
                 var result = 0;
@@ -339,7 +339,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithNegatedConditions) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithWhileLoop) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             if (x < 5) {
                 var i = 0;
@@ -366,7 +366,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithWhileLoop) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithArrays) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             if (x < 3) {
                 var arr = [1, 2, 3];
@@ -387,7 +387,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithArrays) {
 
 TEST_F(IfElseIfParsingTest, DeepElseIfChain) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 50;
             if (x == 1) {
                 var r = 1;
@@ -436,7 +436,7 @@ TEST_F(IfElseIfParsingTest, DeepElseIfChain) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithFloatComparisons) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var temperature = 25.5;
             if (temperature < 0.0) {
                 var state = 1;
@@ -457,7 +457,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithFloatComparisons) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithCharComparisons) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ch = 'a';
             if (ch == 'a') {
                 var result = 1;
@@ -482,7 +482,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithCharComparisons) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfEmptyBlocks) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             if (x < 0) {
             } else {
@@ -500,7 +500,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfEmptyBlocks) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithParenthesizedConditions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             var y = 20;
             if ((x > 5) && (y < 25)) {
@@ -522,7 +522,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithParenthesizedConditions) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithComplexNesting) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             var y = 10;
             if (x > 0) {
@@ -556,7 +556,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithComplexNesting) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithUnaryOperators) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 10;
             if (-x < 0) {
                 var result = 1;
@@ -577,7 +577,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithUnaryOperators) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithMixedTypes) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var intVal = 5;
             var floatVal = 3.14;
             var boolVal = true;
@@ -604,7 +604,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfWithMixedTypes) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfFollowedByOtherStatements) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             if (x < 3) {
                 var a = 1;
@@ -627,7 +627,7 @@ TEST_F(IfElseIfParsingTest, IfElseIfFollowedByOtherStatements) {
 
 TEST_F(IfElseIfParsingTest, MultipleIfElseIfInSameFunction) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var x = 5;
             var y = 10;
 
@@ -660,7 +660,7 @@ TEST_F(IfElseIfParsingTest, MultipleIfElseIfInSameFunction) {
 
 TEST_F(IfElseIfParsingTest, IfElseIfWithComplexExpressions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var a = 10;
             var b = 20;
             var c = 30;

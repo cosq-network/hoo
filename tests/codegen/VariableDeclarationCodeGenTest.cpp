@@ -47,7 +47,7 @@ protected:
 
 TEST_F(VariableDeclarationCodeGenTest, GenerateByteVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var b = 255;
             var typed: byte = 128;
             return;
@@ -69,7 +69,7 @@ TEST_F(VariableDeclarationCodeGenTest, GenerateByteVariables) {
 
 TEST_F(VariableDeclarationCodeGenTest, GenerateFloatVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var f = 3.14;
             var typed: float = 2.71;
             return;
@@ -91,7 +91,7 @@ TEST_F(VariableDeclarationCodeGenTest, GenerateFloatVariables) {
 
 TEST_F(VariableDeclarationCodeGenTest, GenerateBoolVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var flag = true;
             var explicit: bool = false;
             return;
@@ -115,7 +115,7 @@ TEST_F(VariableDeclarationCodeGenTest, GenerateBoolVariables) {
 
 TEST_F(VariableDeclarationCodeGenTest, GenerateCharVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var ch = 'a';
             var explicit: char = 'Z';
             return;
@@ -139,7 +139,7 @@ TEST_F(VariableDeclarationCodeGenTest, GenerateCharVariables) {
 
 TEST_F(VariableDeclarationCodeGenTest, GenerateArrayVariables) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             var numbers = [1, 2, 3, 4, 5];
             var chars = ['a', 'b', 'c', 'd', 'e'];
             return;
@@ -162,7 +162,7 @@ TEST_F(VariableDeclarationCodeGenTest, GenerateArrayVariables) {
 
 TEST_F(VariableDeclarationCodeGenTest, Int64VariableWithTypeInference) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 42;
             return x;
         }
@@ -183,7 +183,7 @@ TEST_F(VariableDeclarationCodeGenTest, Int64VariableWithTypeInference) {
 
 TEST_F(VariableDeclarationCodeGenTest, Int64VariableWithExplicitType) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x: int64 = 100;
             return x;
         }
@@ -204,7 +204,7 @@ TEST_F(VariableDeclarationCodeGenTest, Int64VariableWithExplicitType) {
 
 TEST_F(VariableDeclarationCodeGenTest, DoubleVariableWithTypeInference) {
     std::string code = R"(
-        func test() -> double {
+        func:double test() {
             var x = 3.14;
             return x;
         }
@@ -225,7 +225,7 @@ TEST_F(VariableDeclarationCodeGenTest, DoubleVariableWithTypeInference) {
 
 TEST_F(VariableDeclarationCodeGenTest, DoubleVariableWithExplicitType) {
     std::string code = R"(
-        func test() -> double {
+        func:double test() {
             var x: double = 2.718;
             return x;
         }
@@ -246,7 +246,7 @@ TEST_F(VariableDeclarationCodeGenTest, DoubleVariableWithExplicitType) {
 
 TEST_F(VariableDeclarationCodeGenTest, BoolVariableWithTypeInference) {
     std::string code = R"(
-        func test() -> bool {
+        func:bool test() {
             var x = true;
             return x;
         }
@@ -267,7 +267,7 @@ TEST_F(VariableDeclarationCodeGenTest, BoolVariableWithTypeInference) {
 
 TEST_F(VariableDeclarationCodeGenTest, BoolVariableWithExplicitType) {
     std::string code = R"(
-        func test() -> bool {
+        func:bool test() {
             var x: bool = false;
             return x;
         }
@@ -288,7 +288,7 @@ TEST_F(VariableDeclarationCodeGenTest, BoolVariableWithExplicitType) {
 
 TEST_F(VariableDeclarationCodeGenTest, CharVariableWithTypeInference) {
     std::string code = R"(
-        func test() -> char {
+        func:char test() {
             var x = 'A';
             return x;
         }
@@ -310,7 +310,7 @@ TEST_F(VariableDeclarationCodeGenTest, CharVariableWithTypeInference) {
 
 TEST_F(VariableDeclarationCodeGenTest, CharVariableWithExplicitType) {
     std::string code = R"(
-        func test() -> char {
+        func:char test() {
             var x: char = 'Z';
             return x;
         }
@@ -332,7 +332,7 @@ TEST_F(VariableDeclarationCodeGenTest, CharVariableWithExplicitType) {
 
 TEST_F(VariableDeclarationCodeGenTest, ByteVariableWithExplicitType) {
     std::string code = R"(
-        func test() -> byte {
+        func:byte test() {
             var x: byte = 255;
             return x;
         }
@@ -354,7 +354,7 @@ TEST_F(VariableDeclarationCodeGenTest, ByteVariableWithExplicitType) {
 
 TEST_F(VariableDeclarationCodeGenTest, MultipleVariablesInOneFunction) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var a = 10;
             var b: int64 = 20;
             var c = 30;
@@ -383,7 +383,7 @@ TEST_F(VariableDeclarationCodeGenTest, MultipleVariablesInOneFunction) {
 
 TEST_F(VariableDeclarationCodeGenTest, VariableWithExpressionInitializer) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = 10 + 20;
             return x;
         }
@@ -405,7 +405,7 @@ TEST_F(VariableDeclarationCodeGenTest, VariableWithExpressionInitializer) {
 
 TEST_F(VariableDeclarationCodeGenTest, VariableWithComplexExpressionInitializer) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var x = (10 + 20) * 3 - 5;
             return x;
         }
@@ -427,11 +427,11 @@ TEST_F(VariableDeclarationCodeGenTest, VariableWithComplexExpressionInitializer)
 
 TEST_F(VariableDeclarationCodeGenTest, VariableInitializedWithFunctionCall) {
     std::string code = R"(
-        func getValue() -> int64 {
+        func:int64 getValue() {
             return 42;
         }
 
-        func test() -> int64 {
+        func:int64 test() {
             var x = getValue();
             return x;
         }
@@ -453,7 +453,7 @@ TEST_F(VariableDeclarationCodeGenTest, VariableInitializedWithFunctionCall) {
 
 TEST_F(VariableDeclarationCodeGenTest, MixedTypeVariables) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             var intVar: int64 = 42;
             var doubleVar: double = 3.14;
             var boolVar: bool = true;

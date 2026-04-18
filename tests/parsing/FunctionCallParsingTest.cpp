@@ -78,7 +78,7 @@ protected:
 // Test 1: Simple function call with no arguments - foo()
 TEST_F(FunctionCallParsingTest, SimpleFunctionCallNoArguments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             foo();
         }
     )";
@@ -118,7 +118,7 @@ TEST_F(FunctionCallParsingTest, SimpleFunctionCallNoArguments) {
 // Test 2: Function call with one integer argument - bar(42)
 TEST_F(FunctionCallParsingTest, FunctionCallWithOneIntegerArgument) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             bar(42);
         }
     )";
@@ -163,7 +163,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithOneIntegerArgument) {
 // Test 3: Function call with multiple arguments - add(1, 2, 3)
 TEST_F(FunctionCallParsingTest, FunctionCallWithMultipleArguments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             add(10, 20, 30);
         }
     )";
@@ -211,7 +211,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithMultipleArguments) {
 // Test 4: Function call with expression as argument - calculate(x + y)
 TEST_F(FunctionCallParsingTest, FunctionCallWithExpressionArgument) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             calculate(5 + 10);
         }
     )";
@@ -252,7 +252,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithExpressionArgument) {
 // Test 5: Nested function call - outer(inner(42))
 TEST_F(FunctionCallParsingTest, NestedFunctionCall) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             outer(inner(42));
         }
     )";
@@ -313,7 +313,7 @@ TEST_F(FunctionCallParsingTest, NestedFunctionCall) {
 // Test 6: Chained function calls - getObject().getMethod()
 TEST_F(FunctionCallParsingTest, ChainedFunctionCalls) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             foo()();
         }
     )";
@@ -351,7 +351,7 @@ TEST_F(FunctionCallParsingTest, ChainedFunctionCalls) {
 // Test 7: Function call with mixed argument types - process(42, 3.14, true, 'x')
 TEST_F(FunctionCallParsingTest, FunctionCallWithMixedArgumentTypes) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             process(42, 3.14, true, 'x');
         }
     )";
@@ -411,7 +411,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithMixedArgumentTypes) {
 // Test 8: Function call with variable arguments - myFunc(x, y, z)
 TEST_F(FunctionCallParsingTest, FunctionCallWithVariableArguments) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             myFunc(x, y, z);
         }
     )";
@@ -450,7 +450,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithVariableArguments) {
 // Test 9: Function call with complex expressions - foo(a + b, c * d, e == f)
 TEST_F(FunctionCallParsingTest, FunctionCallWithComplexExpressions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             foo(a + b, c * d, e == f);
         }
     )";
@@ -493,7 +493,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithComplexExpressions) {
 // Test 10: Function call in return statement - return foo(42)
 TEST_F(FunctionCallParsingTest, FunctionCallInReturnStatement) {
     std::string code = R"(
-        func test() -> int64 {
+        func:int64 test() {
             return getValue(100);
         }
     )";
@@ -537,7 +537,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallInReturnStatement) {
 // Test 11: Multiple chained calls in sequence - a()()()
 TEST_F(FunctionCallParsingTest, MultipleChainedCalls) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             a()()();
         }
     )";
@@ -580,7 +580,7 @@ TEST_F(FunctionCallParsingTest, MultipleChainedCalls) {
 // Test 12: Function call with string literal argument - print("hello")
 TEST_F(FunctionCallParsingTest, FunctionCallWithStringLiteral) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             print("hello world");
         }
     )";
@@ -624,7 +624,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithStringLiteral) {
 // Test 13: Deeply nested function calls - a(b(c(d())))
 TEST_F(FunctionCallParsingTest, DeeplyNestedFunctionCalls) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             a(b(c(d())));
         }
     )";
@@ -676,7 +676,7 @@ TEST_F(FunctionCallParsingTest, DeeplyNestedFunctionCalls) {
 // Test 14: Function call with logical expressions - validate(a && b, c || d)
 TEST_F(FunctionCallParsingTest, FunctionCallWithLogicalExpressions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             validate(a && b, c || d);
         }
     )";
@@ -714,7 +714,7 @@ TEST_F(FunctionCallParsingTest, FunctionCallWithLogicalExpressions) {
 // Test 15: Function call with unary expressions - process(-x, !flag)
 TEST_F(FunctionCallParsingTest, FunctionCallWithUnaryExpressions) {
     std::string code = R"(
-        func test() -> void {
+        func test() {
             process(-x, !flag);
         }
     )";

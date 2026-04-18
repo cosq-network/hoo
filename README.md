@@ -89,11 +89,11 @@ var count = 100;  // inferred as int64
 ### Functions
 
 ```hoo
-func add(a: int64, b: int64) -> int64 {
+func:int64 add(a: int64, b: int64) {
     return a + b;
 }
 
-func greet(name: string) -> void {
+func greet(name: string) {
     var message = "Hello, " + name;
     hoo.println(message);
 }
@@ -111,10 +111,11 @@ class Point {
         this.y = y;
     }
 
-    func distance() -> double {
-        return sqrt(x * x + y * y);
+    func:double distance() {
+        return sqrt(this.x * this.x + this.y * this.y);
     }
 }
+
 
 func main() {
     var p = new Point(10, 20);

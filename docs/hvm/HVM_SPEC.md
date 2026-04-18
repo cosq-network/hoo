@@ -37,7 +37,7 @@ The Hooc Virtual Machine (HVM) is a lightweight, register-based virtual machine 
 - High performance and portability
 - Static compilation and dynamic linking
 - Seamless integration with C/C++ and LLVM toolchains
-- Support for modern language features (classes, generics, interfaces)
+- Support for modern language features (classes, interfaces)
 - RISC-like instruction set enabling efficient JIT compilation
 
 ### 1.2 Architecture Type
@@ -955,7 +955,7 @@ Array Layout:
 - Methods are invoked via vtables
 - Virtual method call (`CALLVIRT`): Look up method in object's vtable
 - Interface call (`CALLINTF`): Use interface table for dispatch
-- Generics are monomorphized at compile time
+- Virtual method dispatch via vtables
 
 ### 7.5 String Representation
 

@@ -1198,7 +1198,7 @@ For dynamic linking:
 
 **Source Code (`main.hoo`):**
 ```hooc
-func main() -> int64 {
+func:int64 main() {
     print("Hello, World!");
     return 0;
 }
@@ -1241,11 +1241,11 @@ hooc run main.ho
 **Source Code (`math.hoo`):**
 ```hooc
 class Math {
-    func add(a: int64, b: int64) -> int64 {
+    func:int64 add(a: int64, b: int64) {
         return a + b;
     }
 
-    func mul(a: int64, b: int64) -> int64 {
+    func:int64 mul(a: int64, b: int64) {
         return a * b;
     }
 }
@@ -1281,7 +1281,7 @@ libmath.ho
 
 **File 1 (`a.hoo`):**
 ```hooc
-func foo() -> int64 {
+func:int64 foo() {
     return 42;
 }
 
@@ -1292,7 +1292,7 @@ export foo;
 ```hooc
 import foo from "local";
 
-func bar() -> int64 {
+func:int64 bar() {
     return foo() + 1;
 }
 
@@ -1324,7 +1324,7 @@ program.ho
 ```hooc
 import Math from "math";
 
-func main() -> int64 {
+func:int64 main() {
     let m = new Math();
     return m.add(10, 20);
 }
@@ -1705,7 +1705,7 @@ Defines address ranges for scopes and inline instances:
 
 **Source:**
 ```hooc
-func add(a: int64, b: int64) -> int64 {
+func:int64 add(a: int64, b: int64) {
     return a + b;
 }
 ```
@@ -1919,13 +1919,13 @@ For `DW_OP_hvm_reg`, register numbers map to HVM registers:
 **Source:**
 ```hooc
 class Point {
-    x: int64,
-    y: int64
+    var x: int64;
+    var y: int64;
 }
 
-func distance(p: Point) -> double {
-    dx := p.x;  // Variable 'dx' in register r9
-    dy := p.y;  // Variable 'dy' in register r10
+func:double distance(p: Point) {
+    var dx = p.x;  // Variable 'dx' in register r9
+    var dy = p.y;  // Variable 'dy' in register r10
     return sqrt(dx*dx + dy*dy);
 }
 ```

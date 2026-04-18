@@ -30,7 +30,7 @@ TEST_F(HooCompilerTest, CompileEmptySource) {
 }
 
 TEST_F(HooCompilerTest, CompileSingleFunction) {
-    std::string code = "func test() -> void { return; }";
+    std::string code = "func test() { return; }";
     auto module = compiler->compile("test_module", code);
     
     ASSERT_NE(module, nullptr);
@@ -45,8 +45,8 @@ TEST_F(HooCompilerTest, CompileSingleFunction) {
 
 TEST_F(HooCompilerTest, CompileMultipleFunctions) {
     std::string code = R"(
-        func first() -> void { return; }
-        func second() -> void { return; }
+        func first() { return; }
+        func second() { return; }
     )";
     auto module = compiler->compile("multi_func", code);
     
@@ -71,7 +71,7 @@ TEST_F(HooCompilerTest, CompileInvalidSyntax) {
 
 TEST_F(HooCompilerTest, CompileComplexFunction) {
     std::string code = R"(
-        func calculate() -> void {
+        func calculate() {
             var x = 42;
             if (x > 0) {
                 return;
@@ -93,7 +93,7 @@ TEST_F(HooCompilerTest, CompileComplexFunction) {
 }
 
 TEST_F(HooCompilerTest, CompileWithParameters) {
-    std::string code = "func add(a: int64, b: int64) -> int64 { return a + b; }";
+    std::string code = "func:int64 add(a: int64, b: int64) { return a + b; }";
     auto module = compiler->compile("params", code);
     
     ASSERT_NE(module, nullptr);
@@ -105,8 +105,8 @@ TEST_F(HooCompilerTest, CompileWithParameters) {
 
 TEST_F(HooCompilerTest, MultipleCompilations) {
     // Test that compiler can be reused
-    std::string code1 = "func first() -> void { return; }";
-    std::string code2 = "func second() -> void { return; }";
+    std::string code1 = "func first() { return; }";
+    std::string code2 = "func second() { return; }";
     
     auto module1 = compiler->compile("mod1", code1);
     ASSERT_NE(module1, nullptr);
@@ -122,7 +122,7 @@ TEST_F(HooCompilerTest, MultipleCompilations) {
 }
 
 TEST_F(HooCompilerTest, CompileByteFunction) {
-    std::string code = "func process(data: byte) -> byte { return data; }";
+    std::string code = "func:byte process(data: byte) { return data; }";
     auto module = compiler->compile("byte_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -144,7 +144,7 @@ TEST_F(HooCompilerTest, CompileByteFunction) {
 
 TEST_F(HooCompilerTest, CompileByteArithmetic) {
     std::string code = R"(
-        func calculate(a: byte, b: byte) -> byte {
+        func:byte calculate(a: byte, b: byte) {
             var sum = a + b;
             var diff = a - b;
             return sum;
@@ -166,7 +166,7 @@ TEST_F(HooCompilerTest, CompileByteArithmetic) {
 
 TEST_F(HooCompilerTest, ErrorAfterSuccessfulCompilation) {
     // First successful compilation
-    std::string validCode = "func valid() -> void { return; }";
+    std::string validCode = "func valid() { return; }";
     auto validModule = compiler->compile("valid", validCode);
     ASSERT_NE(validModule, nullptr);
     EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
@@ -180,7 +180,7 @@ TEST_F(HooCompilerTest, ErrorAfterSuccessfulCompilation) {
 }
 
 TEST_F(HooCompilerTest, CompileFloatFunction) {
-    std::string code = "func process(data: float) -> float { return data; }";
+    std::string code = "func:float process(data: float) { return data; }";
     auto module = compiler->compile("float_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -202,7 +202,7 @@ TEST_F(HooCompilerTest, CompileFloatFunction) {
 
 TEST_F(HooCompilerTest, CompileFloatArithmetic) {
     std::string code = R"(
-        func calculate(a: float, b: float) -> float {
+        func:float calculate(a: float, b: float) {
             var sum = a + b;
             var diff = a - b;
             var product = a * b;
@@ -225,7 +225,7 @@ TEST_F(HooCompilerTest, CompileFloatArithmetic) {
 }
 
 TEST_F(HooCompilerTest, CompileBoolFunction) {
-    std::string code = "func process(flag: bool) -> bool { return flag; }";
+    std::string code = "func:bool process(flag: bool) { return flag; }";
     auto module = compiler->compile("bool_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -247,7 +247,7 @@ TEST_F(HooCompilerTest, CompileBoolFunction) {
 
 TEST_F(HooCompilerTest, CompileBoolLogic) {
     std::string code = R"(
-        func logic(a: bool, b: bool) -> bool {
+        func:bool logic(a: bool, b: bool) {
             var and_result = a && b;
             var or_result = a || b;
             var not_result = !a;
@@ -273,7 +273,7 @@ TEST_F(HooCompilerTest, CompileBoolLogic) {
 }
 
 TEST_F(HooCompilerTest, CompileCharFunction) {
-    std::string code = "func process(ch: char) -> char { return ch; }";
+    std::string code = "func:char process(ch: char) { return ch; }";
     auto module = compiler->compile("char_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -295,7 +295,7 @@ TEST_F(HooCompilerTest, CompileCharFunction) {
 
 TEST_F(HooCompilerTest, CompileCharLiterals) {
     std::string code = R"(
-        func test_chars() -> char {
+        func:char test_chars() {
             var letter = 'A';
             var digit = '9';
             var symbol = '@';
@@ -321,7 +321,7 @@ TEST_F(HooCompilerTest, CompileCharLiterals) {
 }
 
 TEST_F(HooCompilerTest, CompileArrayFunction) {
-    std::string code = "func process(data: int64) -> void { var arr: int64[5]; return; }";
+    std::string code = "func process(data: int64) { var arr: int64[5]; return; }";
     auto module = compiler->compile("array_test", code);
     
     ASSERT_NE(module, nullptr);
@@ -343,7 +343,7 @@ TEST_F(HooCompilerTest, CompileArrayFunction) {
 
 TEST_F(HooCompilerTest, CompileArrayDeclarations) {
     std::string code = R"(
-        func array_demo() -> int64 {
+        func:int64 array_demo() {
             var numbers: int64[10];
             var matrix: char[3][4];
             var bytes: byte[256];

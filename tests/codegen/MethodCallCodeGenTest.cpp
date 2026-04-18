@@ -48,7 +48,7 @@ TEST_F(MethodCallCodeGenTest, SimpleMethodCallCodeGen) {
             var count: int64;
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 42;
             }
         }
@@ -91,7 +91,7 @@ TEST_F(MethodCallCodeGenTest, MethodCallWithArgs) {
         class Adder {
             constructor() {}
 
-            func add(x: int64) -> int64 {
+            func:int64 add(x: int64) {
                 return x + 10;
             }
         }
@@ -121,7 +121,7 @@ TEST_F(MethodCallCodeGenTest, MethodCallMultipleArgs) {
         class Calculator {
             constructor() {}
 
-            func multiply(a: int64, b: int64) -> int64 {
+            func:int64 multiply(a: int64, b: int64) {
                 return a * b;
             }
         }
@@ -181,7 +181,7 @@ TEST_F(MethodCallCodeGenTest, MethodCallInExpression) {
         class Math {
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 5;
             }
         }
@@ -216,12 +216,12 @@ TEST_F(MethodCallCodeGenTest, MethodCallAsArgument) {
         class Value {
             constructor() {}
 
-            func getValue() -> int64 {
+            func:int64 getValue() {
                 return 42;
             }
         }
 
-        func process(x: int64) -> int64 {
+        func:int64 process(x: int64) {
             return x * 2;
         }
 
@@ -255,11 +255,11 @@ TEST_F(MethodCallCodeGenTest, MultipleMethodsInClass) {
         class Operations {
             constructor() {}
 
-            func getX() -> int64 {
+            func:int64 getX() {
                 return 10;
             }
 
-            func getY() -> int64 {
+            func:int64 getY() {
                 return 20;
             }
         }
@@ -294,12 +294,12 @@ TEST_F(MethodCallCodeGenTest, MethodCallInReturn) {
         class Data {
             constructor() {}
 
-            func getData() -> int64 {
+            func:int64 getData() {
                 return 100;
             }
         }
 
-        func getResult() -> int64 {
+        func:int64 getResult() {
             var d: Data = new Data();
             return d.getData();
         }
@@ -328,12 +328,12 @@ TEST_F(MethodCallCodeGenTest, MultipleClassMethods) {
     std::string code = R"(
         class ClassA {
             constructor() {}
-            func methodA() -> int64 { return 1; }
+            func:int64 methodA() { return 1; }
         }
 
         class ClassB {
             constructor() {}
-            func methodB() -> int64 { return 2; }
+            func:int64 methodB() { return 2; }
         }
 
         func test() {
@@ -363,7 +363,7 @@ TEST_F(MethodCallCodeGenTest, MethodCallMixedTypes) {
         class Process {
             constructor() {}
 
-            func process(i: int64, f: float) -> double {
+            func:double process(i: int64, f: float) {
                 return 3.14;
             }
         }
