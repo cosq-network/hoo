@@ -557,6 +557,92 @@ void HoModule::setStripped(bool stripped) { flags_ = (flags_ & ~0x2000) | (strip
 void HoModule::setPIE(bool pie) { flags_ = (flags_ & ~0x1000) | (pie ? 0x1000 : 0); }
 void HoModule::setOptimizationLevel(uint8_t level) { flags_ = (flags_ & ~0x0F00) | ((level & 0x0F) << 8); }
 
+std::vector<uint8_t> HoModule::encodeInstructions(const std::vector<HInstruction>& instructions) const {
+    std::vector<uint8_t> encoded;
+    encoded.reserve(instructions.size() * 8);
+    
+    for (const auto& inst : instructions) {
+        std::vector<uint8_t> bytes;
+        if (inst.isExtended()) {
+            bytes = inst.encode64();
+        } else {
+            bytes = inst.encode();
+        }
+        encoded.insert(encoded.end(), bytes.begin(), bytes.end());
+    }
+    
+    return encoded;
+}
+
+std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t>& data, bool extended) const {
+    std::vector<HInstruction> instructions;
+    
+    if (extended) {
+        for (size_t i = 0; i + 8 <= data.size(); i += 8) {
+            std::vector<uint8_t> instrBytes(data.begin() + i, data.begin() + i + 8);
+            auto inst = HInstruction::decode64(instrBytes);
+            if (inst) {
+                instructions.push_back(std::move(*inst));
+            }
+        }
+    } else {
+        for (size_t i = 0; i + 4 <= data.size(); i += 4) {
+            std::vector<uint8_t> instrBytes(data.begin() + i, data.begin() + i + 4);
+            auto inst = HInstruction::decode(instrBytes);
+            if (inst) {
+                instructions.push_back(std::move(*inst));
+            }
+        }
+    }
+    
+    return instructions;
+}
+
+std::string HoModule::instructionsToAssembly(const std::vector<HInstruction>& instructions) const {
+    std::ostringstream oss;
+    
+    for (size_t i = 0; i < instructions.size(); ++i) {
+        oss << "  " << i << ": " << instructions[i].toAssembly() << "\n";
+    }
+    
+    return oss.str();
+}
+
+std::vector<HInstruction> HoModule::parseAssembly(const std::string& assembly) const {
+    std::vector<HInstruction> instructions;
+    std::istringstream iss(assembly);
+    std::string line;
+    
+    while (std::getline(iss, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        
+        size_t colonPos = line.find(':');
+        if (colonPos != std::string::npos) {
+            line = line.substr(colonPos + 1);
+        }
+        
+        line.erase(0, line.find_first_not_of(" \t"));
+        
+        if (line.empty()) continue;
+        
+        std::istringstream lineIss(line);
+        std::string mnemonic;
+        lineIss >> mnemonic;
+        
+        if (mnemonic.empty()) continue;
+        
+        Opcode opcode = HInstruction::stringToOpcode(mnemonic);
+        if (opcode == Opcode::UNKNOWN) {
+            continue;
+        }
+        
+        HInstruction inst(opcode);
+        instructions.push_back(inst);
+    }
+    
+    return instructions;
+}
+
 std::string HoModule::getError() const { return error_; }
 bool HoModule::hasError() const { return !error_.empty(); }
 void HoModule::clearError() { error_.clear(); }

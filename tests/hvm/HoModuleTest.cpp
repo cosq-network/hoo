@@ -457,3 +457,112 @@ TEST_F(HoModuleTest, MultipleSections) {
         EXPECT_EQ(sec->virtual_size, static_cast<uint64_t>(32 * (i + 1)));
     }
 }
+
+TEST_F(HoModuleTest, EncodeDecodeInstructions) {
+    auto module = HoModule::create();
+    
+    std::vector<HInstruction> instructions = {
+        HInstruction(Opcode::NOP, OperandsR{0, 0, 0, 0}),
+        HInstruction(Opcode::MOV, OperandsR{1, 2, 3, 0}),
+        HInstruction(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    
+    auto encoded = module->encodeInstructions(instructions);
+    ASSERT_EQ(encoded.size(), 12);
+    
+    auto decoded = module->decodeInstructions(encoded);
+    EXPECT_EQ(decoded.size(), 3);
+    
+    EXPECT_EQ(decoded[0].getOpcode(), Opcode::NOP);
+    ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded[0].getOperands()));
+    EXPECT_EQ(std::get<OperandsR>(decoded[0].getOperands()).rd, 0);
+    
+    EXPECT_EQ(decoded[1].getOpcode(), Opcode::MOV);
+    ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded[1].getOperands()));
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rd, 1);
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rs1, 2);
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rs2, 3);
+    
+    EXPECT_EQ(decoded[2].getOpcode(), Opcode::RET);
+}
+
+TEST_F(HoModuleTest, EncodeDecodeExtendedInstructions) {
+    auto module = HoModule::create();
+    
+    std::vector<HInstruction> instructions = {
+        HInstruction(Opcode::NOP, OperandsR{0, 0, 0, 0}),
+        HInstruction(Opcode::NOP, OperandsR{1, 2, 3, 0x1234}),
+    };
+    
+    for (auto& inst : instructions) {
+        inst.setExtended(true);
+    }
+    
+    auto encoded = module->encodeInstructions(instructions);
+    ASSERT_EQ(encoded.size(), 16);
+    
+    auto decoded = module->decodeInstructions(encoded, true);
+    EXPECT_EQ(decoded.size(), 2);
+    
+    EXPECT_EQ(decoded[0].getOpcode(), Opcode::NOP);
+    EXPECT_TRUE(decoded[0].isExtended());
+    ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded[0].getOperands()));
+    EXPECT_EQ(std::get<OperandsR>(decoded[0].getOperands()).rd, 0);
+    
+    EXPECT_EQ(decoded[1].getOpcode(), Opcode::NOP);
+    EXPECT_TRUE(decoded[1].isExtended());
+    ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded[1].getOperands()));
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rd, 1);
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rs1, 2);
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rs2, 3);
+    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).func, 0x1234);
+}
+
+TEST_F(HoModuleTest, InstructionsToAssembly) {
+    auto module = HoModule::create();
+    
+    std::vector<HInstruction> instructions = {
+        HInstruction(Opcode::ADD, OperandsR{5, 10, 15, 0}),
+        HInstruction(Opcode::MOVI, OperandsI{3, 5, 100}),
+        HInstruction(Opcode::BEQ, OperandsB{1, 2, -50}),
+    };
+    
+    auto assembly = module->instructionsToAssembly(instructions);
+    
+    EXPECT_TRUE(assembly.find("add r5, r10, r15") != std::string::npos);
+    EXPECT_TRUE(assembly.find("movi") != std::string::npos);
+    EXPECT_TRUE(assembly.find("beq") != std::string::npos);
+}
+
+TEST_F(HoModuleTest, ParseAssembly) {
+    auto module = HoModule::create();
+    
+    std::string assembly = R"(
+        nop
+        mov r1, r2, r3
+        ret
+    )";
+    
+    auto instructions = module->parseAssembly(assembly);
+    
+    ASSERT_EQ(instructions.size(), 3);
+    EXPECT_EQ(instructions[0].getOpcode(), Opcode::NOP);
+    EXPECT_EQ(instructions[1].getOpcode(), Opcode::MOV);
+    EXPECT_EQ(instructions[2].getOpcode(), Opcode::RET);
+}
+
+TEST_F(HoModuleTest, RoundTripInstructions) {
+    auto module = HoModule::create();
+    
+    std::vector<HInstruction> originalInstructions = {
+        HInstruction(Opcode::ADDI, OperandsI{1, 0, 100}),
+        HInstruction(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    
+    auto encoded = module->encodeInstructions(originalInstructions);
+    auto decoded = module->decodeInstructions(encoded);
+    
+    ASSERT_EQ(decoded.size(), 2);
+    EXPECT_EQ(decoded[0].getOpcode(), Opcode::ADDI);
+    EXPECT_EQ(decoded[1].getOpcode(), Opcode::RET);
+}

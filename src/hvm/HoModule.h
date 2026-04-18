@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <optional>
 
+#include "hvm/HInstruction.h"
+
 namespace hvm {
 
 enum class FileType : uint8_t {
@@ -231,6 +233,12 @@ public:
     void setStripped(bool stripped);
     void setPIE(bool pie);
     void setOptimizationLevel(uint8_t level);
+
+    std::vector<uint8_t> encodeInstructions(const std::vector<HInstruction>& instructions) const;
+    std::vector<HInstruction> decodeInstructions(const std::vector<uint8_t>& data, bool extended = false) const;
+
+    std::string instructionsToAssembly(const std::vector<HInstruction>& instructions) const;
+    std::vector<HInstruction> parseAssembly(const std::string& assembly) const;
 
     std::string getError() const;
     bool hasError() const;

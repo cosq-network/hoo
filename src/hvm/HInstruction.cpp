@@ -158,48 +158,55 @@ std::unique_ptr<HInstruction> HInstruction::decode64(const std::vector<uint8_t>&
     auto inst = std::make_unique<HInstruction>();
     inst->extended_ = true;
     
-    uint8_t opcode_byte = bytes[0];
+    uint8_t firstByte = bytes[0];
+    uint16_t opcodeVal;
     
-    if (opcode_byte == 0xFF) {
+    if (firstByte == 0xFF) {
+        opcodeVal = *reinterpret_cast<const uint16_t*>(bytes.data() + 1);
+    } else {
+        opcodeVal = firstByte;
+    }
+    
+    if (opcodeVal == 0xFFFF || opcodeVal == 0xFF) {
         inst->opcode_ = Opcode::UNKNOWN;
         inst->format_ = InstructionFormat::UNKNOWN;
         return inst;
     }
     
-    inst->opcode_ = static_cast<Opcode>(opcode_byte);
+    inst->opcode_ = static_cast<Opcode>(opcodeVal);
     inst->format_ = getFormatForOpcode(inst->opcode_).value_or(InstructionFormat::R_EXT);
     inst->mnemonic_ = opcodeToString(inst->opcode_);
     
     if (inst->format_ == InstructionFormat::R || inst->format_ == InstructionFormat::R_EXT) {
         OperandsR ops;
-        ops.rd = bytes[1];
-        ops.rs1 = bytes[2];
-        ops.rs2 = bytes[3];
-        ops.func = *reinterpret_cast<const uint16_t*>(bytes.data() + 4);
+        ops.rd = bytes[3];
+        ops.rs1 = bytes[4];
+        ops.rs2 = bytes[5];
+        ops.func = *reinterpret_cast<const uint16_t*>(bytes.data() + 6);
         inst->operands_ = ops;
     } else if (inst->format_ == InstructionFormat::I || inst->format_ == InstructionFormat::I_EXT) {
         OperandsI ops;
-        ops.rd = bytes[1];
-        ops.rs = bytes[2];
-        ops.imm15 = *reinterpret_cast<const int16_t*>(bytes.data() + 4);
+        ops.rd = bytes[3];
+        ops.rs = bytes[4];
+        ops.imm15 = *reinterpret_cast<const int16_t*>(bytes.data() + 6);
         inst->operands_ = ops;
     } else if (inst->format_ == InstructionFormat::B) {
         OperandsB ops;
-        ops.rs1 = bytes[1];
-        ops.rs2 = bytes[2];
-        ops.imm15 = *reinterpret_cast<const int16_t*>(bytes.data() + 4);
+        ops.rs1 = bytes[3];
+        ops.rs2 = bytes[4];
+        ops.imm15 = *reinterpret_cast<const int16_t*>(bytes.data() + 6);
         inst->operands_ = ops;
     } else if (inst->format_ == InstructionFormat::J || inst->format_ == InstructionFormat::RI) {
         if (inst->format_ == InstructionFormat::RI) {
             OperandsRI ops;
-            ops.rd = bytes[1];
-            ops.rd2 = bytes[2];
-            ops.rs = bytes[3];
-            ops.imm = *reinterpret_cast<const uint16_t*>(bytes.data() + 4);
+            ops.rd = bytes[3];
+            ops.rd2 = bytes[4];
+            ops.rs = bytes[5];
+            ops.imm = *reinterpret_cast<const uint16_t*>(bytes.data() + 6);
             inst->operands_ = ops;
         } else {
             OperandsJ ops;
-            ops.rd = bytes[1];
+            ops.rd = bytes[3];
             ops.offset = *reinterpret_cast<const int32_t*>(bytes.data() + 4);
             inst->operands_ = ops;
         }
@@ -277,35 +284,42 @@ uint32_t HInstruction::encode32() const {
 
 std::vector<uint8_t> HInstruction::encode64() const {
     std::vector<uint8_t> bytes(8, 0);
-    bytes[0] = static_cast<uint8_t>(opcode_);
-    bytes[1] = 0xFF;
+    
+    uint16_t opcodeVal = static_cast<uint16_t>(opcode_);
+    if (opcodeVal > 0xFF) {
+        bytes[0] = 0xFF;
+        *reinterpret_cast<uint16_t*>(bytes.data() + 1) = opcodeVal;
+    } else {
+        bytes[0] = static_cast<uint8_t>(opcode_);
+    }
+    bytes[2] = 0xFF;
     
     if (std::holds_alternative<OperandsR>(operands_)) {
         const auto& ops = std::get<OperandsR>(operands_);
-        bytes[1] = ops.rd;
-        bytes[2] = ops.rs1;
-        bytes[3] = ops.rs2;
-        *reinterpret_cast<uint16_t*>(bytes.data() + 4) = ops.func;
+        bytes[3] = ops.rd;
+        bytes[4] = ops.rs1;
+        bytes[5] = ops.rs2;
+        *reinterpret_cast<uint16_t*>(bytes.data() + 6) = ops.func;
     } else if (std::holds_alternative<OperandsI>(operands_)) {
         const auto& ops = std::get<OperandsI>(operands_);
-        bytes[1] = ops.rd;
-        bytes[2] = ops.rs;
-        *reinterpret_cast<int16_t*>(bytes.data() + 4) = ops.imm15;
+        bytes[3] = ops.rd;
+        bytes[4] = ops.rs;
+        *reinterpret_cast<int16_t*>(bytes.data() + 6) = ops.imm15;
     } else if (std::holds_alternative<OperandsB>(operands_)) {
         const auto& ops = std::get<OperandsB>(operands_);
-        bytes[1] = ops.rs1;
-        bytes[2] = ops.rs2;
-        *reinterpret_cast<int16_t*>(bytes.data() + 4) = ops.imm15;
+        bytes[3] = ops.rs1;
+        bytes[4] = ops.rs2;
+        *reinterpret_cast<int16_t*>(bytes.data() + 6) = ops.imm15;
     } else if (std::holds_alternative<OperandsJ>(operands_)) {
         const auto& ops = std::get<OperandsJ>(operands_);
-        bytes[1] = ops.rd;
+        bytes[3] = ops.rd;
         *reinterpret_cast<int32_t*>(bytes.data() + 4) = ops.offset;
     } else if (std::holds_alternative<OperandsRI>(operands_)) {
         const auto& ops = std::get<OperandsRI>(operands_);
-        bytes[1] = ops.rd;
-        bytes[2] = ops.rd2;
-        bytes[3] = ops.rs;
-        *reinterpret_cast<uint16_t*>(bytes.data() + 4) = ops.imm;
+        bytes[3] = ops.rd;
+        bytes[4] = ops.rd2;
+        bytes[5] = ops.rs;
+        *reinterpret_cast<uint16_t*>(bytes.data() + 6) = ops.imm;
     }
     
     return bytes;
