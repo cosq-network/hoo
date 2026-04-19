@@ -171,6 +171,11 @@ bool HoocJIT::initialize() {
 
 bool HoocJIT::verifyAndAddModule(std::unique_ptr<Module> module,
                                  std::string& outIR) {
+    if (!module) {
+        setError("Cannot verify null module");
+        return false;
+    }
+
     if (verifyModule(*module, &errs())) {
         setError("LLVM module verification failed");
         return false;

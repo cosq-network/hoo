@@ -349,6 +349,7 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/StdConstructorCodeGenTest.cpp
         tests/codegen/QualifiedIdentifierCodeGenTest.cpp
         tests/codegen/GlobalVariableCodeGenTest.cpp
+        tests/codegen/ConstantCodeGenTest.cpp
         tests/codegen/ImportStatementCodeGenTest.cpp
         tests/codegen/ModuleRegistryTest.cpp
         tests/codegen/LLVMCodeGeneratorComprehensiveTest.cpp

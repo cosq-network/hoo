@@ -210,8 +210,8 @@ private:
     /// @brief LLVM context for type and constant creation
     llvm::LLVMContext& context_;
 
-    /// @brief Current module being generated
-    std::unique_ptr<llvm::Module> module_;
+    /// @brief Current module being generated (raw pointer, ownership handled in generateLLVMModule)
+    llvm::Module* module_ = nullptr;
 
     /// @brief IR builder for instruction emission
     std::unique_ptr<llvm::IRBuilder<>> builder_;
@@ -255,6 +255,21 @@ private:
 
     /// @brief Next available type ID for class allocation
     int64_t nextTypeId_ = 1;
+
+    // ========================================================================
+    // Module Initialization
+    // ========================================================================
+
+    struct DeferredInitializer {
+        llvm::GlobalVariable* target;
+        const ast::Expression* initializer;
+    };
+
+    /// @brief List of global variables/constants that need dynamic initialization
+    std::vector<DeferredInitializer> deferredInitializers_;
+
+    /// @brief Generate a module initializer function that runs all deferred initializers
+    void generateModuleInitializer();
 
     // ========================================================================
     // Core Runtime Functions
@@ -466,6 +481,10 @@ private:
     /// @brief Generate global variable declaration
     void generateGlobalVariable(const ast::VariableDeclaration& decl);
 
+    /// @brief Generate global constant declaration
+    void generateConstantDeclaration(const ast::VariableDeclaration& decl);
+
+
 
     /// @brief Generate variable declaration statement
     /// @param stmt Variable declaration statement node
@@ -557,6 +576,10 @@ private:
     /// @param targetType The required LLVM type
     /// @return The converted value, or original if types already match
     llvm::Value* ensureTypeMatch(llvm::Value* value, llvm::Type* targetType);
+
+    /// @brief Get the class name associated with an expression (for type inference)
+    std::string getExpressionClassName(const ast::Expression& expr);
+
 
     // ========================================================================
     // Array Runtime Helpers

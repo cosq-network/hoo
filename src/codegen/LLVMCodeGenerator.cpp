@@ -103,8 +103,9 @@ GeneratedType* LLVMCodeGenerator::generateType(const ast::Type& type) {
 
 // LLVM-specific implementation
 std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const CompilationUnit& compilationUnit) {
-    // Create a new module for this compilation unit
-    module_ = std::make_unique<llvm::Module>("hooc_module", context_);
+    // Create a new module for this compilation unit with local ownership
+    auto ownedModule = std::make_unique<llvm::Module>("hooc_module", context_);
+    module_ = ownedModule.get();
 
     // Clear symbol tables for new module
     namedValues_.clear();
@@ -125,6 +126,8 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
     // Reset runtime function storage
     runtimeFunctionStorage_ = {};
 
+    deferredInitializers_.clear();
+
     // Force runtime methods registration to be linked
     _hoo_runtime_methods_ensure_registration();
 
@@ -138,33 +141,45 @@ std::unique_ptr<llvm::Module> LLVMCodeGenerator::generateLLVMModule(const Compil
         }
     }
 
-    if (hasErrors()) return nullptr;
+    if (hasErrors()) {
+        module_ = nullptr;
+        return nullptr;
+    }
 
     // Second pass: process functions and variables
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const FunctionDeclaration*>(decl.get())) {
             generateLLVMFunction(*funcDecl);
         } else if (auto varDecl = dynamic_cast<const VariableDeclaration*>(decl.get())) {
-            if (varDecl->isGlobal()) {
+            if (varDecl->isConstant()) {
+                generateConstantDeclaration(*varDecl);
+            } else if (varDecl->isGlobal()) {
                 generateGlobalVariable(*varDecl);
             } else {
                 generateVariableDeclaration(*varDecl);
             }
         }
-        // Class declarations already handled in first pass
     }
     
-    if (hasErrors()) return nullptr;
-    
-    // Verify the module
-    std::string errorStr;
-    raw_string_ostream errorStream(errorStr);
-    if (verifyModule(*module_, &errorStream)) {
-        std::cerr << "Module verification failed: " << errorStr << std::endl;
+    if (hasErrors()) {
+        module_ = nullptr;
         return nullptr;
     }
     
-    return std::move(module_);
+    generateModuleInitializer();
+
+    // Verify the module
+    std::string errorStr;
+    raw_string_ostream errorStream(errorStr);
+    if (verifyModule(*ownedModule, &errorStream)) {
+        addError("Module verification failed: " + errorStr);
+        module_ = nullptr;
+        return nullptr;
+    }
+    
+    module_ = nullptr;
+    builder_->ClearInsertionPoint();
+    return ownedModule;
 }
 
 Function* LLVMCodeGenerator::generateLLVMFunction(const FunctionDeclaration& funcDecl) {
@@ -189,7 +204,7 @@ Function* LLVMCodeGenerator::generateLLVMFunction(const FunctionDeclaration& fun
         functionType, 
         Function::ExternalLinkage, 
         funcDecl.getName(), 
-        module_.get()
+        module_
     );
     
     // Create entry basic block
@@ -220,16 +235,15 @@ Function* LLVMCodeGenerator::generateLLVMFunction(const FunctionDeclaration& fun
     generateBlock(funcDecl.getBody());
 
     // Ensure all basic blocks have terminators
-    // Check the current block (not just entry block) in case we're in a merge block from an if-statement
-    BasicBlock* currentBlock = builder_->GetInsertBlock();
-    if (currentBlock && !currentBlock->getTerminator()) {
-        if (returnType->isVoidTy()) {
-            // For void functions, add return void
-            builder_->CreateRetVoid();
-        } else {
-            // For non-void functions, if we reach here without a return statement,
-            // add unreachable (this handles unreachable merge blocks)
-            builder_->CreateUnreachable();
+    // This is critical even if generation had errors to keep the IR valid for verification
+    for (auto& BB : *function) {
+        if (!BB.getTerminator()) {
+            builder_->SetInsertPoint(&BB);
+            if (returnType->isVoidTy()) {
+                builder_->CreateRetVoid();
+            } else {
+                builder_->CreateUnreachable();
+            }
         }
     }
     
@@ -237,9 +251,9 @@ Function* LLVMCodeGenerator::generateLLVMFunction(const FunctionDeclaration& fun
     std::string errorStr;
     raw_string_ostream errorStream(errorStr);
     if (verifyFunction(*function, &errorStream)) {
-        std::cerr << "Function verification failed: " << errorStr << std::endl;
-        function->eraseFromParent();
-        return nullptr;
+        addError("Function '" + funcDecl.getName() + "' verification failed: " + errorStr);
+        // Don't erase yet, let the module verify catch it or let the cleanup handle it
+        return function;
     }
     
     // Add to function table
@@ -1027,6 +1041,48 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     return rvalue;
 }
 
+std::string LLVMCodeGenerator::getExpressionClassName(const ast::Expression& expr) {
+    if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&expr)) {
+        const ASTNode& primary = primaryExpr->getPrimary();
+        if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
+            auto it = variableTypes_.find(identifier->getName());
+            if (it != variableTypes_.end()) {
+                return it->second;
+            }
+        } else if (dynamic_cast<const ThisLiteral*>(&primary)) {
+            auto it = variableTypes_.find("this");
+            if (it != variableTypes_.end()) {
+                return it->second;
+            }
+        }
+    } else if (auto memberAccess = dynamic_cast<const MemberAccess*>(&expr)) {
+        std::string parentClass = getExpressionClassName(memberAccess->getObject());
+        if (parentClass.empty()) return "";
+        
+        auto declIt = classDeclarations_.find(parentClass);
+        if (declIt == classDeclarations_.end()) return "";
+        
+        const ast::ClassDeclaration* classDecl = declIt->second;
+        for (const auto& member : classDecl->getBody().getMembers()) {
+            if (auto decl = member->getDeclaration()) {
+                if (auto varMember = dynamic_cast<const ast::VariableDeclaration*>(decl)) {
+                    if (varMember->getName() == memberAccess->getMember()) {
+                        if (auto baseType = dynamic_cast<const ast::BaseType*>(varMember->getType())) {
+                            return baseType->getIdentifier();
+                        }
+                    }
+                }
+            }
+        }
+    } else if (auto newExpr = dynamic_cast<const NewObjectExpression*>(&expr)) {
+        if (newExpr->getQualifiedClassName()) {
+            return newExpr->getQualifiedClassName()->getFullName();
+        }
+        return newExpr->getClassName();
+    }
+    return "";
+}
+
 Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
     // Get the object value
     Value* objectValue = generateLLVMExpression(expr.getObject());
@@ -1035,28 +1091,8 @@ Value* LLVMCodeGenerator::generateMemberAccess(const MemberAccess& expr) {
         return nullptr;
     }
 
-    // Try to determine the class type from the object
-    std::string className;
-
-    // If the object is a primary expression (identifier or this), look it up
-    if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&expr.getObject())) {
-        const ASTNode& primary = primaryExpr->getPrimary();
-        if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
-            auto it = variableTypes_.find(identifier->getName());
-            if (it != variableTypes_.end()) {
-                className = it->second;
-            }
-        } else if (dynamic_cast<const ThisLiteral*>(&primary)) {
-            // Find current class context
-            // In our current implementation, when generating class methods,
-            // we could store the current class name. 
-            // Let's check how class methods are generated.
-            auto it = variableTypes_.find("this");
-            if (it != variableTypes_.end()) {
-                className = it->second;
-            }
-        }
-    }
+    // Try to determine the class type from the object using type inference
+    std::string className = getExpressionClassName(expr.getObject());
 
     if (className.empty()) {
         addError("Cannot determine class type for member access");
@@ -1712,7 +1748,7 @@ llvm::Function* LLVMCodeGenerator::getArrayFromBufferFunc(llvm::Type* elementTyp
             LLVMType::getInt64Ty(context_)         // length
         };
         FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        return Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_.get());
+        return Function::Create(funcType, Function::ExternalLinkage, "hoo_int64_array_from_buffer", module_);
     } else if (elementType->isDoubleTy()) {
         // Check if already declared
         if (auto* f = module_->getFunction("hoo_double_array_from_buffer")) {
@@ -1724,7 +1760,27 @@ llvm::Function* LLVMCodeGenerator::getArrayFromBufferFunc(llvm::Type* elementTyp
             LLVMType::getInt64Ty(context_)         // length
         };
         FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
-        return Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_.get());
+        return Function::Create(funcType, Function::ExternalLinkage, "hoo_double_array_from_buffer", module_);
+    } else if (elementType->isIntegerTy(1)) { // bool
+        if (auto* f = module_->getFunction("hoo_bool_array_from_buffer")) {
+            return f;
+        }
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),
+            LLVMType::getInt64Ty(context_)
+        };
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        return Function::Create(funcType, Function::ExternalLinkage, "hoo_bool_array_from_buffer", module_);
+    } else if (elementType->isIntegerTy(32)) { // char (Unicode)
+        if (auto* f = module_->getFunction("hoo_char_array_from_buffer")) {
+            return f;
+        }
+        std::vector<LLVMType*> params = {
+            llvm::PointerType::get(context_, 0),
+            LLVMType::getInt64Ty(context_)
+        };
+        FunctionType* funcType = FunctionType::get(llvm::PointerType::get(context_, 0), params, false);
+        return Function::Create(funcType, Function::ExternalLinkage, "hoo_char_array_from_buffer", module_);
     }
 
     addError("No array from_buffer function for element type");
@@ -1842,7 +1898,7 @@ llvm::Function* LLVMCodeGenerator::getArrayNewFunc(size_t elementSize) {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_new",
-        module_.get()
+        module_
     );
 }
 
@@ -1868,7 +1924,7 @@ llvm::Function* LLVMCodeGenerator::getArrayPushInt64Func() {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_push_int64",
-        module_.get()
+        module_
     );
 }
 
@@ -1890,7 +1946,7 @@ llvm::Function* LLVMCodeGenerator::getArrayPushDoubleFunc() {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_push_double",
-        module_.get()
+        module_
     );
 }
 
@@ -1912,7 +1968,7 @@ llvm::Function* LLVMCodeGenerator::getArrayPushFloatFunc() {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_push_float",
-        module_.get()
+        module_
     );
 }
 
@@ -1934,7 +1990,7 @@ llvm::Function* LLVMCodeGenerator::getArrayPushBoolFunc() {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_push_bool",
-        module_.get()
+        module_
     );
 }
 
@@ -1956,7 +2012,7 @@ llvm::Function* LLVMCodeGenerator::getArrayPushCharFunc() {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_push_char",
-        module_.get()
+        module_
     );
 }
 
@@ -1978,7 +2034,7 @@ llvm::Function* LLVMCodeGenerator::getArrayPushObjectFunc() {
         funcType,
         Function::ExternalLinkage,
         "hoo_array_push_object",
-        module_.get()
+        module_
     );
 }
 
@@ -2032,64 +2088,85 @@ void LLVMCodeGenerator::generateGlobalVariable(const VariableDeclaration& decl) 
             return;
         }
 
-        // Special check for string literals which currently crash at global scope
+        // Try to evaluate as constant first
+        Value* initValue = nullptr;
+        
+        // Simple heuristic: if it's a literal, try to generate it
         if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
-            if (dynamic_cast<const ast::StringLiteral*>(&primaryExpr->getPrimary())) {
-                addError("Global variable '" + decl.getName() + "' with string initializer not yet supported (requires module initializer)");
-                return;
+            const auto& primary = primaryExpr->getPrimary();
+            if (dynamic_cast<const IntegerLiteral*>(&primary) ||
+                dynamic_cast<const FloatingLiteral*>(&primary) ||
+                dynamic_cast<const BooleanLiteral*>(&primary) ||
+                dynamic_cast<const CharacterLiteral*>(&primary)) {
+                initValue = generateLLVMExpression(*decl.getInitializer());
             }
         }
 
-        // Evaluate initializer - this will crash if it's not a constant and tries to use builder_
-        Value* initValue = generateLLVMExpression(*decl.getInitializer());
-        if (!initValue) return;
-        varType = initValue->getType();
-        
-        Constant* constInit = llvm::dyn_cast<Constant>(initValue);
-        if (!constInit) {
-            addError("Global variable '" + decl.getName() + "' must have a constant initializer");
-            return;
-        }
+        if (initValue && llvm::isa<Constant>(initValue)) {
+            varType = initValue->getType();
+            auto* globalVar = new GlobalVariable(
+                *module_,
+                varType,
+                false, // isConstant
+                GlobalValue::ExternalLinkage,
+                llvm::cast<Constant>(initValue),
+                decl.getName()
+            );
+            namedValues_[decl.getName()] = globalVar;
+        } else {
+            // Must defer. But we need a type! 
+            // For now, if we can't infer type statically, we might need a placeholder or just fail.
+            // But usually we can infer from literals.
+            // If it's an array literal or string literal, we know the type.
+            if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
+                const auto& primary = primaryExpr->getPrimary();
+                if (dynamic_cast<const ast::StringLiteral*>(&primary)) {
+                    varType = llvm::PointerType::get(context_, 0);
+                } else if (dynamic_cast<const ArrayLiteral*>(&primary)) {
+                    varType = llvm::PointerType::get(context_, 0);
+                } else {
+                    addError("Global variable '" + decl.getName() + "' has complex initializer that prevents type inference");
+                    return;
+                }
+            } else {
+                addError("Global variable '" + decl.getName() + "' has complex initializer that prevents type inference");
+                return;
+            }
 
-        auto* globalVar = new GlobalVariable(
-            *module_,
-            varType,
-            false, // isConstant
-            GlobalValue::ExternalLinkage,
-            constInit,
-            decl.getName()
-        );
-        namedValues_[decl.getName()] = globalVar;
+            auto* globalVar = new GlobalVariable(
+                *module_,
+                varType,
+                false, // isConstant
+                GlobalValue::ExternalLinkage,
+                Constant::getNullValue(varType),
+                decl.getName()
+            );
+            namedValues_[decl.getName()] = globalVar;
+            deferredInitializers_.push_back({globalVar, decl.getInitializer()});
+        }
     } else {
         varType = generateLLVMType(*decl.getType());
         
         Constant* constInit = nullptr;
         if (decl.getInitializer()) {
-            // Special check for string literals
-            bool isStringLit = false;
+            // Try to evaluate as constant first
+            Value* initValue = nullptr;
             if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
-                if (dynamic_cast<const ast::StringLiteral*>(&primaryExpr->getPrimary())) {
-                    isStringLit = true;
+                const auto& primary = primaryExpr->getPrimary();
+                if (dynamic_cast<const IntegerLiteral*>(&primary) ||
+                    dynamic_cast<const FloatingLiteral*>(&primary) ||
+                    dynamic_cast<const BooleanLiteral*>(&primary) ||
+                    dynamic_cast<const CharacterLiteral*>(&primary)) {
+                    initValue = generateLLVMExpression(*decl.getInitializer());
                 }
             }
 
-            if (isStringLit) {
-                addError("Global variable '" + decl.getName() + "' with string initializer not yet supported");
-                return;
-            }
-
-            Value* initValue = generateLLVMExpression(*decl.getInitializer());
-            if (initValue) {
-                initValue = ensureTypeMatch(initValue, varType);
-                constInit = llvm::dyn_cast<Constant>(initValue);
-                if (!constInit) {
-                    addError("Global variable '" + decl.getName() + "' must have a constant initializer");
-                    return;
-                }
+            if (initValue && llvm::isa<Constant>(initValue)) {
+                constInit = llvm::cast<Constant>(ensureTypeMatch(initValue, varType));
             }
         }
 
-        if (!constInit) {
+        if (!constInit && !decl.getInitializer()) {
             constInit = Constant::getNullValue(varType);
         }
 
@@ -2098,10 +2175,14 @@ void LLVMCodeGenerator::generateGlobalVariable(const VariableDeclaration& decl) 
             varType,
             false, // isConstant
             GlobalValue::ExternalLinkage,
-            constInit,
+            constInit ? constInit : Constant::getNullValue(varType),
             decl.getName()
         );
         namedValues_[decl.getName()] = globalVar;
+
+        if (!constInit && decl.getInitializer()) {
+            deferredInitializers_.push_back({globalVar, decl.getInitializer()});
+        }
 
         // Track type info
         if (auto baseType = dynamic_cast<const ast::BaseType*>(decl.getType())) {
@@ -2114,6 +2195,184 @@ void LLVMCodeGenerator::generateGlobalVariable(const VariableDeclaration& decl) 
             variableTypes_[decl.getName()] = typeId;
         }
     }
+}
+
+void LLVMCodeGenerator::generateConstantDeclaration(const VariableDeclaration& decl) {
+    // Determine type
+    LLVMType* varType;
+    if (decl.hasTypeInference()) {
+        if (!decl.getInitializer()) {
+            addError("Constant type inference requires initializer");
+            return;
+        }
+
+        // Try to evaluate as constant first
+        Value* initValue = nullptr;
+        if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
+            const auto& primary = primaryExpr->getPrimary();
+            if (dynamic_cast<const IntegerLiteral*>(&primary) ||
+                dynamic_cast<const FloatingLiteral*>(&primary) ||
+                dynamic_cast<const BooleanLiteral*>(&primary) ||
+                dynamic_cast<const CharacterLiteral*>(&primary)) {
+                initValue = generateLLVMExpression(*decl.getInitializer());
+            }
+        }
+
+        if (initValue && llvm::isa<Constant>(initValue)) {
+            varType = initValue->getType();
+            auto* globalVar = new GlobalVariable(
+                *module_,
+                varType,
+                true,  // isConstant
+                GlobalValue::ExternalLinkage,
+                llvm::cast<Constant>(initValue),
+                decl.getName()
+            );
+            namedValues_[decl.getName()] = globalVar;
+        } else {
+            // Must defer.
+            if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
+                const auto& primary = primaryExpr->getPrimary();
+                if (dynamic_cast<const ast::StringLiteral*>(&primary)) {
+                    varType = llvm::PointerType::get(context_, 0);
+                } else if (dynamic_cast<const ArrayLiteral*>(&primary)) {
+                    varType = llvm::PointerType::get(context_, 0);
+                } else {
+                    addError("Constant '" + decl.getName() + "' has complex initializer that prevents type inference");
+                    return;
+                }
+            } else {
+                addError("Constant '" + decl.getName() + "' has complex initializer that prevents type inference");
+                return;
+            }
+
+            auto* globalVar = new GlobalVariable(
+                *module_,
+                varType,
+                true,  // isConstant
+                GlobalValue::ExternalLinkage,
+                Constant::getNullValue(varType),
+                decl.getName()
+            );
+            namedValues_[decl.getName()] = globalVar;
+            deferredInitializers_.push_back({globalVar, decl.getInitializer()});
+        }
+    } else {
+        varType = generateLLVMType(*decl.getType());
+        
+        if (!decl.getInitializer()) {
+            addError("Constant '" + decl.getName() + "' must have an initializer");
+            return;
+        }
+
+        // Try to evaluate as constant first
+        Value* initValue = nullptr;
+        if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(decl.getInitializer())) {
+            const auto& primary = primaryExpr->getPrimary();
+            if (dynamic_cast<const IntegerLiteral*>(&primary) ||
+                dynamic_cast<const FloatingLiteral*>(&primary) ||
+                dynamic_cast<const BooleanLiteral*>(&primary) ||
+                dynamic_cast<const CharacterLiteral*>(&primary)) {
+                initValue = generateLLVMExpression(*decl.getInitializer());
+            }
+        }
+
+        Constant* constInit = nullptr;
+        if (initValue && llvm::isa<Constant>(initValue)) {
+            constInit = llvm::cast<Constant>(ensureTypeMatch(initValue, varType));
+        }
+
+        auto* globalVar = new GlobalVariable(
+            *module_,
+            varType,
+            true,  // isConstant
+            GlobalValue::ExternalLinkage,
+            constInit ? constInit : Constant::getNullValue(varType),
+            decl.getName()
+        );
+        namedValues_[decl.getName()] = globalVar;
+
+        if (!constInit) {
+            deferredInitializers_.push_back({globalVar, decl.getInitializer()});
+        }
+
+        // Track type info for type inference
+        if (auto baseType = dynamic_cast<const ast::BaseType*>(decl.getType())) {
+            std::string typeId;
+            if (baseType->isPrimitive()) {
+                typeId = primitiveTypeToString(baseType->getPrimitiveType()->getKind());
+            } else {
+                typeId = baseType->getIdentifier();
+            }
+            variableTypes_[decl.getName()] = typeId;
+        }
+    }
+}
+
+void LLVMCodeGenerator::generateModuleInitializer() {
+    if (deferredInitializers_.empty()) return;
+
+    // Create __hoo_init function
+    FunctionType* initFuncType = FunctionType::get(LLVMType::getVoidTy(context_), false);
+    Function* initFunc = Function::Create(
+        initFuncType,
+        Function::InternalLinkage,
+        "__hoo_init",
+        module_
+    );
+
+    BasicBlock* entry = BasicBlock::Create(context_, "entry", initFunc);
+    
+    // Save current builder state
+    auto* oldBlock = builder_->GetInsertBlock();
+    auto oldIP = builder_->GetInsertPoint();
+    
+    builder_->SetInsertPoint(entry);
+
+    for (const auto& deferred : deferredInitializers_) {
+        Value* initVal = generateLLVMExpression(*deferred.initializer);
+        if (initVal) {
+            initVal = ensureTypeMatch(initVal, deferred.target->getValueType());
+            builder_->CreateStore(initVal, deferred.target);
+        }
+    }
+
+    builder_->CreateRetVoid();
+
+    // Restore builder state
+    if (oldBlock) {
+        builder_->SetInsertPoint(oldBlock, oldIP);
+    } else {
+        builder_->ClearInsertionPoint();
+    }
+
+    // Add to llvm.global_ctors
+    // struct { i32, void()*, i8* }
+    llvm::StructType* ctorStructTy = llvm::StructType::get(
+        context_,
+        {LLVMType::getInt32Ty(context_), 
+         llvm::PointerType::get(context_, 0),
+         llvm::PointerType::get(context_, 0)}
+    );
+
+    Constant* ctorEntry = ConstantStruct::get(
+        ctorStructTy,
+        {ConstantInt::get(LLVMType::getInt32Ty(context_), 65535),
+         initFunc,
+         ConstantPointerNull::get(llvm::PointerType::get(context_, 0))}
+    );
+
+    std::vector<Constant*> ctors = {ctorEntry};
+    auto* ctorsArrayTy = llvm::ArrayType::get(ctorStructTy, ctors.size());
+    
+    new GlobalVariable(
+        *module_,
+        ctorsArrayTy,
+        false,
+        GlobalValue::AppendingLinkage,
+        ConstantArray::get(ctorsArrayTy, ctors),
+        "llvm.global_ctors"
+    );
 }
 
 void LLVMCodeGenerator::generateVariableDeclarationStatement(const VariableDeclarationStatement& stmt) {
@@ -2224,7 +2483,7 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
             allocType,
             Function::ExternalLinkage,
             "hoo_alloc",
-            module_.get()
+            module_
         );
     }
 
@@ -2242,7 +2501,7 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
             retainType,
             Function::ExternalLinkage,
             "hoo_retain",
-            module_.get()
+            module_
         );
     }
 
@@ -2260,7 +2519,7 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
             releaseType,
             Function::ExternalLinkage,
             "hoo_release",
-            module_.get()
+            module_
         );
     }
 
@@ -2453,7 +2712,7 @@ void LLVMCodeGenerator::generateClassDeclaration(const ClassDeclaration& classDe
                 // Create function type and function
                 auto funcType = llvm::FunctionType::get(returnType, paramTypes, false);
                 Function* methodFunc = llvm::Function::Create(funcType,
-                    llvm::Function::ExternalLinkage, mangledName, module_.get());
+                    llvm::Function::ExternalLinkage, mangledName, module_);
 
                 // Generate function body
                 auto saveBB = builder_->GetInsertBlock();
@@ -2542,7 +2801,7 @@ void LLVMCodeGenerator::generateConstructor(const ClassDeclaration& classDecl,
         ctorType,
         Function::ExternalLinkage,
         ctorName,
-        module_.get()
+        module_
     );
 
     // Create entry block

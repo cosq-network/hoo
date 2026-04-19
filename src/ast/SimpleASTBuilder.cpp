@@ -40,6 +40,13 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
             varDecl->setGlobal(true);
         }
         return varDecl;
+    } else if (ctx->constantDeclaration()) {
+        auto constDecl = buildConstantDeclaration(ctx->constantDeclaration());
+        if (constDecl) {
+            constDecl->setGlobal(true);
+            constDecl->setConstant(true);
+        }
+        return constDecl;
     } else if (ctx->classDeclaration()) {
         return buildClassDeclaration(ctx->classDeclaration());
     }
@@ -61,6 +68,23 @@ std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(
         // Type inference: var x = expr
         auto initializer = buildExpression(ctx->expression());
         return std::make_unique<VariableDeclaration>(name, std::move(initializer));
+    }
+}
+
+std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildConstantDeclaration(HoocParser::ConstantDeclarationContext* ctx) {
+    std::string name = ctx->IDENTIFIER()->getText();
+
+    if (!ctx->expression()) {
+        throw std::runtime_error("Constant '" + name + "' must have an initializer");
+    }
+
+    if (ctx->type()) {
+        auto type = buildType(ctx->type());
+        auto initializer = buildExpression(ctx->expression());
+        return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer), false, true);
+    } else {
+        auto initializer = buildExpression(ctx->expression());
+        return std::make_unique<VariableDeclaration>(name, std::move(initializer), false, true);
     }
 }
 

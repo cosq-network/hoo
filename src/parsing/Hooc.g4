@@ -18,6 +18,7 @@ IMPORT: 'import';
 FROM: 'from';
 NEW: 'new';
 VAR: 'var';
+CONST: 'const';
 SCOPE: 'scope';
 FINAL: 'final';
 SINGLETON: 'singleton';
@@ -124,6 +125,7 @@ declaration
     : functionDeclaration
     | classDeclaration
     | variableDeclaration
+    | constantDeclaration
     ;
 
 // Function Declaration
@@ -158,6 +160,11 @@ eventDeclaration: EVENT IDENTIFIER;
 variableDeclaration
     : VAR IDENTIFIER ASSIGN expression
     | VAR IDENTIFIER COLON type (ASSIGN expression)?
+    ;
+
+// Constant Declaration
+constantDeclaration
+    : CONST IDENTIFIER (COLON type)? ASSIGN expression
     ;
 
 // Types

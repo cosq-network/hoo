@@ -72,20 +72,37 @@ TEST_F(GlobalVariableCodeGenTest, GlobalUninitialized) {
     EXPECT_EQ(init->getSExtValue(), 0);
 }
 
-TEST_F(GlobalVariableCodeGenTest, GlobalStringNotYetSupported) {
+TEST_F(GlobalVariableCodeGenTest, GlobalString) {
     std::string code = "var msg: string = \"hello\";";
     auto module = compileToModule(code);
-    EXPECT_EQ(module, nullptr);
-    EXPECT_TRUE(compiler.getLastError().find("string initializer not yet supported") != std::string::npos);
+    ASSERT_NE(module, nullptr) << compiler.getLastError();
+
+    auto* msg = module->getGlobalVariable("msg");
+    ASSERT_NE(msg, nullptr);
+    
+    auto* initFunc = module->getFunction("__hoo_init");
+    ASSERT_NE(initFunc, nullptr);
 }
 
-TEST_F(GlobalVariableCodeGenTest, RejectsNonConstantInitializer) {
-    // This should fail according to our current implementation
+TEST_F(GlobalVariableCodeGenTest, GlobalNonConstantWithExplicitType) {
+    std::string code = R"(
+        func:int64 getVal() { return 10; }
+        var x: int64 = getVal();
+    )";
+    auto module = compileToModule(code);
+    ASSERT_NE(module, nullptr) << compiler.getLastError();
+
+    auto* x = module->getGlobalVariable("x");
+    ASSERT_NE(x, nullptr);
+}
+
+TEST_F(GlobalVariableCodeGenTest, RejectsNonConstantWithInference) {
+    // This still fails because we can't infer type from a function call yet
     std::string code = R"(
         func:int64 getVal() { return 10; }
         var x = getVal();
     )";
     auto module = compileToModule(code);
     EXPECT_EQ(module, nullptr);
-    EXPECT_TRUE(compiler.getLastError().find("constant initializer") != std::string::npos);
+    EXPECT_TRUE(compiler.getLastError().find("prevents type inference") != std::string::npos);
 }

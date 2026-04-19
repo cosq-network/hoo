@@ -84,6 +84,14 @@ private:
     std::unique_ptr<ast::VariableDeclaration> buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx);
 
     /**
+     * @brief Builds a ConstantDeclaration from its context.
+     * @param ctx Constant declaration context.
+     * @return Unique pointer to VariableDeclaration (marked as constant).
+     */
+    std::unique_ptr<ast::VariableDeclaration> buildConstantDeclaration(HoocParser::ConstantDeclarationContext* ctx);
+
+
+    /**
      * @brief Builds a VariableDeclarationStatement (variable with trailing semicolon).
      * @param ctx Variable declaration statement context.
      * @return Unique pointer to VariableDeclarationStatement.
