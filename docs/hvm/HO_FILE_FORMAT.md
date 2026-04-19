@@ -1128,7 +1128,11 @@ hooc link module_a.o.ho module_b.o.ho -o final.ho
 │      - Patch internal jumps                                 │
 │    - Create executable memory pages                          │
 ├─────────────────────────────────────────────────────────────┤
-│ 6. INVOKE ENTRY POINT                                       │
+│ 6. INITIALIZE MODULE                                        │
+│    - Execute __hoo_init if present                           │
+│    - Process dynamic global/constant initializers            │
+├─────────────────────────────────────────────────────────────┤
+│ 7. INVOKE ENTRY POINT                                       │
 │    - Call the entry point function                          │
 │    - Pass command-line arguments                            │
 └─────────────────────────────────────────────────────────────┘

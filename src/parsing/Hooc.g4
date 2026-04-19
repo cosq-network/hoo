@@ -30,6 +30,7 @@ CONSTRUCTOR: 'constructor';
 SERVICE: 'service';
 STRATEGY: 'strategy';
 ACTOR: 'actor';
+HOO_INIT: '__hoo_init';
 AS: 'as';
 BY: 'by';
 THIS: 'this';

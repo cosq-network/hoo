@@ -106,9 +106,10 @@ var pi = 3.14;           // Inferred as double
 var flag = true;         // Inferred as bool
 var name = "Alice";      // Inferred as string
 var items = [1, 2, 3];   // Inferred as int64[]
+const MAX = 100;         // Inferred as int64
 ```
 
-## Variables
+## Variables and Constants
 
 ### Variable Declaration
 
@@ -129,6 +130,16 @@ var ratio = 0.5;         // double
 var active = true;       // bool
 ```
 
+### Constant Declaration
+
+Constants are declared with the `const` keyword and must be initialized. They are read-only and supported for standard data types and arrays of standard data types.
+
+```hoo
+const PI = 3.14159;
+const APP_NAME: string = "Hooc App";
+const PRIMES = [2, 3, 5, 7];
+```
+
 ### Assignment
 
 ```hoo
@@ -138,11 +149,13 @@ x = 10;                  // Simple assignment
 var y = x + 5;           // Assignment with expression
 
 x = x + 1;               // Update variable
+
+// PI = 3.14;            // ERROR: Cannot assign to a constant
 ```
 
 ### Scope
 
-Variables are scoped to their containing block:
+Variables are scoped to their containing block. Constants and module-level variables are accessible throughout the module.
 
 ```hoo
 func example() {
@@ -159,13 +172,14 @@ func example() {
 }
 ```
 
-### Module-Level Variables
+### Module-Level Declarations
 
-Variables can be declared at module level:
+Variables and constants can be declared at module level. They support dynamic initialization (like array or string literals) which runs at module load time.
 
 ```hoo
 var globalCounter: int64 = 0;
-var appName: string = "MyApp";
+const VERSION = "1.1.0";
+const DEFAULT_SCORES = [10, 20, 30];
 
 func incrementCounter() {
     globalCounter = globalCounter + 1;

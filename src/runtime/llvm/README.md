@@ -81,6 +81,19 @@ The LLVM integration layer provides:
 └─────────────────────────────────────────────────────────────┘
 ```
 
+## Module Initialization
+
+The compiler supports dynamic initialization of global variables and constants via an internal `__hoo_init` function.
+
+### Initialization Flow
+
+1. **Generation**: `LLVMCodeGenerator` collects all global initializers that require runtime calls (strings, arrays, function calls).
+2. **Implementation**: These initializers are emitted into a private `__hoo_init` function within the LLVM module.
+3. **Registration**: The `__hoo_init` function is added to the `llvm.global_ctors` array with priority 65535.
+4. **Execution**: The JIT (or OS loader for AOT) executes `__hoo_init` automatically before the program's entry point (`main`) runs.
+
+This system ensures that complex global data structures are fully constructed and ready for use when the program logic begins.
+
 ## Registration Pattern
 
 Each runtime type follows a two-phase registration pattern:

@@ -30,6 +30,7 @@ Hooc reserves the following keywords:
 - `class` - Class declaration
 - `constructor` - Class constructor
 - `var` - Variable declaration
+- `const` - Constant declaration
 
 **Object-Oriented:**
 - `new` - Object instantiation
@@ -54,6 +55,7 @@ Hooc reserves the following keywords:
 - `scope` - Scope management
 - `event` - Event declaration
 - `this` - Current object instance
+- `__hoo_init` - Internal module initialization (Reserved)
 
 **Literals:**
 - `true`, `false` - Boolean literals
@@ -203,12 +205,12 @@ Example:
 The top-level structure of a Hooc file:
 
 ```antlr
-compilationUnit: importStatement* declaration* EOF;
+compilationUnit: importStatement* (declaration SEMICOLON?)* EOF;
 ```
 
 A file consists of:
 1. Zero or more import statements
-2. Zero or more declarations (functions, classes, variables)
+2. Zero or more declarations (functions, classes, variables, constants)
 
 ### Import Statements
 
@@ -242,6 +244,17 @@ modulePath: IDENTIFIER (DOT IDENTIFIER)*
 Examples: `std`, `std.io`, `std.collections`
 
 ### Declarations
+
+#### General Declaration
+
+```antlr
+declaration
+    : functionDeclaration
+    | classDeclaration
+    | variableDeclaration
+    | constantDeclaration
+    ;
+```
 
 #### Function Declaration
 
@@ -370,6 +383,22 @@ var flag: bool;
 
 // With nullable type
 var maybeValue: int64? = null;
+```
+
+#### Constant Declaration
+
+```antlr
+constantDeclaration:
+    CONST IDENTIFIER (COLON type)? ASSIGN expression
+```
+
+**Examples:**
+
+```hoo
+const PI = 3.14159;
+const MAX_BUFFER_SIZE: int64 = 1024;
+const APP_NAME: string = "Hooc Application";
+const PRIMES = [2, 3, 5, 7, 11];
 ```
 
 ### Type System

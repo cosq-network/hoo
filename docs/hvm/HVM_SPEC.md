@@ -59,6 +59,7 @@ HVM is a **RISC-like** architecture with:
 - **Stack**: Grows downward, holds activation records
 - **Heap**: Managed by a garbage collector or reference counting
 - **Static data**: For constants, vtables, and module metadata
+- **Initialization**: Supports global constructors via `llvm.global_ctors` linkage
 
 ### 2.2 Data Types
 

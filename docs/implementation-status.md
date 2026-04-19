@@ -37,10 +37,11 @@ These features are fully implemented, tested, and production-ready:
   - ✅ `float` - 32-bit floating point
   - ✅ `f64` - Alias for double
 
-- **Variables**
+- **Variables and Constants**
   - ✅ Variable declarations with type annotations
   - ✅ Type inference from initializers
-  - ✅ Module-level variables
+  - ✅ Module-level variables (with dynamic initialization support)
+  - ✅ Module-level constants (`const`)
   - ✅ Local variables with block scope
   - ✅ Assignment expressions
 
@@ -201,11 +202,13 @@ These features are fully implemented, tested, and production-ready:
 
 #### Code Generation
 
-- **LLVM IR Generation**
+- **Code Generation**
   - ✅ Function code generation
   - ✅ Basic blocks and control flow
-  - ✅ Variable storage (alloca)
+  - ✅ Variable storage (alloca/global)
+  - ✅ Global initialization (`__hoo_init`)
   - ✅ Load/store operations
+
   - ✅ Arithmetic operations
   - ✅ Comparison operations
   - ✅ Logical operations
@@ -369,11 +372,13 @@ These features are planned but not yet started:
 ## Recent Progress
 
 ### Phase 8 (Current)
+- ✅ Implemented module-level constants (`const`).
+- ✅ Implemented module initialization system (`__hoo_init`) for dynamic globals.
 - ✅ Modernized HooCLI with C++17 and strict input rules.
 - ✅ Fixed JIT stability issues using shared `ThreadSafeContext`.
 - ✅ Rebranded built-in namespace from `std` to `hoo`.
 - ✅ Completed comprehensive Module System Design ([docs/module-system-design.md](module-system-design.md)).
-- ✅ Verified all 973 unit tests pass.
+- ✅ Verified all 987 unit tests pass.
 
 ### Phase 7 (Completed)
 - ✅ Generic array system refactored

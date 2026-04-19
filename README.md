@@ -74,16 +74,20 @@ func main() {
 
 ## Language Features
 
-### Variables and Types
+### Variables and Constants
 
 ```hoo
+// Variables
 var x: int64 = 42;
-var pi: double = 3.14159;
-var flag: bool = true;
 var name: string = "Hooc";
 
+// Constants (Module-level)
+const PI = 3.14159;
+const PRIMES: int64[] = [2, 3, 5, 7];
+
 // Type inference
-var count = 100;  // inferred as int64
+var count = 100;
+const greeting = "Hello";
 ```
 
 ### Functions

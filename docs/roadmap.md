@@ -28,6 +28,8 @@ Hooc aims to be a modern, productive programming language that combines:
 - ✅ Core language features (Lexer/Parser/AST)
 - ✅ Object-oriented programming (Parsing and AST support)
 - ✅ Simplified type system (Generics removed, `std::any` fallback)
+- ✅ Module-level variables and constants (`var`, `const`)
+- ✅ Dynamic Global Initialization (`__hoo_init` system)
 - ✅ Runtime library (ARC, Strings, Arrays, IO)
 - ✅ Modernized CLI (HooCLI with C++17, AOT reserved flags)
 - ✅ Stable JIT Engine (Shared ThreadSafeContext)
