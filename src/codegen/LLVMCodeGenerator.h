@@ -415,6 +415,16 @@ private:
     /// @return Generated LLVM value (assigned value)
     llvm::Value* generateAssignment(const ast::AssignmentExpression& expr);
 
+    /// @brief Generate compound assignment (+=, etc.)
+    /// @param expr Compound assignment expression node
+    /// @return Generated LLVM value
+    llvm::Value* generateCompoundAssignment(const ast::CompoundAssignmentExpression& expr);
+
+    /// @brief Generate increment/decrement (++/--)
+    /// @param expr Increment/decrement expression node
+    /// @return Generated LLVM value (new value after increment/decrement)
+    llvm::Value* generateIncrementDecrement(const ast::IncrementDecrementExpression& expr);
+
     /// @brief Generate member access expression
     /// @param expr MemberAccess expression node
     /// @return Generated LLVM value (member value)

@@ -76,6 +76,23 @@ private:
     std::unique_ptr<ast::FunctionDeclaration> buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx);
 
     /**
+     * @brief Builds a FunctionDeclaration with modifiers (for member functions).
+     * @param ctx Function declaration context.
+     * @param modifiers Function modifiers.
+     * @return Unique pointer to FunctionDeclaration.
+     */
+    std::unique_ptr<ast::FunctionDeclaration> buildFunctionDeclaration(
+        HoocParser::FunctionDeclarationContext* ctx,
+        std::vector<ast::FunctionModifier> modifiers);
+
+    /**
+     * @brief Converts a functionModifier context to FunctionModifier enum.
+     * @param ctx Function modifier context.
+     * @return The corresponding FunctionModifier value.
+     */
+    ast::FunctionModifier getFunctionModifier(HoocParser::FunctionModifierContext* ctx);
+
+    /**
      * @brief Builds a VariableDeclaration from its context.
      * Handles both explicit types and type inference.
      * @param ctx Variable declaration context.
@@ -215,6 +232,24 @@ private:
      * @return AssignmentExpression or the inner expression if no assignment.
      */
     std::unique_ptr<ast::Expression> buildAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx);
+
+    /**
+     * @brief Builds a CompoundAssignmentExpression (+=, etc.).
+     * @param ctx Assignment expression context.
+     * @return CompoundAssignmentExpression if compound assignment.
+     */
+    std::unique_ptr<ast::Expression> buildCompoundAssignment(
+        HoocParser::AssignmentExpressionContext* ctx);
+
+    /**
+     * @brief Builds from compoundAssignment context directly.
+     * @param ctx Compound assignment context.
+     * @return The right-hand expression.
+     */
+    std::unique_ptr<ast::Expression> buildCompoundAssignmentRight(
+        HoocParser::CompoundAssignmentContext* ctx);
+
+    
 
     /**
      * @brief Builds a LogicalOr expression (||).
@@ -371,17 +406,10 @@ private:
 
     /**
      * @brief Builds a ClassMember from its context.
-     * @param ctx Class member context (variable, constructor, function, or event).
+     * @param ctx Class member context (variable, constructor, or function).
      * @return ClassMember wrapping the appropriate declaration.
      */
     std::unique_ptr<ast::ClassMember> buildClassMember(HoocParser::ClassMemberContext* ctx);
-
-    /**
-     * @brief Builds an EventDeclaration from its context.
-     * @param ctx Event declaration context.
-     * @return Unique pointer to EventDeclaration.
-     */
-    std::unique_ptr<ast::EventDeclaration> buildEventDeclaration(HoocParser::EventDeclarationContext* ctx);
 
     /**
      * @brief Converts a classModifier context to ClassModifier enum.

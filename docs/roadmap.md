@@ -34,6 +34,10 @@ Hooc aims to be a modern, productive programming language that combines:
 - ✅ Modernized CLI (HooCLI with C++17, AOT reserved flags)
 - ✅ Stable JIT Engine (Shared ThreadSafeContext)
 - ✅ Module System Design ([docs/module-system-design.md](module-system-design.md))
+- ✅ Compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`)
+- ✅ Increment/decrement operators (`++`, `--`)
+- ✅ Multiline string support (`"""..."""`)
+- ✅ Function modifiers (`public`, `private`, `async`) for member functions
 - 🟡 Standard library implementation in progress (Basic IO and Strings complete)
 - 🟡 Module resolution implementation in progress (Built-in `hoo` resolution complete)
 
@@ -101,7 +105,6 @@ Hooc aims to be a modern, productive programming language that combines:
 - [ ] Class Inheritance (`extends`) implementation in codegen
 - [ ] Virtual method tables (VTable) for inheritance
 - [ ] Class Modifiers (Singleton, Actor, Immutable) logic
-- [ ] Event System implementation
 
 **Advanced Language Support**
 - [ ] Type-safe Dynamic Arrays (moving beyond `std::any` for primitives)

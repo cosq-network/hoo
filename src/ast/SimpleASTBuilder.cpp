@@ -94,6 +94,12 @@ std::unique_ptr<VariableDeclarationStatement> SimpleASTBuilder::buildVariableDec
 }
 
 std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(HoocParser::FunctionDeclarationContext* ctx) {
+    return buildFunctionDeclaration(ctx, std::vector<FunctionModifier>{});
+}
+
+std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
+    HoocParser::FunctionDeclarationContext* ctx,
+    std::vector<FunctionModifier> modifiers) {
     std::string name = ctx->IDENTIFIER()->getText();
 
     std::vector<std::unique_ptr<Parameter>> parameters;
@@ -119,7 +125,8 @@ std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
     auto body = buildBlock(ctx->block());
 
     return std::make_unique<FunctionDeclaration>(name, std::move(parameters),
-                                                std::move(returnType), std::move(body));
+                                                std::move(returnType), std::move(body),
+                                                std::move(modifiers));
 }
 
 std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::ParameterContext* ctx) {
@@ -395,14 +402,55 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildExpression(HoocParser::Expres
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildAssignmentExpression(HoocParser::AssignmentExpressionContext* ctx) {
-    auto left = buildLogicalOrExpression(ctx->logicalOrExpression());
+    auto leftVec = ctx->logicalOrExpression();
+    auto left = buildLogicalOrExpression(leftVec[0]);
 
-    if (ctx->ASSIGN() && ctx->assignmentExpression()) {
-        auto right = buildAssignmentExpression(ctx->assignmentExpression());
+    if (ctx->ASSIGN() && leftVec.size() > 1) {
+        auto right = buildLogicalOrExpression(leftVec[1]);
         return std::make_unique<AssignmentExpression>(std::move(left), std::move(right));
     }
 
+    if (ctx->compoundAssignment()) {
+        return buildCompoundAssignment(ctx);
+    }
+
     return left;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildCompoundAssignment(HoocParser::AssignmentExpressionContext* ctx) {
+    auto leftVec = ctx->logicalOrExpression();
+    auto left = buildLogicalOrExpression(leftVec[0]);
+    auto compoundCtx = ctx->compoundAssignment();
+
+    auto& compound = compoundCtx[0];
+
+    CompoundAssignmentOperator op;
+    if (compound.COMPOUND_PLUS()) {
+        op = CompoundAssignmentOperator::PLUS_ASSIGN;
+    } else if (compound.COMPOUND_MINUS()) {
+        op = CompoundAssignmentOperator::MINUS_ASSIGN;
+    } else if (compound.COMPOUND_MULTIPLY()) {
+        op = CompoundAssignmentOperator::MULTIPLY_ASSIGN;
+    } else if (compound.COMPOUND_DIVIDE()) {
+        op = CompoundAssignmentOperator::DIVIDE_ASSIGN;
+    } else if (compound.COMPOUND_MODULO()) {
+        op = CompoundAssignmentOperator::MODULO_ASSIGN;
+    } else if (compound.COMPOUND_LEFT_SHIFT()) {
+        op = CompoundAssignmentOperator::LEFT_SHIFT_ASSIGN;
+    } else if (compound.COMPOUND_RIGHT_SHIFT()) {
+        op = CompoundAssignmentOperator::RIGHT_SHIFT_ASSIGN;
+    } else {
+        op = CompoundAssignmentOperator::PLUS_ASSIGN;
+    }
+
+    auto rightExpr = buildCompoundAssignmentRight(&compound);
+    return std::make_unique<CompoundAssignmentExpression>(std::move(left), op, std::move(rightExpr));
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildCompoundAssignmentRight(HoocParser::CompoundAssignmentContext* ctx) {
+    auto rightVec = ctx->logicalOrExpression();
+    auto& rightRef = rightVec[0];
+    return buildLogicalOrExpression(&rightRef);
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildLogicalOrExpression(HoocParser::LogicalOrExpressionContext* ctx) {
@@ -514,6 +562,16 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPostfixExpression(HoocParser:
         }
     }
 
+    for (auto augCtx : ctx->augmentedAssignment()) {
+        IncrementDecrementOperator op;
+        if (augCtx->INCREMENT()) {
+            op = IncrementDecrementOperator::INCREMENT;
+        } else {
+            op = IncrementDecrementOperator::DECREMENT;
+        }
+        result = std::make_unique<IncrementDecrementExpression>(std::move(result), op, false);
+    }
+
     return result;
 }
 
@@ -584,6 +642,13 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         if (isInterpolatedString(ctx->STRING_LITERAL())) {
             auto interpolatedString = std::make_unique<InterpolatedString>(value);
             return std::make_unique<PrimaryExpression>(std::move(interpolatedString));
+        }
+        auto stringLiteral = std::make_unique<StringLiteral>(value);
+        return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
+    } else if (ctx->MULTILINE_STRING()) {
+        std::string value = ctx->MULTILINE_STRING()->getText();
+        if (value.length() >= 6) {
+            value = value.substr(3, value.length() - 6);
         }
         auto stringLiteral = std::make_unique<StringLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
@@ -758,18 +823,14 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
         auto constructor = buildConstructorDeclaration(ctx->constructorDeclaration());
         return std::make_unique<ClassMember>(std::move(constructor));
     } else if (ctx->functionDeclaration()) {
-        auto decl = buildFunctionDeclaration(ctx->functionDeclaration());
+        std::vector<FunctionModifier> modifiers;
+        for (auto modCtx : ctx->functionModifier()) {
+            modifiers.push_back(getFunctionModifier(modCtx));
+        }
+        auto decl = buildFunctionDeclaration(ctx->functionDeclaration(), std::move(modifiers));
         return std::make_unique<ClassMember>(std::move(decl));
-    } else if (ctx->eventDeclaration()) {
-        auto event = buildEventDeclaration(ctx->eventDeclaration());
-        return std::make_unique<ClassMember>(std::move(event));
     }
     return nullptr;
-}
-
-std::unique_ptr<EventDeclaration> SimpleASTBuilder::buildEventDeclaration(HoocParser::EventDeclarationContext* ctx) {
-    std::string name = ctx->IDENTIFIER()->getText();
-    return std::make_unique<EventDeclaration>(name);
 }
 
 ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContext* ctx) {
@@ -782,6 +843,13 @@ ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContex
     if (ctx->ACTOR()) return ClassModifier::ACTOR;
     if (ctx->FINAL()) return ClassModifier::FINAL;
     return ClassModifier::FINAL; // Default fallback
+}
+
+FunctionModifier SimpleASTBuilder::getFunctionModifier(HoocParser::FunctionModifierContext* ctx) {
+    if (ctx->PUBLIC()) return FunctionModifier::PUBLIC;
+    if (ctx->PRIVATE()) return FunctionModifier::PRIVATE;
+    if (ctx->ASYNC()) return FunctionModifier::ASYNC;
+    return FunctionModifier::PUBLIC; // Default fallback
 }
 
 // Helper methods

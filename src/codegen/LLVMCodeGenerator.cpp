@@ -332,6 +332,10 @@ Value* LLVMCodeGenerator::generateLLVMExpression(const Expression& expr) {
         return generateLogicalOr(*logicalOr);
     } else if (auto assignment = dynamic_cast<const AssignmentExpression*>(&expr)) {
         return generateAssignment(*assignment);
+    } else if (auto compound = dynamic_cast<const CompoundAssignmentExpression*>(&expr)) {
+        return generateCompoundAssignment(*compound);
+    } else if (auto incDec = dynamic_cast<const IncrementDecrementExpression*>(&expr)) {
+        return generateIncrementDecrement(*incDec);
     } else if (auto memberAccess = dynamic_cast<const MemberAccess*>(&expr)) {
         return generateMemberAccess(*memberAccess);
     } else if (auto arrayAccess = dynamic_cast<const ArrayAccess*>(&expr)) {
@@ -1040,6 +1044,104 @@ Value* LLVMCodeGenerator::generateAssignment(const AssignmentExpression& expr) {
     // Store the value
     builder_->CreateStore(rvalue, it->second);
     return rvalue;
+}
+
+Value* LLVMCodeGenerator::generateCompoundAssignment(const CompoundAssignmentExpression& expr) {
+    const Expression& lhs = expr.getLeft();
+
+    std::string varName;
+    if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&lhs)) {
+        const ASTNode& primary = primaryExpr->getPrimary();
+        if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
+            varName = identifier->getName();
+        } else {
+            addError("Compound assignment target must be an identifier");
+            return nullptr;
+        }
+    } else {
+        addError("Compound assignment target must be an identifier");
+        return nullptr;
+    }
+
+    auto it = namedValues_.find(varName);
+    if (it == namedValues_.end()) {
+        addError("Unknown variable: " + varName);
+        return nullptr;
+    }
+
+    AllocaInst* alloca = llvm::cast<AllocaInst>(it->second);
+    Value* currentValue = builder_->CreateLoad(alloca->getAllocatedType(), alloca, varName);
+    Value* rhsValue = generateLLVMExpression(expr.getRight());
+    if (!rhsValue) return nullptr;
+
+    Value* result = nullptr;
+    switch (expr.getOperator()) {
+        case CompoundAssignmentOperator::PLUS_ASSIGN:
+            result = builder_->CreateAdd(currentValue, rhsValue);
+            break;
+        case CompoundAssignmentOperator::MINUS_ASSIGN:
+            result = builder_->CreateSub(currentValue, rhsValue);
+            break;
+        case CompoundAssignmentOperator::MULTIPLY_ASSIGN:
+            result = builder_->CreateMul(currentValue, rhsValue);
+            break;
+        case CompoundAssignmentOperator::DIVIDE_ASSIGN:
+            result = builder_->CreateSDiv(currentValue, rhsValue);
+            break;
+        case CompoundAssignmentOperator::MODULO_ASSIGN:
+            result = builder_->CreateSRem(currentValue, rhsValue);
+            break;
+        case CompoundAssignmentOperator::LEFT_SHIFT_ASSIGN:
+            result = builder_->CreateShl(currentValue, rhsValue);
+            break;
+        case CompoundAssignmentOperator::RIGHT_SHIFT_ASSIGN:
+            result = builder_->CreateAShr(currentValue, rhsValue);
+            break;
+        default:
+            addError("Unknown compound assignment operator");
+            return nullptr;
+    }
+
+    builder_->CreateStore(result, it->second);
+    return result;
+}
+
+Value* LLVMCodeGenerator::generateIncrementDecrement(const IncrementDecrementExpression& expr) {
+    const Expression& operand = expr.getOperand();
+
+    std::string varName;
+    if (auto primaryExpr = dynamic_cast<const PrimaryExpression*>(&operand)) {
+        const ASTNode& primary = primaryExpr->getPrimary();
+        if (auto identifier = dynamic_cast<const Identifier*>(&primary)) {
+            varName = identifier->getName();
+        } else {
+            addError("Increment/decrement target must be an identifier");
+            return nullptr;
+        }
+    } else {
+        addError("Increment/decrement target must be an identifier");
+        return nullptr;
+    }
+
+    auto it = namedValues_.find(varName);
+    if (it == namedValues_.end()) {
+        addError("Unknown variable: " + varName);
+        return nullptr;
+    }
+
+    AllocaInst* alloca = llvm::cast<AllocaInst>(it->second);
+    Value* currentValue = builder_->CreateLoad(alloca->getAllocatedType(), alloca, varName);
+    Value* one = ConstantInt::get(currentValue->getType(), 1);
+
+    Value* result = nullptr;
+    if (expr.getOperator() == IncrementDecrementOperator::INCREMENT) {
+        result = builder_->CreateAdd(currentValue, one);
+    } else {
+        result = builder_->CreateSub(currentValue, one);
+    }
+
+    builder_->CreateStore(result, it->second);
+    return result;
 }
 
 std::string LLVMCodeGenerator::getExpressionClassName(const ast::Expression& expr) {

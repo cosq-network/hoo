@@ -837,59 +837,6 @@ TEST_F(SimpleASTBuilderTest, BuildClassWithExtends) {
     EXPECT_EQ(ast->getDeclarations().size(), 1U);
 }
 
-TEST_F(SimpleASTBuilderTest, BuildClassWithEvent) {
-    std::string code = R"(
-        observable class Observable {
-            event changed;
-            func notify() { }
-        }
-    )";
-    auto* parseTree = parseCode(code);
-
-    ASSERT_NE(parseTree, nullptr);
-    auto* ctx = getCompilationUnit(parseTree);
-    ASSERT_NE(ctx, nullptr);
-    auto ast = astBuilder->buildAST(ctx);
-    ASSERT_NE(ast, nullptr);
-    EXPECT_EQ(ast->getDeclarations().size(), 1U);
-}
-
-TEST_F(SimpleASTBuilderTest, BuildEventDeclaration) {
-    std::string code = R"(
-        observable class Observable {
-            event changed;
-            event clicked;
-            func notify() { }
-        }
-    )";
-    auto* parseTree = parseCode(code);
-
-    ASSERT_NE(parseTree, nullptr);
-    auto* ctx = getCompilationUnit(parseTree);
-    ASSERT_NE(ctx, nullptr);
-    auto ast = astBuilder->buildAST(ctx);
-    ASSERT_NE(ast, nullptr);
-
-    ASSERT_EQ(ast->getDeclarations().size(), 1u);
-    auto* classDecl = dynamic_cast<const ClassDeclaration*>(ast->getDeclarations()[0].get());
-    ASSERT_NE(classDecl, nullptr);
-
-    const ClassBody& body = classDecl->getBody();
-    auto& members = body.getMembers();
-
-    int eventCount = 0;
-    for (size_t i = 0; i < members.size(); i++) {
-        auto* classMember = dynamic_cast<const ClassMember*>(members[i].get());
-        if (classMember && classMember->isEvent()) {
-            eventCount++;
-            auto* event = classMember->getEvent();
-            ASSERT_NE(event, nullptr);
-            EXPECT_TRUE(event->getName() == "changed" || event->getName() == "clicked");
-        }
-    }
-    EXPECT_EQ(eventCount, 2);
-}
-
 // ===== Type Tests =====
 
 TEST_F(SimpleASTBuilderTest, BuildOptionalType) {

@@ -234,72 +234,9 @@ TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
     EXPECT_EQ(funcDecl->getName(), "add");
 }
 
-// Test 10: Class with event member
-TEST_F(ClassDeclarationParsingTest, ClassWithEventMember) {
-    std::string code = R"(
-        class Button {
-            event onClick;
-        }
-    )";
+// Tests for class modifiers
 
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(classDecl, nullptr);
-
-    // Verify event member
-    auto& members = classDecl->getBody().getMembers();
-    EXPECT_EQ(members.size(), 1);
-    EXPECT_TRUE(members[0]->isEvent());
-
-    auto* event = members[0]->getEvent();
-    ASSERT_NE(event, nullptr);
-    EXPECT_EQ(event->getName(), "onClick");
-}
-
-// Test 11: Class with mixed members (functions and events)
-TEST_F(ClassDeclarationParsingTest, ClassWithMixedMembers) {
-    std::string code = R"(
-        class Widget {
-            func render() {
-            }
-            event onUpdate;
-            func update() {
-            }
-        }
-    )";
-
-    auto* parseTree = parseCode(code);
-    ASSERT_NE(parseTree, nullptr);
-
-    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
-    ASSERT_NE(ast, nullptr);
-
-    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
-    ASSERT_NE(classDecl, nullptr);
-
-    // Verify mixed members
-    auto& members = classDecl->getBody().getMembers();
-    EXPECT_EQ(members.size(), 3);
-
-    // First member: function
-    EXPECT_FALSE(members[0]->isEvent());
-    auto* func1 = dynamic_cast<const FunctionDeclaration*>(members[0]->getDeclaration());
-    EXPECT_EQ(func1->getName(), "render");
-
-    // Second member: event
-    EXPECT_TRUE(members[1]->isEvent());
-    EXPECT_EQ(members[1]->getEvent()->getName(), "onUpdate");
-
-    // Third member: function
-    EXPECT_FALSE(members[2]->isEvent());
-    auto* func2 = dynamic_cast<const FunctionDeclaration*>(members[2]->getDeclaration());
-    EXPECT_EQ(func2->getName(), "update");
-}
+// Test 11: Class with mixed members (functions only)
 
 // Test 16: Class with all modifiers
 TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
@@ -337,7 +274,6 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
             }
             func method1() {
             }
-            event onEvent1;
             func:int64 method2(param: int64) {
                 return param;
             }
@@ -363,13 +299,12 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     EXPECT_TRUE(classDecl->hasBaseClass());
     EXPECT_EQ(classDecl->getBaseClass(), "BaseClass");
 
-    // Verify members (constructor + 2 methods + 1 event = 4 members)
+    // Verify members (constructor + 2 methods = 3 members)
     auto& members = classDecl->getBody().getMembers();
-    EXPECT_EQ(members.size(), 4);
+    EXPECT_EQ(members.size(), 3);
     EXPECT_TRUE(members[0]->isConstructor());  // constructor
     EXPECT_FALSE(members[1]->isEvent());        // method1
-    EXPECT_TRUE(members[2]->isEvent());         // onEvent1
-    EXPECT_FALSE(members[3]->isEvent());        // method2
+    EXPECT_FALSE(members[2]->isEvent());        // method2
 
     // Verify constructor parameters
     auto* constructor = members[0]->getConstructor();

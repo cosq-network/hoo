@@ -1,8 +1,9 @@
 #pragma once
 
 #include "ASTNode.h"
-#include "Declaration.h"
+#include "FunctionModifier.h"
 #include <vector>
+#include <memory>
 #include <string>
 
 namespace hooc {

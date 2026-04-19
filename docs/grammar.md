@@ -45,6 +45,9 @@ Hooc reserves the following keywords:
 - `service` - Service pattern
 - `strategy` - Strategy pattern
 - `actor` - Actor model pattern
+- `public` - Public member function (default)
+- `private` - Private member function
+- `async` - Async function marker
 
 **Module System:**
 - `import` - Import modules
@@ -53,7 +56,6 @@ Hooc reserves the following keywords:
 
 **Special:**
 - `scope` - Scope management
-- `event` - Event declaration
 - `this` - Current object instance
 - `__hoo_init` - Internal module initialization (Reserved)
 
@@ -107,6 +109,15 @@ void      - No return value
 **Assignment:**
 ```
 =    Assignment
++=   Compound add
+-=   Compound subtract
+*=   Compound multiply
+/=   Compound divide
+%=   Compound modulo
+<<=  Compound left shift
+>>=  Compound right shift
+++   Increment
+--   Decrement
 ```
 
 **Special:**
@@ -147,6 +158,13 @@ Examples: `3.14`, `0.5`, `100.0`
 STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"'
 ```
 Examples: `"hello"`, `"line 1\nline 2"`
+
+**Multiline String Literals:**
+```antlr
+MULTILINE_STRING: '"""' .*? '"""'
+```
+Examples: `"""multiline""":`, `"""line1
+line2"""`
 
 **Character Literals:**
 ```antlr
@@ -354,7 +372,6 @@ classMember:
     | variableDeclaration SEMICOLON
     | constructorDeclaration
     | functionDeclaration
-    | eventDeclaration SEMICOLON
 ```
 
 **Constructor:**

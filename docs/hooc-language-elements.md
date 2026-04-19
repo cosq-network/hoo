@@ -103,7 +103,6 @@ Callable units that can be compiled independently (may reference imports).
 | Function (with params) | `'func' ':' type IDENTIFIER '(' params ')' block` | `func:int64 add(a: int64, b: int64) { return a + b; }` |
 | Function (no return type) | `'func' IDENTIFIER '(' params? ')' block` | `func greet(name: string) { print(name); }` |
 | Constructor | `'constructor' '(' params? ')' block` | `constructor(x: int64, y: int64) { this.x = x; this.y = y; }` |
-| Event declaration | `'event' IDENTIFIER ';'` | `event onClick;`, `event onUpdate;` |
 
 **Compilation**: Functions can be compiled to standalone object code with external references.
 

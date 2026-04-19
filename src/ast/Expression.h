@@ -174,6 +174,15 @@ enum class BinaryOperator {
     ASSIGN                             // Assignment
 };
 
+enum class CompoundAssignmentOperator {
+    PLUS_ASSIGN, MINUS_ASSIGN, MULTIPLY_ASSIGN, DIVIDE_ASSIGN,
+    MODULO_ASSIGN, LEFT_SHIFT_ASSIGN, RIGHT_SHIFT_ASSIGN
+};
+
+enum class IncrementDecrementOperator {
+    INCREMENT, DECREMENT
+};
+
 class BinaryExpression : public Expression {
 public:
     BinaryExpression(std::unique_ptr<Expression> left,
@@ -265,6 +274,44 @@ public:
 private:
     std::unique_ptr<Expression> left_;
     std::unique_ptr<Expression> right_;
+};
+
+class CompoundAssignmentExpression : public Expression {
+public:
+    CompoundAssignmentExpression(std::unique_ptr<Expression> left,
+                              CompoundAssignmentOperator operator_,
+                              std::unique_ptr<Expression> right)
+        : left_(std::move(left)), operator_(operator_), right_(std::move(right)) {}
+
+    std::string toString() const override;
+
+    const Expression& getLeft() const { return *left_; }
+    CompoundAssignmentOperator getOperator() const { return operator_; }
+    const Expression& getRight() const { return *right_; }
+
+private:
+    std::unique_ptr<Expression> left_;
+    CompoundAssignmentOperator operator_;
+    std::unique_ptr<Expression> right_;
+};
+
+class IncrementDecrementExpression : public Expression {
+public:
+    IncrementDecrementExpression(std::unique_ptr<Expression> operand,
+                                 IncrementDecrementOperator operator_,
+                                 bool isPrefix)
+        : operand_(std::move(operand)), operator_(operator_), isPrefix_(isPrefix) {}
+
+    std::string toString() const override;
+
+    const Expression& getOperand() const { return *operand_; }
+    IncrementDecrementOperator getOperator() const { return operator_; }
+    bool isPrefix() const { return isPrefix_; }
+
+private:
+    std::unique_ptr<Expression> operand_;
+    IncrementDecrementOperator operator_;
+    bool isPrefix_;
 };
 
 // Error handling expression (expr else block)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ASTNode.h"
+#include "FunctionModifier.h"
 #include <vector>
 #include <string>
 
@@ -24,9 +25,11 @@ public:
     FunctionDeclaration(const std::string& name,
                        std::vector<std::unique_ptr<Parameter>> parameters,
                        std::unique_ptr<Type> returnType,
-                       std::unique_ptr<Block> body)
+                       std::unique_ptr<Block> body,
+                       std::vector<FunctionModifier> modifiers = {})
         : name_(name), parameters_(std::move(parameters)),
-          returnType_(std::move(returnType)), body_(std::move(body)) {}
+          returnType_(std::move(returnType)), body_(std::move(body)),
+          modifiers_(std::move(modifiers)) {}
 
     std::string toString() const override;
 
@@ -34,12 +37,26 @@ public:
     const std::vector<std::unique_ptr<Parameter>>& getParameters() const { return parameters_; }
     const Type* getReturnType() const { return returnType_.get(); }
     const Block& getBody() const { return *body_; }
+    const std::vector<FunctionModifier>& getModifiers() const { return modifiers_; }
+
+    bool isPublic() const {
+        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PUBLIC) != modifiers_.end();
+    }
+
+    bool isPrivate() const {
+        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PRIVATE) != modifiers_.end();
+    }
+
+    bool isAsync() const {
+        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::ASYNC) != modifiers_.end();
+    }
 
 private:
     std::string name_;
     std::vector<std::unique_ptr<Parameter>> parameters_;
     std::unique_ptr<Type> returnType_;
     std::unique_ptr<Block> body_;
+    std::vector<FunctionModifier> modifiers_;
 };
 
 // Variable declaration

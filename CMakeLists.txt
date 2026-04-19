@@ -361,6 +361,8 @@ if(HOOC_BUILD_TESTS)
         tests/jit/HoocJITTest.cpp
         tests/jit/IOFunctionTest.cpp
         tests/jit/IntegerTypesTest.cpp
+        tests/jit/NewLanguageFeaturesTest.cpp
+        tests/parsing/FunctionModifiersTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/hvm/HInstructionTest.cpp

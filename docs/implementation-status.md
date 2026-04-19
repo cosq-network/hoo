@@ -46,12 +46,14 @@ These features are fully implemented, tested, and production-ready:
   - ✅ Assignment expressions
 
 - **Operators**
-  - ✅ Arithmetic: `+`, `-`, `*`, `/`, `%`
-  - ✅ Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
-  - ✅ Logical: `&&`, `||`, `!`
-  - ✅ Assignment: `=`
-  - ✅ Unary: `-`, `!`
-  - ✅ Proper operator precedence
+   - ✅ Arithmetic: `+`, `-`, `*`, `/`, `%`
+   - ✅ Comparison: `==`, `!=`, `<`, `<=`, `>`, `>=`
+   - ✅ Logical: `&&`, `||`, `!`
+   - ✅ Assignment: `=`
+   - ✅ Compound Assignment: `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`
+   - ✅ Increment/Decrement: `++`, `--`
+   - ✅ Unary: `-`, `!`
+   - ✅ Proper operator precedence
 
 - **Control Flow**
   - ✅ `if-else` statements
@@ -76,13 +78,14 @@ These features are fully implemented, tested, and production-ready:
 #### Object-Oriented Programming
 
 - **Classes**
-  - ✅ Class declarations
-  - ✅ Member variables
-  - ✅ Constructors with parameters
-  - ✅ Member functions (methods)
-  - ✅ `this` reference
-  - ✅ Class inheritance (`extends`)
-  - ✅ Class modifiers (singleton, immutable, final, etc.)
+   - ✅ Class declarations
+   - ✅ Member variables
+   - ✅ Constructors with parameters
+   - ✅ Member functions (methods)
+   - ✅ Function modifiers (`public`, `private`, `async`) for member functions
+   - ✅ `this` reference
+   - ✅ Class inheritance (`extends`) - parsing only
+   - ✅ Class modifiers (singleton, immutable, final, etc.) - parsing only
 
 - **Objects**
   - ✅ Object creation with `new` keyword
@@ -138,19 +141,20 @@ These features are fully implemented, tested, and production-ready:
 #### Runtime Library
 
 - **String Library** (`hoo_string.h/cpp`)
-  - ✅ UTF-8 string support
-  - ✅ String creation and destruction
-  - ✅ Concatenation
-  - ✅ Substring operations
-  - ✅ Case conversion (upper/lower)
-  - ✅ Trim whitespace
-  - ✅ Search operations (indexOf, lastIndexOf, contains)
-  - ✅ String comparison
-  - ✅ Pattern matching (startsWith, endsWith)
-  - ✅ String replacement
-  - ✅ Type conversion (int, double, bool)
-  - ✅ String formatting
-  - ✅ Reference counting
+   - ✅ UTF-8 string support
+   - ✅ String creation and destruction
+   - ✅ Concatenation
+   - ✅ Substring operations
+   - ✅ Case conversion (upper/lower)
+   - ✅ Trim whitespace
+   - ✅ Search operations (indexOf, lastIndexOf, contains)
+   - ✅ String comparison
+   - ✅ Pattern matching (startsWith, endsWith)
+   - ✅ String replacement
+   - ✅ Type conversion (int, double, bool)
+   - ✅ String formatting
+   - ✅ Reference counting
+   - ✅ Multiline strings (`"""..."""`)
 
 - **Array Library** (`hoo_generic_array.h/cpp`)
   - ✅ Generic array using `std::any`
@@ -279,11 +283,6 @@ These features are planned but not yet started:
   - Associated types
   - Variance annotations
 
-- **Properties**
-  - Computed properties
-  - Getters and setters
-  - Property observers
-
 #### Standard Library
 
 - **Collections Module** (`hoo.collections`)
@@ -355,7 +354,7 @@ These features are planned but not yet started:
 | Runtime | 4 | 113+ | High |
 | Integration | 2 | 56+ | High |
 | CLI & Core | 2 | 45+ | High |
-| **Total** | **54+** | **1004** | **High** |
+| **Total** | **56+** | **1025** | **High** |
 
 ### Lines of Code
 
@@ -366,8 +365,8 @@ These features are planned but not yet started:
 | Code Generator | 3 | 4,500+ | C++ |
 | Runtime Library | 6 | 3,500+ | C/C++ |
 | Tests | 54+ | 9,800+ | C++ |
-| Grammar | 1 | 280 | ANTLR4 |
-| **Total** | **85+** | **29,280+** | - |
+| Grammar | 1 | 315 | ANTLR4 |
+| **Total** | **85+** | **29,500+** | - |
 
 ## Recent Progress
 
@@ -379,7 +378,11 @@ These features are planned but not yet started:
 - ✅ Rebranded built-in namespace from `std` to `hoo`.
 - ✅ Completed comprehensive Module System Design ([docs/module-system-design.md](module-system-design.md)).
 - ✅ Added IntegerTypesTest for int64, int8, and byte types.
-- ✅ Verified all 1004 unit tests pass.
+- ✅ Added compound assignment operators (`+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`).
+- ✅ Added increment/decrement operators (`++`, `--`).
+- ✅ Added multiline string support (`"""..."""`).
+- ✅ Added function modifiers (`public`, `private`, `async`) for member functions.
+- ✅ Verified all 1025 unit tests pass.
 
 ### Phase 7 (Completed)
 - ✅ Generic array system refactored

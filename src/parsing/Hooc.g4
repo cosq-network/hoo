@@ -4,6 +4,9 @@ grammar Hooc;
 
 // Keywords
 FUNC: 'func';
+PUBLIC: 'public';
+PRIVATE: 'private';
+ASYNC: 'async';
 RETURN: 'return';
 IF: 'if';
 ELSE: 'else';
@@ -25,7 +28,6 @@ SINGLETON: 'singleton';
 IMMUTABLE: 'immutable';
 FACTORY: 'factory';
 OBSERVABLE: 'observable';
-EVENT: 'event';
 CONSTRUCTOR: 'constructor';
 SERVICE: 'service';
 STRATEGY: 'strategy';
@@ -57,6 +59,15 @@ MULTIPLY: '*';
 DIVIDE: '/';
 MODULO: '%';
 ASSIGN: '=';
+COMPOUND_PLUS: '+=';
+COMPOUND_MINUS: '-=';
+COMPOUND_MULTIPLY: '*=';
+COMPOUND_DIVIDE: '/=';
+COMPOUND_MODULO: '%=';
+COMPOUND_LEFT_SHIFT: '<<=';
+COMPOUND_RIGHT_SHIFT: '>>=';
+INCREMENT: '++';
+DECREMENT: '--';
 EQUALS: '==';
 NOT_EQUALS: '!=';
 LESS: '<';
@@ -149,13 +160,12 @@ classBody: LBRACE classMember* RBRACE;
 classMember
     : variableDeclaration SEMICOLON
     | constructorDeclaration
-    | functionDeclaration
-    | eventDeclaration SEMICOLON
+    | functionModifier* functionDeclaration
     ;
 
 constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block;
 
-eventDeclaration: EVENT IDENTIFIER;
+functionModifier: PUBLIC | PRIVATE | ASYNC;
 
 // Variable Declaration
 variableDeclaration
@@ -224,7 +234,17 @@ expression
     ;
 
 assignmentExpression
-    : logicalOrExpression (ASSIGN assignmentExpression)?
+    : logicalOrExpression (ASSIGN logicalOrExpression | compoundAssignment)?
+    ;
+
+compoundAssignment
+    : COMPOUND_PLUS logicalOrExpression
+    | COMPOUND_MINUS logicalOrExpression
+    | COMPOUND_MULTIPLY logicalOrExpression
+    | COMPOUND_DIVIDE logicalOrExpression
+    | COMPOUND_MODULO logicalOrExpression
+    | COMPOUND_LEFT_SHIFT logicalOrExpression
+    | COMPOUND_RIGHT_SHIFT logicalOrExpression
     ;
 
 logicalOrExpression
@@ -252,7 +272,7 @@ unaryExpression
     ;
 
 postfixExpression
-    : primary postfixSuffix*
+    : primary (postfixSuffix | augmentedAssignment)*
     ;
 
 postfixSuffix
@@ -261,12 +281,18 @@ postfixSuffix
     | LPAREN argumentList? RPAREN                            // Function call
     ;
 
+augmentedAssignment
+    : INCREMENT
+    | DECREMENT
+    ;
+
 primary
     : IDENTIFIER                                             // Simple identifier or function call
     | THIS                                                   // Current object instance
     | INTEGER_LITERAL
     | FLOATING_LITERAL
     | STRING_LITERAL
+    | MULTILINE_STRING
     | CHAR_LITERAL
     | TRUE
     | FALSE

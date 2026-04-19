@@ -150,6 +150,19 @@ var y = x + 5;           // Assignment with expression
 
 x = x + 1;               // Update variable
 
+// Compound assignment operators
+x += 5;                  // x = x + 5
+x -= 3;                  // x = x - 3
+x *= 2;                  // x = x * 2
+x /= 4;                  // x = x / 4
+x %= 7;                  // x = x % 7
+x <<= 2;                 // x = x << 2 (left shift)
+x >>= 1;                 // x = x >> 1 (right shift)
+
+// Increment/Decrement
+x++;                     // x = x + 1 (postfix)
+x--;                     // x = x - 1 (postfix)
+
 // PI = 3.14;            // ERROR: Cannot assign to a constant
 ```
 
@@ -415,6 +428,37 @@ strategy class SortStrategy {
 // Actor model
 actor class MessageProcessor {
     // ...
+}
+```
+
+### Function Modifiers
+
+Member functions can have access and behavior modifiers:
+
+```hoo
+class User {
+    var name: string;
+    var age: int64;
+
+    // Public: accessible from outside (default)
+    public func greet() {
+        print("Hello!");
+    }
+
+    // Private: only accessible within class
+    private func calculate() -> int64 {
+        return age * 2;
+    }
+
+    // Async: for future async support
+    async func fetch() {
+        print("Fetching data...");
+    }
+
+    // Multiple modifiers
+    public async func save() {
+        print("Saving...");
+    }
 }
 ```
 
@@ -810,6 +854,12 @@ var s2 = "world";
 
 // Empty string
 var empty = "";
+
+// Multiline strings (triple-quoted)
+var multi = """This is a
+multiline string
+that preserves
+newlines""";
 ```
 
 ### String Concatenation

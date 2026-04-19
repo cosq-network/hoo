@@ -1248,7 +1248,6 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Factory) {
 TEST_F(LLVMCodeGeneratorComprehensiveTest, ClassModifier_Observable) {
     std::string code = R"(
         observable class ObservableClass {
-            event changed;
             func notify() { }
         }
     )";

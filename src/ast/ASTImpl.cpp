@@ -250,6 +250,14 @@ std::string AssignmentExpression::toString() const {
     return "AssignmentExpression";
 }
 
+std::string CompoundAssignmentExpression::toString() const {
+    return "CompoundAssignmentExpression";
+}
+
+std::string IncrementDecrementExpression::toString() const {
+    return "IncrementDecrementExpression";
+}
+
 std::string ErrorHandlingExpression::toString() const {
     return "ErrorHandlingExpression";
 }
