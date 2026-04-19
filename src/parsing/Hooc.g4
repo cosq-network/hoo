@@ -95,7 +95,6 @@ RBRACKET: ']';
 
 // String Literals
 STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"';
-MULTILINE_STRING: '"""' .*? '"""';
 
 // Character Literal
 CHAR_LITERAL: '\'' (~['\\\r\n] | '\\' .) '\'';

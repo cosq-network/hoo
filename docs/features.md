@@ -860,6 +860,10 @@ var multi = """This is a
 multiline string
 that preserves
 newlines""";
+
+// String interpolation (planned for future)
+// var name = "Alice";
+// var greeting = "Hello, ${name}";  // Not yet supported
 ```
 
 ### String Concatenation

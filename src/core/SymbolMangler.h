@@ -2,40 +2,64 @@
 
 #include <string>
 #include <vector>
-#include <llvm/IR/Type.h>
+#include <memory>
 
 namespace hooc {
 
-/**
- * @class SymbolMangler
- * @brief Provides centralized name mangling for the Hooc compiler, JIT, and linker.
- * 
- * This class ensures consistent symbol naming across different compilation and execution
- * stages, supporting function overloading and module isolation.
- */
+struct DemangledSymbol {
+    std::string originalName;
+    std::string className;
+    std::string functionName;
+    std::string baseClassName;
+    std::vector<std::string> classModifiers;
+    std::vector<std::string> functionModifiers;
+    std::string returnType;
+    std::vector<std::string> parameterTypes;
+    bool isConstructor;
+    bool isDestructor;
+    bool isStatic;
+    bool isVirtual;
+};
+
+struct MangledFunctionParams {
+    std::string className;
+    std::string baseClassName;
+    std::vector<std::string> classModifiers;
+    std::string functionName;
+    std::vector<std::string> functionModifiers;
+    std::string returnType;
+    std::vector<std::string> parameterTypes;
+    bool isConstructor;
+    bool isDestructor;
+    bool isStatic;
+    bool isVirtual;
+};
+
+const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap();
+const std::vector<std::pair<std::string, std::string>>& getModifierCodeMap();
+const std::vector<std::pair<std::string, std::string>>& getFunctionModifierCodeMap();
+
+std::string typeNameToCode(const std::string& typeName);
+std::string codeToTypeName(const std::string& code);
+std::string encodeComponent(const std::string& component);
+std::string decodeComponent(const std::string& encoded);
+
 class SymbolMangler {
 public:
-    /**
-     * @brief Mangle a function name based on its parameter types.
-     * 
-     * @param name The base function name.
-     * @param paramTypes The LLVM types of the function parameters.
-     * @return A unique mangled symbol string.
-     */
-    static std::string mangleFunctionName(const std::string& name, 
-                                         const std::vector<llvm::Type*>& paramTypes);
+    static std::string mangleFunctionName(const MangledFunctionParams& params);
 
-    /**
-     * @brief Mangle a symbol name with its module path.
-     * 
-     * Follows the scheme: _H_<module_path>_<symbol_name>
-     * 
-     * @param modulePath Components of the module path (e.g., ["hoo", "io"]).
-     * @param symbolName The name of the symbol (function, class, variable).
-     * @return A unique mangled symbol string for cross-module linking.
-     */
     static std::string mangleModuleSymbol(const std::vector<std::string>& modulePath,
-                                         const std::string& symbolName);
+                                          const std::string& symbolName);
+
+    static DemangledSymbol demangleSymbol(const std::string& mangledName);
+
+    static std::string demangle(const std::string& mangledName);
+
+    static std::string typeKindToMangledString(const std::string& typeName);
+
+    static std::string demangleType(const std::string& mangledType);
+
+    static std::string mangleType(const std::string& typeName);
 };
 
 } // namespace hooc

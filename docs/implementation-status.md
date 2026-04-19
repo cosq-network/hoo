@@ -390,6 +390,9 @@ These features are planned but not yet started:
 - ✅ Module system basics
 - ✅ String integration complete
 
+### Planned Features
+- String interpolation (`"Hello ${name}"`) - Requires lexer changes that maintain backward compatibility
+
 ## Known Issues
 
 ### High Priority

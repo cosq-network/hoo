@@ -159,6 +159,8 @@ STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"'
 ```
 Examples: `"hello"`, `"line 1\nline 2"`
 
+Note: String interpolation (`"Hello ${name}"`) is planned for a future version. Currently, concatenate strings using the `+` operator.
+
 **Multiline String Literals:**
 ```antlr
 MULTILINE_STRING: '"""' .*? '"""'

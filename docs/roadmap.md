@@ -108,7 +108,7 @@ Hooc aims to be a modern, productive programming language that combines:
 
 **Advanced Language Support**
 - [ ] Type-safe Dynamic Arrays (moving beyond `std::any` for primitives)
-- [ ] String interpolation runtime support
+- [ ] String interpolation syntax (`"Hello ${name}"` with runtime substitution)
 - [ ] Complex function expressions (function pointers)
 - [ ] Full AOT Linking and Bytecode emission
 

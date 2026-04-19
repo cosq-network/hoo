@@ -111,7 +111,7 @@ public:
     std::string toString() const override;
 };
 
-// Interpolated string (placeholder)
+// Interpolated string - supports "text ${expr} more text"
 class InterpolatedString : public Primary {
 public:
     InterpolatedString(const std::string& template_) : template_(template_) {}
