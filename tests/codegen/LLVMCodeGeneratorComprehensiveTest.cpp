@@ -1119,10 +1119,10 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Declaration_MultipleFunctions) {
 // ALL PRIMITIVE TYPE TESTS
 // ============================================================================
 
-TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Byte) {
+TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Int8) {
     std::string code = R"(
-        func:byte test() {
-            var b: byte = 255;
+        func:int8 test() {
+            var b: int8 = 255;
             return b;
         }
     )";
@@ -1134,10 +1134,10 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Byte) {
     ASSERT_NE(func, nullptr);
 }
 
-TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Uint8) {
+TEST_F(LLVMCodeGeneratorComprehensiveTest, Type_Byte) {
     std::string code = R"(
-        func:uint8 test() {
-            var b: uint8 = 200;
+        func:byte test() {
+            var b: byte = 200;
             return b;
         }
     )";

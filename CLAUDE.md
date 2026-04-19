@@ -164,9 +164,11 @@ make                  # Rebuild project
 
 Hooc Type → LLVM Type:
 - `int64` → `i64`
+- `int8` → `i8`
+- `byte` → `i8`
 - `double` → `double`
 - `bool` → `i1`
-- `char` → `i8`
+- `char` → `i32`
 - `string` → `i8*` (pointer to HooString)
 - `T[]` → `i8*` (pointer to HooArray)
 - `T?` → `i8*` (pointer, null allowed)

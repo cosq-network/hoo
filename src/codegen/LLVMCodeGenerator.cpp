@@ -1,4 +1,5 @@
 #include "LLVMCodeGenerator.h"
+#include "core/SymbolMangler.h"
 #include "runtime/llvm/RuntimeRegistry.h"
 #include "runtime/llvm/RuntimeMethodRegistry.h"
 #include "../ast/AST.h"
@@ -1583,8 +1584,8 @@ LLVMType* LLVMCodeGenerator::generateLLVMType(const ASTType& type) {
 
 LLVMType* LLVMCodeGenerator::convertPrimitiveType(PrimitiveTypeKind kind) {
     switch (kind) {
+        case PrimitiveTypeKind::INT8:
         case PrimitiveTypeKind::BYTE:
-        case PrimitiveTypeKind::UINT8:
             return LLVMType::getInt8Ty(context_);
         case PrimitiveTypeKind::INT64:
             return LLVMType::getInt64Ty(context_);
@@ -2061,22 +2062,6 @@ llvm::Function* LLVMCodeGenerator::getArrayPushFuncForType(llvm::Type* elementTy
         // Unknown type - default to object
         return getArrayPushObjectFunc();
     }
-}
-
-std::string LLVMCodeGenerator::mangleFunctionName(const std::string& name, const std::vector<LLVMType*>& paramTypes) {
-    // Simple name mangling - for production, use a more sophisticated scheme
-    std::string mangledName = name;
-    for (LLVMType* type : paramTypes) {
-        mangledName += "_";
-        if (type->isIntegerTy()) {
-            mangledName += "i" + std::to_string(type->getIntegerBitWidth());
-        } else if (type->isFloatingPointTy()) {
-            mangledName += "f";
-        } else if (type->isPointerTy()) {
-            mangledName += "ptr";
-        }
-    }
-    return mangledName;
 }
 
 void LLVMCodeGenerator::generateGlobalVariable(const VariableDeclaration& decl) {

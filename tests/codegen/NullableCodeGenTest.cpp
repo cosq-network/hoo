@@ -318,11 +318,11 @@ TEST_F(NullableCodeGenTest, NullableVariableInBlock) {
     EXPECT_FALSE(func->empty());
 }
 
-// Test 14: Nullable byte variable
-TEST_F(NullableCodeGenTest, NullableByteVariableDeclaration) {
+// Test 14: Nullable int8 variable
+TEST_F(NullableCodeGenTest, NullableInt8VariableDeclaration) {
     std::string code = R"(
         func:int64 test() {
-            var x: byte? = 255;
+            var x: int8? = 255;
             return 0;
         }
     )";

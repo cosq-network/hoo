@@ -296,6 +296,7 @@ Compilation Unit (heavy)
 | Primitive float | `float` | `var f: float` |
 | Primitive double | `double` | `var d: double` |
 | Primitive bool | `bool` | `var flag: bool` |
+| Primitive int8 | `int8` | `var b: int8` |
 | Primitive byte | `byte` | `var b: byte` |
 | Primitive char | `char` | `var c: char` |
 | String | `string` | `var s: string` |
@@ -449,7 +450,8 @@ This table indicates which Hooc language elements can be compiled to HVM instruc
 | `float` | 32 bits | Register (float) | Single precision |
 | `double` | 64 bits | Register (f64) | Double precision |
 | `bool` | 8 bits | Register (0 or 1) | Boolean as integer |
-| `byte` | 8 bits | Register | Zero/sign extended |
+| `int8` | 8 bits | Register | Sign-extended | 8-bit signed integer |
+| `byte` | 8 bits | Register | Zero-extended | 8-bit unsigned integer |
 | `char` | 8 bits | Register | UTF-8 code unit |
 | `string` | variable | Pointer (i8*) | Heap-allocated object |
 | `object` | variable | Pointer (i8*) | Heap-allocated with vtable |

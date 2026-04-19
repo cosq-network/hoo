@@ -347,7 +347,7 @@ TEST_F(NewExpressionCodeGenTest, NewExpressionAllPrimitiveTypesCodeGen) {
     std::string code = R"(
         class AllTypes {
             constructor(
-                b: byte,
+                i8: int8,
                 i: int64,
                 f: float,
                 d: double,

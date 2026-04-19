@@ -166,8 +166,8 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithWhileLoop) {
     EXPECT_TRUE(astStr.find("declarations=1") != std::string::npos);
 }
 
-TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteParameter) {
-    std::string code = "func:byte process(data: byte) { return data; }";
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithInt8Parameter) {
+    std::string code = "func:int8 process(data: int8) { return data; }";
     auto* parseTree = parseCode(code);
     
     ASSERT_NE(parseTree, nullptr);
@@ -970,8 +970,8 @@ TEST_F(SimpleASTBuilderTest, BuildQualifiedType) {
 
 // ===== All Primitive Types Tests =====
 
-TEST_F(SimpleASTBuilderTest, BuildFunctionWithUint8Parameter) {
-    std::string code = "func:uint8 process(data: uint8) { return data; }";
+TEST_F(SimpleASTBuilderTest, BuildFunctionWithByteParameter) {
+    std::string code = "func:byte process(data: byte) { return data; }";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);

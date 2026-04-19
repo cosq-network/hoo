@@ -68,6 +68,8 @@ HVM is a **RISC-like** architecture with:
 | int64     | 64 bits   | Single register        |
 | double    | 64 bits   | Single register        |
 | int32     | 32 bits   | Register (sign/zero extended) |
+| int8      | 8 bits    | Register (sign extended) |
+| byte      | 8 bits    | Register (zero extended) |
 | bool      | 8 bits    | Register (0 or 1)      |
 | char      | 8 bits    | Register (0-255)       |
 | string    | variable  | Pointer in register    |

@@ -15,7 +15,7 @@ using namespace hooc::ast;
  * Test suite for variable declaration parsing in SimpleASTBuilder.
  *
  * This suite focuses on testing variable declarations with primitive types:
- * - byte, int64, double, bool, char
+ * - int8, byte, int64, double, bool, char
  * - Explicit type annotations
  * - Type inference
  * - Initialization expressions

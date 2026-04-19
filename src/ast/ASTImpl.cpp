@@ -332,8 +332,8 @@ std::string hooc::ast::classModifierToString(ClassModifier modifier) {
 
 std::string hooc::ast::primitiveTypeToString(PrimitiveTypeKind kind) {
     switch (kind) {
+        case PrimitiveTypeKind::INT8: return "int8";
         case PrimitiveTypeKind::BYTE: return "byte";
-        case PrimitiveTypeKind::UINT8: return "uint8";
         case PrimitiveTypeKind::INT64: return "int64";
         case PrimitiveTypeKind::DOUBLE: return "double";
         case PrimitiveTypeKind::F64: return "f64";

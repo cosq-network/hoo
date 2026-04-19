@@ -1,5 +1,7 @@
 # Hooc - The Hoo Programming Language Compiler
 
+**Last Updated:** April 19, 2026
+
 Hooc is a modern, statically-typed programming language with automatic memory management and a clean syntax. It combines the best features of modern languages with a focus on safety, performance, and developer productivity.
 
 ## Features

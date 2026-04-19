@@ -550,19 +550,13 @@ private:
 
     /// @brief Create global constant array
     /// @param elements Array of constant values
-    /// @param elementType LLVM type of array elements
+    /// @param type LLVM type of array elements
     /// @return Pointer to global array constant
     llvm::Constant* createGlobalArrayConstant(const std::vector<llvm::Constant*>& elements,
                                            llvm::Type* elementType);
 
-    /// @brief Mangle function name for overloading
-    /// @param name Base function name
-    /// @param paramTypes Parameter types
-    /// @return Mangled name string
-    std::string mangleFunctionName(const std::string& name,
-                                  const std::vector<llvm::Type*>& paramTypes);
-
     /// @brief Create alloca in entry block (proper placement for allocas)
+
     /// @param function Target function
     /// @param varName Variable name for debugging
     /// @param type Alloca type

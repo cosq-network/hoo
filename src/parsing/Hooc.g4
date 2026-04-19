@@ -39,8 +39,8 @@ FALSE: 'false';
 NULL: 'null';
 
 // Primitive Types
+INT8: 'int8';
 BYTE: 'byte';
-UINT8: 'uint8';
 INT64: 'int64';
 FLOAT: 'float';
 DOUBLE: 'double';
@@ -180,7 +180,7 @@ baseType
     | qualifiedIdentifier
     ;
 
-primitiveType: BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
+primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
 
 // Statements
 statement
@@ -286,3 +286,4 @@ interpolatedString: STRING_LITERAL; // Placeholder for interpolated strings with
 
 argumentList: expression (COMMA expression)*;
 expressionList: expression (COMMA expression)*;
+

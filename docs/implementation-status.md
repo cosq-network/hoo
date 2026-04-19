@@ -2,7 +2,7 @@
 
 This document tracks the current implementation status of the Hooc compiler and runtime. It provides a detailed breakdown of completed features, work-in-progress items, and planned additions.
 
-**Last Updated:** April 18, 2026
+**Last Updated:** April 19, 2026
 
 ## Overview
 
@@ -32,8 +32,8 @@ These features are fully implemented, tested, and production-ready:
   - ✅ `char` - Single characters
   - ✅ `string` - UTF-8 strings
   - ✅ `void` - No return value
-  - ✅ `byte` - 8-bit signed integer
-  - ✅ `uint8` - 8-bit unsigned integer
+  - ✅ `int8` - 8-bit signed integer
+  - ✅ `byte` - 8-bit unsigned integer
   - ✅ `float` - 32-bit floating point
   - ✅ `f64` - Alias for double
 
@@ -233,8 +233,8 @@ These features are fully implemented, tested, and production-ready:
 #### Testing Infrastructure
 
 - ✅ GoogleTest framework integration
-- ✅ 50+ test suites
-- ✅ 970+ test cases
+- ✅ 54+ test suites
+- ✅ 1004+ test cases
 - ✅ Parsing tests
 - ✅ AST building tests
 - ✅ Code generation tests
@@ -355,7 +355,7 @@ These features are planned but not yet started:
 | Runtime | 4 | 113+ | High |
 | Integration | 2 | 56+ | High |
 | CLI & Core | 2 | 45+ | High |
-| **Total** | **40+** | **973** | **High** |
+| **Total** | **54+** | **1004** | **High** |
 
 ### Lines of Code
 
@@ -365,7 +365,7 @@ These features are planned but not yet started:
 | AST Definitions | 15+ | 3,000+ | C++ |
 | Code Generator | 3 | 4,500+ | C++ |
 | Runtime Library | 6 | 3,500+ | C/C++ |
-| Tests | 40+ | 9,500+ | C++ |
+| Tests | 54+ | 9,800+ | C++ |
 | Grammar | 1 | 280 | ANTLR4 |
 | **Total** | **85+** | **29,280+** | - |
 
@@ -378,7 +378,8 @@ These features are planned but not yet started:
 - ✅ Fixed JIT stability issues using shared `ThreadSafeContext`.
 - ✅ Rebranded built-in namespace from `std` to `hoo`.
 - ✅ Completed comprehensive Module System Design ([docs/module-system-design.md](module-system-design.md)).
-- ✅ Verified all 987 unit tests pass.
+- ✅ Added IntegerTypesTest for int64, int8, and byte types.
+- ✅ Verified all 1004 unit tests pass.
 
 ### Phase 7 (Completed)
 - ✅ Generic array system refactored

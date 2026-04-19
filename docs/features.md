@@ -24,8 +24,8 @@ Hooc provides a rich set of primitive types for different use cases:
 
 ```hoo
 // Integer types
-var b: byte = 127;          // 8-bit signed integer (-128 to 127)
-var u: uint8 = 255;         // 8-bit unsigned integer (0 to 255)
+var b: int8 = 127;          // 8-bit signed integer (-128 to 127)
+var u: byte = 255;          // 8-bit unsigned integer (0 to 255)
 var i: int64 = 1000000;     // 64-bit signed integer (default for integers)
 
 // Floating-point types

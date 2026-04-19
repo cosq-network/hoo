@@ -121,9 +121,9 @@ TEST_F(HooCompilerTest, MultipleCompilations) {
     EXPECT_NE(module2->getFunction("second"), nullptr);
 }
 
-TEST_F(HooCompilerTest, CompileByteFunction) {
-    std::string code = "func:byte process(data: byte) { return data; }";
-    auto module = compiler->compile("byte_test", code);
+TEST_F(HooCompilerTest, CompileInt8Function) {
+    std::string code = "func:int8 process(data: int8) { return data; }";
+    auto module = compiler->compile("int8_test", code);
     
     ASSERT_NE(module, nullptr);
     EXPECT_TRUE(compiler->wasLastCompilationSuccessful());
@@ -131,7 +131,7 @@ TEST_F(HooCompilerTest, CompileByteFunction) {
     Function* func = module->getFunction("process");
     ASSERT_NE(func, nullptr);
     
-    // Verify byte type is properly handled (i8 in LLVM)
+    // Verify int8 type is properly handled (i8 in LLVM)
     EXPECT_TRUE(func->getReturnType()->isIntegerTy(8));
     EXPECT_EQ(func->arg_size(), 1);
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
@@ -142,15 +142,15 @@ TEST_F(HooCompilerTest, CompileByteFunction) {
     EXPECT_FALSE(verifyModule(*module, &errorStream));
 }
 
-TEST_F(HooCompilerTest, CompileByteArithmetic) {
+TEST_F(HooCompilerTest, CompileInt8Arithmetic) {
     std::string code = R"(
-        func:byte calculate(a: byte, b: byte) {
+        func:int8 calculate(a: int8, b: int8) {
             var sum = a + b;
             var diff = a - b;
             return sum;
         }
     )";
-    auto module = compiler->compile("byte_arithmetic", code);
+    auto module = compiler->compile("int8_arithmetic", code);
     
     ASSERT_NE(module, nullptr);
     EXPECT_TRUE(compiler->wasLastCompilationSuccessful());

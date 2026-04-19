@@ -178,6 +178,7 @@ add_dependencies(hoo-parser generate_parser)
 # Create hoo-compiler library
 add_library(hoo-compiler
     src/core/HooCompiler.cpp
+    src/core/SymbolMangler.cpp
     src/core/DefaultIOProvider.cpp
     src/core/HooCLI.cpp
     src/jit/HoocJIT.cpp
@@ -359,6 +360,7 @@ if(HOOC_BUILD_TESTS)
         tests/integration/ArrayGenericIntegrationTest.cpp
         tests/jit/HoocJITTest.cpp
         tests/jit/IOFunctionTest.cpp
+        tests/jit/IntegerTypesTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/hvm/HInstructionTest.cpp

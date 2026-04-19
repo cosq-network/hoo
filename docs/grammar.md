@@ -64,8 +64,8 @@ Hooc reserves the following keywords:
 ### Primitive Types
 
 ```
-byte      - 8-bit signed integer
-uint8     - 8-bit unsigned integer
+int8      - 8-bit signed integer
+byte      - 8-bit unsigned integer
 int64     - 64-bit signed integer
 float     - 32-bit floating point
 double    - 64-bit floating point
@@ -415,7 +415,7 @@ baseType:
     | qualifiedIdentifier
 
 primitiveType:
-    BYTE | UINT8 | INT64 | FLOAT | DOUBLE | F64 |
+    INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 |
     BOOL | CHAR | STRING | VOID
 ```
 
@@ -817,3 +817,4 @@ make
 - [Features Guide](features.md) - Detailed feature documentation
 - [Implementation Status](implementation-status.md) - Current implementation status
 - [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
+

@@ -330,10 +330,10 @@ TEST_F(VariableDeclarationCodeGenTest, CharVariableWithExplicitType) {
     EXPECT_TRUE(irString.find("store i32") != std::string::npos);
 }
 
-TEST_F(VariableDeclarationCodeGenTest, ByteVariableWithExplicitType) {
+TEST_F(VariableDeclarationCodeGenTest, Int8VariableWithExplicitType) {
     std::string code = R"(
-        func:byte test() {
-            var x: byte = 255;
+        func:int8 test() {
+            var x: int8 = 255;
             return x;
         }
     )";

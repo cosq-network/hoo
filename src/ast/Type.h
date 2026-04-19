@@ -18,8 +18,8 @@ public:
 
 // Primitive types
 enum class PrimitiveTypeKind {
+    INT8,
     BYTE,
-    UINT8,
     INT64,
     FLOAT,
     DOUBLE,

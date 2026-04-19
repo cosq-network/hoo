@@ -186,7 +186,7 @@ Represents built-in types:
 
 ```cpp
 enum class PrimitiveTypeKind {
-    BYTE, UINT8, INT64, FLOAT, DOUBLE, F64,
+    INT8, BYTE, INT64, FLOAT, DOUBLE, F64,
     BOOL, CHAR, STRING, VOID
 };
 ```

@@ -220,8 +220,8 @@ TEST_F(BasicCodeGenTest, VerifyGeneratedIRFormat) {
     EXPECT_TRUE(irString.find("ret void") != std::string::npos);
 }
 
-TEST_F(BasicCodeGenTest, GenerateByteFunction) {
-    std::string code = "func:byte process(data: byte) { return data; }";
+TEST_F(BasicCodeGenTest, GenerateInt8Function) {
+    std::string code = "func:int8 process(data: int8) { return data; }";
     auto ast = parseAndBuildAST(code);
     ASSERT_NE(ast, nullptr);
     
@@ -237,9 +237,9 @@ TEST_F(BasicCodeGenTest, GenerateByteFunction) {
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
 }
 
-TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
+TEST_F(BasicCodeGenTest, GenerateInt8Arithmetic) {
     std::string code = R"(
-        func:byte calculate(a: byte, b: byte) {
+        func:int8 calculate(a: int8, b: int8) {
             var result = a + b;
             return result;
         }
@@ -253,7 +253,7 @@ TEST_F(BasicCodeGenTest, GenerateByteArithmetic) {
     Function* func = module->getFunction("calculate");
     ASSERT_NE(func, nullptr);
     
-    // Check that function has byte parameters and return type
+    // Check that function has int8 parameters and return type
     EXPECT_TRUE(func->getReturnType()->isIntegerTy(8));
     EXPECT_EQ(func->arg_size(), 2);
     EXPECT_TRUE(func->getArg(0)->getType()->isIntegerTy(8));
