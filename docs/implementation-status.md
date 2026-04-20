@@ -209,9 +209,10 @@ These features are fully implemented, tested, and production-ready:
 
 - **Standard Modules**
   - ✅ `hoo.String` - String class
-  - ✅ `hoo.Array` - Generic array class
+  - ✅ `hoo.Array` - Generic array class (dynamic, heterogeneous)
+  - ✅ Native arrays (`T[]`) - Type-safe homogeneous arrays
   - ✅ `hoo.io` - IO operations (Implemented in runtime)
-  - 🟡 `hoo.collections` - Collections (planned)
+  - ❌ `hoo.collections` - Not planned (use HooArray or T[] instead)
 
 #### Code Generation
 
@@ -296,13 +297,10 @@ These features are planned but not yet started:
 
 #### Standard Library
 
-- **Collections Module** (`hoo.collections`)
-  - `List` - Dynamic list
-  - `Map` - Hash map
-  - `Set` - Hash set
-  - `Queue` - Queue
-  - `Stack` - Stack
-  - Iterator protocol
+- **Note:** Collections (List, Map, Set) are not currently planned.
+  Hooc's built-in `HooArray` and native `T[]` arrays provide
+  dynamic collection functionality. Generic collections may be
+  revisited in the future if needed.
 
 - **IO Module** (`hoo.io`)
   - `File` - File operations

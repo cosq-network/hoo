@@ -71,6 +71,11 @@ Function* LLVMCodeGenerator::getExceptionFunc(const std::string& name) {
     return module_->getFunction(fullName);
 }
 
+Function* LLVMCodeGenerator::getMapFunc(const std::string& name) {
+    std::string fullName = "hoo_map_" + name;
+    return module_->getFunction(fullName);
+}
+
 // Abstract interface implementation - returns wrapped types
 std::unique_ptr<GeneratedModule> LLVMCodeGenerator::generateModule(const CompilationUnit& compilationUnit) {
     auto llvmModule = generateLLVMModule(compilationUnit);
@@ -1841,6 +1846,11 @@ LLVMType* LLVMCodeGenerator::generateLLVMType(const ASTType& type) {
         return convertArrayType(*arrayType);
     }
 
+    if (auto mapType = dynamic_cast<const MapType*>(&type)) {
+        (void)mapType;  // Map is represented as pointer to HooMap
+        return llvm::PointerType::get(context_, 0);
+    }
+
     if (auto baseType = dynamic_cast<const BaseType*>(&type)) {
         if (baseType->isPrimitive()) {
             return convertPrimitiveType(baseType->getPrimitiveType()->getKind());
@@ -3239,6 +3249,8 @@ llvm::Value* LLVMCodeGenerator::generateStdClassConstructor(const ModuleExport& 
         return generateStringConstructor(newExpr);
     } else if (moduleExport.runtimeClassName == "HooArray") {
         return generateArrayConstructor(newExpr);
+    } else if (moduleExport.runtimeClassName == "HooMap") {
+        return generateMapConstructor(newExpr);
     }
 
     // Unknown standard library class - should not reach here
@@ -3310,6 +3322,26 @@ llvm::Value* LLVMCodeGenerator::generateArrayConstructor(const ast::NewObjectExp
     }
 
     return builder_->CreateCall(arrayNewFunc, {}, "new_array");
+}
+
+llvm::Value* LLVMCodeGenerator::generateMapConstructor(const ast::NewObjectExpression& newExpr) {
+    // hoo.Map() -> hoo_map_new(keyType)
+    // hoo.Map<K, V>() -> hoo_map_new(keyType)
+    // Key type is determined from the generic parameters
+
+    // Get the map_new function
+    auto* mapNewFunc = getMapFunc("new");
+    if (!mapNewFunc) {
+        addError("hoo_map_new function could not be declared");
+        return nullptr;
+    }
+
+    // For now, default to string key type (keyType = 4)
+    // In a full implementation, this would be determined from the generic parameters
+    // Map key types: BYTE=0, INT8=1, INT64=2, CHAR=3, STRING=4
+    llvm::Value* keyTypeArg = llvm::ConstantInt::get(llvm::Type::getInt64Ty(context_), 4);
+
+    return builder_->CreateCall(mapNewFunc, {keyTypeArg}, "new_map");
 }
 
 // ============================================================================

@@ -166,6 +166,11 @@ public:
     /// @return Function pointer, or nullptr if not found
     llvm::Function* getExceptionFunc(const std::string& name);
 
+    /// @brief Get a map runtime function by name
+    /// @param name Function name suffix (e.g., "new" for hoo_map_new)
+    /// @return Function pointer, or nullptr if not found
+    llvm::Function* getMapFunc(const std::string& name);
+
     /// @brief Get core allocation function
     llvm::Function* getAllocFunc() const { return hoo_alloc_func_; }
 
@@ -370,6 +375,11 @@ private:
     /// @param newExpr NewObjectExpression for Array
     /// @return Constructed array value
     llvm::Value* generateArrayConstructor(const ast::NewObjectExpression& newExpr);
+
+    /// @brief Generate hoo.Map constructor
+    /// @param newExpr NewObjectExpression for Map
+    /// @return Constructed map value
+    llvm::Value* generateMapConstructor(const ast::NewObjectExpression& newExpr);
 
     // ========================================================================
     // Expression Generation

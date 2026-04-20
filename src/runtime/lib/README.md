@@ -19,6 +19,7 @@ The runtime library provides fundamental data types and memory management for Ho
 | `hoo_generic_array.h` / `hoo_generic_array.cpp` | Generic dynamic array using `std::any` |
 | `hoo_io.h` / `hoo_io.cpp` | I/O functions (print, println, readline, readchar) |
 | `hoo_exception.h` / `hoo_exception.cpp` | Exception handling with stack traces |
+| `hoo_map.h` / `hoo_map.cpp` | Generic key-value map with typed keys |
 
 ## Module and Class Reference
 
@@ -55,6 +56,52 @@ The Exception module provides exception types for error handling.
 | `InvalidCastException` | Type casting failed |
 | `CustomException` | User-defined exceptions |
 
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `hoo.Exception.create` | `(typeId: int64, message: string?) -> hoo.Exception` | Create exception with type ID |
+| `hoo.Exception.createWithCause` | `(typeId: int64, message: string?, cause: hoo.Exception?) -> hoo.Exception` | Create with cause chain |
+| `hoo.Exception.runtime` | `(message: string?) -> hoo.RuntimeException` | Create runtime exception |
+| `hoo.Exception.nullPointer` | `(message: string?) -> hoo.NullPointerException` | Create null pointer exception |
+| `hoo.Exception.indexOutOfBounds` | `(message: string?) -> hoo.IndexOutOfBoundsException` | Create index out of bounds |
+| `hoo.Exception.divisionByZero` | `(message: string?) -> hoo.DivisionByZeroException` | Create division by zero |
+| `hoo.Exception.invalidCast` | `(message: string?) -> hoo.InvalidCastException` | Create invalid cast |
+| `hoo.Exception.custom` | `(type: string, message: string?) -> hoo.CustomException` | Create custom exception |
+| `hoo.Exception.getTypeId` | `(exc: hoo.Exception) -> int64` | Get exception type ID |
+| `hoo.Exception.getTypeName` | `(exc: hoo.Exception) -> string` | Get exception type name |
+| `hoo.Exception.getMessage` | `(exc: hoo.Exception) -> string` | Get exception message |
+| `hoo.Exception.hasCause` | `(exc: hoo.Exception) -> bool` | Check if has cause |
+| `hoo.Exception.getCause` | `(exc: hoo.Exception) -> hoo.Exception?` | Get cause exception |
+| `hoo.Exception.getStackTrace` | `(exc: hoo.Exception) -> string` | Get stack trace |
+| `hoo.Exception.getFrameCount` | `(exc: hoo.Exception) -> int64` | Get stack frame count |
+| `hoo.Exception.getFrame` | `(exc: hoo.Exception, index: int64) -> string` | Get stack frame |
+| `hoo.Exception.equals` | `(a: hoo.Exception, b: hoo.Exception) -> bool` | Check equality |
+| `hoo.Exception.debug` | `(exc: hoo.Exception) -> string` | Get debug string |
+
+### Map Module: `hoo`
+
+The Map module provides generic key-value maps with type-safe keys.
+
+| Key Type | Description |
+|----------|-------------|
+| `byte` / `int8` | 8-bit signed integer keys |
+| `int64` | 64-bit signed integer keys |
+| `char` | Character keys |
+| `string` | String keys |
+
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| `hoo.Map.new` | `(keyType: int64) -> hoo.Map` | Create new map with key type |
+| `hoo.Map.fromPairs` | `(keyType: int64, keys: [], values: []?) -> hoo.Map` | Create from key-value pairs |
+| `hoo.Map.length` | `(map: hoo.Map) -> int64` | Get number of entries |
+| `hoo.Map.contains` | `(map: hoo.Map, key) -> bool` | Check if key exists |
+| `hoo.Map.get` | `(map: hoo.Map, key) -> value?` | Get value by key |
+| `hoo.Map.set` | `(map: hoo.Map, key, value)` | Set key-value pair |
+| `hoo.Map.remove` | `(map: hoo.Map, key) -> bool` | Remove entry by key |
+| `hoo.Map.clear` | `(map: hoo.Map)` | Remove all entries |
+| `hoo.Map.empty` | `(map: hoo.Map) -> bool` | Check if map is empty |
+| `hoo.Map.keyType` | `(map: hoo.Map) -> int64` | Get key type |
+| `hoo.Map.refcount` | `(map: hoo.Map) -> int64` | Get reference count |
+
 ### Usage Examples
 
 ```hoo
@@ -88,6 +135,15 @@ try {
 } finally {
     hoo.println("Operation completed");
 }
+
+// Maps (type-safe key-value storage)
+var scores = new hoo.Map(HOO_MAP_KEY_STRING);
+scores.set("Alice", 95);
+scores.set("Bob", 87);
+var aliceScore = scores.get("Alice");
+var containsBob = scores.contains("Bob");
+scores.remove("Bob");
+scores.clear();
 ```
 
 ## Implementation Guidelines

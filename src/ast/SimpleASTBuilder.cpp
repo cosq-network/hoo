@@ -137,7 +137,17 @@ std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::Paramete
 }
 
 std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) {
-    if (!ctx || !ctx->optionalType()) {
+    if (!ctx) {
+        return std::make_unique<BaseType>("unknown");
+    }
+
+    // Handle mapType first
+    if (ctx->mapType()) {
+        return buildMapType(ctx->mapType());
+    }
+
+    // Handle optionalType (array types and primitives)
+    if (!ctx->optionalType()) {
         return std::make_unique<BaseType>("unknown");
     }
 
@@ -156,7 +166,7 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
 
     // Build dimensions
     size_t dimensionCount = arrayCtx->LBRACKET().size();
-    
+
     // Check if it is optional
     bool isOptional = optionalCtx->QUESTION() != nullptr;
 
@@ -216,6 +226,41 @@ std::unique_ptr<PrimitiveType> SimpleASTBuilder::buildPrimitiveType(HoocParser::
     std::string typeName = ctx->getText();
     PrimitiveTypeKind kind = getPrimitiveTypeKind(typeName);
     return std::make_unique<PrimitiveType>(kind);
+}
+
+std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeContext* ctx) {
+    if (!ctx) {
+        return nullptr;
+    }
+
+    // Get key type from mapKeyType context (which is a child context)
+    auto keyTypeCtx = ctx->mapKeyType();
+    if (!keyTypeCtx) {
+        return nullptr;
+    }
+
+    MapKeyType keyType;
+    if (keyTypeCtx->BYTE()) {
+        keyType = MapKeyType::BYTE;
+    } else if (keyTypeCtx->INT8()) {
+        keyType = MapKeyType::INT8;
+    } else if (keyTypeCtx->INT64()) {
+        keyType = MapKeyType::INT64;
+    } else if (keyTypeCtx->CHAR()) {
+        keyType = MapKeyType::CHAR;
+    } else if (keyTypeCtx->STRING()) {
+        keyType = MapKeyType::STRING;
+    } else {
+        return nullptr;
+    }
+
+    // Get value type
+    auto valueType = buildType(ctx->type());
+    if (!valueType) {
+        return nullptr;
+    }
+
+    return std::make_unique<MapType>(keyType, std::move(valueType));
 }
 
 std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ctx) {

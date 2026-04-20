@@ -192,6 +192,7 @@ add_library(hoo-compiler
     src/runtime/llvm/hoo_string_registration.cpp
     src/runtime/llvm/hoo_array_registration.cpp
     src/runtime/llvm/hoo_io_registration.cpp
+    src/runtime/llvm/hoo_map_registration.cpp
     src/runtime/llvm/RuntimeStringMethodsRegistration.cpp
 )
 
@@ -213,9 +214,11 @@ add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_string.cpp
     src/runtime/lib/hoo_generic_array.cpp
+    src/runtime/lib/hoo_map.cpp
     src/runtime/lib/hoo_io.cpp
     src/runtime/lib/hoo_exception.cpp
     src/runtime/llvm/hoo_io_registration.cpp
+    src/runtime/llvm/hoo_map_registration.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -327,7 +330,9 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/ModuleLevelVariableParsingTest.cpp
         tests/parsing/ClassDeclarationParsingTest.cpp
         tests/parsing/SimpleASTBuilderTest.cpp
+        tests/parsing/MapTypeParsingTest.cpp
         tests/parsing/OptionalReturnTypeTest.cpp
+        tests/parsing/ArrowFunctionSyntaxTest.cpp
         tests/parsing/NewExpressionParsingTest.cpp
         tests/parsing/MemberAccessParsingTest.cpp
         tests/parsing/MethodCallParsingTest.cpp
@@ -348,6 +353,8 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/MethodCallCodeGenTest.cpp
         tests/codegen/StringCodeGenTest.cpp
         tests/codegen/ClassArrayCodeGenTest.cpp
+        tests/codegen/MapCodeGenTest.cpp
+        tests/codegen/ArrowFunctionSyntaxCodeGenTest.cpp
         tests/codegen/StdConstructorCodeGenTest.cpp
         tests/codegen/QualifiedIdentifierCodeGenTest.cpp
         tests/codegen/GlobalVariableCodeGenTest.cpp

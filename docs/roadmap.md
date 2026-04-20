@@ -53,15 +53,9 @@ Hooc aims to be a modern, productive programming language that combines:
 
 #### Deliverables
 
-**Collections Module** (`hoo.collections`)
-- [ ] `List` - Dynamic array/list using built-in array types
-- [ ] `Map` - Hash map with string keys
-- [ ] `Set` - Hash set for unique values
-- [ ] `Queue` - FIFO queue
-- [ ] `Stack` - LIFO stack
-- [ ] Iterator protocol
-- [ ] Range types
-- [ ] Collection utilities (sort, filter, map, reduce)
+**Note:** Collections (List, Map, Set) are not currently planned.
+Hooc's built-in `HooArray` (via `hoo.Array`) and native `T[]` arrays
+provide dynamic collection functionality.
 
 **IO Module** (`hoo.io`)
 - [x] `hoo.print()` - Print without newline (implemented)
@@ -69,15 +63,19 @@ Hooc aims to be a modern, productive programming language that combines:
 - [x] `hoo.readline()` - Read line from stdin (implemented)
 - [x] `hoo.readchar()` - Read single character (implemented)
 - [x] CLI components (`HooCLI`, `IOProvider`, `DefaultIOProvider`)
-- [ ] AOT Bytecode Generation - Compile `.hoo` source to `.ho` bytecode files (CLI reserved)
-- [ ] Native AOT Execution - Direct execution of `.ho` bytecode files (CLI reserved)
-- [x] Module System Design - [docs/module-system-design.md](module-system-design.md)
 - [ ] `File` - File reading/writing
 - [ ] `Directory` - Directory operations
 - [ ] `Console` - Standard input/output
 - [ ] `Stream` - Stream-based I/O
 - [ ] Path utilities
 - [ ] File system operations
+- [ ] AOT Bytecode Generation - Compile `.hoo` source to `.ho` bytecode files (CLI reserved)
+- [ ] Native AOT Execution - Direct execution of `.ho` bytecode files (CLI reserved)
+
+**Math Module** (`hoo.math`)
+- [ ] Basic math functions (abs, min, max, pow, sqrt, etc.)
+- [ ] Trigonometric functions
+- [ ] Random number generation
 
 **Module System Implementation**
 - [x] Rebranded built-in namespace from `std` to `hoo`
@@ -95,24 +93,27 @@ Hooc aims to be a modern, productive programming language that combines:
 
 ---
 
-### Phase 9: Advanced OOP and Compiler Completion (Q3 2026)
+### Phase 9: Standard Library Expansion (Q3 2026)
 
 **Priority:** High
 **Duration:** 1-2 months
-**Focus:** Full implementation of existing grammar features and backend optimizations.
+**Focus:** Math and IO modules for common programming tasks.
 
 #### Deliverables
 
-**Object-Oriented Features** (Grammar supported)
-- [ ] Class Inheritance (`extends`) implementation in codegen
-- [ ] Virtual method tables (VTable) for inheritance
-- [ ] Class Modifiers (Singleton, Actor, Immutable) logic
+**Math Module** (`hoo.math`)
+- [ ] Basic math functions (abs, min, max, clamp, sign)
+- [ ] Power and roots (pow, sqrt, cbrt, hypot)
+- [ ] Trigonometric functions (sin, cos, tan, asin, acos, atan, atan2)
+- [ ] Exponential and logarithmic (exp, log, log10, log2)
+- [ ] Rounding functions (floor, ceil, round, trunc)
+- [ ] Random number generation (Random class)
 
-**Advanced Language Support**
-- [ ] Type-safe Dynamic Arrays (moving beyond `std::any` for primitives)
-- [ ] String interpolation syntax (`"Hello ${name}"` with runtime substitution)
-- [ ] Complex function expressions (function pointers)
-- [ ] Full AOT Linking and Bytecode emission
+**IO Module (Full)** (`hoo.io`)
+- [ ] File I/O (read, write, seek, tell)
+- [ ] Directory operations
+- [ ] Path utilities
+- [ ] Console enhancements
 
 **Optimizations**
 - [ ] LLVM Optimization pass integration
@@ -121,21 +122,33 @@ Hooc aims to be a modern, productive programming language that combines:
 
 ---
 
-### Phase 10: Error Handling and Future Extensions (Q4 2026+)
+### Phase 10: Network and Time Modules (Q4 2026+)
 
 **Priority:** Medium
 **Duration:** Ongoing
-**Focus:** New language syntax and robust error management.
+**Focus:** Network and time modules for full application development.
 
 #### Planned Deliverables
 
-**Exception System** (Grammar Update Required)
-- [ ] `try-catch` syntax
-- [ ] Exception types and hierarchy
-- [ ] Stack unwinding
-- [ ] Custom exception classes
+**Exception System** (Completed in Phase 8)
+- [x] `try-catch-finally` syntax
+- [x] Exception types and hierarchy
+- [x] Exception throwing (`throw`)
+- [x] Rethrow (`rethrow`)
+- [x] Stack trace support
 
-**Result Types** (Grammar Update Required)
+**Time Module** (`hoo.time`)
+- [ ] Duration and Instant
+- [ ] LocalDate, LocalTime, LocalDateTime
+- [ ] TimeZone support
+- [ ] Date/time formatting
+
+**Network Module** (`hoo.net`)
+- [ ] URL utilities
+- [ ] HTTP client
+- [ ] TCP/UDP sockets
+
+**Result Types** (Future, Grammar Update Required)
 - [ ] `match` syntax for Result patterns
 - [ ] Error propagation operators (`?`)
 

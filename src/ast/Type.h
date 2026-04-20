@@ -109,5 +109,43 @@ private:
     bool isOptional_;
 };
 
+// Map key types (restricted to specific primitive types)
+enum class MapKeyType {
+    BYTE,
+    INT8,
+    INT64,
+    CHAR,
+    STRING
+};
+
+// Map type (map[K, V] where K is restricted key type)
+class MapType : public Type {
+public:
+    MapType(MapKeyType keyType, std::unique_ptr<Type> valueType)
+        : keyType_(keyType), valueType_(std::move(valueType)) {}
+
+    std::string toString() const override;
+
+    MapKeyType getKeyType() const { return keyType_; }
+    const Type& getValueType() const { return *valueType_; }
+    std::unique_ptr<Type> takeValueType() { return std::move(valueType_); }
+
+    // Convert key type to string for runtime
+    std::string keyTypeToString() const {
+        switch (keyType_) {
+            case MapKeyType::BYTE: return "byte";
+            case MapKeyType::INT8: return "int8";
+            case MapKeyType::INT64: return "int64";
+            case MapKeyType::CHAR: return "char";
+            case MapKeyType::STRING: return "string";
+            default: return "unknown";
+        }
+    }
+
+private:
+    MapKeyType keyType_;
+    std::unique_ptr<Type> valueType_;
+};
+
 } // namespace ast
 } // namespace hooc

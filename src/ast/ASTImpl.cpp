@@ -140,6 +140,10 @@ std::string OptionalType::toString() const {
     return "OptionalType";
 }
 
+std::string MapType::toString() const {
+    return "MapType";
+}
+
 // Statement implementations
 std::string Block::toString() const {
     return "Block";

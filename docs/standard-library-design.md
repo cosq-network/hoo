@@ -8,7 +8,7 @@ This document outlines the planned standard library modules for the Hooc program
 
 1. [Overview](#overview)
 2. [Core Modules](#core-modules)
-3. [Collections Module](#collections-module)
+3. [Collections Note](#collections-note)
 4. [IO Module](#io-module)
 5. [Math Module](#math-module)
 6. [Network Module](#network-module)
@@ -21,7 +21,6 @@ The Hooc standard library is organized into modules under the `hoo` namespace. E
 
 ```hoo
 // Using standard library modules
-import hoo.collections;
 import hoo.io;
 import hoo.math;
 import hoo.time;
@@ -109,112 +108,25 @@ class Console {
 
 ## Collections Module
 
-**Status:** Planned
+**Status:** Not Planned (Use HooArray and native T[] syntax instead)
 
-### `hoo.collections` - Collection Types
+> Note: Hooc already provides dynamic array functionality through:
+> - **HooArray** (`hoo.Array`) - Heterogeneous dynamic array with std::any
+> - **Native arrays** (`T[]`) - Type-safe homogeneous arrays with push/pop support
+>
+> These built-in types cover most collection use cases. Generic collections like `List<T>` may be added in the future if needed.
 
 ```hoo
-// List - Dynamic array with additional methods
-class List<T> {
-    constructor()
-    constructor(capacity: int64)
+// Existing options for collections:
+// HooArray - heterogeneous, any type
+var mixed = new hoo.Array();
+mixed.push(42);
+mixed.push("hello");
 
-    func add(item: T) -> void
-    func addAll(items: T[]) -> void
-    func insert(index: int64, item: T) -> void
-    func remove(index: int64) -> T?
-    func removeItem(item: T) -> bool
-    func clear() -> void
-
-    func get(index: int64) -> T?
-    func set(index: int64, item: T) -> void
-
-    func contains(item: T) -> bool
-    func indexOf(item: T) -> int64
-    func lastIndexOf(item: T) -> int64
-
-    func size() -> int64
-    func isEmpty() -> bool
-    func capacity() -> int64
-
-    func forEach(action: func(T) -> void) -> void
-    func map<U>(transform: func(T) -> U) -> List<U>
-    func filter(predicate: func(T) -> bool) -> List<T>
-    func reduce<U>(initial: U, reducer: func(U, T) -> U) -> U
-
-    func toArray() -> T[]
-    func toString() -> string
-}
-
-// Map - Key-value store
-class Map<K, V> {
-    constructor()
-    constructor(capacity: int64)
-
-    func set(key: K, value: V) -> void
-    func get(key: K) -> V?
-    func getOrDefault(key: K, default: V) -> V
-    func containsKey(key: K) -> bool
-    func containsValue(value: V) -> bool
-    func remove(key: K) -> V?
-    func clear() -> void
-
-    func size() -> int64
-    func isEmpty() -> bool
-    func keys() -> K[]
-    func values() -> V[]
-    func entries() -> (K, V)[]
-
-    func forEach(action: func(K, V) -> void) -> void
-}
-
-// Set - Unique elements
-class Set<T> {
-    constructor()
-    constructor(capacity: int64)
-
-    func add(item: T) -> bool
-    func remove(item: T) -> bool
-    func contains(item: T) -> bool
-    func clear() -> void
-
-    func size() -> int64
-    func isEmpty() -> bool
-
-    func union(other: Set<T>) -> Set<T>
-    func intersection(other: Set<T>) -> Set<T>
-    func difference(other: Set<T>) -> Set<T>
-
-    func toArray() -> T[]
-}
-
-// Queue - FIFO
-class Queue<T> {
-    constructor()
-    constructor(capacity: int64)
-
-    func enqueue(item: T) -> void
-    func dequeue() -> T?
-    func peek() -> T?
-
-    func size() -> int64
-    func isEmpty() -> bool
-    func clear() -> void
-}
-
-// Stack - LIFO
-class Stack<T> {
-    constructor()
-    constructor(capacity: int64)
-
-    func push(item: T) -> void
-    func pop() -> T?
-    func peek() -> T?
-
-    func size() -> int64
-    func isEmpty() -> bool
-    func clear() -> void
-}
+// Native array - homogeneous, type-safe
+var numbers: int64[] = [];
+numbers.push(1);
+numbers.push(2);
 ```
 
 ## Math Module
@@ -485,31 +397,28 @@ Based on the roadmap, the following implementation order is planned:
 
 ### Phase 9 (Q3 2026)
 
-1. **Collections Module** - High priority for data processing
-   - `List<T>`, `Map<K,V>`, `Set<T>`
-   - Iterator protocol
-
-2. **Math Module** - Scientific computing needs
-   - Basic math functions
+1. **Math Module** - Scientific computing needs
+   - Basic math functions (abs, min, max, pow, sqrt, etc.)
+   - Trigonometric functions
    - Random number generation
 
 ### Phase 10 (Q4 2026)
 
-3. **IO Module (Full)** - File system access
+2. **IO Module (Full)** - File system access
    - File I/O
    - Directory operations
    - Path utilities
 
-4. **Time Module** - Date/time handling
+3. **Time Module** - Date/time handling
    - Duration, Instant
    - LocalDate, LocalTime, LocalDateTime
 
 ### Future (2027+)
 
-5. **Network Module** - HTTP, sockets
-6. **Regex Module** - Pattern matching
-7. **JSON Module** - JSON parsing/serialization
-8. **XML Module** - XML processing
+4. **Network Module** - HTTP, sockets
+5. **Regex Module** - Pattern matching
+6. **JSON Module** - JSON parsing/serialization
+7. **XML Module** - XML processing
 
 ## See Also
 

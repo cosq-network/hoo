@@ -130,7 +130,6 @@ void      - No return value
 **Special:**
 ```
 ?    Nullable type marker
-->   Function return type
 ..   Range operator
 .    Member access
 ```
@@ -293,8 +292,10 @@ functionDeclaration:
 **Components:**
 - Function name (identifier)
 - Parameter list: `(param1: type1, param2: type2)`
-- Optional return type: `: type` (preceding name)
+- Optional return type: `: type` (preceding the function name)
 - Function body (block)
+
+**Note:** The return type is placed before the function name, not after the parameter list with `->`.
 
 **Examples:**
 
@@ -305,7 +306,8 @@ func greet() {
 }
 
 // With parameters and return type
-func:int64 add(a: int64, b: int64) {
+// Return type comes BEFORE the name: func:ReturnType name(params)
+func:add(a: int64, b: int64) {
     return a + b;
 }
 ```
@@ -819,7 +821,7 @@ func main() {
 ### Example 4: Control Flow
 
 ```hoo
-func:int64 factorial(n: int64) {
+func:factorial(n: int64) {
     if n <= 1 {
         return 1;
     } else {

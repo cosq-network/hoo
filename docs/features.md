@@ -216,12 +216,13 @@ func greet(name: string) {
 }
 
 // With return type
-func:int64 add(a: int64, b: int64) {
+// Return type comes BEFORE the function name: func:ReturnType name(params)
+func:add(a: int64, b: int64) {
     return a + b;
 }
 
 // Multiple parameters and return
-func:int64 calculate(x: int64, y: int64, op: string) {
+func:calculate(x: int64, y: int64, op: string) {
     if op == "add" {
         return x + y;
     } else {
@@ -240,12 +241,12 @@ func doWork() {
 }
 
 // Return value
-func:int64 square(x: int64) {
+func:square(x: int64) {
     return x * x;
 }
 
 // Early return
-func:int64? divide(a: int64, b: int64) {
+func:divide(a: int64, b: int64) {
     if b == 0 {
         return null;  // Early return
     }
@@ -253,7 +254,7 @@ func:int64? divide(a: int64, b: int64) {
 }
 
 // Multiple returns
-func:int64 abs(x: int64) {
+func:abs(x: int64) {
     if x < 0 {
         return -x;
     } else {
@@ -297,7 +298,7 @@ class Calculator {
         result = result + x;
     }
 
-    func:int64 getResult() {
+    func:getResult() {
         return result;
     }
 }
@@ -325,7 +326,7 @@ class Rectangle {
         height = h;
     }
 
-    func:int64 area() {
+    func:area() {
         return width * height;
     }
 }
@@ -368,7 +369,7 @@ class Counter {
         count = count - 1;
     }
 
-    func:int64 getValue() {
+    func:getValue() {
         return count;
     }
 
@@ -447,7 +448,7 @@ class User {
     }
 
     // Private: only accessible within class
-    private func calculate() -> int64 {
+    private func:calculate() {
         return age * 2;
     }
 
@@ -700,19 +701,13 @@ if (x > 0 && y > 0) || (x < 0 && y < 0) {
 
 ```hoo
 // Import entire module
-import std.io;
-
-// Import with alias
-import std.collections as coll;
+import hoo.io;
 
 // Import specific items
-from std.io import File, Directory;
-
-// Import with renaming
-from std.collections import List as ArrayList;
+from hoo.io import File, Directory;
 
 // Multiple items
-from std.math import sin, cos, tan, sqrt;
+from hoo.math import sin, cos, tan, sqrt;
 ```
 
 ### Module Paths
@@ -720,12 +715,29 @@ from std.math import sin, cos, tan, sqrt;
 Modules use dot notation for hierarchical organization:
 
 ```hoo
-import std;                    // Top-level std module
-import std.io;                 // std.io submodule
-import std.collections; // Nested module
+import hoo;                    // Top-level hoo module
+import hoo.io;                 // hoo.io submodule
 
 // Using qualified names
-var str = new std.String("hello");
+var str = new hoo.String("hello");
+```
+
+### Collections Note
+
+Hooc provides dynamic arrays through built-in types:
+- **HooArray** (`hoo.Array`) - Heterogeneous dynamic array
+- **Native arrays** (`T[]`) - Type-safe homogeneous arrays with push/pop
+
+```hoo
+// Heterogeneous array
+var mixed = new hoo.Array();
+mixed.push(42);
+mixed.push("hello");
+
+// Type-safe array
+var numbers: int64[] = [];
+numbers.push(1);
+numbers.push(2);
 ```
 
 ### Standard Library Modules
@@ -952,14 +964,14 @@ Hooc supports exception handling with try-catch-finally blocks for robust error 
 ### Try-Catch-Finally
 
 ```hoo
-func divide(a: int64, b: int64) -> int64 {
+func:divide(a: int64, b: int64) {
     if b == 0 {
         throw new RuntimeException("Division by zero");
     }
     return a / b;
 }
 
-func safeDivide(a: int64, b: int64) -> int64? {
+func:safeDivide(a: int64, b: int64) {
     try {
         return divide(a, b);
     } catch e: RuntimeException {

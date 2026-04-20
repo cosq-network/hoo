@@ -161,6 +161,13 @@ private:
      */
     std::unique_ptr<ast::PrimitiveType> buildPrimitiveType(HoocParser::PrimitiveTypeContext* ctx);
 
+    /**
+     * @brief Builds a MapType (map[K, V] where K is restricted key type).
+     * @param ctx Map type context.
+     * @return Unique pointer to MapType.
+     */
+    std::unique_ptr<ast::MapType> buildMapType(HoocParser::MapTypeContext* ctx);
+
     // ===== Statement Building =====
 
     /**

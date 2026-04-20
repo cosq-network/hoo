@@ -122,6 +122,67 @@ struct ArrayFunctionStorage {
 };
 
 // ============================================================================
+// Map Function Storage
+// ============================================================================
+
+struct MapFunctionStorage {
+    // Creation functions
+    llvm::Function* hoo_map_new_func = nullptr;
+    llvm::Function* hoo_map_from_pairs_func = nullptr;
+
+    // Basic operations
+    llvm::Function* hoo_map_length_func = nullptr;
+    llvm::Function* hoo_map_clear_func = nullptr;
+    llvm::Function* hoo_map_empty_func = nullptr;
+
+    // int8 key operations
+    llvm::Function* hoo_map_contains_int8_func = nullptr;
+    llvm::Function* hoo_map_remove_int8_func = nullptr;
+    llvm::Function* hoo_map_set_int8_int64_func = nullptr;
+    llvm::Function* hoo_map_get_int8_int64_func = nullptr;
+    llvm::Function* hoo_map_set_int8_value_func = nullptr;
+    llvm::Function* hoo_map_get_int8_value_func = nullptr;
+
+    // int64 key operations
+    llvm::Function* hoo_map_contains_int64_func = nullptr;
+    llvm::Function* hoo_map_remove_int64_func = nullptr;
+    llvm::Function* hoo_map_set_int64_int64_func = nullptr;
+    llvm::Function* hoo_map_get_int64_int64_func = nullptr;
+    llvm::Function* hoo_map_set_int64_value_func = nullptr;
+    llvm::Function* hoo_map_get_int64_value_func = nullptr;
+
+    // char key operations
+    llvm::Function* hoo_map_contains_char_func = nullptr;
+    llvm::Function* hoo_map_remove_char_func = nullptr;
+    llvm::Function* hoo_map_set_char_double_func = nullptr;
+    llvm::Function* hoo_map_get_char_double_func = nullptr;
+    llvm::Function* hoo_map_set_char_value_func = nullptr;
+    llvm::Function* hoo_map_get_char_value_func = nullptr;
+
+    // string key operations
+    llvm::Function* hoo_map_contains_string_func = nullptr;
+    llvm::Function* hoo_map_remove_string_func = nullptr;
+    llvm::Function* hoo_map_set_string_int64_func = nullptr;
+    llvm::Function* hoo_map_get_string_int64_func = nullptr;
+    llvm::Function* hoo_map_set_string_double_func = nullptr;
+    llvm::Function* hoo_map_get_string_double_func = nullptr;
+    llvm::Function* hoo_map_set_string_string_func = nullptr;
+    llvm::Function* hoo_map_get_string_string_func = nullptr;
+    llvm::Function* hoo_map_set_string_object_func = nullptr;
+    llvm::Function* hoo_map_get_string_object_func = nullptr;
+    llvm::Function* hoo_map_set_string_value_func = nullptr;
+    llvm::Function* hoo_map_get_string_value_func = nullptr;
+
+    // Reference counting
+    llvm::Function* hoo_map_retain_func = nullptr;
+    llvm::Function* hoo_map_release_func = nullptr;
+    llvm::Function* hoo_map_refcount_func = nullptr;
+
+    // Utility
+    llvm::Function* hoo_map_key_type_func = nullptr;
+};
+
+// ============================================================================
 // Central Runtime Function Storage
 // ============================================================================
 
@@ -143,6 +204,7 @@ struct ArrayFunctionStorage {
 struct RuntimeFunctionStorage {
     StringFunctionStorage strings;
     ArrayFunctionStorage arrays;
+    MapFunctionStorage maps;
 };
 
 } // namespace runtime

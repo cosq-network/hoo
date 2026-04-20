@@ -44,6 +44,7 @@ CATCH: 'catch';
 FINALLY: 'finally';
 THROW: 'throw';
 RETHROW: 'rethrow';
+MAP: 'map';
 
 // Primitive Types
 INT8: 'int8';
@@ -183,7 +184,7 @@ constantDeclaration
     ;
 
 // Types
-type: optionalType;
+type: optionalType | mapType;
 
 optionalType: arrayType QUESTION?;
 
@@ -193,6 +194,10 @@ baseType
     : primitiveType
     | qualifiedIdentifier
     ;
+
+mapType: MAP LBRACKET mapKeyType COMMA type RBRACKET;
+
+mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 
 primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
 
