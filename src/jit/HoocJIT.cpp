@@ -2,6 +2,7 @@
 
 #include "../core/HooCompiler.h"
 #include "runtime/llvm/RuntimeRegistry.h"
+#include "runtime/llvm/RuntimeNetMethods.h"
 
 #include "llvm/IR/Verifier.h"
 #include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
@@ -153,6 +154,18 @@ bool HoocJIT::initialize() {
     }
 
     jit_ = std::move(*jitExpected);
+
+    // Force all runtime libraries to be linked and registered
+    extern void _hoo_string_ensure_registration();
+    extern void _hoo_array_ensure_registration();
+    extern void _hoo_io_ensure_registration();
+    extern void _hoo_math_ensure_registration();
+    extern void _hoo_net_ensure_registration();
+    _hoo_string_ensure_registration();
+    _hoo_array_ensure_registration();
+    _hoo_io_ensure_registration();
+    _hoo_math_ensure_registration();
+    _hoo_net_ensure_registration();
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
     registry.registerAllWithJIT(*jit_, jit_->getMainJITDylib());

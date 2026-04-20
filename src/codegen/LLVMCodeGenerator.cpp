@@ -2,6 +2,7 @@
 #include "core/SymbolMangler.h"
 #include "runtime/llvm/RuntimeRegistry.h"
 #include "runtime/llvm/RuntimeMethodRegistry.h"
+#include "runtime/llvm/RuntimeNetMethods.h"
 #include "../ast/AST.h"
 #include "../ast/ClassDeclaration.h"
 #include "../ast/Type.h"
@@ -695,6 +696,38 @@ Value* LLVMCodeGenerator::generateFunctionCall(const FunctionCall& call) {
                 auto it = variableTypes_.find(identifier->getName());
                 if (it != variableTypes_.end()) {
                     className = it->second;
+                } else {
+                    // For runtime classes, check if it matches a known class pattern like "hoo.net.HttpClient"
+                    // Try lowercase version for runtime method lookup
+                    std::string varName = identifier->getName();
+                    if (RuntimeMethodRegistry::getInstance().isRuntimeClass(varName)) {
+                        className = varName;
+                    }
+                }
+            } else if (auto memberAccess2 = dynamic_cast<const MemberAccess*>(&primary)) {
+                // Handle chained call like client.get("url").getStatusCode()
+                // Recursively get the class name from the inner object
+                auto innerObject = &memberAccess2->getObject();
+                if (auto innerPrimary = dynamic_cast<const PrimaryExpression*>(innerObject)) {
+                    const ASTNode& innerPrimaryNode = innerPrimary->getPrimary();
+                    if (auto innerIdentifier = dynamic_cast<const Identifier*>(&innerPrimaryNode)) {
+                        std::string innerVarName = innerIdentifier->getName();
+                        auto it2 = variableTypes_.find(innerVarName);
+                        if (it2 != variableTypes_.end()) {
+                            className = it2->second;
+                        } else if (RuntimeMethodRegistry::getInstance().isRuntimeClass(innerVarName)) {
+                            className = innerVarName;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (className.empty()) {
+            // Last resort: check if the object expression is a NEW object, and extract class from that
+            if (auto newObj = dynamic_cast<const NewObjectExpression*>(&memberAccess->getObject())) {
+                if (auto qualifiedName = newObj->getQualifiedClassName()) {
+                    className = qualifiedName->getFullName();
                 }
             }
         }
@@ -1800,6 +1833,17 @@ void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& d
         AllocaInst* alloca = createEntryBlockAlloca(currentFunc, decl.getName(), varType);
         builder_->CreateStore(initValue, alloca);
         namedValues_[decl.getName()] = alloca;
+
+        // Track type for new expressions (class type inference)
+        if (decl.getInitializer()) {
+            if (auto newExpr = dynamic_cast<const NewObjectExpression*>(decl.getInitializer())) {
+                std::string className = newExpr->getClassName();
+                if (newExpr->getQualifiedClassName() && newExpr->getQualifiedClassName()->isQualified()) {
+                    className = newExpr->getQualifiedClassName()->toString();
+                }
+                variableTypes_[decl.getName()] = className;
+            }
+        }
     } else {
         // Explicit type
         varType = generateLLVMType(*decl.getType());
@@ -2797,13 +2841,17 @@ void LLVMCodeGenerator::declareRuntimeFunctions() {
     // and populate the runtimeFunctionStorage_.
     // This replaces the manual declareRuntimeFunctions() approach.
 
-    // Force String, Array, and IO runtimes to be linked and registered (works around linker optimization)
+    // Force String, Array, IO, Math, and Net runtimes to be linked and registered (works around linker optimization)
     extern void _hoo_string_ensure_registration();
     extern void _hoo_array_ensure_registration();
     extern void _hoo_io_ensure_registration();
+    extern void _hoo_math_ensure_registration();
+    extern void _hoo_net_ensure_registration();
     _hoo_string_ensure_registration();
     _hoo_array_ensure_registration();
     _hoo_io_ensure_registration();
+    _hoo_math_ensure_registration();
+    _hoo_net_ensure_registration();
 
     auto& registry = runtime::RuntimeRegistry::getInstance();
     registry.declareAllFunctions(*module_, context_, &runtimeFunctionStorage_);

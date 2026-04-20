@@ -217,8 +217,12 @@ add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_map.cpp
     src/runtime/lib/hoo_io.cpp
     src/runtime/lib/hoo_exception.cpp
+    src/runtime/lib/hoo_math.cpp
+    src/runtime/lib/hoo_net.cpp
     src/runtime/llvm/hoo_io_registration.cpp
     src/runtime/llvm/hoo_map_registration.cpp
+    src/runtime/llvm/hoo_math_registration.cpp
+    src/runtime/llvm/hoo_net_registration.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -333,6 +337,8 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/MapTypeParsingTest.cpp
         tests/parsing/OptionalReturnTypeTest.cpp
         tests/parsing/ArrowFunctionSyntaxTest.cpp
+        tests/parsing/MathModuleParsingTest.cpp
+        tests/parsing/NetworkModuleParsingTest.cpp
         tests/parsing/NewExpressionParsingTest.cpp
         tests/parsing/MemberAccessParsingTest.cpp
         tests/parsing/MethodCallParsingTest.cpp
@@ -355,6 +361,8 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/ClassArrayCodeGenTest.cpp
         tests/codegen/MapCodeGenTest.cpp
         tests/codegen/ArrowFunctionSyntaxCodeGenTest.cpp
+        tests/codegen/MathModuleCodeGenTest.cpp
+        tests/codegen/NetworkModuleCodeGenTest.cpp
         tests/codegen/StdConstructorCodeGenTest.cpp
         tests/codegen/QualifiedIdentifierCodeGenTest.cpp
         tests/codegen/GlobalVariableCodeGenTest.cpp
