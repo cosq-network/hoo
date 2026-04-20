@@ -14,7 +14,8 @@ This guide provides comprehensive documentation for all features of the Hooc pro
 8. [Memory Management](#memory-management)
 9. [String Operations](#string-operations)
 10. [Advanced Features](#advanced-features)
-11. [Command-Line Interface](#command-line-interface)
+11. [Exception Handling](#exception-handling)
+12. [Command-Line Interface](#command-line-interface)
 
 ## Type System
 
@@ -940,6 +941,86 @@ var person: Person? = getPerson();
 if person != null {
     if person.address != null {
         print(person.address.city);
+    }
+}
+```
+
+## Exception Handling
+
+Hooc supports exception handling with try-catch-finally blocks for robust error recovery.
+
+### Try-Catch-Finally
+
+```hoo
+func divide(a: int64, b: int64) -> int64 {
+    if b == 0 {
+        throw new RuntimeException("Division by zero");
+    }
+    return a / b;
+}
+
+func safeDivide(a: int64, b: int64) -> int64? {
+    try {
+        return divide(a, b);
+    } catch e: RuntimeException {
+        print("Error: " + e.getMessage());
+        return null;
+    } finally {
+        print("Operation completed");
+    }
+}
+```
+
+### Exception Types
+
+Built-in exception types:
+
+```hoo
+// RuntimeException - General runtime errors
+throw new RuntimeException("Something went wrong");
+
+// NullPointerException - When null is accessed
+throw new NullPointerException("Object is null");
+
+// IndexOutOfBoundsException - Array/string index out of range
+throw new IndexOutOfBoundsException("Index 10 out of bounds");
+
+// DivisionByZeroException - Division or modulo by zero
+throw new DivisionByZeroException("Cannot divide by zero");
+
+// InvalidCastException - Type casting failed
+throw new InvalidCastException("Cannot cast to String");
+```
+
+### Try-Finally
+
+For cleanup code that must always execute:
+
+```hoo
+func processFile() {
+    var file = openFile("data.txt");
+    try {
+        // Process file
+        readFile(file);
+    } finally {
+        closeFile(file);  // Always runs, even on error
+    }
+}
+```
+
+### Rethrow
+
+Re-throw exceptions after partial handling:
+
+```hoo
+func handleWithFallback() {
+    try {
+        riskyOperation();
+    } catch e: RuntimeException {
+        // Log the error
+        print("Error: " + e.getMessage());
+        // Re-throw to let caller handle
+        rethrow;
     }
 }
 ```

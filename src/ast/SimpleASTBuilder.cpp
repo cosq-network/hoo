@@ -281,6 +281,10 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return std::make_unique<BreakStatement>();
     } else if (ctx->continueStatement()) {
         return std::make_unique<ContinueStatement>();
+    } else if (ctx->tryCatchStatement()) {
+        return buildTryCatchStatement(ctx->tryCatchStatement());
+    } else if (ctx->throwStatement()) {
+        return buildThrowStatement(ctx->throwStatement());
     }
 
     return nullptr;
@@ -311,6 +315,72 @@ std::unique_ptr<ScopeStatement> SimpleASTBuilder::buildScopeStatement(HoocParser
         return nullptr;
     }
     return std::make_unique<ScopeStatement>(std::move(body));
+}
+
+std::unique_ptr<TryCatchStatement> SimpleASTBuilder::buildTryCatchStatement(HoocParser::TryCatchStatementContext* ctx) {
+    if (!ctx) {
+        return nullptr;
+    }
+
+    auto blocks = ctx->block();
+    if (blocks.empty()) {
+        return nullptr;
+    }
+
+    std::unique_ptr<Block> tryBlock = buildBlock(blocks[0]);
+    if (!tryBlock) {
+        return nullptr;
+    }
+
+    std::vector<TryCatchStatement::CatchClause> catchClauses;
+    std::unique_ptr<Block> finallyBlock;
+
+    if (ctx->CATCH().size() > 0) {
+        for (size_t i = 0; i < ctx->CATCH().size(); i++) {
+            TryCatchStatement::CatchClause clause;
+            size_t blockIdx = i + 1;
+
+            if (blockIdx < blocks.size()) {
+                auto idCtx = ctx->IDENTIFIER(i);
+                auto typeCtx = ctx->type(i);
+
+                if (idCtx && typeCtx) {
+                    clause.variable = idCtx->getText();
+                    clause.type = buildType(typeCtx);
+                    clause.block = buildBlock(blocks[blockIdx]);
+                    catchClauses.push_back(std::move(clause));
+                }
+            }
+        }
+    }
+
+    size_t finallyBlockIdx = 1 + ctx->CATCH().size();
+    if (finallyBlockIdx < blocks.size()) {
+        finallyBlock = buildBlock(blocks[finallyBlockIdx]);
+    }
+
+    return std::make_unique<TryCatchStatement>(
+        std::move(tryBlock),
+        std::move(catchClauses),
+        std::move(finallyBlock)
+    );
+}
+
+std::unique_ptr<ThrowStatement> SimpleASTBuilder::buildThrowStatement(HoocParser::ThrowStatementContext* ctx) {
+    if (!ctx) {
+        return nullptr;
+    }
+
+    if (ctx->RETHROW()) {
+        return std::make_unique<ThrowStatement>(nullptr);
+    }
+
+    std::unique_ptr<Expression> expr;
+    if (ctx->expression()) {
+        expr = buildExpression(ctx->expression());
+    }
+
+    return std::make_unique<ThrowStatement>(std::move(expr));
 }
 
 std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser::ForStatementContext* ctx) {

@@ -216,6 +216,22 @@ private:
      */
     std::unique_ptr<ast::ScopeStatement> buildScopeStatement(HoocParser::ScopeStatementContext* ctx);
 
+    /**
+     * @brief Builds a TryCatchStatement from its context.
+     * try...catch...finally syntax.
+     * @param ctx Try-catch statement context.
+     * @return Unique pointer to TryCatchStatement.
+     */
+    std::unique_ptr<ast::TryCatchStatement> buildTryCatchStatement(HoocParser::TryCatchStatementContext* ctx);
+
+    /**
+     * @brief Builds a ThrowStatement from its context.
+     * throw expression; syntax.
+     * @param ctx Throw statement context.
+     * @return Unique pointer to ThrowStatement.
+     */
+    std::unique_ptr<ast::ThrowStatement> buildThrowStatement(HoocParser::ThrowStatementContext* ctx);
+
     // ===== Expression Building =====
 
     /**

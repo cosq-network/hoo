@@ -59,6 +59,13 @@ Hooc reserves the following keywords:
 - `this` - Current object instance
 - `__hoo_init` - Internal module initialization (Reserved)
 
+**Exception Handling:**
+- `try` - Try block for exception handling
+- `catch` - Catch exception block
+- `finally` - Finally cleanup block
+- `throw` - Throw an exception
+- `rethrow` - Re-throw current exception
+
 **Literals:**
 - `true`, `false` - Boolean literals
 - `null` - Null literal
@@ -604,6 +611,42 @@ scope {
     var temp = getValue();
     // temp is automatically released at end of scope
 }
+```
+
+#### Try-Catch-Finally Statement
+
+```antlr
+tryCatchStatement:
+    TRY block (CATCH LPAREN IDENTIFIER COLON type RPAREN block)* (FINALLY block)?
+  | TRY block FINALLY block
+```
+
+**Example:**
+
+```hoo
+try {
+    var result = divide(10, 0);
+} catch e: RuntimeException {
+    print("Error: " + e.getMessage());
+} finally {
+    print("Cleanup");
+}
+```
+
+#### Throw Statement
+
+```antlr
+throwStatement:
+    THROW expression SEMICOLON
+  | RETHROW SEMICOLON
+```
+
+**Example:**
+
+```hoo
+throw new RuntimeException("Something went wrong");
+// or
+rethrow;
 ```
 
 ### Expressions

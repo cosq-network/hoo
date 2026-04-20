@@ -188,5 +188,50 @@ public:
     std::string toString() const override;
 };
 
+// Try-catch-finally statement
+class TryCatchStatement : public Statement {
+public:
+    struct CatchClause {
+        std::string variable;
+        std::unique_ptr<Type> type;
+        std::unique_ptr<Block> block;
+    };
+
+    TryCatchStatement(std::unique_ptr<Block> tryBlock,
+                     std::vector<CatchClause> catchClauses,
+                     std::unique_ptr<Block> finallyBlock)
+        : tryBlock_(std::move(tryBlock)),
+          catchClauses_(std::move(catchClauses)),
+          finallyBlock_(std::move(finallyBlock)) {}
+
+    std::string toString() const override;
+
+    const Block& getTryBlock() const { return *tryBlock_; }
+    const std::vector<CatchClause>& getCatchClauses() const { return catchClauses_; }
+    bool hasCatch() const { return !catchClauses_.empty(); }
+    const Block* getFinallyBlock() const { return finallyBlock_.get(); }
+    bool hasFinally() const { return finallyBlock_ != nullptr; }
+
+private:
+    std::unique_ptr<Block> tryBlock_;
+    std::vector<CatchClause> catchClauses_;
+    std::unique_ptr<Block> finallyBlock_;
+};
+
+// Throw statement (throw expression;)
+class ThrowStatement : public Statement {
+public:
+    ThrowStatement(std::unique_ptr<Expression> expression)
+        : expression_(std::move(expression)) {}
+
+    std::string toString() const override;
+
+    const Expression* getExpression() const { return expression_.get(); }
+    bool isRethrow() const { return expression_ == nullptr; }
+
+private:
+    std::unique_ptr<Expression> expression_;
+};
+
 } // namespace ast
 } // namespace hooc

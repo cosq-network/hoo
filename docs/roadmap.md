@@ -38,6 +38,8 @@ Hooc aims to be a modern, productive programming language that combines:
 - ✅ Increment/decrement operators (`++`, `--`)
 - ✅ Multiline string support (`"""..."""`)
 - ✅ Function modifiers (`public`, `private`, `async`) for member functions
+- ✅ Exception handling (`try-catch-finally`, `throw`, `rethrow`)
+- ✅ Exception runtime library (HooException with various exception types)
 - 🟡 Standard library implementation in progress (Basic IO and Strings complete)
 - 🟡 Module resolution implementation in progress (Built-in `hoo` resolution complete)
 

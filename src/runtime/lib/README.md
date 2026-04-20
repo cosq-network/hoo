@@ -18,6 +18,7 @@ The runtime library provides fundamental data types and memory management for Ho
 | `hoo_string.h` / `hoo_string.cpp` | UTF-8 string implementation with ARC |
 | `hoo_generic_array.h` / `hoo_generic_array.cpp` | Generic dynamic array using `std::any` |
 | `hoo_io.h` / `hoo_io.cpp` | I/O functions (print, println, readline, readchar) |
+| `hoo_exception.h` / `hoo_exception.cpp` | Exception handling with stack traces |
 
 ## Module and Class Reference
 
@@ -40,6 +41,19 @@ The IO module provides standard input and output functions.
 | `hoo.println` | `(string) -> void` | Prints a string followed by a newline to stdout. |
 | `hoo.readline` | `() -> string` | Reads a line from stdin. |
 | `hoo.readchar` | `() -> int64` | Reads a single character/byte from stdin. |
+
+### Exception Module: `hoo`
+
+The Exception module provides exception types for error handling.
+
+| Exception Type | Description |
+|----------------|-------------|
+| `RuntimeException` | General runtime errors |
+| `NullPointerException` | Null reference accessed |
+| `IndexOutOfBoundsException` | Array/string index out of range |
+| `DivisionByZeroException` | Division or modulo by zero |
+| `InvalidCastException` | Type casting failed |
+| `CustomException` | User-defined exceptions |
 
 ### Usage Examples
 
@@ -65,6 +79,15 @@ hoo.println("Greetings, " + inputName);
 // Object Creation (Standard Library Classes)
 var strObj = new hoo.String("Custom String");
 var arrObj = new hoo.Array(); // Empty dynamic array
+
+// Exception Handling
+try {
+    var result = divide(10, 0);
+} catch e: RuntimeException {
+    hoo.println("Error: " + e.getMessage());
+} finally {
+    hoo.println("Operation completed");
+}
 ```
 
 ## Implementation Guidelines

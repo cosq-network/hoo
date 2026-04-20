@@ -208,12 +208,13 @@ else()
     set(HOOC_RUNTIME_LIBRARY_TYPE STATIC)
 endif()
 
-# Hooc runtime library (reference counting, memory management, string support, generic array support, I/O)
+# Hooc runtime library (reference counting, memory management, string support, generic array support, I/O, exceptions)
 add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_string.cpp
     src/runtime/lib/hoo_generic_array.cpp
     src/runtime/lib/hoo_io.cpp
+    src/runtime/lib/hoo_exception.cpp
     src/runtime/llvm/hoo_io_registration.cpp
 )
 

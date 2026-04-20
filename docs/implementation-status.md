@@ -181,6 +181,15 @@ These features are fully implemented, tested, and production-ready:
   - ✅ `hoo.readline()` - Read line from stdin
   - ✅ `hoo.readchar()` - Read single character
 
+- **Exception Runtime** (`hoo_exception.h/cpp`)
+  - ✅ Exception type (`HooException`)
+  - ✅ Exception types: RuntimeException, NullPointerException, IndexOutOfBoundsException, DivisionByZeroException, InvalidCastException, CustomException
+  - ✅ Exception creation
+  - ✅ Exception throwing (`hoo_exception_throw()`)
+  - ✅ Exception catching (`hoo_exception_current()`)
+  - ✅ Stack trace support
+  - ✅ Reference counting
+
 #### Module System
 
 - **Import Statements** (Partial)
@@ -272,10 +281,12 @@ These features are planned but not yet started:
 #### Language Features
 
 - **Error Handling**
-  - `try-catch` blocks
-  - Exception types
-  - Error propagation
-  - Result types
+  - ✅ `try-catch-finally` blocks
+  - ✅ Exception types (RuntimeException, NullPointerException, etc.)
+  - ✅ Exception throwing (`throw`)
+  - ✅ Rethrow (`rethrow`)
+  - ✅ Stack trace support
+  - ❌ Result types (planned)
 
 - **Advanced Generics**
   - Generic constraints (`T: Constraint`)
@@ -426,6 +437,7 @@ These features are planned but not yet started:
 | Implementation Status | ✅ | Complete |
 | Roadmap | ✅ | Complete |
 | Module System Design | ✅ | Complete |
+| Standard Library Design | ✅ | Complete |
 | API Documentation | ❌ | Not Started |
 
 ## See Also
@@ -434,3 +446,4 @@ These features are planned but not yet started:
 - [Features Guide](features.md) - Feature documentation
 - [Roadmap](roadmap.md) - Future development plans
 - [Module System Design](module-system-design.md) - Detailed module system specification
+- [Standard Library Design](standard-library-design.md) - Planned standard library modules

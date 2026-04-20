@@ -344,6 +344,7 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 - ✅ Reference counting (ARC)
 - ✅ String library
 - ✅ Module system basics
+- ✅ Exception handling (try-catch-finally, throw, rethrow)
 
 ### Partially Implemented
 - 🟡 For loops (range syntax needs work)

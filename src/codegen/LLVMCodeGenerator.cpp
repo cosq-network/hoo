@@ -4,6 +4,7 @@
 #include "runtime/llvm/RuntimeMethodRegistry.h"
 #include "../ast/AST.h"
 #include "../ast/ClassDeclaration.h"
+#include "../ast/Type.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/Support/raw_ostream.h"
@@ -62,6 +63,11 @@ Function* LLVMCodeGenerator::getStringFunc(const std::string& name) {
 
 Function* LLVMCodeGenerator::getArrayFunc(const std::string& name) {
     std::string fullName = "hoo_array_" + name;
+    return module_->getFunction(fullName);
+}
+
+Function* LLVMCodeGenerator::getExceptionFunc(const std::string& name) {
+    std::string fullName = "hoo_exception_" + name;
     return module_->getFunction(fullName);
 }
 
@@ -292,6 +298,10 @@ void LLVMCodeGenerator::generateLLVMStatement(const Statement& stmt) {
         generateBreakStatement(*breakStmt);
     } else if (auto continueStmt = dynamic_cast<const ContinueStatement*>(&stmt)) {
         generateContinueStatement(*continueStmt);
+    } else if (auto tryCatchStmt = dynamic_cast<const TryCatchStatement*>(&stmt)) {
+        generateTryCatchStatement(*tryCatchStmt);
+    } else if (auto throwStmt = dynamic_cast<const ThrowStatement*>(&stmt)) {
+        generateThrowStatement(*throwStmt);
     } else {
         addError("Unsupported statement type");
     }
@@ -1604,6 +1614,166 @@ void LLVMCodeGenerator::generateContinueStatement(const ContinueStatement& stmt)
         return;
     }
     builder_->CreateBr(loopStack_.back().continueBlock);
+}
+
+void LLVMCodeGenerator::generateTryCatchStatement(const TryCatchStatement& stmt) {
+    Function* currentFunc = builder_->GetInsertBlock()->getParent();
+    LLVMType* i8PtrTy = llvm::PointerType::get(context_, 0);
+
+    BasicBlock* tryEntryBlock = BasicBlock::Create(context_, "try.entry", currentFunc);
+    BasicBlock* catchEntryBlock = BasicBlock::Create(context_, "catch.entry", currentFunc);
+    BasicBlock* finallyBlock = nullptr;
+    BasicBlock* mergeBlock = BasicBlock::Create(context_, "try.end", currentFunc);
+
+    builder_->CreateBr(tryEntryBlock);
+    builder_->SetInsertPoint(tryEntryBlock);
+
+    Value* exnPtr = builder_->CreateAlloca(i8PtrTy, nullptr, "exn.save");
+    builder_->CreateStore(Constant::getNullValue(i8PtrTy), exnPtr);
+
+    generateBlock(stmt.getTryBlock());
+
+    if (!builder_->GetInsertBlock()->getTerminator()) {
+        if (stmt.hasFinally()) {
+            finallyBlock = BasicBlock::Create(context_, "finally.entry", currentFunc);
+            builder_->CreateBr(finallyBlock);
+            builder_->SetInsertPoint(finallyBlock);
+            generateBlock(*stmt.getFinallyBlock());
+            if (!builder_->GetInsertBlock()->getTerminator()) {
+                builder_->CreateBr(mergeBlock);
+            }
+        } else {
+            builder_->CreateBr(mergeBlock);
+        }
+    }
+
+    if (stmt.hasCatch()) {
+        builder_->SetInsertPoint(catchEntryBlock);
+
+        Value* caughtExn = builder_->CreateLoad(i8PtrTy, exnPtr, "caught.exn");
+
+        auto* getTypeIdFunc = getExceptionFunc("get_type_id");
+        if (!getTypeIdFunc) {
+            addError("hoo_exception_get_type_id not available");
+            return;
+        }
+
+        BasicBlock* nextCatchBlock = mergeBlock;
+        for (size_t i = stmt.getCatchClauses().size(); i > 0; i--) {
+            const auto& catchClause = stmt.getCatchClauses()[i - 1];
+            BasicBlock* currentCatchBlock = BasicBlock::Create(
+                context_, "catch." + catchClause.variable, currentFunc);
+            BasicBlock* typeMatchBlock = BasicBlock::Create(
+                context_, "catch.type.match", currentFunc);
+
+            Value* loadExn = builder_->CreateLoad(i8PtrTy, exnPtr, "exn");
+
+            if (i == stmt.getCatchClauses().size()) {
+                builder_->SetInsertPoint(catchEntryBlock);
+            } else {
+                builder_->SetInsertPoint(nextCatchBlock);
+            }
+
+            builder_->CreateBr(currentCatchBlock);
+            builder_->SetInsertPoint(currentCatchBlock);
+
+            int64_t typeId = 99;
+            if (auto* primType = dynamic_cast<const PrimitiveType*>(catchClause.type.get())) {
+                switch (primType->getKind()) {
+                    case hooc::ast::PrimitiveTypeKind::STRING: typeId = 0; break;
+                    case hooc::ast::PrimitiveTypeKind::INT64: typeId = 0; break;
+                    default: typeId = 99;
+                }
+            }
+
+            Value* typeIdValue = builder_->CreateCall(
+                getTypeIdFunc,
+                {loadExn},
+                "type.id"
+            );
+
+            Value* cmp = builder_->CreateICmpEQ(
+                typeIdValue,
+                ConstantInt::get(LLVMType::getInt64Ty(context_), typeId),
+                "cmp"
+            );
+
+            builder_->CreateCondBr(cmp, typeMatchBlock, nextCatchBlock);
+
+            builder_->SetInsertPoint(typeMatchBlock);
+            AllocaInst* exnVar = createEntryBlockAlloca(
+                currentFunc, catchClause.variable, i8PtrTy);
+            builder_->CreateStore(loadExn, exnVar);
+            namedValues_[catchClause.variable] = exnVar;
+
+            generateBlock(*catchClause.block);
+
+            if (!builder_->GetInsertBlock()->getTerminator()) {
+                if (stmt.hasFinally()) {
+                    builder_->CreateBr(finallyBlock);
+                } else {
+                    builder_->CreateBr(mergeBlock);
+                }
+            }
+            namedValues_.erase(catchClause.variable);
+
+            nextCatchBlock = currentCatchBlock;
+        }
+
+        builder_->SetInsertPoint(nextCatchBlock);
+        builder_->CreateBr(mergeBlock);
+    } else {
+        builder_->SetInsertPoint(catchEntryBlock);
+        builder_->CreateBr(mergeBlock);
+    }
+
+    builder_->SetInsertPoint(mergeBlock);
+}
+
+void LLVMCodeGenerator::generateThrowStatement(const ThrowStatement& stmt) {
+    if (stmt.isRethrow()) {
+        builder_->CreateResume(nullptr);
+        return;
+    }
+
+    Value* exception = generateLLVMExpression(*stmt.getExpression());
+    if (!exception) {
+        addError("Failed to generate throw expression");
+        return;
+    }
+
+    auto* fromCstrFunc = getStringFunc("from_cstr");
+    auto* createFunc = getExceptionFunc("create");
+    auto* throwFunc = getExceptionFunc("throw");
+
+    if (!fromCstrFunc || !createFunc || !throwFunc) {
+        addError("Exception runtime functions not available for throw");
+        return;
+    }
+
+    llvm::Value* messageValue = nullptr;
+    llvm::Type* i8PtrTy = llvm::PointerType::get(context_, 0);
+
+    if (exception->getType() == i8PtrTy) {
+        messageValue = exception;
+    } else if (auto* castExpr = llvm::cast< llvm::Value>(exception)) {
+        messageValue = builder_->CreateBitCast(castExpr, i8PtrTy, "msg");
+    } else {
+        messageValue = builder_->CreateCall(
+            fromCstrFunc,
+            {exception},
+            "msg"
+        );
+    }
+
+    llvm::Value* exc = builder_->CreateCall(
+        createFunc,
+        {ConstantInt::get(LLVMType::getInt64Ty(context_), 0), messageValue},
+        "exc"
+    );
+
+    builder_->CreateCall(throwFunc, {exc});
+    builder_->CreateUnreachable();
 }
 
 void LLVMCodeGenerator::generateVariableDeclaration(const VariableDeclaration& decl) {

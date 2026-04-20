@@ -39,6 +39,11 @@ THIS: 'this';
 TRUE: 'true';
 FALSE: 'false';
 NULL: 'null';
+TRY: 'try';
+CATCH: 'catch';
+FINALLY: 'finally';
+THROW: 'throw';
+RETHROW: 'rethrow';
 
 // Primitive Types
 INT8: 'int8';
@@ -203,6 +208,17 @@ statement
     | scopeStatement
     | breakStatement
     | continueStatement
+    | tryCatchStatement
+    | throwStatement
+    ;
+
+tryCatchStatement
+    : TRY block (CATCH LPAREN IDENTIFIER COLON type RPAREN block)* (FINALLY block)?
+    | TRY block FINALLY block
+    ;
+
+throwStatement: THROW expression SEMICOLON
+    | RETHROW SEMICOLON
     ;
 
 block: LBRACE statement* RBRACE;

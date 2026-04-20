@@ -161,6 +161,11 @@ public:
     /// @return Function pointer, or nullptr if not found
     llvm::Function* getArrayFunc(const std::string& name);
 
+    /// @brief Get an exception runtime function by name
+    /// @param name Function name suffix (e.g., "create" for hoo_exception_create)
+    /// @return Function pointer, or nullptr if not found
+    llvm::Function* getExceptionFunc(const std::string& name);
+
     /// @brief Get core allocation function
     llvm::Function* getAllocFunc() const { return hoo_alloc_func_; }
 
@@ -483,6 +488,14 @@ private:
     /// @brief Generate continue statement (skip to next iteration)
     /// @param stmt Continue statement node
     void generateContinueStatement(const ast::ContinueStatement& stmt);
+
+    /// @brief Generate try-catch-finally statement
+    /// @param stmt Try-catch statement node
+    void generateTryCatchStatement(const ast::TryCatchStatement& stmt);
+
+    /// @brief Generate throw statement
+    /// @param stmt Throw statement node
+    void generateThrowStatement(const ast::ThrowStatement& stmt);
 
     /// @brief Generate variable declaration
     /// @param decl Variable declaration node

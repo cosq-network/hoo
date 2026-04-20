@@ -185,6 +185,19 @@ std::string ContinueStatement::toString() const {
     return "ContinueStatement";
 }
 
+std::string TryCatchStatement::toString() const {
+    std::stringstream ss;
+    ss << "TryCatchStatement";
+    if (hasFinally()) {
+        ss << " (with finally)";
+    }
+    return ss.str();
+}
+
+std::string ThrowStatement::toString() const {
+    return isRethrow() ? "RethrowStatement" : "ThrowStatement";
+}
+
 // Expression implementations
 std::string PrimaryExpression::toString() const {
     std::stringstream ss;
