@@ -284,11 +284,10 @@ void hoo_math_declare_llvm_functions(
     DECLARE_MATH_FN(fract, doubleTy, doubleTy)
 
     // Declare more bare name aliases for int64 and double overloads
+    // Note: Avoiding bare 'min'/'max' aliases to prevent conflicts with user-defined functions
     {
         auto i64fty = FunctionType::get(i64Ty, {i64Ty}, false);
         Function::Create(i64fty, Function::ExternalLinkage, "abs", &module);
-        Function::Create(i64fty, Function::ExternalLinkage, "min", &module);
-        Function::Create(i64fty, Function::ExternalLinkage, "max", &module);
         Function::Create(i64fty, Function::ExternalLinkage, "sign", &module);
         Function::Create(i64fty, Function::ExternalLinkage, "isEven", &module);
         Function::Create(i64fty, Function::ExternalLinkage, "isOdd", &module);
@@ -304,19 +303,10 @@ void hoo_math_declare_llvm_functions(
         auto double3 = FunctionType::get(doubleTy, {doubleTy, doubleTy}, false);
         Function::Create(double3, Function::ExternalLinkage, "pow", &module);
         Function::Create(double3, Function::ExternalLinkage, "atan2", &module);
-        Function::Create(double3, Function::ExternalLinkage, "min", &module);
-        Function::Create(double3, Function::ExternalLinkage, "max", &module);
         Function::Create(double3, Function::ExternalLinkage, "fmod", &module);
 
         auto clampfty = FunctionType::get(doubleTy, {doubleTy, doubleTy, doubleTy}, false);
         Function::Create(clampfty, Function::ExternalLinkage, "clamp", &module);
-
-        Function::Create(FunctionType::get(doubleTy, {}, false), Function::ExternalLinkage, "PI", &module);
-        Function::Create(FunctionType::get(doubleTy, {}, false), Function::ExternalLinkage, "E", &module);
-        Function::Create(FunctionType::get(doubleTy, {}, false), Function::ExternalLinkage, "TAU", &module);
-        Function::Create(FunctionType::get(doubleTy, {}, false), Function::ExternalLinkage, "INF", &module);
-        Function::Create(FunctionType::get(doubleTy, {}, false), Function::ExternalLinkage, "NEG_INF", &module);
-        Function::Create(FunctionType::get(doubleTy, {}, false), Function::ExternalLinkage, "NAN", &module);
     }
 
     // Random

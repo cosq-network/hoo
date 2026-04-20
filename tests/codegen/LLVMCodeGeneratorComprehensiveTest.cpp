@@ -1377,7 +1377,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_RecursiveLikePattern) {
 
 TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_TernaryLikeLogic) {
     std::string code = R"(
-        func:int64 max(a: int64, b: int64) {
+        func:int64 find_max(a: int64, b: int64) {
             if (a > b) {
                 return a;
             } else {
@@ -1385,7 +1385,7 @@ TEST_F(LLVMCodeGeneratorComprehensiveTest, Complex_TernaryLikeLogic) {
             }
         }
         func:int64 test() {
-            return max(10, 20);
+            return find_max(10, 20);
         }
     )";
     auto ast = parseAndBuildAST(code);
