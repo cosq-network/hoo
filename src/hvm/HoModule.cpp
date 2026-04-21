@@ -171,7 +171,7 @@ bool HoModule::parseHeader(const std::vector<uint8_t>& data, size_t& offset) {
     (void)symtab_offset;
     (void)symtab_entry_count;
 
-    offset = HEADER_SIZE + section_count * 24;
+    offset = HEADER_SIZE + section_count * 40;
     return true;
 }
 
@@ -180,15 +180,16 @@ bool HoModule::parseSectionTable(const std::vector<uint8_t>& data, size_t& offse
     sections_.reserve(section_count);
 
     size_t table_offset = HEADER_SIZE;
+    constexpr size_t SECTION_ENTRY_SIZE = 40;
 
     for (uint64_t i = 0; i < section_count; ++i) {
         Section section;
 
-        uint32_t name_offset = *reinterpret_cast<const uint32_t*>(data.data() + table_offset + 0x00);
-        section.name = getString(name_offset);
+        uint64_t name_offset = *reinterpret_cast<const uint64_t*>(data.data() + table_offset + 0x00);
+        section.name = getString(static_cast<uint32_t>(name_offset));
 
-        section.type = static_cast<SectionType>(*reinterpret_cast<const uint32_t*>(data.data() + table_offset + 0x04));
-        section.flags = *reinterpret_cast<const uint32_t*>(data.data() + table_offset + 0x08);
+        section.type = static_cast<SectionType>(*reinterpret_cast<const uint32_t*>(data.data() + table_offset + 0x08));
+        section.flags = *reinterpret_cast<const uint32_t*>(data.data() + table_offset + 0x0C);
         section.virtual_size = *reinterpret_cast<const uint64_t*>(data.data() + table_offset + 0x10);
         section.file_offset = *reinterpret_cast<const uint64_t*>(data.data() + table_offset + 0x18);
         section.alignment = *reinterpret_cast<const uint64_t*>(data.data() + table_offset + 0x20);
@@ -203,7 +204,7 @@ bool HoModule::parseSectionTable(const std::vector<uint8_t>& data, size_t& offse
         }
 
         sections_.push_back(section);
-        table_offset += 24;
+        table_offset += SECTION_ENTRY_SIZE;
     }
 
     offset = table_offset;
@@ -338,7 +339,7 @@ void HoModule::serializeHeader(std::vector<uint8_t>& output) const {
     *reinterpret_cast<uint64_t*>(output.data() + 0x10) = entry_point_;
     *reinterpret_cast<uint64_t*>(output.data() + 0x18) = base_address_;
     *reinterpret_cast<uint64_t*>(output.data() + 0x20) = sections_.size();
-    *reinterpret_cast<uint64_t*>(output.data() + 0x28) = sections_.empty() ? 0 : 64 + sections_.size() * 24;
+    *reinterpret_cast<uint64_t*>(output.data() + 0x28) = sections_.empty() ? 0 : 64 + sections_.size() * 40;
     *reinterpret_cast<uint32_t*>(output.data() + 0x30) = static_cast<uint32_t>(symbols_.size());
     *reinterpret_cast<uint32_t*>(output.data() + 0x34) = static_cast<uint32_t>(relocations_.size());
     *reinterpret_cast<uint32_t*>(output.data() + 0x38) = static_cast<uint32_t>(exports_.size());
@@ -347,18 +348,19 @@ void HoModule::serializeHeader(std::vector<uint8_t>& output) const {
 
 void HoModule::serializeSectionTable(std::vector<uint8_t>& output) const {
     size_t table_start = output.size();
-    output.resize(table_start + sections_.size() * 24);
+    constexpr size_t SECTION_ENTRY_SIZE = 40;
+    output.resize(table_start + sections_.size() * SECTION_ENTRY_SIZE);
 
-    size_t data_offset = HEADER_SIZE + sections_.size() * 24;
+    size_t data_offset = HEADER_SIZE + sections_.size() * SECTION_ENTRY_SIZE;
 
     for (size_t i = 0; i < sections_.size(); ++i) {
         const Section& sec = sections_[i];
-        uint32_t name_offset = addString(sec.name);
-        size_t entry_offset = table_start + i * 24;
+        uint64_t name_offset = addString(sec.name);
+        size_t entry_offset = table_start + i * SECTION_ENTRY_SIZE;
 
-        *reinterpret_cast<uint32_t*>(output.data() + entry_offset + 0x00) = name_offset;
-        *reinterpret_cast<uint32_t*>(output.data() + entry_offset + 0x04) = static_cast<uint32_t>(sec.type);
-        *reinterpret_cast<uint32_t*>(output.data() + entry_offset + 0x08) = sec.flags;
+        *reinterpret_cast<uint64_t*>(output.data() + entry_offset + 0x00) = name_offset;
+        *reinterpret_cast<uint32_t*>(output.data() + entry_offset + 0x08) = static_cast<uint32_t>(sec.type);
+        *reinterpret_cast<uint32_t*>(output.data() + entry_offset + 0x0C) = sec.flags;
         *reinterpret_cast<uint64_t*>(output.data() + entry_offset + 0x10) = sec.virtual_size;
 
         if (sec.type != SectionType::SHT_BSS && !sec.data.empty()) {
