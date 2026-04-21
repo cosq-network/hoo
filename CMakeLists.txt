@@ -159,6 +159,7 @@ endif()
 
 # HVM (Hooc Virtual Machine) library - object file format and module management
 add_library(hvm STATIC
+    src/hvm/HoModuleBase.cpp
     src/hvm/HoModule.cpp
     src/hvm/HInstruction.cpp
 )
@@ -272,8 +273,32 @@ target_include_directories(hooc PUBLIC
     ${CMAKE_SOURCE_DIR}/src/core
 )
 
+# Create ho compiler library
+add_library(ho-lib
+    src/ho/HoCLI.cpp
+)
+
+target_include_directories(ho-lib PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/ho
+)
+
+# Create ho compiler executable
+add_executable(ho
+    src/ho/main.cpp
+)
+
+target_link_libraries(ho
+    ho-lib
+)
+
+target_include_directories(ho PUBLIC
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/ho
+)
+
 # Install targets
-install(TARGETS hooc hoo-compiler hoo-parser hoort
+install(TARGETS hooc ho hoo-compiler hoo-parser hoort
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -381,6 +406,7 @@ if(HOOC_BUILD_TESTS)
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/core/SymbolManglerTest.cpp
+        tests/ho/HoCLITest.cpp
         tests/hvm/HInstructionTest.cpp
         tests/hvm/HoModuleTest.cpp
     )
@@ -388,6 +414,7 @@ if(HOOC_BUILD_TESTS)
     target_link_libraries(hoo-tests
         hvm
         hoo-compiler
+        ho-lib
         GTest::gtest
         GTest::gtest_main
     )
@@ -397,6 +424,7 @@ if(HOOC_BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/core
+        ${CMAKE_SOURCE_DIR}/src/ho
         ${CMAKE_SOURCE_DIR}/src/hvm
         ${CMAKE_SOURCE_DIR}/src/jit
         ${CMAKE_SOURCE_DIR}/src/parsing

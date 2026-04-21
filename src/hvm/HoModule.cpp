@@ -7,7 +7,24 @@
 namespace hvm {
 
 HoModule::HoModule()
-    : magic_(MAGIC)
+    : HoModuleBase(ModuleType::Compiled, "")
+    , magic_(MAGIC)
+    , version_major_(VERSION_MAJOR)
+    , version_minor_(VERSION_MINOR)
+    , file_type_(FileType::ObjectFile)
+    , target_arch_(TargetArch::Any)
+    , endianness_(Endianness::Little)
+    , pointer_size_(8)
+    , flags_(0)
+    , entry_point_(0)
+    , base_address_(0)
+    , string_pool_("\0")
+{
+}
+
+HoModule::HoModule(const std::string& name)
+    : HoModuleBase(ModuleType::Compiled, name)
+    , magic_(MAGIC)
     , version_major_(VERSION_MAJOR)
     , version_minor_(VERSION_MINOR)
     , file_type_(FileType::ObjectFile)
@@ -27,78 +44,8 @@ std::unique_ptr<HoModule> HoModule::create() {
     return std::unique_ptr<HoModule>(new HoModule());
 }
 
-std::unique_ptr<HoModule> HoModule::parse(const std::vector<uint8_t>& data) {
-    auto module = std::unique_ptr<HoModule>(new HoModule());
-    size_t offset = 0;
-
-    if (!module->parseHeader(data, offset)) {
-        return nullptr;
-    }
-
-    if (!module->parseSectionTable(data, offset)) {
-        return nullptr;
-    }
-
-    const Section* symtab = module->getSection(".symtab");
-    if (symtab) {
-        module->parseSymbols(data, *symtab);
-    }
-
-    const Section* reloc = module->getSection(".reloc");
-    if (reloc) {
-        module->parseRelocations(data, *reloc);
-    }
-
-    const Section* exports = module->getSection(".export");
-    if (exports) {
-        module->parseExports(data, *exports);
-    }
-
-    const Section* imports = module->getSection(".import");
-    if (imports) {
-        module->parseImports(data, *imports);
-    }
-
-    const Section* funcmeta = module->getSection(".funcmeta");
-    if (funcmeta) {
-        module->parseFunctionMetadata(data, *funcmeta);
-    }
-
-    return module;
-}
-
-std::unique_ptr<HoModule> HoModule::parse(const std::string& file_path) {
-    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        return nullptr;
-    }
-
-    size_t size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::vector<uint8_t> data(size);
-    if (!file.read(reinterpret_cast<char*>(data.data()), size)) {
-        return nullptr;
-    }
-
-    return parse(data);
-}
-
-std::unique_ptr<HoModule> HoModule::parse(FILE* file) {
-    if (!file) {
-        return nullptr;
-    }
-
-    fseek(file, 0, SEEK_END);
-    size_t size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    std::vector<uint8_t> data(size);
-    if (fread(data.data(), 1, size, file) != size) {
-        return nullptr;
-    }
-
-    return parse(data);
+std::unique_ptr<HoModule> HoModule::create(const std::string& name) {
+    return std::unique_ptr<HoModule>(new HoModule(name));
 }
 
 bool HoModule::serialize(std::vector<uint8_t>& output) const {
@@ -230,7 +177,7 @@ bool HoModule::parseSymbols(const std::vector<uint8_t>& data, const Section& sym
         symbol.section_index = *reinterpret_cast<const int32_t*>(entry + 0x18);
         symbol.symbol_index = *reinterpret_cast<const uint32_t*>(entry + 0x1C);
 
-        symbols_.push_back(symbol);
+        addSymbol(symbol);
     }
 
     return true;
@@ -562,7 +509,7 @@ void HoModule::setOptimizationLevel(uint8_t level) { flags_ = (flags_ & ~0x0F00)
 std::vector<uint8_t> HoModule::encodeInstructions(const std::vector<HInstruction>& instructions) const {
     std::vector<uint8_t> encoded;
     encoded.reserve(instructions.size() * 8);
-    
+
     for (const auto& inst : instructions) {
         std::vector<uint8_t> bytes;
         if (inst.isExtended()) {
@@ -572,13 +519,13 @@ std::vector<uint8_t> HoModule::encodeInstructions(const std::vector<HInstruction
         }
         encoded.insert(encoded.end(), bytes.begin(), bytes.end());
     }
-    
+
     return encoded;
 }
 
 std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t>& data, bool extended) const {
     std::vector<HInstruction> instructions;
-    
+
     if (extended) {
         for (size_t i = 0; i + 8 <= data.size(); i += 8) {
             std::vector<uint8_t> instrBytes(data.begin() + i, data.begin() + i + 8);
@@ -596,17 +543,17 @@ std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t
             }
         }
     }
-    
+
     return instructions;
 }
 
 std::string HoModule::instructionsToAssembly(const std::vector<HInstruction>& instructions) const {
     std::ostringstream oss;
-    
+
     for (size_t i = 0; i < instructions.size(); ++i) {
         oss << "  " << i << ": " << instructions[i].toAssembly() << "\n";
     }
-    
+
     return oss.str();
 }
 
@@ -614,39 +561,168 @@ std::vector<HInstruction> HoModule::parseAssembly(const std::string& assembly) c
     std::vector<HInstruction> instructions;
     std::istringstream iss(assembly);
     std::string line;
-    
+
     while (std::getline(iss, line)) {
         if (line.empty() || line[0] == '#') continue;
-        
+
         size_t colonPos = line.find(':');
         if (colonPos != std::string::npos) {
             line = line.substr(colonPos + 1);
         }
-        
+
         line.erase(0, line.find_first_not_of(" \t"));
-        
+
         if (line.empty()) continue;
-        
+
         std::istringstream lineIss(line);
         std::string mnemonic;
         lineIss >> mnemonic;
-        
+
         if (mnemonic.empty()) continue;
-        
+
         Opcode opcode = HInstruction::stringToOpcode(mnemonic);
         if (opcode == Opcode::UNKNOWN) {
             continue;
         }
-        
+
         HInstruction inst(opcode);
         instructions.push_back(inst);
     }
-    
+
     return instructions;
 }
 
 std::string HoModule::getError() const { return error_; }
 bool HoModule::hasError() const { return !error_.empty(); }
 void HoModule::clearError() { error_.clear(); }
+
+bool HoModule::serializeToFile(const std::string& file_path) const {
+    std::vector<uint8_t> data;
+    if (!serialize(data)) {
+        return false;
+    }
+
+    std::ofstream file(file_path, std::ios::binary);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    file.write(reinterpret_cast<const char*>(data.data()), data.size());
+    return file.good();
+}
+
+bool HoModule::deserializeFromFile(const std::string& file_path) {
+    auto parsed = parse(file_path);
+    if (!parsed) {
+        error_ = "Failed to parse module from file";
+        return false;
+    }
+
+    std::vector<uint8_t> data;
+    parsed->serialize(data);
+    return deserialize(data);
+}
+
+bool HoModule::deserialize(const std::vector<uint8_t>& input) {
+    auto parsed = parse(input);
+    if (!parsed) {
+        error_ = "Failed to parse module";
+        return false;
+    }
+
+    magic_ = parsed->magic_;
+    version_major_ = parsed->version_major_;
+    version_minor_ = parsed->version_minor_;
+    file_type_ = parsed->file_type_;
+    target_arch_ = parsed->target_arch_;
+    endianness_ = parsed->endianness_;
+    pointer_size_ = parsed->pointer_size_;
+    flags_ = parsed->flags_;
+    entry_point_ = parsed->entry_point_;
+    base_address_ = parsed->base_address_;
+    sections_ = std::move(parsed->sections_);
+    string_pool_ = std::move(parsed->string_pool_);
+    symbols_ = std::move(parsed->symbols_);
+    relocations_ = std::move(parsed->relocations_);
+    exports_ = std::move(parsed->exports_);
+    imports_ = std::move(parsed->imports_);
+    function_metadata_ = std::move(parsed->function_metadata_);
+
+    return true;
+}
+
+std::unique_ptr<HoModule> HoModule::parse(const std::vector<uint8_t>& data) {
+    auto module = std::unique_ptr<HoModule>(new HoModule());
+    size_t offset = 0;
+
+    if (!module->parseHeader(data, offset)) {
+        return nullptr;
+    }
+
+    if (!module->parseSectionTable(data, offset)) {
+        return nullptr;
+    }
+
+    const Section* symtab = module->getSection(".symtab");
+    if (symtab) {
+        module->parseSymbols(data, *symtab);
+    }
+
+    const Section* reloc = module->getSection(".reloc");
+    if (reloc) {
+        module->parseRelocations(data, *reloc);
+    }
+
+    const Section* exports = module->getSection(".export");
+    if (exports) {
+        module->parseExports(data, *exports);
+    }
+
+    const Section* imports = module->getSection(".import");
+    if (imports) {
+        module->parseImports(data, *imports);
+    }
+
+    const Section* funcmeta = module->getSection(".funcmeta");
+    if (funcmeta) {
+        module->parseFunctionMetadata(data, *funcmeta);
+    }
+
+    return module;
+}
+
+std::unique_ptr<HoModule> HoModule::parse(const std::string& file_path) {
+    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) {
+        return nullptr;
+    }
+
+    size_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+
+    std::vector<uint8_t> data(size);
+    if (!file.read(reinterpret_cast<char*>(data.data()), size)) {
+        return nullptr;
+    }
+
+    return parse(data);
+}
+
+std::unique_ptr<HoModule> HoModule::parse(FILE* file) {
+    if (!file) {
+        return nullptr;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    std::vector<uint8_t> data(size);
+    if (fread(data.data(), 1, size, file) != size) {
+        return nullptr;
+    }
+
+    return parse(data);
+}
 
 }

@@ -97,6 +97,12 @@ public:
 
     virtual std::string getSymbolSignature(const std::string& symbol_name) const;
 
+    virtual bool serialize(std::vector<uint8_t>& output) const;
+    virtual bool deserialize(const std::vector<uint8_t>& input);
+
+    virtual bool serializeToFile(const std::string& file_path) const;
+    virtual bool deserializeFromFile(const std::string& file_path);
+
     static std::string getModuleTypeName(ModuleType type);
     static std::string mangleSymbol(const std::string& symbol_name, SymbolType sym_type);
 
@@ -112,7 +118,7 @@ protected:
     std::unordered_set<std::string> dependency_names_;
     std::vector<std::string> dependency_order_;
 
-    std::string error_;
+    mutable std::string error_;
 
     virtual const ModuleSymbol* findSymbolInternal(const std::string& name) const;
     virtual void checkCircularDependencies(const std::string& module_name,
@@ -142,6 +148,12 @@ public:
 
     void* resolveFunction(const std::string& name) const;
     void* resolveObject(const std::string& name) const;
+
+    bool serialize(std::vector<uint8_t>& output) const override;
+    bool deserialize(const std::vector<uint8_t>& input) override;
+
+    bool serializeToFile(const std::string& file_path) const override;
+    bool deserializeFromFile(const std::string& file_path) override;
 
     bool isLinked() const { return linked_; }
     void setLinked(bool linked) { linked_ = linked; }
@@ -174,6 +186,12 @@ public:
 
     void* resolveSymbol(const std::string& symbol_name) const;
     void* resolveSymbolMangled(const std::string& mangled_name) const;
+
+    bool serialize(std::vector<uint8_t>& output) const override;
+    bool deserialize(const std::vector<uint8_t>& input) override;
+
+    bool serializeToFile(const std::string& file_path) const override;
+    bool deserializeFromFile(const std::string& file_path) override;
 
     bool isLibraryLoaded() const { return library_loaded_; }
     void* getLibraryHandle() const { return library_handle_; }

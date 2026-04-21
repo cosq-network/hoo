@@ -149,17 +149,21 @@ struct FunctionMetadata {
     uint32_t debug_offset;
 };
 
-class HoModule {
+class HoModule : public HoModuleBase {
 public:
     HoModule();
-    ~HoModule();
+    explicit HoModule(const std::string& name);
+    ~HoModule() override;
 
     static std::unique_ptr<HoModule> create();
-    static std::unique_ptr<HoModule> parse(const std::vector<uint8_t>& data);
-    static std::unique_ptr<HoModule> parse(const std::string& file_path);
-    static std::unique_ptr<HoModule> parse(FILE* file);
+    static std::unique_ptr<HoModule> create(const std::string& name);
 
-    bool serialize(std::vector<uint8_t>& output) const;
+    bool serialize(std::vector<uint8_t>& output) const override;
+    bool deserialize(const std::vector<uint8_t>& input) override;
+
+    bool serializeToFile(const std::string& file_path) const override;
+    bool deserializeFromFile(const std::string& file_path) override;
+
     bool serialize(const std::string& file_path) const;
     bool serialize(FILE* file) const;
 
@@ -202,14 +206,14 @@ public:
     std::string getString(uint32_t offset) const;
     const std::string& getStringPool() const;
 
+    void addRelocation(const Relocation& reloc);
+    const std::vector<Relocation>& getRelocations() const;
+    std::vector<Relocation>& getRelocations();
+
     void addSymbol(const Symbol& symbol);
     const std::vector<Symbol>& getSymbols() const;
     std::vector<Symbol>& getSymbols();
     const Symbol* getSymbol(const std::string& name) const;
-
-    void addRelocation(const Relocation& reloc);
-    const std::vector<Relocation>& getRelocations() const;
-    std::vector<Relocation>& getRelocations();
 
     void addExport(const ExportEntry& exp);
     const std::vector<ExportEntry>& getExports() const;
@@ -241,9 +245,13 @@ public:
     std::string instructionsToAssembly(const std::vector<HInstruction>& instructions) const;
     std::vector<HInstruction> parseAssembly(const std::string& assembly) const;
 
-    std::string getError() const;
-    bool hasError() const;
-    void clearError();
+    std::string getError() const override;
+    bool hasError() const override;
+    void clearError() override;
+
+    static std::unique_ptr<HoModule> parse(const std::vector<uint8_t>& data);
+    static std::unique_ptr<HoModule> parse(const std::string& file_path);
+    static std::unique_ptr<HoModule> parse(FILE* file);
 
     static constexpr uint32_t MAGIC = 0x484F4F43;
     static constexpr uint16_t VERSION_MAJOR = 1;
