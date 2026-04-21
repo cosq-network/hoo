@@ -46,6 +46,16 @@ THROW: 'throw';
 RETHROW: 'rethrow';
 MAP: 'map';
 
+// FFI Keywords
+NATIVE: 'native';
+EXTERN: 'extern';
+POINTER: 'pointer';
+ARRAY: 'array';
+AT: 'at';
+LIBRARY: 'library';
+LINK: 'link';
+DYNAMIC: 'dynamic';
+
 // Primitive Types
 INT8: 'int8';
 BYTE: 'byte';
@@ -143,6 +153,7 @@ declaration
     | classDeclaration
     | variableDeclaration
     | constantDeclaration
+    | ffiDeclaration
     ;
 
 // Function Declaration
@@ -200,6 +211,48 @@ mapType: MAP LBRACKET mapKeyType COMMA type RBRACKET;
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 
 primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
+
+// FFI Declarations
+ffiDeclaration
+    : ffiImportDeclaration
+    | ffiLinkDeclaration
+    | ffiNativeFunction
+    | ffiNativeDeclaration
+    ;
+
+ffiImportDeclaration
+    : LIBRARY STRING_LITERAL (AS IDENTIFIER)? SEMICOLON
+    ;
+
+ffiLinkDeclaration
+    : LINK DYNAMIC modulePath (AT versionRange)? (librarySearchPaths)? SEMICOLON
+    ;
+
+ffiNativeFunction
+    : NATIVE functionDeclaration
+    | EXTERN functionModifier* NATIVE type IDENTIFIER LPAREN ffiParameterList? RPAREN (ARROW type)? SEMICOLON
+    ;
+
+ffiNativeDeclaration
+    : NATIVE variableDeclaration SEMICOLON
+    | EXTERN NATIVE variableDeclaration SEMICOLON
+    ;
+
+ffiParameterList: ffiParameter (COMMA ffiParameter)*;
+
+ffiParameter: IDENTIFIER COLON ffiType;
+
+ffiType
+    : primitiveType
+    | qualifiedIdentifier
+    | POINTER LBRACKET ffiType RBRACKET
+    | ARRAY LBRACKET INTEGER_LITERAL RBRACKET ffiType
+    | FUNCTION LPAREN ffiType (COMMA ffiType)* RPAREN (ARROW ffiType)?
+    ;
+
+librarySearchPaths: LBRACKET STRING_LITERAL (COMMA STRING_LITERAL)* RBRACKET;
+
+versionRange: LBRACKET (INTEGER_LITERAL)? DOT DOT (INTEGER_LITERAL)? RBRACKET;
 
 // Statements
 statement

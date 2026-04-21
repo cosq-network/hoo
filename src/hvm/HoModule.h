@@ -9,6 +9,7 @@
 #include <optional>
 
 #include "hvm/HInstruction.h"
+#include "hvm/HoModuleBase.h"
 
 namespace hvm {
 

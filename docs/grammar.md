@@ -54,6 +54,16 @@ Hooc reserves the following keywords:
 - `from` - Import specific items
 - `as` - Alias for imports
 
+**FFI (Foreign Function Interface):**
+- `native` - Native function/object declaration
+- `extern` - External linkage
+- `library` - Import native library
+- `link` - Link dynamic module (static is handled via runtime registration)
+- `dynamic` - Dynamic linking
+- `pointer` - Pointer type
+- `array` - Fixed-size array type
+- `at` - Version constraint
+
 **Special:**
 - `scope` - Scope management
 - `this` - Current object instance
