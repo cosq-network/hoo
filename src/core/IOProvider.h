@@ -12,6 +12,8 @@ public:
 
     virtual std::optional<std::string> readFile(const std::string& filename) = 0;
     virtual bool writeFile(const std::string& filename, const std::string& content) = 0;
+    virtual std::optional<std::vector<uint8_t>> readBinaryFile(const std::string& filename) = 0;
+    virtual bool writeBinaryFile(const std::string& filename, const std::vector<uint8_t>& data) = 0;
     virtual std::string readStdin() = 0;
     virtual void writeStdout(const std::string& output) = 0;
     virtual void writeStderr(const std::string& output) = 0;

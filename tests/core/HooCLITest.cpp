@@ -24,6 +24,19 @@ public:
         return true;
     }
 
+    std::optional<std::vector<uint8_t>> readBinaryFile(const std::string& filename) override {
+        auto it = binaryFiles.find(filename);
+        if (it != binaryFiles.end()) {
+            return it->second;
+        }
+        return std::nullopt;
+    }
+
+    bool writeBinaryFile(const std::string& filename, const std::vector<uint8_t>& data) override {
+        writtenBinaryFiles[filename] = data;
+        return true;
+    }
+
     std::string readStdin() override {
         return stdinContent;
     }
@@ -62,6 +75,8 @@ public:
 private:
     std::map<std::string, std::string> files;
     std::map<std::string, std::string> writtenFiles;
+    std::map<std::string, std::vector<uint8_t>> binaryFiles;
+    std::map<std::string, std::vector<uint8_t>> writtenBinaryFiles;
     std::string stdinContent;
     std::string stdoutOutput;
     std::string stderrOutput;

@@ -1,4 +1,5 @@
 #include "hvm/HoModule.h"
+#include "core/DefaultIOProvider.h"
 #include <cstring>
 #include <algorithm>
 #include <fstream>
@@ -602,25 +603,32 @@ bool HoModule::serializeToFile(const std::string& file_path) const {
         return false;
     }
 
-    std::ofstream file(file_path, std::ios::binary);
-    if (!file.is_open()) {
+    auto provider = getIOProvider() ? getIOProvider() : std::make_shared<hooc::DefaultIOProvider>();
+    if (!provider->writeBinaryFile(file_path, data)) {
+        const_cast<HoModule*>(this)->error_ = std::string("Cannot write to file: ") + file_path;
         return false;
     }
 
-    file.write(reinterpret_cast<const char*>(data.data()), data.size());
-    return file.good();
+    return true;
 }
 
 bool HoModule::deserializeFromFile(const std::string& file_path) {
-    auto parsed = parse(file_path);
-    if (!parsed) {
-        error_ = "Failed to parse module from file";
+    auto provider = getIOProvider() ? getIOProvider() : std::make_shared<hooc::DefaultIOProvider>();
+    auto data = provider->readBinaryFile(file_path);
+    if (!data) {
+        error_ = std::string("Cannot read file: ") + file_path;
         return false;
     }
 
-    std::vector<uint8_t> data;
-    parsed->serialize(data);
-    return deserialize(data);
+    auto parsed = parse(*data);
+    if (!parsed) {
+        error_ = std::string("Failed to parse module from file");
+        return false;
+    }
+
+    std::vector<uint8_t> serialized;
+    parsed->serialize(serialized);
+    return deserialize(serialized);
 }
 
 bool HoModule::deserialize(const std::vector<uint8_t>& input) {

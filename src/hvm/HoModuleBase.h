@@ -13,6 +13,10 @@
 
 #include "hvm/HInstruction.h"
 
+namespace hooc {
+class IOProvider;
+}
+
 namespace hvm {
 
 enum class ModuleType : uint8_t {
@@ -103,6 +107,9 @@ public:
     virtual bool serializeToFile(const std::string& file_path) const;
     virtual bool deserializeFromFile(const std::string& file_path);
 
+    virtual void setIOProvider(std::shared_ptr<hooc::IOProvider> provider);
+    virtual std::shared_ptr<hooc::IOProvider> getIOProvider() const;
+
     static std::string getModuleTypeName(ModuleType type);
     static std::string mangleSymbol(const std::string& symbol_name, SymbolType sym_type);
 
@@ -112,6 +119,7 @@ protected:
     std::string source_path_;
     bool loaded_;
     bool has_circular_dependency_;
+    std::shared_ptr<hooc::IOProvider> io_provider_;
 
     std::unordered_map<std::string, ModuleSymbol> symbols_by_name_;
     std::vector<ModuleDependency> dependencies_;

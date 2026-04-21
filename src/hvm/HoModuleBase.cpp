@@ -1,5 +1,6 @@
 #include "hvm/HoModuleBase.h"
 #include "core/SymbolMangler.h"
+#include "core/DefaultIOProvider.h"
 #include <algorithm>
 #include <filesystem>
 #include <cstring>
@@ -251,33 +252,32 @@ bool HoModuleBase::serializeToFile(const std::string& file_path) const {
         return false;
     }
 
-    std::ofstream file(file_path, std::ios::binary);
-    if (!file.is_open()) {
-        error_ = "Cannot open file for writing";
+    auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
+    if (!provider->writeBinaryFile(file_path, data)) {
+        error_ = "Cannot write to file: " + file_path;
         return false;
     }
 
-    file.write(reinterpret_cast<const char*>(data.data()), data.size());
-    return file.good();
+    return true;
 }
 
 bool HoModuleBase::deserializeFromFile(const std::string& file_path) {
-    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        error_ = "Cannot open file for reading";
+    auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
+    auto data = provider->readBinaryFile(file_path);
+    if (!data) {
+        error_ = "Cannot read file: " + file_path;
         return false;
     }
 
-    size_t size = file.tellg();
-    file.seekg(0, std::ios::beg);
+    return deserialize(*data);
+}
 
-    std::vector<uint8_t> data(size);
-    if (!file.read(reinterpret_cast<char*>(data.data()), size)) {
-        error_ = "Cannot read file";
-        return false;
-    }
+void HoModuleBase::setIOProvider(std::shared_ptr<hooc::IOProvider> provider) {
+    io_provider_ = provider;
+}
 
-    return deserialize(data);
+std::shared_ptr<hooc::IOProvider> HoModuleBase::getIOProvider() const {
+    return io_provider_;
 }
 
 StaticHoModule::StaticHoModule(const std::string& name)
@@ -512,33 +512,24 @@ bool StaticHoModule::serializeToFile(const std::string& file_path) const {
         return false;
     }
 
-    std::ofstream file(file_path, std::ios::binary);
-    if (!file.is_open()) {
-        error_ = "Cannot open file for writing";
+    auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
+    if (!provider->writeBinaryFile(file_path, data)) {
+        error_ = "Cannot write to file: " + file_path;
         return false;
     }
 
-    file.write(reinterpret_cast<const char*>(data.data()), data.size());
-    return file.good();
+    return true;
 }
 
 bool StaticHoModule::deserializeFromFile(const std::string& file_path) {
-    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        error_ = "Cannot open file for reading";
+    auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
+    auto data = provider->readBinaryFile(file_path);
+    if (!data) {
+        error_ = "Cannot read file: " + file_path;
         return false;
     }
 
-    size_t size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::vector<uint8_t> data(size);
-    if (!file.read(reinterpret_cast<char*>(data.data()), size)) {
-        error_ = "Cannot read file";
-        return false;
-    }
-
-    return deserialize(data);
+    return deserialize(*data);
 }
 
 DynamicHoModule::DynamicHoModule(const std::string& name)
@@ -993,33 +984,24 @@ bool DynamicHoModule::serializeToFile(const std::string& file_path) const {
         return false;
     }
 
-    std::ofstream file(file_path, std::ios::binary);
-    if (!file.is_open()) {
-        error_ = "Cannot open file for writing";
+    auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
+    if (!provider->writeBinaryFile(file_path, data)) {
+        error_ = "Cannot write to file: " + file_path;
         return false;
     }
 
-    file.write(reinterpret_cast<const char*>(data.data()), data.size());
-    return file.good();
+    return true;
 }
 
 bool DynamicHoModule::deserializeFromFile(const std::string& file_path) {
-    std::ifstream file(file_path, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-        error_ = "Cannot open file for reading";
+    auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
+    auto data = provider->readBinaryFile(file_path);
+    if (!data) {
+        error_ = "Cannot read file: " + file_path;
         return false;
     }
 
-    size_t size = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::vector<uint8_t> data(size);
-    if (!file.read(reinterpret_cast<char*>(data.data()), size)) {
-        error_ = "Cannot read file";
-        return false;
-    }
-
-    return deserialize(data);
+    return deserialize(*data);
 }
 
 }
