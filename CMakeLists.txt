@@ -162,6 +162,7 @@ add_library(hvm STATIC
     src/hvm/HoModuleBase.cpp
     src/hvm/HoModule.cpp
     src/hvm/HInstruction.cpp
+    src/hvm/ModuleBundle.cpp
 )
 
 target_include_directories(hvm PUBLIC
@@ -409,6 +410,7 @@ if(HOOC_BUILD_TESTS)
         tests/ho/HoCLITest.cpp
         tests/hvm/HInstructionTest.cpp
         tests/hvm/HoModuleTest.cpp
+        tests/hvm/ModuleBundleTest.cpp
     )
 
     target_link_libraries(hoo-tests
