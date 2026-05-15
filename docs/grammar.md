@@ -317,7 +317,7 @@ func greet() {
 
 // With parameters and return type
 // Return type comes BEFORE the name: func:ReturnType name(params)
-func:add(a: int64, b: int64) {
+func:int64 add(a: int64, b: int64) {
     return a + b;
 }
 ```
@@ -831,7 +831,7 @@ func main() {
 ### Example 4: Control Flow
 
 ```hoo
-func:factorial(n: int64) {
+func:int64 factorial(n: int64) {
     if n <= 1 {
         return 1;
     } else {

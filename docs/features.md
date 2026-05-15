@@ -222,7 +222,7 @@ func:add(a: int64, b: int64) {
 }
 
 // Multiple parameters and return
-func:calculate(x: int64, y: int64, op: string) {
+func:int64 calculate(x: int64, y: int64, op: string) {
     if op == "add" {
         return x + y;
     } else {
@@ -246,7 +246,7 @@ func:square(x: int64) {
 }
 
 // Early return
-func:divide(a: int64, b: int64) {
+func:int64? divide(a: int64, b: int64) {
     if b == 0 {
         return null;  // Early return
     }
@@ -326,7 +326,7 @@ class Rectangle {
         height = h;
     }
 
-    func:area() {
+    func:int64 area() {
         return width * height;
     }
 }
@@ -369,7 +369,7 @@ class Counter {
         count = count - 1;
     }
 
-    func:getValue() {
+    func:int64 getValue() {
         return count;
     }
 
@@ -448,7 +448,7 @@ class User {
     }
 
     // Private: only accessible within class
-    private func:calculate() {
+    private func:int64 calculate() {
         return age * 2;
     }
 
@@ -964,14 +964,14 @@ Hooc supports exception handling with try-catch-finally blocks for robust error 
 ### Try-Catch-Finally
 
 ```hoo
-func:divide(a: int64, b: int64) {
+func:int64 divide(a: int64, b: int64) {
     if b == 0 {
         throw new RuntimeException("Division by zero");
     }
     return a / b;
 }
 
-func:safeDivide(a: int64, b: int64) {
+func:int64? safeDivide(a: int64, b: int64) {
     try {
         return divide(a, b);
     } catch e: RuntimeException {
