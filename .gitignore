@@ -74,3 +74,4 @@ vendor/
 Thumbs.db
 ehthumbs.db
 vcpkg_installed/
+.aider*
