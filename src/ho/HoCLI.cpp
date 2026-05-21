@@ -8,6 +8,21 @@
 
 namespace fs = std::filesystem;
 
+namespace {
+bool isPathUnder(const fs::path& root, const fs::path& candidate) {
+    auto rootIt = root.begin();
+    auto candidateIt = candidate.begin();
+
+    for (; rootIt != root.end(); ++rootIt, ++candidateIt) {
+        if (candidateIt == candidate.end() || *rootIt != *candidateIt) {
+            return false;
+        }
+    }
+
+    return true;
+}
+} // namespace
+
 HoOptions parseHoArgs(const std::vector<std::string>& args) {
     HoOptions opts;
 
@@ -71,20 +86,38 @@ std::string validateHoInputFile(const HoOptions& opts) {
         return "Error: --build option is only allowed with .hoo files.";
     }
 
-    fs::path cwd = fs::current_path();
+    std::error_code ec;
+    fs::path cwd = fs::current_path(ec);
+    if (ec) {
+        return "Error: Unable to determine current working directory.";
+    }
+
+    cwd = fs::canonical(cwd, ec);
+    if (ec) {
+        return "Error: Unable to canonicalize current working directory.";
+    }
+
     fs::path fullPath = cwd / inputPath;
 
-    if (!fs::exists(fullPath)) {
+    if (!fs::exists(fullPath, ec)) {
         return "Error: Input file does not exist: " + opts.inputFile;
     }
-
-    if (!fs::is_regular_file(fullPath)) {
-        return "Error: Input path is not a regular file: " + opts.inputFile;
+    if (ec) {
+        return "Error: Unable to check input file existence: " + opts.inputFile;
     }
 
-    fs::path canonicalPath = fs::canonical(fullPath);
+    if (!fs::is_regular_file(fullPath, ec)) {
+        return "Error: Input path is not a regular file: " + opts.inputFile;
+    }
+    if (ec) {
+        return "Error: Unable to inspect input file type: " + opts.inputFile;
+    }
 
-    if (!canonicalPath.string().rfind(cwd.string(), 0) == 0) {
+    fs::path canonicalPath = fs::canonical(fullPath, ec);
+    if (ec) {
+        return "Error: Unable to canonicalize input file path: " + opts.inputFile;
+    }
+    if (!isPathUnder(cwd, canonicalPath)) {
         return "Error: Input file must be under the current working directory.";
     }
 
@@ -136,9 +169,11 @@ int runHo(const std::vector<std::string>& args) {
     std::cout << "Input file: " << opts.inputFile << "\n";
     if (opts.buildMode) {
         std::cout << "Mode: build\n";
+        std::cerr << "Error: build mode is not implemented yet for ho.\n";
     } else {
         std::cout << "Mode: run\n";
+        std::cerr << "Error: run mode is not implemented yet for ho.\n";
     }
 
-    return 0;
+    return 2;
 }

@@ -165,6 +165,26 @@ TEST_F(HoCLITest, ReturnsErrorOnPathEscapingCwd) {
     EXPECT_TRUE(error.find("under the current working directory") != std::string::npos);
 }
 
+TEST_F(HoCLITest, ReturnsErrorOnSiblingDirectoryPrefixEscape) {
+    fs::path parentDir = testDir.parent_path();
+    fs::path siblingDir = parentDir / (testDir.filename().string() + "_sibling");
+    fs::create_directories(siblingDir);
+
+    fs::path outsideFile = siblingDir / "outside_test.hoo";
+    std::ofstream testFile(outsideFile);
+    testFile << "func main() {}";
+    testFile.close();
+
+    std::vector<std::string> args = {"../" + siblingDir.filename().string() + "/outside_test.hoo"};
+    HoOptions opts = parseHoArgs(args);
+
+    std::string error = validateHoInputFile(opts);
+    EXPECT_FALSE(error.empty());
+    EXPECT_TRUE(error.find("under the current working directory") != std::string::npos);
+
+    fs::remove_all(siblingDir);
+}
+
 TEST_F(HoCLITest, ReturnsErrorOnNonExistentFile) {
     std::vector<std::string> args = {"nonexistent.hoo"};
     HoOptions opts = parseHoArgs(args);
@@ -219,7 +239,7 @@ TEST_F(HoCLITest, RunModeWithHooFile) {
 
     std::vector<std::string> args = {"test.hoo"};
     int result = runHo(args);
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, 2);
 }
 
 TEST_F(HoCLITest, RunModeWithHoFile) {
@@ -229,5 +249,5 @@ TEST_F(HoCLITest, RunModeWithHoFile) {
 
     std::vector<std::string> args = {"test.ho"};
     int result = runHo(args);
-    EXPECT_EQ(result, 0);
+    EXPECT_EQ(result, 2);
 }
