@@ -3792,5 +3792,5 @@ SETREGS r1                ; restore registers from buffer
 ---
 
 *Document Version: 1.0*
-*Last Updated: April 2026*
+*Last Updated: May 2026*
 *Document Owner: HVM Specification Team*

@@ -257,8 +257,8 @@ importStatement: IMPORT modulePath (AS IDENTIFIER)? SEMICOLON
 
 Examples:
 ```hoo
-import std.io;
-import std.collections as coll;
+import hoo.io;
+import hoo.collections as coll;
 ```
 
 **From import:**
@@ -268,8 +268,8 @@ importStatement: FROM modulePath IMPORT importItem (COMMA importItem)* SEMICOLON
 
 Examples:
 ```hoo
-from std.io import File, Directory;
-from std.collections import List as ArrayList;
+from hoo.io import File, Directory;
+from hoo.collections import List as ArrayList;
 ```
 
 **Module path:**
@@ -277,7 +277,7 @@ from std.collections import List as ArrayList;
 modulePath: IDENTIFIER (DOT IDENTIFIER)*
 ```
 
-Examples: `std`, `std.io`, `std.collections`
+Examples: `hoo`, `hoo.io`, `hoo.collections`
 
 ### Declarations
 
@@ -483,7 +483,7 @@ var arrays: int64[][]?;
 qualifiedIdentifier: IDENTIFIER (DOT IDENTIFIER)*
 ```
 
-Examples: `String`, `std.String`, `std.collections.List`
+Examples: `String`, `hoo.String`, `hoo.collections.List`
 
 ### Statements
 
@@ -858,7 +858,7 @@ func main() {
 ### Example 5: Module System
 
 ```hoo
-import std.io as io;
+import hoo.io as io;
 
 func main() {
     var arr: int64[] = [1, 2, 3, 4, 5];
@@ -891,4 +891,3 @@ make
 - [Features Guide](features.md) - Detailed feature documentation
 - [Implementation Status](implementation-status.md) - Current implementation status
 - [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
-

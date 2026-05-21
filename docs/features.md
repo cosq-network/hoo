@@ -744,18 +744,18 @@ numbers.push(2);
 
 ```hoo
 // String module
-from std import String;
+from hoo import String;
 var s = new String("hello");
 
 // Array module
-from std import Array;
+from hoo import Array;
 var arr = new Array();
 
 // IO module (planned)
-from std.io import File, Console;
+from hoo.io import File, Console;
 
-// Collections (planned)
-from std.collections import List, Map, Set;
+// Collections (not currently planned beyond hoo.Array and T[])
+// from hoo.collections import List, Map, Set;
 ```
 
 ### Creating Modules

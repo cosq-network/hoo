@@ -2,7 +2,7 @@
 
 This document tracks the current implementation status of the Hooc compiler and runtime. It provides a detailed breakdown of completed features, work-in-progress items, and planned additions.
 
-**Last Updated:** April 19, 2026
+**Last Updated:** May 21, 2026
 
 ## Overview
 
@@ -247,8 +247,8 @@ These features are fully implemented, tested, and production-ready:
 #### Testing Infrastructure
 
 - ✅ GoogleTest framework integration
-- ✅ 54+ test suites
-- ✅ 1004+ test cases
+- ✅ 74 test suites
+- ✅ 1129 test cases
 - ✅ Parsing tests
 - ✅ AST building tests
 - ✅ Code generation tests
@@ -271,9 +271,10 @@ These features are in progress or have incomplete implementations:
 - ✅ String class
 - ✅ Array class
 - ✅ Basic IO (print, readline)
-- 🟡 Collection types (planned)
+- ✅ Math runtime support (`hoo.math` registration and runtime library bindings)
+- ✅ Network runtime support (`hoo.net` registration and runtime library bindings)
+- 🟡 Collection types (not currently planned beyond `hoo.Array` and `T[]`)
 - ❌ File system access
-- ❌ Network operations
 
 ### ❌ Not Yet Implemented
 
@@ -282,11 +283,10 @@ These features are planned but not yet started:
 #### Language Features
 
 - **Error Handling**
-  - ✅ `try-catch-finally` blocks
-  - ✅ Exception types (RuntimeException, NullPointerException, etc.)
-  - ✅ Exception throwing (`throw`)
-  - ✅ Rethrow (`rethrow`)
-  - ✅ Stack trace support
+  - ✅ Runtime exception type system (RuntimeException, NullPointerException, etc.)
+  - ✅ Runtime exception creation/throw/catch helpers
+  - ✅ Stack trace support in runtime
+  - 🟡 Language-level syntax integration (`try`, `catch`, `throw`) is still in progress
   - ❌ Result types (planned)
 
 - **Advanced Generics**
@@ -355,27 +355,21 @@ These features are planned but not yet started:
 
 ### Test Coverage
 
-| Component | Test Files | Test Cases | Coverage |
-|-----------|-----------|------------|----------|
-| Parsing | 15 | 245+ | High |
-| AST Building | - | - | High |
-| Code Generation | 16 | 244+ | High |
-| Runtime | 4 | 113+ | High |
-| Integration | 2 | 56+ | High |
-| CLI & Core | 2 | 45+ | High |
-| **Total** | **56+** | **1025** | **High** |
+| Component | Value |
+|-----------|-------|
+| Test source files (`tests/**/*.cpp`) | 67 |
+| GoogleTest suites (`./build/hoo-tests --gtest_list_tests`) | 74 |
+| GoogleTest test cases (`./build/hoo-tests --gtest_list_tests`) | 1129 |
+| Coverage quality | High (broad parser/codegen/runtime/core coverage) |
 
 ### Lines of Code
 
 | Component | Files | Lines | Language |
 |-----------|-------|-------|----------|
-| Compiler Core | 20+ | 8,500+ | C++ |
-| AST Definitions | 15+ | 3,000+ | C++ |
-| Code Generator | 3 | 4,500+ | C++ |
-| Runtime Library | 6 | 3,500+ | C/C++ |
-| Tests | 54+ | 9,800+ | C++ |
-| Grammar | 1 | 315 | ANTLR4 |
-| **Total** | **85+** | **29,500+** | - |
+| Source tree (`src/**/*.c,cpp,h`) | 81 | 21,683 | C/C++ |
+| Test tree (`tests/**/*.cpp`) | 67 | 25,479 | C++ |
+| Grammar (`src/parsing/Hooc.g4`) | 1 | 388 | ANTLR4 |
+| **Total (source + tests + grammar)** | **149** | **47,550** | - |
 
 ## Recent Progress
 
@@ -391,7 +385,7 @@ These features are planned but not yet started:
 - ✅ Added increment/decrement operators (`++`, `--`).
 - ✅ Added multiline string support (`"""..."""`).
 - ✅ Added function modifiers (`public`, `private`, `async`) for member functions.
-- ✅ Verified all 1025 unit tests pass.
+- ✅ Verified current built test inventory at 74 suites / 1129 test cases.
 
 ### Phase 7 (Completed)
 - ✅ Generic array system refactored

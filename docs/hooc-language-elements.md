@@ -51,7 +51,7 @@ Expressions with property/method access or function calls.
 | Member access | `expression '.' IDENTIFIER` | `obj.name`, `point.x` |
 | Index access | `expression '[' expression ']'` | `arr[0]`, `items[i]` |
 | Function call | `expression '(' argumentList? ')'` | `print(x)`, `obj.method()` |
-| New expression | `'new' qualifiedIdentifier '(' args? ')'` | `new Point(1, 2)`, `new std.String("hi")` |
+| New expression | `'new' qualifiedIdentifier '(' args? ')'` | `new Point(1, 2)`, `new hoo.String("hi")` |
 | Function call (postfix) | `IDENTIFIER '(' argumentList? ')'` | `foo()`, `bar(1, 2)` |
 | Array literal | `'[' expressionList? ']'` | `[]`, `[1, 2, 3]`, `['a', 'b']` |
 
@@ -148,11 +148,11 @@ Elements that connect compilation units.
 
 | Element | Syntax | Example |
 |---------|--------|---------|
-| Basic import | `'import' modulePath ';'` | `import os;`, `import std.io;` |
+| Basic import | `'import' modulePath ';'` | `import os;`, `import hoo.io;` |
 | Import with alias | `'import' modulePath 'as' IDENTIFIER ';'` | `import math as m;`, `import json as j;` |
-| Dotted module import | `'import' IDENTIFIER ('.' IDENTIFIER)* ';'` | `import os.path;`, `import std.collections;` |
+| Dotted module import | `'import' IDENTIFIER ('.' IDENTIFIER)* ';'` | `import os.path;`, `import hoo.collections;` |
 | From import (single) | `'from' modulePath 'import' IDENTIFIER ';'` | `from sys import argv;` |
-| From import (multiple) | `'from' modulePath 'import' IDENTIFIER (',' IDENTIFIER)* ';'` | `from std.io import read, write, close;` |
+| From import (multiple) | `'from' modulePath 'import' IDENTIFIER (',' IDENTIFIER)* ';'` | `from hoo.io import read, write, close;` |
 | From import with alias | `'from' modulePath 'import' IDENTIFIER 'as' IDENTIFIER ';'` | `from os.path import join as path_join;` |
 
 **Compilation**: Imports create dependencies but can be resolved at link time.
@@ -171,7 +171,7 @@ The complete program/module that encompasses all other elements.
 ```hooc
 import os;
 import json as j;
-from std.io import read, write, close;
+from hoo.io import read, write, close;
 
 singleton class Config {
     var version: string;
@@ -304,7 +304,7 @@ Compilation Unit (heavy)
 | Array (multi-dim) | `type '[][]'` | `var m: int64[][]` |
 | Nullable | `type '?'` | `var x: int64?` |
 | Generic type | ~~`TypeName<type>`~~ | **Removed** (use arrays) |
-| Qualified type | `Identifier ('.' Identifier)*` | `var x: std.collections.List` |
+| Qualified type | `Identifier ('.' Identifier)*` | `var x: hoo.collections.List` |
 
 ---
 

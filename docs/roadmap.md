@@ -2,7 +2,7 @@
 
 This document outlines the planned development trajectory for the Hooc programming language and compiler. It provides a timeline of features, priorities, and milestones for future development.
 
-**Last Updated:** April 19, 2026
+**Last Updated:** May 21, 2026
 
 ## Vision and Goals
 

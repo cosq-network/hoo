@@ -2,7 +2,7 @@
 
 This document outlines the planned standard library modules for the Hooc programming language. These modules will provide essential functionality for common programming tasks.
 
-**Last Updated:** April 20, 2026
+**Last Updated:** May 21, 2026
 
 ## Table of Contents
 

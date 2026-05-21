@@ -1,6 +1,6 @@
 # Hooc - The Hoo Programming Language Compiler
 
-**Last Updated:** April 19, 2026
+**Last Updated:** May 21, 2026
 
 Hooc is a modern, statically-typed programming language with automatic memory management and a clean syntax. It combines the best features of modern languages with a focus on safety, performance, and developer productivity.
 
@@ -55,7 +55,7 @@ sudo make install
 
 #### Windows
 
-See [docs/building-on-windows.md](docs/building-on-windows.md) for detailed Windows build instructions.
+See [docs/platform-build-guide.md](docs/platform-build-guide.md) for detailed Windows build instructions.
 
 ## Hello World
 
