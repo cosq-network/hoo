@@ -43,6 +43,7 @@
 
 #include "llvm/IR/Module.h"
 #include "llvm/IR/LLVMContext.h"
+#include "modules/ModuleSystem.h"
 
 namespace hvm {
 class HoModule;
@@ -166,6 +167,9 @@ private:
 
     /// @brief Selected backend for code generation
     Backend     backend_;
+
+    /// @brief Module registry for symbol resolution
+    ModuleRegistry moduleRegistry_;
 
     // ========================================================================
     // Non-Copyable

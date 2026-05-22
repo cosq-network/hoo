@@ -935,7 +935,7 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         auto thisLiteral = std::make_unique<ThisLiteral>();
         return std::make_unique<PrimaryExpression>(std::move(thisLiteral));
     } else if (ctx->INTEGER_LITERAL()) {
-        int value = getIntValue(ctx->INTEGER_LITERAL());
+        int64_t value = getIntValue(ctx->INTEGER_LITERAL());
         auto intLiteral = std::make_unique<IntegerLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(intLiteral));
     } else if (ctx->FLOATING_LITERAL()) {
@@ -1188,9 +1188,9 @@ std::string SimpleASTBuilder::getStringValue(antlr4::tree::TerminalNode* node) {
     throw std::runtime_error("Invalid string literal format: " + text);
 }
 
-int SimpleASTBuilder::getIntValue(antlr4::tree::TerminalNode* node) {
+int64_t SimpleASTBuilder::getIntValue(antlr4::tree::TerminalNode* node) {
     try {
-        return std::stoi(node->getText());
+        return std::stoll(node->getText());
     } catch (const std::exception& e) {
         throw std::runtime_error("Failed to parse integer: " + node->getText());
     }

@@ -399,6 +399,7 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/ModuleRegistryTest.cpp
         tests/codegen/LLVMCodeGeneratorComprehensiveTest.cpp
         tests/codegen/HVMCodeGeneratorTest.cpp
+        tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
         tests/runtime/ArrayGenericRuntimeTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp

@@ -23,6 +23,10 @@ TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
     EXPECT_EQ(module->getName(), "test");
 
@@ -58,6 +62,10 @@ TEST_F(HVMCodeGeneratorTest, CompileWithConstant) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -86,6 +94,10 @@ TEST_F(HVMCodeGeneratorTest, CompileWithVariables) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -124,6 +136,10 @@ TEST_F(HVMCodeGeneratorTest, CompileComplexExpression) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -149,6 +165,10 @@ TEST_F(HVMCodeGeneratorTest, CompileIfStatement) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -178,6 +198,10 @@ TEST_F(HVMCodeGeneratorTest, CompileWhileStatement) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -203,6 +227,10 @@ TEST_F(HVMCodeGeneratorTest, CompileGlobalVariables) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     // Check symbols for globals
@@ -234,6 +262,10 @@ TEST_F(HVMCodeGeneratorTest, CompileLogicalOperators) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -267,6 +299,10 @@ TEST_F(HVMCodeGeneratorTest, CompileBreakContinue) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -288,6 +324,10 @@ TEST_F(HVMCodeGeneratorTest, CompileNegativeConstants) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -311,6 +351,198 @@ TEST_F(HVMCodeGeneratorTest, CompileNegativeConstants) {
     }
     EXPECT_TRUE(foundNegative);
 }
+
+TEST_F(HVMCodeGeneratorTest, CompileForRangeStatement) {
+    std::string code = R"(
+        func : int64 testFor() {
+            var sum = 0;
+            for i in 0..10 {
+                sum = sum + i;
+            }
+            return sum;
+        }
+    )";
+
+    auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    
+    // Check for loop structure: JMP at end, CMP and branch near start
+    bool foundJumpBack = false;
+    bool foundBranch = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::JMP) foundJumpBack = true;
+        if (inst.getOpcode() == Opcode::BEQ) foundBranch = true;
+    }
+    EXPECT_TRUE(foundJumpBack);
+    EXPECT_TRUE(foundBranch);
+}
+
+TEST_F(HVMCodeGeneratorTest, CompileArrayLiteral) {
+    std::string code = R"(
+        func : int64 testArray() {
+            var arr = [10, 20, 30];
+            return arr[1];
+        }
+    )";
+
+    auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    
+    bool foundNewa = false;
+    bool foundStelem = false;
+    bool foundLdelem = false;
+
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::NEWA) foundNewa = true;
+        if (inst.getOpcode() == Opcode::STELEM) foundStelem = true;
+        if (inst.getOpcode() == Opcode::LDELEM) foundLdelem = true;
+    }
+
+    EXPECT_TRUE(foundNewa);
+    EXPECT_TRUE(foundStelem);
+    EXPECT_TRUE(foundLdelem);
+}
+
+TEST_F(HVMCodeGeneratorTest, CompileForInStatement) {
+    std::string code = R"(
+        func : int64 testForIn() {
+            var arr = [10, 20, 30];
+            var sum = 0;
+            for x in arr {
+                sum = sum + x;
+            }
+            return sum;
+        }
+    )";
+
+    auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    
+    bool foundArrayLen = false;
+    bool foundLdelem = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::ARRAYLEN) foundArrayLen = true;
+        if (inst.getOpcode() == Opcode::LDELEM) foundLdelem = true;
+    }
+
+    EXPECT_TRUE(foundArrayLen);
+    EXPECT_TRUE(foundLdelem);
+}
+
+
+TEST_F(HVMCodeGeneratorTest, CompileStringLiteral) {
+    std::string code = R"(
+        func : string testString() {
+            return "hello hvm";
+        }
+    )";
+
+    auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
+    ASSERT_NE(module, nullptr);
+
+    // Check for .rodata section
+    auto rodata = module->getSection(".rodata");
+    ASSERT_NE(rodata, nullptr);
+    std::string content(reinterpret_cast<char*>(rodata->data.data()));
+    EXPECT_EQ(content, "hello hvm");
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundCallHost = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALLHOST) foundCallHost = true;
+    }
+    EXPECT_TRUE(foundCallHost);
+}
+
+TEST_F(HVMCodeGeneratorTest, CompileClassAndMemberAccess) {
+    std::string code = R"(
+        class Point {
+            var x: int64;
+            var y: int64;
+            func : int64 getX() { return this.x; }
+        }
+        func : int64 testClass() {
+            var p = new Point();
+            p.x = 10;
+            return p.x;
+        }
+    )";
+
+    auto module = compiler_->compileToHVM("test", code);
+    if (!module) {
+        std::cerr << "TEST: compileToHVM returned nullptr. Last error: " << compiler_->getLastError() << std::endl;
+        FAIL() << "HVM Compilation failed: " << compiler_->getLastError();
+    }
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    
+    bool foundNew = false;
+    bool foundLdf = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::NEW) foundNew = true;
+        if (inst.getOpcode() == Opcode::LDF) foundLdf = true;
+    }
+
+    EXPECT_TRUE(foundNew);
+    EXPECT_TRUE(foundLdf);
+}
+
+TEST_F(HVMCodeGeneratorTest, CompileTryCatch) {
+    std::string code = R"(
+        func : void testTry() {
+            try {
+                throw new Exception("error");
+            } catch (e: Exception) {
+                return;
+            }
+        }
+    )";
+
+    auto module = compiler_->compileToHVM("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    
+    bool foundTry = false;
+    bool foundThrow = false;
+    bool foundCatch = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::TRY) foundTry = true;
+        if (inst.getOpcode() == Opcode::THROW) foundThrow = true;
+        if (inst.getOpcode() == Opcode::CATCH) foundCatch = true;
+    }
+
+    EXPECT_TRUE(foundTry);
+    EXPECT_TRUE(foundThrow);
+    EXPECT_TRUE(foundCatch);
+}
+
+
+
+
 
 TEST_F(HVMCodeGeneratorTest, ErrorBreakOutsideLoop) {
     std::string code = R"(

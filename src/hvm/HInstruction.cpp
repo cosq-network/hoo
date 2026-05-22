@@ -548,9 +548,9 @@ InstructionRegistry::InstructionRegistry() {
     reg("arraylen", Opcode::ARRAYLEN, InstructionFormat::R);
     
     // Calls
-    reg("call",     Opcode::CALL,     InstructionFormat::R);
+    reg("call",     Opcode::CALL,     InstructionFormat::J);
     reg("calli",    Opcode::CALLI,    InstructionFormat::I);
-    reg("tailcall", Opcode::TAILCALL, InstructionFormat::R);
+    reg("tailcall", Opcode::TAILCALL, InstructionFormat::J);
     
     // Exceptions (Extended)
     reg("try",      Opcode::TRY,      InstructionFormat::I);
@@ -561,7 +561,7 @@ InstructionRegistry::InstructionRegistry() {
     reg("endfin",   Opcode::ENDFIN,   InstructionFormat::R);
     
     // FFI/Runtime
-    reg("callhost",   Opcode::CALLHOST,   InstructionFormat::I);
+    reg("callhost",   Opcode::CALLHOST,   InstructionFormat::R);
     reg("callnative", Opcode::CALLNATIVE, InstructionFormat::R);
     reg("loadlib",    Opcode::LOADLIB,    InstructionFormat::I);
     reg("getsym",     Opcode::GETSYM,     InstructionFormat::RI);

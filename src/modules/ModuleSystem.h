@@ -10,7 +10,7 @@
  *   standard library classes and generate appropriate runtime calls.
  *
  * ARCHITECTURE
- *   ModuleRegistry (rootModules_) --> Module (exports_ + submodules_)
+ *   ModuleRegistry (rootModules_) --> HooModule (exports_ + submodules_)
  *                                           |
  *                                    ModuleExport (kind, name, runtimeClassName)
  *
@@ -34,121 +34,107 @@
 
 #include <string>
 #include <vector>
-#include <memory>
 #include <unordered_map>
-#include "../ast/QualifiedIdentifier.h"
+#include <memory>
 
 namespace hooc {
 
 /**
- * ModuleExport represents an exported entity from a module
- * (class, function, type, etc.)
+ * @brief Represents an exported item in a module (class, function, variable).
  */
 struct ModuleExport {
     enum class Kind {
-        CLASS,      // Class type (e.g., std.String)
-        FUNCTION,   // Standalone function
-        TYPE        // Type alias
+        FUNCTION,
+        CLASS,
+        VARIABLE
     };
 
     Kind kind;
-    std::string name;              // Short name (e.g., "String")
-    std::string runtimeClassName;  // Maps to runtime class for code generation
-    bool isGeneric;                // true for generic types like Array<T>
+    std::string name;
+    std::string runtimeClassName; // For CLASS kind
+    bool isGeneric;
 
-    // Default constructor (required for use in unordered_map)
-    ModuleExport()
-        : kind(Kind::CLASS), name(""), runtimeClassName(""), isGeneric(false) {}
+    ModuleExport() : kind(Kind::VARIABLE), isGeneric(false) {}
 
-    // Parameterized constructor
-    ModuleExport(Kind k, const std::string& n, const std::string& rtName, bool generic = false)
-        : kind(k), name(n), runtimeClassName(rtName), isGeneric(generic) {}
+    ModuleExport(Kind k, const std::string& n, const std::string& rcn = "", bool g = false)
+        : kind(k), name(n), runtimeClassName(rcn), isGeneric(g) {}
 };
 
 /**
- * Module represents a hierarchical module with exports and submodules
- * Supports structure like: std.io.File, std.collections.Map, etc.
+ * @brief Represents a single module in the hierarchy.
  */
-class Module {
+class HooModule {
 public:
-    Module(const std::string& name);
+    explicit HooModule(const std::string& name) : name_(name) {}
 
-    // Export management
-    void addExport(const ModuleExport& export_);
-    const ModuleExport* getExport(const std::string& name) const;
-    bool hasExport(const std::string& name) const;
-
-    // Submodule management (hierarchical)
-    void addSubmodule(const std::string& name, std::unique_ptr<Module> submodule);
-    Module* getSubmodule(const std::string& name) const;
-    bool hasSubmodule(const std::string& name) const;
-
-    // Accessors
     const std::string& getName() const { return name_; }
-    const std::unordered_map<std::string, ModuleExport>& getExports() const { return exports_; }
+
+    void addExport(const ModuleExport& exportItem) {
+        exports_[exportItem.name] = exportItem;
+    }
+
+    const ModuleExport* getExport(const std::string& name) const {
+        auto it = exports_.find(name);
+        if (it != exports_.end()) return &it->second;
+        return nullptr;
+    }
+
+    void addSubmodule(std::unique_ptr<HooModule> submodule) {
+        submodules_[submodule->getName()] = std::move(submodule);
+    }
+
+    HooModule* getSubmodule(const std::string& name) const {
+        auto it = submodules_.find(name);
+        if (it != submodules_.end()) return it->second.get();
+        return nullptr;
+    }
+
+    const std::unordered_map<std::string, ModuleExport>& getExports() const {
+        return exports_;
+    }
 
 private:
     std::string name_;
     std::unordered_map<std::string, ModuleExport> exports_;
-    std::unordered_map<std::string, std::unique_ptr<Module>> submodules_;
+    std::unordered_map<std::string, std::unique_ptr<HooModule>> submodules_;
 };
 
 /**
- * ModuleRegistry is the central registry for all modules in the system
- * Provides resolution of qualified names to exports
- *
- * Example usage:
- *   ModuleRegistry registry;
- *
- *   // Resolve std.String
- *   auto exp = registry.resolveQualifiedName(QualifiedIdentifier({"std", "String"}));
- *
- *   // Resolve module path for std.io
- *   auto ioModule = registry.resolveModulePath({"std", "io"});
+ * @brief Registry for resolving qualified names to exports.
  */
 class ModuleRegistry {
 public:
     ModuleRegistry();
+    ~ModuleRegistry() = default;
 
     /**
-     * Resolve a qualified identifier to its export metadata
-     * Examples:
-     *   QualifiedIdentifier({"std", "String"}) -> String class export
-     *   QualifiedIdentifier({"std", "Array"}) -> Array class export
-     *   QualifiedIdentifier({"std", "io", "File"}) -> io.File class export
+     * Resolve a qualified name (e.g., {"std", "io", "File"}) to its export.
      */
-    const ModuleExport* resolveQualifiedName(const ast::QualifiedIdentifier& qid) const;
+    const ModuleExport* resolveQualifiedName(const std::vector<std::string>& path) const;
 
     /**
-     * Resolve a module path to a Module pointer
-     * Returns nullptr if path doesn't exist
+     * Resolve a module path to a Module object.
      */
-    Module* resolveModulePath(const std::vector<std::string>& path) const;
+    HooModule* resolveModulePath(const std::vector<std::string>& path) const;
 
     /**
-     * Get the hoo module (always exists)
+     * Add a module to the registry.
      */
-    const Module* getHooModule() const;
-
-    /**
-     * Add a module to the registry at a specific path
-     * Path: {"hoo", "io"} creates hoo.io module
-     */
-    void addModule(const std::vector<std::string>& path, std::unique_ptr<Module> module);
+    void addModule(const std::vector<std::string>& path, std::unique_ptr<HooModule> module);
 
 private:
-    std::unordered_map<std::string, std::unique_ptr<Module>> rootModules_;
-    const Module* stdModule_;  // Cached pointer to hoo module for fast access
+    std::unordered_map<std::string, std::unique_ptr<HooModule>> rootModules_;
+    HooModule* stdModule_ = nullptr;
 
     /**
-     * Initialize standard library modules (hoo.String, hoo.Array, etc.)
+     * Initialize standard modules (hoo.String, hoo.Array, etc.)
      */
     void initializeHooModule();
 
     /**
      * Helper to navigate module hierarchy
      */
-    Module* navigateModulePath(const std::vector<std::string>& path) const;
+    HooModule* navigateModulePath(const std::vector<std::string>& path) const;
 };
 
 } // namespace hooc

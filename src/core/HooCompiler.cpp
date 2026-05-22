@@ -58,9 +58,16 @@ std::unique_ptr<llvm::Module> HooCompiler::compile(
     }
 
     // 2. Build AST
-    auto ast = astBuilder_->buildAST(parseTree);
+    std::unique_ptr<ast::CompilationUnit> ast;
+    try {
+        ast = astBuilder_->buildAST(parseTree);
+    } catch (const std::exception& e) {
+        lastError_ = std::string("AST building failed: ") + e.what();
+        return nullptr;
+    }
+
     if (!ast) {
-        lastError_ = "AST building failed";
+        lastError_ = "AST building failed: unknown error";
         return nullptr;
     }
 
@@ -100,9 +107,16 @@ std::unique_ptr<hvm::HoModule> HooCompiler::compileToHVM(
     }
 
     // 2. Build AST
-    auto ast = astBuilder_->buildAST(parseTree);
+    std::unique_ptr<ast::CompilationUnit> ast;
+    try {
+        ast = astBuilder_->buildAST(parseTree);
+    } catch (const std::exception& e) {
+        lastError_ = std::string("AST building failed: ") + e.what();
+        return nullptr;
+    }
+
     if (!ast) {
-        lastError_ = "AST building failed";
+        lastError_ = "AST building failed: unknown error";
         return nullptr;
     }
 
@@ -111,7 +125,7 @@ std::unique_ptr<hvm::HoModule> HooCompiler::compileToHVM(
     Backend originalBackend = backend_;
     if (!codeGenerator_ || backend_ != Backend::HVM) {
         backend_ = Backend::HVM;
-        codeGenerator_ = std::make_unique<HVMCodeGenerator>();
+        codeGenerator_ = std::make_unique<HVMCodeGenerator>(moduleRegistry_);
     }
     
     auto* hvmCodeGen = static_cast<HVMCodeGenerator*>(codeGenerator_.get());

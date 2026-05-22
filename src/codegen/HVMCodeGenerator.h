@@ -3,22 +3,13 @@
 /**
  * @file HVMCodeGenerator.h
  * @brief HVM Bytecode generator that translates Hooc AST to HVM instructions.
- *
- * PURPOSE
- *   Implements the CodeGenerator interface for the HVM backend.
- *   Produces a binary HoModule containing bit-packed instructions.
- *
- * ARCHITECTURE
- *   - AST Traversal: Single-pass lowering of AST nodes to HInstructions.
- *   - Register Allocation: Simple management of r9-r15 for temporary values.
- *   - Stack Framing: Management of r30 (FP) offsets for local variables.
- *   - Label Fixups: Deferred offset calculation for forward branches/jumps.
  */
 
 #include "CodeGenerator.h"
 #include "HVMCodeGeneratorTypes.h"
 #include "hvm/HInstruction.h"
 #include "hvm/HoModule.h"
+#include "modules/ModuleSystem.h"
 #include <vector>
 #include <unordered_map>
 #include <stack>
@@ -28,7 +19,7 @@ namespace hooc {
 
 class HVMCodeGenerator : public CodeGenerator {
 public:
-    HVMCodeGenerator();
+    explicit HVMCodeGenerator(ModuleRegistry& moduleRegistry);
     virtual ~HVMCodeGenerator() = default;
 
     /**
@@ -55,6 +46,7 @@ public:
 
 private:
     // Core state
+    ModuleRegistry& moduleRegistry_;
     std::unique_ptr<hvm::HoModule> module_;
     std::vector<hvm::HInstruction> instructions_;
     uint32_t currentByteOffset_ = 0;
@@ -73,6 +65,15 @@ private:
     std::unordered_map<std::string, Local> locals_;
     int32_t currentStackOffset_ = 0;
     
+    // Object & Class Management
+    struct ClassLayout {
+        std::string name;
+        std::unordered_map<std::string, int32_t> fieldOffsets;
+        int32_t totalSize = 0;
+    };
+    std::unordered_map<std::string, ClassLayout> classes_;
+    ClassLayout* currentClass_ = nullptr;
+    
     /**
      * Reserve space on stack for a local variable.
      */
@@ -88,9 +89,21 @@ private:
         };
         std::vector<Fixup> fixups; // Indices and offsets to update when bound
     };
+
+    struct SymbolFixup {
+        std::string symbolName;
+        size_t instructionIndex;
+        uint32_t instructionByteOffset;
+    };
+    std::vector<SymbolFixup> symbolFixups_;
     
     Label* createLabel();
     void bindLabel(Label* label);
+    
+    /**
+     * Emit a call instruction with a deferred symbol target.
+     */
+    void emitCall(hvm::Opcode op, const std::string& symbol);
     
     /**
      * Emit a jump instruction with a deferred target.

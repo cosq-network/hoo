@@ -72,7 +72,7 @@ public:
      * @param node INTEGER_LITERAL terminal node.
      * @return The parsed integer value.
      */
-    int getIntValue(antlr4::tree::TerminalNode* node);
+    int64_t getIntValue(antlr4::tree::TerminalNode* node);
 
     /**
      * @brief Parses floating point literal token.

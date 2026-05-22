@@ -24,7 +24,7 @@ using namespace llvm;
 // Avoid namespace conflicts with LLVM
 namespace {
     using LLVMType = llvm::Type;
-    using HoocModule = hooc::Module;
+    using HoocModule = hooc::HooModule;
     using ASTType = hooc::ast::Type;
     using ASTBinaryOperator = hooc::ast::BinaryOperator;
     using ASTArrayType = hooc::ast::ArrayType;
@@ -3187,7 +3187,7 @@ Value* LLVMCodeGenerator::generateNewObjectExpression(const NewObjectExpression&
 
     if (qualifiedName && qualifiedName->isQualified()) {
         // This is a qualified name like hoo.String
-        const ModuleExport* moduleExport = moduleRegistry_.resolveQualifiedName(*qualifiedName);
+        const ModuleExport* moduleExport = moduleRegistry_.resolveQualifiedName(qualifiedName->getComponents());
         if (moduleExport && moduleExport->kind == ModuleExport::Kind::CLASS) {
             // This is a standard library class - use runtime constructor
             return generateStdClassConstructor(*moduleExport, newExpr);
@@ -3440,7 +3440,7 @@ void LLVMCodeGenerator::processBasicImport(const ast::BasicImport& import) {
     const auto& components = modulePath->getComponents();
 
     // Resolve the module path in the registry
-    hooc::Module* module = moduleRegistry_.resolveModulePath(components);
+    HooModule* module = moduleRegistry_.resolveModulePath(components);
     if (!module) {
         // Module not found - for now, silently skip
         // In a full implementation, this would be a compile error
@@ -3472,7 +3472,7 @@ void LLVMCodeGenerator::processFromImport(const ast::FromImport& import) {
     const auto& components = modulePath->getComponents();
 
     // Resolve the module path in the registry
-    hooc::Module* module = moduleRegistry_.resolveModulePath(components);
+    HooModule* module = moduleRegistry_.resolveModulePath(components);
     if (!module) {
         // Module not found - for now, silently skip
         return;

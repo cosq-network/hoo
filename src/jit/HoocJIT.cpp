@@ -126,23 +126,18 @@ bool HoocJIT::initialize() {
     lastError_.clear();
 
     // Initialize LLVM targets (safe to call multiple times)
-    // These are idempotent operations - LLVM internally guards against
-    // multiple initialization, but we call them here for completeness
     static bool llvmInitialized = []() {
         auto nativeTargetResult = InitializeNativeTarget();
         auto asmPrinterResult = InitializeNativeTargetAsmPrinter();
         auto asmParserResult = InitializeNativeTargetAsmParser();
 
-        #ifdef DEBUG_JIT_INIT
-        std::cerr << "LLVM Initialization Results:" << std::endl;
-        std::cerr << "  InitializeNativeTarget: " << nativeTargetResult << std::endl;
-        std::cerr << "  InitializeNativeTargetAsmPrinter: " << asmPrinterResult << std::endl;
-        std::cerr << "  InitializeNativeTargetAsmParser: " << asmParserResult << std::endl;
-        #endif
+        (void)nativeTargetResult;
+        (void)asmPrinterResult;
+        (void)asmParserResult;
 
         return true;
     }();
-    (void)llvmInitialized; // Suppress unused variable warning
+    (void)llvmInitialized;
 
     auto jitExpected = LLJITBuilder().create();
 
@@ -182,7 +177,7 @@ bool HoocJIT::initialize() {
     return true;
 }
 
-bool HoocJIT::verifyAndAddModule(std::unique_ptr<Module> module,
+bool HoocJIT::verifyAndAddModule(std::unique_ptr<llvm::Module> module,
                                  std::string& outIR) {
     if (!module) {
         setError("Cannot verify null module");
@@ -199,7 +194,7 @@ bool HoocJIT::verifyAndAddModule(std::unique_ptr<Module> module,
     return addModuleToJIT(std::move(module));
 }
 
-bool HoocJIT::addModuleToJIT(std::unique_ptr<Module> module) {
+bool HoocJIT::addModuleToJIT(std::unique_ptr<llvm::Module> module) {
     if (!module) {
         setError("Cannot add null module to JIT");
         return false;
@@ -218,7 +213,7 @@ bool HoocJIT::addModuleToJIT(std::unique_ptr<Module> module) {
     return true;
 }
 
-std::string HoocJIT::getIRFromModule(const Module& module) const {
+std::string HoocJIT::getIRFromModule(const llvm::Module& module) const {
     std::string ir;
     raw_string_ostream stream(ir);
     module.print(stream, nullptr);

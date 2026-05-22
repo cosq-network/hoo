@@ -273,7 +273,6 @@ statement
 
 tryCatchStatement
     : TRY block (CATCH LPAREN IDENTIFIER COLON type RPAREN block)* (FINALLY block)?
-    | TRY block FINALLY block
     ;
 
 throwStatement: THROW expression SEMICOLON
