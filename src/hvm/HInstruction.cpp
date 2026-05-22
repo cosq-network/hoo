@@ -4,6 +4,79 @@
 #include <cstring>
 
 namespace hvm {
+namespace {
+
+constexpr uint8_t kExtendedOpcodeEscape = 0xFE;
+
+void writeU16LE(std::vector<uint8_t>& out, uint16_t value) {
+    out.push_back(static_cast<uint8_t>(value & 0xFFU));
+    out.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
+}
+
+void writeI16LE(std::vector<uint8_t>& out, int16_t value) {
+    writeU16LE(out, static_cast<uint16_t>(value));
+}
+
+void writeI32LE(std::vector<uint8_t>& out, int32_t value) {
+    const uint32_t v = static_cast<uint32_t>(value);
+    out.push_back(static_cast<uint8_t>(v & 0xFFU));
+    out.push_back(static_cast<uint8_t>((v >> 8U) & 0xFFU));
+    out.push_back(static_cast<uint8_t>((v >> 16U) & 0xFFU));
+    out.push_back(static_cast<uint8_t>((v >> 24U) & 0xFFU));
+}
+
+bool readU16LE(const std::vector<uint8_t>& in, size_t off, uint16_t& out) {
+    if (off + 2 > in.size()) return false;
+    out = static_cast<uint16_t>(in[off]) | (static_cast<uint16_t>(in[off + 1]) << 8U);
+    return true;
+}
+
+bool readI16LE(const std::vector<uint8_t>& in, size_t off, int16_t& out) {
+    uint16_t u = 0;
+    if (!readU16LE(in, off, u)) return false;
+    out = static_cast<int16_t>(u);
+    return true;
+}
+
+bool readI32LE(const std::vector<uint8_t>& in, size_t off, int32_t& out) {
+    if (off + 4 > in.size()) return false;
+    const uint32_t u = static_cast<uint32_t>(in[off]) |
+                       (static_cast<uint32_t>(in[off + 1]) << 8U) |
+                       (static_cast<uint32_t>(in[off + 2]) << 16U) |
+                       (static_cast<uint32_t>(in[off + 3]) << 24U);
+    out = static_cast<int32_t>(u);
+    return true;
+}
+
+void encodeULEB128(uint32_t value, std::vector<uint8_t>& out) {
+    do {
+        uint8_t byte = static_cast<uint8_t>(value & 0x7FU);
+        value >>= 7U;
+        if (value != 0) {
+            byte |= 0x80U;
+        }
+        out.push_back(byte);
+    } while (value != 0);
+}
+
+bool decodeULEB128(const std::vector<uint8_t>& in, size_t start, uint32_t& value, size_t& bytesUsed) {
+    value = 0;
+    bytesUsed = 0;
+    uint32_t shift = 0;
+
+    while (start + bytesUsed < in.size() && bytesUsed < 5) {
+        const uint8_t byte = in[start + bytesUsed];
+        value |= (static_cast<uint32_t>(byte & 0x7FU) << shift);
+        ++bytesUsed;
+        if ((byte & 0x80U) == 0) {
+            return true;
+        }
+        shift += 7U;
+    }
+    return false;
+}
+
+} // namespace
 
 HInstruction::HInstruction()
     : opcode_(Opcode::NOP)
@@ -51,55 +124,109 @@ HInstruction::HInstruction(Opcode opcode, const Operands& operands)
 }
 
 std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& bytes) {
-    if (bytes.size() < 4) {
+    auto inst = std::make_unique<HInstruction>();
+
+    if (bytes.empty()) {
         return nullptr;
     }
-    
-    auto inst = std::make_unique<HInstruction>();
-    
-    uint8_t opcode_byte = bytes[0];
-    
-    if (opcode_byte == 0xFF) {
+
+    const uint8_t opcode_byte = bytes[0];
+    if (opcode_byte == static_cast<uint8_t>(Opcode::UNKNOWN)) {
         inst->opcode_ = Opcode::UNKNOWN;
         inst->format_ = InstructionFormat::UNKNOWN;
         inst->extended_ = false;
         return inst;
     }
-    
+
+    if (opcode_byte == kExtendedOpcodeEscape) {
+        uint32_t opcodeVal = 0;
+        size_t opcodeBytes = 0;
+        if (!decodeULEB128(bytes, 1, opcodeVal, opcodeBytes)) {
+            return nullptr;
+        }
+        const size_t payloadOff = 1 + opcodeBytes;
+
+        inst->extended_ = true;
+        inst->opcode_ = static_cast<Opcode>(static_cast<uint16_t>(opcodeVal));
+        inst->format_ = getFormatForOpcode(inst->opcode_).value_or(InstructionFormat::UNKNOWN);
+        inst->mnemonic_ = opcodeToString(inst->opcode_);
+
+        switch (inst->format_) {
+            case InstructionFormat::R:
+            case InstructionFormat::R_EXT: {
+                if (payloadOff + 5 > bytes.size()) return nullptr;
+                uint16_t func = 0;
+                if (!readU16LE(bytes, payloadOff + 3, func)) return nullptr;
+                inst->operands_ = OperandsR{bytes[payloadOff], bytes[payloadOff + 1], bytes[payloadOff + 2], func};
+                break;
+            }
+            case InstructionFormat::I:
+            case InstructionFormat::I_EXT: {
+                if (payloadOff + 4 > bytes.size()) return nullptr;
+                int16_t imm = 0;
+                if (!readI16LE(bytes, payloadOff + 2, imm)) return nullptr;
+                inst->operands_ = OperandsI{bytes[payloadOff], bytes[payloadOff + 1], imm};
+                break;
+            }
+            case InstructionFormat::B: {
+                if (payloadOff + 4 > bytes.size()) return nullptr;
+                int16_t imm = 0;
+                if (!readI16LE(bytes, payloadOff + 2, imm)) return nullptr;
+                inst->operands_ = OperandsB{bytes[payloadOff], bytes[payloadOff + 1], imm};
+                break;
+            }
+            case InstructionFormat::J: {
+                if (payloadOff + 5 > bytes.size()) return nullptr;
+                int32_t offset = 0;
+                if (!readI32LE(bytes, payloadOff + 1, offset)) return nullptr;
+                inst->operands_ = OperandsJ{bytes[payloadOff], offset};
+                break;
+            }
+            case InstructionFormat::RI: {
+                if (payloadOff + 5 > bytes.size()) return nullptr;
+                uint16_t imm = 0;
+                if (!readU16LE(bytes, payloadOff + 3, imm)) return nullptr;
+                inst->operands_ = OperandsRI{bytes[payloadOff], bytes[payloadOff + 1], bytes[payloadOff + 2], imm};
+                break;
+            }
+            default:
+                inst->operands_ = OperandsR{0, 0, 0, 0};
+                break;
+        }
+        return inst;
+    }
+
+    if (bytes.size() < 4) {
+        return nullptr;
+    }
+
+    inst->extended_ = false;
     inst->opcode_ = static_cast<Opcode>(opcode_byte);
     inst->format_ = getFormatForOpcode(inst->opcode_).value_or(InstructionFormat::R);
     inst->mnemonic_ = opcodeToString(inst->opcode_);
-    
-    if (inst->format_ == InstructionFormat::R || inst->format_ == InstructionFormat::R_EXT) {
-        OperandsR ops;
-        ops.rd = bytes[1];
-        ops.rs1 = bytes[2];
-        ops.rs2 = bytes[3];
-        ops.func = (bytes[2] << 8) | bytes[3];
-        inst->operands_ = ops;
-    } else if (inst->format_ == InstructionFormat::I || inst->format_ == InstructionFormat::I_EXT) {
-        OperandsI ops;
-        ops.rd = bytes[1];
-        ops.rs = bytes[2];
-        int16_t imm = (static_cast<int16_t>(bytes[3]) << 8) | bytes[2];
-        ops.imm15 = imm;
-        inst->operands_ = ops;
-    } else if (inst->format_ == InstructionFormat::B) {
-        OperandsB ops;
-        ops.rs1 = bytes[1];
-        ops.rs2 = bytes[2];
-        int16_t imm = (static_cast<int16_t>(bytes[3]) << 8) | bytes[2];
-        ops.imm15 = imm;
-        inst->operands_ = ops;
-    } else if (inst->format_ == InstructionFormat::J) {
-        OperandsJ ops;
-        ops.rd = bytes[1];
-        ops.offset = (static_cast<int32_t>(bytes[3]) << 16) | (static_cast<int32_t>(bytes[2]) << 8) | bytes[1];
-        inst->operands_ = ops;
-    } else {
-        inst->operands_ = OperandsR{0, 0, 0, 0};
+
+    switch (inst->format_) {
+        case InstructionFormat::R:
+        case InstructionFormat::R_EXT:
+            inst->operands_ = OperandsR{bytes[1], bytes[2], bytes[3], 0};
+            break;
+        case InstructionFormat::I:
+        case InstructionFormat::I_EXT:
+            inst->operands_ = OperandsI{bytes[1], bytes[2], static_cast<int16_t>((static_cast<uint16_t>(bytes[3]) << 8U) | bytes[2])};
+            break;
+        case InstructionFormat::B:
+            inst->operands_ = OperandsB{bytes[1], bytes[2], static_cast<int16_t>((static_cast<uint16_t>(bytes[3]) << 8U) | bytes[2])};
+            break;
+        case InstructionFormat::J:
+            inst->operands_ = OperandsJ{bytes[1], static_cast<int32_t>((static_cast<uint32_t>(bytes[3]) << 16U) |
+                                                                        (static_cast<uint32_t>(bytes[2]) << 8U) |
+                                                                        bytes[1])};
+            break;
+        default:
+            inst->operands_ = OperandsR{0, 0, 0, 0};
+            break;
     }
-    
+
     return inst;
 }
 
@@ -151,102 +278,141 @@ std::unique_ptr<HInstruction> HInstruction::decode(const uint32_t word) {
 }
 
 std::unique_ptr<HInstruction> HInstruction::decode64(const std::vector<uint8_t>& bytes) {
+    if (bytes.empty()) {
+        return nullptr;
+    }
+
+    auto modern = decode(bytes);
+    if (modern != nullptr && modern->isExtended()) {
+        return modern;
+    }
+
     if (bytes.size() < 8) {
         return nullptr;
     }
-    
+
     auto inst = std::make_unique<HInstruction>();
     inst->extended_ = true;
-    
-    uint8_t firstByte = bytes[0];
-    uint16_t opcodeVal;
-    
+
+    const uint8_t firstByte = bytes[0];
+    uint16_t opcodeVal = 0;
     if (firstByte == 0xFF) {
-        opcodeVal = *reinterpret_cast<const uint16_t*>(bytes.data() + 1);
+        opcodeVal = static_cast<uint16_t>(bytes[1]) | (static_cast<uint16_t>(bytes[2]) << 8U);
     } else {
         opcodeVal = firstByte;
     }
-    
     if (opcodeVal == 0xFFFF || opcodeVal == 0xFF) {
         inst->opcode_ = Opcode::UNKNOWN;
         inst->format_ = InstructionFormat::UNKNOWN;
         return inst;
     }
-    
+
     inst->opcode_ = static_cast<Opcode>(opcodeVal);
     inst->format_ = getFormatForOpcode(inst->opcode_).value_or(InstructionFormat::R_EXT);
     inst->mnemonic_ = opcodeToString(inst->opcode_);
-    
-    if (inst->format_ == InstructionFormat::R || inst->format_ == InstructionFormat::R_EXT) {
-        OperandsR ops;
-        ops.rd = bytes[3];
-        ops.rs1 = bytes[4];
-        ops.rs2 = bytes[5];
-        ops.func = *reinterpret_cast<const uint16_t*>(bytes.data() + 6);
-        inst->operands_ = ops;
-    } else if (inst->format_ == InstructionFormat::I || inst->format_ == InstructionFormat::I_EXT) {
-        OperandsI ops;
-        ops.rd = bytes[3];
-        ops.rs = bytes[4];
-        ops.imm15 = *reinterpret_cast<const int16_t*>(bytes.data() + 6);
-        inst->operands_ = ops;
-    } else if (inst->format_ == InstructionFormat::B) {
-        OperandsB ops;
-        ops.rs1 = bytes[3];
-        ops.rs2 = bytes[4];
-        ops.imm15 = *reinterpret_cast<const int16_t*>(bytes.data() + 6);
-        inst->operands_ = ops;
-    } else if (inst->format_ == InstructionFormat::J || inst->format_ == InstructionFormat::RI) {
-        if (inst->format_ == InstructionFormat::RI) {
-            OperandsRI ops;
-            ops.rd = bytes[3];
-            ops.rd2 = bytes[4];
-            ops.rs = bytes[5];
-            ops.imm = *reinterpret_cast<const uint16_t*>(bytes.data() + 6);
-            inst->operands_ = ops;
-        } else {
-            OperandsJ ops;
-            ops.rd = bytes[3];
-            ops.offset = *reinterpret_cast<const int32_t*>(bytes.data() + 4);
-            inst->operands_ = ops;
+
+    switch (inst->format_) {
+        case InstructionFormat::R:
+        case InstructionFormat::R_EXT: {
+            uint16_t func = static_cast<uint16_t>(bytes[6]) | (static_cast<uint16_t>(bytes[7]) << 8U);
+            inst->operands_ = OperandsR{bytes[3], bytes[4], bytes[5], func};
+            break;
         }
-    } else {
-        inst->operands_ = OperandsR{0, 0, 0, 0};
+        case InstructionFormat::I:
+        case InstructionFormat::I_EXT: {
+            const int16_t imm = static_cast<int16_t>(static_cast<uint16_t>(bytes[6]) | (static_cast<uint16_t>(bytes[7]) << 8U));
+            inst->operands_ = OperandsI{bytes[3], bytes[4], imm};
+            break;
+        }
+        case InstructionFormat::B: {
+            const int16_t imm = static_cast<int16_t>(static_cast<uint16_t>(bytes[6]) | (static_cast<uint16_t>(bytes[7]) << 8U));
+            inst->operands_ = OperandsB{bytes[3], bytes[4], imm};
+            break;
+        }
+        case InstructionFormat::J: {
+            const int32_t off = static_cast<int32_t>(static_cast<uint32_t>(bytes[4]) |
+                                                     (static_cast<uint32_t>(bytes[5]) << 8U) |
+                                                     (static_cast<uint32_t>(bytes[6]) << 16U) |
+                                                     (static_cast<uint32_t>(bytes[7]) << 24U));
+            inst->operands_ = OperandsJ{bytes[3], off};
+            break;
+        }
+        case InstructionFormat::RI: {
+            const uint16_t imm = static_cast<uint16_t>(bytes[6]) | (static_cast<uint16_t>(bytes[7]) << 8U);
+            inst->operands_ = OperandsRI{bytes[3], bytes[4], bytes[5], imm};
+            break;
+        }
+        default:
+            inst->operands_ = OperandsR{0, 0, 0, 0};
+            break;
     }
-    
+
     return inst;
 }
 
 std::vector<uint8_t> HInstruction::encode() const {
-    std::vector<uint8_t> bytes(4, 0);
-    bytes[0] = static_cast<uint8_t>(opcode_);
-    
+    const uint16_t opcodeVal = static_cast<uint16_t>(opcode_);
+    const bool forceExtended = extended_ || opcodeVal >= kExtendedOpcodeEscape || std::holds_alternative<OperandsRI>(operands_);
+
+    if (!forceExtended) {
+        std::vector<uint8_t> bytes(4, 0);
+        bytes[0] = static_cast<uint8_t>(opcode_);
+        if (std::holds_alternative<OperandsR>(operands_)) {
+            const auto& ops = std::get<OperandsR>(operands_);
+            bytes[1] = ops.rd;
+            bytes[2] = ops.rs1;
+            bytes[3] = ops.rs2;
+        } else if (std::holds_alternative<OperandsI>(operands_)) {
+            const auto& ops = std::get<OperandsI>(operands_);
+            bytes[1] = ops.rd;
+            bytes[2] = ops.rs;
+            bytes[3] = static_cast<uint8_t>((static_cast<uint16_t>(ops.imm15) >> 8U) & 0xFFU);
+        } else if (std::holds_alternative<OperandsB>(operands_)) {
+            const auto& ops = std::get<OperandsB>(operands_);
+            bytes[1] = ops.rs1;
+            bytes[2] = ops.rs2;
+            bytes[3] = static_cast<uint8_t>((static_cast<uint16_t>(ops.imm15) >> 8U) & 0xFFU);
+        } else if (std::holds_alternative<OperandsJ>(operands_)) {
+            const auto& ops = std::get<OperandsJ>(operands_);
+            bytes[1] = ops.rd;
+            bytes[2] = static_cast<uint8_t>((static_cast<uint32_t>(ops.offset) >> 8U) & 0xFFU);
+            bytes[3] = static_cast<uint8_t>((static_cast<uint32_t>(ops.offset) >> 16U) & 0xFFU);
+        }
+        return bytes;
+    }
+
+    std::vector<uint8_t> bytes;
+    bytes.reserve(10);
+    bytes.push_back(kExtendedOpcodeEscape);
+    encodeULEB128(opcodeVal, bytes);
+
     if (std::holds_alternative<OperandsR>(operands_)) {
         const auto& ops = std::get<OperandsR>(operands_);
-        bytes[1] = ops.rd;
-        bytes[2] = ops.rs1;
-        bytes[3] = ops.rs2;
-} else if (std::holds_alternative<OperandsI>(operands_)) {
+        bytes.push_back(ops.rd);
+        bytes.push_back(ops.rs1);
+        bytes.push_back(ops.rs2);
+        writeU16LE(bytes, ops.func);
+    } else if (std::holds_alternative<OperandsI>(operands_)) {
         const auto& ops = std::get<OperandsI>(operands_);
-        bytes[1] = ops.rd;
-        bytes[2] = ops.rs;
-        *reinterpret_cast<int16_t*>(bytes.data() + 2) = ops.imm15;
+        bytes.push_back(ops.rd);
+        bytes.push_back(ops.rs);
+        writeI16LE(bytes, ops.imm15);
     } else if (std::holds_alternative<OperandsB>(operands_)) {
         const auto& ops = std::get<OperandsB>(operands_);
-        bytes[1] = ops.rs1;
-        bytes[2] = ops.rs2;
-        *reinterpret_cast<int16_t*>(bytes.data() + 2) = ops.imm15;
+        bytes.push_back(ops.rs1);
+        bytes.push_back(ops.rs2);
+        writeI16LE(bytes, ops.imm15);
     } else if (std::holds_alternative<OperandsJ>(operands_)) {
         const auto& ops = std::get<OperandsJ>(operands_);
-        bytes[1] = ops.rd;
-        *reinterpret_cast<int32_t*>(bytes.data() + 1) = ops.offset;
+        bytes.push_back(ops.rd);
+        writeI32LE(bytes, ops.offset);
     } else if (std::holds_alternative<OperandsRI>(operands_)) {
         const auto& ops = std::get<OperandsRI>(operands_);
-        bytes[1] = ops.rd;
-        bytes[2] = ops.rd2;
-        bytes[3] = ops.rs;
+        bytes.push_back(ops.rd);
+        bytes.push_back(ops.rd2);
+        bytes.push_back(ops.rs);
+        writeU16LE(bytes, ops.imm);
     }
-    
     return bytes;
 }
 
@@ -283,46 +449,9 @@ uint32_t HInstruction::encode32() const {
 }
 
 std::vector<uint8_t> HInstruction::encode64() const {
-    std::vector<uint8_t> bytes(8, 0);
-    
-    uint16_t opcodeVal = static_cast<uint16_t>(opcode_);
-    if (opcodeVal > 0xFF) {
-        bytes[0] = 0xFF;
-        *reinterpret_cast<uint16_t*>(bytes.data() + 1) = opcodeVal;
-    } else {
-        bytes[0] = static_cast<uint8_t>(opcode_);
-    }
-    bytes[2] = 0xFF;
-    
-    if (std::holds_alternative<OperandsR>(operands_)) {
-        const auto& ops = std::get<OperandsR>(operands_);
-        bytes[3] = ops.rd;
-        bytes[4] = ops.rs1;
-        bytes[5] = ops.rs2;
-        *reinterpret_cast<uint16_t*>(bytes.data() + 6) = ops.func;
-    } else if (std::holds_alternative<OperandsI>(operands_)) {
-        const auto& ops = std::get<OperandsI>(operands_);
-        bytes[3] = ops.rd;
-        bytes[4] = ops.rs;
-        *reinterpret_cast<int16_t*>(bytes.data() + 6) = ops.imm15;
-    } else if (std::holds_alternative<OperandsB>(operands_)) {
-        const auto& ops = std::get<OperandsB>(operands_);
-        bytes[3] = ops.rs1;
-        bytes[4] = ops.rs2;
-        *reinterpret_cast<int16_t*>(bytes.data() + 6) = ops.imm15;
-    } else if (std::holds_alternative<OperandsJ>(operands_)) {
-        const auto& ops = std::get<OperandsJ>(operands_);
-        bytes[3] = ops.rd;
-        *reinterpret_cast<int32_t*>(bytes.data() + 4) = ops.offset;
-    } else if (std::holds_alternative<OperandsRI>(operands_)) {
-        const auto& ops = std::get<OperandsRI>(operands_);
-        bytes[3] = ops.rd;
-        bytes[4] = ops.rd2;
-        bytes[5] = ops.rs;
-        *reinterpret_cast<uint16_t*>(bytes.data() + 6) = ops.imm;
-    }
-    
-    return bytes;
+    HInstruction copy = *this;
+    copy.setExtended(true);
+    return copy.encode();
 }
 
 std::string HInstruction::toString() const {

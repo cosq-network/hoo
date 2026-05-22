@@ -862,7 +862,9 @@ TEST_F(HoModuleTest, EncodeDecodeExtendedInstructions) {
     }
     
     auto encoded = module->encodeInstructions(instructions);
-    ASSERT_EQ(encoded.size(), 16);
+    ASSERT_EQ(encoded.size(), 14);
+    EXPECT_EQ(encoded[0], 0xFE);
+    EXPECT_EQ(encoded[7], 0xFE);
     
     auto decoded = module->decodeInstructions(encoded, true);
     EXPECT_EQ(decoded.size(), 2);

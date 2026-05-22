@@ -74,7 +74,8 @@ TEST_F(HInstructionTest, EncodeDecode64) {
     orig.setExtended(true);
     
     auto encoded = orig.encode64();
-    ASSERT_EQ(encoded.size(), 8);
+    ASSERT_EQ(encoded.size(), 7);
+    EXPECT_EQ(encoded[0], 0xFE);
     
     auto decoded = HInstruction::decode64(encoded);
     ASSERT_NE(decoded, nullptr);
@@ -110,7 +111,7 @@ TEST_F(HInstructionTest, EncodeDecodeRI) {
     orig.setExtended(true);
     
     auto encoded = orig.encode64();
-    ASSERT_EQ(encoded.size(), 8);
+    ASSERT_EQ(encoded.size(), 7);
     
     auto decoded = HInstruction::decode64(encoded);
     ASSERT_NE(decoded, nullptr);
@@ -298,4 +299,22 @@ TEST_F(HInstructionTest, MultipleEncodeDecode) {
         ASSERT_NE(decoded, nullptr);
         EXPECT_EQ(decoded->getOpcode(), opcode);
     }
+}
+
+TEST_F(HInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
+    HInstruction orig(Opcode::VINSERT, OperandsRI{1, 2, 3, 0x3456});
+    auto encoded = orig.encode();
+    ASSERT_GE(encoded.size(), 8);
+    EXPECT_EQ(encoded[0], 0xFE);
+
+    auto decoded = HInstruction::decode(encoded);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_TRUE(decoded->isExtended());
+    EXPECT_EQ(decoded->getOpcode(), Opcode::VINSERT);
+    ASSERT_TRUE(std::holds_alternative<OperandsRI>(decoded->getOperands()));
+    const auto& ops = std::get<OperandsRI>(decoded->getOperands());
+    EXPECT_EQ(ops.rd, 1);
+    EXPECT_EQ(ops.rd2, 2);
+    EXPECT_EQ(ops.rs, 3);
+    EXPECT_EQ(ops.imm, 0x3456);
 }
