@@ -18,18 +18,6 @@ std::string ImportItem::toString() const {
     return name_;
 }
 
-std::string NamedImports::toString() const {
-    return "NamedImports from " + module_;
-}
-
-std::string NamespaceImport::toString() const {
-    return "NamespaceImport * as " + alias_ + " from " + module_;
-}
-
-std::string SideEffectImport::toString() const {
-    return "SideEffectImport " + module_;
-}
-
 // Python-style import implementations
 std::string ModulePath::toString() const {
     std::stringstream ss;
@@ -138,10 +126,6 @@ std::string FFINativeVariableDeclaration::toString() const {
 // Class-related implementations
 std::string ConstructorDeclaration::toString() const {
     return "ConstructorDeclaration";
-}
-
-std::string EventDeclaration::toString() const {
-    return "EventDeclaration " + name_;
 }
 
 std::string ClassMember::toString() const {
@@ -276,10 +260,6 @@ std::string FunctionCall::toString() const {
     return "FunctionCall";
 }
 
-std::string NewArrayExpression::toString() const {
-    return "NewArrayExpression";
-}
-
 std::string NewObjectExpression::toString() const {
     std::stringstream ss;
     ss << "NewObjectExpression " << className_->toString();
@@ -326,28 +306,12 @@ std::string IncrementDecrementExpression::toString() const {
     return "IncrementDecrementExpression";
 }
 
-std::string ErrorHandlingExpression::toString() const {
-    return "ErrorHandlingExpression";
-}
-
 std::string ExpressionList::toString() const {
     return "ExpressionList";
 }
 
 std::string ArrayLiteral::toString() const {
     return "ArrayLiteral";
-}
-
-std::string ListComprehension::toString() const {
-    return "ListComprehension";
-}
-
-std::string LambdaExpression::toString() const {
-    return "LambdaExpression";
-}
-
-std::string MultiParamLambda::toString() const {
-    return "MultiParamLambda";
 }
 
 // Primary implementations

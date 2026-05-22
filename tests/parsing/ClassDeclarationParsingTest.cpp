@@ -227,7 +227,6 @@ TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
     // Verify function member
     auto& members = classDecl->getBody().getMembers();
     EXPECT_EQ(members.size(), 1);
-    EXPECT_FALSE(members[0]->isEvent());
 
     auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(members[0]->getDeclaration());
     ASSERT_NE(funcDecl, nullptr);
@@ -303,8 +302,6 @@ TEST_F(ClassDeclarationParsingTest, ComplexClassWithAllFeatures) {
     auto& members = classDecl->getBody().getMembers();
     EXPECT_EQ(members.size(), 3);
     EXPECT_TRUE(members[0]->isConstructor());  // constructor
-    EXPECT_FALSE(members[1]->isEvent());        // method1
-    EXPECT_FALSE(members[2]->isEvent());        // method2
 
     // Verify constructor parameters
     auto* constructor = members[0]->getConstructor();

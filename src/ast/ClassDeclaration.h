@@ -42,20 +42,7 @@ private:
     std::unique_ptr<Block> body_;
 };
 
-// Event declaration
-class EventDeclaration : public ASTNode {
-public:
-    EventDeclaration(const std::string& name) : name_(name) {}
-
-    std::string toString() const override;
-
-    const std::string& getName() const { return name_; }
-
-private:
-    std::string name_;
-};
-
-// Class member (can be constructor, function, or event)
+// Class member (can be constructor or function)
 class ClassMember : public ASTNode {
 public:
     ClassMember(std::unique_ptr<ConstructorDeclaration> constructor)
@@ -64,21 +51,15 @@ public:
     ClassMember(std::unique_ptr<Declaration> declaration)
         : declaration_(std::move(declaration)) {}
 
-    ClassMember(std::unique_ptr<EventDeclaration> event)
-        : event_(std::move(event)) {}
-
     std::string toString() const override;
 
     const ConstructorDeclaration* getConstructor() const { return constructor_.get(); }
     const Declaration* getDeclaration() const { return declaration_.get(); }
-    const EventDeclaration* getEvent() const { return event_.get(); }
     bool isConstructor() const { return constructor_ != nullptr; }
-    bool isEvent() const { return event_ != nullptr; }
 
 private:
     std::unique_ptr<ConstructorDeclaration> constructor_;
     std::unique_ptr<Declaration> declaration_;
-    std::unique_ptr<EventDeclaration> event_;
 };
 
 // Class body

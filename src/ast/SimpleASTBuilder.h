@@ -58,6 +58,65 @@ public:
      */
     std::unique_ptr<ast::CompilationUnit> buildAST(HoocParser::CompilationUnitContext* ctx);
 
+    // ===== Helper Methods (Public for testing) =====
+
+    /**
+     * @brief Converts a type name string to PrimitiveTypeKind enum.
+     * @param typeName String like "int64", "string", etc.
+     * @return The corresponding PrimitiveTypeKind.
+     */
+    ast::PrimitiveTypeKind getPrimitiveTypeKind(const std::string& typeName);
+
+    /**
+     * @brief Parses integer literal token.
+     * @param node INTEGER_LITERAL terminal node.
+     * @return The parsed integer value.
+     */
+    int getIntValue(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Parses floating point literal token.
+     * @param node FLOATING_LITERAL terminal node.
+     * @return The parsed double value.
+     */
+    double getDoubleValue(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Extracts char value from CHAR_LITERAL token.
+     * @param node CHAR_LITERAL terminal node.
+     * @return The character value.
+     */
+    char getCharValue(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Extracts string value from STRING_LITERAL token (removes quotes).
+     * @param node STRING_LITERAL terminal node.
+     * @return The unquoted string value.
+     */
+    std::string getStringValue(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Extracts binary operator from a terminal node.
+     * @param node Terminal node containing operator.
+     * @return The corresponding BinaryOperator enum value.
+     */
+    ast::BinaryOperator getBinaryOperator(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Parses boolean literal token.
+     * @param node TRUE or FALSE terminal node.
+     * @return The boolean value.
+     */
+    bool getBoolValue(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Checks if a string literal contains interpolation syntax.
+     * Detects ${...} patterns indicating an interpolated string.
+     * @param node STRING_LITERAL terminal node.
+     * @return true if the string contains ${...}, false otherwise.
+     */
+    bool isInterpolatedString(antlr4::tree::TerminalNode* node);
+
 private:
     // ===== Declaration Building =====
 
@@ -452,65 +511,6 @@ private:
      * @return The corresponding ClassModifier value.
      */
     ast::ClassModifier getClassModifier(HoocParser::ClassModifierContext* ctx);
-
-    // ===== Helper Methods =====
-
-    /**
-     * @brief Converts a type name string to PrimitiveTypeKind enum.
-     * @param typeName String like "int64", "string", etc.
-     * @return The corresponding PrimitiveTypeKind.
-     */
-    ast::PrimitiveTypeKind getPrimitiveTypeKind(const std::string& typeName);
-
-    /**
-     * @brief Extracts binary operator from a terminal node.
-     * @param node Terminal node containing operator.
-     * @return The corresponding BinaryOperator enum value.
-     */
-    ast::BinaryOperator getBinaryOperator(antlr4::tree::TerminalNode* node);
-
-    /**
-     * @brief Extracts string value from STRING_LITERAL token (removes quotes).
-     * @param node STRING_LITERAL terminal node.
-     * @return The unquoted string value.
-     */
-    std::string getStringValue(antlr4::tree::TerminalNode* node);
-
-    /**
-     * @brief Parses integer literal token.
-     * @param node INTEGER_LITERAL terminal node.
-     * @return The parsed integer value.
-     */
-    int getIntValue(antlr4::tree::TerminalNode* node);
-
-    /**
-     * @brief Parses floating point literal token.
-     * @param node FLOATING_LITERAL terminal node.
-     * @return The parsed double value.
-     */
-    double getDoubleValue(antlr4::tree::TerminalNode* node);
-
-    /**
-     * @brief Extracts char value from CHAR_LITERAL token.
-     * @param node CHAR_LITERAL terminal node.
-     * @return The character value.
-     */
-    char getCharValue(antlr4::tree::TerminalNode* node);
-
-    /**
-     * @brief Parses boolean literal token.
-     * @param node TRUE or FALSE terminal node.
-     * @return The boolean value.
-     */
-    bool getBoolValue(antlr4::tree::TerminalNode* node);
-
-    /**
-     * @brief Checks if a string literal contains interpolation syntax.
-     * Detects ${...} patterns indicating an interpolated string.
-     * @param node STRING_LITERAL terminal node.
-     * @return true if the string contains ${...}, false otherwise.
-     */
-    bool isInterpolatedString(antlr4::tree::TerminalNode* node);
 };
 
 } // namespace hooc

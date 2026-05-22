@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <mutex>
 
 #include "hvm/HoModuleBase.h"
 #include "core/SymbolMangler.h"
@@ -36,12 +37,12 @@ public:
     std::vector<std::shared_ptr<HoModuleBase>> resolveDependencyOrder() const;
 
     std::vector<std::string> getModuleDependencyOrder(const std::string& module_name) const;
-    std::vector<std::string> getAllDependentModules(const std::string& module_name) const;
+    std::vector<std::string> getAllModulesThatDependOn(const std::string& module_name) const;
 
     bool hasCircularDependency(const std::string& module_name) const;
     bool hasCircularDependency() const;
 
-    static ModuleBundle* getModules();
+    static ModuleBundle& getModules();
     static void shutdown();
 
     std::shared_ptr<HoModuleBase> findModuleByNestedSymbol(const std::vector<std::string>& module_path,
@@ -95,8 +96,13 @@ private:
         }
     };
 
+    struct ModuleEntry {
+        std::shared_ptr<HoModuleBase> module;
+        std::set<std::shared_ptr<HoModuleBase>, ModuleComparator>::iterator set_iterator;
+    };
+
     std::set<std::shared_ptr<HoModuleBase>, ModuleComparator> module_set_;
-    std::unordered_map<std::string, std::shared_ptr<HoModuleBase>> modules_by_name_;
+    std::unordered_map<std::string, ModuleEntry> modules_by_name_;
     std::unordered_map<std::string, std::unordered_set<std::string>> symbols_to_modules_;
     std::unordered_map<std::string, std::unordered_set<std::string>> mangled_symbols_to_modules_;
 
@@ -104,6 +110,8 @@ private:
     std::unordered_map<std::string, std::unordered_set<std::string>> nested_exports_to_modules_;
     std::unordered_map<std::string, std::unordered_set<std::string>> namespace_exports_;
     std::unordered_map<std::string, std::string> mangled_to_original_;
+
+    mutable std::recursive_mutex mutex_;
 };
 
 }

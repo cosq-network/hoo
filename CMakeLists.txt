@@ -412,6 +412,7 @@ if(HOOC_BUILD_TESTS)
         tests/hvm/HInstructionTest.cpp
         tests/hvm/HoModuleTest.cpp
         tests/hvm/ModuleBundleTest.cpp
+        tests/ast/CompilationUnitTest.cpp
     )
 
     target_link_libraries(hoo-tests
@@ -434,6 +435,7 @@ if(HOOC_BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}/src/codegen
         ${CMAKE_SOURCE_DIR}/src/modules
         ${CMAKE_SOURCE_DIR}/src/ast
+        ${CMAKE_SOURCE_DIR}/tests/ast
         ${LLVM_INCLUDE_DIRS}
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_DIR}

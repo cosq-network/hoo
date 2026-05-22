@@ -77,50 +77,5 @@ private:
     std::vector<std::unique_ptr<ImportItem>> items_;
 };
 
-// Named imports: import { User, Role } from "module"
-class NamedImports : public ImportStatement {
-public:
-    NamedImports(std::vector<std::unique_ptr<ImportItem>> items, const std::string& module)
-        : items_(std::move(items)), module_(module) {}
-
-    std::string toString() const override;
-
-    const std::vector<std::unique_ptr<ImportItem>>& getItems() const { return items_; }
-    const std::string& getModule() const { return module_; }
-
-private:
-    std::vector<std::unique_ptr<ImportItem>> items_;
-    std::string module_;
-};
-
-// Namespace import: import * as math from "module"
-class NamespaceImport : public ImportStatement {
-public:
-    NamespaceImport(const std::string& alias, const std::string& module)
-        : alias_(alias), module_(module) {}
-
-    std::string toString() const override;
-
-    const std::string& getAlias() const { return alias_; }
-    const std::string& getModule() const { return module_; }
-
-private:
-    std::string alias_;
-    std::string module_;
-};
-
-// Side-effect import: import "module"
-class SideEffectImport : public ImportStatement {
-public:
-    SideEffectImport(const std::string& module) : module_(module) {}
-
-    std::string toString() const override;
-
-    const std::string& getModule() const { return module_; }
-
-private:
-    std::string module_;
-};
-
 } // namespace ast
 } // namespace hooc

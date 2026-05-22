@@ -94,22 +94,6 @@ private:
     std::unique_ptr<ArgumentList> arguments_;
 };
 
-// New array expression
-class NewArrayExpression : public Expression {
-public:
-    NewArrayExpression(std::unique_ptr<Type> type, std::unique_ptr<Expression> size)
-        : type_(std::move(type)), size_(std::move(size)) {}
-
-    std::string toString() const override;
-
-    const Type& getType() const { return *type_; }
-    const Expression& getSize() const { return *size_; }
-
-private:
-    std::unique_ptr<Type> type_;
-    std::unique_ptr<Expression> size_;
-};
-
 // New object expression
 class NewObjectExpression : public Expression {
 public:
@@ -314,23 +298,6 @@ private:
     bool isPrefix_;
 };
 
-// Error handling expression (expr else block)
-class ErrorHandlingExpression : public Expression {
-public:
-    ErrorHandlingExpression(std::unique_ptr<Expression> expression,
-                           std::unique_ptr<Block> errorBlock)
-        : expression_(std::move(expression)), errorBlock_(std::move(errorBlock)) {}
-
-    std::string toString() const override;
-
-    const Expression& getExpression() const { return *expression_; }
-    const Block& getErrorBlock() const { return *errorBlock_; }
-
-private:
-    std::unique_ptr<Expression> expression_;
-    std::unique_ptr<Block> errorBlock_;
-};
-
 // Expression list
 class ExpressionList : public ASTNode {
 public:
@@ -357,64 +324,6 @@ public:
 
 private:
     std::unique_ptr<ExpressionList> elements_;
-};
-
-// List comprehension
-class ListComprehension : public Expression {
-public:
-    ListComprehension(std::unique_ptr<Expression> expression,
-                     const std::string& variable,
-                     std::unique_ptr<Expression> iterable,
-                     std::unique_ptr<Expression> condition = nullptr)
-        : expression_(std::move(expression)), variable_(variable),
-          iterable_(std::move(iterable)), condition_(std::move(condition)) {}
-
-    std::string toString() const override;
-
-    const Expression& getExpression() const { return *expression_; }
-    const std::string& getVariable() const { return variable_; }
-    const Expression& getIterable() const { return *iterable_; }
-    const Expression* getCondition() const { return condition_.get(); }
-    bool hasCondition() const { return condition_ != nullptr; }
-
-private:
-    std::unique_ptr<Expression> expression_;
-    std::string variable_;
-    std::unique_ptr<Expression> iterable_;
-    std::unique_ptr<Expression> condition_;
-};
-
-// Lambda expression
-class LambdaExpression : public Expression {
-public:
-    LambdaExpression(const std::string& parameter, std::unique_ptr<Expression> body)
-        : parameter_(parameter), body_(std::move(body)) {}
-
-    std::string toString() const override;
-
-    const std::string& getParameter() const { return parameter_; }
-    const Expression& getBody() const { return *body_; }
-
-private:
-    std::string parameter_;
-    std::unique_ptr<Expression> body_;
-};
-
-// Multi-parameter lambda
-class MultiParamLambda : public Expression {
-public:
-    MultiParamLambda(std::vector<std::unique_ptr<Parameter>> parameters,
-                    std::unique_ptr<Expression> body)
-        : parameters_(std::move(parameters)), body_(std::move(body)) {}
-
-    std::string toString() const override;
-
-    const std::vector<std::unique_ptr<Parameter>>& getParameters() const { return parameters_; }
-    const Expression& getBody() const { return *body_; }
-
-private:
-    std::vector<std::unique_ptr<Parameter>> parameters_;
-    std::unique_ptr<Expression> body_;
 };
 
 } // namespace ast

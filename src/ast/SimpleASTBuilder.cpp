@@ -169,7 +169,14 @@ std::unique_ptr<FFIType> SimpleASTBuilder::buildFfiType(HoocParser::FfiTypeConte
         return std::make_unique<FFIPointerType>(buildFfiType(ctx->ffiType(0)));
     }
     if (ctx->ARRAY()) {
-        int64_t size = ctx->INTEGER_LITERAL() ? std::stoll(ctx->INTEGER_LITERAL()->getText()) : 0;
+        int64_t size = 0;
+        if (ctx->INTEGER_LITERAL()) {
+            try {
+                size = std::stoll(ctx->INTEGER_LITERAL()->getText());
+            } catch (const std::exception& e) {
+                throw std::runtime_error("Failed to parse FFI array size: " + ctx->INTEGER_LITERAL()->getText());
+            }
+        }
         return std::make_unique<FFIArrayType>(size, buildFfiType(ctx->ffiType(0)));
     }
     if (ctx->FUNCTION()) {
@@ -314,7 +321,7 @@ std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::Paramete
 
 std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) {
     if (!ctx) {
-        return std::make_unique<BaseType>("unknown");
+        throw std::runtime_error("TypeContext is null");
     }
 
     // Handle mapType first
@@ -324,18 +331,18 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
 
     // Handle optionalType (array types and primitives)
     if (!ctx->optionalType()) {
-        return std::make_unique<BaseType>("unknown");
+        throw std::runtime_error("Malformed Type: missing optionalType and mapType");
     }
 
     auto optionalCtx = ctx->optionalType();
     auto arrayCtx = optionalCtx->arrayType();
     if (!arrayCtx) {
-        return std::make_unique<BaseType>("unknown");
+        throw std::runtime_error("Malformed Type: missing arrayType");
     }
 
     auto baseCtx = arrayCtx->baseType();
     if (!baseCtx) {
-        return std::make_unique<BaseType>("unknown");
+        throw std::runtime_error("Malformed Type: missing baseType");
     }
 
     auto baseType = buildBaseType(baseCtx);
@@ -370,14 +377,14 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
 
 std::unique_ptr<OptionalType> SimpleASTBuilder::buildOptionalType(HoocParser::OptionalTypeContext* ctx) {
     if (!ctx || !ctx->arrayType()) {
-        return nullptr;
+        throw std::runtime_error("OptionalTypeContext or arrayType is null");
     }
 
     auto arrayCtx = ctx->arrayType();
     auto arrayType = buildArrayType(arrayCtx);
 
     if (!arrayType) {
-        return nullptr;
+        throw std::runtime_error("Failed to build arrayType for OptionalType");
     }
 
     // Check if this optional type has a QUESTION mark (making it nullable)
@@ -395,7 +402,7 @@ std::unique_ptr<BaseType> SimpleASTBuilder::buildBaseType(HoocParser::BaseTypeCo
         return std::make_unique<BaseType>(std::move(qualifiedId));
     }
 
-    return std::make_unique<BaseType>("unknown");
+    throw std::runtime_error("BaseType has neither primitiveType nor qualifiedIdentifier");
 }
 
 std::unique_ptr<PrimitiveType> SimpleASTBuilder::buildPrimitiveType(HoocParser::PrimitiveTypeContext* ctx) {
@@ -440,6 +447,9 @@ std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeConte
 }
 
 std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("BlockContext is null");
+    }
     std::vector<std::unique_ptr<Statement>> statements;
     
     for (auto stmtCtx : ctx->statement()) {
@@ -453,6 +463,9 @@ std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ct
 }
 
 std::unique_ptr<ArrayType> SimpleASTBuilder::buildArrayType(HoocParser::ArrayTypeContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("ArrayTypeContext is null");
+    }
     auto baseType = buildBaseType(ctx->baseType());
     std::vector<std::unique_ptr<Expression>> dimensions;
 
@@ -469,6 +482,9 @@ std::unique_ptr<ArrayType> SimpleASTBuilder::buildArrayType(HoocParser::ArrayTyp
 }
 
 std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::StatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("StatementContext is null");
+    }
     if (ctx->variableDeclarationStatement()) {
         return buildVariableDeclarationStatement(ctx->variableDeclarationStatement());
     } else if (ctx->expressionStatement()) {
@@ -508,10 +524,13 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildThrowStatement(ctx->throwStatement());
     }
 
-    return nullptr;
+    throw std::runtime_error("Unknown statement type encountered: " + ctx->getText());
 }
 
 std::unique_ptr<IfStatement> SimpleASTBuilder::buildIfStatement(HoocParser::IfStatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("IfStatementContext is null");
+    }
     auto condition = buildExpression(ctx->expression());
     auto thenBlock = buildBlock(ctx->block(0));
     std::unique_ptr<Block> elseBlock;
@@ -522,6 +541,9 @@ std::unique_ptr<IfStatement> SimpleASTBuilder::buildIfStatement(HoocParser::IfSt
 }
 
 std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser::WhileStatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("WhileStatementContext is null");
+    }
     auto condition = buildExpression(ctx->expression());
     auto body = buildBlock(ctx->block());
     return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
@@ -529,11 +551,11 @@ std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser
 
 std::unique_ptr<ScopeStatement> SimpleASTBuilder::buildScopeStatement(HoocParser::ScopeStatementContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("ScopeStatementContext is null");
     }
     auto body = buildBlock(ctx->block());
     if (!body) {
-        return nullptr;
+        throw std::runtime_error("Failed to build block for ScopeStatement");
     }
     return std::make_unique<ScopeStatement>(std::move(body));
 }
@@ -606,13 +628,11 @@ std::unique_ptr<ThrowStatement> SimpleASTBuilder::buildThrowStatement(HoocParser
 
 std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser::ForStatementContext* ctx) {
     if (!ctx) {
-        std::cerr << "Error: ForStatementContext is null" << std::endl;
-        return nullptr;
+        throw std::runtime_error("ForStatementContext is null");
     }
 
     if (!ctx->IDENTIFIER()) {
-        std::cerr << "Error: ForInStatement missing IDENTIFIER" << std::endl;
-        return nullptr;
+        throw std::runtime_error("ForInStatement missing IDENTIFIER");
     }
 
     std::string variable = ctx->IDENTIFIER()->getText();
@@ -620,20 +640,17 @@ std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser
     // For-in loop has exactly 1 expression (the iterable)
     auto exprs = ctx->expression();
     if (exprs.size() != 1) {
-        std::cerr << "Error: ForInStatement expected 1 expression, got " << exprs.size() << std::endl;
-        return nullptr;
+        throw std::runtime_error("ForInStatement expected 1 expression, got " + std::to_string(exprs.size()));
     }
 
     auto iterable = buildExpression(exprs[0]);
     if (!iterable) {
-        std::cerr << "Error: Failed to build iterable expression for for-in loop" << std::endl;
-        return nullptr;
+        throw std::runtime_error("Failed to build iterable expression for for-in loop");
     }
 
     auto body = buildBlock(ctx->block());
     if (!body) {
-        std::cerr << "Error: Failed to build body block for for-in loop" << std::endl;
-        return nullptr;
+        throw std::runtime_error("Failed to build body block for for-in loop");
     }
 
     return std::make_unique<ForInStatement>(variable, std::move(iterable), std::move(body));
@@ -641,13 +658,11 @@ std::unique_ptr<ForInStatement> SimpleASTBuilder::buildForInStatement(HoocParser
 
 std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(HoocParser::ForStatementContext* ctx) {
     if (!ctx) {
-        std::cerr << "Error: ForStatementContext is null" << std::endl;
-        return nullptr;
+        throw std::runtime_error("ForStatementContext is null");
     }
 
     if (!ctx->IDENTIFIER()) {
-        std::cerr << "Error: ForRangeStatement missing IDENTIFIER" << std::endl;
-        return nullptr;
+        throw std::runtime_error("ForRangeStatement missing IDENTIFIER");
     }
 
     std::string variable = ctx->IDENTIFIER()->getText();
@@ -658,31 +673,27 @@ std::unique_ptr<ForRangeStatement> SimpleASTBuilder::buildForRangeStatement(Hooc
     // expression(0) is start
     auto start = buildExpression(exprs[0]);
     if (!start) {
-        std::cerr << "Error: Failed to build start expression for for-range loop" << std::endl;
-        return nullptr;
+        throw std::runtime_error("Failed to build start expression for for-range loop");
     }
 
     // expression(1) is end
     auto end = buildExpression(exprs[1]);
     if (!end) {
-        std::cerr << "Error: Failed to build end expression for for-range loop" << std::endl;
-        return nullptr;
+        throw std::runtime_error("Failed to build end expression for for-range loop");
     }
 
     // expression(2) is optional step (if BY exists)
     std::unique_ptr<Expression> step;
     if (ctx->BY()) {
         if (exprs.size() < 3) {
-            std::cerr << "Error: ForRangeStatement with BY missing step expression" << std::endl;
-            return nullptr;
+            throw std::runtime_error("ForRangeStatement with BY missing step expression");
         }
         step = buildExpression(exprs[2]);
     }
 
     auto body = buildBlock(ctx->block());
     if (!body) {
-        std::cerr << "Error: Failed to build body block for for-range loop" << std::endl;
-        return nullptr;
+        throw std::runtime_error("Failed to build body block for for-range loop");
     }
 
     return std::make_unique<ForRangeStatement>(variable, std::move(start), std::move(end), std::move(step), std::move(body));
@@ -939,8 +950,10 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
     } else if (ctx->MULTILINE_STRING()) {
         std::string value = ctx->MULTILINE_STRING()->getText();
-        if (value.length() >= 6) {
+        if (value.length() >= 6 && value.substr(0, 3) == "\"\"\"" && value.substr(value.length() - 3) == "\"\"\"") {
             value = value.substr(3, value.length() - 6);
+        } else {
+            throw std::runtime_error("Invalid multiline string literal format: " + value);
         }
         auto stringLiteral = std::make_unique<StringLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
@@ -1134,14 +1147,14 @@ ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContex
     if (ctx->STRATEGY()) return ClassModifier::STRATEGY;
     if (ctx->ACTOR()) return ClassModifier::ACTOR;
     if (ctx->FINAL()) return ClassModifier::FINAL;
-    return ClassModifier::FINAL; // Default fallback
+    throw std::runtime_error("Unknown class modifier: " + ctx->getText());
 }
 
 FunctionModifier SimpleASTBuilder::getFunctionModifier(HoocParser::FunctionModifierContext* ctx) {
     if (ctx->PUBLIC()) return FunctionModifier::PUBLIC;
     if (ctx->PRIVATE()) return FunctionModifier::PRIVATE;
     if (ctx->ASYNC()) return FunctionModifier::ASYNC;
-    return FunctionModifier::PUBLIC; // Default fallback
+    throw std::runtime_error("Unknown function modifier: " + ctx->getText());
 }
 
 // Helper methods
@@ -1156,7 +1169,7 @@ PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& type
     if (typeName == "int8") return PrimitiveTypeKind::INT8;
     if (typeName == "byte") return PrimitiveTypeKind::BYTE;
     if (typeName == "void") return PrimitiveTypeKind::VOID;
-    return PrimitiveTypeKind::INT64; // Default fallback
+    throw std::runtime_error("Unknown primitive type: " + typeName);
 }
 
 std::string SimpleASTBuilder::getStringValue(antlr4::tree::TerminalNode* node) {
@@ -1164,15 +1177,14 @@ std::string SimpleASTBuilder::getStringValue(antlr4::tree::TerminalNode* node) {
     if (text.length() >= 2 && text.front() == '"' && text.back() == '"') {
         return text.substr(1, text.length() - 2);
     }
-    return text;
+    throw std::runtime_error("Invalid string literal format: " + text);
 }
 
 int SimpleASTBuilder::getIntValue(antlr4::tree::TerminalNode* node) {
     try {
         return std::stoi(node->getText());
     } catch (const std::exception& e) {
-        std::cerr << "Failed to parse integer: " << node->getText() << std::endl;
-        return 0;
+        throw std::runtime_error("Failed to parse integer: " + node->getText());
     }
 }
 
@@ -1180,8 +1192,7 @@ double SimpleASTBuilder::getDoubleValue(antlr4::tree::TerminalNode* node) {
     try {
         return std::stod(node->getText());
     } catch (const std::exception& e) {
-        std::cerr << "Failed to parse double: " << node->getText() << std::endl;
-        return 0.0;
+        throw std::runtime_error("Failed to parse double: " + node->getText());
     }
 }
 
@@ -1190,7 +1201,7 @@ char SimpleASTBuilder::getCharValue(antlr4::tree::TerminalNode* node) {
     if (text.length() >= 3 && text.front() == '\'' && text.back() == '\'') {
         return text[1];
     }
-    return '\0';
+    throw std::runtime_error("Invalid character literal format: " + text);
 }
 
 bool SimpleASTBuilder::getBoolValue(antlr4::tree::TerminalNode* node) {

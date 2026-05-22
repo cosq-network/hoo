@@ -99,7 +99,17 @@ Runtime responsibilities split into:
 
 The core ISA intentionally relies on runtime/library functions instead of embedding many specialized instruction families.
 
-## 7. Lowering Rules and Minimality
+## 7. Validation Strategy
+
+The AST construction phase (`SimpleASTBuilder`) implements strict validation. Rather than using silent fallbacks or logging to `stderr`, the builder now throws `std::runtime_error` for any structural or literal anomalies:
+
+- **Literal Parsing**: Integer/Floating/Character literals must conform strictly to expected formats; parsing failures trigger immediate exceptions.
+- **Type/Modifier Safety**: Unrecognized primitive types, class modifiers, or function modifiers result in hard failures.
+- **Structural Integrity**: Malformed control flow constructs (e.g., loops missing required components) are caught during AST building.
+
+This strategy ensures that errors are caught early and never propagate silently into the code generation or execution phases.
+
+## 8. Lowering Rules and Minimality
 
 Some operations are intentionally absent as dedicated opcodes and are lowered:
 
@@ -111,7 +121,7 @@ Some operations are intentionally absent as dedicated opcodes and are lowered:
 
 This keeps the ISA minimal while preserving full grammar coverage.
 
-## 8. Change Control
+## 9. Change Control
 
 When grammar evolves, update in this order:
 
