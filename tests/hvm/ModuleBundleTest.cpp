@@ -225,3 +225,67 @@ TEST_F(ModuleBundleTest, FindModuleBySymbolWithMultipleModules) {
     auto found = bundle.findModuleBySymbol("shared_symbol");
     ASSERT_NE(found, nullptr);
 }
+
+TEST_F(ModuleBundleTest, ManglingSeparatesExportDomains) {
+    ModuleBundle bundle;
+    std::vector<std::string> modulePath = {"pkg", "mod"};
+    std::string symbol = "item";
+
+    auto exportMangled = bundle.mangleExport(modulePath, symbol, SymbolType::Function);
+    auto nestedMangled = bundle.mangleNestedMember(modulePath, symbol, SymbolType::Function);
+    auto namespaceMangled = bundle.mangleNamespaceMember("pkg.mod", symbol, SymbolType::Function);
+
+    EXPECT_NE(exportMangled, nestedMangled);
+    EXPECT_NE(exportMangled, namespaceMangled);
+    EXPECT_NE(nestedMangled, namespaceMangled);
+}
+
+TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForExports) {
+    ModuleBundle bundle;
+    std::vector<std::string> modulePath = {"pkg", "mod"};
+    std::string symbol = "same_name";
+
+    auto fnMangled = bundle.mangleExport(modulePath, symbol, SymbolType::Function);
+    auto objMangled = bundle.mangleExport(modulePath, symbol, SymbolType::Object);
+
+    EXPECT_NE(fnMangled, objMangled);
+}
+
+TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForNestedMembers) {
+    ModuleBundle bundle;
+    std::vector<std::string> modulePath = {"pkg", "mod"};
+    std::string symbol = "member";
+
+    auto fnMangled = bundle.mangleNestedMember(modulePath, symbol, SymbolType::Function);
+    auto objMangled = bundle.mangleNestedMember(modulePath, symbol, SymbolType::Object);
+
+    EXPECT_NE(fnMangled, objMangled);
+}
+
+TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForNamespaceMembers) {
+    ModuleBundle bundle;
+    std::string ns = "pkg.mod";
+    std::string symbol = "member";
+
+    auto fnMangled = bundle.mangleNamespaceMember(ns, symbol, SymbolType::Function);
+    auto objMangled = bundle.mangleNamespaceMember(ns, symbol, SymbolType::Object);
+
+    EXPECT_NE(fnMangled, objMangled);
+}
+
+TEST_F(ModuleBundleTest, ManglingUsesStableKindTags) {
+    ModuleBundle bundle;
+    std::vector<std::string> modulePath = {"pkg", "mod"};
+
+    auto fnMangled = bundle.mangleExport(modulePath, "sym", SymbolType::Function);
+    auto objMangled = bundle.mangleExport(modulePath, "sym", SymbolType::Object);
+    auto typeMangled = bundle.mangleExport(modulePath, "sym", SymbolType::Type);
+    auto tlsMangled = bundle.mangleExport(modulePath, "sym", SymbolType::TLS);
+    auto noTypeMangled = bundle.mangleExport(modulePath, "sym", SymbolType::NoType);
+
+    EXPECT_NE(fnMangled.find("_fn"), std::string::npos);
+    EXPECT_NE(objMangled.find("_ob"), std::string::npos);
+    EXPECT_NE(typeMangled.find("_ty"), std::string::npos);
+    EXPECT_NE(tlsMangled.find("_tls"), std::string::npos);
+    EXPECT_NE(noTypeMangled.find("_nt"), std::string::npos);
+}

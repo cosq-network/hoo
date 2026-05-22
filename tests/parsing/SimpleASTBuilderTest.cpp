@@ -1164,6 +1164,31 @@ TEST_F(SimpleASTBuilderTest, BuildParenthesizedExpression) {
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
 }
 
+TEST_F(SimpleASTBuilderTest, PreservesParenthesizedExpressionNode) {
+    std::string code = R"(
+        func test() {
+            var x = (1 + 2);
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+
+    auto* fn = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(fn, nullptr);
+    const auto& stmts = fn->getBody().getStatements();
+    ASSERT_EQ(stmts.size(), 1U);
+    auto* varStmt = dynamic_cast<const VariableDeclarationStatement*>(stmts[0].get());
+    ASSERT_NE(varStmt, nullptr);
+    auto* initPrimaryExpr = dynamic_cast<const PrimaryExpression*>(varStmt->getDeclaration().getInitializer());
+    ASSERT_NE(initPrimaryExpr, nullptr);
+    auto* paren = dynamic_cast<const ParenthesizedExpression*>(&initPrimaryExpr->getPrimary());
+    ASSERT_NE(paren, nullptr);
+}
+
 TEST_F(SimpleASTBuilderTest, BuildUnaryMinus) {
     std::string code = "func:int64 test() { return -42; }";
     auto* parseTree = parseCode(code);
@@ -1526,4 +1551,54 @@ TEST_F(SimpleASTBuilderTest, BuildTernaryNesting) {
 
     std::string astStr = ast->toString();
     EXPECT_TRUE(astStr.find("CompilationUnit") != std::string::npos);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildThrowStatementPreservesThrowKind) {
+    std::string code = R"(
+        func test() {
+            throw "boom";
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    ASSERT_EQ(ast->getDeclarations().size(), 1U);
+    auto* fn = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(fn, nullptr);
+    const auto& stmts = fn->getBody().getStatements();
+    ASSERT_EQ(stmts.size(), 1U);
+    auto* throwStmt = dynamic_cast<const ThrowStatement*>(stmts[0].get());
+    ASSERT_NE(throwStmt, nullptr);
+    EXPECT_EQ(throwStmt->getKind(), ThrowStatement::ThrowKind::THROW);
+    EXPECT_FALSE(throwStmt->isRethrow());
+    ASSERT_NE(throwStmt->getExpression(), nullptr);
+}
+
+TEST_F(SimpleASTBuilderTest, BuildRethrowStatementPreservesThrowKind) {
+    std::string code = R"(
+        func test() {
+            rethrow;
+        }
+    )";
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+    auto* ctx = getCompilationUnit(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = astBuilder->buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    ASSERT_EQ(ast->getDeclarations().size(), 1U);
+    auto* fn = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(fn, nullptr);
+    const auto& stmts = fn->getBody().getStatements();
+    ASSERT_EQ(stmts.size(), 1U);
+    auto* throwStmt = dynamic_cast<const ThrowStatement*>(stmts[0].get());
+    ASSERT_NE(throwStmt, nullptr);
+    EXPECT_EQ(throwStmt->getKind(), ThrowStatement::ThrowKind::RETHROW);
+    EXPECT_TRUE(throwStmt->isRethrow());
+    EXPECT_EQ(throwStmt->getExpression(), nullptr);
 }

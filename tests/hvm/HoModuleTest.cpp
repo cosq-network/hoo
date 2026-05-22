@@ -3,7 +3,7 @@
 #include <vector>
 #include <fstream>
 #include <cstring>
-#include "src/hvm/HoModule.h"
+#include "hvm/HoModule.h"
 
 using namespace hvm;
 

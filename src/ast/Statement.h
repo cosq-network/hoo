@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ASTNode.h"
+#include <stdexcept>
 #include <vector>
 
 namespace hooc {
@@ -221,15 +222,36 @@ private:
 // Throw statement (throw expression;)
 class ThrowStatement : public Statement {
 public:
+    enum class ThrowKind {
+        THROW,
+        RETHROW
+    };
+
     ThrowStatement(std::unique_ptr<Expression> expression)
-        : expression_(std::move(expression)) {}
+        : kind_(ThrowKind::THROW), expression_(std::move(expression)) {
+        if (!expression_) {
+            throw std::invalid_argument("ThrowStatement(THROW) requires a non-null expression");
+        }
+    }
+
+    ThrowStatement(ThrowKind kind, std::unique_ptr<Expression> expression = nullptr)
+        : kind_(kind), expression_(std::move(expression)) {
+        if (kind_ == ThrowKind::THROW && !expression_) {
+            throw std::invalid_argument("ThrowStatement(THROW) requires a non-null expression");
+        }
+        if (kind_ == ThrowKind::RETHROW && expression_) {
+            throw std::invalid_argument("ThrowStatement(RETHROW) must not carry an expression");
+        }
+    }
 
     std::string toString() const override;
 
+    ThrowKind getKind() const { return kind_; }
     const Expression* getExpression() const { return expression_.get(); }
-    bool isRethrow() const { return expression_ == nullptr; }
+    bool isRethrow() const { return kind_ == ThrowKind::RETHROW; }
 
 private:
+    ThrowKind kind_;
     std::unique_ptr<Expression> expression_;
 };
 

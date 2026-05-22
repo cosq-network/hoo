@@ -20,8 +20,6 @@ The LLVM integration layer provides:
 | `RuntimeMethodRegistry.h` / `RuntimeMethodRegistry.cpp` | Runtime method descriptors and registration |
 | `RuntimeFunctionStorage.h` | Function pointer storage for LLVM calls |
 | `RuntimeClassRegistry.h` | Class descriptors for runtime types |
-| `RuntimeClassCodeGen.h` | Code generation macro patterns |
-| `MacroHelpers.h` | Utility macros for variadic parameter handling |
 | `hoo_string_registration.cpp` | String type registration (JIT + LLVM) |
 | `hoo_array_registration.cpp` | Array type registration (JIT + LLVM) |
 | `hoo_io_registration.cpp` | I/O type registration (JIT + LLVM) |

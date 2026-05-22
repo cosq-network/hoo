@@ -374,7 +374,7 @@ const char* hoo_exception_debug(HooException exc) {
 
     HooExceptionImpl* impl = get_impl(exc);
 
-    char buffer[512];
+    static thread_local char buffer[512];
     std::snprintf(buffer, sizeof(buffer),
         "HooException { typeId=%lld, type=\"%s\", message=\"%s\", refcount=%lld, hasCause=%s }",
         (long long)impl->typeId,

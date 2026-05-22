@@ -2,8 +2,55 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <functional>
 
 namespace hooc {
+namespace {
+std::string trimSpaces(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (char c : s) {
+        if (!std::isspace(static_cast<unsigned char>(c))) {
+            out.push_back(c);
+        }
+    }
+    return out;
+}
+
+std::string toHex(const std::string& value) {
+    static const char* kHex = "0123456789abcdef";
+    std::string out;
+    out.reserve(value.size() * 2);
+    for (unsigned char c : value) {
+        out.push_back(kHex[(c >> 4) & 0xF]);
+        out.push_back(kHex[c & 0xF]);
+    }
+    return out;
+}
+
+bool fromHex(const std::string& hex, std::string& out) {
+    if (hex.size() % 2 != 0) {
+        return false;
+    }
+    out.clear();
+    out.reserve(hex.size() / 2);
+    auto hexVal = [](char c) -> int {
+        if (c >= '0' && c <= '9') return c - '0';
+        if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+        if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+        return -1;
+    };
+    for (size_t i = 0; i < hex.size(); i += 2) {
+        int hi = hexVal(hex[i]);
+        int lo = hexVal(hex[i + 1]);
+        if (hi < 0 || lo < 0) {
+            return false;
+        }
+        out.push_back(static_cast<char>((hi << 4) | lo));
+    }
+    return true;
+}
+} // namespace
 
 const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap() {
     static std::vector<std::pair<std::string, std::string>> map = {
@@ -84,13 +131,13 @@ std::string decodeString(const std::string& str) {
     std::string result;
     size_t i = 0;
     while (i < str.size()) {
-        if (str[i] == '_' && i + 2 < str.size() && str[i + 2] == '_') {
+        if (str[i] == '_' && i + 3 < str.size() && str[i + 3] == '_') {
             int highVal = (str[i + 1] >= '0' && str[i + 1] <= '9') ? str[i + 1] - '0' :
                        (str[i + 1] >= 'a' && str[i + 1] <= 'f') ? str[i + 1] - 'a' + 10 : 0;
             int lowVal = (str[i + 2] >= '0' && str[i + 2] <= '9') ? str[i + 2] - '0' :
                         (str[i + 2] >= 'a' && str[i + 2] <= 'f') ? str[i + 2] - 'a' + 10 : 0;
             result += static_cast<char>((highVal << 4) | lowVal);
-            i += 3;
+            i += 4;
         } else {
             result += str[i];
             i++;
@@ -166,11 +213,11 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
         }
         
         if (!params.returnType.empty()) {
-            oss << typeNameToCode(params.returnType) << "_";
+            oss << SymbolMangler::mangleType(params.returnType) << "_";
         }
         
         for (const auto& param : params.parameterTypes) {
-            oss << typeNameToCode(param) << "_";
+            oss << SymbolMangler::mangleType(param) << "_";
         }
     } else {
         oss << encodeComponent(params.functionName) << "_";
@@ -189,11 +236,11 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
         }
         
         if (!params.returnType.empty()) {
-            oss << typeNameToCode(params.returnType) << "_";
+            oss << SymbolMangler::mangleType(params.returnType) << "_";
         }
         
         for (const auto& param : params.parameterTypes) {
-            oss << typeNameToCode(param) << "_";
+            oss << SymbolMangler::mangleType(param) << "_";
         }
     }
     
@@ -236,97 +283,141 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
             std::string comp;
             if (content[pos] == 'E') {
                 size_t start = pos;
-                pos++;
-                while (pos < content.size() && !(content[pos] == 'E' && (pos + 1 >= content.size() || content[pos + 1] != 'E'))) {
-                    pos++;
+                size_t endEncoded = std::string::npos;
+                size_t searchPos = pos + 1;
+                while (searchPos < content.size()) {
+                    size_t ePos = content.find('E', searchPos);
+                    if (ePos == std::string::npos) {
+                        break;
+                    }
+                    if (ePos + 1 == content.size() || content[ePos + 1] == '_') {
+                        endEncoded = ePos;
+                        break;
+                    }
+                    searchPos = ePos + 1;
                 }
-                if (pos < content.size()) pos++;
-                comp = decodeComponent(content.substr(start, pos - start));
+                if (endEncoded == std::string::npos) {
+                    // Malformed encoded segment: consume until next delimiter.
+                    size_t nextDelim = content.find('_', pos);
+                    if (nextDelim == std::string::npos) {
+                        comp = content.substr(pos);
+                        pos = content.size();
+                    } else {
+                        comp = content.substr(pos, nextDelim - pos);
+                        pos = nextDelim + 1;
+                    }
+                } else {
+                    comp = decodeComponent(content.substr(start, endEncoded - start + 1));
+                    pos = endEncoded + 1;
+                    if (pos < content.size() && content[pos] == '_') {
+                        pos++;
+                    }
+                }
             } else {
                 size_t start = pos;
                 while (pos < content.size() && content[pos] != '_') {
                     pos++;
                 }
-                if (pos < content.size()) pos++;
-                comp = content.substr(start, pos - start - 1);
+                size_t end = pos;
+                if (pos < content.size() && content[pos] == '_') {
+                    pos++;
+                }
+                comp = content.substr(start, end - start);
             }
             if (!comp.empty()) {
                 components.push_back(comp);
             }
         }
         
+        auto isFunctionModifierCode = [](const std::string& comp) {
+            return comp == "Pb" || comp == "Pv" || comp == "Ay";
+        };
+        auto isClassModifierCode = [](const std::string& comp) {
+            return comp == "N" || comp == "I" || comp == "F" || comp == "O" ||
+                   comp == "S" || comp == "Y" || comp == "A" || comp == "Z";
+        };
+        auto pushClassModifier = [&](const std::string& comp) {
+            if (comp == "N") result.classModifiers.push_back("SINGLETON");
+            else if (comp == "I") result.classModifiers.push_back("IMMUTABLE");
+            else if (comp == "F") result.classModifiers.push_back("FACTORY");
+            else if (comp == "O") result.classModifiers.push_back("OBSERVABLE");
+            else if (comp == "S") result.classModifiers.push_back("SERVICE");
+            else if (comp == "Y") result.classModifiers.push_back("STRATEGY");
+            else if (comp == "A") result.classModifiers.push_back("ACTOR");
+            else if (comp == "Z") result.classModifiers.push_back("FINAL");
+        };
+        auto pushFunctionModifier = [&](const std::string& comp) {
+            if (comp == "Pb") result.functionModifiers.push_back("PUBLIC");
+            else if (comp == "Pv") result.functionModifiers.push_back("PRIVATE");
+            else if (comp == "Ay") result.functionModifiers.push_back("ASYNC");
+        };
+
         size_t i = 0;
         bool isMemberFunction = false;
-        
-        if (!components.empty()) {
-            const std::string& first = components[0];
-            if (first != "CT" && first != "DT" && first != "static" && first != "virtual" && 
-                first != "Pb" && first != "Pv" && first != "Ay" &&
-                first != "N" && first != "I" && first != "F" && first != "O" && first != "S" && 
-                first != "Y" && first != "A" && first != "Z" &&
-                first != "i1" && first != "i8" && first != "f" && first != "d" && 
-                first != "b" && first != "c" && first != "s" && first != "v" && first != "p") {
-                result.className = first;
-                isMemberFunction = true;
+        if (!components.empty() && demangleType(components[0]) == "unknown" &&
+            components[0] != "CT" && components[0] != "DT" && components[0] != "static" &&
+            components[0] != "virtual" && !isFunctionModifierCode(components[0]) &&
+            !isClassModifierCode(components[0])) {
+            result.className = components[0];
+            isMemberFunction = true;
+            i = 1;
+        }
+
+        auto isCallableOrQualifierToken = [&](const std::string& comp) {
+            return comp == "CT" || comp == "DT" || comp == "static" || comp == "virtual" ||
+                   isFunctionModifierCode(comp) || isClassModifierCode(comp) ||
+                   demangleType(comp) != "unknown";
+        };
+
+        if (isMemberFunction && i < components.size() && !isCallableOrQualifierToken(components[i])) {
+            bool hasSecondUnknown = (i + 1 < components.size() && !isCallableOrQualifierToken(components[i + 1]));
+            bool followedByClassModifier = (i + 1 < components.size() && isClassModifierCode(components[i + 1]));
+            if (hasSecondUnknown || followedByClassModifier) {
+                result.baseClassName = components[i];
                 i++;
             }
         }
-        
+
+        while (i < components.size() && isClassModifierCode(components[i])) {
+            pushClassModifier(components[i]);
+            i++;
+        }
+
+        if (i < components.size()) {
+            if (components[i] == "CT") {
+                result.isConstructor = true;
+                i++;
+            } else if (components[i] == "DT") {
+                result.isDestructor = true;
+                i++;
+            } else if (demangleType(components[i]) == "unknown" &&
+                       components[i] != "static" && components[i] != "virtual" &&
+                       !isFunctionModifierCode(components[i])) {
+                result.functionName = components[i];
+                i++;
+            }
+        }
+
         while (i < components.size()) {
             const std::string& comp = components[i];
-            
-            if (comp == "CT") {
-                result.isConstructor = true;
-            } else if (comp == "DT") {
-                result.isDestructor = true;
-            } else if (comp == "static") {
+            if (comp == "static") {
                 result.isStatic = true;
             } else if (comp == "virtual") {
                 result.isVirtual = true;
-            } else if (comp == "Pb") {
-                result.functionModifiers.push_back("PUBLIC");
-            } else if (comp == "Pv") {
-                result.functionModifiers.push_back("PRIVATE");
-            } else if (comp == "Ay") {
-                result.functionModifiers.push_back("ASYNC");
-            } else if (comp == "N") {
-                result.classModifiers.push_back("SINGLETON");
-            } else if (comp == "I") {
-                result.classModifiers.push_back("IMMUTABLE");
-            } else if (comp == "F") {
-                result.classModifiers.push_back("FACTORY");
-            } else if (comp == "O") {
-                result.classModifiers.push_back("OBSERVABLE");
-            } else if (comp == "S") {
-                result.classModifiers.push_back("SERVICE");
-            } else if (comp == "Y") {
-                result.classModifiers.push_back("STRATEGY");
-            } else if (comp == "A") {
-                result.classModifiers.push_back("ACTOR");
-            } else if (comp == "Z") {
-                result.classModifiers.push_back("FINAL");
-            } else if (comp == "i1" || comp == "i8" || comp == "f" || comp == "d" || 
-                     comp == "b" || comp == "c" || comp == "s" || comp == "v" || comp == "p") {
-                if (result.returnType.empty()) {
-                    result.returnType = codeToTypeName(comp);
-                } else {
-                    result.parameterTypes.push_back(codeToTypeName(comp));
-                }
-            } else if (isMemberFunction && result.baseClassName.empty()) {
-                result.baseClassName = comp;
-                i++;
-                break;
+            } else if (isFunctionModifierCode(comp)) {
+                pushFunctionModifier(comp);
             } else {
-                break;
+                std::string demangledType = demangleType(comp);
+                if (demangledType == "unknown") {
+                    break;
+                }
+                if (result.returnType.empty()) {
+                    result.returnType = demangledType;
+                } else {
+                    result.parameterTypes.push_back(demangledType);
+                }
             }
             i++;
-        }
-        
-        if (i < components.size()) {
-            const std::string& comp = components[i];
-            if (!result.isConstructor && !result.isDestructor) {
-                result.functionName = comp;
-            }
         }
     }
     
@@ -387,11 +478,184 @@ std::string SymbolMangler::typeKindToMangledString(const std::string& typeName) 
 }
 
 std::string SymbolMangler::demangleType(const std::string& mangledType) {
-    return codeToTypeName(mangledType);
+    if (mangledType.empty()) {
+        return "unknown";
+    }
+
+    // Backward-compatible primitive decoding path.
+    std::string primitive = codeToTypeName(mangledType);
+    if (primitive != "unknown") {
+        return primitive;
+    }
+
+    size_t pos = 0;
+    std::function<std::string()> parseType = [&]() -> std::string {
+        if (pos >= mangledType.size()) {
+            return "unknown";
+        }
+
+        // Primitive tokens used inside structured encodings.
+        if (mangledType.compare(pos, 2, "i8") == 0) {
+            pos += 2;
+            return "int64";
+        }
+        if (mangledType.compare(pos, 2, "i1") == 0) {
+            pos += 2;
+            return "int8";
+        }
+        if (mangledType[pos] == 'f') {
+            pos++;
+            return "float";
+        }
+        if (mangledType[pos] == 'd') {
+            pos++;
+            return "double";
+        }
+        if (mangledType[pos] == 'b') {
+            pos++;
+            return "bool";
+        }
+        if (mangledType[pos] == 'c') {
+            pos++;
+            return "char";
+        }
+        if (mangledType[pos] == 's') {
+            pos++;
+            return "string";
+        }
+        if (mangledType[pos] == 'v') {
+            pos++;
+            return "void";
+        }
+        if (mangledType[pos] == 'p') {
+            pos++;
+            return "ptr";
+        }
+
+        if (mangledType[pos] == 'O') {
+            pos++;
+            std::string inner = parseType();
+            if (inner == "unknown") {
+                return "unknown";
+            }
+            return inner + "?";
+        }
+
+        if (mangledType[pos] == 'A') {
+            pos++;
+            std::string inner = parseType();
+            if (inner == "unknown") {
+                return "unknown";
+            }
+            return inner + "[]";
+        }
+
+        if (mangledType[pos] == 'M') {
+            pos++;
+            std::string key = parseType();
+            std::string value = parseType();
+            if (key == "unknown" || value == "unknown") {
+                return "unknown";
+            }
+            return "map[" + key + "," + value + "]";
+        }
+
+        if (mangledType[pos] == 'Q') {
+            pos++;
+            size_t end = mangledType.find('Z', pos);
+            if (end == std::string::npos) {
+                return "unknown";
+            }
+            std::string raw;
+            if (!fromHex(mangledType.substr(pos, end - pos), raw)) {
+                return "unknown";
+            }
+            pos = end + 1;
+            return raw;
+        }
+
+        return "unknown";
+    };
+
+    std::string decoded = parseType();
+    if (decoded == "unknown" || pos != mangledType.size()) {
+        return "unknown";
+    }
+    return decoded;
 }
 
 std::string SymbolMangler::mangleType(const std::string& typeName) {
-    return typeNameToCode(typeName);
+    std::string normalized = trimSpaces(typeName);
+    if (normalized.empty()) {
+        return "o";
+    }
+    std::string primitive = typeNameToCode(normalized);
+    if (primitive != "o") {
+        return primitive;
+    }
+
+    size_t pos = 0;
+    std::function<std::string()> parseType = [&]() -> std::string {
+        // map[K,V]
+        if (normalized.compare(pos, 4, "map[") == 0) {
+            pos += 4;
+            std::string key = parseType();
+            if (key.empty() || pos >= normalized.size() || normalized[pos] != ',') {
+                return "";
+            }
+            pos++;
+            std::string value = parseType();
+            if (value.empty() || pos >= normalized.size() || normalized[pos] != ']') {
+                return "";
+            }
+            pos++;
+            std::string out = "M" + key + value;
+            if (pos < normalized.size() && normalized[pos] == '?') {
+                pos++;
+                out = "O" + out;
+            }
+            return out;
+        }
+
+        // base identifier / qualified identifier
+        size_t start = pos;
+        while (pos < normalized.size()) {
+            char c = normalized[pos];
+            if (std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '.') {
+                pos++;
+            } else {
+                break;
+            }
+        }
+        if (start == pos) {
+            return "";
+        }
+
+        std::string base = normalized.substr(start, pos - start);
+        std::string code = typeNameToCode(base);
+        if (code == "o") {
+            code = "Q" + toHex(base) + "Z";
+        }
+
+        // array suffixes
+        while (pos + 1 < normalized.size() && normalized[pos] == '[' && normalized[pos + 1] == ']') {
+            pos += 2;
+            code = "A" + code;
+        }
+
+        // nullable suffix
+        if (pos < normalized.size() && normalized[pos] == '?') {
+            pos++;
+            code = "O" + code;
+        }
+        return code;
+    };
+
+    std::string encoded = parseType();
+    if (encoded.empty() || pos != normalized.size()) {
+        return "Q" + toHex(normalized) + "Z";
+    }
+    return encoded;
 }
 
 } // namespace hooc

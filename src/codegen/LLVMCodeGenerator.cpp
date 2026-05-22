@@ -449,6 +449,8 @@ Value* LLVMCodeGenerator::generatePrimaryExpression(const PrimaryExpression& exp
             return nullptr;
         }
         return builder_->CreateCall(fromCstrFunc, {cstr}, "hoo_interp_str");
+    } else if (auto parenthesized = dynamic_cast<const ParenthesizedExpression*>(&primary)) {
+        return generateLLVMExpression(parenthesized->getExpression());
     }
 
     addError("Unsupported primary expression type");

@@ -84,6 +84,57 @@ std::string Parameter::toString() const {
     return "Parameter " + name_;
 }
 
+// FFI declaration/type implementations
+std::string FFIPrimitiveType::toString() const {
+    return "FFIPrimitiveType(" + primitiveTypeToString(kind_) + ")";
+}
+
+std::string FFIQualifiedType::toString() const {
+    return "FFIQualifiedType(" + (typeName_ ? typeName_->toString() : std::string("null")) + ")";
+}
+
+std::string FFIPointerType::toString() const {
+    return "FFIPointerType(" + (pointee_ ? pointee_->toString() : std::string("null")) + ")";
+}
+
+std::string FFIArrayType::toString() const {
+    return "FFIArrayType[" + std::to_string(size_) + "]";
+}
+
+std::string FFIFunctionType::toString() const {
+    std::stringstream ss;
+    ss << "FFIFunctionType(params=" << params_.size() << ")";
+    return ss.str();
+}
+
+std::string FFIParameter::toString() const {
+    return "FFIParameter(" + name_ + ")";
+}
+
+std::string FFILibraryImportDeclaration::toString() const {
+    if (alias_.empty()) {
+        return "FFILibraryImport(" + libraryPath_ + ")";
+    }
+    return "FFILibraryImport(" + libraryPath_ + " as " + alias_ + ")";
+}
+
+std::string FFILinkDeclaration::toString() const {
+    std::stringstream ss;
+    ss << "FFILink(" << (modulePath_ ? modulePath_->toString() : std::string("null")) << ")";
+    return ss.str();
+}
+
+std::string FFINativeFunctionDeclaration::toString() const {
+    if (nativeFunction_) {
+        return std::string("FFINativeFunction(") + nativeFunction_->getName() + ")";
+    }
+    return std::string("FFINativeFunction(") + symbolName_ + ")";
+}
+
+std::string FFINativeVariableDeclaration::toString() const {
+    return std::string("FFINativeVariable(") + (variable_ ? variable_->getName() : std::string("null")) + ")";
+}
+
 // Class-related implementations
 std::string ConstructorDeclaration::toString() const {
     return "ConstructorDeclaration";
@@ -360,11 +411,13 @@ std::string hooc::ast::primitiveTypeToString(PrimitiveTypeKind kind) {
         case PrimitiveTypeKind::INT8: return "int8";
         case PrimitiveTypeKind::BYTE: return "byte";
         case PrimitiveTypeKind::INT64: return "int64";
+        case PrimitiveTypeKind::FLOAT: return "float";
         case PrimitiveTypeKind::DOUBLE: return "double";
         case PrimitiveTypeKind::F64: return "f64";
         case PrimitiveTypeKind::BOOL: return "bool";
         case PrimitiveTypeKind::CHAR: return "char";
         case PrimitiveTypeKind::STRING: return "string";
+        case PrimitiveTypeKind::VOID: return "void";
         default: return "unknown";
     }
 }

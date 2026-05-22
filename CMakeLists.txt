@@ -371,6 +371,7 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/QualifiedIdentifierParsingTest.cpp
         tests/parsing/QualifiedNewExpressionParsingTest.cpp
         tests/parsing/ThisKeywordParsingTest.cpp
+        tests/parsing/FfiAndGrammarAstTest.cpp
         tests/codegen/BasicCodeGenTest.cpp
         tests/codegen/FunctionCallCodeGenTest.cpp
         tests/codegen/VariableDeclarationCodeGenTest.cpp

@@ -220,6 +220,7 @@ TEST_F(SymbolManglerTest, TypeMangling) {
     EXPECT_EQ(SymbolMangler::mangleType("void"), "v");
     EXPECT_EQ(SymbolMangler::mangleType("int8"), "i1");
     EXPECT_EQ(SymbolMangler::mangleType("byte"), "i1");
+    EXPECT_EQ(SymbolMangler::mangleType("ptr"), "p");
 }
 
 TEST_F(SymbolManglerTest, TypeDemangling) {
@@ -231,6 +232,7 @@ TEST_F(SymbolManglerTest, TypeDemangling) {
     EXPECT_EQ(SymbolMangler::demangleType("c"), "char");
     EXPECT_EQ(SymbolMangler::demangleType("v"), "void");
     EXPECT_EQ(SymbolMangler::demangleType("i1"), "int8");
+    EXPECT_EQ(SymbolMangler::demangleType("p"), "ptr");
 }
 
 TEST_F(SymbolManglerTest, DemanglingSimpleFunction) {
@@ -320,4 +322,132 @@ TEST_F(SymbolManglerTest, AllPrimitiveTypes) {
     EXPECT_EQ(SymbolMangler::mangleType("int8"), "i1");
     EXPECT_EQ(SymbolMangler::mangleType("byte"), "i1");
     EXPECT_EQ(SymbolMangler::demangleType("i1"), "int8");
+}
+
+TEST_F(SymbolManglerTest, QualifiedReferenceTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("foo.bar.User");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "foo.bar.User");
+}
+
+TEST_F(SymbolManglerTest, ArrayAndOptionalTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("foo.bar.User[]?");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "foo.bar.User[]?");
+}
+
+TEST_F(SymbolManglerTest, TypeManglingIgnoresWhitespace) {
+    std::string compact = SymbolMangler::mangleType("map[string,map[foo.User[],int64?]]");
+    std::string spaced = SymbolMangler::mangleType(" map [ string , map [ foo.User[] , int64 ? ] ] ");
+    EXPECT_EQ(compact, spaced);
+}
+
+TEST_F(SymbolManglerTest, MapTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("map[string,int64]");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "map[string,int64]");
+}
+
+TEST_F(SymbolManglerTest, NestedMapArrayOptionalTypeManglingRoundTrip) {
+    std::string type = "map[string,map[foo.bar.User[],int64?]]";
+    std::string mangled = SymbolMangler::mangleType(type);
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), type);
+}
+
+TEST_F(SymbolManglerTest, FunctionOverloadWithReferenceTypesProducesDistinctMangles) {
+    auto p1 = makeParams();
+    p1.functionName = "build";
+    p1.returnType = "void";
+    p1.parameterTypes = {"foo.User"};
+
+    auto p2 = makeParams();
+    p2.functionName = "build";
+    p2.returnType = "void";
+    p2.parameterTypes = {"foo.Admin"};
+
+    std::string m1 = SymbolMangler::mangleFunctionName(p1);
+    std::string m2 = SymbolMangler::mangleFunctionName(p2);
+
+    EXPECT_NE(m1, m2);
+}
+
+TEST_F(SymbolManglerTest, DemangleSymbolDecodesStructuredTypeSignatures) {
+    auto params = makeParams();
+    params.functionName = "process";
+    params.returnType = "map[string,int64]";
+    params.parameterTypes = {"foo.User[]?", "int64"};
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    DemangledSymbol demangled = SymbolMangler::demangleSymbol(mangled);
+
+    EXPECT_EQ(demangled.returnType, "map[string,int64]");
+    ASSERT_GE(demangled.parameterTypes.size(), 1U);
+    EXPECT_EQ(demangled.parameterTypes[0], "foo.User[]?");
+}
+
+TEST_F(SymbolManglerTest, MalformedTypeDoesNotCollapseToGenericUnknownCode) {
+    std::string malformed = "map[string,]";
+    std::string mangled = SymbolMangler::mangleType(malformed);
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), malformed);
+}
+
+TEST_F(SymbolManglerTest, InvalidStructuredTypeDemanglesToUnknown) {
+    EXPECT_EQ(SymbolMangler::demangleType("QabcZ"), "unknown"); // odd hex-length payload
+    EXPECT_EQ(SymbolMangler::demangleType("QzzZ"), "unknown");  // non-hex payload
+    EXPECT_EQ(SymbolMangler::demangleType("M"), "unknown");     // incomplete map
+    EXPECT_EQ(SymbolMangler::demangleType("A"), "unknown");     // incomplete array
+    EXPECT_EQ(SymbolMangler::demangleType("O"), "unknown");     // incomplete optional
+}
+
+TEST_F(SymbolManglerTest, ModuleSymbolDemangleFallsBackToOriginalName) {
+    std::string mangled = SymbolMangler::mangleModuleSymbol({"pkg", "mod"}, "sym");
+    DemangledSymbol demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_EQ(demangled.originalName, mangled);
+    EXPECT_TRUE(demangled.className.empty());
+    EXPECT_EQ(SymbolMangler::demangle(mangled), mangled);
+}
+
+TEST_F(SymbolManglerTest, EncodedComponentRoundTrip) {
+    std::string original = "name-with.dot and space";
+    std::string encoded = encodeComponent(original);
+    EXPECT_NE(encoded, original);
+    EXPECT_EQ(decodeComponent(encoded), original);
+}
+
+TEST_F(SymbolManglerTest, MemberFunctionNameWithSpecialCharsRoundTrip) {
+    auto params = makeParams();
+    params.className = "Printer";
+    params.functionName = "print-value.v2";
+    params.returnType = "void";
+    params.parameterTypes = {"string"};
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    DemangledSymbol demangled = SymbolMangler::demangleSymbol(mangled);
+
+    EXPECT_EQ(demangled.functionName, "print-value.v2");
+    EXPECT_EQ(demangled.returnType, "void");
+    ASSERT_EQ(demangled.parameterTypes.size(), 1U);
+    EXPECT_EQ(demangled.parameterTypes[0], "string");
+}
+
+TEST_F(SymbolManglerTest, MemberAndBaseClassWithSpecialCharsRoundTrip) {
+    auto params = makeParams();
+    params.className = "foo.bar-User";
+    params.baseClassName = "core.base-Type";
+    params.functionName = "act-now";
+    params.returnType = "bool";
+    params.parameterTypes = {"int64"};
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    DemangledSymbol demangled = SymbolMangler::demangleSymbol(mangled);
+
+    EXPECT_EQ(demangled.className, "foo.bar-User");
+    EXPECT_EQ(demangled.baseClassName, "core.base-Type");
+}
+
+TEST_F(SymbolManglerTest, ModuleSymbolWithSpecialCharsManglingUsesEncoding) {
+    std::string mangled = SymbolMangler::mangleModuleSymbol({"hoo.std", "io-utils"}, "print.line");
+    EXPECT_NE(mangled.find("E"), std::string::npos);
 }

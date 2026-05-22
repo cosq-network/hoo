@@ -51,19 +51,19 @@ public:
     void registerExport(const std::string& module_name,
                        const std::string& symbol_name,
                        const std::string& mangled_name,
-                       hooc::SymbolKind kind);
+                       SymbolType kind);
 
     void registerNestedExport(const std::vector<std::string>& module_path,
                              const std::string& member_name,
                              const std::string& mangled_name,
-                             hooc::SymbolKind kind);
+                             SymbolType kind);
 
     void registerNamespaceExport(const std::string& namespace_name,
                                const std::string& member_name,
                                const std::string& mangled_name,
-                               hooc::SymbolKind kind);
+                               SymbolType kind);
 
-    std::vector<std::string> findExportsByKind(hooc::SymbolKind kind) const;
+    std::vector<std::string> findExportsByKind(SymbolType kind) const;
     std::vector<std::string> findExportsInNamespace(const std::string& namespace_name) const;
 
     bool hasExport(const std::string& symbol_name) const;
@@ -72,15 +72,15 @@ public:
 
     std::string mangleExport(const std::vector<std::string>& module_path,
                             const std::string& symbol_name,
-                            hooc::SymbolKind kind) const;
+                            SymbolType kind) const;
 
     std::string mangleNestedMember(const std::vector<std::string>& module_path,
                                   const std::string& member_name,
-                                  hooc::SymbolKind kind) const;
+                                  SymbolType kind) const;
 
     std::string mangleNamespaceMember(const std::string& namespace_name,
                                      const std::string& member_name,
-                                     hooc::SymbolKind kind) const;
+                                     SymbolType kind) const;
 
     hooc::DemangledSymbol demangleExport(const std::string& mangled_name) const;
 
@@ -100,7 +100,7 @@ private:
     std::unordered_map<std::string, std::unordered_set<std::string>> symbols_to_modules_;
     std::unordered_map<std::string, std::unordered_set<std::string>> mangled_symbols_to_modules_;
 
-    std::unordered_map<std::string, hooc::SymbolKind> exports_by_name_;
+    std::unordered_map<std::string, SymbolType> exports_by_name_;
     std::unordered_map<std::string, std::unordered_set<std::string>> nested_exports_to_modules_;
     std::unordered_map<std::string, std::unordered_set<std::string>> namespace_exports_;
     std::unordered_map<std::string, std::string> mangled_to_original_;

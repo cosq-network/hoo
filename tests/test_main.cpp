@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include <llvm/Support/TargetSelect.h>
+#include <cstdlib>
+#include <cstdio>
 #include <iostream>
 
 // Main function for Google Test
@@ -30,5 +32,7 @@ int main(int argc, char **argv) {
     }
 
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    int result = RUN_ALL_TESTS();
+    std::fflush(nullptr);
+    std::quick_exit(result);
 }

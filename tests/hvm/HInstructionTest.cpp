@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
-#include "src/hvm/HInstruction.h"
+#include "hvm/HInstruction.h"
 
 using namespace hvm;
 

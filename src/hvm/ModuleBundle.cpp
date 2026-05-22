@@ -3,6 +3,18 @@
 #include <algorithm>
 
 namespace hvm {
+namespace {
+std::string symbolTypeTag(SymbolType kind) {
+    switch (kind) {
+        case SymbolType::NoType: return "nt";
+        case SymbolType::Function: return "fn";
+        case SymbolType::Object: return "ob";
+        case SymbolType::Type: return "ty";
+        case SymbolType::TLS: return "tls";
+        default: return "uk";
+    }
+}
+} // namespace
 
 ModuleBundle* ModuleBundle::getModules() {
     static auto instance = std::make_unique<ModuleBundle>();
@@ -250,7 +262,7 @@ std::shared_ptr<HoModuleBase> ModuleBundle::findModuleByExport(const std::string
 void ModuleBundle::registerExport(const std::string& module_name,
                                 const std::string& symbol_name,
                                 const std::string& mangled_name,
-                                hooc::SymbolKind kind) {
+                                SymbolType kind) {
     if (!hasModule(module_name)) return;
     exports_by_name_[symbol_name] = kind;
     mangled_to_original_[mangled_name] = symbol_name;
@@ -263,7 +275,7 @@ void ModuleBundle::registerExport(const std::string& module_name,
 void ModuleBundle::registerNestedExport(const std::vector<std::string>& module_path,
                                         const std::string& member_name,
                                         const std::string& mangled_name,
-                                        hooc::SymbolKind kind) {
+                                        SymbolType kind) {
     std::string key;
     for (size_t i = 0; i < module_path.size(); ++i) {
         if (i > 0) key += ".";
@@ -281,14 +293,14 @@ void ModuleBundle::registerNestedExport(const std::vector<std::string>& module_p
 void ModuleBundle::registerNamespaceExport(const std::string& namespace_name,
                                       const std::string& member_name,
                                       const std::string& mangled_name,
-                                      hooc::SymbolKind kind) {
+                                      SymbolType kind) {
     std::string key = namespace_name + "." + member_name;
     namespace_exports_[namespace_name].insert(member_name);
     exports_by_name_[key] = kind;
     mangled_to_original_[mangled_name] = key;
 }
 
-std::vector<std::string> ModuleBundle::findExportsByKind(hooc::SymbolKind kind) const {
+std::vector<std::string> ModuleBundle::findExportsByKind(SymbolType kind) const {
     std::vector<std::string> result;
     for (const auto& pair : exports_by_name_) {
         if (pair.second == kind) {
@@ -323,20 +335,24 @@ bool ModuleBundle::hasNestedExport(const std::vector<std::string>& module_path,
 
 std::string ModuleBundle::mangleExport(const std::vector<std::string>& module_path,
                                      const std::string& symbol_name,
-                                     hooc::SymbolKind kind) const {
-    return hooc::SymbolMangler::mangleExportSymbol(module_path, symbol_name, kind);
+                                     SymbolType kind) const {
+    const std::string kindTag = symbolTypeTag(kind);
+    return hooc::SymbolMangler::mangleModuleSymbol(module_path, symbol_name + "_" + kindTag);
 }
 
 std::string ModuleBundle::mangleNestedMember(const std::vector<std::string>& module_path,
                                          const std::string& member_name,
-                                         hooc::SymbolKind kind) const {
-    return hooc::SymbolMangler::mangleNestedMember(module_path, member_name, kind);
+                                         SymbolType kind) const {
+    std::vector<std::string> path = module_path;
+    path.push_back("nested");
+    return mangleExport(path, member_name, kind);
 }
 
 std::string ModuleBundle::mangleNamespaceMember(const std::string& namespace_name,
                                           const std::string& member_name,
-                                          hooc::SymbolKind kind) const {
-    return hooc::SymbolMangler::mangleNamespaceMember(namespace_name, member_name, kind);
+                                          SymbolType kind) const {
+    std::vector<std::string> path = {"ns", namespace_name};
+    return mangleExport(path, member_name, kind);
 }
 
 hooc::DemangledSymbol ModuleBundle::demangleExport(const std::string& mangled_name) const {

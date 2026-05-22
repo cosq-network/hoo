@@ -75,3 +75,6 @@ Thumbs.db
 ehthumbs.db
 vcpkg_installed/
 .aider*
+
+# Local sanitizer build directory
+build-asan/

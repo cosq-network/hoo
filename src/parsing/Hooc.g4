@@ -45,6 +45,7 @@ FINALLY: 'finally';
 THROW: 'throw';
 RETHROW: 'rethrow';
 MAP: 'map';
+FUNCTION: 'function';
 
 // FFI Keywords
 NATIVE: 'native';
@@ -110,6 +111,7 @@ LBRACKET: '[';
 RBRACKET: ']';
 
 // String Literals
+MULTILINE_STRING: '"""' .*? '"""';
 STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"';
 
 // Character Literal
@@ -132,7 +134,7 @@ MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip;
 // ===== PARSER RULES =====
 
 // Compilation Unit
-compilationUnit: importStatement* (declaration SEMICOLON?)* EOF;
+compilationUnit: importStatement* ((declaration SEMICOLON?) | ffiDeclaration)* EOF;
 
 // Import Statements (Python-style)
 importStatement
@@ -153,7 +155,6 @@ declaration
     | classDeclaration
     | variableDeclaration
     | constantDeclaration
-    | ffiDeclaration
     ;
 
 // Function Declaration
@@ -385,4 +386,3 @@ interpolatedString: STRING_LITERAL; // Placeholder for interpolated strings with
 
 argumentList: expression (COMMA expression)*;
 expressionList: expression (COMMA expression)*;
-
