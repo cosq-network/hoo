@@ -28,22 +28,6 @@ r25,saved10,64,Callee-saved register.
 r26,saved11,64,Callee-saved register.
 r27,saved12,64,Callee-saved register.
 r28,saved13,64,Callee-saved register.
-r29,saved14,64,Callee-saved register.
+r29,lr,64,Link register holding return address for `RET`.
 r30,fp,64,"Frame pointer. Optional, used for debugging."
 r31,sp,64,Stack pointer.
-v0,vec1,128,First vector register (SIMD).
-v1,vec2,128,Second vector register.
-v2,vec3,128,Third vector register.
-v3,vec4,128,Fourth vector register.
-v4,vec5,128,Fifth vector register.
-v5,vec6,128,Sixth vector register.
-v6,vec7,128,Seventh vector register.
-v7,vec8,128,Eighth vector register.
-v8,vsaved1,128,Callee-saved vector register.
-v9,vsaved2,128,Callee-saved vector register.
-v10,vsaved3,128,Callee-saved vector register.
-v11,vsaved4,128,Callee-saved vector register.
-v12,vsaved5,128,Callee-saved vector register.
-v13,vsaved6,128,Callee-saved vector register.
-v14,vsaved7,128,Callee-saved vector register.
-v15,vsaved8,128,Callee-saved vector register.

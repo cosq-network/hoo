@@ -1,893 +1,133 @@
-# Hooc Language Grammar Specification
-
-This document provides a comprehensive reference for the Hooc programming language grammar. The grammar is defined using ANTLR4 notation and is located in `src/Hooc.g4`.
-
-## Table of Contents
-
-1. [Lexical Structure](#lexical-structure)
-2. [Keywords](#keywords)
-3. [Primitive Types](#primitive-types)
-4. [Operators](#operators)
-5. [Literals](#literals)
-6. [Syntax Rules](#syntax-rules)
-7. [Type System](#type-system)
-8. [Examples](#examples)
-
-## Lexical Structure
-
-### Keywords
-
-Hooc reserves the following keywords:
-
-**Control Flow:**
-- `if`, `else` - Conditional statements
-- `for`, `while` - Loop constructs
-- `in` - For loop iteration
-- `return` - Function returns
-
-**Declarations:**
-- `func` - Function declaration
-- `class` - Class declaration
-- `constructor` - Class constructor
-- `var` - Variable declaration
-- `const` - Constant declaration
-
-**Object-Oriented:**
-- `new` - Object instantiation
-- `extends` - Class inheritance
-
-**Modifiers:**
-- `final` - Prevent inheritance/reassignment
-- `singleton` - Singleton pattern
-- `immutable` - Immutable class
-- `factory` - Factory pattern
-- `observable` - Observable pattern
-- `service` - Service pattern
-- `strategy` - Strategy pattern
-- `actor` - Actor model pattern
-- `public` - Public member function (default)
-- `private` - Private member function
-- `async` - Async function marker
-
-**Module System:**
-- `import` - Import modules
-- `from` - Import specific items
-- `as` - Alias for imports
-
-**FFI (Foreign Function Interface):**
-- `native` - Native function/object declaration
-- `extern` - External linkage
-- `library` - Import native library
-- `link` - Link dynamic module (static is handled via runtime registration)
-- `dynamic` - Dynamic linking
-- `pointer` - Pointer type
-- `array` - Fixed-size array type
-- `at` - Version constraint
-
-**Special:**
-- `scope` - Scope management
-- `this` - Current object instance
-- `__hoo_init` - Internal module initialization (Reserved)
-
-**Exception Handling:**
-- `try` - Try block for exception handling
-- `catch` - Catch exception block
-- `finally` - Finally cleanup block
-- `throw` - Throw an exception
-- `rethrow` - Re-throw current exception
-
-**Literals:**
-- `true`, `false` - Boolean literals
-- `null` - Null literal
-
-### Primitive Types
-
-```
-int8      - 8-bit signed integer
-byte      - 8-bit unsigned integer
-int64     - 64-bit signed integer
-float     - 32-bit floating point
-double    - 64-bit floating point
-f64       - Alias for double
-bool      - Boolean type
-char      - Single character
-string    - UTF-8 string
-void      - No return value
-```
-
-### Operators
-
-**Arithmetic:**
-```
-+    Addition
--    Subtraction (or unary negation)
-*    Multiplication
-/    Division
-%    Modulo
-```
-
-**Comparison:**
-```
-==   Equality
-!=   Inequality
-<    Less than
-<=   Less than or equal
->    Greater than
->=   Greater than or equal
-```
-
-**Logical:**
-```
-&&   Logical AND
-||   Logical OR
-!    Logical NOT
-```
-
-**Assignment:**
-```
-=    Assignment
-+=   Compound add
--=   Compound subtract
-*=   Compound multiply
-/=   Compound divide
-%=   Compound modulo
-<<=  Compound left shift
->>=  Compound right shift
-++   Increment
---   Decrement
-```
-
-**Special:**
-```
-?    Nullable type marker
-..   Range operator
-.    Member access
-```
-
-### Delimiters
-
-```
-;    Semicolon (statement terminator)
-,    Comma (separator)
-:    Colon (type annotation)
-( )  Parentheses
-{ }  Braces
-[ ]  Brackets (arrays, indexing)
-```
-
-### Literals
-
-**Integer Literals:**
-```antlr
-INTEGER_LITERAL: [0-9]+
-```
-Examples: `0`, `42`, `1000`
-
-**Floating Point Literals:**
-```antlr
-FLOATING_LITERAL: [0-9]+ '.' [0-9]+
-```
-Examples: `3.14`, `0.5`, `100.0`
-
-**String Literals:**
-```antlr
-STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"'
-```
-Examples: `"hello"`, `"line 1\nline 2"`
-
-Note: String interpolation (`"Hello ${name}"`) is planned for a future version. Currently, concatenate strings using the `+` operator.
-
-**Multiline String Literals:**
-```antlr
-MULTILINE_STRING: '"""' .*? '"""'
-```
-Examples: `"""multiline""":`, `"""line1
-line2"""`
-
-**Character Literals:**
-```antlr
-CHAR_LITERAL: '\'' (~['\\\r\n] | '\\' .) '\''
-```
-Examples: `'a'`, `'\n'`, `'\t'`
-
-**Boolean Literals:**
-```
-true
-false
-```
-
-**Null Literal:**
-```
-null
-```
-
-### Identifiers
-
-```antlr
-IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*
-```
-
-Rules:
-- Must start with letter or underscore
-- Can contain letters, digits, and underscores
-- Case-sensitive
-
-Examples: `myVar`, `_private`, `User`, `value123`
-
-### Comments
-
-**Single-line comments:**
-```antlr
-SINGLE_LINE_COMMENT: '//' ~[\r\n]* -> skip
-```
-Example: `// This is a comment`
-
-**Multi-line comments:**
-```antlr
-MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip
-```
-Example:
-```
-/*
-  Multi-line
-  comment
-*/
-```
-
-## Syntax Rules
-
-### Compilation Unit
-
-The top-level structure of a Hooc file:
-
-```antlr
-compilationUnit: importStatement* (declaration SEMICOLON?)* EOF;
-```
-
-A file consists of:
-1. Zero or more import statements
-2. Zero or more declarations (functions, classes, variables, constants)
-
-### Import Statements
-
-**Basic import:**
-```antlr
-importStatement: IMPORT modulePath (AS IDENTIFIER)? SEMICOLON
-```
-
-Examples:
-```hoo
-import hoo.io;
-import hoo.collections as coll;
-```
-
-**From import:**
-```antlr
-importStatement: FROM modulePath IMPORT importItem (COMMA importItem)* SEMICOLON
-```
-
-Examples:
-```hoo
-from hoo.io import File, Directory;
-from hoo.collections import List as ArrayList;
-```
-
-**Module path:**
-```antlr
-modulePath: IDENTIFIER (DOT IDENTIFIER)*
-```
-
-Examples: `hoo`, `hoo.io`, `hoo.collections`
-
-### Declarations
-
-#### General Declaration
-
-```antlr
-declaration
-    : functionDeclaration
-    | classDeclaration
-    | variableDeclaration
-    | constantDeclaration
-    ;
-```
-
-#### Function Declaration
-
-```antlr
-functionDeclaration:
-    FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN block
-```
-
-**Components:**
-- Function name (identifier)
-- Parameter list: `(param1: type1, param2: type2)`
-- Optional return type: `: type` (preceding the function name)
-- Function body (block)
-
-**Note:** The return type is placed before the function name, not after the parameter list with `->`.
-
-**Examples:**
-
-```hoo
-// Simple function (returns void)
-func greet() {
-    print("Hello");
-}
-
-// With parameters and return type
-// Return type comes BEFORE the name: func:ReturnType name(params)
-func:int64 add(a: int64, b: int64) {
-    return a + b;
-}
-```
-
-**Parameter list:**
-```antlr
-parameterList: parameter (COMMA parameter)*
-parameter: IDENTIFIER COLON type
-```
-
-#### Class Declaration
-
-```antlr
-classDeclaration:
-    classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? classBody
-```
-
-**Components:**
-- Optional modifiers: `singleton`, `immutable`, `final`, etc.
-- Class name
-- Optional base class: `extends BaseClass`
-- Class body
-
-**Class modifiers:**
-```antlr
-classModifier:
-    SINGLETON | IMMUTABLE | FACTORY | OBSERVABLE |
-    SERVICE | STRATEGY | ACTOR | FINAL
-```
-
-**Examples:**
-
-```hoo
-// Simple class
-class Point {
-    var x: int64;
-    var y: int64;
-}
-
-// With constructor
-class Rectangle {
-    var width: int64;
-    var height: int64;
-
-    constructor(w: int64, h: int64) {
-        this.width = w;
-        this.height = h;
-    }
-}
-
-// With inheritance
-class ColoredPoint extends Point {
-    var color: string;
-}
-
-// Singleton pattern
-singleton class Database {
-    // ...
-}
-
-// Immutable class
-immutable class ImmutablePoint {
-    var x: int64;
-    var y: int64;
-}
-```
-
-**Class body:**
-```antlr
-classBody: LBRACE classMember* RBRACE
-
-classMember:
-    | variableDeclaration SEMICOLON
-    | constructorDeclaration
-    | functionDeclaration
-```
-
-**Constructor:**
-```antlr
-constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block
-```
-
-#### Variable Declaration
-
-```antlr
-variableDeclaration:
-    | VAR IDENTIFIER ASSIGN expression
-    | VAR IDENTIFIER COLON type (ASSIGN expression)?
-```
-
-**Examples:**
-
-```hoo
-// Type inference
-var x = 42;
-var name = "Alice";
-
-// Explicit type
-var count: int64 = 0;
-var flag: bool;
-
-// With nullable type
-var maybeValue: int64? = null;
-```
-
-#### Constant Declaration
-
-```antlr
-constantDeclaration:
-    CONST IDENTIFIER (COLON type)? ASSIGN expression
-```
-
-**Examples:**
-
-```hoo
-const PI = 3.14159;
-const MAX_BUFFER_SIZE: int64 = 1024;
-const APP_NAME: string = "Hooc Application";
-const PRIMES = [2, 3, 5, 7, 11];
-```
-
-### Type System
-
-```antlr
-type: optionalType
-
-optionalType: arrayType QUESTION?
-
-arrayType: baseType (LBRACKET RBRACKET)*
-
-baseType:
-    | primitiveType
-    | qualifiedIdentifier
-
-primitiveType:
-    INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 |
-    BOOL | CHAR | STRING | VOID
-```
-
-**Type Examples:**
-
-```hoo
-// Primitive types
-var a: int64;
-var b: double;
-var c: bool;
-var s: string;
-
-// Array types
-var arr: int64[];
-var matrix: double[][];
-
-// Nullable types
-var maybe: int64?;
-var optionalStr: string?;
-
-// Complex types using arrays
-var arrays: int64[][]?;
-```
-
-**Qualified identifiers (for modules):**
-```antlr
-qualifiedIdentifier: IDENTIFIER (DOT IDENTIFIER)*
-```
-
-Examples: `String`, `hoo.String`, `hoo.collections.List`
-
-### Statements
-
-```antlr
-statement:
-    | block
-    | variableDeclaration SEMICOLON
-    | expressionStatement SEMICOLON
-    | returnStatement SEMICOLON
-    | ifStatement
-    | whileStatement
-    | forStatement
-    | scopeStatement
-```
-
-#### Block Statement
-
-```antlr
-block: LBRACE statement* RBRACE
-```
-
-Example:
-```hoo
-{
-    var x = 10;
-    var y = 20;
-    print(x + y);
-}
-```
-
-#### If Statement
-
-```antlr
-ifStatement: IF expression block (ELSE block)?
-```
-
-**Examples:**
-
-```hoo
-// Simple if
-if x > 0 {
-    print("positive");
-}
-
-// If-else
-if x > 0 {
-    print("positive");
-} else {
-    print("non-positive");
-}
-
-// Nested if-else
-if x > 0 {
-    print("positive");
-} else {
-    if x < 0 {
-        print("negative");
-    } else {
-        print("zero");
-    }
-}
-```
-
-#### While Statement
-
-```antlr
-whileStatement: WHILE expression block
-```
-
-**Example:**
-
-```hoo
-var count = 0;
-while count < 10 {
-    print(count);
-    count = count + 1;
-}
-```
-
-#### For Statement
-
-```antlr
-forStatement:
-    | FOR IDENTIFIER IN expression block              // For-in
-    | FOR IDENTIFIER IN expression RANGE expression (BY expression)? block  // For-range
-```
-
-**Examples:**
-
-```hoo
-// For-in (iterate over collection)
-for item in collection {
-    print(item);
-}
-
-// For-range loop
-for i in 0 .. 10 {
-    print(i);
-}
-
-// For-range with step
-for i in 0 .. 10 by 2 {
-    print(i);
-}
-
-// Reverse range
-for i in 10 .. 0 by -1 {
-    print(i);
-}
-
-```
-
-#### Return Statement
-
-```antlr
-returnStatement: RETURN expression?
-```
-
-**Examples:**
-
-```hoo
-return;           // Return void
-return 42;        // Return value
-return x + y;     // Return expression
-```
-
-#### Scope Statement
-
-```antlr
-scopeStatement: SCOPE block
-```
-
-**Example:**
-
-```hoo
-scope {
-    var temp = getValue();
-    // temp is automatically released at end of scope
-}
-```
-
-#### Try-Catch-Finally Statement
-
-```antlr
-tryCatchStatement:
-    TRY block (CATCH LPAREN IDENTIFIER COLON type RPAREN block)* (FINALLY block)?
-  | TRY block FINALLY block
-```
-
-**Example:**
-
-```hoo
-try {
-    var result = divide(10, 0);
-} catch e: RuntimeException {
-    print("Error: " + e.getMessage());
-} finally {
-    print("Cleanup");
-}
-```
-
-#### Throw Statement
-
-```antlr
-throwStatement:
-    THROW expression SEMICOLON
-  | RETHROW SEMICOLON
-```
-
-**Example:**
-
-```hoo
-throw new RuntimeException("Something went wrong");
-// or
-rethrow;
-```
-
-### Expressions
-
-Expressions follow standard operator precedence (from lowest to highest):
-
-1. Assignment (`=`)
-2. Logical OR (`||`)
-3. Logical AND (`&&`)
-4. Relational (`==`, `!=`, `<`, `<=`, `>`, `>=`)
-5. Additive (`+`, `-`)
-6. Multiplicative (`*`, `/`, `%`)
-7. Unary (`-`, `!`)
-8. Postfix (member access, calls, indexing)
-9. Primary (literals, identifiers, parentheses)
-
-#### Expression Grammar
-
-```antlr
-expression: assignmentExpression
-
-assignmentExpression:
-    logicalOrExpression (ASSIGN assignmentExpression)?
-
-logicalOrExpression:
-    logicalAndExpression (OR logicalAndExpression)*
-
-logicalAndExpression:
-    relationalExpression (AND relationalExpression)*
-
-relationalExpression:
-    additiveExpression ((EQUALS | NOT_EQUALS | LESS | LESS_EQUALS |
-                        GREATER | GREATER_EQUALS) additiveExpression)*
-
-additiveExpression:
-    multiplicativeExpression ((PLUS | MINUS) multiplicativeExpression)*
-
-multiplicativeExpression:
-    unaryExpression ((MULTIPLY | DIVIDE | MODULO) unaryExpression)*
-
-unaryExpression:
-    (MINUS | NOT)? postfixExpression
-
-postfixExpression:
-    primary (
-        DOT IDENTIFIER                             // Member access
-      | LBRACKET expression RBRACKET              // Array indexing
-      | LPAREN argumentList? RPAREN               // Function call
-    )*
-
-primary:
-    | IDENTIFIER
-    | INTEGER_LITERAL
-    | FLOATING_LITERAL
-    | STRING_LITERAL
-    | CHAR_LITERAL
-    | TRUE
-    | FALSE
-    | NULL
-    | LBRACKET expressionList? RBRACKET          // Array literal
-    | LPAREN expression RPAREN                    // Grouped expression
-    | newExpression                               // Object creation
-```
-
-#### Object Creation (New Expression)
-
-```antlr
-newExpression:
-    NEW qualifiedIdentifier LPAREN argumentList? RPAREN
-```
-
-**Examples:**
-
-```hoo
-var obj = new Object();
-var point = new Point(10, 20);
-var rect = new geometry.Rectangle(5, 10);
-```
-
-#### Array Literals
-
-```antlr
-LBRACKET expressionList? RBRACKET
-
-expressionList: expression (COMMA expression)*
-```
-
-**Examples:**
-
-```hoo
-var empty: int64[] = [];
-var numbers = [1, 2, 3, 4, 5];
-var mixed = [1, 2 + 3, getValue()];
-var matrix = [[1, 2], [3, 4]];
-```
-
-#### Function Calls
-
-```antlr
-LPAREN argumentList? RPAREN
-
-argumentList: expression (COMMA expression)*
-```
-
-**Examples:**
-
-```hoo
-// Simple call
-print("hello");
-
-// With multiple arguments
-add(10, 20);
-
-// Method call
-obj.method(arg1, arg2);
-
-// Chained calls
-obj.getChild().getName();
-```
-
-## Operator Precedence Table
-
-| Precedence | Operator | Description | Associativity |
-|------------|----------|-------------|---------------|
-| 1 (lowest) | `=` | Assignment | Right |
-| 2 | `\|\|` | Logical OR | Left |
-| 3 | `&&` | Logical AND | Left |
-| 4 | `==`, `!=` | Equality | Left |
-| 5 | `<`, `<=`, `>`, `>=` | Relational | Left |
-| 6 | `+`, `-` | Addition, Subtraction | Left |
-| 7 | `*`, `/`, `%` | Multiplication, Division, Modulo | Left |
-| 8 | `-`, `!` | Unary minus, Logical NOT | Right |
-| 9 | `.`, `[]`, `()` | Member access, Index, Call | Left |
-| 10 (highest) | literals, `()` | Literals, Grouping | N/A |
-
-## Complete Grammar Examples
-
-### Example 1: Simple Program
-
-```hoo
-func main() {
-    var message: string = "Hello, World!";
-    print(message);
-}
-```
-
-### Example 2: Classes and Objects
-
-```hoo
-class Person {
-    var name: string;
-    var age: int64;
-
-    constructor(name: string, age: int64) {
-        this.name = name;
-        this.age = age;
-    }
-
-    func greet() {
-        print("Hello, my name is " + name);
-    }
-}
-
-func main() {
-    var person = new Person("Alice", 30);
-    person.greet();
-}
-```
-
-### Example 4: Control Flow
-
-```hoo
-func:int64 factorial(n: int64) {
-    if n <= 1 {
-        return 1;
-    } else {
-        return n * factorial(n - 1);
-    }
-}
-
-func printNumbers(max: int64) {
-    var i = 0;
-    while i < max {
-        print(i);
-        i = i + 1;
-    }
-}
-
-func main() {
-    var result = factorial(5);
-    print(result);
-
-    printNumbers(10);
-}
-```
-
-### Example 5: Module System
-
-```hoo
-import hoo.io as io;
-
-func main() {
-    var arr: int64[] = [1, 2, 3, 4, 5];
-    var total = 0;
-    for item in arr {
-        total = total + item;
-    }
-    io.println("Sum: " + total);
-}
-
-```
-
-## Grammar File Location
-
-The complete, authoritative grammar is maintained in:
-```
-src/Hooc.g4
-```
-
-To regenerate the parser after modifying the grammar:
-```bash
-cd build
-make clean_generated
-make generate_parser
-make
-```
-
-## See Also
-
-- [Features Guide](features.md) - Detailed feature documentation
-- [Implementation Status](implementation-status.md) - Current implementation status
-- [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
+# Hooc Grammar Specification
+
+This document summarizes the active grammar in `src/parsing/Hooc.g4` and its relationship to the current HVM core profile.
+
+Normative grammar source:
+
+- `src/parsing/Hooc.g4`
+
+Normative HVM sources:
+
+- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm_instruction_set.csv`
+
+## 1. Lexical Overview
+
+### 1.1 Core Keywords
+
+- Declarations: `func`, `class`, `constructor`, `var`, `const`
+- Control flow: `if`, `else`, `for`, `while`, `in`, `by`, `break`, `continue`, `return`, `scope`
+- OOP/modifiers: `extends`, `public`, `private`, `async`, `final`, `singleton`, `immutable`, `factory`, `observable`, `service`, `strategy`, `actor`
+- Module/import: `import`, `from`, `as`
+- Exceptions: `try`, `catch`, `finally`, `throw`, `rethrow`
+- FFI: `native`, `extern`, `pointer`, `array`, `library`, `link`, `dynamic`, `at`, `function`
+- Built-in literals: `true`, `false`, `null`
+- Reserved internal token: `__hoo_init` (`HOO_INIT`)
+
+### 1.2 Primitive Types
+
+- `int8`, `byte`, `int64`
+- `float`, `double`, `f64`
+- `bool`, `char`, `string`, `void`
+
+### 1.3 Operators
+
+- Arithmetic: `+ - * / %`
+- Assignment: `= += -= *= /= %= <<= >>=`
+- Increment/decrement: `++ --`
+- Relational: `== != < <= > >=`
+- Logical: `&& || !`
+- Misc: `? -> .. .`
+
+## 2. Top-Level Structure
+
+`compilationUnit` supports:
+
+1. zero or more `importStatement`
+2. mixed stream of:
+  - declarations (`functionDeclaration`, `classDeclaration`, `variableDeclaration`, `constantDeclaration`)
+  - FFI declarations (`ffiDeclaration`)
+3. EOF
+
+## 3. Type Grammar
+
+- `type`: optional type or map type
+- optional type: `arrayType QUESTION?`
+- arrays: repeated `[]` suffix
+- base type: primitive or qualified identifier
+- map type: `map[keyType, valueType]`
+- key type restricted to: `byte | int8 | int64 | char | string`
+
+## 4. Statement Grammar
+
+Supported statements:
+
+- block
+- variable declaration statement
+- expression statement
+- return statement
+- `if`
+- `while`
+- `for`
+- `scope`
+- `break`
+- `continue`
+- `try/catch/finally`
+- `throw` / `rethrow`
+
+## 5. Expression Grammar
+
+Precedence chain:
+
+1. assignment (`=` and compound assignment forms)
+2. logical OR (`||`)
+3. logical AND (`&&`)
+4. relational/equality (`== != < <= > >=`)
+5. additive (`+ -`)
+6. multiplicative (`* / %`)
+7. unary (`- !`)
+8. postfix/member/index/call plus `++/--`
+9. primary literals/identifiers/new/array literal/parenthesized
+
+## 6. FFI Grammar
+
+Top-level FFI declarations:
+
+- library import declaration
+- dynamic link declaration
+- native function declaration
+- native variable declaration
+
+FFI type grammar includes:
+
+- primitive and qualified types
+- pointer types
+- fixed-size array parameter types
+- function types
+
+## 7. HVM Core Alignment
+
+The current grammar aligns with the HVM `core-minimalest` profile:
+
+- arithmetic/logical/relational expressions
+- control-flow forms
+- objects/arrays
+- exceptions
+- FFI bridge
+
+This grammar does not require core inclusion of:
+
+- SIMD/vector opcode families
+- threading/atomic/TLS opcode families
+- interrupt/system/debug opcode families
+
+Those remain outside core and belong to optional extension profiles.
+
+## 8. Notes
+
+- Any grammar extension that introduces genuinely new runtime semantics should trigger synchronized updates to:
+  - AST builder
+  - lowering/codegen
+  - `HVM_SPEC.md`
+  - `hvm_instruction_set.csv`
+  - `instructions.md`

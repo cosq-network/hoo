@@ -1,58 +1,39 @@
-# Project Direction Summary (From Last 10 Commits)
+# Project Direction Summary
 
-**Date:** May 21, 2026  
-**Scope:** `git log -10`
+Date: 2026-05-22  
+Context: consolidated direction after recent HVM/documentation refactors
 
-## High-Level Direction
+## 1. Direction You Have Been Driving
 
-You were steering Hooc toward a **modular runtime and distribution model** centered on:
+The project direction is now clear and cohesive:
 
-1. **HVM module infrastructure as a first-class runtime boundary**
-2. **FFI and native interop support** (static + dynamic linking)
-3. **Serialized `.ho` module artifacts** and a dedicated `ho` executable
-4. **Cross-module dependency/symbol resolution** via `ModuleBundle`
-5. **Documentation consolidation to match implementation reality**
+1. Keep Hooc language/compiler semantics grounded in `src/parsing/Hooc.g4`
+2. Keep HVM architecture minimal, grammar-driven, and explicitly scoped
+3. Separate optional VM capabilities into extension profiles rather than bloating core
+4. Strengthen module/FFI/runtime boundaries and `.ho` artifact behavior
 
-In short: the trajectory is from "single-module JIT compiler" toward a **multi-module, linkable, runtime-extensible platform**.
+## 2. What Changed Strategically
 
-## Commit-by-Commit Narrative
+- HVM moved from a broad “catalog ISA” mindset to a **core-minimalest profile**
+- Core docs were synchronized across spec/CSV/reference/register/module-format docs
+- Non-core families (SIMD/threading/interrupt/debug/string-op families) were removed from core narratives and pushed to extension scope
+- Register/call semantics were normalized (notably `r29` as link register for `RET`)
 
-1. `4dba233` (Apr 20): Implemented Math and Network standard-library modules.
-2. `a3abb2b` (Apr 20): Fixed Math runtime declaration conflicts.
-3. `fcbe4b4` (Apr 21): Aligned `HoModule` binary format implementation with HO spec v1.3.
-4. `a7cf6e3` (Apr 21): Added FFI module system and `HoModuleBase` abstraction (compiled/static/dynamic module model).
-5. `474fa0d` (Apr 21): Added `ho` executable and binary serialize/deserialize plumbing for module types.
-6. `44af82b` (Apr 21): Added binary file I/O and integrated `IOProvider` into module system.
-7. `70486ca` (May 15): Consolidated language/docs, including generic removal and syntax normalization.
-8. `102b424` (May 15): Implemented `ModuleBundle` for dependency ordering, circular detection, and cross-module symbol handling.
-9. `b8c1f47` (May 15): Updated `.gitignore`.
-10. `5006e29` (May 21): Synchronized docs to current codebase state and metrics.
+## 3. Current Strategic Theme
 
-## What You Were Likely Heading Toward Next
+**“Minimal core VM + explicit extension profiles + strong compiler/runtime alignment.”**
 
-Based on this sequence, the next logical implementation targets are:
+This lowers ambiguity, improves testability, and makes AOT/module work more predictable.
 
-1. **Complete cross-module execution flow**
-- Move from module management primitives to end-to-end linking/loading/execution across multiple `.ho` units.
+## 4. Likely Next High-Value Milestones
 
-2. **Advance AOT path from "reserved" to functional**
-- `hooc -o` and `.ho` execution are currently signaled as future/reserved in CLI behavior; trajectory suggests making these operational.
+1. Finalize end-to-end AOT workflow (`.hoo -> .ho -> run`)
+2. Add integration coverage for module loading/linking + FFI bridge behavior
+3. Introduce capability-gated optional profiles only when required by grammar/runtime evolution
+4. Continue standard-library growth via runtime and module APIs, not core ISA expansion
 
-3. **Tighten FFI ergonomics and safety**
-- Expand native symbol mapping, validation, and error reporting for static/dynamic modules.
+## 5. Practical Guardrails Going Forward
 
-4. **Stabilize module toolchain UX**
-- Converge responsibilities between `hooc` and `ho` into a clear workflow (build/package/run/link).
-
-## Current Strategic Theme
-
-The strategic theme across these commits is:
-
-**"Turn Hooc into a modular language runtime with portable binary module artifacts and robust inter-module/native interop."**
-
-## Immediate Suggested Milestones
-
-1. Define and implement a minimum viable **AOT pipeline** (`.hoo` -> `.ho` -> execute).
-2. Add integration tests that exercise **ModuleBundle + HoModuleBase + FFI** together.
-3. Document a canonical user flow for module authoring, packaging, linking, and runtime loading.
-
+- Any grammar change should trigger synchronized AST/lowering/codegen/doc updates
+- Any VM feature beyond current grammar needs should start as optional profile documentation
+- Avoid introducing new core opcodes where lowering rules already satisfy semantics

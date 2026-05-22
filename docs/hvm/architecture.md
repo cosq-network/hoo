@@ -1,208 +1,126 @@
 # Hooc Virtual Machine (HVM) Architecture
 
-## 1. Introduction
+This document describes the current HVM architecture as defined by:
 
-The Hooc Virtual Machine (HVM) is a lightweight, register-based virtual machine designed for the Hooc programming language. It supports static compilation, dynamic linking, JIT compilation (LLVM IR friendly), and C/C++ calling conventions. HVM is optimized for performance, portability, and ease of integration with existing toolchains.
+- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm_instruction_set.csv`
+- `docs/hvm/hvm_register_set.csv`
 
----
+The active profile is **core-minimalest**.
+
+## 1. Architectural Scope
+
+HVM is a register-based VM profile intentionally limited to what the current grammar requires.
+
+Supported language surface:
+
+- declarations (`func`, `class`, `var`, `const`)
+- expressions (arithmetic, logical, relational, assignment)
+- control flow (`if`, `while`, `for in .. by`, `break`, `continue`, `return`)
+- object/array operations (`new`, member/index access)
+- exceptions (`try/catch/finally`, `throw`, `rethrow`)
+- FFI declarations (`library`, `link dynamic`, `native`, `extern`)
+
+Explicitly out of core:
+
+- SIMD/vector families
+- threading/atomic/TLS families
+- interrupt/system/debug families
+- dedicated string opcode families
 
 ## 2. Execution Model
 
-### 2.1 Registers
+- 64-bit register machine
+- byte-addressable little-endian memory
+- downward-growing stack
+- runtime-managed object/array heap
+- 32-bit base instruction words plus escape-prefixed extended opcode space
 
-HVM features a **register-based architecture** with 32 general-purpose registers. This design provides the performance benefits of register-based execution while maintaining a simple, predictable execution model.
+## 3. Register Architecture
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" style="font-family:monospace;font-size:11px;fill:#333"><rect width="600" height="180" fill="#f5f5f5" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">32 General-Purpose Registers (64-bit)</text><g transform="translate(10,35)"><rect width="580" height="20" fill="#4a90d9"/><text x="10" y="14" fill="white">Reg</text><text x="70" y="14" fill="white">Alias</text><text x="150" y="14" fill="white">Purpose</text><text x="350" y="14" fill="white">Notes</text><rect y="25" width="580" height="18" fill="#e8f4fd"/><text x="10" y="38">r0</text><text x="70" y="38">zero</text><text x="150" y="38">Hardwired Zero</text><text x="350" y="38" fill="#666">Always reads as 0, writes ignored</text><rect y="43" width="580" height="18" fill="#fff"/><text x="10" y="56">r1-r7</text><text x="70" y="56">arg0-6</text><text x="150" y="56">Integer/Pointer Args</text><text x="350" y="56" fill="#666">Function argument registers</text><rect y="61" width="580" height="18" fill="#e8f4fd"/><text x="10" y="74">r8-r15</text><text x="70" y="74">temp0-7</text><text x="150" y="74">Temporaries</text><text x="350" y="74" fill="#666">Callee-saved or temp use</text><rect y="79" width="580" height="18" fill="#fff"/><text x="10" y="92">r16-r23</text><text x="70" y="92">save0-7</text><text x="150" y="92">Callee-Saved</text><text x="350" y="92" fill="#666">Preserved across calls</text><rect y="97" width="580" height="18" fill="#e8f4fd"/><text x="10" y="110">r24-r29</text><text x="70" y="110">-</text><text x="150" y="110">General Purpose</text><text x="350" y="110" fill="#666">Available for use</text><rect y="115" width="580" height="18" fill="#fff"/><text x="10" y="128">r30</text><text x="70" y="128">fp</text><text x="150" y="128">Frame Pointer</text><text x="350" y="128" fill="#666">Optional, for debugging</text><rect y="133" width="580" height="18" fill="#d4edda"/><text x="10" y="146">r31</text><text x="70" y="146">sp</text><text x="150" y="146">Stack Pointer</text><text x="350" y="146" fill="#28a745">Required, points to stack top</text></g><rect x="420" y="35" width="170" height="65" fill="white" stroke="#ccc" rx="3"/><text x="430" y="50" font-weight="bold">Legend:</text><rect x="430" y="58" width="12" height="12" fill="#e8f4fd"/><text x="448" y="68">Standard register</text><rect x="430" y="73" width="12" height="12" fill="#d4edda"/><text x="448" y="83">Special purpose</text></svg>
+32 general-purpose 64-bit registers (`r0..r31`):
 
-**Key Register Conventions:**
+- `r0`: hardwired zero
+- `r1..r8`: argument registers (`r1` also return value)
+- `r9..r15`: caller-saved temporaries
+- `r16..r28`: callee-saved
+- `r29`: link register (`RET` jumps to `r29`)
+- `r30`: frame pointer
+- `r31`: stack pointer
 
-| Register | Name | Purpose | Notes |
-|----------|------|---------|-------|
-| `r0` | `zero` | Hardwired zero | Writes are discarded |
-| `r1-r8` | `arg0-6` | Argument passing | First 8 integer/pointer args |
-| `v0-v7` | `farg0-7` | Float arguments | First 8 FP arguments |
-| `r31` | `sp` | Stack pointer | Must be maintained |
-| `r30` | `fp` | Frame pointer | Optional, for debugging |
+## 4. Instruction Encoding Model
 
-### 2.2 Instruction Encoding
+Base formats:
 
-HVM uses **32-bit fixed-width instructions** as the primary encoding format, with an **escape prefix** mechanism for extended operations that require additional operands.
+- `R`: `opcode[7] rd[5] rs1[5] rs2[5] func[10]`
+- `I`: `opcode[7] rd[5] rs1[5] imm[15]`
+- `RI`: `opcode[7] rd[5] rs1[5] rs2[5] imm[10]`
+- `B`: `opcode[7] rs1[5] rs2[5] imm[15]`
+- `J`: `opcode[7] rd[5] imm[20]`
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 220" style="font-family:monospace;font-size:11px"><rect width="600" height="220" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">HVM Instruction Formats</text><g transform="translate(10,35)"><text x="0" y="0" font-weight="bold" fill="#4a90d9">Standard Instruction (32-bit)</text><rect x="0" y="8" width="580" height="40" fill="none" stroke="#333" stroke-width="1"/><rect x="5" y="18" width="50" height="20" fill="#e8f4fd" stroke="#4a90d9"/><text x="15" y="32" text-anchor="middle" font-weight="bold">31</text><rect x="58" y="18" width="50" height="20" fill="#e8f4fd" stroke="#4a90d9"/><text x="68" y="32" text-anchor="middle" font-weight="bold">26</text><rect x="111" y="18" width="50" height="20" fill="#d4edda" stroke="#28a745"/><text x="121" y="32" text-anchor="middle" font-weight="bold">21</text><rect x="164" y="18" width="50" height="20" fill="#fff3cd" stroke="#ffc107"/><text x="174" y="32" text-anchor="middle" font-weight="bold">16</text><rect x="217" y="18" width="50" height="20" fill="#f8d7da" stroke="#dc3545"/><text x="227" y="32" text-anchor="middle" font-weight="bold">11</text><rect x="270" y="18" width="50" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="280" y="32" text-anchor="middle" font-weight="bold">6</text><rect x="323" y="18" width="50" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="333" y="32" text-anchor="middle" font-weight="bold">0</text><text x="30" y="58" text-anchor="middle" fill="#4a90d9">opcode</text><text x="83" y="58" text-anchor="middle" fill="#4a90d9">opcode</text><text x="136" y="58" text-anchor="middle" fill="#28a745">rd</text><text x="189" y="58" text-anchor="middle" fill="#ffc107">rs1</text><text x="242" y="58" text-anchor="middle" fill="#dc3545">rs2</text><text x="295" y="58" text-anchor="middle" fill="#6c757d">imm</text><text x="348" y="58" text-anchor="middle" fill="#6c757d">funct3</text></g><g transform="translate(10,115)"><text x="0" y="0" font-weight="bold" fill="#dc3545">Extended Instruction (64-bit)</text><rect x="0" y="8" width="580" height="55" fill="none" stroke="#333" stroke-width="1"/><rect x="5" y="18" width="50" height="20" fill="#f8d7da" stroke="#dc3545"/><text x="15" y="32" text-anchor="middle" font-weight="bold">63</text><text x="15" y="47" text-anchor="middle" fill="#dc3545" font-size="9">0x10</text><rect x="58" y="18" width="50" height="20" fill="#f8d7da" stroke="#dc3545"/><text x="68" y="32" text-anchor="middle" font-weight="bold">58</text><text x="68" y="47" text-anchor="middle" fill="#dc3545" font-size="9">ext</text><rect x="111" y="18" width="70" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="146" y="32" text-anchor="middle" font-weight="bold">52</text><rect x="184" y="18" width="70" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="219" y="32" text-anchor="middle" font-weight="bold">32</text><rect x="257" y="18" width="70" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="292" y="32" text-anchor="middle" font-weight="bold">12</text><rect x="330" y="18" width="70" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="365" y="32" text-anchor="middle" font-weight="bold">6</text><rect x="403" y="18" width="70" height="20" fill="#d6d8db" stroke="#6c757d"/><text x="438" y="32" text-anchor="middle" font-weight="bold">0</text><text x="30" y="47" text-anchor="middle" fill="#6c757d">...</text></g><g transform="translate(10,185)"><text x="0" y="0" font-weight="bold">Opcode Ranges:</text><rect x="100" y="-10" width="80" height="16" fill="#e8f4fd"/><text x="140" y="2" text-anchor="middle">0x00-0x0F</text><rect x="185" y="-10" width="80" height="16" fill="#d4edda"/><text x="225" y="2" text-anchor="middle">0x10-0xF7</text><rect x="270" y="-10" width="80" height="16" fill="#f8d7da"/><text x="310" y="2" text-anchor="middle">0x100+</text></g></svg>
+Opcode-space behavior:
 
-**Instruction Categories:**
+- `0x00..0x7F`: base 32-bit format path
+- `>= 0x100`: escape-prefixed extended path (used in core for exception/FFI opcodes)
 
-| Range | Category | Width | Examples |
-|-------|----------|-------|----------|
-| `0x00-0x0F` | Control & Data Movement | 32-bit | `NOP`, `MOV`, `BR`, `CALL` |
-| `0x10-0xF7` | ALU, Memory, Control | 32-bit | `ADD`, `LDW`, `STW`, `BEQ` |
-| `0x100-0x10A` | Vector/SIMD | 64-bit | `VADD`, `VMUL`, `VLD`, `VST` |
-| `0x110-0x117` | Exception Handling | 64-bit | `TRY`, `CATCH`, `THROW` |
-| `0x118-0x11F` | Interrupt Handling | 64-bit | `DI`, `EI`, `INT`, `IRET` |
-| `0x120-0x12D` | FFI Instructions | 64-bit | `CALLHOST`, `CALLNATIVE`, `LOADLIB` |
-| `0x130-0x139` | System & Debug | 64-bit | `BREAKPOINT`, `SINGLESTEP`, `GETREGS` |
+Immediates/branches:
 
-### 2.3 Memory Model
+- immediates are sign-extended unless documented otherwise
+- branch/jump offsets are instruction offsets (`pc += sign_extend(imm) * 4`)
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 280" style="font-family:monospace;font-size:11px"><rect width="600" height="280" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">HVM Memory Layout</text><g transform="translate(10,35)"><rect x="0" y="0" width="280" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="140" y="18" text-anchor="middle" font-weight="bold" fill="#4a90d9">STATIC / CODE</text><text x="10" y="35">.text: Function code</text><text x="10" y="47">.rodata: Constants, vtables</text><rect x="0" y="55" width="280" height="90" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="140" y="73" text-anchor="middle" font-weight="bold" fill="#856404">HEAP (Growing Up)</text><text x="10" y="90">Object headers</text><text x="10" y="102">Instance fields</text><text x="10" y="114">Array data</text><text x="10" y="126">Free space...</text><text x="10" y="138">More objects...</text><path d="M270 60 L270 140" stroke="#ffc107" stroke-width="2" stroke-dasharray="4"/><text x="275" y="105" fill="#856404">→</text><rect x="0" y="150" width="280" height="90" fill="#d4edda" stroke="#28a745" rx="2"/><text x="140" y="168" text-anchor="middle" font-weight="bold" fill="#28a745">STACK (Growing Down)</text><text x="10" y="185">sp → Activation record N</text><text x="20" y="197">    Local variables</text><text x="20" y="209">    Saved registers</text><text x="20" y="221">    Return address</text><text x="10" y="233">sp → Activation record 1</text><text x="260" y="20" text-anchor="end" fill="#666">0x0000</text><text x="260" y="70" text-anchor="end" fill="#666">...</text><text x="260" y="145" text-anchor="end" fill="#666">brk</text><text x="260" y="220" text-anchor="end" fill="#666">...</text><text x="260" y="240" text-anchor="end" fill="#666">0xFFFF</text><rect x="300" y="0" width="200" height="150" fill="white" stroke="#ccc" rx="3"/><text x="310" y="18" font-weight="bold">Object Header</text><rect x="310" y="25" width="180" height="45" fill="#f8d7da" stroke="#dc3545"/><text x="320" y="40">+------------------+</text><text x="320" y="52">| refcount (8B)   |</text><text x="320" y="64">| type_id (8B)     |</text><text x="320" y="76">| vtable ptr (8B)  |</text><text x="320" y="88">+------------------+</text><text x="310" y="108" font-weight="bold">String Object</text><rect x="310" y="115" width="180" height="35" fill="#e8f4fd" stroke="#4a90d9"/><text x="320" y="130">| Header (24B)     |</text><text x="320" y="142">| char[length]...  |</text></g><text x="10" y="265" fill="#666" font-style="italic">Note: Memory is byte-addressable, little-endian. Stack grows downward, heap grows upward.</text></svg>
+## 5. Core Instruction Families
 
-### 2.4 Calling Conventions
+The canonical full opcode list is `docs/hvm/hvm_instruction_set.csv`.
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 240" style="font-family:monospace;font-size:11px"><rect width="600" height="240" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">Function Call Convention</text><g transform="translate(10,35)"><text x="0" y="0" font-weight="bold" fill="#4a90d9">Caller</text><rect x="0" y="8" width="280" height="100" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="10" y="25">Arguments:</text><rect x="10" y="32" width="80" height="14" fill="#fff" stroke="#333"/><text x="15" y="43" fill="#333">r1: arg0</text><rect x="10" y="50" width="80" height="14" fill="#fff" stroke="#333"/><text x="15" y="61" fill="#333">r2: arg1</text><rect x="10" y="68" width="80" height="14" fill="#fff" stroke="#333"/><text x="15" y="79" fill="#333">...</text><rect x="10" y="86" width="80" height="14" fill="#fff" stroke="#333"/><text x="15" y="97" fill="#333">v0: farg0</text><text x="100" y="25">Call site</text><text x="100" y="43" fill="#666">CALL func, r1-r8</text><text x="100" y="61" fill="#666">Prepare args in regs</text><path d="M290 55 L320 55" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><defs><marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0, 10 3.5, 0 7" fill="#333"/></marker></defs></g><g transform="translate(330,35)"><text x="0" y="0" font-weight="bold" fill="#28a745">Callee</text><rect x="0" y="8" width="260" height="100" fill="#d4edda" stroke="#28a745" rx="2"/><text x="10" y="25">Prologue:</text><text x="10" y="40" fill="#666">SUB sp, sp, #frame_size</text><text x="10" y="55" fill="#666">STW fp, [sp, #offset]  ; save fp</text><text x="10" y="70" fill="#666">MOV fp, sp           ; new fp</text><text x="10" y="90">Epilogue:</text><text x="10" y="105" fill="#666">MOV sp, fp           ; restore sp</text><text x="10" y="120" fill="#666">LDW fp, [sp, #offset] ; restore fp</text><text x="10" y="135" fill="#666">ADD sp, sp, #frame</text><text x="10" y="150" fill="#666">RET                  ; return</text></g><g transform="translate(10,155)"><rect x="0" y="0" width="580" height="75" fill="white" stroke="#ccc" rx="3"/><text x="10" y="18" font-weight="bold">Return Value Convention</text><g transform="translate(10,28)"><rect width="170" height="40" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="85" y="15" text-anchor="middle" font-weight="bold">Integer/Pointer</text><text x="85" y="32" text-anchor="middle">r1</text><rect x="180" width="170" height="40" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="265" y="15" text-anchor="middle" font-weight="bold">Float/Double</text><text x="265" y="32" text-anchor="middle">v0</text><rect x="360" width="210" height="40" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="465" y="15" text-anchor="middle" font-weight="bold">Struct (≤16B)</text><text x="465" y="32" text-anchor="middle">r1, r2 (or hidden ptr)</text></g></g></svg>
+Family summary:
 
-**Calling Convention Summary:**
+- Data movement: `NOP`, `MOV`, `MOVZ`, `LUI`, `ADDI`
+- Integer arithmetic/shift: `ADD`, `SUB`, `MUL`, `DIV`, `DIVU`, `REM`, `SHL`, `SHR`, `SAR`
+- Bitwise/logical: `AND`, `OR`, `XOR`, `NOT`
+- Floating-point: `FADD`, `FSUB`, `FMUL`, `FDIV`
+- Comparisons: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`, `FCMPEQ`, `FCMPLT`, `FCMPLE`
+- Control transfer: `BEQ`, `BNE`, `BLT`, `BLE`, `JMP`, `JAL`, `JALR`, `RET`
+- Memory: `LD.*`, `ST.*`, `LDA`
+- Stack/frame: `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP`, `FRAME`
+- Objects/arrays: `NEW`, `NEWA`, `LDF`, `STF`, `LDELEM`, `STELEM`, `ARRAYLEN`
+- Calls/linking: `CALL`, `CALLI`, `TAILCALL`
+- Exceptions: `TRY`, `THROW`, `CATCH`, `FINALLY`, `RETHROW`, `ENDFIN`
+- FFI/runtime bridge: `CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`
 
-| Category | Register/Location | Notes |
-|----------|-------------------|-------|
-| Integer args 1-8 | `r1` - `r8` | First 8 integer/pointer arguments |
-| Float args 1-8 | `v0` - `v7` | First 8 floating-point arguments |
-| Extra args | Stack (8-byte aligned) | Pushed right-to-left |
-| Return (int/ptr) | `r1` | Default integer return |
-| Return (float) | `v0` | Floating-point return |
-| Stack alignment | 8-byte (16-byte recommended) | Before `CALL` instruction |
+## 6. Minimality Rules (Derived Operations)
 
----
+Certain operations are not first-class opcodes and must be lowered:
 
-## 3. Object Model
+- `SUBI` -> `ADDI` with negated immediate
+- `NEG` -> `SUB rd, r0, rs`
+- `CMPGT/CMPGE` -> swapped `CMPLT/CMPLE`
+- `BGT/BGE` -> swapped `BLT/BLE`
+- `MOVI` synthesized via `MOVZ`/`LUI` (+ arithmetic/logic)
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 320" style="font-family:monospace;font-size:11px"><rect width="600" height="320" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">HVM Object Layout</text><g transform="translate(10,35)"><text x="0" y="0" font-weight="bold">Generic Object Header (24 bytes)</text><rect x="0" y="8" width="300" height="70" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="10" y="28">Offset</text><text x="70" y="28">Field</text><text x="180" y="28">Size</text><text x="250" y="28">Description</text><line x1="0" y1="33" x2="300" y2="33" stroke="#dc3545"/><text x="10" y="48">+0</text><text x="70" y="48">refcount</text><text x="180" y="48">8B</text><text x="250" y="48">Reference count</text><text x="10" y="63">+8</text><text x="70" y="63">type_id</text><text x="180" y="63">8B</text><text x="250" y="63">Type identifier</text><text x="10" y="78">+16</text><text x="70" y="78">vtable</text><text x="180" y="78">8B</text><text x="250" y="78">Virtual table ptr</text></g><g transform="translate(10,120)"><text x="0" y="0" font-weight="bold" fill="#4a90d9">Class Instance (Point example)</text><rect x="0" y="8" width="300" height="110" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="10" y="30">+0</text><text x="50" y="30" font-weight="bold">Point Header (24B)</text><line x1="0" y1="38" x2="300" y2="38" stroke="#4a90d9" stroke-dasharray="4"/><text x="10" y="55">+24</text><text x="50" y="55">x</text><text x="80" y="55" fill="#666">int64</text><text x="10" y="75">+32</text><text x="50" y="75">y</text><text x="80" y="75" fill="#666">int64</text><text x="10" y="95">+40</text><text x="50" y="95">...</text><text x="80" y="95" fill="#666">more fields</text><text x="200" y="55">Total: 40B + header</text></g><g transform="translate(330,120)"><text x="0" y="0" font-weight="bold" fill="#28a745">String Object</text><rect x="0" y="8" width="260" height="90" fill="#d4edda" stroke="#28a745" rx="2"/><text x="10" y="30">+0</text><text x="50" y="30" font-weight="bold">Header (24B)</text><line x1="0" y1="38" x2="260" y2="38" stroke="#28a745" stroke-dasharray="4"/><text x="10" y="55">+24</text><text x="50" y="55">length</text><text x="120" y="55" fill="#666">int64</text><text x="10" y="75">+32</text><text x="50" y="75">data[]</text><text x="120" y="75" fill="#666">char (UTF-8)</text><text x="10" y="95">...</text></g><g transform="translate(10,245)"><text x="0" y="0" font-weight="bold" fill="#856404">Array Object</text><rect x="0" y="8" width="580" height="65" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="10" y="30">+0</text><text x="50" y="30" font-weight="bold">Header (24B)</text><line x1="0" y1="38" x2="580" y2="38" stroke="#ffc107" stroke-dasharray="4"/><text x="10" y="55">+24</text><text x="50" y="55">length</text><text x="120" y="55" fill="#666">int64</text><text x="180" y="55">capacity</text><text x="260" y="55" fill="#666">int64</text><text x="330" y="55">element_size</text><text x="430" y="55" fill="#666">int64</text><text x="10" y="75">+40</text><text x="50" y="75">data[length]</text><text x="180" y="75" fill="#666">element_type[]</text></g></svg>
+## 7. Runtime and FFI Boundary
 
-**Object Model Features:**
+Core profile deliberately pushes non-essential specialization to runtime/library calls:
 
-| Feature | Implementation | Notes |
-|---------|----------------|-------|
-| Header size | 24 bytes | refcount (8B) + type_id (8B) + vtable (8B) |
-| Reference counting | `hoo_retain()` / `hoo_release()` | Atomic operations for thread safety |
-| Vtables | Per-type virtual table | Method dispatch via vtable offset |
+- string-heavy behavior via runtime helpers, not string-specific opcodes
+- host/native interop via `CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`
 
----
+This keeps ISA small while preserving language coverage.
 
-## 4. Dynamic Linking & Loading
+## 8. Relationship to Module Format
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" style="font-family:monospace;font-size:11px"><rect width="600" height="200" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">Dynamic Linking Flow</text><g transform="translate(10,35)"><rect x="0" y="0" width="180" height="120" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="90" y="18" text-anchor="middle" font-weight="bold" fill="#4a90d9">Compile Time</text><text x="10" y="38">hooc source.hoo</text><text x="20" y="55" fill="#666">import hoo.String</text><text x="20" y="70" fill="#666">func main() {</text><text x="20" y="85" fill="#666">  let s = String()</text><text x="20" y="100" fill="#666">}</text><text x="10" y="118" font-weight="bold">Generates:</text><text x="10" y="132" fill="#666">• CALLHOST stub</text><text x="10" y="147" fill="#666">• Import metadata</text></g><path d="M200 90 L240 90" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><g transform="translate(250,35)"><rect x="0" y="0" width="160" height="120" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="80" y="18" text-anchor="middle" font-weight="bold" fill="#856404">Load Time</text><text x="10" y="40">hvm_load_module()</text><text x="10" y="58" fill="#666">1. Load .hobj</text><text x="10" y="73" fill="#666">2. Parse imports</text><text x="10" y="88" fill="#666">3. Link resolved</text><text x="10" y="103" fill="#666">4. Apply relocations</text><text x="10" y="118" fill="#666">5. Init static data</text></g><path d="M420 90 L460 90" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><g transform="translate(470,35)"><rect x="0" y="0" width="120" height="120" fill="#d4edda" stroke="#28a745" rx="2"/><text x="60" y="18" text-anchor="middle" font-weight="bold" fill="#28a745">Runtime</text><text x="10" y="40">hvm_resolve()</text><text x="10" y="58" fill="#666">Symbol lookup</text><text x="10" y="73" fill="#666">in symbol table</text><text x="10" y="95" font-weight="bold">Result:</text><text x="10" y="115" fill="#28a745">JIT address</text></g><g transform="translate(10,170)"><rect x="0" y="0" width="580" height="25" fill="white" stroke="#ccc" rx="2"/><text x="10" y="17">API:</text><text x="60" y="17" fill="#4a90d9">hvm_load_module(path)</text><text x="250" y="17" fill="#4a90d9">→ ModuleHandle</text><text x="380" y="17" fill="#4a90d9">hvm_resolve(handle, symbol)</text><text x="530" y="17" fill="#4a90d9">→ Address</text></g></svg>
+HVM module/container details are defined separately:
 
----
+- `docs/hvm/HO_FILE_FORMAT.md`
+- `src/hvm/HoModule.h`
+- `src/hvm/HoModule.cpp`
 
-## 5. Foreign Function Interface (FFI)
+Architecture and module format must evolve together when opcode-space, metadata, or calling-convention semantics change.
 
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 350" style="font-family:monospace;font-size:11px"><rect width="600" height="350" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">FFI Architecture</text><g transform="translate(10,35)"><rect x="0" y="0" width="180" height="280" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="90" y="18" text-anchor="middle" font-weight="bold" fill="#4a90d9">HVM Space</text><rect x="10" y="30" width="160" height="50" fill="#fff" stroke="#4a90d9" rx="2"/><text x="90" y="48" text-anchor="middle" font-weight="bold">CALLHOST (0x120)</text><text x="90" y="65" text-anchor="middle" fill="#666">Runtime function</text><rect x="10" y="90" width="160" height="60" fill="#fff" stroke="#4a90d9" rx="2"/><text x="90" y="108" text-anchor="middle" font-weight="bold">CALLNATIVE (0x122)</text><text x="90" y="125" text-anchor="middle" fill="#666">C ABI function</text><text x="90" y="140" text-anchor="middle" fill="#666">(PREPCALL/FINISHCA)</text><rect x="10" y="160" width="160" height="50" fill="#fff" stroke="#4a90d9" rx="2"/><text x="90" y="178" text-anchor="middle" font-weight="bold">LOADLIB (0x125)</text><text x="90" y="195" text-anchor="middle" fill="#666">Load .so/.dll/.dylib</text><rect x="10" y="220" width="160" height="50" fill="#fff" stroke="#4a90d9" rx="2"/><text x="90" y="238" text-anchor="middle" font-weight="bold">I2PTR/PTR2I (0x129)</text><text x="90" y="255" text-anchor="middle" fill="#666">Type conversion</text></g><path d="M200 160 L240 160" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><g transform="translate(250,35)"><rect x="0" y="0" width="340" height="280" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="170" y="18" text-anchor="middle" font-weight="bold" fill="#856404">External Libraries</text><rect x="10" y="30" width="150" height="70" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="85" y="50" text-anchor="middle" font-weight="bold">Hooc Runtime</text><text x="85" y="68" text-anchor="middle" fill="#666">hoo_string_*.c</text><text x="85" y="83" text-anchor="middle" fill="#666">hoo_runtime.c</text><rect x="180" y="30" width="150" height="70" fill="#d4edda" stroke="#28a745" rx="2"/><text x="255" y="50" text-anchor="middle" font-weight="bold">Native Libraries</text><text x="255" y="68" text-anchor="middle" fill="#666">libc, libm, etc.</text><text x="255" y="83" text-anchor="middle" fill="#666">User .so/.dll</text><rect x="10" y="115" width="320" height="120" fill="white" stroke="#ccc" rx="2"/><text x="170" y="133" text-anchor="middle" font-weight="bold">C ABI Calling Convention</text><line x1="10" y1="140" x2="330" y2="140" stroke="#ccc"/><text x="20" y="155">Args:</text><text x="60" y="155" fill="#4a90d9">r1-r8 (int)</text><text x="170" y="155" fill="#ffc107">v0-v7 (float)</text><text x="250" y="155" fill="#666">stack</text><text x="20" y="175">Ret:</text><text x="60" y="175" fill="#4a90d9">r1 (int)</text><text x="170" y="175" fill="#ffc107">v0 (float)</text><text x="20" y="195" fill="#666">Alignment: 8-byte (16-byte recommended)</text><text x="20" y="215" fill="#666">Structs >16B: hidden pointer in r1</text><text x="20" y="230" fill="#666">Variadic: alist in r1</text><rect x="10" y="250" width="320" height="25" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="20" y="267">GETSYM (0x127)</text><text x="170" y="267" fill="#666">→</text><text x="190" y="267" fill="#4a90d9">dlsym()</text><text x="250" y="267" fill="#666">→</text><text x="270" y="267" fill="#28a745">void*</text></g><g transform="translate(10,330)"><rect x="0" y="0" width="580" height="18" fill="white" stroke="#ccc" rx="2"/><text x="10" y="13" fill="#666">Debug: BREAKPOINT(0x135) | SINGLESTEP(0x136) | GETREGS(0x137) | SETREGS(0x138)</text></g></svg>
+## 9. Evolution Policy
 
-**FFI Instruction Summary:**
+If new grammar features require new instruction families:
 
-| Opcode | Name | Description |
-|--------|------|-------------|
-| `0x120` | `CALLHOST` | Call registered runtime function |
-| `0x121` | `CALLHOSTV` | Virtual method via host runtime |
-| `0x122` | `CALLNATIVE` | Call C ABI native function |
-| `0x123` | `PREPCALL` | Prepare stack frame for native call |
-| `0x124` | `FINISHCA` | Complete native call, get return |
-| `0x125` | `LOADLIB` | Load shared library |
-| `0x126` | `FREELIB` | Unload shared library |
-| `0x127` | `GETSYM` | Get symbol address from library |
-| `0x128` | `GETFUNC` | Resolve function pointer |
-| `0x129` | `I2PTR` | Integer to pointer |
-| `0x12A` | `PTR2I` | Pointer to integer |
-| `0x12B` | `REINTERP` | Reinterpret pointer type |
-| `0x12C` | `ADDR2FUNC` | Address to function pointer |
-| `0x12D` | `FUNC2ADDR` | Function pointer to address |
-
----
-
-## 6. JIT & LLVM IR Integration
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 220" style="font-family:monospace;font-size:11px"><rect width="600" height="220" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">JIT Compilation Pipeline</text><g transform="translate(10,35)"><rect x="0" y="0" width="100" height="80" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="50" y="20" text-anchor="middle" font-weight="bold">HVM</text><text x="50" y="35" text-anchor="middle">Bytecode</text><text x="50" y="55" text-anchor="middle" fill="#666" font-size="9">ADD r3, r1, r2</text><text x="50" y="68" text-anchor="middle" fill="#666" font-size="9">LDW r4, [r5+8]</text><text x="50" y="81" text-anchor="middle" fill="#666" font-size="9">CALL foo</text><path d="M110 40 L140 40" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><rect x="150" y="0" width="100" height="80" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="200" y="20" text-anchor="middle" font-weight="bold">Decode</text><text x="200" y="35" text-anchor="middle">+ SSA Form</text><text x="200" y="55" text-anchor="middle" fill="#666" font-size="9">%1 = add i64 %a, %b</text><text x="200" y="68" text-anchor="middle" fill="#666" font-size="9">%2 = load i64, i64* %ptr</text><text x="200" y="81" text-anchor="middle" fill="#666" font-size="9">call @foo()</text><path d="M260 40 L290 40" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><rect x="300" y="0" width="100" height="80" fill="#d4edda" stroke="#28a745" rx="2"/><text x="350" y="20" text-anchor="middle" font-weight="bold">LLVM IR</text><text x="350" y="35" text-anchor="middle">(existing)</text><text x="350" y="55" text-anchor="middle" fill="#666" font-size="9">; from hooc src</text><text x="350" y="68" text-anchor="middle" fill="#666" font-size="9">; compile</text><path d="M410 40 L440 40" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><rect x="450" y="0" width="140" height="80" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="520" y="20" text-anchor="middle" font-weight="bold">LLVM ORC JIT</text><text x="520" y="40" text-anchor="middle" fill="#666" font-size="9">Optimization Passes</text><text x="520" y="55" text-anchor="middle" fill="#666" font-size="9">CodeGen</text><text x="520" y="70" text-anchor="middle" fill="#666" font-size="9">MachineCode</text><path d="M520 90 L520 110" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><rect x="450" y="120" width="140" height="40" fill="#d4edda" stroke="#28a745" rx="2"/><text x="520" y="145" text-anchor="middle" font-weight="bold">Native Code</text></g><g transform="translate(10,180)"><rect x="0" y="0" width="580" height="35" fill="white" stroke="#ccc" rx="2"/><text x="10" y="18" font-weight="bold">DWARF Debug Info Flow:</text><text x="150" y="18" fill="#4a90d9">.debug_line</text><text x="230" y="18" fill="#666">→</text><text x="250" y="18" fill="#ffc107">Line number mapping</text><text x="370" y="18" fill="#666">→</text><text x="390" y="18" fill="#28a745">Address remapping</text><text x="510" y="18" fill="#666">→</text><text x="530" y="18" fill="#4a90d9">JIT addr</text></g></svg>
-
-**JIT Integration Features:**
-
-- **Direct mapping**: HVM instructions map naturally to LLVM IR (SSA form)
-- **Shared infrastructure**: Uses existing `LLVMCodeGenerator` output
-- **Address remapping**: Debug info preserved through JIT compilation
-- **Lazy compilation**: Functions compiled on first call
-
----
-
-## 7. Exception Handling (0x110-0x117)
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" style="font-family:monospace;font-size:11px"><rect width="600" height="200" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">Exception Handling Flow</text><g transform="translate(10,35)"><rect x="0" y="0" width="280" height="160" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="140" y="18" text-anchor="middle" font-weight="bold">HVM Assembly</text><text x="10" y="38">; try block</text><rect x="10" y="45" width="60" height="16" fill="#d4edda" stroke="#28a745"/><text x="40" y="56" text-anchor="middle">TRY</text><text x="20" y="75" fill="#666">... guarded code ...</text><text x="10" y="95">; catch block</text><rect x="10" y="102" width="80" height="16" fill="#fff3cd" stroke="#ffc107"/><text x="50" y="113" text-anchor="middle">CATCH type</text><text x="20" y="130" fill="#666">... handler code ...</text><text x="10" y="150">; finally</text><rect x="10" y="157" width="70" height="16" fill="#f8d7da" stroke="#dc3545"/><text x="45" y="168" text-anchor="middle">FINALLY</text></g><path d="M300 100 L340 100" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><g transform="translate(350,35)"><rect x="0" y="0" width="240" height="160" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="120" y="18" text-anchor="middle" font-weight="bold">Stack Unwinding</text><text x="10" y="40" font-weight="bold">Exception Record:</text><rect x="10" y="48" width="220" height="35" fill="white" stroke="#ccc"/><text x="20" y="62">type: String</text><text x="20" y="75">message: String</text><text x="20" y="88">stack_trace: [String]</text><text x="10" y="118">THROW (0x111):</text><text x="20" y="133" fill="#666">1. Capture exception</text><text x="20" y="148" fill="#666">2. Unwind stack</text><text x="20" y="163" fill="#666">3. Dispatch to handler</text></g></svg>
-
-**Exception Instructions:**
-
-| Opcode | Name | Description |
-|--------|------|-------------|
-| `0x111` | `THROW` | Throw exception with type/message |
-| `0x112` | `THROWV` | Throw from value (constructs record) |
-| `0x113` | `TRY` | Begin try block |
-| `0x114` | `CATCH` | Begin catch block for type |
-| `0x115` | `FINALLY` | Begin finally block |
-| `0x116` | `ENDBLK` | End try/catch/finally block |
-| `0x117` | `RETHROW` | Rethrow current exception |
-
----
-
-## 8. Interrupt Handling (0x118-0x11F)
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 180" style="font-family:monospace;font-size:11px"><rect width="600" height="180" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">Interrupt Handling</text><g transform="translate(10,35)"><rect x="0" y="0" width="180" height="130" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="90" y="18" text-anchor="middle" font-weight="bold">Interrupt Setup</text><text x="10" y="40">DI (0x118)</text><text x="20" y="55" fill="#666">Disable interrupts</text><text x="10" y="75">SETINT vector, addr</text><text x="20" y="90" fill="#666">Register ISR handler</text><text x="10" y="110">EI (0x119)</text><text x="20" y="125" fill="#666">Enable interrupts</text></g><path d="M200 90 L240 90" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><g transform="translate(250,35)"><rect x="0" y="0" width="340" height="130" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="170" y="18" text-anchor="middle" font-weight="bold">Interrupt Flow</text><g transform="translate(10,30)"><rect x="0" y="0" width="320" height="20" fill="#f8d7da" stroke="#dc3545"/><text x="160" y="14" text-anchor="middle">INT (0x11A) or Hardware Interrupt</text><path d="M160 25 L160 40" stroke="#333" stroke-width="1"/><path d="M160 45 L160 55" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><rect x="0" y="60" width="320" height="25" fill="#d4edda" stroke="#28a745"/><text x="160" y="76" text-anchor="middle">IRET (0x11B): Restore state & resume</text></g><text x="10" y="120" fill="#666">MASKINT/UNMASKINT (0x11E-0x11F) for masking specific interrupts</text></g></svg>
-
----
-
-## 9. Threading
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 320" style="font-family:monospace;font-size:11px"><rect width="600" height="320" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">Threading & Synchronization</text><g transform="translate(10,35)"><rect x="0" y="0" width="280" height="90" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="140" y="18" text-anchor="middle" font-weight="bold" fill="#4a90d9">Thread Lifecycle (0xC0-0xC5)</text><rect x="10" y="30" width="80" height="25" fill="#fff" stroke="#4a90d9"/><text x="50" y="46" text-anchor="middle">THCREATE</text><path d="M100 42 L130 42" stroke="#333" stroke-width="2" marker-end="url(#arrowhead)"/><rect x="140" y="30" width="130" height="25" fill="#d4edda" stroke="#28a745"/><text x="205" y="46" text-anchor="middle">New thread starts</text><rect x="10" y="65" width="260" height="20" fill="#fff3cd" stroke="#ffc107"/><text x="140" y="79" text-anchor="middle">THJOIN | THYIELD | THWAIT | THEXIT</text></g><g transform="translate(300,35)"><rect x="0" y="0" width="290" height="90" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="145" y="18" text-anchor="middle" font-weight="bold" fill="#856404">Synchronization (0xC6-0xD3)</text><g transform="translate(10,28)"><rect x="0" y="0" width="80" height="20" fill="#f8d7da" stroke="#dc3545"/><text x="40" y="14" text-anchor="middle">Mutex</text><text x="40" y="30" fill="#666">0xC6-0xC9</text></g><g transform="translate(100,28)"><rect x="0" y="0" width="80" height="20" fill="#e8f4fd" stroke="#4a90d9"/><text x="40" y="14" text-anchor="middle">CondVar</text><text x="40" y="30" fill="#666">0xCA-0xCE</text></g><g transform="translate(190,28)"><rect x="0" y="0" width="80" height="20" fill="#d4edda" stroke="#28a745"/><text x="40" y="14" text-anchor="middle">Spinlock</text><text x="40" y="30" fill="#666">0xCF-0xD1</text></g></g><g transform="translate(10,135)"><rect x="0" y="0" width="580" height="80" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="10" y="18" font-weight="bold">Atomic Operations (0xE0-0xE8)</text><g transform="translate(10,28)"><rect width="85" height="45" fill="white" stroke="#ccc"/><text x="42" y="15" text-anchor="middle">ATOMADD</text><text x="42" y="28" text-anchor="middle" fill="#666" font-size="9">0xE0</text><text x="42" y="40" text-anchor="middle" fill="#666" font-size="9">atomic += val</text></g><g transform="translate(95,28)"><rect width="85" height="45" fill="white" stroke="#ccc"/><text x="42" y="15" text-anchor="middle">ATOMSUB</text><text x="42" y="28" text-anchor="middle" fill="#666" font-size="9">0xE1</text><text x="42" y="40" text-anchor="middle" fill="#666" font-size="9">atomic -= val</text></g><g transform="translate(190,28)"><rect width="85" height="45" fill="white" stroke="#ccc"/><text x="42" y="15" text-anchor="middle">ATOMCAS</text><text x="42" y="28" text-anchor="middle" fill="#666" font-size="9">0xE2</text><text x="42" y="40" text-anchor="middle" fill="#666" font-size="9">compare &amp; swap</text></g><g transform="translate(285,28)"><rect width="85" height="45" fill="white" stroke="#ccc"/><text x="42" y="15" text-anchor="middle">ATOMLD</text><text x="42" y="28" text-anchor="middle" fill="#666" font-size="9">0xE3</text><text x="42" y="40" text-anchor="middle" fill="#666" font-size="9">atomic load</text></g><g transform="translate(380,28)"><rect width="85" height="45" fill="white" stroke="#ccc"/><text x="42" y="15" text-anchor="middle">ATOMST</text><text x="42" y="28" text-anchor="middle" fill="#666" font-size="9">0xE4</text><text x="42" y="40" text-anchor="middle" fill="#666" font-size="9">atomic store</text></g><g transform="translate(475,28)"><rect width="95" height="45" fill="white" stroke="#ccc"/><text x="47" y="15" text-anchor="middle">TLSALLOC</text><text x="47" y="28" text-anchor="middle" fill="#666" font-size="9">0xE5</text><text x="47" y="40" text-anchor="middle" fill="#666" font-size="9">thread-local</text></g></g><g transform="translate(10,225)"><rect x="0" y="0" width="580" height="90" fill="white" stroke="#ccc" rx="2"/><text x="10" y="18" font-weight="bold">Full Instruction Summary</text><line x1="0" y1="25" x2="580" y2="25" stroke="#ccc"/><text x="10" y="40">Thread:</text><text x="80" y="40" fill="#4a90d9">THCREATE</text><text x="160" y="40" fill="#666">(0xC0)</text><text x="200" y="40" fill="#4a90d9">THJOIN</text><text x="260" y="40" fill="#666">(0xC1)</text><text x="300" y="40" fill="#4a90d9">THEXIT</text><text x="360" y="40" fill="#666">(0xC2)</text><text x="400" y="40" fill="#4a90d9">THYIELD</text><text x="470" y="40" fill="#666">(0xC3)</text><text x="510" y="40" fill="#4a90d9">THWAIT</text><text x="560" y="40" fill="#666">(0xC4)</text><text x="10" y="60">Mutex:</text><text x="80" y="60" fill="#dc3545">MUTEXINI</text><text x="150" y="60" fill="#666">(0xC6)</text><text x="190" y="60" fill="#dc3545">MUTEXLCK</text><text x="260" y="60" fill="#666">(0xC7)</text><text x="300" y="60" fill="#dc3545">MUTEXULK</text><text x="370" y="60" fill="#666">(0xC8)</text><text x="410" y="60" fill="#dc3545">MUTEXDL</text><text x="470" y="60" fill="#666">(0xC9)</text><text x="10" y="80">Barrier:</text><text x="80" y="80" fill="#28a745">BARRSET</text><text x="150" y="80" fill="#666">(0xD2)</text><text x="190" y="80" fill="#28a745">BARRWT</text><text x="260" y="80" fill="#666">(0xD3)</text></g></svg>
-
----
-
-## 10. Multi-Process Support
-
-HVM supports multi-process execution through native OS system calls via FFI:
-
-| Category | Implementation | Notes |
-|----------|----------------|-------|
-| Process creation | `fork()`/`exec()` via `CALLNATIVE` | Standard POSIX/Win32 |
-| Process termination | `kill()` via `CALLNATIVE` | Signal-based |
-| IPC (pipes) | `pipe()` via `CALLNATIVE` | Bidirectional communication |
-| IPC (shared memory) | `shmget()`/`shmat()` | High-performance |
-| IPC (message queues) | OS-native APIs | Portable abstraction |
-
----
-
-## 11. Summary
-
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 160" style="font-family:monospace;font-size:11px"><rect width="600" height="160" fill="#f8f9fa" rx="4"/><text x="10" y="20" font-weight="bold" font-size="13">HVM Feature Overview</text><g transform="translate(10,35)"><rect x="0" y="0" width="130" height="60" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="65" y="18" text-anchor="middle" font-weight="bold">Core</text><text x="65" y="35" text-anchor="middle" fill="#666" font-size="9">32-bit RISC-like ISA</text><text x="65" y="48" text-anchor="middle" fill="#666" font-size="9">32 GPR (64-bit)</text><text x="65" y="61" text-anchor="middle" fill="#666" font-size="9">Little-endian</text><rect x="140" y="0" width="130" height="60" fill="#fff3cd" stroke="#ffc107" rx="2"/><text x="205" y="18" text-anchor="middle" font-weight="bold">Memory</text><text x="205" y="35" text-anchor="middle" fill="#666" font-size="9">Stack + Heap + Static</text><text x="205" y="48" text-anchor="middle" fill="#666" font-size="9">Ref counting / GC</text><text x="205" y="61" text-anchor="middle" fill="#666" font-size="9">vtable dispatch</text><rect x="280" y="0" width="130" height="60" fill="#d4edda" stroke="#28a745" rx="2"/><text x="345" y="18" text-anchor="middle" font-weight="bold">FFI</text><text x="345" y="35" text-anchor="middle" fill="#666" font-size="9">CALLHOST / NATIVE</text><text x="345" y="48" text-anchor="middle" fill="#666" font-size="9">C ABI compatible</text><text x="345" y="61" text-anchor="middle" fill="#666" font-size="9">Dynamic loading</text><rect x="420" y="0" width="170" height="60" fill="#f8d7da" stroke="#dc3545" rx="2"/><text x="505" y="18" text-anchor="middle" font-weight="bold">JIT / LLVM</text><text x="505" y="35" text-anchor="middle" fill="#666" font-size="9">LLVM ORC backend</text><text x="505" y="48" text-anchor="middle" fill="#666" font-size="9">SSA form mapping</text><text x="505" y="61" text-anchor="middle" fill="#666" font-size="9">DWARF debug info</text><rect x="0" y="70" width="90" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="45" y="88" text-anchor="middle" font-weight="bold">Exceptions</text><text x="45" y="103" text-anchor="middle" fill="#666" font-size="9">try/catch/finally</text><rect x="100" y="70" width="90" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="145" y="88" text-anchor="middle" font-weight="bold">Interrupts</text><text x="145" y="103" text-anchor="middle" fill="#666" font-size="9">HW + SW support</text><rect x="200" y="70" width="90" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="245" y="88" text-anchor="middle" font-weight="bold">Threads</text><text x="245" y="103" text-anchor="middle" fill="#666" font-size="9">Native + sync</text><rect x="300" y="70" width="90" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="345" y="88" text-anchor="middle" font-weight="bold">SIMD</text><text x="345" y="103" text-anchor="middle" fill="#666" font-size="9">Vector ops</text><rect x="400" y="70" width="90" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="445" y="88" text-anchor="middle" font-weight="bold">Atomics</text><text x="445" y="103" text-anchor="middle" fill="#666" font-size="9">Lock-free</text><rect x="500" y="70" width="90" height="50" fill="#e8f4fd" stroke="#4a90d9" rx="2"/><text x="545" y="88" text-anchor="middle" font-weight="bold">Modules</text><text x="545" y="103" text-anchor="middle" fill="#666" font-size="9">.hobj format</text></g><g transform="translate(10,135)"><text x="0" y="0" fill="#666" font-style="italic">HVM combines high performance with portability, offering a complete platform for modern language execution.</text></g></svg>
-
-**Design Goals:**
-
-| Goal | Implementation |
-|------|----------------|
-| **Performance** | Register-based, RISC-like ISA, LLVM JIT backend |
-| **Portability** | Bytecode format, standardized memory model |
-| **Interoperability** | C ABI compatibility, dynamic library loading |
-| **Modern Features** | Exceptions, threads, atomic operations, SIMD |
-| **Debugging** | DWARF debug info, source-level breakpoints |
-| **Language Support** | Classes, basic inheritance |
-
----
-
-## 6. Toolchain and Execution
-
-The Hooc toolchain provides a unified command-line interface (`hooc`) for both source compilation and bytecode execution.
-
-### 6.1 Unified CLI (`hooc`)
-
-The `hooc` executable manages the entire lifecycle of a program:
-- **JIT Run**: Executing `.hoo` source files directly via the LLVM-based JIT engine.
-- **AOT Build**: Compiling `.hoo` source to `.ho` bytecode files (reserved for future implementation).
-- **AOT Run**: Executing pre-compiled `.ho` bytecode files (reserved for future implementation).
-
-### 6.2 Input Constraints
-
-To ensure clarity and prevent ambiguous execution paths, the CLI enforces a strict **single-input file** rule:
-- Exactly one file must be provided (either `.hoo` or `.ho`).
-- Compilation flags (`-c`, `-o`) are only valid when providing a `.hoo` source file.
-- Providing a `.ho` file implies direct execution of the pre-compiled bytecode.
-
-### 6.3 Implementation Status
-
-As of version 1.1.0:
-- ✅ JIT execution of `.hoo` files is fully supported.
-- 🟡 AOT compilation (`-o out.ho`) is reserved and will emit an informational message.
-- 🟡 AOT execution of `.ho` files is reserved and will emit an informational message.
+1. keep core unchanged unless required
+2. add optional profile in `docs/hvm/HVM_EXTENSIONS.md`
+3. version/gate capability explicitly
+4. add compatibility tests before promoting to core

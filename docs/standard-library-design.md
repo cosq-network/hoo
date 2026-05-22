@@ -1,428 +1,109 @@
 # Hooc Standard Library Design
 
-This document outlines the planned standard library modules for the Hooc programming language. These modules will provide essential functionality for common programming tasks.
-
-**Last Updated:** May 21, 2026
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Core Modules](#core-modules)
-3. [Collections Note](#collections-note)
-4. [IO Module](#io-module)
-5. [Math Module](#math-module)
-6. [Network Module](#network-module)
-7. [Time Module](#time-module)
-8. [Implementation Priority](#implementation-priority)
-
-## Overview
-
-The Hooc standard library is organized into modules under the `hoo` namespace. Each module provides a focused set of functionality:
-
-```hoo
-// Using standard library modules
-import hoo.io;
-import hoo.math;
-import hoo.time;
-```
-
-## Core Modules
-
-### `hoo` - Core Types
-
-Already implemented:
-
-| Class | Description |
-|-------|-------------|
-| `hoo.String` | UTF-8 string with ARC management |
-| `hoo.Array` | Generic dynamic array |
-
-### `hoo.io` - Input/Output
-
-**Status:** Basic implemented, Full in progress
-
-**Functions:**
-```hoo
-// Already implemented
-hoo.print(message: string) -> void
-hoo.println(message: string) -> void
-hoo.readline() -> string
-hoo.readchar() -> int64
-```
-
-**Planned:**
-
-```hoo
-// File operations
-class File {
-    constructor(path: string, mode: string)  // "r", "w", "a"
-    func read() -> string
-    func readLine() -> string
-    func readLines() -> string[]
-    func write(content: string) -> int64
-    func writeLine(content: string) -> int64
-    func seek(position: int64) -> bool
-    func tell() -> int64
-    func close() -> void
-    func eof() -> bool
-}
-
-// Directory operations
-class Directory {
-    constructor(path: string)
-    func exists() -> bool
-    func create() -> bool
-    func remove() -> bool
-    func list() -> string[]
-    func listFiles() -> string[]
-    func listDirectories() -> string[]
-    static func current() -> string
-    static func home() -> string
-    static func temp() -> string
-}
-
-// Path utilities
-class Path {
-    func join(parts: string[]) -> string
-    func normalize(path: string) -> string
-    func abs(path: string) -> string
-    func baseName(path: string) -> string
-    func dirName(path: string) -> string
-    func extension(path: string) -> string
-    func exists(path: string) -> bool
-    func isFile(path: string) -> bool
-    func isDirectory(path: string) -> bool
-}
-
-// Console
-class Console {
-    func read() -> string
-    func readLine() -> string
-    func write(message: string) -> void
-    func writeLine(message: string) -> void
-    func clear() -> void
-    func setColor(color: string) -> void
-    func resetColor() -> void
-}
-```
-
-## Collections Module
-
-**Status:** Not Planned (Use HooArray and native T[] syntax instead)
-
-> Note: Hooc already provides dynamic array functionality through:
-> - **HooArray** (`hoo.Array`) - Heterogeneous dynamic array with std::any
-> - **Native arrays** (`T[]`) - Type-safe homogeneous arrays with push/pop support
->
-> These built-in types cover most collection use cases. Generic collections like `List<T>` may be added in the future if needed.
-
-```hoo
-// Existing options for collections:
-// HooArray - heterogeneous, any type
-var mixed = new hoo.Array();
-mixed.push(42);
-mixed.push("hello");
-
-// Native array - homogeneous, type-safe
-var numbers: int64[] = [];
-numbers.push(1);
-numbers.push(2);
-```
-
-## Math Module
-
-**Status:** Planned
-
-### `hoo.math` - Mathematical Functions
-
-```hoo
-// Math constants
-const PI = 3.141592653589793
-const E = 2.718281828459045
-const TAU = 6.283185307179586
-const INF = Infinity
-const NEG_INF = -Infinity
-const NAN = NaN
-
-// Basic functions
-func abs(x: int64) -> int64
-func abs(x: double) -> double
-func min(a: int64, b: int64) -> int64
-func min(a: double, b: double) -> double
-func max(a: int64, b: int64) -> int64
-func max(a: double, b: double) -> double
-func clamp(value: double, min: double, max: double) -> double
-func sign(x: int64) -> int64
-func sign(x: double) -> double
-
-// Power and roots
-func pow(base: double, exponent: double) -> double
-func sqrt(x: double) -> double
-func cbrt(x: double) -> double
-func hypot(x: double, y: double) -> double
-
-// Trigonometric functions
-func sin(x: double) -> double
-func cos(x: double) -> double
-func tan(x: double) -> double
-func asin(x: double) -> double
-func acos(x: double) -> double
-func atan(x: double) -> double
-func atan2(y: double, x: double) -> double
-func sinh(x: double) -> double
-func cosh(x: double) -> double
-func tanh(x: double) -> double
-
-// Exponential and logarithmic
-func exp(x: double) -> double
-func exp2(x: double) -> double
-func expm1(x: double) -> double
-func log(x: double) -> double
-func log10(x: double) -> double
-func log2(x: double) -> double
-func log1p(x: double) -> double
-
-// Rounding
-func floor(x: double) -> double
-func ceil(x: double) -> double
-func round(x: double) -> double
-func trunc(x: double) -> double
-func fract(x: double) -> double
-
-// Random number generation
-class Random {
-    constructor()
-    constructor(seed: int64)
-
-    func nextInt() -> int64
-    func nextInt(max: int64) -> int64
-    func nextDouble() -> double
-    func nextBool() -> bool
-    func nextBytes(count: int64) -> int64[]
-    func shuffle<T>(array: T[]) -> T[]
-}
-
-// Number utilities
-func isEven(n: int64) -> bool
-func isOdd(n: int64) -> bool
-func isPrime(n: int64) -> bool
-func gcd(a: int64, b: int64) -> int64
-func lcm(a: int64, b: int64) -> int64
-func factorial(n: int64) -> int64
-func fibonacci(n: int64) -> int64
-```
-
-## Network Module
-
-**Status:** Planned
-
-### `hoo.net` - Network Operations
-
-```hoo
-// URL utilities
-class URL {
-    constructor(urlString: string)
-
-    func getScheme() -> string
-    func getHost() -> string
-    func getPort() -> int64
-    func getPath() -> string
-    func getQuery() -> string
-    func getFragment() -> string
-
-    static func parse(urlString: string) -> URL?
-    func toString() -> string
-}
-
-// HTTP Client
-class HttpClient {
-    constructor()
-    func get(url: string) -> HttpResponse
-    func post(url: string, body: string) -> HttpResponse
-    func put(url: string, body: string) -> HttpResponse
-    func delete(url: string) -> HttpResponse
-    func setHeader(key: string, value: string) -> void
-    func setTimeout(timeout: int64) -> void
-}
-
-class HttpResponse {
-    func getStatusCode() -> int64
-    func getStatusText() -> string
-    func getBody() -> string
-    func getHeaders() -> Map<string, string>
-    func isSuccess() -> bool
-}
-
-// TCP/UDP Sockets (Future)
-class Socket {
-    constructor(host: string, port: int64)
-    func connect() -> bool
-    func close() -> void
-    func send(data: int64[]) -> int64
-    func receive(bufferSize: int64) -> int64[]
-    func isConnected() -> bool
-}
-
-class ServerSocket {
-    constructor(port: int64)
-    func bind() -> bool
-    func listen(backlog: int64) -> void
-    func accept() -> Socket
-    func close() -> void
-}
-```
-
-## Time Module
-
-**Status:** Planned
-
-### `hoo.time` - Date and Time
-
-```hoo
-// Duration
-class Duration {
-    constructor(nanoseconds: int64)
-    constructorMillis(millis: int64)
-    constructorSeconds(seconds: int64)
-
-    func toNanos() -> int64
-    func toMillis() -> int64
-    func toSeconds() -> int64
-    func toMinutes() -> int64
-    func toHours() -> int64
-    func toDays() -> int64
-
-    func isZero() -> bool
-    func isNegative() -> bool
-
-    func plus(other: Duration) -> Duration
-    func minus(other: Duration) -> Duration
-    func multipliedBy(factor: int64) -> Duration
-    func dividedBy(divisor: int64) -> Duration
-}
-
-// Instant - Point in time
-class Instant {
-    constructor(epochSeconds: int64)
-    constructorOfNow()
-
-    func toEpochMillis() -> int64
-    func toEpochNanos() -> int64
-
-    func plus(duration: Duration) -> Instant
-    func minus(duration: Duration) -> Duration
-    func until(other: Instant) -> Duration
-
-    func isBefore(other: Instant) -> bool
-    func isAfter(other: Instant) -> bool
-}
-
-// Local Date
-class LocalDate {
-    constructor(year: int64, month: int64, day: int64)
-    constructorOfToday()
-
-    func getYear() -> int64
-    func getMonth() -> int64
-    func getDay() -> int64
-    func getDayOfWeek() -> int64  // 1=Monday, 7=Sunday
-
-    func plusDays(days: int64) -> LocalDate
-    func minusDays(days: int64) -> LocalDate
-    func plusMonths(months: int64) -> LocalDate
-    func minusMonths(months: int64) -> LocalDate
-    func plusYears(years: int64) -> LocalDate
-    func minusYears(years: int64) -> LocalDate
-
-    func isLeapYear() -> bool
-    func daysInMonth() -> int64
-
-    func toEpochDay() -> int64
-    func format(format: string) -> string
-}
-
-// Local Time
-class LocalTime {
-    constructor(hour: int64, minute: int64)
-    constructor(hour: int64, minute: int64, second: int64)
-    constructorOfNow()
-
-    func getHour() -> int64
-    func getMinute() -> int64
-    func getSecond() -> int64
-    func getNano() -> int64
-
-    func plusHours(hours: int64) -> LocalTime
-    func plusMinutes(minutes: int64) -> LocalTime
-    func plusSeconds(seconds: int64) -> LocalTime
-
-    func format(format: string) -> string
-}
-
-// Local DateTime
-class LocalDateTime {
-    constructor(date: LocalDate, time: LocalTime)
-    constructor(year: int64, month: int64, day: int64, hour: int64, minute: int64)
-    constructorOfNow()
-
-    func getDate() -> LocalDate
-    func getTime() -> LocalTime
-
-    func plus(duration: Duration) -> LocalDateTime
-    func minus(duration: Duration) -> LocalDateTime
-
-    func toInstant(offset: int64) -> Instant  // offset in seconds
-    func format(format: string) -> string
-
-    static func parse(text: string, format: string) -> LocalDateTime?
-}
-
-// TimeZone
-class TimeZone {
-    constructor(offsetSeconds: int64)
-    constructor(zoneId: string)  // "America/New_York", "UTC"
-
-    func getOffset(instant: Instant) -> int64
-    func getDisplayName() -> string
-    func isUTC() -> bool
-
-    static func utc() -> TimeZone
-    static func systemDefault() -> TimeZone
-}
-```
-
-## Implementation Priority
-
-Based on the roadmap, the following implementation order is planned:
-
-### Phase 9 (Q3 2026)
-
-1. **Math Module** - Scientific computing needs
-   - Basic math functions (abs, min, max, pow, sqrt, etc.)
-   - Trigonometric functions
-   - Random number generation
-
-### Phase 10 (Q4 2026)
-
-2. **IO Module (Full)** - File system access
-   - File I/O
-   - Directory operations
-   - Path utilities
-
-3. **Time Module** - Date/time handling
-   - Duration, Instant
-   - LocalDate, LocalTime, LocalDateTime
-
-### Future (2027+)
-
-4. **Network Module** - HTTP, sockets
-5. **Regex Module** - Pattern matching
-6. **JSON Module** - JSON parsing/serialization
-7. **XML Module** - XML processing
-
-## See Also
-
-- [Features Guide](features.md) - Current language features
-- [Implementation Status](implementation-status.md) - Current implementation status
-- [Roadmap](roadmap.md) - Development timeline
-- [Module System Design](module-system-design.md) - Module loading and resolution
+Last Updated: 2026-05-22
+
+This document defines the planned and active standard-library surface under the `hoo` namespace, aligned with the current HVM core profile.
+
+## 1. Design Principles
+
+1. Keep HVM core ISA minimal
+2. Implement rich behavior in runtime/library modules
+3. Keep APIs straightforward and testable
+4. Prefer stable module boundaries over opcode proliferation
+
+## 2. Namespace and Core Types
+
+Primary namespace: `hoo`
+
+Current core runtime-backed types:
+
+- `hoo.String`
+- `hoo.Array`
+
+Language-native arrays (`T[]`) remain first-class and type-safe.
+
+## 3. Module Status
+
+## 3.1 `hoo.io`
+
+Status: partially implemented
+
+Available baseline operations:
+
+- `hoo.print(...)`
+- `hoo.println(...)`
+- `hoo.readline()`
+- `hoo.readchar()`
+
+Planned expansions:
+
+- file handling
+- directory/path utilities
+- richer console/stream helpers
+
+## 3.2 `hoo.math`
+
+Status: partial/incremental
+
+Focus:
+
+- numeric utility functions
+- power/roots/trigonometry
+- deterministic and seeded random utilities
+
+## 3.3 `hoo.net`
+
+Status: partial/incremental
+
+Focus:
+
+- URL helpers
+- HTTP client baseline
+- optional socket abstractions as runtime maturity grows
+
+## 3.4 `hoo.time`
+
+Status: planned
+
+Focus:
+
+- duration and instant abstractions
+- local date/time structures
+- formatting/parsing and timezone support
+
+## 4. Collections Policy
+
+Generic collections (`List/Map/Set` class families) are not a short-term priority.
+
+Preferred current approaches:
+
+- `hoo.Array` for flexible dynamic storage
+- native `T[]` for homogeneous typed arrays
+- map syntax/type support from grammar where needed
+
+## 5. HVM Alignment
+
+Standard library growth should rely on:
+
+- runtime calls and module APIs
+- FFI bridge (`CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`)
+
+and should **not** force core ISA growth unless grammar-level semantics require it.
+
+## 6. Incremental Delivery Plan
+
+1. Harden `hoo.io` practical file/path APIs
+2. Expand `hoo.math` numerics and random features
+3. Stabilize `hoo.net` client-centric APIs
+4. Add `hoo.time` foundation types
+
+Each step should ship with:
+
+- examples
+- unit/integration tests
+- behavior notes for JIT/AOT module workflows
+
+## 7. Compatibility Notes
+
+- Keep public module APIs backward-conscious
+- If a feature needs VM capabilities beyond core, stage it through optional HVM extension profiles first

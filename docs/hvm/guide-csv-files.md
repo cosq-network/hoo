@@ -49,7 +49,7 @@
 | ---------------- | ------------------------------------------------------------------------------------------- |
 | **Register**     | The name of the register (e.g., `r0`, `r1`, `v0`).                                          |
 | **Mnemonic**     | A short alias or description of the register's role (e.g., `zero`, `arg1`, `fp`).           |
-| **Width (bits)** | The size of the register in bits (e.g., 64 bits for GPRs, 128 bits for vector regs).        |
+| **Width (bits)** | The size of the register in bits (current core profile uses 64-bit GPRs).        |
 | **Purpose**      | A description of the register's role in the VM (e.g., "Stack pointer" or "First argument"). |
 
 
@@ -63,9 +63,10 @@
   - `r1`–`r8`: Used for passing arguments and returning values.
   - `r30`: Frame pointer (optional, for debugging).
   - `r31`: Stack pointer (manages the call stack).
-- **Vector Registers** (`v0`–`v15`): Used for SIMD (Single Instruction, Multiple Data) operations, such as vector math.
-- **Callee-Saved Registers**: Registers that must be preserved by the called function (e.g., `r16`–`r29`, `v8`–`v15`).
-- **Caller-Saved Registers**: Registers that the caller must assume are overwritten by the called function (e.g., `r1`–`r15`, `v0`–`v7`).
+- **Callee-Saved Registers**: Registers that must be preserved by the called function (core profile: `r16`–`r28`).
+- **Caller-Saved Registers**: Registers that the caller must assume are overwritten by the called function (core profile: `r1`–`r15`).
+- **Link Register** (`r29`): Holds return address consumed by `RET`.
+- **Extension Note**: Vector registers may appear only in optional extension profiles, not in current core CSV.
 
 ---
 
