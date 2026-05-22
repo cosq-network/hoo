@@ -38,6 +38,7 @@ The active HVM profile is `core-minimalest`:
 - 32 GPRs (`r0..r31`)
 - little-endian memory model
 - 32-bit base instruction formats plus escape-prefixed extended opcode space for opcodes `>= 0x100`
+- Symbol relocation via `SymbolFixup` for forward-referenced `CALL` targets.
 
 Register convention:
 
@@ -103,7 +104,7 @@ The core ISA intentionally relies on runtime/library functions instead of embedd
 
 The AST construction phase (`SimpleASTBuilder`) implements strict validation. Rather than using silent fallbacks or logging to `stderr`, the builder now throws `std::runtime_error` for any structural or literal anomalies:
 
-- **Literal Parsing**: Integer/Floating/Character literals must conform strictly to expected formats; parsing failures trigger immediate exceptions.
+- **Literal Parsing**: Integer/Floating/Character literals must conform strictly to expected formats; parsing failures trigger immediate exceptions. Integers are handled as `int64_t` to ensure high precision across backends.
 - **Type/Modifier Safety**: Unrecognized primitive types, class modifiers, or function modifiers result in hard failures.
 - **Structural Integrity**: Malformed control flow constructs (e.g., loops missing required components) are caught during AST building.
 
@@ -117,7 +118,7 @@ Some operations are intentionally absent as dedicated opcodes and are lowered:
 - `NEG` -> `SUB rd, r0, rs`
 - `CMPGT`/`CMPGE` -> operand-swapped `CMPLT`/`CMPLE`
 - `BGT`/`BGE` -> operand-swapped `BLT`/`BLE`
-- `MOVI` synthesized via `MOVZ`/`LUI` + arithmetic/logic
+- `MOVI` synthesized via `MOVZ`/`LUI` (or `.rodata` spill + `LD.D` for >15 bit values)
 
 This keeps the ISA minimal while preserving full grammar coverage.
 

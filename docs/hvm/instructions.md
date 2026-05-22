@@ -89,7 +89,8 @@ Immediate and branch semantics follow `docs/hvm/HVM_SPEC.md`.
 
 ### 4.10 Calls/linking
 
-- `CALL` `CALLI` `TAILCALL`
+- `CALL` `TAILCALL` (J-format, 20-bit relative offset)
+- `CALLI` (I-format, indirect)
 
 ### 4.11 Exceptions
 
@@ -109,7 +110,7 @@ Lowering rules:
 - `CMPGE rd, a, b` -> `CMPLE rd, b, a`
 - `BGT a, b, off` -> `BLT b, a, off`
 - `BGE a, b, off` -> `BLE b, a, off`
-- `MOVI` omitted; build constants via `MOVZ`/`LUI` (+ arithmetic/logic as needed)
+- `MOVI` omitted; build constants via `MOVZ`/`LUI` (+ arithmetic/logic as needed), or spill to `.rodata` for values > 15 bits.
 
 ## 6. Canonical Opcode Table
 

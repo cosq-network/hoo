@@ -72,7 +72,7 @@ Supported statements:
 - `scope`
 - `break`
 - `continue`
-- `try/catch/finally`
+- `try/catch/finally` (simplified rule)
 - `throw` / `rethrow`
 
 ## 5. Expression Grammar

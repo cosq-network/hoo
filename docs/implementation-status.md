@@ -9,10 +9,11 @@ Last Updated: 2026-05-22
 | Area | Status | Notes |
 |---|---|---|
 | Grammar (`src/parsing/Hooc.g4`) | Active | Current language source of truth |
-| AST Builder | Active | Tracks grammar-level constructs |
+| AST Builder | Active | Tracks grammar-level constructs; handles int64_t |
 | LLVM code generation path | Active | Primary executable path |
+| HVM code generation path | Active | Feature-complete for objects, arrays, exceptions |
 | HVM core spec/docs | Active | Core-minimalest profile documented |
-| HVM module format (`.ho`) | Active | `HoModule` and `HO_FILE_FORMAT.md` aligned |
+| HVM module format (`.ho`) | Active | `HooModule` and `HO_FILE_FORMAT.md` aligned |
 | HVM optional extensions | Documented | Non-core profiles in `HVM_EXTENSIONS.md` |
 
 ## 2. HVM Profile Status
@@ -28,6 +29,7 @@ Current HVM mode is **core-minimalest**.
   - `docs/hvm/hvm_instruction_set.csv`
   - `docs/hvm/instructions.md`
 - `.ho` binary format version `1.3` and parser/serializer constraints
+- Symbol relocation via `SymbolFixup` for forward/recursive calls
 
 ### 2.2 Explicitly Excluded from Core
 
@@ -51,9 +53,9 @@ These remain lowering rules, not dedicated core opcodes:
 
 The current core profile is sufficient for grammar-defined semantics in:
 
-- expressions and assignments
+- expressions and assignments (including 64-bit integer support)
 - control flow (`if`, `while`, `for ... range ... by ...`, `break`, `continue`, `return`)
-- object/array operations
+- object/array operations (including constructor calls and multi-dimensional arrays)
 - exception handling (`try/catch/finally`, `throw`, `rethrow`)
 - FFI declarations (`library`, `link dynamic`, `native`, `extern`) via runtime bridge opcodes
 
@@ -93,8 +95,12 @@ String-heavy behavior remains runtime-driven in core, not string-opcode driven.
   - `HVM_SPEC.md`
   - `hvm_instruction_set.csv`
   - `hvm_register_set.csv`
-  - `instructions.md`
+  - instructions.md
   - grammar (`Hooc.g4`)
+
+  ### 6.4 Register Management
+  - Implement stack-based register spilling for extremely complex expression trees.
+  - Add robust name mangling for cross-module symbol resolution.
 
 ## 7. Source-of-Truth Index
 

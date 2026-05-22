@@ -88,7 +88,7 @@ Not separate opcodes in core:
 - `NEG` -> `SUB rd, r0, rs`
 - `CMPGT/CMPGE` -> swapped `CMPLT/CMPLE`
 - `BGT/BGE` -> swapped `BLT/BLE`
-- `MOVI` synthesized via `MOVZ`/`LUI` (+ arithmetic/logic)
+- `MOVI` synthesized via `MOVZ`/`LUI`, or spilled to `.rodata` for values > 15 bits.
 
 ### 2.3 Not in Core
 
