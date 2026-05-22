@@ -44,6 +44,10 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/LLVMContext.h"
 
+namespace hvm {
+class HoModule;
+}
+
 namespace hooc {
 
 // ============================================================================
@@ -77,6 +81,24 @@ public:
     ~HooCompiler();
 
     // ========================================================================
+    // Configuration
+    // ========================================================================
+
+    enum class Backend {
+        LLVM,
+        HVM
+    };
+
+    /**
+     * @brief Set the backend to use for code generation.
+     * @param backend The backend type (LLVM or HVM).
+     */
+    void setBackend(Backend backend);
+
+    /// @brief Get the current backend type.
+    Backend getBackend() const { return backend_; }
+
+    // ========================================================================
     // Compilation API
     // ========================================================================
 
@@ -88,6 +110,15 @@ public:
     /// @note On failure, call getLastError() for error details
     std::unique_ptr<llvm::Module> compile(const std::string& moduleName,
                                          const std::string& sourceCode);
+
+    /**
+     * @brief Compile Hooc source code to an HVM HoModule
+     * @param moduleName Name for the compiled module
+     * @param sourceCode Hooc source code to compile
+     * @return HVM HoModule on success, nullptr on failure
+     */
+    std::unique_ptr<hvm::HoModule> compileToHVM(const std::string& moduleName,
+                                               const std::string& sourceCode);
 
     /// @brief Get error message from last failed compilation
     /// @return Error message string
@@ -132,6 +163,9 @@ private:
 
     /// @brief Success flag from last compilation
     bool        lastCompilationSuccessful_;
+
+    /// @brief Selected backend for code generation
+    Backend     backend_;
 
     // ========================================================================
     // Non-Copyable

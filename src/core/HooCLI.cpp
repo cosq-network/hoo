@@ -1,5 +1,7 @@
 #include "core/HooCLI.h"
 #include "jit/HoocJIT.h"
+#include "core/HooCompiler.h"
+#include "hvm/HoModule.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -38,6 +40,7 @@ std::string HooCLI::getUsage(std::string_view programName) const {
     usage += "  -v, --version   Display version information\n";
     usage += "  -c, --compile   Compile only, do not execute (valid only for .hoo)\n";
     usage += "  -o, --output    Specify output .ho file path (valid only for .hoo, implies -c)\n";
+    usage += "  --backend <val> Specify backend: 'llvm' (default) or 'hvm'\n";
     usage += "  --verbose       Enable verbose logging\n";
     usage += "  --print-ir      Print generated LLVM IR\n";
     usage += "\n";
@@ -75,6 +78,24 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
             } else {
                 opts.hasError = true;
                 opts.errorMessage = "Error: -o option requires an output file path\n";
+                return opts;
+            }
+        }
+        else if (arg == "--backend") {
+            if (i + 1 < argc) {
+                std::string_view backendVal = argv[++i];
+                if (backendVal == "llvm") {
+                    opts.backend = Options::Backend::LLVM;
+                } else if (backendVal == "hvm") {
+                    opts.backend = Options::Backend::HVM;
+                } else {
+                    opts.hasError = true;
+                    opts.errorMessage = "Error: Invalid backend '" + std::string(backendVal) + "'. Expected 'llvm' or 'hvm'\n";
+                    return opts;
+                }
+            } else {
+                opts.hasError = true;
+                opts.errorMessage = "Error: --backend option requires a value ('llvm' or 'hvm')\n";
                 return opts;
             }
         }
@@ -153,6 +174,34 @@ int HooCLI::compileAndExecute(const Options& opts,
     if (opts.isBytecode) {
         verboseLog(opts, "AOT JIT execution requested for: " + std::string(filename));
         ioProvider_->writeStderr("Info: AOT JIT execution (.ho files) will be implemented in a future update.\n");
+        return 0;
+    }
+
+    if (opts.backend == Options::Backend::HVM) {
+        verboseLog(opts, "Compiling source code to HVM bytecode...");
+        HooCompiler compiler;
+        auto hvmModule = compiler.compileToHVM(moduleName, std::string(sourceCode));
+
+        if (!hvmModule) {
+            ioProvider_->writeStderr("HVM Compilation failed: " + compiler.getLastError() + "\n");
+            return 1;
+        }
+
+        verboseLog(opts, "HVM Compilation successful");
+
+        if (opts.outputFile.has_value()) {
+            std::string outPath = opts.outputFile.value();
+            verboseLog(opts, "Saving HVM bytecode to: " + outPath);
+            if (!hvmModule->serializeToFile(outPath)) {
+                ioProvider_->writeStderr("Error: Failed to save bytecode to " + outPath + ": " + hvmModule->getError() + "\n");
+                return 1;
+            }
+            ioProvider_->writeStdout("HVM bytecode saved to " + outPath + "\n");
+        } else if (opts.compileOnly) {
+            verboseLog(opts, "HVM Compile-only mode: validation successful.");
+        } else {
+            ioProvider_->writeStderr("Info: HVM runtime execution is not yet integrated into hooc. Use 'ho' tool to run .ho files.\n");
+        }
         return 0;
     }
 

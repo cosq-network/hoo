@@ -268,8 +268,8 @@ TEST_F(HInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
     // Opcode::TRY is 0x110 (>= 0x80)
     HInstruction orig(Opcode::TRY, OperandsI{1, 0, 100});
     auto encoded = orig.encode();
-    // 1 (escape) + 2 (ULEB for 0x110) + 4 (payload) = 7 bytes
-    ASSERT_EQ(encoded.size(), 7);
+    // 1 (escape) + 2 (ULEB for 0x110) + 1 (padding) + 4 (payload) = 8 bytes
+    ASSERT_EQ(encoded.size(), 8);
     EXPECT_EQ(encoded[0], 0xFE);
 
     auto decoded = HInstruction::decode(encoded);

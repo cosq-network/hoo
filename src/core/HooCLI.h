@@ -19,11 +19,14 @@ public:
 
 private:
     struct Options {
+        enum class Backend { LLVM, HVM };
+
         bool verbose = false;
         bool showHelp = false;
         bool showVersion = false;
         bool printIR = false;
         bool compileOnly = false;
+        Backend backend = Backend::LLVM;
         std::optional<std::string> inputFile;
         std::optional<std::string> outputFile;
         

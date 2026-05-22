@@ -186,6 +186,7 @@ add_library(hoo-compiler
     src/jit/HoocJIT.cpp
     src/parsing/ProcessIsolatedParser.cpp
     src/codegen/LLVMCodeGenerator.cpp
+    src/codegen/HVMCodeGenerator.cpp
     src/ast/SimpleASTBuilder.cpp
     src/ast/ASTImpl.cpp
     src/modules/ModuleSystem.cpp
@@ -397,6 +398,7 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/ImportStatementCodeGenTest.cpp
         tests/codegen/ModuleRegistryTest.cpp
         tests/codegen/LLVMCodeGeneratorComprehensiveTest.cpp
+        tests/codegen/HVMCodeGeneratorTest.cpp
         tests/runtime/ArrayGenericRuntimeTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp

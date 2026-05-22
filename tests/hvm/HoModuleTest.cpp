@@ -858,8 +858,8 @@ TEST_F(HoModuleTest, EncodeDecodeExtendedInstructions) {
     };
     
     auto encoded = module->encodeInstructions(instructions);
-    // NOP (4 bytes) + TRY (1 escape + 2 ULEB + 4 payload = 7 bytes) = 11 bytes
-    ASSERT_EQ(encoded.size(), 11);
+    // NOP (4 bytes) + TRY (1 escape + 2 ULEB + 1 padding + 4 payload = 8 bytes) = 12 bytes
+    ASSERT_EQ(encoded.size(), 12);
     EXPECT_EQ(encoded[4], 0xFE);
     
     auto decoded = module->decodeInstructions(encoded);

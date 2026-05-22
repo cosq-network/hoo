@@ -123,11 +123,11 @@ std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& b
         size_t opcodeBytes = 0;
         if (!decodeULEB128(bytes, 1, opcodeVal, opcodeBytes)) return nullptr;
         
-        const size_t payloadOff = 1 + opcodeBytes;
-        if (payloadOff + 4 > bytes.size()) return nullptr;
+        // Payload always starts at offset 4 due to alignment padding
+        if (8 > bytes.size()) return nullptr;
 
         uint32_t word = 0;
-        if (!readU32LE(bytes, payloadOff, word)) return nullptr;
+        if (!readU32LE(bytes, 4, word)) return nullptr;
 
         Opcode opcode = static_cast<Opcode>(opcodeVal);
         auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, word & 0x3FF);
@@ -193,7 +193,7 @@ std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& b
                 return nullptr;
         }
 
-        bytesUsed = payloadOff + 4;
+        bytesUsed = 8;
         return inst;
     }
 
@@ -293,16 +293,26 @@ std::unique_ptr<HInstruction> HInstruction::decode(const uint32_t word) {
 }
 
 std::vector<uint8_t> HInstruction::encode() const {
-    if (isExtended()) {
+    const uint16_t opcodeVal = static_cast<uint16_t>(opcode_);
+    // Opcodes >= 0x80 must be escaped because the base formats only have 7 bits for opcode.
+    const bool forceExtended = opcodeVal >= 0x80 || std::holds_alternative<OperandsRI>(operands_);
+
+    if (!forceExtended) {
         std::vector<uint8_t> bytes;
-        bytes.reserve(10);
-        bytes.push_back(kExtendedOpcodeEscape);
-        encodeULEB128(static_cast<uint32_t>(opcode_), bytes);
         writeU32LE(bytes, encode32());
         return bytes;
     }
 
     std::vector<uint8_t> bytes;
+    bytes.reserve(8); // Always 8 bytes for aligned extended instructions
+    bytes.push_back(kExtendedOpcodeEscape);
+    encodeULEB128(opcodeVal, bytes);
+    
+    // Pad with zeros so the 32-bit payload starts at offset 4
+    while (bytes.size() < 4) {
+        bytes.push_back(0);
+    }
+    
     writeU32LE(bytes, encode32());
     return bytes;
 }
