@@ -7,6 +7,23 @@
 
 using namespace hvm;
 
+namespace {
+uint64_t readU64LE(const std::vector<uint8_t>& data, size_t offset) {
+    uint64_t value = 0;
+    for (size_t i = 0; i < 8; ++i) {
+        value |= (static_cast<uint64_t>(data[offset + i]) << (8 * i));
+    }
+    return value;
+}
+
+void writeU32LE(std::vector<uint8_t>& data, size_t offset, uint32_t value) {
+    data[offset + 0] = static_cast<uint8_t>(value & 0xFFU);
+    data[offset + 1] = static_cast<uint8_t>((value >> 8U) & 0xFFU);
+    data[offset + 2] = static_cast<uint8_t>((value >> 16U) & 0xFFU);
+    data[offset + 3] = static_cast<uint8_t>((value >> 24U) & 0xFFU);
+}
+}
+
 class HoModuleTest : public ::testing::Test {
 protected:
     void SetUp() override {}
@@ -130,14 +147,15 @@ TEST_F(HoModuleTest, GetSectionsRef) {
 TEST_F(HoModuleTest, StringPoolAddAndGet) {
     auto module = HoModule::create();
     
-    uint32_t off1 = module->addString("hello");
-    EXPECT_GE(off1, 0);
+    auto off1 = module->addString("hello");
+    ASSERT_TRUE(off1.has_value());
     
-    uint32_t off2 = module->addString("world");
-    EXPECT_GT(off2, off1);
+    auto off2 = module->addString("world");
+    ASSERT_TRUE(off2.has_value());
+    EXPECT_GT(*off2, *off1);
     
-    EXPECT_EQ(module->getString(off1), "hello");
-    EXPECT_EQ(module->getString(off2), "world");
+    EXPECT_EQ(module->getString(*off1), "hello");
+    EXPECT_EQ(module->getString(*off2), "world");
     
     const auto& pool = module->getStringPool();
     EXPECT_TRUE(pool.find("hello") != std::string::npos);
@@ -328,7 +346,94 @@ TEST_F(HoModuleTest, SerializeBasic) {
 TEST_F(HoModuleTest, SerializeAndParse) {
     auto module = HoModule::create();
     module->setFileType(FileType::Executable);
-    EXPECT_EQ(module->getFileType(), FileType::Executable);
+    module->setTargetArch(TargetArch::X86_64);
+    module->setEndianness(Endianness::Little);
+    module->setPointerSize(8);
+    module->setEntryPoint(0x1234);
+    module->setBaseAddress(0x400000);
+
+    Section text;
+    text.name = ".text";
+    text.type = SectionType::SHT_TEXT;
+    text.flags = SectionFlags::ALLOC | SectionFlags::EXECUTE;
+    text.virtual_size = 8;
+    text.alignment = 16;
+    text.data = {0x10, 0x20, 0x30, 0x40, 0xAA, 0xBB, 0xCC, 0xDD};
+    module->addSection(std::move(text));
+
+    Symbol sym;
+    sym.name = "entry";
+    sym.binding = Symbol::STB_GLOBAL;
+    sym.type = Symbol::STT_FUNC;
+    sym.visibility = Symbol::STV_DEFAULT;
+    sym.reserved = 0;
+    sym.value = 0x1234;
+    sym.size = 8;
+    sym.section_index = 0;
+    sym.symbol_index = 0;
+    module->addSymbol(sym);
+
+    Relocation reloc;
+    reloc.offset = 4;
+    reloc.symbol_index = 0;
+    reloc.relocation_type = 1;
+    reloc.addend = -4;
+    module->addRelocation(reloc);
+
+    ExportEntry exp;
+    exp.name = "entry";
+    exp.symbol_index = 0;
+    exp.address = 0x1234;
+    exp.size = 8;
+    module->addExport(exp);
+
+    ImportEntry imp;
+    imp.name = "printf";
+    imp.library = "libc";
+    imp.import_type = ImportEntry::IT_NATIVE;
+    imp.version = 2;
+    imp.flags = 7;
+    imp.resolved_address = 0;
+    module->addImport(imp);
+
+    FunctionMetadata meta;
+    meta.name = "entry";
+    meta.symbol_index = 0;
+    meta.entry_rva = 0x1234;
+    meta.code_size = 8;
+    meta.local_size = 16;
+    meta.param_count = 1;
+    meta.param_types_offset = 11;
+    meta.return_type_offset = 22;
+    meta.flags = 33;
+    meta.source_line = 44;
+    meta.debug_offset = 55;
+    module->addFunctionMetadata(meta);
+
+    std::vector<uint8_t> output;
+    ASSERT_TRUE(module->serialize(output));
+
+    auto parsed = HoModule::parse(output);
+    ASSERT_NE(parsed, nullptr);
+    EXPECT_EQ(parsed->getFileType(), FileType::Executable);
+    EXPECT_EQ(parsed->getTargetArch(), TargetArch::X86_64);
+    EXPECT_EQ(parsed->getEntryPoint(), 0x1234U);
+    EXPECT_EQ(parsed->getBaseAddress(), 0x400000U);
+
+    const auto* textSec = parsed->getSection(".text");
+    ASSERT_NE(textSec, nullptr);
+    EXPECT_EQ(textSec->data, std::vector<uint8_t>({0x10, 0x20, 0x30, 0x40, 0xAA, 0xBB, 0xCC, 0xDD}));
+
+    ASSERT_EQ(parsed->getSymbols().size(), 1U);
+    EXPECT_EQ(parsed->getSymbols()[0].name, "entry");
+    ASSERT_EQ(parsed->getRelocations().size(), 1U);
+    EXPECT_EQ(parsed->getRelocations()[0].addend, -4);
+    ASSERT_EQ(parsed->getExports().size(), 1U);
+    EXPECT_EQ(parsed->getExports()[0].name, "entry");
+    ASSERT_EQ(parsed->getImports().size(), 1U);
+    EXPECT_EQ(parsed->getImports()[0].library, "libc");
+    ASSERT_EQ(parsed->getFunctionMetadata().size(), 1U);
+    EXPECT_EQ(parsed->getFunctionMetadata()[0].source_line, 44U);
 }
 
 TEST_F(HoModuleTest, ParseWithSymbols) {
@@ -419,7 +524,8 @@ TEST_F(HoModuleTest, SerializeToFilePath) {
     
     auto parsed = HoModule::parse(tempPath);
     ASSERT_NE(parsed, nullptr);
-    EXPECT_EQ(parsed->getSectionCount(), 1);
+    EXPECT_GE(parsed->getSectionCount(), 1U);
+    EXPECT_NE(parsed->getSection(".text"), nullptr);
 }
 
 TEST_F(HoModuleTest, ParseInvalidMagic) {
@@ -435,6 +541,263 @@ TEST_F(HoModuleTest, ParseTooSmall) {
     
     auto result = HoModule::parse(data);
     ASSERT_EQ(result, nullptr);
+}
+
+TEST_F(HoModuleTest, SerializeRejectsBigEndian) {
+    auto module = HoModule::create();
+    module->setEndianness(Endianness::Big);
+    std::vector<uint8_t> output;
+    EXPECT_FALSE(module->serialize(output));
+    EXPECT_TRUE(module->hasError());
+}
+
+TEST_F(HoModuleTest, SerializeRejectsUserSuppliedMetadataSectionPayload) {
+    auto module = HoModule::create();
+    Section symtab;
+    symtab.name = ".symtab";
+    symtab.type = SectionType::SHT_SYMTAB;
+    symtab.virtual_size = 4;
+    symtab.data = {0xAA, 0xBB, 0xCC, 0xDD};
+    module->addSection(std::move(symtab));
+
+    std::vector<uint8_t> output;
+    EXPECT_FALSE(module->serialize(output));
+    EXPECT_TRUE(module->hasError());
+    EXPECT_NE(module->getError().find("User-supplied metadata section payload"), std::string::npos);
+}
+
+TEST_F(HoModuleTest, ParseRejectsBigEndianHeader) {
+    auto module = HoModule::create();
+    Section sec;
+    sec.name = ".text";
+    sec.type = SectionType::SHT_TEXT;
+    sec.virtual_size = 4;
+    sec.data = {1, 2, 3, 4};
+    module->addSection(std::move(sec));
+
+    std::vector<uint8_t> output;
+    ASSERT_TRUE(module->serialize(output));
+    ASSERT_GE(output.size(), HoModule::HEADER_SIZE);
+    output[0x0A] = static_cast<uint8_t>(Endianness::Big);
+
+    auto parsed = HoModule::parse(output);
+    EXPECT_EQ(parsed, nullptr);
+}
+
+TEST_F(HoModuleTest, DeserializePreservesDetailedParseError) {
+    auto module = HoModule::create();
+    std::vector<uint8_t> data(HoModule::HEADER_SIZE, 0);
+    data[0] = 0xEF;
+    data[1] = 0xBE;
+    data[2] = 0xAD;
+    data[3] = 0xDE;
+
+    EXPECT_FALSE(module->deserialize(data));
+    EXPECT_TRUE(module->hasError());
+    EXPECT_EQ(module->getError(), "Invalid magic number");
+}
+
+TEST_F(HoModuleTest, DeserializeRejectsOverflowedSectionTableCount) {
+    auto module = HoModule::create();
+    std::vector<uint8_t> data(HoModule::HEADER_SIZE, 0);
+    data[0] = 'C';
+    data[1] = 'O';
+    data[2] = 'O';
+    data[3] = 'H';
+    data[4] = 1;
+    data[5] = 0;
+    data[6] = 3;
+    data[7] = 0;
+    data[8] = static_cast<uint8_t>(FileType::ObjectFile);
+    data[9] = static_cast<uint8_t>(TargetArch::Any);
+    data[10] = static_cast<uint8_t>(Endianness::Little);
+    data[11] = 8;
+
+    // section_count = UINT64_MAX (LE)
+    for (size_t i = 0; i < 8; ++i) {
+        data[0x20 + i] = 0xFF;
+    }
+
+    EXPECT_FALSE(module->deserialize(data));
+    EXPECT_TRUE(module->hasError());
+    EXPECT_EQ(module->getError(), "Invalid section table size");
+}
+
+TEST_F(HoModuleTest, SerializePathReportsOpenFailureError) {
+    auto module = HoModule::create();
+    std::string invalidPath = "/definitely/nonexistent/path/module.ho";
+    EXPECT_FALSE(module->serialize(invalidPath));
+    EXPECT_TRUE(module->hasError());
+    EXPECT_NE(module->getError().find("Cannot open file for writing"), std::string::npos);
+}
+
+TEST_F(HoModuleTest, SerializeFilePointerReportsNullError) {
+    auto module = HoModule::create();
+    EXPECT_FALSE(module->serialize(static_cast<FILE*>(nullptr)));
+    EXPECT_TRUE(module->hasError());
+    EXPECT_EQ(module->getError(), "Cannot write to null FILE*");
+}
+
+TEST_F(HoModuleTest, ParseNullFilePointerReturnsNull) {
+    auto parsed = HoModule::parse(static_cast<FILE*>(nullptr));
+    EXPECT_EQ(parsed, nullptr);
+}
+
+TEST_F(HoModuleTest, DeserializePreservesDeepParseErrorForInvalidSymtabSize) {
+    auto source = HoModule::create();
+    Section text;
+    text.name = ".text";
+    text.type = SectionType::SHT_TEXT;
+    text.virtual_size = 4;
+    text.data = {1, 2, 3, 4};
+    source->addSection(std::move(text));
+
+    Symbol sym;
+    sym.name = "foo";
+    sym.binding = Symbol::STB_GLOBAL;
+    sym.type = Symbol::STT_FUNC;
+    sym.visibility = Symbol::STV_DEFAULT;
+    sym.reserved = 0;
+    sym.value = 1;
+    sym.size = 2;
+    sym.section_index = 0;
+    sym.symbol_index = 0;
+    source->addSymbol(sym);
+
+    std::vector<uint8_t> data;
+    ASSERT_TRUE(source->serialize(data));
+
+    const uint64_t sectionCount = readU64LE(data, 0x20);
+    const size_t tableStart = HoModule::HEADER_SIZE;
+    bool patched = false;
+    for (size_t i = 0; i < sectionCount; ++i) {
+        const size_t entry = tableStart + i * 40;
+        const uint32_t type = static_cast<uint32_t>(data[entry + 0x08]) |
+                              (static_cast<uint32_t>(data[entry + 0x09]) << 8U) |
+                              (static_cast<uint32_t>(data[entry + 0x0A]) << 16U) |
+                              (static_cast<uint32_t>(data[entry + 0x0B]) << 24U);
+        if (type == static_cast<uint32_t>(SectionType::SHT_SYMTAB)) {
+            writeU32LE(data, entry + 0x10, 31);  // invalid non-multiple of 32
+            writeU32LE(data, entry + 0x14, 0);
+            patched = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(patched);
+
+    auto target = HoModule::create();
+    EXPECT_FALSE(target->deserialize(data));
+    EXPECT_EQ(target->getError(), "Invalid symbol table size");
+}
+
+TEST_F(HoModuleTest, ParseRejectsDuplicateMetadataSectionTypes) {
+    auto source = HoModule::create();
+    Section text;
+    text.name = ".text";
+    text.type = SectionType::SHT_TEXT;
+    text.virtual_size = 4;
+    text.data = {1, 2, 3, 4};
+    source->addSection(std::move(text));
+
+    Symbol sym;
+    sym.name = "foo";
+    sym.binding = Symbol::STB_GLOBAL;
+    sym.type = Symbol::STT_FUNC;
+    sym.visibility = Symbol::STV_DEFAULT;
+    sym.reserved = 0;
+    sym.value = 1;
+    sym.size = 2;
+    sym.section_index = 0;
+    sym.symbol_index = 0;
+    source->addSymbol(sym);
+
+    std::vector<uint8_t> data;
+    ASSERT_TRUE(source->serialize(data));
+
+    const uint64_t sectionCount = readU64LE(data, 0x20);
+    const size_t tableStart = HoModule::HEADER_SIZE;
+    bool patched = false;
+    for (size_t i = 0; i < sectionCount; ++i) {
+        const size_t entry = tableStart + i * 40;
+        const uint32_t type = static_cast<uint32_t>(data[entry + 0x08]) |
+                              (static_cast<uint32_t>(data[entry + 0x09]) << 8U) |
+                              (static_cast<uint32_t>(data[entry + 0x0A]) << 16U) |
+                              (static_cast<uint32_t>(data[entry + 0x0B]) << 24U);
+        if (type == static_cast<uint32_t>(SectionType::SHT_TEXT)) {
+            writeU32LE(data, entry + 0x08, static_cast<uint32_t>(SectionType::SHT_SYMTAB));
+            patched = true;
+            break;
+        }
+    }
+    ASSERT_TRUE(patched);
+
+    auto parsed = HoModule::parse(data);
+    EXPECT_EQ(parsed, nullptr);
+}
+
+TEST_F(HoModuleTest, ParseRejectsTruncatedSectionTable) {
+    auto module = HoModule::create();
+    Section sec;
+    sec.name = ".data";
+    sec.type = SectionType::SHT_DATA;
+    sec.virtual_size = 4;
+    sec.data = {1, 2, 3, 4};
+    module->addSection(std::move(sec));
+
+    std::vector<uint8_t> data;
+    ASSERT_TRUE(module->serialize(data));
+    ASSERT_GT(data.size(), HoModule::HEADER_SIZE);
+
+    data.resize(HoModule::HEADER_SIZE + 1);
+    auto parsed = HoModule::parse(data);
+    EXPECT_EQ(parsed, nullptr);
+}
+
+TEST_F(HoModuleTest, ParseRejectsOutOfRangeSectionData) {
+    std::vector<uint8_t> data(HoModule::HEADER_SIZE + 40, 0);
+
+    data[0] = 'C';
+    data[1] = 'O';
+    data[2] = 'O';
+    data[3] = 'H';
+    data[4] = 1;
+    data[5] = 0;
+    data[6] = 3;
+    data[7] = 0;
+    data[8] = static_cast<uint8_t>(FileType::ObjectFile);
+    data[9] = static_cast<uint8_t>(TargetArch::Any);
+    data[10] = static_cast<uint8_t>(Endianness::Little);
+    data[11] = 8;
+    data[0x20] = 1;  // section count
+
+    // section type = SHT_TEXT
+    data[HoModule::HEADER_SIZE + 0x08] = static_cast<uint8_t>(SectionType::SHT_TEXT);
+    // virtual size = 0x20
+    data[HoModule::HEADER_SIZE + 0x10] = 0x20;
+    // file offset = past end of file
+    data[HoModule::HEADER_SIZE + 0x18] = 0xF0;
+
+    auto parsed = HoModule::parse(data);
+    EXPECT_EQ(parsed, nullptr);
+}
+
+TEST_F(HoModuleTest, SerializeDoesNotMutateStringPoolAcrossCalls) {
+    auto module = HoModule::create();
+    const auto initialPool = module->getStringPool();
+
+    Section sec;
+    sec.name = ".text";
+    sec.type = SectionType::SHT_TEXT;
+    sec.virtual_size = 4;
+    sec.data = {1, 2, 3, 4};
+    module->addSection(std::move(sec));
+
+    std::vector<uint8_t> output1;
+    std::vector<uint8_t> output2;
+    ASSERT_TRUE(module->serialize(output1));
+    ASSERT_TRUE(module->serialize(output2));
+    EXPECT_EQ(output1, output2);
+    EXPECT_EQ(module->getStringPool(), initialPool);
 }
 
 TEST_F(HoModuleTest, MultipleSections) {

@@ -5,7 +5,6 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <unordered_map>
 #include <optional>
 
 #include "hvm/HInstruction.h"
@@ -202,7 +201,7 @@ public:
     std::vector<Section>& getSections();
     size_t getSectionCount() const;
 
-    uint32_t addString(const std::string& str) const;
+    std::optional<uint32_t> addString(const std::string& str);
     std::string getString(uint32_t offset) const;
     const std::string& getStringPool() const;
 
@@ -267,15 +266,6 @@ private:
     bool parseImports(const std::vector<uint8_t>& data, const Section& imports);
     bool parseFunctionMetadata(const std::vector<uint8_t>& data, const Section& funcmeta);
 
-    void serializeHeader(std::vector<uint8_t>& output) const;
-    void serializeSectionTable(std::vector<uint8_t>& output) const;
-    void serializeSections(std::vector<uint8_t>& output) const;
-    void serializeSymbols(std::vector<uint8_t>& output) const;
-    void serializeRelocations(std::vector<uint8_t>& output) const;
-    void serializeExports(std::vector<uint8_t>& output) const;
-    void serializeImports(std::vector<uint8_t>& output) const;
-    void serializeFunctionMetadata(std::vector<uint8_t>& output) const;
-
     uint32_t magic_;
     uint16_t version_major_;
     uint16_t version_minor_;
@@ -288,14 +278,14 @@ private:
     uint64_t base_address_;
 
     std::vector<Section> sections_;
-    mutable std::string string_pool_;
+    std::string string_pool_;
     std::vector<Symbol> symbols_;
     std::vector<Relocation> relocations_;
     std::vector<ExportEntry> exports_;
     std::vector<ImportEntry> imports_;
     std::vector<FunctionMetadata> function_metadata_;
 
-    std::string error_;
+    mutable std::string error_;
 };
 
 }
