@@ -120,8 +120,7 @@ TEST_F(SimpleASTBuilderTest, BuildFunctionWithVariableDeclaration) {
 }
 
 TEST_F(SimpleASTBuilderTest, HandleInvalidParseTree) {
-    auto ast = astBuilder->buildAST(nullptr);
-    EXPECT_EQ(ast, nullptr);
+    EXPECT_THROW(astBuilder->buildAST(nullptr), std::runtime_error);
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFunctionWithIfStatement) {

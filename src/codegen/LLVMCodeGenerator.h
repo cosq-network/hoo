@@ -381,6 +381,11 @@ private:
     /// @return Constructed map value
     llvm::Value* generateMapConstructor(const ast::NewObjectExpression& newExpr);
 
+    /// @brief Generate hoo.Exception constructor
+    /// @param newExpr NewObjectExpression for Exception
+    /// @return Constructed exception value
+    llvm::Value* generateExceptionConstructor(const ast::NewObjectExpression& newExpr);
+
     // ========================================================================
     // Expression Generation
     // ========================================================================

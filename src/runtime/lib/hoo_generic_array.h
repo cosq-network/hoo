@@ -365,12 +365,14 @@ public:
     bool empty() const { return elements.empty(); }
 
     // Reference counting
-    void retain() { ++refcount; }
+    void retain() { refcount.fetch_add(1, std::memory_order_relaxed); }
     void release() {
-        --refcount;
-        if (refcount <= 0) delete this;
+        if (refcount.fetch_sub(1, std::memory_order_release) == 1) {
+            std::atomic_thread_fence(std::memory_order_acquire);
+            delete this;
+        }
     }
-    int64_t getRefcount() const { return refcount; }
+    int64_t getRefcount() const { return refcount.load(std::memory_order_relaxed); }
 
     // Type information
     const std::type_info* getElementType() const { return element_type; }
@@ -385,7 +387,7 @@ public:
 private:
     std::vector<std::any> elements;
     const std::type_info* element_type;
-    int64_t refcount;
+    std::atomic<int64_t> refcount;
 };
 
 } // namespace hooc

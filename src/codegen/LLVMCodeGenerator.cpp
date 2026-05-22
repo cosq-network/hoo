@@ -44,13 +44,11 @@ LLVMCodeGenerator::~LLVMCodeGenerator() {}
 
 void LLVMCodeGenerator::addError(const std::string& message) {
     errors_.push_back(message);
-    std::cerr << "Error: " << message << std::endl;
 }
 
 void LLVMCodeGenerator::addError(const std::string& message, int line, int column) {
     std::string fullMessage = message + " at line " + std::to_string(line) + ", column " + std::to_string(column);
     errors_.push_back(fullMessage);
-    std::cerr << "Error: " << fullMessage << std::endl;
 }
 
 // ============================================================================
@@ -3165,7 +3163,7 @@ void LLVMCodeGenerator::generateConstructor(const ClassDeclaration& classDecl,
     std::string errorStr;
     raw_string_ostream errorStream(errorStr);
     if (verifyFunction(*ctorFunc, &errorStream)) {
-        std::cerr << "Constructor verification failed: " << errorStr << std::endl;
+        addError("Constructor verification failed: " + errorStr);
         ctorFunc->eraseFromParent();
     } else {
         functions_[ctorName] = ctorFunc;
@@ -3301,11 +3299,34 @@ llvm::Value* LLVMCodeGenerator::generateStdClassConstructor(const ModuleExport& 
         return generateArrayConstructor(newExpr);
     } else if (moduleExport.runtimeClassName == "HooMap") {
         return generateMapConstructor(newExpr);
+    } else if (moduleExport.runtimeClassName == "HooException") {
+        return generateExceptionConstructor(newExpr);
     }
 
     // Unknown standard library class - should not reach here
     addError("Unknown standard library class: " + moduleExport.runtimeClassName);
     return nullptr;
+}
+
+llvm::Value* LLVMCodeGenerator::generateExceptionConstructor(const ast::NewObjectExpression& newExpr) {
+    // hoo.Exception(message) -> hoo_exception_runtime(message)
+    
+    // Get the exception_runtime function
+    auto* runtimeFunc = getExceptionFunc("runtime");
+    if (!runtimeFunc) {
+        addError("hoo_exception_runtime function could not be declared");
+        return nullptr;
+    }
+
+    // Default message if not provided
+    llvm::Value* messageArg = nullptr;
+    if (newExpr.getArguments() && !newExpr.getArguments()->getArguments().empty()) {
+        messageArg = generateLLVMExpression(*newExpr.getArguments()->getArguments()[0]);
+    } else {
+        messageArg = builder_->CreateGlobalString("Hoo Runtime Exception", "exc_msg");
+    }
+
+    return builder_->CreateCall(runtimeFunc, {messageArg}, "new_exception");
 }
 
 llvm::Value* LLVMCodeGenerator::generateStringConstructor(const ast::NewObjectExpression& newExpr) {

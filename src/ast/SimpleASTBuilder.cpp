@@ -36,7 +36,7 @@ std::pair<std::optional<int64_t>, std::optional<int64_t>> SimpleASTBuilder::pars
 
 std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::CompilationUnitContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("CompilationUnitContext is null");
     }
 
     // Process imports
@@ -92,12 +92,12 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
     } else if (ctx->classDeclaration()) {
         return buildClassDeclaration(ctx->classDeclaration());
     }
-    return nullptr;
+    throw std::runtime_error("Unknown declaration type encountered");
 }
 
 std::unique_ptr<Declaration> SimpleASTBuilder::buildFfiDeclaration(HoocParser::FfiDeclarationContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("FfiDeclarationContext is null");
     }
     if (ctx->ffiImportDeclaration()) {
         return buildFfiImportDeclaration(ctx->ffiImportDeclaration());
@@ -111,7 +111,7 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildFfiDeclaration(HoocParser::F
     if (ctx->ffiNativeDeclaration()) {
         return buildFfiNativeDeclaration(ctx->ffiNativeDeclaration());
     }
-    return nullptr;
+    throw std::runtime_error("Unknown FFI declaration type encountered");
 }
 
 std::unique_ptr<FFILibraryImportDeclaration> SimpleASTBuilder::buildFfiImportDeclaration(HoocParser::FfiImportDeclarationContext* ctx) {
@@ -201,7 +201,7 @@ std::unique_ptr<FFIType> SimpleASTBuilder::buildFfiType(HoocParser::FfiTypeConte
 
 std::unique_ptr<FFINativeFunctionDeclaration> SimpleASTBuilder::buildFfiNativeFunction(HoocParser::FfiNativeFunctionContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("FfiNativeFunctionContext is null");
     }
 
     if (ctx->functionDeclaration()) {
@@ -229,7 +229,7 @@ std::unique_ptr<FFINativeFunctionDeclaration> SimpleASTBuilder::buildFfiNativeFu
 
 std::unique_ptr<FFINativeVariableDeclaration> SimpleASTBuilder::buildFfiNativeDeclaration(HoocParser::FfiNativeDeclarationContext* ctx) {
     if (!ctx || !ctx->variableDeclaration()) {
-        return nullptr;
+        throw std::runtime_error("FfiNativeDeclarationContext or variableDeclaration is null");
     }
     bool isExtern = ctx->EXTERN() != nullptr;
     auto var = buildVariableDeclaration(ctx->variableDeclaration());
@@ -413,13 +413,13 @@ std::unique_ptr<PrimitiveType> SimpleASTBuilder::buildPrimitiveType(HoocParser::
 
 std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("MapTypeContext is null");
     }
 
     // Get key type from mapKeyType context (which is a child context)
     auto keyTypeCtx = ctx->mapKeyType();
     if (!keyTypeCtx) {
-        return nullptr;
+        throw std::runtime_error("MapKeyType missing in MapType");
     }
 
     MapKeyType keyType;
@@ -434,13 +434,13 @@ std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeConte
     } else if (keyTypeCtx->STRING()) {
         keyType = MapKeyType::STRING;
     } else {
-        return nullptr;
+        throw std::runtime_error("Unknown MapKeyType encountered");
     }
 
     // Get value type
     auto valueType = buildType(ctx->type());
     if (!valueType) {
-        return nullptr;
+        throw std::runtime_error("Failed to build value type for MapType");
     }
 
     return std::make_unique<MapType>(keyType, std::move(valueType));
@@ -562,17 +562,17 @@ std::unique_ptr<ScopeStatement> SimpleASTBuilder::buildScopeStatement(HoocParser
 
 std::unique_ptr<TryCatchStatement> SimpleASTBuilder::buildTryCatchStatement(HoocParser::TryCatchStatementContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("TryCatchStatementContext is null");
     }
 
     auto blocks = ctx->block();
     if (blocks.empty()) {
-        return nullptr;
+        throw std::runtime_error("TryCatchStatement must have at least one block");
     }
 
     std::unique_ptr<Block> tryBlock = buildBlock(blocks[0]);
     if (!tryBlock) {
-        return nullptr;
+        throw std::runtime_error("Failed to build try block for TryCatchStatement");
     }
 
     std::vector<TryCatchStatement::CatchClause> catchClauses;
@@ -611,7 +611,7 @@ std::unique_ptr<TryCatchStatement> SimpleASTBuilder::buildTryCatchStatement(Hooc
 
 std::unique_ptr<ThrowStatement> SimpleASTBuilder::buildThrowStatement(HoocParser::ThrowStatementContext* ctx) {
     if (!ctx) {
-        return nullptr;
+        throw std::runtime_error("ThrowStatementContext is null");
     }
 
     if (ctx->RETHROW()) {
@@ -621,6 +621,8 @@ std::unique_ptr<ThrowStatement> SimpleASTBuilder::buildThrowStatement(HoocParser
     std::unique_ptr<Expression> expr;
     if (ctx->expression()) {
         expr = buildExpression(ctx->expression());
+    } else {
+        throw std::runtime_error("ThrowStatement missing expression");
     }
 
     return std::make_unique<ThrowStatement>(ThrowStatement::ThrowKind::THROW, std::move(expr));
@@ -972,7 +974,7 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         return buildNewExpression(ctx->newExpression());
     }
 
-    return nullptr;
+    throw std::runtime_error("Unknown primary expression type encountered");
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::NewExpressionContext* ctx) {
@@ -993,12 +995,15 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
 
 // Import building methods
 std::unique_ptr<ImportStatement> SimpleASTBuilder::buildImportStatement(HoocParser::ImportStatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("ImportStatementContext is null");
+    }
     if (auto basicCtx = dynamic_cast<HoocParser::BasicImportContext*>(ctx)) {
         return buildBasicImport(basicCtx);
     } else if (auto fromCtx = dynamic_cast<HoocParser::FromImportContext*>(ctx)) {
         return buildFromImport(fromCtx);
     }
-    return nullptr;
+    throw std::runtime_error("Unknown import statement type encountered");
 }
 
 std::unique_ptr<BasicImport> SimpleASTBuilder::buildBasicImport(HoocParser::BasicImportContext* ctx) {
@@ -1121,6 +1126,9 @@ std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBod
 }
 
 std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::ClassMemberContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("ClassMemberContext is null");
+    }
     if (ctx->variableDeclaration()) {
         auto varDecl = buildVariableDeclaration(ctx->variableDeclaration());
         return std::make_unique<ClassMember>(std::move(varDecl));
@@ -1135,7 +1143,7 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
         auto decl = buildFunctionDeclaration(ctx->functionDeclaration(), std::move(modifiers));
         return std::make_unique<ClassMember>(std::move(decl));
     }
-    return nullptr;
+    throw std::runtime_error("Unknown class member type encountered");
 }
 
 ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContext* ctx) {

@@ -854,49 +854,41 @@ TEST_F(HoModuleTest, EncodeDecodeExtendedInstructions) {
     
     std::vector<HInstruction> instructions = {
         HInstruction(Opcode::NOP, OperandsR{0, 0, 0, 0}),
-        HInstruction(Opcode::NOP, OperandsR{1, 2, 3, 0x1234}),
+        HInstruction(Opcode::TRY, OperandsI{1, 0, 100}), // TRY is extended (0x110)
     };
     
-    for (auto& inst : instructions) {
-        inst.setExtended(true);
-    }
-    
     auto encoded = module->encodeInstructions(instructions);
-    ASSERT_EQ(encoded.size(), 14);
-    EXPECT_EQ(encoded[0], 0xFE);
-    EXPECT_EQ(encoded[7], 0xFE);
+    // NOP (4 bytes) + TRY (1 escape + 2 ULEB + 4 payload = 7 bytes) = 11 bytes
+    ASSERT_EQ(encoded.size(), 11);
+    EXPECT_EQ(encoded[4], 0xFE);
     
-    auto decoded = module->decodeInstructions(encoded, true);
+    auto decoded = module->decodeInstructions(encoded);
     EXPECT_EQ(decoded.size(), 2);
     
     EXPECT_EQ(decoded[0].getOpcode(), Opcode::NOP);
-    EXPECT_TRUE(decoded[0].isExtended());
-    ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded[0].getOperands()));
-    EXPECT_EQ(std::get<OperandsR>(decoded[0].getOperands()).rd, 0);
+    EXPECT_FALSE(decoded[0].isExtended());
     
-    EXPECT_EQ(decoded[1].getOpcode(), Opcode::NOP);
+    EXPECT_EQ(decoded[1].getOpcode(), Opcode::TRY);
     EXPECT_TRUE(decoded[1].isExtended());
-    ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded[1].getOperands()));
-    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rd, 1);
-    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rs1, 2);
-    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).rs2, 3);
-    EXPECT_EQ(std::get<OperandsR>(decoded[1].getOperands()).func, 0x1234);
+    ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded[1].getOperands()));
+    EXPECT_EQ(std::get<OperandsI>(decoded[1].getOperands()).rd, 1);
+    EXPECT_EQ(std::get<OperandsI>(decoded[1].getOperands()).imm15, 100);
 }
 
 TEST_F(HoModuleTest, InstructionsToAssembly) {
     auto module = HoModule::create();
     
     std::vector<HInstruction> instructions = {
-        HInstruction(Opcode::ADD, OperandsR{5, 10, 15, 0}),
-        HInstruction(Opcode::MOVI, OperandsI{3, 5, 100}),
-        HInstruction(Opcode::BEQ, OperandsB{1, 2, -50}),
+        HInstruction(Opcode::ARITH, OperandsR{5, 10, 15, 0}), // add
+        HInstruction(Opcode::ADDI,  OperandsI{3, 5, 100}),
+        HInstruction(Opcode::BEQ,   OperandsB{1, 2, -50}),
     };
     
     auto assembly = module->instructionsToAssembly(instructions);
     
     EXPECT_TRUE(assembly.find("add r5, r10, r15") != std::string::npos);
-    EXPECT_TRUE(assembly.find("movi") != std::string::npos);
-    EXPECT_TRUE(assembly.find("beq") != std::string::npos);
+    EXPECT_TRUE(assembly.find("addi r3, r5, 100") != std::string::npos);
+    EXPECT_TRUE(assembly.find("beq r1, r2, -50") != std::string::npos);
 }
 
 TEST_F(HoModuleTest, ParseAssembly) {

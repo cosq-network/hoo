@@ -5,7 +5,7 @@
  * @brief Module registry and hierarchical module management
  *
  * PURPOSE
- *   Central registry for resolving qualified names (std.String, std.io.File)
+ *   Central registry for resolving qualified names (hoo.String, hoo.io.File)
  *   to their corresponding exports. Used by LLVMCodeGenerator to identify
  *   standard library classes and generate appropriate runtime calls.
  *
@@ -14,18 +14,18 @@
  *                                           |
  *                                    ModuleExport (kind, name, runtimeClassName)
  *
- *   std module is initialized on construction with String and Array exports.
+ *   hoo module is initialized on construction with String and Array exports.
  *   User modules can be added via addModule().
  *
  * USAGE IN CODE GENERATION
  *   LLVMCodeGenerator holds a ModuleRegistry member. When generating
  *   constructor calls, it calls resolveQualifiedName() to check if a type
- *   is a standard library class (std.String, std.Array, etc.) and uses
+ *   is a standard library class (hoo.String, hoo.Array, etc.) and uses
  *   the returned ModuleExport to generate the appropriate runtime constructor.
  *
  * EXAMPLE
  *   ModuleRegistry registry;
- *   auto exp = registry.resolveQualifiedName({"std", "String"});
+ *   auto exp = registry.resolveQualifiedName({"hoo", "String"});
  *   if (exp) { // generate runtime constructor for HooString }
  *
  * THREAD SAFETY

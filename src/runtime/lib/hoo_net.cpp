@@ -161,6 +161,7 @@ void hoo_net_url_release(HooURL url) {
     HooURLImpl* impl = static_cast<HooURLImpl*>(url);
     int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
     if (oldCount == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete impl;
     }
 }
@@ -229,6 +230,7 @@ void hoo_net_http_response_release(HooHttpResponse response) {
     HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(response);
     int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
     if (oldCount == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete impl;
     }
 }
@@ -316,6 +318,7 @@ void hoo_net_http_client_release(HooHttpClient client) {
     HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
     int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
     if (oldCount == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete impl;
     }
 }

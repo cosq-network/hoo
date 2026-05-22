@@ -259,7 +259,7 @@ public:
 
 private:
     int keyType_;
-    int64_t refcount_;
+    std::atomic<int64_t> refcount_;
 
     // Separate storage for each key type
     std::unordered_map<int8_t, std::any> data_int8_;

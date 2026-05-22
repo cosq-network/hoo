@@ -400,6 +400,12 @@ if(HOOC_BUILD_TESTS)
         tests/runtime/ArrayGenericRuntimeTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp
+        tests/runtime/HooRuntimeTest.cpp
+        tests/runtime/HooMapTest.cpp
+        tests/runtime/HooExceptionTest.cpp
+        tests/runtime/HooMathTest.cpp
+        tests/runtime/HooIOTest.cpp
+        tests/runtime/HooNetTest.cpp
         tests/integration/ArrayGenericIntegrationTest.cpp
         tests/jit/HoocJITTest.cpp
         tests/jit/IOFunctionTest.cpp

@@ -11,7 +11,8 @@ namespace hooc {
 // ============================================================================
 
 HooMapImpl::HooMapImpl(int keyType)
-    : keyType_(keyType), refcount_(1) {
+    : keyType_(keyType) {
+    refcount_.store(1, std::memory_order_relaxed);
 }
 
 HooMapImpl::~HooMapImpl() {
@@ -293,18 +294,18 @@ int64_t HooMapImpl::getStringValue(const char* key, void* dest) const {
 
 // Reference counting
 void HooMapImpl::retain() {
-    ++refcount_;
+    refcount_.fetch_add(1, std::memory_order_relaxed);
 }
 
 void HooMapImpl::release() {
-    --refcount_;
-    if (refcount_ <= 0) {
+    if (refcount_.fetch_sub(1, std::memory_order_release) == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete this;
     }
 }
 
 int64_t HooMapImpl::getRefcount() const {
-    return refcount_;
+    return refcount_.load(std::memory_order_relaxed);
 }
 
 }  // namespace hooc

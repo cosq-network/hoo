@@ -934,132 +934,19 @@ std::vector<uint8_t> HoModule::encodeInstructions(const std::vector<HInstruction
     return encoded;
 }
 
-std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t>& data, bool extended) const {
+std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t>& data, bool /*extended*/) const {
     std::vector<HInstruction> instructions;
 
-    if (extended) {
-        for (size_t i = 0; i < data.size();) {
-            if (data[i] != 0xFE) {
-                if (i + 8 > data.size()) {
-                    break;
-                }
-                std::vector<uint8_t> instrBytes(data.begin() + static_cast<std::ptrdiff_t>(i),
-                                                data.begin() + static_cast<std::ptrdiff_t>(i + 8));
-                auto inst = HInstruction::decode64(instrBytes);
-                if (inst) {
-                    instructions.push_back(std::move(*inst));
-                }
-                i += 8;
-                continue;
-            }
-
-            size_t cursor = i + 1;
-            uint32_t opcodeVal = 0;
-            uint32_t shift = 0;
-            bool opcodeDone = false;
-            while (cursor < data.size() && shift <= 28) {
-                const uint8_t b = data[cursor++];
-                opcodeVal |= static_cast<uint32_t>(b & 0x7FU) << shift;
-                if ((b & 0x80U) == 0) {
-                    opcodeDone = true;
-                    break;
-                }
-                shift += 7U;
-            }
-            if (!opcodeDone) {
-                break;
-            }
-
-            const auto fmt = HInstruction::getFormatForOpcode(static_cast<Opcode>(static_cast<uint16_t>(opcodeVal)));
-            if (!fmt.has_value()) {
-                break;
-            }
-
-            size_t payloadSize = 0;
-            switch (*fmt) {
-                case InstructionFormat::R:
-                case InstructionFormat::R_EXT: payloadSize = 5; break;
-                case InstructionFormat::I:
-                case InstructionFormat::I_EXT:
-                case InstructionFormat::B: payloadSize = 4; break;
-                case InstructionFormat::J:
-                case InstructionFormat::RI: payloadSize = 5; break;
-                default: payloadSize = 0; break;
-            }
-            if (payloadSize == 0 || cursor + payloadSize > data.size()) {
-                break;
-            }
-
-            const size_t end = cursor + payloadSize;
-            std::vector<uint8_t> instrBytes(data.begin() + static_cast<std::ptrdiff_t>(i),
-                                            data.begin() + static_cast<std::ptrdiff_t>(end));
-            auto inst = HInstruction::decode64(instrBytes);
-            if (inst) {
-                instructions.push_back(std::move(*inst));
-            }
-            i = end;
-        }
-    } else {
-        for (size_t i = 0; i < data.size();) {
-            if (data[i] != 0xFE) {
-                if (i + 4 > data.size()) {
-                    break;
-                }
-                std::vector<uint8_t> instrBytes(data.begin() + static_cast<std::ptrdiff_t>(i),
-                                                data.begin() + static_cast<std::ptrdiff_t>(i + 4));
-                auto inst = HInstruction::decode(instrBytes);
-                if (inst) {
-                    instructions.push_back(std::move(*inst));
-                }
-                i += 4;
-                continue;
-            }
-
-            size_t cursor = i + 1;
-            uint32_t opcodeVal = 0;
-            uint32_t shift = 0;
-            bool opcodeDone = false;
-            while (cursor < data.size() && shift <= 28) {
-                const uint8_t b = data[cursor++];
-                opcodeVal |= static_cast<uint32_t>(b & 0x7FU) << shift;
-                if ((b & 0x80U) == 0) {
-                    opcodeDone = true;
-                    break;
-                }
-                shift += 7U;
-            }
-            if (!opcodeDone) {
-                break;
-            }
-
-            const auto fmt = HInstruction::getFormatForOpcode(static_cast<Opcode>(static_cast<uint16_t>(opcodeVal)));
-            if (!fmt.has_value()) {
-                break;
-            }
-
-            size_t payloadSize = 0;
-            switch (*fmt) {
-                case InstructionFormat::R:
-                case InstructionFormat::R_EXT: payloadSize = 5; break;
-                case InstructionFormat::I:
-                case InstructionFormat::I_EXT:
-                case InstructionFormat::B: payloadSize = 4; break;
-                case InstructionFormat::J:
-                case InstructionFormat::RI: payloadSize = 5; break;
-                default: payloadSize = 0; break;
-            }
-            if (payloadSize == 0 || cursor + payloadSize > data.size()) {
-                break;
-            }
-
-            const size_t end = cursor + payloadSize;
-            std::vector<uint8_t> instrBytes(data.begin() + static_cast<std::ptrdiff_t>(i),
-                                            data.begin() + static_cast<std::ptrdiff_t>(end));
-            auto inst = HInstruction::decode(instrBytes);
-            if (inst) {
-                instructions.push_back(std::move(*inst));
-            }
-            i = end;
+    for (size_t i = 0; i < data.size(); ) {
+        std::vector<uint8_t> remaining(data.begin() + static_cast<std::ptrdiff_t>(i), data.end());
+        size_t bytesUsed = 0;
+        auto inst = HInstruction::decode(remaining, bytesUsed);
+        if (inst && bytesUsed > 0) {
+            instructions.push_back(std::move(*inst));
+            i += bytesUsed;
+        } else {
+            // Failed to decode or used 0 bytes (avoid infinite loop)
+            break;
         }
     }
 

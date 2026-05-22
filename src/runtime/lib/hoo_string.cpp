@@ -479,6 +479,7 @@ void hoo_string_release(HooString str) {
     }
 
     if (old_count == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         std::free(impl);
     }
 }

@@ -263,6 +263,7 @@ void hoo_exception_release(HooException exc) {
     }
 
     if (oldCount == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         if (impl->message && impl->message[0] != '\0') {
             std::free((void*)impl->message);
         }

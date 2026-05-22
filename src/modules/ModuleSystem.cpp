@@ -3,24 +3,24 @@
  * @brief Module registry and hierarchical module management
  *
  * RESPONSIBILITY
- *   - Central registry for all compiler modules (std, user-defined)
- *   - Resolution of qualified names (std.String, std.io.File) to exports
- *   - Hierarchical module navigation (std -> io -> File)
+ *   - Central registry for all compiler modules (hoo, user-defined)
+ *   - Resolution of qualified names (hoo.String, hoo.io.File) to exports
+ *   - Hierarchical module navigation (hoo -> io -> File)
  *
  * IMPLEMENTATION
  *   - Module hierarchy stored as nested unique_ptr trees
  *   - Exports stored in unordered_map for O(1) lookup
- *   - std module initialized eagerly; others on-demand
- *   - Pointer caching (stdModule_) for fast std access
+ *   - hoo module initialized eagerly; others on-demand
+ *   - Pointer caching (stdModule_) for fast hoo access
  *
  * USAGE
  *   ModuleRegistry registry;
  *
  *   // Resolve qualified name
- *   auto exp = registry.resolveQualifiedName({"std", "String"});
+ *   auto exp = registry.resolveQualifiedName({"hoo", "String"});
  *
  *   // Navigate module path
- *   auto mod = registry.resolveModulePath({"std", "io"});
+ *   auto mod = registry.resolveModulePath({"hoo", "io"});
  *
  *   // Add custom module
  *   registry.addModule({"myapp", "utils"}, std::make_unique<Module>("utils"));
@@ -199,6 +199,22 @@ void ModuleRegistry::initializeHooModule() {
         "Array",
         "HooArray",   // Runtime class name
         true          // Generic: Array<T>
+    ));
+
+    // Add Map class to hoo module (generic)
+    hooModule->addExport(ModuleExport(
+        ModuleExport::Kind::CLASS,
+        "Map",
+        "HooMap",     // Runtime class name
+        true          // Generic: Map<K, V>
+    ));
+
+    // Add Exception class to hoo module
+    hooModule->addExport(ModuleExport(
+        ModuleExport::Kind::CLASS,
+        "Exception",
+        "HooException", // Runtime class name
+        false           // Not generic
     ));
 
     // Cache the pointer before moving the unique_ptr

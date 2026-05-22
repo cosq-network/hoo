@@ -113,6 +113,8 @@ void hoo_release(void* obj) {
                 obj, (long long)header->type_id);
 #endif
 
+        atomic_thread_fence(memory_order_acquire);
+
         memory_stats.total_deallocations++;
         memory_stats.current_live_objects--;
 

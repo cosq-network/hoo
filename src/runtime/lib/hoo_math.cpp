@@ -170,6 +170,7 @@ void hoo_math_random_release(void* state) {
     HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
     int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
     if (oldCount == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
         delete impl;
     }
 }
