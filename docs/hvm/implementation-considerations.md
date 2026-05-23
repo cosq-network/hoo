@@ -77,51 +77,29 @@ Implementation notes:
 - use explicit loop context stacks for break/continue targets
 - preserve branch offset calculation in instruction units (not bytes)
 
-## 6. Objects and Arrays
+## 6. Objects and Arrays (Software Lowering)
 
-Core object/array opcodes:
+The ISA no longer contains `NEW`, `LDF`, or `STELEM`. These must be lowered:
 
-- `NEW`, `NEWA`
-- `LDF`, `STF`
-- `LDELEM`, `STELEM`
-- `ARRAYLEN`
+- **Allocation**: Call `hoo_malloc(size)` via a standard `CALL` instruction.
+- **Object Access**: Calculate byte offsets for fields and use `LD.D` or `ST.D`.
+- **Array Access**: Calculate the address manually (`base + 8 + index * 8`) using `SHIFT` and `ARITH`, then use `LD.D`/`ST.D`.
 
-Runtime boundary:
+## 7. Exception Model (Software Lowering)
 
-- object layout and array storage are runtime-managed
-- VM should keep field/element access checks explicit (null and bounds where defined)
+The ISA no longer contains `TRY` or `THROW`. These must be lowered:
 
-## 7. Exception Model
+- **Handler Registration**: Call `hoo_push_handler(handler_pc)` to save the catch-block address on a runtime shadow stack.
+- **Throwing**: Call `hoo_throw(exception_obj)`.
+- **Unwinding**: The runtime will look up the handler and jump to it, passing the exception in `r1`.
 
-Core exception opcodes:
+## 8. OS and Runtime Bridge
 
-- `TRY`, `THROW`, `CATCH`, `FINALLY`, `RETHROW`, `ENDFIN`
+Core bridge logic:
 
-Recommended execution model:
-
-- maintain explicit handler stack
-- push handler context on `TRY`
-- unwind to matching handler on `THROW`
-- guarantee `FINALLY` execution on normal and exceptional paths
-- represent rethrow as propagation of current exception context
-
-Regression hotspots:
-
-- nested `try/finally` ordering
-- `rethrow` without active exception
-- control transfer across finally blocks
-
-## 8. FFI and Runtime Bridge
-
-Core bridge opcodes:
-
-- `CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`
-
-Guidelines:
-
-- isolate ABI marshalling/unmarshalling in one subsystem
-- validate symbol resolution failure paths cleanly
-- provide deterministic error reporting for missing libs/symbols
+- **System Calls**: Use the `SYSCALL` instruction for low-level OS interaction.
+- **FFI**: Use standard `CALL` instructions to external symbols; rely on the loader/linker for resolution.
+- **Debug**: Use the `BREAK` instruction for debugger traps.
 
 Security baseline:
 

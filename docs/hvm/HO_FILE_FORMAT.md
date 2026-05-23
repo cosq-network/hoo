@@ -1,11 +1,11 @@
 # HVM Object File Format (HO)
 
-Version: `1.3`  
+Version: `1.4`  
 Extension: `.ho`  
 Endianness: little-endian only
 
 This document is the normative binary format for `src/hvm/HoModule.h` and `src/hvm/HoModule.cpp`.
-It is aligned with the current minimal core ISA profile in `docs/hvm/HVM_SPEC.md`.
+It is aligned with the current hardware-ready core ISA profile in `docs/hvm/HVM_SPEC.md`.
 
 ## 1. File Kinds
 
@@ -27,7 +27,7 @@ All fields are little-endian.
 |---|---:|---|---|
 | `0x00` | 4 | `magic` | `0x484F4F43` (`"HOOC"`) |
 | `0x04` | 2 | `version_major` | format major (`1`) |
-| `0x06` | 2 | `version_minor` | format minor (`3`) |
+| `0x06` | 2 | `version_minor` | format minor (`4`) |
 | `0x08` | 1 | `file_type` | executable/shared/object |
 | `0x09` | 1 | `target_arch` | `0x00` x86_64, `0x01` arm64, `0xFF` any |
 | `0x0A` | 1 | `endianness` | must be `0x01` |

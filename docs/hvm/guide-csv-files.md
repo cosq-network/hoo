@@ -35,7 +35,7 @@
   - **B-type**: Branch conditions. Format: `rs1, rs2, imm15`
   - **J-type**: Jump operations. Format: `rd, offset` or just `offset`
 - **Func Field**: Used to distinguish between instructions that share the same opcode (e.g., `ADD=0`, `SUB=1`, `MUL=2` at opcode 0x10).
-- **Extended Opcodes**: Instructions with opcodes >= 0x100 are 64-bit (use 0x10 escape prefix). Format field still indicates R/I/RI but operands are extended.
+- **Extended Opcodes**: Instructions with opcodes >= 0x80 use the `0xFE` escape prefix in the instruction stream. Format field still indicates R/I/RI/B/J but the instruction occupies 8 bytes (including padding) to maintain alignment.
 - **Operand Placeholders**: Unused operands are shown as `-` (e.g., `rd, rs, -, -` for single-operand instructions).
 
 ---
@@ -103,15 +103,15 @@ Suppose you encounter the following row in the `hvm_instruction_set.csv`:
 - **Encoding**: The opcode is `0x10`, func is `0`. Instructions like `SUB=1`, `MUL=2` share this opcode.
 - **Format**: R-type with operands `rd, rs1, rs2, func`. The `-` indicates unused operand field.
 
-**Example 2: Extended Instruction (64-bit)**
+**Example 2: Extended Instruction (Hardware/System)**
 
 | Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func |
 | -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- |
-| VFMA     | 0x10A  | R      | vd, vs1, vs2, -     | vd = vd + vs1*vs2 | Fused multiply-add   | 0    |
+| SYSCALL  | 0xC0   | I      | rd, -, imm15        | rd = os_syscall(imm)| System call          | -    |
 
-- **Interpretation**: The `VFMA` instruction performs fused multiply-add on vector registers.
-- **Encoding**: Extended opcode `0x10A` (uses 0x10 prefix, encoded as 64-bit).
-- **Format**: R-type with operands `vd, vs1, vs2, func`. Uses 64-bit encoding.
+- **Interpretation**: The `SYSCALL` instruction triggers an OS-level service.
+- **Encoding**: Opcode `0xC0` (>= 0x80) uses the `0xFE` escape prefix.
+- **Format**: I-type with operands `rd, rs1, imm15`. In the instruction stream, it occupies 8 bytes.
 
 ---
 
