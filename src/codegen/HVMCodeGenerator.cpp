@@ -6,6 +6,8 @@
 #include "ast/Type.h"
 #include "ast/ClassDeclaration.h"
 #include "ast/QualifiedIdentifier.h"
+#include "ast/ImportStatement.h"
+#include "core/SymbolMangler.h"
 #include <stdexcept>
 #include <algorithm>
 
@@ -36,7 +38,13 @@ HVMCodeGenerator::HVMCodeGenerator(ModuleRegistry& moduleRegistry)
 }
 
 std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::CompilationUnit& compilationUnit) {
-    module_ = std::make_unique<hvm::HoModule>("hvm_module");
+    // 1. Determine Module Name/Path
+    std::string moduleName = "hvm_module";
+    modulePath_.clear();
+    
+    // In a real scenario, this would come from the compiler's source tracking.
+    // For now we look for a marker or use default.
+    module_ = std::make_unique<hvm::HoModule>(moduleName);
     instructions_.clear();
     currentByteOffset_ = 0;
     errors_.clear();
@@ -44,7 +52,26 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     currentStackOffset_ = 0;
     allLabels_.clear();
 
-    // Process all top-level declarations
+    // 2. Process Imports (SHT_IMPORT)
+    for (const auto& imp : compilationUnit.getImports()) {
+        const ast::ModulePath* pathNode = nullptr;
+        if (auto basic = dynamic_cast<const ast::BasicImport*>(imp.get())) {
+            pathNode = basic->getModule();
+        } else if (auto fromImp = dynamic_cast<const ast::FromImport*>(imp.get())) {
+            pathNode = fromImp->getModule();
+        }
+
+        if (pathNode) {
+            std::string fullName;
+            for (const auto& part : pathNode->getComponents()) {
+                if (!fullName.empty()) fullName += ".";
+                fullName += part;
+            }
+            module_->addDependency(fullName, ModuleType::Compiled);
+        }
+    }
+
+    // 3. Process all top-level declarations
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const ast::FunctionDeclaration*>(decl.get())) {
             visitFunction(*funcDecl);
@@ -67,37 +94,45 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             dataSec->virtual_size = dataSec->data.size();
 
             Symbol sym;
-            sym.name = varDecl->getName();
+            if (!modulePath_.empty()) {
+                sym.name = SymbolMangler::mangleModuleSymbol(modulePath_, varDecl->getName());
+            } else {
+                sym.name = varDecl->getName();
+            }
             sym.value = dataOffset;
             sym.type = Symbol::STT_OBJECT;
             sym.binding = Symbol::STB_GLOBAL;
-            sym.section_index = 0; // Will be fixed by HoModule during serialization
+            sym.section_index = 0; 
             module_->addSymbol(sym);
         } else if (auto classDecl = dynamic_cast<const ast::ClassDeclaration*>(decl.get())) {
             ClassLayout layout;
             layout.name = classDecl->getName();
             
-            // 1. Calculate field offsets
+            // Calculate field offsets
             int32_t currentOffset = 0;
             for (const auto& member : classDecl->getBody().getMembers()) {
                 if (auto declMember = member->getDeclaration()) {
                     if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
                         layout.fieldOffsets[var->getName()] = currentOffset;
-                        currentOffset += 8; // All fields 8 bytes for now
+                        currentOffset += 8;
                     }
                 }
             }
             layout.totalSize = currentOffset;
             classes_[layout.name] = layout;
 
-            // 2. Process methods
+            // Process methods
+            currentClass_ = &classes_[layout.name];
             for (const auto& member : classDecl->getBody().getMembers()) {
                 if (auto declMember = member->getDeclaration()) {
                     if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
-                        visitFunction(*fn);
+                        visitMethod(*fn);
                     }
+                } else if (auto ctor = member->getConstructor()) {
+                    visitConstructor(*ctor);
                 }
             }
+            currentClass_ = nullptr;
         }
     }
 
@@ -105,7 +140,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         return nullptr;
     }
 
-    // Resolve all symbol fixups before finalizing
+    // Resolve all symbol fixups
     for (const auto& fixup : symbolFixups_) {
         auto* sym = module_->getSymbol(fixup.symbolName);
         if (!sym) continue;
@@ -121,7 +156,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         }
     }
 
-    // Finalize instructions into .text section
+    // Finalize instructions
     std::vector<uint8_t> textData = module_->encodeInstructions(instructions_);
     Section textSection;
     textSection.name = ".text";
@@ -163,7 +198,7 @@ void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
     size_t enterIdx = instructions_.size();
     emit(Opcode::ENTER, OperandsI{0, 0, 0}); 
 
-    // 2. Map parameters to stack/registers
+    // 2. Map parameters
     auto& params = decl.getParameters();
     for (size_t i = 0; i < params.size() && i < 8; ++i) {
         int32_t offset = reserveLocal(params[i]->getName(), 0);
@@ -183,15 +218,114 @@ void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
     int32_t frameSize = -currentStackOffset_;
     instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
 
-    // Add symbol to module
+    // Add MANGLED symbol to module
+    std::string mangledName;
+    if (!modulePath_.empty() || currentClass_) {
+        MangledFunctionParams mp;
+        mp.modulePath = modulePath_;
+        if (currentClass_) mp.className = currentClass_->name;
+        mp.functionName = decl.getName();
+        mp.returnType = "v"; 
+        mangledName = SymbolMangler::mangleFunctionName(mp);
+    } else {
+        mangledName = decl.getName();
+    }
+    
     Symbol sym;
-    sym.name = decl.getName();
+    sym.name = mangledName;
     sym.value = funcStartOffset;
     sym.type = Symbol::STT_FUNC;
     sym.binding = Symbol::STB_GLOBAL;
     module_->addSymbol(sym);
     
     // Reset function-specific state
+    locals_.clear();
+    currentStackOffset_ = 0;
+}
+
+void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl) {
+    uint32_t funcStartOffset = currentByteOffset_;
+    size_t enterIdx = instructions_.size();
+    emit(Opcode::ENTER, OperandsI{0, 0, 0}); 
+
+    auto& params = decl.getParameters();
+    for (size_t i = 0; i < params.size() && i < 7; ++i) {
+        int32_t offset = reserveLocal(params[i]->getName(), 0);
+        emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + 2), 30, static_cast<int16_t>(offset)});
+    }
+
+    visitStatement(decl.getBody());
+
+    if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
+        emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+        emit(Opcode::RET, OperandsR{0, 0, 0, 0});
+    }
+
+    int32_t frameSize = -currentStackOffset_;
+    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
+
+    std::string mangledName;
+    if (!modulePath_.empty() || currentClass_) {
+        MangledFunctionParams mp;
+        mp.modulePath = modulePath_;
+        if (currentClass_) mp.className = currentClass_->name;
+        mp.isConstructor = true;
+        mangledName = SymbolMangler::mangleFunctionName(mp);
+    } else {
+        mangledName = "constructor"; // Should not happen in valid AST
+    }
+    
+    Symbol sym;
+    sym.name = mangledName;
+    sym.value = funcStartOffset;
+    sym.type = Symbol::STT_FUNC;
+    sym.binding = Symbol::STB_GLOBAL;
+    module_->addSymbol(sym);
+    
+    locals_.clear();
+    currentStackOffset_ = 0;
+}
+
+void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
+    uint32_t funcStartOffset = currentByteOffset_;
+    size_t enterIdx = instructions_.size();
+    emit(Opcode::ENTER, OperandsI{0, 0, 0}); 
+
+    auto& params = decl.getParameters();
+    for (size_t i = 0; i < params.size() && i < 7; ++i) {
+        int32_t offset = reserveLocal(params[i]->getName(), 0);
+        emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + 2), 30, static_cast<int16_t>(offset)});
+    }
+
+    visitStatement(decl.getBody());
+
+    if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
+        emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+        emit(Opcode::RET, OperandsR{0, 0, 0, 0});
+    }
+
+    int32_t frameSize = -currentStackOffset_;
+    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
+
+    std::string mangledName;
+    if (!modulePath_.empty() || currentClass_) {
+        MangledFunctionParams mp;
+        mp.modulePath = modulePath_;
+        if (currentClass_) mp.className = currentClass_->name;
+        mp.functionName = decl.getName();
+        mp.returnType = "v";
+        mangledName = SymbolMangler::mangleFunctionName(mp);
+    } else {
+        mangledName = decl.getName();
+    }
+    
+    Symbol sym;
+    sym.name = mangledName;
+    sym.value = funcStartOffset;
+    sym.type = Symbol::STT_FUNC;
+    sym.binding = Symbol::STB_GLOBAL;
+    module_->addSymbol(sym);
+    
     locals_.clear();
     currentStackOffset_ = 0;
 }
@@ -350,27 +484,23 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         Label* endLabel = createLabel();
         
         // 1. Register handler: CALL hoo_push_handler(catchStartLabel)
-        // We need the absolute byte offset of the catch block.
-        // For now, we'll emit a dummy call and fix it up if needed, or use a relative offset.
-        // Standard hardware approach: Store PC of handler in a shadow stack.
         uint8_t handlerAddrReg = allocateRegister();
-        // We'll use a fixup for the label address
         emit(Opcode::LDA, OperandsI{handlerAddrReg, 0, 0}); 
         size_t ldaIdx = instructions_.size() - 1;
         uint32_t ldaOff = currentByteOffset_ - instructions_.back().getSize();
         
         emit(Opcode::MOV, OperandsR{1, handlerAddrReg, 0, 0});
-        emitCall(Opcode::CALL, "hoo_push_handler");
+        emitCall(Opcode::CALL, "_F_hoo_push_handler_v_p"); // Correct mangled name
         freeRegister(handlerAddrReg);
 
         visitStatement(tryCatch->getTryBlock());
         
-        // 2. Unregister handler: CALL hoo_pop_handler()
-        emitCall(Opcode::CALL, "hoo_pop_handler");
+        // 2. Unregister handler
+        emitCall(Opcode::CALL, "_F_hoo_pop_handler_v");
         emitJump(Opcode::JMP, 0, endLabel);
 
         bindLabel(catchStartLabel);
-        // Fixup LDA with catch offset
+        // Fixup LDA
         int32_t catchOffset = catchStartLabel->targetByteOffset - static_cast<int32_t>(ldaOff);
         auto ldaOps = instructions_[ldaIdx].getOperands();
         auto& ldaOpsI = std::get<OperandsI>(ldaOps);
@@ -378,7 +508,6 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         instructions_[ldaIdx].setOperands(ldaOpsI);
 
         for (const auto& clause : tryCatch->getCatchClauses()) {
-            // Get exception from r1 (standard calling convention for handler entry)
             uint8_t excReg = allocateRegister();
             emit(Opcode::MOV, OperandsR{excReg, 1, 0, 0});
             int32_t itemOffset = reserveLocal(clause.variable, 0);
@@ -393,11 +522,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         bindLabel(endLabel);
     } else if (auto throwStmt = dynamic_cast<const ast::ThrowStatement*>(&stmt)) {
         if (throwStmt->isRethrow()) {
-            emitCall(Opcode::CALL, "hoo_rethrow");
+            emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
         } else {
             uint8_t excReg = visitExpression(*throwStmt->getExpression());
             emit(Opcode::MOV, OperandsR{1, excReg, 0, 0});
-            emitCall(Opcode::CALL, "hoo_throw");
+            emitCall(Opcode::CALL, "_F_hoo_throw_v_p");
             freeRegister(excReg);
         }
     }
@@ -437,23 +566,21 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
             
             // 1. Allocate: CALL hoo_malloc(size)
-            // Header (8 bytes) + elements * 8
             uint64_t totalSize = 8 + (elements.size() * 8);
             uint8_t sizeReg = emitConstant(static_cast<int64_t>(totalSize));
             emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-            emitCall(Opcode::CALL, "hoo_malloc");
+            emitCall(Opcode::CALL, "_F_hoo_malloc_p_i8");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
             freeRegister(sizeReg);
 
-            // 2. Store length in header (offset 0)
+            // 2. Store length in header
             uint8_t lenReg = emitConstant(static_cast<int64_t>(elements.size()));
             emit(Opcode::ST_D, OperandsI{lenReg, dest, 0});
             freeRegister(lenReg);
 
             // 3. Store elements
             for (size_t i = 0; i < elementRegs.size(); ++i) {
-                // Offset = 8 + i * 8
                 emit(Opcode::ST_D, OperandsI{elementRegs[i], dest, static_cast<int16_t>(8 + (i * 8))});
                 freeRegister(elementRegs[i]);
             }
@@ -477,9 +604,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             uint8_t addrReg = allocateRegister();
             emit(Opcode::LDA, OperandsI{addrReg, 0, static_cast<int16_t>(offset)}); 
 
-            // 3. Call runtime allocator: hoo_string_from_cstr(addr)
+            // 3. Call runtime allocator
             emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
-            emitCall(Opcode::CALL, "hoo_string_from_cstr");
+            emitCall(Opcode::CALL, "_F_hoo_String_from_cstr_p_p");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
 
@@ -499,13 +626,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         // 1. Allocate: CALL hoo_malloc(size)
         uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
         emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-        emitCall(Opcode::CALL, "hoo_malloc");
+        emitCall(Opcode::CALL, "_F_hoo_malloc_p_i8");
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
         freeRegister(sizeReg);
         
-        // 2. Call constructor: className_init(this, ...args)
-        std::string ctorName = className + "_init";
+        // 2. Call constructor
+        MangledFunctionParams mp;
+        mp.className = className;
+        mp.isConstructor = true;
+        std::string ctorName = SymbolMangler::mangleFunctionName(mp);
+
         // Set 'this' in r1
         emit(Opcode::MOV, OperandsR{1, dest, 0, 0});
         
@@ -518,7 +649,6 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
         }
 
-        // Emit CALL for constructor
         emitCall(Opcode::CALL, ctorName); 
 
         return dest;
@@ -550,14 +680,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const auto& target = funcCall->getFunction();
         
         if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&target)) {
-            // It's a method call!
             uint8_t objReg = visitExpression(memberAccess->getObject());
-            
-            // Set 'this' in r1
             emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
             freeRegister(objReg);
 
-            // Evaluate and pass arguments in r2..r8
             if (funcCall->getArguments()) {
                 auto& args = funcCall->getArguments()->getArguments();
                 for (size_t i = 0; i < args.size() && i < 7; ++i) {
@@ -567,15 +693,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            // Emit CALL for method
+            // Logic for method mangling resolution needed here
             emitCall(Opcode::CALL, memberAccess->getMember()); 
             
             uint8_t dest = allocateRegister();
-            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0}); // Return value is in r1
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0}); 
             return dest;
         } else if (auto id = dynamic_cast<const ast::Identifier*>(&target)) {
-            // It's a plain function call by name
-            // Evaluate arguments into r1..r8
             if (funcCall->getArguments()) {
                 auto& args = funcCall->getArguments()->getArguments();
                 for (size_t i = 0; i < args.size() && i < 8; ++i) {
@@ -585,11 +709,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            // Emit CALL
-            emitCall(Opcode::CALL, id->getName()); 
+            // Plain function mangling logic
+            MangledFunctionParams mp;
+            mp.functionName = id->getName();
+            std::string mangledName = SymbolMangler::mangleFunctionName(mp);
+            emitCall(Opcode::CALL, mangledName); 
             
             uint8_t dest = allocateRegister();
-            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0}); // Return value is in r1
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
             return dest;
         }
     }
@@ -651,7 +778,6 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
         uint8_t src = visitExpression(logicalNot->getOperand());
         uint8_t dest = allocateRegister();
-        // Logical NOT: dest = (src == 0)
         emit(Opcode::CMP, OperandsR{dest, src, 0, 0});
         freeRegister(src);
         return dest;
@@ -701,15 +827,15 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t arrReg = visitExpression(arrayAccess->getArray());
         uint8_t idxReg = visitExpression(arrayAccess->getIndex());
         
-        uint8_t shiftReg = emitConstant(3); // * 8
+        uint8_t shiftReg = emitConstant(3); 
         uint8_t scaledIdx = allocateRegister();
-        emit(Opcode::SHIFT, OperandsR{scaledIdx, idxReg, shiftReg, 0}); // SHL
+        emit(Opcode::SHIFT, OperandsR{scaledIdx, idxReg, shiftReg, 0}); 
         freeRegister(shiftReg);
         freeRegister(idxReg);
 
         uint8_t eightReg = emitConstant(8);
         uint8_t offsetReg = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, eightReg, 0}); // ADD
+        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, eightReg, 0}); 
         freeRegister(eightReg);
         freeRegister(scaledIdx);
         
@@ -771,14 +897,10 @@ uint8_t HVMCodeGenerator::emitConstant(int64_t value) {
     uint8_t reg = allocateRegister();
     
     if (value >= 0 && value <= 32767) {
-        // MOVZ is zero-extended 15-bit
         emit(Opcode::MOVZ, OperandsI{reg, 0, static_cast<int16_t>(value)});
     } else if (value >= -16384 && value <= 16383) {
-        // ADDI is sign-extended 15-bit
         emit(Opcode::ADDI, OperandsI{reg, 0, static_cast<int16_t>(value)});
     } else {
-        // For truly large constants in a minimal core profile, we spill to .rodata
-        // and use LD.D with an address load.
         Section* rodata = module_->getSection(".rodata");
         if (!rodata) {
             Section s;

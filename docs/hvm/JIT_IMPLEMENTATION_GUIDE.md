@@ -82,35 +82,32 @@ Mangled symbols use the single underscore `_` as a structural delimiter between 
 - **Conflict Resolution**: Because raw components are wrapped in `E...E` when they contain "unsafe" characters (including underscores that might look like delimiters), the JIT parser can unambiguously identify where one component ends and the next begins by scanning for the `_` delimiter outside of `E...E` blocks.
 
 ### **3.3 Function & Method Mangling: Module Scope & Demangling**
-To ensure global uniqueness across a multi-binary JIT session, every callable symbol must be qualified by its module path. The JIT uses a multi-layered mangling strategy.
+To ensure global uniqueness across a multi-binary JIT session, every callable symbol must be qualified by its module path. The JIT uses a multi-layered mangling strategy with unambiguous markers.
 
 #### **A. The Qualified Symbol Format**
-Format: `_F_ [EncodedModulePath] _ [ClassName?] _ [FunctionName] _ [Signature]`
+Format: `_F_ [M_ ModuleParts E_]? [ClassName?] _ [BaseClassName?] _ [Modifiers?] _ [FunctionName | CT | DT] _ [Signature]`
 
-1.  **Module Qualification**: The `EncodedModulePath` is mandatory. It prevents collisions between `math.add` and `vector.add`.
-2.  **Class Context**: If the function is a method, the `ClassName` (and `BaseClassName` for virtual resolution) follows the module path.
+1.  **Module Path Marker**: If a module path is provided, it is wrapped in `M_` (Start) and `E_` (End). This allows the demangler to distinguish module components from class/function names regardless of depth.
+2.  **Class Context**: If the function is a method, the `ClassName` (and `BaseClassName` for virtual resolution) follows the module end marker.
 3.  **Signature**: The return type and parameters are appended to support overloading.
 
 #### **B. Mangling Examples with Modules**
 | Hooc Source | Logical Path | Mangled Symbol |
 | :--- | :--- | :--- |
-| `func: int add(a: int)` | `math.utils` | `_F_E6d6174682e7574696c73E_add_i8_i8` |
-| `constructor()` | `app.User` | `_F_E617070E_User_CT_v` |
-| `func: void save()` | `hoo.io` | `_F_E686f6f2e696fE_save_v` |
+| `func: int add(a: int)` | `math.utils` | `_F_M_math_utils_E_add_i8_i8` |
+| `constructor()` | `app.User` | `_F_M_app_E_User_CT_v` |
+| `func: void save()` | `hoo.io` | `_F_M_hoo_io_E_save_v` |
 
 #### **C. Demangling Logic (The Reversal Process)**
 The JIT must be able to "Demangle" symbols for the HVM Inspector and stack traces. The process follows these technical steps:
 
 1.  **Prefix Identification**: Strip `_F_` (Function) or `_H_` (Handle/Global).
-2.  **Component Splitting**: Tokenize the string using the `_` delimiter.
-    - **Crucial Rule**: The parser must ignore `_` characters that appear between `E` and `E` (the escape blocks).
-3.  **Component Decoding**: For each token:
-    - If it starts/ends with `E`, remove them and perform hex-to-ASCII conversion.
-    - If it matches a Type Code (e.g., `i8`, `s`), translate it to the human-readable type name (`int64`, `string`).
-4.  **Signature Assembly**:
-    - The first token is the **Module Path**.
-    - If the next token doesn't match a type code or "CT/DT", it is the **Class Name**.
-    - The final tokens are mapped to **Return Type** followed by **Parameter Types**.
+2.  **Module Extraction**: If the first token is `M`, everything until the token `E` is extracted into the `modulePath` vector.
+3.  **Name Categorization**: 
+    - If 3 names remain: `className=N1, base=N2, functionName=N3`.
+    - If 2 names remain: `className=N1, functionName=N2`.
+    - If 1 name remains: `className=N1` (Legacy compatibility).
+4.  **Type Decoding**: Translate short-codes (e.g., `i8`, `s`) to human-readable names (`int64`, `string`).
 
 **Resulting Debug String**: `math.utils::add(int64) -> int64`
 
@@ -263,6 +260,12 @@ The JIT translates HVM instructions (using `src/hvm/HInstruction.cpp`) into LLVM
     - *Optimization*: Map frequently used registers (like `r1-r15`) to LLVM local values (SSA).
 - **Memory**: Implement HVM memory as a raw `i8*` buffer. Use LLVM `load` and `store` instructions with explicit alignment checks.
 - **r0 (Hardwired Zero)**: Ensure all IR generated for `r0` reads always results in a constant `0`.
+
+### **5.2 Instruction Translation**
+The JIT performs a 1-to-1 lowering of RISC primitives:
+- **Arithmetic**: Map `ADD`, `SUB`, `MUL`, etc., directly to LLVM `add`, `sub`, `mul`.
+- **Branches**: Map `BEQ`, `BNE`, `JMP` to LLVM `br`.
+- **System Calls**: Map `SYSCALL` to a call into a native C++ "OS Wrapper" function.
 
 ### **5.3 ISA Translation Patterns (LLVM IR)**
 The JIT uses the `llvm::IRBuilder` to generate SSA-form instructions. Below are the normative patterns for the HVM core:
@@ -522,7 +525,7 @@ class HooStringModule : public StaticHoModule {
 public:
     HooStringModule() : StaticHoModule("hoo.String") {
         // 1. Register Native Functions
-        registerFunction("new", (void*)&hoo_string_new, "_F_hoo_String_new_p");
+        registerFunction("new", (void*)&hoo_string_new, "_F_hoo_String_CT_p");
         registerFunction("from_cstr", (void*)&hoo_string_from_cstr, "_F_hoo_String_from_cstr_p_p");
         registerFunction("concat", (void*)&hoo_string_concat, "_F_hoo_String_concat_p_p_p");
         

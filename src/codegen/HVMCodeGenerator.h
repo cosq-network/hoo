@@ -47,6 +47,7 @@ public:
 private:
     // Core state
     ModuleRegistry& moduleRegistry_;
+    std::vector<std::string> modulePath_;
     std::unique_ptr<hvm::HoModule> module_;
     std::vector<hvm::HInstruction> instructions_;
     uint32_t currentByteOffset_ = 0;
@@ -126,6 +127,8 @@ private:
     void visitStatement(const ast::Statement& stmt);
     uint8_t visitExpression(const ast::Expression& expr); // Returns register index
     void visitFunction(const ast::FunctionDeclaration& decl);
+    void visitConstructor(const ast::ConstructorDeclaration& decl);
+    void visitMethod(const ast::FunctionDeclaration& decl);
 
     // Instruction Helpers
     void emit(hvm::Opcode op, const hvm::Operands& operands);

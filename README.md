@@ -1,97 +1,72 @@
 # Hooc
 
-Last Updated: 2026-05-22
+Last Updated: 2026-05-23
 
-Hooc is a statically-typed language/compiler project with:
+Hooc is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
-- ANTLR-based parsing
-- typed AST construction
-- LLVM-based code generation/JIT path
-- HVM specification and module-format work for `.ho` artifacts
+## 1. Architectural Vision: Hardware Purity
 
-## 1. Current Focus
+The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
 
-- keep grammar/AST/codegen aligned
-- keep HVM core profile minimal and grammar-driven
-- advance practical module/AOT workflows without inflating core ISA
+- **ISA Purity**: No "magic" opcodes for objects or exceptions. The instruction set is limited to fundamental arithmetic, memory, and control-flow primitives.
+- **Aggressive Lowering**: The compiler (`hooc`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
+- **Unified Execution**: The JIT compiler (LLVM ORC-based) functions as a high-fidelity dynamic binary translator, mirroring physical silicon behavior with zero abstraction overhead.
 
-See:
+## 2. Project Status & Focus
 
-- `docs/features.md`
-- `docs/grammar.md`
-- `docs/implementation-status.md`
-- `docs/hvm/HVM_SPEC.md`
+- [x] **Core ISA v1.4**: Finalized 64-bit RISC instruction set with bit-packed encoding.
+- [x] **Aggressive Backend**: Functionally complete HVM code generator with manual object/array lowering.
+- [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation.
+- [x] **JIT Blueprint**: Comprehensive technical implementation guide for LLVM ORC v2 integration.
+- [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
-## 2. Build
+## 3. Build & Test
 
-Prerequisites:
-
+### Prerequisites
 - CMake >= 3.16
-- C++17 toolchain
-- LLVM toolchain/development headers
+- C++17 compliant toolchain (Clang 15+ recommended)
+- LLVM 15+ development headers
 - ANTLR4 runtime
-- GoogleTest (for tests)
 
-Typical local build:
-
+### Standard Workflow
 ```bash
-mkdir -p build
-cd build
+mkdir -p build && cd build
 cmake ..
-cmake --build . -- -j8
-```
-
-## 3. Test
-
-```bash
-cd build
-./hoo-tests
-# or
-ctest --output-on-failure
+cmake --build . -j$(nproc)
+./hoo-tests --gtest_brief=1
 ```
 
 ## 4. Project Layout
 
 ```text
 src/
-  parsing/    grammar + generated parser artifacts
-  ast/        typed AST and builder
-  codegen/    LLVM IR generation
-  hvm/        HVM module/instruction infrastructure
-  runtime/    runtime libraries and registries
-tests/        unit/integration tests
-docs/         language, architecture, HVM, roadmap docs
+  parsing/    Hooc.g4 grammar + ANTLR4 generated artifacts.
+  ast/        Typed Abstract Syntax Tree with lowering metadata.
+  codegen/    HVM and LLVM IR generation backends.
+  hvm/        ISA definitions, module serialization, and physical state model.
+  runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
+  core/       Symbol Mangler, CLI logic, and IO providers.
+tests/        Exhaustive unit and integration test suites (1,250+ tests).
+docs/         Normative specifications and implementation guides.
 ```
 
-## 5. HVM Snapshot
+## 5. HVM v1.4 Normative Reference
 
-Current HVM profile is **core-minimalest**.
+Current profile: **core-minimalest** (Physical Silicon Ready)
 
-- core spec: `docs/hvm/HVM_SPEC.md`
-- opcodes: `docs/hvm/hvm_instruction_set.csv`
-- registers: `docs/hvm/hvm_register_set.csv`
-- reference: `docs/hvm/instructions.md`
-- module format: `docs/hvm/HO_FILE_FORMAT.md`
+| Document | Description |
+| :--- | :--- |
+| `docs/hvm/HVM_SPEC.md` | Normative ISA specification and execution model. |
+| `docs/hvm/hvm_instruction_set.csv` | Machine-readable opcode/format table. |
+| `docs/hvm/HO_FILE_FORMAT.md` | Binary container format for `.ho` modules. |
+| `docs/hvm/JIT_IMPLEMENTATION_GUIDE.md` | Blueprint for LLVM-based high-performance execution. |
+| `docs/hvm/HVM_IMPLEMENTATION_ANALYSIS.md`| Detailed assembly-level mapping of language features. |
 
-Core excludes SIMD/threading/interrupt/debug families by default; those belong to optional extension profiles.
+## 6. Contributing
 
-## 6. CLI Note
-
-CLI/tooling behavior can evolve; use the currently built binaries and `--help` output as operational truth for your local build.
-
-## 7. Contributing
-
-When making language/runtime changes:
-
-1. update grammar/implementation
-2. update tests
-3. update docs in the same change
-4. ensure HVM docs remain internally consistent
-
-Primary consistency set:
-
-- `src/parsing/Hooc.g4`
-- `docs/hvm/HVM_SPEC.md`
-- `docs/hvm/hvm_instruction_set.csv`
-- `docs/hvm/hvm_register_set.csv`
-- `docs/hvm/instructions.md`
+The Hooc project follows a "Specs First" methodology. When adding features:
+1. Update the **Grammar** (`Hooc.g4`).
+2. Define the **Lowering Rule** in `HVM_IMPLEMENTATION_ANALYSIS.md`.
+3. Update the **HVM Backend** and **Runtime Intrinsics**.
+4. Synchronize all **Normative Documentation**.
+5. Achieve 100% test pass-rate.

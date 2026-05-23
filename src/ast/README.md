@@ -1,69 +1,54 @@
 # AST Subsystem (`src/ast`)
 
-This directory contains the typed Abstract Syntax Tree used between parsing (`Hooc.g4`) and code generation.
+This directory contains the Typed Abstract Syntax Tree (AST) which serves as the core semantic model of the Hooc compiler. It bridge the gap between the ANTLR4 parse tree and the aggressive lowering backends (HVM and LLVM).
 
-## 1. Pipeline Position
+## 1. The Compilation Pipeline
 
-```
+```text
 Source (.hoo)
-  -> ANTLR parse tree
+  -> ANTLR4 Parse Tree
   -> SimpleASTBuilder
-  -> Typed AST
-  -> code generation / lowering
+  -> Typed AST (Semantic Model)
+  -> HVM/LLVM Backend (Aggressive Lowering)
 ```
 
 ## 2. Core Responsibilities
 
-- represent grammar constructs as typed nodes
-- preserve semantic distinctions needed by downstream codegen/lowering
-- provide stable structure for analysis and tests
+The AST is not just a structural mirror of the code; it is an enriched semantic graph responsible for:
+- **Type Resolution**: Explicitly tagging every expression and declaration node with its resolved type.
+- **Lowering Metadata**: Providing the backend with the information needed for physical hardware mapping, such as class field offsets and type IDs.
+- **Modifier Enforcement**: Capturing structural constraints like `SINGLETON`, `IMMUTABLE`, and `ACTOR` for specialized JIT dispatch.
+- **FFI Mapping**: Maintaining complex native signatures for cross-platform linking.
 
-## 3. Main Files
+## 3. Architecture & Ownership
 
-- `AST.h`: umbrella include
-- `ASTNode.h`: base node abstraction
-- `Declaration.h`: declarations (functions, variables/constants, classes, FFI declarations)
-- `Statement.h`: statements (block/control flow/exception/scope/etc.)
-- `Expression.h`: expression tree nodes
-- `Type.h`: type nodes (primitive/array/optional/map/qualified)
-- `ImportStatement.h`: import AST forms
-- `CompilationUnit.h`: root node
-- `SimpleASTBuilder.h/.cpp`: parse-tree to AST conversion
-- `ASTImpl.cpp`: string/utility implementations for node display
+- **Ownership**: The tree is constructed using `std::unique_ptr` and `std::vector<std::unique_ptr<T>>`, ensuring clear ownership hierarchies and automatic memory management.
+- **Visitors**: The backends utilize the **Visitor Pattern** (implemented in `HVMCodeGenerator` and `LLVMCodeGenerator`) to perform recursive translation and lowering.
 
-## 4. Grammar Coverage
+## 4. Main Files
 
-`SimpleASTBuilder` is intended to track `src/parsing/Hooc.g4` closely:
+| File | Description |
+| :--- | :--- |
+| `CompilationUnit.h` | The root node of a module, containing all top-level declarations. |
+| `Declaration.h` | Nodes for `func`, `var`, `const`, and `class`. |
+| `ClassDeclaration.h`| Specialized node for classes, including modifiers and inheritance. |
+| `Expression.h` | Nodes for all operations (Arith, Logic, Calls, Member Access). |
+| `Statement.h` | Control flow nodes (`if`, `while`, `for`) and Exception blocks. |
+| `Type.h` | Normative model for Hooc types (Primitive, Array, Map, Optional). |
+| `SimpleASTBuilder.cpp`| The primary engine for converting ANTLR artifacts into the Typed AST. |
 
-- imports and module paths
-- top-level declarations
-- class members/modifiers/constructors
-- variable/constant declarations
-- type forms (primitive, arrays, optional, map, qualified identifiers)
-- statements including exception constructs
-- expression precedence and postfix forms
-- FFI declaration/type forms
+## 5. Synchronizing with HVM v1.4
 
-When grammar changes, builder and tests should be updated in the same change.
+The AST must preserve metadata required for the **v1.4 "Hardware Ready"** profile:
+- **`__hoo_init`**: The AST captures global initializers to ensure the `_F_module_init_v` function is correctly emitted.
+- **Shadow Stack**: Exception nodes are structured to support the lowering to `hoo_push_handler` and `hoo_throw` runtime calls.
+- **Physical Layouts**: Class nodes provide the field ordering needed for the backend to calculate precise memory offsets for `LD.D`/`ST.D`.
 
-## 5. Design Notes
+## 6. Development Checklist
 
-- Nodes use ownership via `std::unique_ptr`
-- Parent ownership is explicit through child containers/fields
-- AST should avoid parser-specific details that are not semantically meaningful
-
-## 6. Change Checklist
-
-When adding or changing a grammar feature:
-
-1. update `Hooc.g4`
-2. add/update AST node types if needed
-3. update `SimpleASTBuilder` mappings
-4. update codegen/lowering behavior
-5. add/adjust parser/AST/codegen tests
-
-Keep this subsystem synchronized with:
-
-- `docs/grammar.md`
-- `docs/features.md`
-- `docs/hvm/HVM_SPEC.md` (for VM-facing lowering assumptions)
+When extending the Hooc language:
+1. Update `src/parsing/Hooc.g4` with the new syntax.
+2. Define the corresponding node in `src/ast/`.
+3. Update `SimpleASTBuilder` to populate the new node.
+4. Update `src/codegen/HVMCodeGenerator.cpp` to implement the lowering rule for the new node.
+5. Add comprehensive unit tests in `tests/ast/` and `tests/codegen/`.

@@ -174,6 +174,15 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
     std::ostringstream oss;
     oss << "_F_";
     
+    // 1. Module Path (Unambiguous marking)
+    if (!params.modulePath.empty()) {
+        oss << "M_";
+        for (const auto& part : params.modulePath) {
+            oss << encodeComponent(part) << "_";
+        }
+        oss << "E_";
+    }
+    
     if (!params.className.empty()) {
         oss << encodeComponent(params.className) << "_";
         
@@ -273,11 +282,9 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
     if (mangledName.empty()) {
         return result;
     }
-    
-    if (mangledName.find("_F_") == 0) {
-        std::string content = mangledName.substr(3);
+
+    auto splitComponents = [](const std::string& content) {
         std::vector<std::string> components;
-        
         size_t pos = 0;
         while (pos < content.size()) {
             std::string comp;
@@ -287,9 +294,7 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
                 size_t searchPos = pos + 1;
                 while (searchPos < content.size()) {
                     size_t ePos = content.find('E', searchPos);
-                    if (ePos == std::string::npos) {
-                        break;
-                    }
+                    if (ePos == std::string::npos) break;
                     if (ePos + 1 == content.size() || content[ePos + 1] == '_') {
                         endEncoded = ePos;
                         break;
@@ -297,37 +302,29 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
                     searchPos = ePos + 1;
                 }
                 if (endEncoded == std::string::npos) {
-                    // Malformed encoded segment: consume until next delimiter.
                     size_t nextDelim = content.find('_', pos);
-                    if (nextDelim == std::string::npos) {
-                        comp = content.substr(pos);
-                        pos = content.size();
-                    } else {
-                        comp = content.substr(pos, nextDelim - pos);
-                        pos = nextDelim + 1;
-                    }
+                    if (nextDelim == std::string::npos) { comp = content.substr(pos); pos = content.size(); }
+                    else { comp = content.substr(pos, nextDelim - pos); pos = nextDelim + 1; }
                 } else {
                     comp = decodeComponent(content.substr(start, endEncoded - start + 1));
                     pos = endEncoded + 1;
-                    if (pos < content.size() && content[pos] == '_') {
-                        pos++;
-                    }
+                    if (pos < content.size() && content[pos] == '_') pos++;
                 }
             } else {
                 size_t start = pos;
-                while (pos < content.size() && content[pos] != '_') {
-                    pos++;
-                }
+                while (pos < content.size() && content[pos] != '_') pos++;
                 size_t end = pos;
-                if (pos < content.size() && content[pos] == '_') {
-                    pos++;
-                }
+                if (pos < content.size() && content[pos] == '_') pos++;
                 comp = content.substr(start, end - start);
             }
-            if (!comp.empty()) {
-                components.push_back(comp);
-            }
+            if (!comp.empty()) components.push_back(comp);
         }
+        return components;
+    };
+
+    if (mangledName.find("_F_") == 0) {
+        std::string content = mangledName.substr(3);
+        std::vector<std::string> components = splitComponents(content);
         
         auto isFunctionModifierCode = [](const std::string& comp) {
             return comp == "Pb" || comp == "Pv" || comp == "Ay";
@@ -353,71 +350,98 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
         };
 
         size_t i = 0;
-        bool isMemberFunction = false;
-        if (!components.empty() && demangleType(components[0]) == "unknown" &&
-            components[0] != "CT" && components[0] != "DT" && components[0] != "static" &&
-            components[0] != "virtual" && !isFunctionModifierCode(components[0]) &&
-            !isClassModifierCode(components[0])) {
-            result.className = components[0];
-            isMemberFunction = true;
-            i = 1;
+        // 1. Module Path (with markers)
+        if (i < components.size() && components[i] == "M") {
+            i++;
+            while (i < components.size() && components[i] != "E") {
+                result.modulePath.push_back(components[i]);
+                i++;
+            }
+            if (i < components.size() && components[i] == "E") i++;
         }
 
-        auto isCallableOrQualifierToken = [&](const std::string& comp) {
+        auto isSpecialToken = [&](const std::string& comp) {
             return comp == "CT" || comp == "DT" || comp == "static" || comp == "virtual" ||
                    isFunctionModifierCode(comp) || isClassModifierCode(comp) ||
                    demangleType(comp) != "unknown";
         };
 
-        if (isMemberFunction && i < components.size() && !isCallableOrQualifierToken(components[i])) {
-            bool hasSecondUnknown = (i + 1 < components.size() && !isCallableOrQualifierToken(components[i + 1]));
-            bool followedByClassModifier = (i + 1 < components.size() && isClassModifierCode(components[i + 1]));
-            if (hasSecondUnknown || followedByClassModifier) {
-                result.baseClassName = components[i];
-                i++;
-            }
+        // 2. Extract potential names (ClassName, BaseClassName, FunctionName)
+        std::vector<std::string> names;
+        size_t nameStartIdx = i;
+        while (i < components.size() && !isSpecialToken(components[i])) {
+            names.push_back(components[i]);
+            i++;
         }
 
+        // 3. Class Modifiers (must be before CT/DT or FunctionName)
         while (i < components.size() && isClassModifierCode(components[i])) {
             pushClassModifier(components[i]);
             i++;
         }
 
+        // 4. Handle CT/DT or FunctionName
+        bool hasSpecialCtor = false;
         if (i < components.size()) {
             if (components[i] == "CT") {
                 result.isConstructor = true;
+                hasSpecialCtor = true;
                 i++;
             } else if (components[i] == "DT") {
                 result.isDestructor = true;
-                i++;
-            } else if (demangleType(components[i]) == "unknown" &&
-                       components[i] != "static" && components[i] != "virtual" &&
-                       !isFunctionModifierCode(components[i])) {
-                result.functionName = components[i];
+                hasSpecialCtor = true;
                 i++;
             }
         }
 
+        // 5. Categorize names
+        if (hasSpecialCtor || !result.classModifiers.empty()) {
+            // It's definitely a class member.
+            if (names.size() >= 2) {
+                result.className = names[0];
+                result.baseClassName = names[1];
+                if (names.size() > 2) result.functionName = names[2];
+            } else if (names.size() == 1) {
+                result.className = names[0];
+            }
+        } else {
+            // Ambiguous or plain function.
+            if (names.size() >= 3) {
+                // Class _ Base _ Func
+                result.className = names[0];
+                result.baseClassName = names[1];
+                result.functionName = names[2];
+            } else if (names.size() == 2) {
+                // Class _ Func
+                result.className = names[0];
+                result.functionName = names[1];
+            } else if (names.size() == 1) {
+                // Legacy/Simple case: treat as className
+                result.className = names[0];
+            }
+        }
+
+        // 6. Function Modifiers & Signature
         while (i < components.size()) {
             const std::string& comp = components[i];
-            if (comp == "static") {
-                result.isStatic = true;
-            } else if (comp == "virtual") {
-                result.isVirtual = true;
-            } else if (isFunctionModifierCode(comp)) {
-                pushFunctionModifier(comp);
-            } else {
+            if (comp == "static") result.isStatic = true;
+            else if (comp == "virtual") result.isVirtual = true;
+            else if (isFunctionModifierCode(comp)) pushFunctionModifier(comp);
+            else {
                 std::string demangledType = demangleType(comp);
-                if (demangledType == "unknown") {
-                    break;
-                }
-                if (result.returnType.empty()) {
-                    result.returnType = demangledType;
-                } else {
-                    result.parameterTypes.push_back(demangledType);
-                }
+                if (demangledType == "unknown") break;
+                if (result.returnType.empty()) result.returnType = demangledType;
+                else result.parameterTypes.push_back(demangledType);
             }
             i++;
+        }
+    } else if (mangledName.find("_H_") == 0) {
+        std::string content = mangledName.substr(3);
+        std::vector<std::string> components = splitComponents(content);
+        if (!components.empty()) {
+            result.functionName = components.back();
+            components.pop_back();
+            result.modulePath = components;
         }
     }
     

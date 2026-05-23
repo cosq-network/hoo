@@ -8,6 +8,7 @@ namespace hooc {
 
 struct DemangledSymbol {
     std::string originalName;
+    std::vector<std::string> modulePath;
     std::string className;
     std::string functionName;
     std::string baseClassName;
@@ -22,6 +23,7 @@ struct DemangledSymbol {
 };
 
 struct MangledFunctionParams {
+    std::vector<std::string> modulePath;
     std::string className;
     std::string baseClassName;
     std::vector<std::string> classModifiers;
