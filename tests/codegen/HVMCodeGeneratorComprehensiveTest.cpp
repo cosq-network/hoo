@@ -303,3 +303,116 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, QualifiedNew) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 }
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ConstructorWithParameters) {
+    std::string code = R"(
+        class Point {
+            var x: int64;
+            var y: int64;
+            constructor(x: int64, y: int64) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundEnter = false;
+    bool foundStore = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::ENTER) foundEnter = true;
+        if (inst.getOpcode() == Opcode::ST_D) foundStore = true;
+    }
+    EXPECT_TRUE(foundEnter);
+    EXPECT_TRUE(foundStore);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ForRangeWithBody) {
+    std::string code = R"(
+        func : int64 sumTo(n: int64) {
+            var sum = 0;
+            for i in 1 .. n {
+                sum = sum + i;
+            }
+            return sum;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    // For-range should produce: ENTER, LD, CMP, branch, ADD, ST, JMP
+    int cmpCount = 0;
+    int branchCount = 0;
+    int arithCount = 0;
+    for (const auto& inst : insts) {
+        switch (inst.getOpcode()) {
+            case Opcode::CMP: cmpCount++; break;
+            case Opcode::BEQ:
+            case Opcode::BNE:
+            case Opcode::BLT:
+            case Opcode::BLE: branchCount++; break;
+            case Opcode::ARITH: arithCount++; break;
+            default: break;
+        }
+    }
+    EXPECT_GE(cmpCount, 1);
+    EXPECT_GE(branchCount, 1);
+    EXPECT_GE(arithCount, 2); // sum+i and i+step (step=1)
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ManyLocalVariablesSucceed) {
+    std::string code = R"(
+        func : int64 sumMany() {
+            var a1 = 1;  var a2 = 2;  var a3 = 3;
+            var a4 = 4;  var a5 = 5;  var a6 = 6;
+            var a7 = 7;  var a8 = 8;  var a9 = 9;
+            var a10 = 10; var a11 = 11; var a12 = 12;
+            return a1 + a2 + a3 + a4 + a5 + a6
+                 + a7 + a8 + a9 + a10 + a11 + a12;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    // Should produce ARITH instructions for the additions
+    int arithCount = 0;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::ARITH) arithCount++;
+    }
+    EXPECT_GE(arithCount, 11); // 12 values combined = 11 additions
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ClassWithMethodAndFieldAccess) {
+    std::string code = R"(
+        class Counter {
+            var count: int64;
+            func : void increment() {
+                this.count = this.count + 1;
+            }
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    // Method should have field access: LD_D for this.count, ARITH for +1, ST_D for store
+    bool foundLoad = false;
+    bool foundArith = false;
+    bool foundStore = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::LD_D) foundLoad = true;
+        if (inst.getOpcode() == Opcode::ARITH) foundArith = true;
+        if (inst.getOpcode() == Opcode::ST_D) foundStore = true;
+    }
+    EXPECT_TRUE(foundLoad);
+    EXPECT_TRUE(foundArith);
+    EXPECT_TRUE(foundStore);
+}

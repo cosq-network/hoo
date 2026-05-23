@@ -192,162 +192,48 @@ GeneratedType* HVMCodeGenerator::generateType(const ast::Type& /*type*/) {
 // Internal Visitors
 // ============================================================================
 
-void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
-    uint32_t funcStartOffset = currentByteOffset_;
+HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
+    const ast::FunctionDeclaration* decl,
+    const ast::ConstructorDeclaration* ctorDecl,
+    bool isMethod, bool isConstructor)
+{
+    FunctionPrologueInfo info;
+    info.funcStartOffset = currentByteOffset_;
+    info.enterIdx = instructions_.size();
+    emit(Opcode::ENTER, OperandsI{0, 0, 0});
 
-    // 1. Setup frame: ENTER size
-    size_t enterIdx = instructions_.size();
-    emit(Opcode::ENTER, OperandsI{0, 0, 0}); 
+    uint8_t firstArgReg = isMethod ? 2 : 1;
+    uint8_t maxArgRegs = isMethod ? 7 : 8;
 
-    // 2. Map parameters
-    auto& params = decl.getParameters();
-    for (size_t i = 0; i < params.size() && i < 8; ++i) {
-        int32_t offset = reserveLocal(params[i]->getName(), 0);
-        emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + 1), 30, static_cast<int16_t>(offset)});
+    auto mapParams = [&](const auto& params) {
+        for (size_t i = 0; i < params.size() && i < maxArgRegs; ++i) {
+            int32_t offset = reserveLocal(params[i]->getName(), 0);
+            emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + firstArgReg), 30, static_cast<int16_t>(offset)});
+        }
+    };
+
+    if (decl) {
+        mapParams(decl->getParameters());
+        visitStatement(decl->getBody());
+    } else if (ctorDecl) {
+        mapParams(ctorDecl->getParameters());
+        visitStatement(ctorDecl->getBody());
     }
 
-    // 3. Generate body
-    visitStatement(decl.getBody());
-
-    // 4. Ensure return
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     }
 
-    // Fixup ENTER size
-    int32_t frameSize = -currentStackOffset_;
-    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
-
-    // Add MANGLED symbol to module
     MangledFunctionParams mp;
     mp.modulePath = modulePath_;
     if (currentClass_) mp.className = currentClass_->name;
-    mp.functionName = decl.getName();
-    
-    if (decl.getReturnType()) {
-        if (auto bt = dynamic_cast<const ast::BaseType*>(decl.getReturnType())) {
-            if (bt->isPrimitive()) {
-                mp.returnType = primitiveTypeToString(bt->getPrimitiveType()->getKind());
-            } else {
-                mp.returnType = bt->getIdentifier();
-            }
-        }
-    } else {
-        mp.returnType = "void";
-    }
+    mp.isConstructor = isConstructor;
 
-    for (const auto& param : decl.getParameters()) {
-        if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
-            if (bt->isPrimitive()) {
-                mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
-            } else {
-                mp.parameterTypes.push_back(bt->getIdentifier());
-            }
-        } else {
-            mp.parameterTypes.push_back("object");
-        }
-    }
-    
-    std::string mangledName = SymbolMangler::mangleFunctionName(mp);
-    
-    Symbol sym;
-    sym.name = mangledName;
-    sym.value = funcStartOffset;
-    sym.type = Symbol::STT_FUNC;
-    sym.binding = Symbol::STB_GLOBAL;
-    module_->addSymbol(sym);
-    
-    // Reset function-specific state
-    locals_.clear();
-    currentStackOffset_ = 0;
-}
-
-void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl) {
-    uint32_t funcStartOffset = currentByteOffset_;
-    size_t enterIdx = instructions_.size();
-    emit(Opcode::ENTER, OperandsI{0, 0, 0}); 
-
-    auto& params = decl.getParameters();
-    for (size_t i = 0; i < params.size() && i < 7; ++i) {
-        int32_t offset = reserveLocal(params[i]->getName(), 0);
-        emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + 2), 30, static_cast<int16_t>(offset)});
-    }
-
-    visitStatement(decl.getBody());
-
-    if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
-        emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
-        emit(Opcode::RET, OperandsR{0, 0, 0, 0});
-    }
-
-    int32_t frameSize = -currentStackOffset_;
-    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
-
-    std::string mangledName;
-    if (!modulePath_.empty() || currentClass_) {
-        MangledFunctionParams mp;
-        mp.modulePath = modulePath_;
-        if (currentClass_) mp.className = currentClass_->name;
-        mp.isConstructor = true;
-
-        for (const auto& param : decl.getParameters()) {
-            if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
-                if (bt->isPrimitive()) {
-                    mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
-                } else {
-                    mp.parameterTypes.push_back(bt->getIdentifier());
-                }
-            } else {
-                mp.parameterTypes.push_back("object");
-            }
-        }
-        mangledName = SymbolMangler::mangleFunctionName(mp);
-    } else {
-        mangledName = "constructor"; // Should not happen in valid AST
-    }
-    
-    Symbol sym;
-    sym.name = mangledName;
-    sym.value = funcStartOffset;
-    sym.type = Symbol::STT_FUNC;
-    sym.binding = Symbol::STB_GLOBAL;
-    module_->addSymbol(sym);
-    
-    locals_.clear();
-    currentStackOffset_ = 0;
-}
-
-void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
-    uint32_t funcStartOffset = currentByteOffset_;
-    size_t enterIdx = instructions_.size();
-    emit(Opcode::ENTER, OperandsI{0, 0, 0}); 
-
-    auto& params = decl.getParameters();
-    for (size_t i = 0; i < params.size() && i < 7; ++i) {
-        int32_t offset = reserveLocal(params[i]->getName(), 0);
-        emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + 2), 30, static_cast<int16_t>(offset)});
-    }
-
-    visitStatement(decl.getBody());
-
-    if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
-        emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
-        emit(Opcode::RET, OperandsR{0, 0, 0, 0});
-    }
-
-    int32_t frameSize = -currentStackOffset_;
-    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
-
-    std::string mangledName;
-    if (!modulePath_.empty() || currentClass_) {
-        MangledFunctionParams mp;
-        mp.modulePath = modulePath_;
-        if (currentClass_) mp.className = currentClass_->name;
-        mp.functionName = decl.getName();
-        
-        if (decl.getReturnType()) {
-            if (auto bt = dynamic_cast<const ast::BaseType*>(decl.getReturnType())) {
+    if (decl) {
+        mp.functionName = decl->getName();
+        if (decl->getReturnType()) {
+            if (auto bt = dynamic_cast<const ast::BaseType*>(decl->getReturnType())) {
                 if (bt->isPrimitive()) {
                     mp.returnType = primitiveTypeToString(bt->getPrimitiveType()->getKind());
                 } else {
@@ -357,8 +243,10 @@ void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
         } else {
             mp.returnType = "void";
         }
+    }
 
-        for (const auto& param : decl.getParameters()) {
+    auto addParamTypes = [&](const auto& params) {
+        for (const auto& param : params) {
             if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
                 if (bt->isPrimitive()) {
                     mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
@@ -369,20 +257,52 @@ void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
                 mp.parameterTypes.push_back("object");
             }
         }
-        mangledName = SymbolMangler::mangleFunctionName(mp);
-    } else {
-        mangledName = decl.getName();
+    };
+
+    if (decl) {
+        addParamTypes(decl->getParameters());
+    } else if (ctorDecl) {
+        addParamTypes(ctorDecl->getParameters());
     }
-    
+
+    bool shouldMangle = !modulePath_.empty() || currentClass_ != nullptr;
+    if (isConstructor) {
+        info.mangledName = shouldMangle ? SymbolMangler::mangleFunctionName(mp) : "constructor";
+    } else if (decl) {
+        info.mangledName = shouldMangle ? SymbolMangler::mangleFunctionName(mp) : decl->getName();
+    }
+
+    return info;
+}
+
+void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
+    int32_t frameSize = -currentStackOffset_;
+    instructions_[info.enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
+
     Symbol sym;
-    sym.name = mangledName;
-    sym.value = funcStartOffset;
+    sym.name = info.mangledName;
+    sym.value = info.funcStartOffset;
     sym.type = Symbol::STT_FUNC;
     sym.binding = Symbol::STB_GLOBAL;
     module_->addSymbol(sym);
-    
+
     locals_.clear();
     currentStackOffset_ = 0;
+}
+
+void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
+    auto info = beginFunction(&decl, nullptr, false, false);
+    endFunction(info);
+}
+
+void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl) {
+    auto info = beginFunction(nullptr, &decl, true, true);
+    endFunction(info);
+}
+
+void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
+    auto info = beginFunction(&decl, nullptr, true, false);
+    endFunction(info);
 }
 
 void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
@@ -1087,7 +1007,7 @@ void HVMCodeGenerator::addError(const std::string& message) {
 }
 
 uint8_t HVMCodeGenerator::allocateRegister() {
-    for (uint8_t i = 9; i <= 15; ++i) {
+    for (uint8_t i = 9; i <= 20; ++i) {
         if (!usedRegs_[i]) {
             usedRegs_[i] = true;
             return i;
@@ -1098,8 +1018,9 @@ uint8_t HVMCodeGenerator::allocateRegister() {
 }
 
 void HVMCodeGenerator::freeRegister(uint8_t reg) {
-    if (reg >= 9 && reg <= 15) usedRegs_[reg] = false;
+    if (reg >= 9 && reg <= 20) usedRegs_[reg] = false;
 }
+
 
 int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId) {
     currentStackOffset_ -= 8;

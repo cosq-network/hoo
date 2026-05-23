@@ -475,7 +475,7 @@ TEST_F(HVMJITLoaderTest, ValidationRejectsFunctionOffsetOutOfBounds) {
     EXPECT_EQ(info->code, HVMJIT::ErrorCode::InvalidSymbol);
 }
 
-TEST_F(HVMJITLoaderTest, ModuleNameCollisionAcrossDifferentPathsIsRejected) {
+TEST_F(HVMJITLoaderTest, SameModuleNameFromDifferentPathsAccepted) {
     std::vector<HVMInstruction> ins{
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
     };
@@ -487,11 +487,8 @@ TEST_F(HVMJITLoaderTest, ModuleNameCollisionAcrossDifferentPathsIsRejected) {
 
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("a/same.ho")) << jit.getLastError();
-    EXPECT_FALSE(jit.loadInput("b/same.ho"));
-    auto info = jit.getLastErrorInfo();
-    ASSERT_TRUE(info.has_value());
-    EXPECT_EQ(info->phase, HVMJIT::ErrorPhase::Resolve);
-    EXPECT_EQ(info->code, HVMJIT::ErrorCode::InvalidMetadata);
+    // Same module name from a different path is now allowed
+    EXPECT_TRUE(jit.loadInput("b/same.ho")) << jit.getLastError();
 }
 
 TEST_F(HVMJITLoaderTest, ValidationRejectsTextSectionWithoutExecuteFlag) {

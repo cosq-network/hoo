@@ -48,10 +48,11 @@ private:
     uint32_t currentByteOffset_ = 0;
     std::vector<std::string> errors_;
 
-    // Register Management (r9-r15 available for temps)
+    // Register Management (r9-r20 available for temps)
     bool usedRegs_[32];
     uint8_t allocateRegister();
     void freeRegister(uint8_t reg);
+
 
     // Local Variable & Stack Management
     struct Local {
@@ -124,6 +125,17 @@ private:
     void visitFunction(const ast::FunctionDeclaration& decl);
     void visitConstructor(const ast::ConstructorDeclaration& decl);
     void visitMethod(const ast::FunctionDeclaration& decl);
+
+    // Shared function prologue/epilogue helpers
+    struct FunctionPrologueInfo {
+        size_t enterIdx;
+        uint32_t funcStartOffset;
+        std::string mangledName;
+    };
+    FunctionPrologueInfo beginFunction(const ast::FunctionDeclaration* decl,
+                                       const ast::ConstructorDeclaration* ctorDecl,
+                                       bool isMethod, bool isConstructor);
+    void endFunction(const FunctionPrologueInfo& info);
 
     // Instruction Helpers
     void emit(hvm::Opcode op, const hvm::Operands& operands);

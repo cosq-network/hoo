@@ -871,12 +871,6 @@ bool HVMJIT::registerRuntimeSymbolsInJITDylib() {
         symbols[mangle(rs.name)] =
             llvm::orc::ExecutorSymbolDef(llvm::orc::ExecutorAddr::fromPtr(rs.addr), llvm::JITSymbolFlags::Exported);
     }
-    symbols[mangle("_F_hoo_alloc_p_i8_i8")] =
-        llvm::orc::ExecutorSymbolDef(llvm::orc::ExecutorAddr::fromPtr(&hoo_alloc), llvm::JITSymbolFlags::Exported);
-    symbols[mangle("_F_hoo_retain_p_p")] =
-        llvm::orc::ExecutorSymbolDef(llvm::orc::ExecutorAddr::fromPtr(&hoo_retain), llvm::JITSymbolFlags::Exported);
-    symbols[mangle("_F_hoo_release_v_p")] =
-        llvm::orc::ExecutorSymbolDef(llvm::orc::ExecutorAddr::fromPtr(&hoo_release), llvm::JITSymbolFlags::Exported);
 
     if (auto err = it->second->define(llvm::orc::absoluteSymbols(symbols))) {
         setError(ErrorPhase::Initialize, ErrorCode::RuntimeBootstrapFailed,
@@ -1229,7 +1223,28 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
 
     const hvm::Symbol* sym = findFunctionSymbol(*module, functionName);
     if (!sym) {
+        // Cross-module resolution: search all loaded modules
+        for (const auto& [name, mod] : loadedModules_) {
+            if (mod.get() == module.get()) continue;
+            sym = findFunctionSymbol(*mod, functionName);
+            if (sym) {
+                return executeFunction(mod, functionName, state);
+            }
+        }
         lastError_ = "Function symbol not found: " + functionName;
+        return -1;
+    }
+
+    // Imported symbols (section_index == -1) need cross-module resolution
+    if (sym->section_index == -1) {
+        for (const auto& [name, mod] : loadedModules_) {
+            if (mod.get() == module.get()) continue;
+            const hvm::Symbol* realSym = findFunctionSymbol(*mod, functionName);
+            if (realSym && realSym->section_index != -1) {
+                return executeFunction(mod, functionName, state);
+            }
+        }
+        lastError_ = "Import symbol not resolved: " + functionName;
         return -1;
     }
 
@@ -1749,14 +1764,6 @@ bool HVMJIT::loadModule(std::unique_ptr<hvm::HOModule> module) {
 
     const std::string moduleName = module->getName();
     const std::string canonicalPath = canonicalizePath(module->getSourcePath());
-    auto existingPath = moduleCanonicalPathByName_.find(moduleName);
-    if (existingPath != moduleCanonicalPathByName_.end() && existingPath->second != canonicalPath) {
-        setError(ErrorPhase::Resolve, ErrorCode::InvalidMetadata,
-                 "Module name collision detected for '" + moduleName + "' across different paths",
-                 moduleName, "", canonicalPath);
-        setLoaderState(moduleName, LoaderState::Failed);
-        return false;
-    }
     moduleCanonicalPathByName_[moduleName] = canonicalPath;
 
     std::shared_ptr<hvm::HOModule> owned(std::move(module));
