@@ -1,157 +1,105 @@
-# HVM Implementation Considerations (Core-Minimalest)
+# HVM Implementation Considerations (v1.4 Hardware Ready)
 
-This guide is aligned to:
+This guide provides normative implementation details for HVM-compliant systems (Interpreters, JITs, and physical Soft-Cores). It is strictly aligned with the **v1.4 "Hardware Ready" profile**.
 
-- `docs/hvm/HVM_SPEC.md`
-- `docs/hvm/hvm_instruction_set.csv`
-- `docs/hvm/hvm_register_set.csv`
-- `docs/hvm/instructions.md`
-- grammar in `src/parsing/Hooc.g4`
+## 1. System Philosophy: Hardware Purity
 
-It intentionally excludes optional extension families from the core implementation plan.
+The HVM v1.4 architecture has transitioned from a high-level Virtual Machine to a **Physical RISC ISA**. 
+- **No VM "Magic"**: The hardware has no knowledge of objects, strings, or exception stacks.
+- **Aggressive Lowering**: Complexity is moved to the compiler (`hooc`).
+- **Software Runtime**: Features like heap allocation and exception unwinding are provided by a thin C/C++ library (`hoort`).
 
-## 1. Primary Design Choice: Interpreter First, JIT Optional
+---
 
-Recommended order:
+## 2. Instruction Decoding (32/64-bit Hybrid)
 
-1. Implement a correct interpreter for the core profile
-2. Add tracing/profiling and differential checks
-3. Add JIT only after semantic parity is stable
+Implementations must handle the tiered fetch/decode logic for the extended opcode space.
 
-Reason:
-- Core set is intentionally small; correctness risk is mostly in control flow, object model, exceptions, and FFI boundary.
+### 2.1 The 0xFE Escape Prefix
+- **Standard (4 Bytes)**: Opcodes `0x00` through `0x7F`. Decoded directly from a 32-bit word.
+- **Extended (8 Bytes)**: Opcodes `>= 0x80`.
+    1. **Byte 0**: Must be `0xFE`.
+    2. **Byte 1-3**: ULEB128-encoded opcode.
+    3. **Byte 4-7**: Standard 32-bit instruction payload (padded for alignment).
 
-## 2. Encoding and Decode Path
+### 2.2 Immediate Range Handling
+- **15-bit Immediates**: Used in `I` and `B` formats. Must be **sign-extended** to 64 bits unless explicitly noted (e.g., `MOVZ` uses zero-extension).
+- **20-bit Offsets**: Used in `J` format (branches/calls). These are **word offsets**. The physical branch target is calculated as `PC + (sign_extend(offset) * 4)`.
 
-Requirements:
+---
 
-- Support base 32-bit formats (`R/I/RI/B/J`) for opcodes `0x00..0x7F`
-- Support escape-prefixed extended opcode decoding for core opcodes `>= 0x100` (`TRY`, `THROW`, `CALLHOST`, etc.)
-- Enforce sign-extension and branch offset semantics exactly as defined in `HVM_SPEC.md`
+## 3. Register & Calling Convention (ABI)
 
-Validation checks:
+All registers are 64 bits wide. Little-endian byte ordering is mandatory for memory transfers.
 
-- malformed/truncated instruction stream rejection
-- illegal opcode rejection
-- immediate range handling consistency
+### 3.1 Hardwired Zero (r0)
+- Any read from `r0` must return `0`.
+- Any write to `r0` must be silently ignored or trapped (depending on hardware implementation).
 
-## 3. Register and Calling Convention Semantics
+### 3.2 The Standard Frame (`ENTER` / `LEAVE`)
+The `ENTER imm15` instruction performs the following atomical sequence:
+1. `mem[sp - 8] = r29` (Save LR)
+2. `mem[sp - 16] = r30` (Save FP)
+3. `r30 = sp - 16` (New FP)
+4. `sp = sp - 16 - imm15` (Adjust SP)
 
-Must enforce:
+The `LEAVE` instruction restores these values and resets the SP, effectively "popping" the entire local frame in one cycle.
 
-- `r0` immutable zero
-- return value in `r1`
-- return address in `r29` and `RET -> pc = r29`
-- stack discipline via `r31`, frame conventions via `ENTER/LEAVE/FRAME`
+### 3.3 Argument Passing
+- **r1 - r8**: Used for the first 8 arguments.
+- **r1**: Shared register for the first argument and the return value.
+- **r29 (LR)**: Must be used for the return address in `CALL` and `JAL`.
 
-Common bug sources:
+---
 
-- accidentally treating `r1` as link register
-- mutating `r0`
-- inconsistent stack-pointer update ordering in `ENTER/LEAVE`
+## 4. Object & Array Lowering (The 8-Byte Rule)
 
-## 4. Minimality-Preserving Lowering
+Since the ISA is pure RISC, the implementation must strictly follow these software conventions:
 
-Lower these, do not add new core opcodes:
+### 4.1 Heap Layout
+- **Objects**: Base address points to the start of the field data.
+- **Arrays**: Base address points to a **64-bit Length Header**. The first element is at `base + 8`.
 
-- `SUBI` -> `ADDI rd, rs, -imm`
-- `NEG` -> `SUB rd, r0, rs`
-- `CMPGT/CMPGE` -> swapped `CMPLT/CMPLE`
-- `BGT/BGE` -> swapped `BLT/BLE`
-- constant materialization via `MOVZ`/`LUI` (+ arithmetic/logic)
+### 4.2 Lowering Sequences
+Implementations verifying compiler output should expect these patterns:
+- **Element Access**: `SHL 3` (scale) -> `ADDI 8` (header) -> `ADD` (base) -> `LD.D`.
+- **Field Access**: `LD.D` with an immediate offset (assuming the offset is < 32KB).
 
-Keep lowering centralized so parser/AST/codegen behavior stays deterministic.
+---
 
-## 5. Control-Flow Implementation
+## 5. Exception Model: The Shadow Stack
 
-Grammar-driven features:
+Hardware does not implement `TRY` blocks. Instead:
+1. **Registration**: The compiler emits `LDA` to calculate the address of the `catch` block and passes it to `hoo_push_handler`.
+2. **Throwing**: `hoo_throw` is a standard runtime call.
+3. **Unwinding**: The runtime library maintains a "shadow stack" of handler PCs. On a throw, the runtime restores the caller's stack frame (using FP) and jumps to the handler.
 
-- `if/else`
-- `while`
-- `for in ... range ... by ...`
-- `break` / `continue`
+---
 
-Implementation notes:
+## 6. System & Debug Interface
 
-- normalize all conditions to compare + conditional branch
-- use explicit loop context stacks for break/continue targets
-- preserve branch offset calculation in instruction units (not bytes)
+### 6.1 SYSCALL
+The `SYSCALL rd, rs1, imm15` instruction is the normative way to trigger OS services.
+- **rd**: Destination for syscall result.
+- **rs1**: Pointer to argument block (optional).
+- **imm15**: Syscall ID.
 
-## 6. Objects and Arrays (Software Lowering)
+### 6.2 BREAK
+The `BREAK` opcode should trigger a processor trap. In a simulator, this should launch the CLI debugger. In physical silicon, this should trigger a high-priority interrupt.
 
-The ISA no longer contains `NEW`, `LDF`, or `STELEM`. These must be lowered:
+---
 
-- **Allocation**: Call `hoo_malloc(size)` via a standard `CALL` instruction.
-- **Object Access**: Calculate byte offsets for fields and use `LD.D` or `ST.D`.
-- **Array Access**: Calculate the address manually (`base + 8 + index * 8`) using `SHIFT` and `ARITH`, then use `LD.D`/`ST.D`.
+## 7. Testing & Compliance Invariants
 
-## 7. Exception Model (Software Lowering)
+Every HVM-compliant target must pass these round-trip checks:
+1. **Opcode Parity**: Every instruction in `hvm_instruction_set.csv` must be uniquely identifiable.
+2. **Precision**: 64-bit integer overflow/underflow must follow standard two's-complement wrap-around.
+3. **Alignment**: Memory accesses (`LD.D`/`ST.D`) should ideally be 8-byte aligned; implementations must define behavior for unaligned access (either support via multiple cycles or trap).
 
-The ISA no longer contains `TRY` or `THROW`. These must be lowered:
+---
 
-- **Handler Registration**: Call `hoo_push_handler(handler_pc)` to save the catch-block address on a runtime shadow stack.
-- **Throwing**: Call `hoo_throw(exception_obj)`.
-- **Unwinding**: The runtime will look up the handler and jump to it, passing the exception in `r1`.
+## 8. Module Format Alignment
 
-## 8. OS and Runtime Bridge
-
-Core bridge logic:
-
-- **System Calls**: Use the `SYSCALL` instruction for low-level OS interaction.
-- **FFI**: Use standard `CALL` instructions to external symbols; rely on the loader/linker for resolution.
-- **Debug**: Use the `BREAK` instruction for debugger traps.
-
-Security baseline:
-
-- do not expose unrestricted host symbols by default
-- allowlist host-call IDs for `CALLHOST`
-- treat dynamic loading as privileged capability in production modes
-
-## 9. Module and Binary Format
-
-Use `HoModule` and `HO_FILE_FORMAT.md` as binary truth:
-
-- header: 64 bytes
-- section entries: 40 bytes
-- little-endian only
-- metadata section schemas fixed (`symtab`, `reloc`, `export`, `import`, `funcmeta`)
-
-Critical checks:
-
-- bounds/overflow checks on all offsets and counts
-- reject malformed metadata section lengths
-- preserve string-table offset validity
-
-## 10. Testing Strategy
-
-Required layers:
-
-1. Unit tests per opcode family
-2. Grammar-to-lowering tests (source -> expected instruction patterns)
-3. Exception and FFI negative-path tests
-4. Module roundtrip tests (`serialize` <-> `parse`)
-
-Recommended invariants:
-
-- interpreter state equivalence before/after non-observable instructions
-- deterministic results across repeated runs
-- no dependence on optional extension opcodes in core tests
-
-## 11. Performance Guidance Without Breaking Minimality
-
-- optimize dispatch (jump table / threaded interpreter)
-- cache decoded instruction forms
-- keep runtime calls explicit instead of adding specialized opcodes prematurely
-
-Performance work should not expand the core ISA unless grammar evolution requires it.
-
-## 12. Extension Policy
-
-If new grammar features require extra instruction families:
-
-1. keep core unchanged unless mandatory
-2. define feature profile in `docs/hvm/HVM_EXTENSIONS.md`
-3. gate by capability flag/versioning
-4. add exhaustive compatibility tests
-
-Core profile should remain the smallest complete set for current `Hooc.g4`.
+Binary `.ho` modules (v1.4) carry metadata that guides the implementation:
+- **.funcmeta**: Must be parsed to provide the debugger with `source_line` and `local_size` information.
+- **.rodata**: Used for constant spilling. Implementations must ensure the `LDA` (Load Address) instruction can correctly reference this segment relative to the instruction pointer.

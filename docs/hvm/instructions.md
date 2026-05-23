@@ -67,7 +67,6 @@ Opcode-space note:
 
 ### 4.9 Calls/linking
 - `CALL` `TAILCALL` (J-format, 20-bit relative offset)
-- `CALLI` (I-format, indirect)
 
 ### 4.10 Hardware/System
 - `SYSCALL`: Trigger a system call to the OS/Runtime.
