@@ -1,6 +1,6 @@
 # Hooc Architecture
 
-This document summarizes the current compiler/runtime/VM architecture after the HVM core-profile reduction in `docs/hvm/HVM_SPEC.md`.
+This document summarizes the current compiler/runtime/VM architecture after the HVM core-profile reduction in `docs/hvm/hvm-spec.md`.
 
 ## 1. System Overview
 
@@ -49,7 +49,7 @@ Register convention:
 
 Normative sources:
 
-- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm-spec.md`
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm_register_set.csv`
 - `docs/hvm/instructions.md`
@@ -78,7 +78,7 @@ Binary module handling is defined by:
 
 - `src/hvm/HOModule.h`
 - `src/hvm/HOModule.cpp`
-- `docs/hvm/HO_FILE_FORMAT.md`
+- `docs/hvm/ho-file-format.md`
 
 Key points:
 
@@ -126,9 +126,9 @@ When grammar evolves, update in this order:
 1. `src/parsing/Hooc.g4`
 2. AST (`src/ast/*`)
 3. lowering/codegen
-4. `docs/hvm/HVM_SPEC.md`
+4. `docs/hvm/hvm-spec.md`
 5. `docs/hvm/hvm_instruction_set.csv`
 6. `docs/hvm/instructions.md`
-7. `docs/hvm/HO_FILE_FORMAT.md` and `src/hvm/HOModule*` if binary/module semantics change
+7. `docs/hvm/ho-file-format.md` and `src/hvm/HOModule*` if binary/module semantics change
 
-Optional families should go to `docs/hvm/HVM_EXTENSIONS.md`, not the core profile.
+Optional families should go to `docs/hvm/hvm-extensions.md`, not the core profile.

@@ -58,11 +58,11 @@ Current profile: **core-minimalest** (Physical Silicon Ready)
 
 | Document | Description |
 | :--- | :--- |
-| `docs/hvm/HVM_SPEC.md` | Normative ISA specification and execution model. |
+| `docs/hvm/hvm-spec.md` | Normative ISA specification and execution model. |
 | `docs/hvm/hvm_instruction_set.csv` | Machine-readable opcode/format table. |
-| `docs/hvm/HO_FILE_FORMAT.md` | Binary container format for `.ho` modules. |
-| `docs/hvm/JIT_IMPLEMENTATION_GUIDE.md` | Blueprint for LLVM-based high-performance execution. |
-| `docs/hvm/HVM_IMPLEMENTATION_ANALYSIS.md`| Detailed assembly-level mapping of language features. |
+| `docs/hvm/ho-file-format.md` | Binary container format for `.ho` modules. |
+| `docs/hvm/jit-implementation-guide.md` | Blueprint for LLVM-based high-performance execution. |
+| `docs/hvm/hvm-implementation-analysis.md`| Detailed assembly-level mapping of language features. |
 
 ## 6. Contributing
 

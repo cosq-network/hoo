@@ -18,11 +18,11 @@ Primary near-term goals:
 - Grammar and parser are active (`src/parsing/Hooc.g4`)
 - AST builder and HVM codegen are active
 - HVM documentation has been consolidated around:
-  - `docs/hvm/HVM_SPEC.md`
+  - `docs/hvm/hvm-spec.md`
   - `docs/hvm/hvm_instruction_set.csv`
   - `docs/hvm/hvm_register_set.csv`
   - `docs/hvm/instructions.md`
-  - `docs/hvm/HO_FILE_FORMAT.md`
+  - `docs/hvm/ho-file-format.md`
 - HVM optional families are now explicitly separated into extension profiles
 
 ## 3. Phase Plan

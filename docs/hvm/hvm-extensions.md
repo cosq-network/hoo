@@ -1,6 +1,6 @@
 # HVM Extensions (Non-Core Profiles)
 
-This document lists optional HVM instruction families that are **not part of the current core profile** in `docs/hvm/HVM_SPEC.md`.
+This document lists optional HVM instruction families that are **not part of the current core profile** in `docs/hvm/hvm-spec.md`.
 
 Core profile is intentionally minimal and grammar-driven (`src/parsing/Hooc.g4`).
 Use these extensions only when language/runtime requirements justify them.

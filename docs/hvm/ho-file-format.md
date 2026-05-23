@@ -5,7 +5,7 @@ Extension: `.ho`
 Endianness: little-endian only
 
 This document is the normative binary format for `src/hvm/HOModule.h` and `src/hvm/HOModule.cpp`.
-It is aligned with the current hardware-ready core ISA profile in `docs/hvm/HVM_SPEC.md`.
+It is aligned with the current hardware-ready core ISA profile in `docs/hvm/hvm-spec.md`.
 
 ## 1. File Kinds
 
@@ -191,7 +191,7 @@ Bit masks from `SectionFlags`:
 
 - `.text` carries encoded HVM instructions.
 - Supported language/runtime surface is defined by:
-  - `docs/hvm/HVM_SPEC.md`
+  - `docs/hvm/hvm-spec.md`
   - `docs/hvm/hvm_instruction_set.csv`
   - `docs/hvm/hvm_register_set.csv`
 - This file-format spec intentionally does not re-list opcode families to avoid drift.

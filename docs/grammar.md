@@ -8,7 +8,7 @@ Normative grammar source:
 
 Normative HVM sources:
 
-- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm-spec.md`
 - `docs/hvm/hvm_instruction_set.csv`
 
 ## 1. Lexical Overview

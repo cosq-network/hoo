@@ -5,7 +5,7 @@ This guide describes the current Hooc language surface and how it maps to the ac
 Normative references:
 
 - Grammar: `src/parsing/Hooc.g4`
-- HVM core profile: `docs/hvm/HVM_SPEC.md`
+- HVM core profile: `docs/hvm/hvm-spec.md`
 - HVM opcode list: `docs/hvm/hvm_instruction_set.csv`
 
 ## 1. Core Language Features
@@ -114,4 +114,4 @@ String-heavy behavior is runtime/library driven in core.
 
 - Language features listed here are grammar-level supported syntax.
 - Backend/runtime completeness can vary by execution path.
-- For current HVM scope decisions, always defer to `docs/hvm/HVM_SPEC.md`.
+- For current HVM scope decisions, always defer to `docs/hvm/hvm-spec.md`.

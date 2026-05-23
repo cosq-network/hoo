@@ -167,7 +167,7 @@ ANTLR4-generated sources are now placed under `build/<preset>/generated/antlr4/`
 
 ### HVM Bytecode
 
-The HVM is a custom 32-bit RISC instruction set. See `docs/hvm/HVM_SPEC.md` and `docs/hvm/instructions.md` for the full ISA reference.
+The HVM is a custom 32-bit RISC instruction set. See `docs/hvm/hvm-spec.md` and `docs/hvm/instructions.md` for the full ISA reference.
 
 Key properties:
 - 32 GPRs (`r0`–`r31`), `r1` is return value, `r29` is link register
@@ -389,7 +389,7 @@ See `docs/build-targets.md` for the full target reference.
 - [LLVM Programmer's Manual](https://llvm.org/docs/ProgrammersManual.html)
 - [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
 - [GoogleTest Primer](https://google.github.io/googletest/primer.html)
-- HVM Spec: `docs/hvm/HVM_SPEC.md`
+- HVM Spec: `docs/hvm/hvm-spec.md`
 - Grammar: `src/parsing/Hooc.g4`
 - Tests: `tests/` directory (comprehensive examples)
 

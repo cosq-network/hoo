@@ -5,7 +5,7 @@ This document lists Hooc language elements by compilation granularity and maps t
 Normative references:
 
 - `src/parsing/Hooc.g4`
-- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm-spec.md`
 - `docs/hvm/hvm_instruction_set.csv`
 
 ## 1. Compilation Tiers

@@ -2,7 +2,7 @@
 
 This document describes the current HVM architecture as defined by:
 
-- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm-spec.md`
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm_register_set.csv`
 
@@ -99,11 +99,11 @@ HVM relies on a software runtime library for:
 
 ## 8. Relationship to Module Format
 
-HVM module/container details are defined separately in `docs/hvm/HO_FILE_FORMAT.md`.
+HVM module/container details are defined separately in `docs/hvm/ho-file-format.md`.
 
 ## 9. Evolution Policy
 
 If new language features require hardware support:
 
 1. Prioritize software lowering to existing RISC instructions.
-2. Add optional profiles in `docs/hvm/HVM_EXTENSIONS.md` only if performance or security necessitates silicon-level implementation.
+2. Add optional profiles in `docs/hvm/hvm-extensions.md` only if performance or security necessitates silicon-level implementation.

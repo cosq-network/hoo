@@ -25,7 +25,7 @@ Current HVM mode is **core-minimalest**.
 - Core register model (`r0..r31`, `r29` link register, `r1` return value)
 - Base instruction formats + escape-prefixed extended opcode space
 - Core instruction families documented in:
-  - `docs/hvm/HVM_SPEC.md`
+  - `docs/hvm/hvm-spec.md`
   - `docs/hvm/hvm_instruction_set.csv`
   - `docs/hvm/instructions.md`
 - `.ho` binary format version `1.3` and parser/serializer constraints
@@ -106,9 +106,9 @@ String-heavy behavior remains runtime-driven in core, not string-opcode driven.
 ## 7. Source-of-Truth Index
 
 - Grammar: `src/parsing/Hooc.g4`
-- HVM spec: `docs/hvm/HVM_SPEC.md`
+- HVM spec: `docs/hvm/hvm-spec.md`
 - Opcode list: `docs/hvm/hvm_instruction_set.csv`
 - Register set: `docs/hvm/hvm_register_set.csv`
 - Instruction reference: `docs/hvm/instructions.md`
-- Optional profiles: `docs/hvm/HVM_EXTENSIONS.md`
-- Module format: `docs/hvm/HO_FILE_FORMAT.md`
+- Optional profiles: `docs/hvm/hvm-extensions.md`
+- Module format: `docs/hvm/ho-file-format.md`

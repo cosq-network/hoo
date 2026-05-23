@@ -4,7 +4,7 @@ Version: `1.4`
 Profile: `core-minimalest` (Hardware Ready)  
 Normative sources:
 - `docs/hvm/hvm_instruction_set.csv`
-- `docs/hvm/HVM_SPEC.md`
+- `docs/hvm/hvm-spec.md`
 
 This reference defines a **pure hardware-ready ISA**. All high-level VM constructs have been purged and are now handled via software lowering or standard library calls.
 
@@ -85,4 +85,4 @@ Operations removed from the ISA and now lowered to the above set:
 ## 6. Canonical Opcode Table
 
 The canonical machine-readable definition is `docs/hvm/hvm_instruction_set.csv`.
-Keep this document synchronized with that CSV and `docs/hvm/HVM_SPEC.md`.
+Keep this document synchronized with that CSV and `docs/hvm/hvm-spec.md`.
