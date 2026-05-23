@@ -50,8 +50,8 @@ ST.D,0x7B,I,"data, addr, imm15",mem[addr + imm15]:64 = data,Store double word,-
 LDA,0x7D,I,"rd, addr, imm15",rd = addr + sign_extend(imm15),Load address,-
 PUSH,0x7E,R,"rs, -, -, -",sp -= 8; mem[sp] = rs,Push register to stack,-
 POP,0x7F,R,"rd, -, -, -",rd = mem[sp]; sp += 8,Pop from stack,-
-ENTER,0x80,I,"-, -, imm15","sp -= 8; mem[sp] = r30; r30 = sp; sp -= sign_extend(imm15)",Enter stack frame,-
-LEAVE,0x81,R,"-, -, -, -","sp = r30; r30 = mem[sp]; sp += 8",Leave stack frame,-
+ENTER,0x80,I,"-, -, imm15","sp -= 16; mem[sp] = r29; mem[sp+8] = r30; r30 = sp; sp -= sign_extend(imm15)",Enter stack frame (saves lr and fp),-
+LEAVE,0x81,R,"-, -, -, -","sp = r30; r29 = mem[sp]; r30 = mem[sp+8]; sp += 16",Leave stack frame (restores lr and fp),-
 ADJSP,0x82,I,"-, -, imm15",sp += sign_extend(imm15),Adjust stack pointer,-
 FRAME,0x83,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Get frame address,-
 NEW,0xA8,I,"rd, -, imm15",rd = new_object(imm15),Allocate object by class ID,-

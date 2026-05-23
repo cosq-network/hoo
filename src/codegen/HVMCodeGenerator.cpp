@@ -778,7 +778,7 @@ void HVMCodeGenerator::emitCall(Opcode op, const std::string& symbol) {
         symbolFixups_.push_back({symbol, instrIdx, instrOff});
     }
 
-    emit(op, OperandsJ{1, wordOffset}); 
+    emit(op, OperandsJ{29, wordOffset}); 
 }
 
 void HVMCodeGenerator::emitBranch(Opcode op, uint8_t rs1, uint8_t rs2, Label* target) {
