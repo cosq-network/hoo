@@ -61,9 +61,9 @@ STF,0xAB,RI,"val, obj, -, idx",obj.field[idx] = val,Store object field,-
 LDELEM,0xAC,R,"rd, arr, idx, -",rd = arr[idx],Load array element,-
 STELEM,0xAD,R,"val, arr, idx, -",arr[idx] = val,Store array element,-
 ARRAYLEN,0xAE,R,"rd, arr, -, -",rd = length(arr),Get array length,-
-CALL,0xB4,R,"addr, -, -, -",call addr,Call function at address,-
+CALL,0xB4,J,"rd, offset",call rd + offset,Call function,-
 CALLI,0xB5,I,"rd, -, imm15",rd = call symbol_table[imm15],Call by symbol table index,-
-TAILCALL,0xB6,R,"addr, -, -, -",tail_call addr,Tail call,-
+TAILCALL,0xB6,J,offset,tail_call offset,Tail call,-
 TRY,0x110,I,"rd, -, imm15",rd = handler_table.push(imm15); sp -= 16,Begin try block push handler,-
 THROW,0x112,R,"exc, -, -",throw_exception(exc),Throw exception value,-
 CATCH,0x113,I,"rd, -, imm15",rd = pop_handler(imm15),Catch exception pop handler,-
