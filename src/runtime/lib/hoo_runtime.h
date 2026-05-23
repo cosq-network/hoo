@@ -18,6 +18,20 @@ extern "C" {
  */
 
 /**
+ * Core Type IDs for managed objects.
+ * These are stored in the object header at offset -8.
+ */
+#define HOO_TYPE_OBJECT       100  // Generic object
+#define HOO_TYPE_STRING       101  // HooString
+#define HOO_TYPE_ARRAY        102  // HooArray
+#define HOO_TYPE_MAP          103  // HooMap
+#define HOO_TYPE_EXCEPTION    104  // HooException (base)
+#define HOO_TYPE_RANDOM       105  // HooRandom state
+#define HOO_TYPE_NET_URL      106  // HooURL
+#define HOO_TYPE_NET_HTTP_RES 107  // HooHttpResponse
+#define HOO_TYPE_NET_HTTP_CLI 108  // HooHttpClient
+
+/**
  * Allocate a new object on the heap with reference count initialized to 1.
  *
  * @param size Size of the object data (excluding header)

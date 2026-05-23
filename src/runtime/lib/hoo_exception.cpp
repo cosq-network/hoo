@@ -1,4 +1,5 @@
 #include "hoo_exception.h"
+#include "hoo_runtime.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -11,7 +12,6 @@
 // ============================================================================
 
 struct HooExceptionImpl {
-    std::atomic<int64_t> refcount;
     int64_t typeId;
     const char* typeName;
     const char* message;
@@ -80,13 +80,8 @@ HooException hoo_exception_create(int64_t typeId, const char* message) {
 }
 
 HooException hoo_exception_create_with_cause(int64_t typeId, const char* message, HooException cause) {
-    HooExceptionImpl* impl = (HooExceptionImpl*)std::malloc(sizeof(HooExceptionImpl));
-    if (!impl) {
-        std::fprintf(stderr, "ERROR: Out of memory allocating HooException\n");
-        std::exit(1);
-    }
+    HooExceptionImpl* impl = (HooExceptionImpl*)hoo_alloc(sizeof(HooExceptionImpl), HOO_TYPE_EXCEPTION);
 
-    impl->refcount.store(1, std::memory_order_relaxed);
     impl->typeId = typeId;
     impl->typeName = (typeId >= 0 && typeId < 5) ? type_names[typeId] : "CustomException";
 
@@ -100,11 +95,7 @@ HooException hoo_exception_create_with_cause(int64_t typeId, const char* message
 
     impl->frameCount = 0;
     impl->frames = nullptr;
-    impl->cause = nullptr;
-
-    if (cause) {
-        impl->cause = hoo_exception_retain(cause);
-    }
+    impl->cause = cause ? hoo_exception_retain(cause) : nullptr;
 
     return from_impl(impl);
 }
@@ -136,13 +127,8 @@ HooException hoo_exception_invalid_cast(const char* message) {
 HooException hoo_exception_custom(const char* exceptionType, const char* message) {
     if (!exceptionType) exceptionType = "CustomException";
 
-    HooExceptionImpl* impl = (HooExceptionImpl*)std::malloc(sizeof(HooExceptionImpl));
-    if (!impl) {
-        std::fprintf(stderr, "ERROR: Out of memory allocating HooException\n");
-        std::exit(1);
-    }
+    HooExceptionImpl* impl = (HooExceptionImpl*)hoo_alloc(sizeof(HooExceptionImpl), HOO_TYPE_EXCEPTION);
 
-    impl->refcount.store(1, std::memory_order_relaxed);
     impl->typeId = HOO_EXCEPTION_CUSTOM;
 
     size_t typeLen = std::strlen(exceptionType);
@@ -246,25 +232,16 @@ const char* hoo_exception_get_frame(HooException exc, int64_t index) {
 // ============================================================================
 
 HooException hoo_exception_retain(HooException exc) {
-    if (!exc) return nullptr;
-    get_impl(exc)->refcount.fetch_add(1, std::memory_order_relaxed);
-    return exc;
+    return (HooException)hoo_retain(exc);
 }
 
 void hoo_exception_release(HooException exc) {
     if (!exc) return;
 
-    HooExceptionImpl* impl = get_impl(exc);
-    int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
-
-    if (oldCount <= 0) {
-        std::fprintf(stderr, "ERROR: Exception refcount went negative! Value: %lld\n", (long long)oldCount);
-        std::_Exit(1);
-    }
-
-    if (oldCount == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        if (impl->message && impl->message[0] != '\0') {
+    // Check if we're about to free the object (refcount == 1)
+    if (hoo_get_refcount(exc) == 1) {
+        HooExceptionImpl* impl = get_impl(exc);
+        if (impl->message && impl->message[0] != '\0' && impl->message != (const char*)"") {
             std::free((void*)impl->message);
         }
         if (impl->typeName && impl->typeId >= 5) {
@@ -275,13 +252,13 @@ void hoo_exception_release(HooException exc) {
         }
         if (impl->frames) std::free(impl->frames);
         if (impl->cause) hoo_exception_release(impl->cause);
-        std::free(impl);
     }
+
+    hoo_release(exc);
 }
 
 int64_t hoo_exception_refcount(HooException exc) {
-    if (!exc) return 0;
-    return get_impl(exc)->refcount.load(std::memory_order_relaxed);
+    return hoo_get_refcount(exc);
 }
 
 // ============================================================================
@@ -381,7 +358,7 @@ const char* hoo_exception_debug(HooException exc) {
         (long long)impl->typeId,
         impl->typeName,
         impl->message,
-        (long long)impl->refcount.load(std::memory_order_relaxed),
+        (long long)hoo_get_refcount(exc),
         impl->cause ? "true" : "false"
     );
 

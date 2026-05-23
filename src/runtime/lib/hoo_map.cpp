@@ -1,4 +1,5 @@
 #include "hoo_map.h"
+#include "hoo_runtime.h"
 #include <new>
 #include <cstring>
 #include <cassert>
@@ -12,7 +13,6 @@ namespace hooc {
 
 HooMapImpl::HooMapImpl(int keyType)
     : keyType_(keyType) {
-    refcount_.store(1, std::memory_order_relaxed);
 }
 
 HooMapImpl::~HooMapImpl() {
@@ -292,22 +292,6 @@ int64_t HooMapImpl::getStringValue(const char* key, void* dest) const {
     return 0;
 }
 
-// Reference counting
-void HooMapImpl::retain() {
-    refcount_.fetch_add(1, std::memory_order_relaxed);
-}
-
-void HooMapImpl::release() {
-    if (refcount_.fetch_sub(1, std::memory_order_release) == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        delete this;
-    }
-}
-
-int64_t HooMapImpl::getRefcount() const {
-    return refcount_.load(std::memory_order_relaxed);
-}
-
 }  // namespace hooc
 
 // ============================================================================
@@ -318,7 +302,8 @@ extern "C" {
 
 HooMap hoo_map_new(int keyType) {
     try {
-        auto* impl = new hooc::HooMapImpl(keyType);
+        void* mem = hoo_alloc(sizeof(hooc::HooMapImpl), HOO_TYPE_MAP);
+        auto* impl = new (mem) hooc::HooMapImpl(keyType);
         return static_cast<HooMap>(impl);
     } catch (...) {
         return nullptr;
@@ -326,12 +311,12 @@ HooMap hoo_map_new(int keyType) {
 }
 
 HooMap hoo_map_from_pairs(int keyType, const void* keys, const void** values, int64_t count) {
-    try {
-        auto* impl = new hooc::HooMapImpl(keyType);
-        return static_cast<HooMap>(impl);
-    } catch (...) {
-        return nullptr;
-    }
+    HooMap map = hoo_map_new(keyType);
+    if (!map) return nullptr;
+
+    // This implementation is a placeholder, a full implementation would iterate
+    // over keys/values and insert them.
+    return map;
 }
 
 int64_t hoo_map_length(HooMap map) {
@@ -539,22 +524,22 @@ int64_t hoo_map_get_string_value(HooMap map, const char* key, void* dest) {
 
 // Reference counting
 HooMap hoo_map_retain(HooMap map) {
-    if (!map) return nullptr;
-    auto* impl = static_cast<hooc::HooMapImpl*>(map);
-    impl->retain();
-    return map;
+    return (HooMap)hoo_retain(map);
 }
 
 void hoo_map_release(HooMap map) {
     if (!map) return;
-    auto* impl = static_cast<hooc::HooMapImpl*>(map);
-    impl->release();
+
+    if (hoo_get_refcount(map) == 1) {
+        auto* impl = static_cast<hooc::HooMapImpl*>(map);
+        impl->~HooMapImpl();
+    }
+
+    hoo_release(map);
 }
 
 int64_t hoo_map_refcount(HooMap map) {
-    if (!map) return 0;
-    auto* impl = static_cast<hooc::HooMapImpl*>(map);
-    return impl->getRefcount();
+    return hoo_get_refcount(map);
 }
 
 // Utility

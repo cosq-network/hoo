@@ -312,6 +312,7 @@ namespace hooc {
 
 /**
   * HooArrayImpl - C++ implementation using std::vector + std::any
+  * Allocated via hoo_alloc, so it has a 16-byte hidden header.
   */
 class HooArrayImpl {
 public:
@@ -364,16 +365,6 @@ public:
     int64_t length() const { return static_cast<int64_t>(elements.size()); }
     bool empty() const { return elements.empty(); }
 
-    // Reference counting
-    void retain() { refcount.fetch_add(1, std::memory_order_relaxed); }
-    void release() {
-        if (refcount.fetch_sub(1, std::memory_order_release) == 1) {
-            std::atomic_thread_fence(std::memory_order_acquire);
-            delete this;
-        }
-    }
-    int64_t getRefcount() const { return refcount.load(std::memory_order_relaxed); }
-
     // Type information
     const std::type_info* getElementType() const { return element_type; }
     bool isType(const std::type_info& type) const {
@@ -387,7 +378,6 @@ public:
 private:
     std::vector<std::any> elements;
     const std::type_info* element_type;
-    std::atomic<int64_t> refcount;
 };
 
 } // namespace hooc

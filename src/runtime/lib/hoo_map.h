@@ -249,17 +249,11 @@ public:
     int64_t getCharValue(char key, void* dest) const;
     int64_t getStringValue(const char* key, void* dest) const;
 
-    // Reference counting
-    void retain();
-    void release();
-    int64_t getRefcount() const;
-
     // Utility
     int getKeyType() const { return keyType_; }
 
 private:
     int keyType_;
-    std::atomic<int64_t> refcount_;
 
     // Separate storage for each key type
     std::unordered_map<int8_t, std::any> data_int8_;

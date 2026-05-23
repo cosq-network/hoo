@@ -1,4 +1,5 @@
 #include "hoo_net.h"
+#include "hoo_runtime.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -6,6 +7,7 @@
 #include <string>
 #include <map>
 #include <vector>
+#include <new>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,7 +18,6 @@ extern "C" {
 // ============================================================================
 
 struct HooURLImpl {
-    std::atomic<int64_t> refcount;
     std::string scheme;
     std::string host;
     int64_t port;
@@ -82,8 +83,8 @@ static void parse_url(const char* urlString, HooURLImpl* impl) {
 }
 
 HooURL hoo_net_url_new(const char* urlString) {
-    HooURLImpl* impl = new HooURLImpl();
-    impl->refcount.store(1, std::memory_order_relaxed);
+    void* mem = hoo_alloc(sizeof(HooURLImpl), HOO_TYPE_NET_URL);
+    HooURLImpl* impl = new (mem) HooURLImpl();
     impl->port = 0;
     parse_url(urlString, impl);
     return impl;
@@ -150,20 +151,16 @@ char* hoo_net_url_to_string(HooURL url) {
 }
 
 HooURL hoo_net_url_retain(HooURL url) {
-    if (!url) return nullptr;
-    HooURLImpl* impl = static_cast<HooURLImpl*>(url);
-    impl->refcount.fetch_add(1, std::memory_order_relaxed);
-    return url;
+    return (HooURL)hoo_retain(url);
 }
 
 void hoo_net_url_release(HooURL url) {
     if (!url) return;
-    HooURLImpl* impl = static_cast<HooURLImpl*>(url);
-    int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
-    if (oldCount == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        delete impl;
+    if (hoo_get_refcount(url) == 1) {
+        HooURLImpl* impl = static_cast<HooURLImpl*>(url);
+        impl->~HooURLImpl();
     }
+    hoo_release(url);
 }
 
 // ============================================================================
@@ -171,7 +168,6 @@ void hoo_net_url_release(HooURL url) {
 // ============================================================================
 
 struct HooHttpResponseImpl {
-    std::atomic<int64_t> refcount;
     int64_t statusCode;
     std::string statusText;
     std::string body;
@@ -179,8 +175,8 @@ struct HooHttpResponseImpl {
 };
 
 HooHttpResponseImpl* create_mock_response(int64_t statusCode, const char* body) {
-    HooHttpResponseImpl* impl = new HooHttpResponseImpl();
-    impl->refcount.store(1, std::memory_order_relaxed);
+    void* mem = hoo_alloc(sizeof(HooHttpResponseImpl), HOO_TYPE_NET_HTTP_RES);
+    HooHttpResponseImpl* impl = new (mem) HooHttpResponseImpl();
     impl->statusCode = statusCode;
     impl->statusText = (statusCode == 200) ? "OK" :
                        (statusCode == 201) ? "Created" :
@@ -219,20 +215,16 @@ int64_t hoo_net_http_response_is_success(HooHttpResponse response) {
 }
 
 HooHttpResponse hoo_net_http_response_retain(HooHttpResponse response) {
-    if (!response) return nullptr;
-    HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(response);
-    impl->refcount.fetch_add(1, std::memory_order_relaxed);
-    return response;
+    return (HooHttpResponse)hoo_retain(response);
 }
 
 void hoo_net_http_response_release(HooHttpResponse response) {
     if (!response) return;
-    HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(response);
-    int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
-    if (oldCount == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        delete impl;
+    if (hoo_get_refcount(response) == 1) {
+        HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(response);
+        impl->~HooHttpResponseImpl();
     }
+    hoo_release(response);
 }
 
 // ============================================================================
@@ -240,14 +232,13 @@ void hoo_net_http_response_release(HooHttpResponse response) {
 // ============================================================================
 
 struct HooHttpClientImpl {
-    std::atomic<int64_t> refcount;
     std::map<std::string, std::string> headers;
     int64_t timeout;
 };
 
 HooHttpClient hoo_net_http_client_new(void) {
-    HooHttpClientImpl* impl = new HooHttpClientImpl();
-    impl->refcount.store(1, std::memory_order_relaxed);
+    void* mem = hoo_alloc(sizeof(HooHttpClientImpl), HOO_TYPE_NET_HTTP_CLI);
+    HooHttpClientImpl* impl = new (mem) HooHttpClientImpl();
     impl->timeout = 30000; // 30 second default
     return impl;
 }
@@ -307,20 +298,16 @@ HooHttpResponse hoo_net_http_client_delete(HooHttpClient client, const char* url
 }
 
 HooHttpClient hoo_net_http_client_retain(HooHttpClient client) {
-    if (!client) return nullptr;
-    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
-    impl->refcount.fetch_add(1, std::memory_order_relaxed);
-    return client;
+    return (HooHttpClient)hoo_retain(client);
 }
 
 void hoo_net_http_client_release(HooHttpClient client) {
     if (!client) return;
-    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
-    int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
-    if (oldCount == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        delete impl;
+    if (hoo_get_refcount(client) == 1) {
+        HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
+        impl->~HooHttpClientImpl();
     }
+    hoo_release(client);
 }
 
 #ifdef __cplusplus

@@ -1,5 +1,6 @@
 #include "hoo_string.h"
 #include "hoo_generic_array.h"
+#include "hoo_runtime.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -16,16 +17,16 @@
 /**
  * Internal string header containing metadata.
  * The actual string data follows immediately after in memory.
+ * This structure is allocated via hoo_alloc, so it has a 16-byte hidden header.
  */
 struct HooStringImpl {
-    std::atomic<int64_t> refcount;
     int64_t length;
     int64_t capacity;
     char data[1];
 };
 
 // Size of header before the data field
-#define HEADER_SIZE offsetof(HooStringImpl, data)
+#define STRING_METADATA_SIZE offsetof(HooStringImpl, data)
 
 // ============================================================================
 // Utility Functions
@@ -45,15 +46,10 @@ static HooString from_impl(HooStringImpl* impl) {
 static HooString allocate_string(int64_t length) {
     if (length < 0) length = 0;
 
-    size_t total_size = HEADER_SIZE + length + 1;
+    // We use hoo_alloc to get the 16-byte hidden header (refcount, type_id)
+    size_t data_size = STRING_METADATA_SIZE + length + 1;
+    HooStringImpl* impl = (HooStringImpl*)hoo_alloc(data_size, HOO_TYPE_STRING);
 
-    HooStringImpl* impl = (HooStringImpl*)std::malloc(total_size);
-    if (!impl) {
-        std::fprintf(stderr, "ERROR: Out of memory allocating HooString (size: %zu bytes)\n", total_size);
-        std::exit(1);
-    }
-
-    impl->refcount.store(1, std::memory_order_relaxed);
     impl->length = length;
     impl->capacity = length + 1;
     impl->data[length] = '\0';
@@ -70,10 +66,10 @@ HooString hoo_string_from_cstr(const char* cstr) {
         return hoo_string_new();
     }
 
-    int64_t len = std::strlen(cstr);
+    int64_t len = (int64_t)std::strlen(cstr);
     HooString str = allocate_string(len);
     HooStringImpl* impl = get_impl(str);
-    std::memcpy(impl->data, cstr, len);
+    std::memcpy(impl->data, cstr, (size_t)len);
 
     return str;
 }
@@ -462,31 +458,15 @@ int64_t hoo_string_equals_ignore_case(HooString a, HooString b) {
 // ============================================================================
 
 HooString hoo_string_retain(HooString str) {
-    if (!str) return nullptr;
-    get_impl(str)->refcount.fetch_add(1, std::memory_order_relaxed);
-    return str;
+    return (HooString)hoo_retain(str);
 }
 
 void hoo_string_release(HooString str) {
-    if (!str) return;
-
-    HooStringImpl* impl = get_impl(str);
-    int64_t old_count = impl->refcount.fetch_sub(1, std::memory_order_release);
-
-    if (old_count <= 0) {
-        std::fprintf(stderr, "ERROR: String refcount went negative! Value: %lld\n", (long long)old_count);
-        std::exit(1);
-    }
-
-    if (old_count == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        std::free(impl);
-    }
+    hoo_release(str);
 }
 
 int64_t hoo_string_refcount(HooString str) {
-    if (!str) return 0;
-    return get_impl(str)->refcount.load(std::memory_order_relaxed);
+    return hoo_get_refcount(str);
 }
 
 // ============================================================================
@@ -591,7 +571,7 @@ HooString hoo_string_debug(HooString str) {
         "HooString { len=%lld, cap=%lld, refcount=%lld, data=\"%.*s\" }",
         (long long)impl->length,
         (long long)impl->capacity,
-        (long long)impl->refcount,
+        (long long)hoo_get_refcount(str),
         (int)std::min(impl->length, (int64_t)50),
         impl->data
     );

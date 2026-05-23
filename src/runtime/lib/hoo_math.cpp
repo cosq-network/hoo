@@ -1,4 +1,5 @@
 #include "hoo_math.h"
+#include "hoo_runtime.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
@@ -103,21 +104,20 @@ double hoo_math_fract(double x) { return x - std::floor(x); }
 // ============================================================================
 
 struct HooRandomImpl {
-    std::atomic<int64_t> refcount;
     std::mt19937_64 rng;
 };
 
 void* hoo_math_random_new(void) {
     std::random_device rd;
-    HooRandomImpl* impl = new HooRandomImpl();
-    impl->refcount.store(1, std::memory_order_relaxed);
+    void* mem = hoo_alloc(sizeof(HooRandomImpl), HOO_TYPE_RANDOM);
+    HooRandomImpl* impl = new (mem) HooRandomImpl();
     impl->rng.seed(rd());
     return impl;
 }
 
 void* hoo_math_random_new_with_seed(int64_t seed) {
-    HooRandomImpl* impl = new HooRandomImpl();
-    impl->refcount.store(1, std::memory_order_relaxed);
+    void* mem = hoo_alloc(sizeof(HooRandomImpl), HOO_TYPE_RANDOM);
+    HooRandomImpl* impl = new (mem) HooRandomImpl();
     impl->rng.seed(static_cast<uint64_t>(seed));
     return impl;
 }
@@ -159,20 +159,18 @@ int64_t hoo_math_random_next_bytes(void* state, int8_t* buffer, int64_t count) {
 }
 
 void* hoo_math_random_retain(void* state) {
-    if (!state) return nullptr;
-    HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
-    impl->refcount.fetch_add(1, std::memory_order_relaxed);
-    return state;
+    return (void*)hoo_retain(state);
 }
 
 void hoo_math_random_release(void* state) {
     if (!state) return;
-    HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
-    int64_t oldCount = impl->refcount.fetch_sub(1, std::memory_order_release);
-    if (oldCount == 1) {
-        std::atomic_thread_fence(std::memory_order_acquire);
-        delete impl;
+
+    if (hoo_get_refcount(state) == 1) {
+        HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
+        impl->~HooRandomImpl();
     }
+
+    hoo_release(state);
 }
 
 // ============================================================================

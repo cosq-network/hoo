@@ -311,7 +311,7 @@ The JIT environment utilizes the **`HVMModuleBundle`** (see `src/hvm/HVMModuleBu
 #### **A. The Role of `HVMModuleBundle`**
 1.  **Global Symbol Table**: It maintains a thread-safe map of all exported symbols across all modules.
 2.  **Cross-Dylib Bridge**: When the JIT encounters a `CALL` to an external symbol, it queries `HVMModuleBundle::findModuleBySymbolMangled()`.
-3.  **Topological Orchestration**: It uses the `HoocModuleBase::resolveDependencyOrder()` logic to build the normative initialization sequence for the entire session.
+3.  **Topological Orchestration**: It uses the `HOModuleBase::resolveDependencyOrder()` logic to build the normative initialization sequence for the entire session.
 
 #### **B. Module Sub-Types: Unifying Bytecode and Native Code**
 The JIT treats all code units as subclasses of **`HOModuleBase`** (`src/hvm/HOModuleBase.cpp`), providing a unified interface for symbol resolution:

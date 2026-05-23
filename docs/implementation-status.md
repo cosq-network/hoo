@@ -13,7 +13,7 @@ Last Updated: 2026-05-22
 | LLVM code generation path | Active | Primary executable path |
 | HVM code generation path | Active | Pure RISC ISA; hardware-ready lowering |
 | HVM core spec/docs | Active | Hardware-ready profile documented (v1.4) |
-| HVM module format (`.ho`) | Active | `HooModule` and `HO_FILE_FORMAT.md` aligned |
+| HVM module format (`.ho`) | Active | `HOModule` and `HO_FILE_FORMAT.md` aligned |
 | HVM optional extensions | Documented | Non-core profiles in `HVM_EXTENSIONS.md` |
 
 ## 2. HVM Profile Status

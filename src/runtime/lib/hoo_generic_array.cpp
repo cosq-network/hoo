@@ -1,4 +1,5 @@
 #include "hoo_generic_array.h"
+#include "hoo_runtime.h"
 #include <new>
 #include <cstring>
 #include <cassert>
@@ -10,7 +11,7 @@ namespace hooc {
 // ============================================================================
 
 HooArrayImpl::HooArrayImpl()
-    : element_type(nullptr), refcount(1) {
+    : element_type(nullptr) {
 }
 
 HooArrayImpl::~HooArrayImpl() {
@@ -24,7 +25,8 @@ HooArrayImpl::~HooArrayImpl() {
 
 HooArray hoo_array_new(void) {
     try {
-        auto* impl = new hooc::HooArrayImpl();
+        void* mem = hoo_alloc(sizeof(hooc::HooArrayImpl), HOO_TYPE_ARRAY);
+        auto* impl = new (mem) hooc::HooArrayImpl();
         return static_cast<HooArray>(impl);
     } catch (...) {
         return nullptr;
@@ -32,31 +34,11 @@ HooArray hoo_array_new(void) {
 }
 
 HooArray hoo_array_from_buffer(const void* data, int64_t length) {
-    try {
-        auto* impl = new hooc::HooArrayImpl();
-        if (!impl) return nullptr;
-
-        // Note: from_buffer doesn't provide type information
-        // Consider using type-specific constructors instead
-
-        return static_cast<HooArray>(impl);
-    } catch (...) {
-        return nullptr;
-    }
+    return hoo_array_new();
 }
 
 HooArray hoo_array_repeat(const void* value, int64_t count) {
-    try {
-        auto* impl = new hooc::HooArrayImpl();
-        if (!impl) return nullptr;
-
-        // Note: repeat doesn't have type information
-        // Consider using type-specific functions instead
-
-        return static_cast<HooArray>(impl);
-    } catch (...) {
-        return nullptr;
-    }
+    return hoo_array_new();
 }
 
 int64_t hoo_array_length(HooArray arr) {
@@ -284,22 +266,22 @@ int64_t hoo_array_get_array(HooArray arr, int64_t index, HooArray* dest) {
 // ============================================================================
 
 HooArray hoo_array_retain(HooArray arr) {
-    if (!arr) return nullptr;
-    auto* impl = static_cast<hooc::HooArrayImpl*>(arr);
-    impl->retain();
-    return arr;
+    return (HooArray)hoo_retain(arr);
 }
 
 void hoo_array_release(HooArray arr) {
     if (!arr) return;
-    auto* impl = static_cast<hooc::HooArrayImpl*>(arr);
-    impl->release();
+
+    if (hoo_get_refcount(arr) == 1) {
+        auto* impl = static_cast<hooc::HooArrayImpl*>(arr);
+        impl->~HooArrayImpl();
+    }
+
+    hoo_release(arr);
 }
 
 int64_t hoo_array_refcount(HooArray arr) {
-    if (!arr) return 0;
-    auto* impl = static_cast<hooc::HooArrayImpl*>(arr);
-    return impl->getRefcount();
+    return hoo_get_refcount(arr);
 }
 
 // ============================================================================
