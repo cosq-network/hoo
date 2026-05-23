@@ -24,7 +24,8 @@ The library implements the standard `hoo` and `hoo.io` namespaces.
 
 ### **A. Core Logic (`hoo_runtime.h`)**
 Provides the fundamental memory primitives required for JIT execution.
-- `hoo_alloc(size, type_id)`: Allocates zeroed memory with an ARC header.
+- `_F_module_init_v`: The mandatory entry point for every module to initialize its vtables and global state.
+- `hoo_alloc(size, type_id)`: Allocates zeroed memory with a 16-byte ARC header.
 - `hoo_retain(obj)`: Atomically increments the refcount.
 - `hoo_release(obj)`: Atomically decrements and frees the instance if zero.
 

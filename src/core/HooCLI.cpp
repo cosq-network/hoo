@@ -1,7 +1,7 @@
 #include "core/HooCLI.h"
-#include "jit/HoocJIT.h"
 #include "core/HooCompiler.h"
 #include "hvm/HOModule.h"
+#include "hvm/HVMJIT.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -16,7 +16,7 @@ using namespace hooc;
 namespace fs = std::filesystem;
 
 constexpr const char* COMPILER_NAME = "hooc";
-constexpr const char* VERSION = "1.1.0";
+constexpr const char* VERSION = "1.4.0"; // Aligned with HVM 1.4
 
 HooCLI::HooCLI(std::unique_ptr<IOProvider> ioProvider)
     : ioProvider_(std::move(ioProvider)) {}
@@ -32,28 +32,26 @@ std::string HooCLI::getUsage(std::string_view programName) const {
     usage += "Usage: " + std::string(programName) + " [options] <input_file>\n";
     usage += "\n";
     usage += "Input File:\n";
-    usage += "  <file>.hoo      Source file for JIT execution or compilation\n";
-    usage += "  <file>.ho       Bytecode file for AOT JIT execution (reserved for future)\n";
+    usage += "  <file>.hoo      Source file for HVMJIT execution or AOT compilation\n";
+    usage += "  <file>.ho       Bytecode file for direct execution via HVMJIT\n";
     usage += "\n";
     usage += "Options:\n";
     usage += "  -h, --help      Display this help message\n";
     usage += "  -v, --version   Display version information\n";
     usage += "  -c, --compile   Compile only, do not execute (valid only for .hoo)\n";
     usage += "  -o, --output    Specify output .ho file path (valid only for .hoo, implies -c)\n";
-    usage += "  --backend <val> Specify backend: 'llvm' (default) or 'hvm'\n";
     usage += "  --verbose       Enable verbose logging\n";
-    usage += "  --print-ir      Print generated LLVM IR\n";
     usage += "\n";
     usage += "Examples:\n";
-    usage += "  " + std::string(programName) + " script.hoo           # Compile and run via JIT\n";
+    usage += "  " + std::string(programName) + " script.hoo           # Compile and run via HVMJIT\n";
     usage += "  " + std::string(programName) + " script.hoo -c        # Compile and validate source\n";
-    usage += "  " + std::string(programName) + " script.hoo -o out.ho # Build AOT bytecode (reserved)\n";
-    usage += "  " + std::string(programName) + " out.ho               # Run AOT bytecode (reserved)\n";
+    usage += "  " + std::string(programName) + " script.hoo -o out.ho # Build AOT HVM bytecode\n";
+    usage += "  " + std::string(programName) + " out.ho               # Execute AOT bytecode\n";
     return usage;
 }
 
 std::string HooCLI::getVersion() const {
-    return std::string(COMPILER_NAME) + " version " + VERSION + "\n";
+    return std::string(COMPILER_NAME) + " version " + VERSION + " (HVM v1.4 Physical)\n";
 }
 
 HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
@@ -81,29 +79,8 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
                 return opts;
             }
         }
-        else if (arg == "--backend") {
-            if (i + 1 < argc) {
-                std::string_view backendVal = argv[++i];
-                if (backendVal == "llvm") {
-                    opts.backend = Options::Backend::LLVM;
-                } else if (backendVal == "hvm") {
-                    opts.backend = Options::Backend::HVM;
-                } else {
-                    opts.hasError = true;
-                    opts.errorMessage = "Error: Invalid backend '" + std::string(backendVal) + "'. Expected 'llvm' or 'hvm'\n";
-                    return opts;
-                }
-            } else {
-                opts.hasError = true;
-                opts.errorMessage = "Error: --backend option requires a value ('llvm' or 'hvm')\n";
-                return opts;
-            }
-        }
         else if (arg == "--verbose") {
             opts.verbose = true;
-        }
-        else if (arg == "--print-ir") {
-            opts.printIR = true;
         }
         else if (arg.rfind("--", 0) == 0 || (arg.size() > 1 && arg[0] == '-')) {
             opts.hasError = true;
@@ -166,79 +143,73 @@ std::string HooCLI::extractModuleName(std::string_view filename) const {
 int HooCLI::compileAndExecute(const Options& opts,
                               std::string_view filename,
                               std::string_view sourceCode) const {
-    HoocJIT jit;
+    HVMJIT jit(*ioProvider_);
 
     std::string moduleName = extractModuleName(filename);
     verboseLog(opts, "Module name: " + moduleName);
 
     if (opts.isBytecode) {
-        verboseLog(opts, "AOT JIT execution requested for: " + std::string(filename));
-        ioProvider_->writeStderr("Info: AOT JIT execution (.ho files) will be implemented in a future update.\n");
-        return 0;
-    }
-
-    if (opts.backend == Options::Backend::HVM) {
-        verboseLog(opts, "Compiling source code to HVM bytecode...");
-        HooCompiler compiler;
-        auto hvmModule = compiler.compileToHVM(moduleName, std::string(sourceCode));
-
-        if (!hvmModule) {
-            ioProvider_->writeStderr("HVM Compilation failed: " + compiler.getLastError() + "\n");
+        verboseLog(opts, "Loading AOT HVM bytecode: " + std::string(filename));
+        if (!jit.loadBytecode(std::string(filename))) {
+            ioProvider_->writeStderr("Failed to load bytecode: " + jit.getLastError() + "\n");
             return 1;
         }
-
-        verboseLog(opts, "HVM Compilation successful");
-
-        if (opts.outputFile.has_value()) {
-            std::string outPath = opts.outputFile.value();
-            verboseLog(opts, "Saving HVM bytecode to: " + outPath);
-            if (!hvmModule->serializeToFile(outPath)) {
-                ioProvider_->writeStderr("Error: Failed to save bytecode to " + outPath + ": " + hvmModule->getError() + "\n");
-                return 1;
-            }
-            ioProvider_->writeStdout("HVM bytecode saved to " + outPath + "\n");
-        } else if (opts.compileOnly) {
-            verboseLog(opts, "HVM Compile-only mode: validation successful.");
-        } else {
-            ioProvider_->writeStderr("Info: HVM runtime execution is not yet integrated into hooc. Use 'ho' tool to run .ho files.\n");
+        
+        verboseLog(opts, "Executing main function...");
+        int64_t result = jit.run("_F_main_v");
+        if (jit.hasError()) {
+            ioProvider_->writeStderr("Execution failed: " + jit.getLastError() + "\n");
+            return 1;
         }
+        verboseLog(opts, "Execution completed successfully (result: " + std::to_string(result) + ")");
         return 0;
     }
 
-    verboseLog(opts, "Compiling source code...");
-    auto result = jit.compile(moduleName, std::string(sourceCode));
+    verboseLog(opts, "Compiling source code to HVM bytecode...");
+    HooCompiler compiler;
+    auto hvmModule = compiler.compile(moduleName, std::string(sourceCode));
 
-    if (!result.success) {
-        ioProvider_->writeStderr("Compilation failed: " + result.error + "\n");
+    if (!hvmModule) {
+        ioProvider_->writeStderr("Compilation failed: " + compiler.getLastError() + "\n");
         return 1;
     }
 
-    verboseLog(opts, "Compilation successful");
+    verboseLog(opts, "HVM Compilation successful");
 
-    if (opts.printIR && !result.ir.empty()) {
-        ioProvider_->writeStdout(result.ir + "\n");
+    if (opts.outputFile.has_value()) {
+        std::string outPath = opts.outputFile.value();
+        verboseLog(opts, "Saving HVM bytecode to: " + outPath);
+        
+        std::vector<uint8_t> bytes;
+        hvmModule->serialize(bytes);
+        if (!ioProvider_->writeBinaryFile(outPath, bytes)) {
+            ioProvider_->writeStderr("Error: Failed to save bytecode to " + outPath + "\n");
+            return 1;
+        }
+        ioProvider_->writeStdout("HVM bytecode saved to " + outPath + "\n");
+        return 0;
     }
 
     if (opts.compileOnly) {
-        if (opts.outputFile.has_value()) {
-            verboseLog(opts, "Output file requested: " + opts.outputFile.value());
-            ioProvider_->writeStderr("Info: AOT build and output emission (-o) will be implemented in a future update.\n");
-        } else {
-            verboseLog(opts, "Compile-only mode: validation successful.");
-        }
+        verboseLog(opts, "Compile-only mode: validation successful.");
         return 0;
     }
 
-    verboseLog(opts, "Executing main function...");
-
-    auto execResult = jit.execute("main");
-
-    if (!execResult) {
-        ioProvider_->writeStderr("Execution failed: " + execResult->error + "\n");
+    verboseLog(opts, "Loading module into HVMJIT...");
+    if (!jit.loadModule(std::move(hvmModule))) {
+        ioProvider_->writeStderr("Failed to load module: " + jit.getLastError() + "\n");
         return 1;
     }
 
-    verboseLog(opts, "Execution completed successfully");
+    verboseLog(opts, "Executing main function...");
+    int64_t result = jit.run("_F_main_v");
+
+    if (jit.hasError()) {
+        ioProvider_->writeStderr("Execution failed: " + jit.getLastError() + "\n");
+        return 1;
+    }
+
+    verboseLog(opts, "Execution completed successfully (result: " + std::to_string(result) + ")");
 
     return 0;
 }
@@ -265,8 +236,12 @@ int HooCLI::run(int argc, char* argv[]) {
     }
 
     const std::string& filename = opts.inputFile.value();
-    verboseLog(opts, "Reading file: " + filename);
+    
+    if (opts.isBytecode) {
+        return compileAndExecute(opts, filename, "");
+    }
 
+    verboseLog(opts, "Reading file: " + filename);
     std::optional<std::string> sourceOpt = ioProvider_->readFile(filename);
 
     if (!sourceOpt.has_value()) {
@@ -275,19 +250,13 @@ int HooCLI::run(int argc, char* argv[]) {
     }
 
     const std::string& sourceCode = sourceOpt.value();
-
-    if (!opts.isBytecode && sourceCode.empty()) {
+    if (sourceCode.empty()) {
         ioProvider_->writeStderr("Error: File is empty\n");
         return 1;
     }
 
     verboseLog(opts, "File loaded (" + std::to_string(sourceCode.size()) + " bytes)");
-
-    if (!opts.isBytecode) {
-        verboseLog(opts, "Initializing JIT compiler for source...");
-    } else {
-        verboseLog(opts, "Initializing JIT executor for bytecode...");
-    }
+    verboseLog(opts, "Initializing HVMJIT pipeline...");
 
     try {
         return compileAndExecute(opts, filename, sourceCode);

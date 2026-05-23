@@ -11,19 +11,13 @@ namespace hooc {
  * Abstract base class for code generators.
  *
  * This interface defines the contract for translating hooc AST nodes
- * into executable code. Different implementations can target different
- * backends (LLVM IR, bytecode, C, JavaScript, etc.).
+ * into executable code.
  *
  * The interface uses opaque wrapper types to hide implementation details.
  */
 class CodeGenerator {
 public:
     virtual ~CodeGenerator() = default;
-
-    /**
-     * Get the backend type identifier (e.g., "LLVM", "Bytecode", "C")
-     */
-    virtual std::string getBackendType() const = 0;
 
     /**
      * Generate a complete module/compilation unit from a hooc AST.

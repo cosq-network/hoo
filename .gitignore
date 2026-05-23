@@ -78,3 +78,5 @@ vcpkg_installed/
 
 # Local sanitizer build directory
 build-asan/
+.ho
+*.ho

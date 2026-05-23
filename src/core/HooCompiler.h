@@ -14,7 +14,7 @@
 ///
 /// 1. **Parsing**: Source code is parsed using ANTLR4 to produce a parse tree
 /// 2. **AST Building**: Parse tree is converted to an Abstract Syntax Tree
-/// 3. **Code Generation**: AST is translated to LLVM IR
+/// 3. **Code Generation**: AST is translated to HVM bytecode
 ///
 /// @section usage Usage
 ///
@@ -32,7 +32,7 @@
 /// compilation. The wasLastCompilationSuccessful() method indicates whether
 /// the previous compile() call succeeded.
 ///
-/// @see LLVMCodeGenerator for the code generation backend
+/// @see HVMCodeGenerator for the code generation backend
 /// @see SimpleASTBuilder for AST construction
 /// @see ProcessIsolatedParser for parsing
 ///
@@ -41,8 +41,6 @@
 #include <string>
 #include <memory>
 
-#include "llvm/IR/Module.h"
-#include "llvm/IR/LLVMContext.h"
 #include "modules/ModuleSystem.h"
 
 namespace hvm {
@@ -64,7 +62,7 @@ class CodeGenerator;
 // ============================================================================
 
 /// @brief Main compiler class for the Hooc programming language
-/// @details Coordinates parsing, AST building, and LLVM IR generation
+/// @details Coordinates parsing, AST building, and HVM bytecode generation
 /// @note Thread safety: This class is not thread-safe; synchronize access
 class HooCompiler {
 
@@ -75,42 +73,14 @@ public:
     // ========================================================================
 
     /// @brief Construct a new Hooc compiler
-    /// @param context Optional pointer to an external LLVMContext. If null, a new one is created.
-    explicit HooCompiler(llvm::LLVMContext* context = nullptr);
+    HooCompiler();
 
     /// @brief Destructor
     ~HooCompiler();
 
     // ========================================================================
-    // Configuration
-    // ========================================================================
-
-    enum class Backend {
-        LLVM,
-        HVM
-    };
-
-    /**
-     * @brief Set the backend to use for code generation.
-     * @param backend The backend type (LLVM or HVM).
-     */
-    void setBackend(Backend backend);
-
-    /// @brief Get the current backend type.
-    Backend getBackend() const { return backend_; }
-
-    // ========================================================================
     // Compilation API
     // ========================================================================
-
-    /// @brief Compile Hooc source code to an LLVM module
-    /// @param moduleName Name for the compiled module (used as LLVM module ID)
-    /// @param sourceCode Hooc source code to compile
-    /// @return LLVM module on success, nullptr on failure
-    /// @details The compilation pipeline: parse -> AST -> LLVM IR
-    /// @note On failure, call getLastError() for error details
-    std::unique_ptr<llvm::Module> compile(const std::string& moduleName,
-                                         const std::string& sourceCode);
 
     /**
      * @brief Compile Hooc source code to an HVM HOModule
@@ -118,8 +88,8 @@ public:
      * @param sourceCode Hooc source code to compile
      * @return HVM HOModule on success, nullptr on failure
      */
-    std::unique_ptr<hvm::HOModule> compileToHVM(const std::string& moduleName,
-                                               const std::string& sourceCode);
+    std::unique_ptr<hvm::HOModule> compile(const std::string& moduleName,
+                                          const std::string& sourceCode);
 
     /// @brief Get error message from last failed compilation
     /// @return Error message string
@@ -146,14 +116,8 @@ private:
     /// @brief AST builder from parse tree
     std::unique_ptr<SimpleASTBuilder>      astBuilder_;
 
-    /// @brief LLVM code generator
+    /// @brief HVM code generator
     std::unique_ptr<CodeGenerator>         codeGenerator_;
-
-    /// @brief Pointer to the LLVM context being used
-    llvm::LLVMContext*                     context_;
-
-    /// @brief Owned LLVM context (only used if no external context provided)
-    std::unique_ptr<llvm::LLVMContext>     ownedContext_;
 
     // ========================================================================
     // Error State
@@ -164,9 +128,6 @@ private:
 
     /// @brief Success flag from last compilation
     bool        lastCompilationSuccessful_;
-
-    /// @brief Selected backend for code generation
-    Backend     backend_;
 
     /// @brief Module registry for symbol resolution
     ModuleRegistry moduleRegistry_;

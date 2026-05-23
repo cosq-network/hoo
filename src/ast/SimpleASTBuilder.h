@@ -15,7 +15,7 @@
  *       ↓
  *   [SimpleASTBuilder] → Typed AST
  *       ↓
- *   [LLVMCodeGenerator] → LLVM IR
+ *   [HVMCodeGenerator] → HVM Bytecode
  *
  * @section Responsibility
  * - Convert ANTLR4 parse tree contexts to strongly-typed AST nodes

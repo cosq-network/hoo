@@ -6,6 +6,7 @@
 #include <map>
 
 #include "core/HooCLI.h"
+#include "hvm/HOModule.h"
 
 using namespace hooc;
 
@@ -53,6 +54,10 @@ public:
         files[filename] = content;
     }
 
+    void setBinaryFile(const std::string& filename, const std::vector<uint8_t>& data) {
+        binaryFiles[filename] = data;
+    }
+
     void setStdinContent(const std::string& content) {
         stdinContent = content;
     }
@@ -62,6 +67,13 @@ public:
     const std::string* getWrittenFile(const std::string& filename) const {
         auto it = writtenFiles.find(filename);
         if (it != writtenFiles.end()) {
+            return &it->second;
+        }
+        return nullptr;
+    }
+    const std::vector<uint8_t>* getWrittenBinaryFile(const std::string& filename) const {
+        auto it = writtenBinaryFiles.find(filename);
+        if (it != writtenBinaryFiles.end()) {
             return &it->second;
         }
         return nullptr;
@@ -224,7 +236,7 @@ TEST_F(HooCLITest, CompileOnlyMode) {
     EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Compile-only mode") != std::string::npos);
 }
 
-TEST_F(HooCLITest, OutputOptionReservedForFuture) {
+TEST_F(HooCLITest, OutputOptionProducesBytecode) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     fakeIO->setFile("test.hoo", "func main() {}");
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
@@ -238,20 +250,46 @@ TEST_F(HooCLITest, OutputOptionReservedForFuture) {
     int result = cli->run(4, args.data());
 
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("AOT build and output emission") != std::string::npos);
+    auto* binary = static_cast<FakeIOProvider*>(cli->getIOProvider())->getWrittenBinaryFile("out.ho");
+    EXPECT_NE(binary, nullptr);
+    EXPECT_FALSE(binary->empty());
 }
 
-TEST_F(HooCLITest, BytecodeFileExecutionReservedForFuture) {
+TEST_F(HooCLITest, ExecuteBytecodeFile) {
+    // Generate valid bytecode first
+    hvm::HOModule mod("test");
+    hvm::Section text;
+    text.name = ".text";
+    text.type = hvm::SectionType::SHT_TEXT;
+    text.flags = hvm::SectionFlags::ALLOC | hvm::SectionFlags::EXECUTE;
+    
+    // RET instruction (Physical v1.4)
+    hvm::HVMInstruction retInst(hvm::Opcode::RET, hvm::OperandsR{0, 0, 0, 0});
+    text.data = retInst.encode(); 
+    text.virtual_size = text.data.size();
+    mod.addSection(std::move(text));
+    
+    hvm::Symbol sym;
+    sym.name = "_F_main_v";
+    sym.value = 0;
+    sym.type = hvm::Symbol::STT_FUNC;
+    sym.binding = hvm::Symbol::STB_GLOBAL;
+    mod.addSymbol(sym);
+
+    std::vector<uint8_t> bytes;
+    mod.serialize(bytes);
+
     auto fakeIO = std::make_unique<FakeIOProvider>();
-    fakeIO->setFile("script.ho", "bytecode content");
+    fakeIO->setBinaryFile("test.ho", bytes);
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
     args.push_back(const_cast<char*>("hooc"));
-    args.push_back(const_cast<char*>("script.ho"));
+    args.push_back(const_cast<char*>("--verbose"));
+    args.push_back(const_cast<char*>("test.ho"));
 
-    int result = cli->run(2, args.data());
+    int result = cli->run(3, args.data());
 
     EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("AOT JIT execution") != std::string::npos);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Execution completed successfully") != std::string::npos);
 }

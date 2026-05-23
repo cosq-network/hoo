@@ -34,8 +34,10 @@ static const char* type_names[] = {
 #ifdef __cplusplus
 #include <exception>
 #include <typeinfo>
+#include <stack>
 
 static thread_local HooException currentException = nullptr;
+static thread_local std::stack<void*> handlerStack;
 
 class HooStdException : public std::exception {
 public:
@@ -241,7 +243,7 @@ void hoo_exception_release(HooException exc) {
     // Check if we're about to free the object (refcount == 1)
     if (hoo_get_refcount(exc) == 1) {
         HooExceptionImpl* impl = get_impl(exc);
-        if (impl->message && impl->message[0] != '\0' && impl->message != (const char*)"") {
+        if (impl->message && impl->message[0] != '\0') {
             std::free((void*)impl->message);
         }
         if (impl->typeName && impl->typeId >= 5) {
@@ -289,6 +291,25 @@ void hoo_exception_clear(void) {
     if (currentException) {
         hoo_exception_release(currentException);
         currentException = nullptr;
+    }
+}
+
+void hoo_push_handler(void* handler_pc) {
+    handlerStack.push(handler_pc);
+}
+
+void hoo_pop_handler(void) {
+    if (!handlerStack.empty()) {
+        handlerStack.pop();
+    }
+}
+
+void hoo_exception_rethrow(void) {
+    if (currentException) {
+        hoo_exception_throw(currentException);
+    } else {
+        std::fprintf(stderr, "ERROR: No exception to rethrow\n");
+        std::_Exit(1);
     }
 }
 

@@ -10,6 +10,7 @@
 #include "core/SymbolMangler.h"
 #include <stdexcept>
 #include <algorithm>
+#include <typeinfo>
 
 using namespace hvm;
 
@@ -219,17 +220,36 @@ void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
     instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
 
     // Add MANGLED symbol to module
-    std::string mangledName;
-    if (!modulePath_.empty() || currentClass_) {
-        MangledFunctionParams mp;
-        mp.modulePath = modulePath_;
-        if (currentClass_) mp.className = currentClass_->name;
-        mp.functionName = decl.getName();
-        mp.returnType = "v"; 
-        mangledName = SymbolMangler::mangleFunctionName(mp);
+    MangledFunctionParams mp;
+    mp.modulePath = modulePath_;
+    if (currentClass_) mp.className = currentClass_->name;
+    mp.functionName = decl.getName();
+    
+    if (decl.getReturnType()) {
+        if (auto bt = dynamic_cast<const ast::BaseType*>(decl.getReturnType())) {
+            if (bt->isPrimitive()) {
+                mp.returnType = primitiveTypeToString(bt->getPrimitiveType()->getKind());
+            } else {
+                mp.returnType = bt->getIdentifier();
+            }
+        }
     } else {
-        mangledName = decl.getName();
+        mp.returnType = "void";
     }
+
+    for (const auto& param : decl.getParameters()) {
+        if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
+            if (bt->isPrimitive()) {
+                mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
+            } else {
+                mp.parameterTypes.push_back(bt->getIdentifier());
+            }
+        } else {
+            mp.parameterTypes.push_back("object");
+        }
+    }
+    
+    std::string mangledName = SymbolMangler::mangleFunctionName(mp);
     
     Symbol sym;
     sym.name = mangledName;
@@ -270,6 +290,18 @@ void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl)
         mp.modulePath = modulePath_;
         if (currentClass_) mp.className = currentClass_->name;
         mp.isConstructor = true;
+
+        for (const auto& param : decl.getParameters()) {
+            if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
+                if (bt->isPrimitive()) {
+                    mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
+                } else {
+                    mp.parameterTypes.push_back(bt->getIdentifier());
+                }
+            } else {
+                mp.parameterTypes.push_back("object");
+            }
+        }
         mangledName = SymbolMangler::mangleFunctionName(mp);
     } else {
         mangledName = "constructor"; // Should not happen in valid AST
@@ -313,7 +345,30 @@ void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
         mp.modulePath = modulePath_;
         if (currentClass_) mp.className = currentClass_->name;
         mp.functionName = decl.getName();
-        mp.returnType = "v";
+        
+        if (decl.getReturnType()) {
+            if (auto bt = dynamic_cast<const ast::BaseType*>(decl.getReturnType())) {
+                if (bt->isPrimitive()) {
+                    mp.returnType = primitiveTypeToString(bt->getPrimitiveType()->getKind());
+                } else {
+                    mp.returnType = bt->getIdentifier();
+                }
+            }
+        } else {
+            mp.returnType = "void";
+        }
+
+        for (const auto& param : decl.getParameters()) {
+            if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
+                if (bt->isPrimitive()) {
+                    mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
+                } else {
+                    mp.parameterTypes.push_back(bt->getIdentifier());
+                }
+            } else {
+                mp.parameterTypes.push_back("object");
+            }
+        }
         mangledName = SymbolMangler::mangleFunctionName(mp);
     } else {
         mangledName = decl.getName();
@@ -565,21 +620,25 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 elementRegs.push_back(visitExpression(*elem));
             }
             
-            // 1. Allocate: CALL hoo_malloc(size)
+            // 1. Allocate: CALL hoo_alloc(size, typeId)
             uint64_t totalSize = 8 + (elements.size() * 8);
             uint8_t sizeReg = emitConstant(static_cast<int64_t>(totalSize));
+            uint8_t typeReg = emitConstant(102); // Array Type ID
             emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_hoo_malloc_p_i8");
+            emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
+            
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
             freeRegister(sizeReg);
+            freeRegister(typeReg);
 
-            // 2. Store length in header
+            // 2. Store length in header (offset 0)
             uint8_t lenReg = emitConstant(static_cast<int64_t>(elements.size()));
             emit(Opcode::ST_D, OperandsI{lenReg, dest, 0});
             freeRegister(lenReg);
 
-            // 3. Store elements
+            // 3. Store elements (offset 8+)
             for (size_t i = 0; i < elementRegs.size(); ++i) {
                 emit(Opcode::ST_D, OperandsI{elementRegs[i], dest, static_cast<int16_t>(8 + (i * 8))});
                 freeRegister(elementRegs[i]);
@@ -623,18 +682,27 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return 0;
         }
         
-        // 1. Allocate: CALL hoo_malloc(size)
+        // 1. Allocate: CALL hoo_alloc(size, typeId)
         uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
+        uint8_t typeReg = emitConstant(100); // Generic Object typeId
         emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_hoo_malloc_p_i8");
+        emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
+        
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
         freeRegister(sizeReg);
+        freeRegister(typeReg);
         
         // 2. Call constructor
         MangledFunctionParams mp;
         mp.className = className;
         mp.isConstructor = true;
+
+        for (const auto& param : newExpr->getArguments()->getArguments()) {
+            // Parameter types logic for constructor call needed here
+            mp.parameterTypes.push_back("object"); // Fallback
+        }
         std::string ctorName = SymbolMangler::mangleFunctionName(mp);
 
         // Set 'this' in r1
@@ -677,9 +745,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
-        const auto& target = funcCall->getFunction();
+        const ast::Expression* targetPtr = &funcCall->getFunction();
         
-        if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&target)) {
+        // Unwrap PrimaryExpression/ParenthesizedExpression if needed
+        while (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(targetPtr)) {
+            if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(&primaryExpr->getPrimary())) {
+                targetPtr = &paren->getExpression();
+            } else {
+                break;
+            }
+        }
+
+        if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(targetPtr)) {
             uint8_t objReg = visitExpression(memberAccess->getObject());
             emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
             freeRegister(objReg);
@@ -699,26 +776,54 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0}); 
             return dest;
-        } else if (auto id = dynamic_cast<const ast::Identifier*>(&target)) {
-            if (funcCall->getArguments()) {
-                auto& args = funcCall->getArguments()->getArguments();
-                for (size_t i = 0; i < args.size() && i < 8; ++i) {
-                    uint8_t argReg = visitExpression(*args[i]);
-                    emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 1), argReg, 0, 0});
-                    freeRegister(argReg);
-                }
+        } else {
+            const ast::Identifier* id = nullptr;
+            if (auto idTarget = dynamic_cast<const ast::Identifier*>(targetPtr)) {
+                id = idTarget;
+            } else if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(targetPtr)) {
+                id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary());
             }
 
-            // Plain function mangling logic
-            MangledFunctionParams mp;
-            mp.functionName = id->getName();
-            std::string mangledName = SymbolMangler::mangleFunctionName(mp);
-            emitCall(Opcode::CALL, mangledName); 
-            
-            uint8_t dest = allocateRegister();
-            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-            return dest;
+            if (id) {
+                std::string functionName = id->getName();
+                
+                // Plain function mangling logic
+                MangledFunctionParams mp;
+                mp.functionName = functionName;
+
+                // Redirect built-ins to hoo namespace
+                if (functionName == "print" || functionName == "println" ||
+                    functionName == "readline" || functionName == "readchar") {
+                    mp.modulePath = {"hoo"};
+                }
+
+                if (funcCall->getArguments()) {
+                    auto& args = funcCall->getArguments()->getArguments();
+                    for (size_t i = 0; i < args.size() && i < 8; ++i) {
+                        uint8_t argReg = visitExpression(*args[i]);
+                        emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 1), argReg, 0, 0});
+                        freeRegister(argReg);
+                    }
+                }
+                
+                // Try to infer return and parameter types for better mangling
+                mp.returnType = "void"; 
+                if (funcCall->getArguments()) {
+                    for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                         mp.parameterTypes.push_back("ptr"); // Use ptr (p) to match runtime void*
+                    }
+                }
+                
+                std::string mangledName = SymbolMangler::mangleFunctionName(mp);
+                emitCall(Opcode::CALL, mangledName); 
+                
+                uint8_t dest = allocateRegister();
+                emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                return dest;
+            }
         }
+        addError("Unsupported function call target: " + std::string(typeid(*targetPtr).name()));
+        return 0;
     }
 
     if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
@@ -732,6 +837,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             case ast::BinaryOperator::MINUS: func = 1; break;
             case ast::BinaryOperator::MULTIPLY: func = 2; break;
             case ast::BinaryOperator::DIVIDE: func = 5; break;
+            case ast::BinaryOperator::MODULO: func = 7; break;
             case ast::BinaryOperator::EQUALS: op = Opcode::CMP; func = 0; break;
             case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
             case ast::BinaryOperator::LESS: op = Opcode::CMP; func = 2; break;
@@ -789,6 +895,127 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         emit(Opcode::ARITH, OperandsR{dest, 0, src, 1});
         freeRegister(src);
         return dest;
+    }
+
+    if (auto compoundAssign = dynamic_cast<const ast::CompoundAssignmentExpression*>(&expr)) {
+        uint8_t rhsReg = visitExpression(compoundAssign->getRight());
+        uint8_t lhsReg = 0;
+        int32_t offset = 0;
+        uint8_t objReg = 0;
+        bool isMember = false;
+
+        if (auto leftPrimary = dynamic_cast<const ast::PrimaryExpression*>(&compoundAssign->getLeft())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
+                offset = getLocalOffset(id->getName());
+                lhsReg = allocateRegister();
+                emit(Opcode::LD_D, OperandsI{lhsReg, 30, static_cast<int16_t>(offset)});
+            }
+        } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&compoundAssign->getLeft())) {
+            objReg = visitExpression(leftMember->getObject());
+            isMember = true;
+            bool found = false;
+            for (const auto& [className, layout] : classes_) {
+                auto it = layout.fieldOffsets.find(leftMember->getMember());
+                if (it != layout.fieldOffsets.end()) {
+                    offset = it->second;
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                lhsReg = allocateRegister();
+                emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
+            } else {
+                addError("Undefined member: " + leftMember->getMember());
+            }
+        }
+
+        if (lhsReg != 0) {
+            uint8_t resultReg = allocateRegister();
+            uint16_t func = 0;
+            Opcode op = Opcode::ARITH;
+            switch (compoundAssign->getOperator()) {
+                case ast::CompoundAssignmentOperator::PLUS_ASSIGN: func = 0; break;
+                case ast::CompoundAssignmentOperator::MINUS_ASSIGN: func = 1; break;
+                case ast::CompoundAssignmentOperator::MULTIPLY_ASSIGN: func = 2; break;
+                case ast::CompoundAssignmentOperator::DIVIDE_ASSIGN: func = 5; break;
+                case ast::CompoundAssignmentOperator::MODULO_ASSIGN: func = 7; break;
+                case ast::CompoundAssignmentOperator::LEFT_SHIFT_ASSIGN: op = Opcode::SHIFT; func = 0; break;
+                case ast::CompoundAssignmentOperator::RIGHT_SHIFT_ASSIGN: op = Opcode::SHIFT; func = 1; break;
+                default: addError("Unsupported compound assignment");
+            }
+            emit(op, OperandsR{resultReg, lhsReg, rhsReg, func});
+            
+            if (isMember) {
+                emit(Opcode::ST_D, OperandsI{resultReg, objReg, static_cast<int16_t>(offset)});
+                freeRegister(objReg);
+            } else {
+                emit(Opcode::ST_D, OperandsI{resultReg, 30, static_cast<int16_t>(offset)});
+            }
+            
+            freeRegister(lhsReg);
+            freeRegister(rhsReg);
+            return resultReg;
+        }
+        freeRegister(rhsReg);
+        return 0;
+    }
+
+    if (auto incDec = dynamic_cast<const ast::IncrementDecrementExpression*>(&expr)) {
+        uint8_t lhsReg = 0;
+        int32_t offset = 0;
+        uint8_t objReg = 0;
+        bool isMember = false;
+
+        if (auto leftPrimary = dynamic_cast<const ast::PrimaryExpression*>(&incDec->getOperand())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
+                offset = getLocalOffset(id->getName());
+                lhsReg = allocateRegister();
+                emit(Opcode::LD_D, OperandsI{lhsReg, 30, static_cast<int16_t>(offset)});
+            }
+        } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&incDec->getOperand())) {
+            objReg = visitExpression(leftMember->getObject());
+            isMember = true;
+            bool found = false;
+            for (const auto& [className, layout] : classes_) {
+                auto it = layout.fieldOffsets.find(leftMember->getMember());
+                if (it != layout.fieldOffsets.end()) {
+                    offset = it->second;
+                    found = true;
+                    break;
+                }
+            }
+            if (found) {
+                lhsReg = allocateRegister();
+                emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
+            } else {
+                addError("Undefined member: " + leftMember->getMember());
+            }
+        }
+
+        if (lhsReg != 0) {
+            uint8_t oneReg = emitConstant(1);
+            uint8_t resultReg = allocateRegister();
+            uint16_t func = (incDec->getOperator() == ast::IncrementDecrementOperator::INCREMENT) ? 0 : 1;
+            emit(Opcode::ARITH, OperandsR{resultReg, lhsReg, oneReg, func});
+            
+            if (isMember) {
+                emit(Opcode::ST_D, OperandsI{resultReg, objReg, static_cast<int16_t>(offset)});
+                freeRegister(objReg);
+            } else {
+                emit(Opcode::ST_D, OperandsI{resultReg, 30, static_cast<int16_t>(offset)});
+            }
+            
+            freeRegister(oneReg);
+            if (incDec->isPrefix()) {
+                freeRegister(lhsReg);
+                return resultReg;
+            } else {
+                freeRegister(resultReg);
+                return lhsReg;
+            }
+        }
+        return 0;
     }
 
     if (auto assign = dynamic_cast<const ast::AssignmentExpression*>(&expr)) {
@@ -851,7 +1078,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         return dest;
     }
 
-    addError("Unsupported expression type");
+    addError("Unsupported expression type: " + std::string(typeid(expr).name()));
     return 0;
 }
 
@@ -968,8 +1195,22 @@ void HVMCodeGenerator::emitCall(Opcode op, const std::string& symbol) {
     uint32_t instrOff = currentByteOffset_;
     
     auto* sym = module_->getSymbol(symbol);
+    
+    // If it's an external symbol (not found or already marked as undefined)
+    // we add a new symbol record for this specific call site so the JIT can resolve it.
+    if (!sym || sym->section_index == -1) {
+        Symbol undefSym;
+        undefSym.name = symbol;
+        undefSym.type = Symbol::STT_FUNC;
+        undefSym.binding = Symbol::STB_GLOBAL;
+        undefSym.section_index = -1; // Undefined
+        undefSym.value = instrOff;   // Target this specific instruction for JIT resolution
+        module_->addSymbol(undefSym);
+        sym = &module_->getSymbols().back();
+    }
+
     int32_t wordOffset = 0;
-    if (sym) {
+    if (sym && sym->section_index != -1) {
         wordOffset = (static_cast<int32_t>(sym->value) - static_cast<int32_t>(instrOff)) / 4;
     } else {
         symbolFixups_.push_back({symbol, instrIdx, instrOff});

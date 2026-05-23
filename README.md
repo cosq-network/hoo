@@ -16,9 +16,11 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 
 - [x] **Core ISA v1.4**: Finalized 64-bit RISC instruction set with bit-packed encoding.
 - [x] **Aggressive Backend**: Functionally complete HVM code generator with manual object/array lowering.
-- [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation.
-- [x] **JIT Blueprint**: Comprehensive technical implementation guide for LLVM ORC v2 integration.
+- [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation and 16-byte headers.
+- [x] **JIT Translator (`HVMJIT`)**: High-performance LLVM ORC v2 dynamic binary translator with per-module `JITDylib` isolation.
+- [x] **Verification**: 1,258/1,258 tests passing across all suites.
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
+
 
 ## 3. Build & Test
 

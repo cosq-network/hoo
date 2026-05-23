@@ -5,19 +5,17 @@
 #include "HoocLexer.h"
 #include "HoocParser.h"
 
+#include "src/parsing/ProcessIsolatedParser.h"
+
 using namespace hooc;
 using namespace hooc::ast;
 
 namespace {
 
 bool compilationUnitAccepted(const std::string& code) {
+    static ProcessIsolatedParser parser;
     try {
-        antlr4::ANTLRInputStream input(code);
-        HoocLexer lexer(&input);
-        antlr4::CommonTokenStream tokens(&lexer);
-        HoocParser parser(&tokens);
-        auto* cu = parser.compilationUnit();
-        return cu != nullptr && parser.getNumberOfSyntaxErrors() == 0;
+        return parser.parseForAST(code) != nullptr;
     } catch (const std::exception&) {
         return false;
     }

@@ -4,7 +4,7 @@
 /**
  * Test suite for HooString (UTF-8 String with ARC)
  *
- * Tests the core string library functions that will be injected into HoocJIT.
+ * Tests the core string library functions that are used by the HVM runtime.
  * This serves as both validation of the library and example usage.
  */
 

@@ -250,6 +250,26 @@ HooException hoo_exception_current(void);
 void hoo_exception_clear(void);
 
 // ============================================================================
+// HVM System Hooks (Physical Profile)
+// ============================================================================
+
+/**
+ * Register an exception handler for the current frame
+ * @param handler_pc The PC to jump to if an exception occurs
+ */
+void hoo_push_handler(void* handler_pc);
+
+/**
+ * Unregister the most recent exception handler
+ */
+void hoo_pop_handler(void);
+
+/**
+ * Rethrow the current exception
+ */
+void hoo_exception_rethrow(void);
+
+// ============================================================================
 // Comparison
 // ============================================================================
 

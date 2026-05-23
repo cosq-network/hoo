@@ -22,7 +22,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, LargeConstants) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     if (!module) {
         std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
     }
@@ -60,7 +60,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ForRangeWithStep) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     if (!module) {
         std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
     }
@@ -89,7 +89,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, TryCatchFinally) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -116,7 +116,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleCatchClauses) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -141,7 +141,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -168,7 +168,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ComparisonOperators) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -186,7 +186,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DivisionOperator) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -215,7 +215,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Literals) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -249,7 +249,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, UnaryNot) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, RegisterPressure) {
@@ -259,7 +259,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, RegisterPressure) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     if (!module) {
         EXPECT_TRUE(compiler_->getLastError().find("Register pressure") != std::string::npos);
     }
@@ -278,7 +278,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallImplicitThis) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
@@ -300,6 +300,6 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, QualifiedNew) {
         }
     )";
 
-    auto module = compiler_->compileToHVM("test", code);
+    auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 }

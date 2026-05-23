@@ -73,6 +73,7 @@ public:
     bool loadModule(const std::string& path);
     bool loadModule(std::unique_ptr<hvm::HOModule> module);
     bool loadSource(const std::string& sourcePath);
+    bool loadSourceCode(const std::string& moduleName, const std::string& sourceCode);
     bool loadBytecode(const std::string& modulePath);
     int64_t run(const std::string& entryPoint = "_F_main_v");
 
@@ -89,12 +90,13 @@ public:
         lastErrorInfo_.reset();
     }
 
-private:
     struct HVMState {
         int64_t regs[32]{};
         uint8_t* memory = nullptr;
         IOProvider* io = nullptr;
     };
+
+private:
 
     llvm::Expected<llvm::orc::ThreadSafeModule> translateModule(hvm::HOModule& hvmModule);
     bool resolveAndLoadDependencies(const hvm::HOModule& root);

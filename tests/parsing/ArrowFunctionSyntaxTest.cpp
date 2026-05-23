@@ -79,7 +79,7 @@ TEST_F(ArrowFunctionSyntaxTest, ArrowWithNullableReturnParsingFails) {
 }
 
 TEST_F(ArrowFunctionSyntaxTest, ArrowMultiParameterReturnParsingFails) {
-    std::string code = "func:(int64, int64) divmod(a: int64, b: int64) -> (int64, int64) { return (a / b, a % b); }";
+    std::string code = "func divmod(a: int64, b: int64) -> (int64, int64) { return (a / b, a % b); }";
     auto* parseTree = parser->parseForAST(code);
     
     EXPECT_EQ(parseTree, nullptr);

@@ -23,11 +23,6 @@ public:
     virtual ~HVMCodeGenerator() = default;
 
     /**
-     * @return "HVM" backend identifier.
-     */
-    std::string getBackendType() const override { return "HVM"; }
-
-    /**
      * Main entry point: translates a full AST unit into a bytecode module.
      */
     std::unique_ptr<GeneratedModule> generateModule(const ast::CompilationUnit& compilationUnit) override;

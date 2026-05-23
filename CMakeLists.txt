@@ -172,6 +172,7 @@ target_include_directories(hvm PUBLIC
 )
 
 target_link_libraries(hvm PUBLIC
+    hoort
     ${llvm_libs}
 )
 
@@ -184,20 +185,11 @@ add_library(hoo-compiler
     src/core/SymbolMangler.cpp
     src/core/DefaultIOProvider.cpp
     src/core/HooCLI.cpp
-    src/jit/HoocJIT.cpp
     src/parsing/ProcessIsolatedParser.cpp
-    src/codegen/LLVMCodeGenerator.cpp
     src/codegen/HVMCodeGenerator.cpp
     src/ast/SimpleASTBuilder.cpp
     src/ast/ASTImpl.cpp
     src/modules/ModuleSystem.cpp
-    src/runtime/llvm/RuntimeRegistry.cpp
-    src/runtime/llvm/RuntimeMethodRegistry.cpp
-    src/runtime/llvm/hoo_string_registration.cpp
-    src/runtime/llvm/hoo_array_registration.cpp
-    src/runtime/llvm/hoo_io_registration.cpp
-    src/runtime/llvm/hoo_map_registration.cpp
-    src/runtime/llvm/RuntimeStringMethodsRegistration.cpp
 )
 
 target_link_libraries(hoo-compiler PUBLIC
@@ -223,10 +215,6 @@ add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_exception.cpp
     src/runtime/lib/hoo_math.cpp
     src/runtime/lib/hoo_net.cpp
-    src/runtime/llvm/hoo_io_registration.cpp
-    src/runtime/llvm/hoo_map_registration.cpp
-    src/runtime/llvm/hoo_math_registration.cpp
-    src/runtime/llvm/hoo_net_registration.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -250,7 +238,6 @@ target_include_directories(hoo-compiler PUBLIC
     ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/core
     ${CMAKE_SOURCE_DIR}/src/hvm
-    ${CMAKE_SOURCE_DIR}/src/jit
     ${CMAKE_SOURCE_DIR}/src/parsing
     ${CMAKE_SOURCE_DIR}/src/codegen
     ${CMAKE_SOURCE_DIR}/src/modules
@@ -276,32 +263,8 @@ target_include_directories(hooc PUBLIC
     ${CMAKE_SOURCE_DIR}/src/core
 )
 
-# Create ho compiler library
-add_library(ho-lib
-    src/ho/HoCLI.cpp
-)
-
-target_include_directories(ho-lib PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/ho
-)
-
-# Create ho compiler executable
-add_executable(ho
-    src/ho/main.cpp
-)
-
-target_link_libraries(ho
-    ho-lib
-)
-
-target_include_directories(ho PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/ho
-)
-
 # Install targets
-install(TARGETS hooc ho hoo-compiler hoo-parser hoort
+install(TARGETS hooc hoo-compiler hoo-parser hoort
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -374,34 +337,9 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/QualifiedNewExpressionParsingTest.cpp
         tests/parsing/ThisKeywordParsingTest.cpp
         tests/parsing/FfiAndGrammarAstTest.cpp
-        tests/codegen/BasicCodeGenTest.cpp
-        tests/codegen/FunctionCallCodeGenTest.cpp
-        tests/codegen/VariableDeclarationCodeGenTest.cpp
-        tests/codegen/ArrayLiteralCodeGenTest.cpp
-        tests/codegen/IfElseIfCodeGenTest.cpp
-        tests/codegen/WhileLoopCodeGenTest.cpp
-        tests/codegen/ThisKeywordCodeGenTest.cpp
-        tests/codegen/NullableCodeGenTest.cpp
-        tests/codegen/NewExpressionCodeGenTest.cpp
-        tests/codegen/ObjectCreationCodeGenTest.cpp
-        tests/codegen/MemberAccessCodeGenTest.cpp
-        tests/codegen/MethodCallCodeGenTest.cpp
-        tests/codegen/StringCodeGenTest.cpp
-        tests/codegen/ClassArrayCodeGenTest.cpp
-        tests/codegen/MapCodeGenTest.cpp
-        tests/codegen/ArrowFunctionSyntaxCodeGenTest.cpp
-        tests/codegen/MathModuleCodeGenTest.cpp
-        tests/codegen/NetworkModuleCodeGenTest.cpp
-        tests/codegen/StdConstructorCodeGenTest.cpp
-        tests/codegen/QualifiedIdentifierCodeGenTest.cpp
-        tests/codegen/GlobalVariableCodeGenTest.cpp
-        tests/codegen/ConstantCodeGenTest.cpp
-        tests/codegen/ImportStatementCodeGenTest.cpp
-        tests/codegen/ModuleRegistryTest.cpp
-        tests/codegen/LLVMCodeGeneratorComprehensiveTest.cpp
-        tests/codegen/HVMCodeGeneratorTest.cpp
         tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
-        tests/runtime/ArrayGenericRuntimeTest.cpp
+        tests/codegen/HVMCodeGeneratorTest.cpp
+        tests/codegen/ModuleRegistryTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp
         tests/runtime/HooRuntimeTest.cpp
@@ -410,15 +348,11 @@ if(HOOC_BUILD_TESTS)
         tests/runtime/HooMathTest.cpp
         tests/runtime/HooIOTest.cpp
         tests/runtime/HooNetTest.cpp
-        tests/integration/ArrayGenericIntegrationTest.cpp
-        tests/jit/HoocJITTest.cpp
-        tests/jit/IOFunctionTest.cpp
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/core/SymbolManglerTest.cpp
-        tests/ho/HoCLITest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
         tests/hvm/HVMModuleBundleTest.cpp
@@ -430,7 +364,6 @@ if(HOOC_BUILD_TESTS)
     target_link_libraries(hoo-tests
         hvm
         hoo-compiler
-        ho-lib
         GTest::gtest
         GTest::gtest_main
     )
@@ -440,9 +373,7 @@ if(HOOC_BUILD_TESTS)
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_SOURCE_DIR}/src/core
-        ${CMAKE_SOURCE_DIR}/src/ho
         ${CMAKE_SOURCE_DIR}/src/hvm
-        ${CMAKE_SOURCE_DIR}/src/jit
         ${CMAKE_SOURCE_DIR}/src/parsing
         ${CMAKE_SOURCE_DIR}/src/codegen
         ${CMAKE_SOURCE_DIR}/src/modules

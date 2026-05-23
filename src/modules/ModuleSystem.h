@@ -6,7 +6,7 @@
  *
  * PURPOSE
  *   Central registry for resolving qualified names (hoo.String, hoo.io.File)
- *   to their corresponding exports. Used by LLVMCodeGenerator to identify
+ *   to their corresponding exports. Used by HVMCodeGenerator to identify
  *   standard library classes and generate appropriate runtime calls.
  *
  * ARCHITECTURE
@@ -18,7 +18,7 @@
  *   User modules can be added via addModule().
  *
  * USAGE IN CODE GENERATION
- *   LLVMCodeGenerator holds a ModuleRegistry member. When generating
+ *   HVMCodeGenerator holds a ModuleRegistry member. When generating
  *   constructor calls, it calls resolveQualifiedName() to check if a type
  *   is a standard library class (hoo.String, hoo.Array, etc.) and uses
  *   the returned ModuleExport to generate the appropriate runtime constructor.

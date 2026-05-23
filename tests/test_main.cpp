@@ -7,8 +7,8 @@
 // Main function for Google Test
 int main(int argc, char **argv) {
     // Initialize LLVM targets once globally before running tests
-    // This is required for JIT functionality and must be done before any
-    // HoocJIT instances are created
+    // This is required for HVMJIT functionality and must be done before any
+    // JIT instances are created
 
     // Initialize native target with error checking
     if (llvm::InitializeNativeTarget()) {

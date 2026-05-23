@@ -120,8 +120,7 @@ extern "C" {
     }
     uint64_t jit_hoo_string_from_cstr(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const char* cstr = reinterpret_cast<const char*>(state->memory + state->regs[1]);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(cstr)));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(reinterpret_cast<const char*>(state->regs[1]))));
     }
     uint64_t jit_hoo_string_concat(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -155,8 +154,7 @@ extern "C" {
     }
     uint64_t jit_hoo_array_get_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        int64_t* dest = reinterpret_cast<int64_t*>(state->memory + state->regs[3]);
-        return static_cast<uint64_t>(hoo_array_get_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2], dest));
+        return static_cast<uint64_t>(hoo_array_get_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2], reinterpret_cast<void*>(state->regs[3])));
     }
     uint64_t jit_hoo_map_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -194,33 +192,13 @@ extern "C" {
         return 0;
     }
 
-    // HVM internal sys calls (for interpreter)
-    extern "C" uint64_t hooc_hvm_sys_alloc(uint64_t size, uint64_t typeId) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_alloc(static_cast<size_t>(size), static_cast<int64_t>(typeId))));
-    }
-    extern "C" uint64_t hooc_hvm_sys_retain(uint64_t obj) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_retain(static_cast<uintptr_t>(obj))));
-    }
-    extern "C" uint64_t hooc_hvm_sys_release(uint64_t obj) {
-        tracked_release(static_cast<uintptr_t>(obj));
-        return 0;
-    }
-    extern "C" uint64_t hooc_hvm_sys_refcount(uint64_t obj) {
-        return static_cast<uint64_t>(tracked_refcount(static_cast<uintptr_t>(obj)));
-    }
-    extern "C" uint64_t hooc_hvm_sys_typeid(uint64_t obj) {
-        return static_cast<uint64_t>(tracked_typeid(static_cast<uintptr_t>(obj)));
-    }
-    extern "C" uint64_t hooc_hvm_sys_exception_runtime(uint64_t /*reserved*/) {
-        HooException exc = hoo_exception_runtime("hvm runtime exception");
-        if (!exc) return 0;
-        {
-            std::lock_guard<std::mutex> lk(gManagedObjectsMu);
-            gManagedObjects.insert(reinterpret_cast<uintptr_t>(exc));
-        }
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
-    }
-
+    // HVM internal sys calls (must also be JIT-compatible)
+    uint64_t hooc_hvm_sys_alloc(void* state) { return jit_hoo_alloc(state); }
+    uint64_t hooc_hvm_sys_retain(void* state) { return jit_hoo_retain(state); }
+    uint64_t hooc_hvm_sys_release(void* state) { return jit_hoo_release(state); }
+    uint64_t hooc_hvm_sys_refcount(void* state) { return jit_hoo_get_refcount(state); }
+    uint64_t hooc_hvm_sys_typeid(void* state) { return jit_hoo_get_type_id(state); }
+    uint64_t hooc_hvm_sys_exception_runtime(void* state) { return jit_hoo_exception_runtime(state); }
     void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
         (void)tracked_retain(static_cast<uintptr_t>(obj));
     }
@@ -252,7 +230,118 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_pop_handler_v", reinterpret_cast<void*>(&jit_hoo_pop_handler)},
         {"_F_hoo_throw_v_p", reinterpret_cast<void*>(&jit_hoo_throw)},
         {"_F_hoo_rethrow_v", reinterpret_cast<void*>(&jit_hoo_rethrow)},
+        // Backward compatibility
+        {"hoo_alloc", reinterpret_cast<void*>(&jit_hoo_alloc)},
+        {"hoo_retain", reinterpret_cast<void*>(&jit_hoo_retain)},
+        {"hoo_release", reinterpret_cast<void*>(&jit_hoo_release)},
+        {"hoo_get_refcount", reinterpret_cast<void*>(&jit_hoo_get_refcount)},
+        {"hoo_get_type_id", reinterpret_cast<void*>(&jit_hoo_get_type_id)},
+        {"hoo_string_from_cstr", reinterpret_cast<void*>(&jit_hoo_string_from_cstr)},
+        {"hoo_string_concat", reinterpret_cast<void*>(&jit_hoo_string_concat)},
+        {"hoo_string_length", reinterpret_cast<void*>(&jit_hoo_string_length)},
+        {"hoo_string_to_upper", reinterpret_cast<void*>(&jit_hoo_string_to_upper)},
+        {"hoo_print", reinterpret_cast<void*>(&jit_hoo_print)},
+        {"hoo_println", reinterpret_cast<void*>(&jit_hoo_println)},
+        {"hoo_array_new", reinterpret_cast<void*>(&jit_hoo_array_new)},
+        {"hoo_array_push_int64", reinterpret_cast<void*>(&jit_hoo_array_push_int64)},
+        {"hoo_array_get_int64", reinterpret_cast<void*>(&jit_hoo_array_get_int64)},
+        {"hoo_map_new", reinterpret_cast<void*>(&jit_hoo_map_new)},
+        {"hoo_exception_runtime", reinterpret_cast<void*>(&jit_hoo_exception_runtime)},
+        {"hoo_exception_clear", reinterpret_cast<void*>(&jit_hoo_exception_clear)},
+        {"hoo_push_handler", reinterpret_cast<void*>(&jit_hoo_push_handler)},
+        {"hoo_pop_handler", reinterpret_cast<void*>(&jit_hoo_pop_handler)},
+        {"hoo_throw", reinterpret_cast<void*>(&jit_hoo_throw)},
+        {"hoo_rethrow", reinterpret_cast<void*>(&jit_hoo_rethrow)},
     };
+}
+
+constexpr int16_t kSysAlloc = 1;
+constexpr int16_t kSysRetain = 2;
+constexpr int16_t kSysRelease = 3;
+constexpr int16_t kSysRefcount = 4;
+constexpr int16_t kSysTypeId = 5;
+constexpr int16_t kSysExceptionRuntime = 6;
+
+std::mutex gManagedObjectsMu;
+std::unordered_set<uintptr_t> gManagedObjects;
+
+void* tracked_alloc(size_t size, int64_t typeId) {
+    void* obj = hoo_alloc(size, typeId);
+    if (!obj) return nullptr;
+    std::lock_guard<std::mutex> lk(gManagedObjectsMu);
+    gManagedObjects.insert(reinterpret_cast<uintptr_t>(obj));
+    return obj;
+}
+
+bool is_tracked_ptr(uintptr_t p) {
+    if (p == 0) return false;
+    std::lock_guard<std::mutex> lk(gManagedObjectsMu);
+    return gManagedObjects.find(p) != gManagedObjects.end();
+}
+
+void* tracked_retain(uintptr_t p) {
+    if (!is_tracked_ptr(p)) return reinterpret_cast<void*>(p);
+    return hoo_retain(reinterpret_cast<void*>(p));
+}
+
+void tracked_release(uintptr_t p) {
+    if (!is_tracked_ptr(p)) return;
+    void* obj = reinterpret_cast<void*>(p);
+    int64_t rc = hoo_get_refcount(obj);
+    hoo_release(obj);
+    if (rc <= 1) {
+        std::lock_guard<std::mutex> lk(gManagedObjectsMu);
+        gManagedObjects.erase(p);
+    }
+}
+
+int64_t tracked_refcount(uintptr_t p) {
+    if (!is_tracked_ptr(p)) return 0;
+    return hoo_get_refcount(reinterpret_cast<void*>(p));
+}
+
+int64_t tracked_typeid(uintptr_t p) {
+    if (!is_tracked_ptr(p)) return 0;
+    return hoo_get_type_id(reinterpret_cast<void*>(p));
+}
+
+extern "C" uint64_t hooc_hvm_sys_alloc(uint64_t size, uint64_t typeId) {
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_alloc(static_cast<size_t>(size), static_cast<int64_t>(typeId))));
+}
+
+extern "C" uint64_t hooc_hvm_sys_retain(uint64_t obj) {
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_retain(static_cast<uintptr_t>(obj))));
+}
+
+extern "C" uint64_t hooc_hvm_sys_release(uint64_t obj) {
+    tracked_release(static_cast<uintptr_t>(obj));
+    return 0;
+}
+
+extern "C" uint64_t hooc_hvm_sys_refcount(uint64_t obj) {
+    return static_cast<uint64_t>(tracked_refcount(static_cast<uintptr_t>(obj)));
+}
+
+extern "C" uint64_t hooc_hvm_sys_typeid(uint64_t obj) {
+    return static_cast<uint64_t>(tracked_typeid(static_cast<uintptr_t>(obj)));
+}
+
+extern "C" uint64_t hooc_hvm_sys_exception_runtime(uint64_t /*reserved*/) {
+    HooException exc = hoo_exception_runtime("hvm runtime exception");
+    if (!exc) return 0;
+    {
+        std::lock_guard<std::mutex> lk(gManagedObjectsMu);
+        gManagedObjects.insert(reinterpret_cast<uintptr_t>(exc));
+    }
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
+}
+
+extern "C" void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
+    (void)tracked_retain(static_cast<uintptr_t>(obj));
+}
+
+extern "C" void hooc_hvm_arc_release_if_managed(uint64_t obj) {
+    tracked_release(static_cast<uintptr_t>(obj));
 }
 } // namespace
 
@@ -265,6 +354,7 @@ HVMJIT::HVMJIT(IOProvider& io)
 }
 
 HVMJIT::~HVMJIT() = default;
+
 std::string HVMJIT::canonicalizePath(const std::string& path) const {
     if (path.empty()) {
         return path;
@@ -1087,8 +1177,6 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::PUSH:
         case hvm::Opcode::POP:
         case hvm::Opcode::LDA:
-        case hvm::Opcode::CALL:
-        case hvm::Opcode::TAILCALL:
         case hvm::Opcode::SYSCALL:
         case hvm::Opcode::BREAK:
             return true;
@@ -1104,6 +1192,9 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
             return func <= 3;
         case hvm::Opcode::FCMP:
             return func <= 2;
+        case hvm::Opcode::CALL:
+        case hvm::Opcode::TAILCALL:
+            return true;
         default:
             return false;
     }
