@@ -1,4 +1,4 @@
-#include "hvm/HoModuleBase.h"
+#include "hvm/HOModuleBase.h"
 #include "core/SymbolMangler.h"
 #include "core/DefaultIOProvider.h"
 #include <algorithm>
@@ -18,7 +18,7 @@
 
 namespace hvm {
 
-HoModuleBase::HoModuleBase(ModuleType type, const std::string& name)
+HOModuleBase::HOModuleBase(ModuleType type, const std::string& name)
     : module_type_(type)
     , module_name_(name)
     , source_path_("")
@@ -27,7 +27,7 @@ HoModuleBase::HoModuleBase(ModuleType type, const std::string& name)
 {
 }
 
-const ModuleSymbol* HoModuleBase::findSymbol(const std::string& name) const {
+const ModuleSymbol* HOModuleBase::findSymbol(const std::string& name) const {
     auto it = symbols_by_name_.find(name);
     if (it != symbols_by_name_.end()) {
         return &it->second;
@@ -43,7 +43,7 @@ const ModuleSymbol* HoModuleBase::findSymbol(const std::string& name) const {
     return findSymbolInternal(name);
 }
 
-const ModuleSymbol* HoModuleBase::findSymbolMangled(const std::string& mangled_name) const {
+const ModuleSymbol* HOModuleBase::findSymbolMangled(const std::string& mangled_name) const {
     auto it = symbols_by_name_.find(mangled_name);
     if (it != symbols_by_name_.end()) {
         return &it->second;
@@ -51,7 +51,7 @@ const ModuleSymbol* HoModuleBase::findSymbolMangled(const std::string& mangled_n
     return nullptr;
 }
 
-const ModuleSymbol* HoModuleBase::findSymbolInternal(const std::string& name) const {
+const ModuleSymbol* HOModuleBase::findSymbolInternal(const std::string& name) const {
     auto it = symbols_by_name_.find(name);
     if (it != symbols_by_name_.end()) {
         return &it->second;
@@ -59,7 +59,7 @@ const ModuleSymbol* HoModuleBase::findSymbolInternal(const std::string& name) co
     return nullptr;
 }
 
-std::vector<const ModuleSymbol*> HoModuleBase::findSymbolsByPrefix(const std::string& prefix) const {
+std::vector<const ModuleSymbol*> HOModuleBase::findSymbolsByPrefix(const std::string& prefix) const {
     std::vector<const ModuleSymbol*> results;
     for (const auto& pair : symbols_by_name_) {
         if (pair.first.substr(0, prefix.size()) == prefix) {
@@ -69,7 +69,7 @@ std::vector<const ModuleSymbol*> HoModuleBase::findSymbolsByPrefix(const std::st
     return results;
 }
 
-void HoModuleBase::addSymbol(const ModuleSymbol& symbol) {
+void HOModuleBase::addSymbol(const ModuleSymbol& symbol) {
     auto mangled = hooc::SymbolMangler::mangleModuleSymbol(
         std::vector<std::string>{module_name_}, symbol.name);
     ModuleSymbol copy = symbol;
@@ -77,21 +77,21 @@ void HoModuleBase::addSymbol(const ModuleSymbol& symbol) {
     addSymbolInternal(copy);
 }
 
-void HoModuleBase::addSymbolInternal(const ModuleSymbol& symbol) {
+void HOModuleBase::addSymbolInternal(const ModuleSymbol& symbol) {
     symbols_by_name_[symbol.name] = symbol;
     if (!symbol.mangled_name.empty()) {
         symbols_by_name_[symbol.mangled_name] = symbol;
     }
 }
 
-void HoModuleBase::addDependency(ModuleDependency dependency) {
+void HOModuleBase::addDependency(ModuleDependency dependency) {
     if (dependency_names_.find(dependency.module_name) == dependency_names_.end()) {
         dependencies_.push_back(dependency);
         dependency_names_.insert(dependency.module_name);
     }
 }
 
-void HoModuleBase::addDependency(const std::string& module_name, ModuleType type,
+void HOModuleBase::addDependency(const std::string& module_name, ModuleType type,
                                 bool optional, uint32_t version_min, uint32_t version_max) {
     ModuleDependency dep;
     dep.module_name = module_name;
@@ -102,7 +102,7 @@ void HoModuleBase::addDependency(const std::string& module_name, ModuleType type
     addDependency(dep);
 }
 
-const ModuleDependency* HoModuleBase::findDependency(const std::string& module_name) const {
+const ModuleDependency* HOModuleBase::findDependency(const std::string& module_name) const {
     for (const auto& dep : dependencies_) {
         if (dep.module_name == module_name) {
             return &dep;
@@ -111,15 +111,15 @@ const ModuleDependency* HoModuleBase::findDependency(const std::string& module_n
     return nullptr;
 }
 
-bool HoModuleBase::hasDependency(const std::string& module_name) const {
+bool HOModuleBase::hasDependency(const std::string& module_name) const {
     return dependency_names_.find(module_name) != dependency_names_.end();
 }
 
-void HoModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HoModuleBase>>& all_modules) {
+void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOModuleBase>>& all_modules) {
     dependency_order_.clear();
     has_circular_dependency_ = false;
 
-    std::unordered_map<std::string, std::shared_ptr<HoModuleBase>> module_map;
+    std::unordered_map<std::string, std::shared_ptr<HOModuleBase>> module_map;
     for (const auto& mod : all_modules) {
         module_map[mod->getName()] = mod;
     }
@@ -158,7 +158,7 @@ void HoModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HoMo
     dependency_order_.insert(dependency_order_.begin(), module_name_);
 }
 
-void HoModuleBase::checkCircularDependencies(const std::string& module_name,
+void HOModuleBase::checkCircularDependencies(const std::string& module_name,
                                             std::unordered_set<std::string>& visited,
                                             std::unordered_set<std::string>& recursion_stack) const {
     if (recursion_stack.find(module_name) != recursion_stack.end()) {
@@ -180,7 +180,7 @@ void HoModuleBase::checkCircularDependencies(const std::string& module_name,
     recursion_stack.erase(module_name);
 }
 
-std::string HoModuleBase::getSymbolSignature(const std::string& symbol_name) const {
+std::string HOModuleBase::getSymbolSignature(const std::string& symbol_name) const {
     auto it = symbols_by_name_.find(symbol_name);
     if (it != symbols_by_name_.end()) {
         return it->second.signature;
@@ -188,7 +188,7 @@ std::string HoModuleBase::getSymbolSignature(const std::string& symbol_name) con
     return "";
 }
 
-std::string HoModuleBase::getModuleTypeName(ModuleType type) {
+std::string HOModuleBase::getModuleTypeName(ModuleType type) {
     switch (type) {
         case ModuleType::Compiled: return "Compiled";
         case ModuleType::StaticRuntime: return "StaticRuntime";
@@ -197,12 +197,12 @@ std::string HoModuleBase::getModuleTypeName(ModuleType type) {
     }
 }
 
-std::string HoModuleBase::mangleSymbol(const std::string& symbol_name, SymbolType sym_type) {
+std::string HOModuleBase::mangleSymbol(const std::string& symbol_name, SymbolType sym_type) {
     return hooc::SymbolMangler::mangleModuleSymbol(
         std::vector<std::string>{}, symbol_name);
 }
 
-bool HoModuleBase::serialize(std::vector<uint8_t>& output) const {
+bool HOModuleBase::serialize(std::vector<uint8_t>& output) const {
     output.clear();
     output.reserve(256);
 
@@ -218,7 +218,7 @@ bool HoModuleBase::serialize(std::vector<uint8_t>& output) const {
     return true;
 }
 
-bool HoModuleBase::deserialize(const std::vector<uint8_t>& input) {
+bool HOModuleBase::deserialize(const std::vector<uint8_t>& input) {
     if (input.size() < 16) {
         error_ = "Input too small for header";
         return false;
@@ -246,7 +246,7 @@ bool HoModuleBase::deserialize(const std::vector<uint8_t>& input) {
     return true;
 }
 
-bool HoModuleBase::serializeToFile(const std::string& file_path) const {
+bool HOModuleBase::serializeToFile(const std::string& file_path) const {
     std::vector<uint8_t> data;
     if (!serialize(data)) {
         return false;
@@ -261,7 +261,7 @@ bool HoModuleBase::serializeToFile(const std::string& file_path) const {
     return true;
 }
 
-bool HoModuleBase::deserializeFromFile(const std::string& file_path) {
+bool HOModuleBase::deserializeFromFile(const std::string& file_path) {
     auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
     auto data = provider->readBinaryFile(file_path);
     if (!data) {
@@ -272,27 +272,27 @@ bool HoModuleBase::deserializeFromFile(const std::string& file_path) {
     return deserialize(*data);
 }
 
-void HoModuleBase::setIOProvider(std::shared_ptr<hooc::IOProvider> provider) {
+void HOModuleBase::setIOProvider(std::shared_ptr<hooc::IOProvider> provider) {
     io_provider_ = provider;
 }
 
-std::shared_ptr<hooc::IOProvider> HoModuleBase::getIOProvider() const {
+std::shared_ptr<hooc::IOProvider> HOModuleBase::getIOProvider() const {
     return io_provider_;
 }
 
-StaticHoModule::StaticHoModule(const std::string& name)
-    : HoModuleBase(ModuleType::StaticRuntime, name)
+StaticHOModule::StaticHOModule(const std::string& name)
+    : HOModuleBase(ModuleType::StaticRuntime, name)
     , linked_(true)
 {
 }
 
-StaticHoModule::~StaticHoModule() = default;
+StaticHOModule::~StaticHOModule() = default;
 
-std::shared_ptr<StaticHoModule> StaticHoModule::create(const std::string& name) {
-    return std::shared_ptr<StaticHoModule>(new StaticHoModule(name));
+std::shared_ptr<StaticHOModule> StaticHOModule::create(const std::string& name) {
+    return std::shared_ptr<StaticHOModule>(new StaticHOModule(name));
 }
 
-void StaticHoModule::registerFunction(const std::string& name, void* address,
+void StaticHOModule::registerFunction(const std::string& name, void* address,
                                     const std::string& signature,
                                     SymbolBinding binding) {
     function_addresses_[name] = address;
@@ -309,7 +309,7 @@ void StaticHoModule::registerFunction(const std::string& name, void* address,
     addSymbol(sym);
 }
 
-void StaticHoModule::registerObject(const std::string& name, void* address, size_t size,
+void StaticHOModule::registerObject(const std::string& name, void* address, size_t size,
                                    const std::string& type_name,
                                    SymbolBinding binding) {
     object_addresses_[name] = address;
@@ -327,19 +327,19 @@ void StaticHoModule::registerObject(const std::string& name, void* address, size
     addSymbol(sym);
 }
 
-void StaticHoModule::registerFunctions(const std::vector<std::tuple<std::string, void*, std::string>>& funcs) {
+void StaticHOModule::registerFunctions(const std::vector<std::tuple<std::string, void*, std::string>>& funcs) {
     for (const auto& [name, addr, sig] : funcs) {
         registerFunction(name, addr, sig);
     }
 }
 
-void StaticHoModule::registerObjects(const std::vector<std::tuple<std::string, void*, size_t, std::string>>& objs) {
+void StaticHOModule::registerObjects(const std::vector<std::tuple<std::string, void*, size_t, std::string>>& objs) {
     for (const auto& [name, addr, size, type] : objs) {
         registerObject(name, addr, size, type);
     }
 }
 
-void* StaticHoModule::resolveFunction(const std::string& name) const {
+void* StaticHOModule::resolveFunction(const std::string& name) const {
     auto it = function_addresses_.find(name);
     if (it != function_addresses_.end()) {
         return it->second;
@@ -347,7 +347,7 @@ void* StaticHoModule::resolveFunction(const std::string& name) const {
     return nullptr;
 }
 
-void* StaticHoModule::resolveObject(const std::string& name) const {
+void* StaticHOModule::resolveObject(const std::string& name) const {
     auto it = object_addresses_.find(name);
     if (it != object_addresses_.end()) {
         return it->second;
@@ -355,7 +355,7 @@ void* StaticHoModule::resolveObject(const std::string& name) const {
     return nullptr;
 }
 
-bool StaticHoModule::serialize(std::vector<uint8_t>& output) const {
+bool StaticHOModule::serialize(std::vector<uint8_t>& output) const {
     output.clear();
     output.reserve(256);
 
@@ -410,7 +410,7 @@ bool StaticHoModule::serialize(std::vector<uint8_t>& output) const {
     return true;
 }
 
-bool StaticHoModule::deserialize(const std::vector<uint8_t>& input) {
+bool StaticHOModule::deserialize(const std::vector<uint8_t>& input) {
     if (input.size() < 32) {
         error_ = "Input too small for header";
         return false;
@@ -506,7 +506,7 @@ bool StaticHoModule::deserialize(const std::vector<uint8_t>& input) {
     return true;
 }
 
-bool StaticHoModule::serializeToFile(const std::string& file_path) const {
+bool StaticHOModule::serializeToFile(const std::string& file_path) const {
     std::vector<uint8_t> data;
     if (!serialize(data)) {
         return false;
@@ -521,7 +521,7 @@ bool StaticHoModule::serializeToFile(const std::string& file_path) const {
     return true;
 }
 
-bool StaticHoModule::deserializeFromFile(const std::string& file_path) {
+bool StaticHOModule::deserializeFromFile(const std::string& file_path) {
     auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
     auto data = provider->readBinaryFile(file_path);
     if (!data) {
@@ -532,24 +532,24 @@ bool StaticHoModule::deserializeFromFile(const std::string& file_path) {
     return deserialize(*data);
 }
 
-DynamicHoModule::DynamicHoModule(const std::string& name)
-    : HoModuleBase(ModuleType::DynamicLibrary, name)
+DynamicHOModule::DynamicHOModule(const std::string& name)
+    : HOModuleBase(ModuleType::DynamicLibrary, name)
     , library_loaded_(false)
     , library_handle_(nullptr)
 {
 }
 
-DynamicHoModule::~DynamicHoModule() {
+DynamicHOModule::~DynamicHOModule() {
     unloadLibrary();
 }
 
-std::shared_ptr<DynamicHoModule> DynamicHoModule::create(const std::string& name) {
-    return std::shared_ptr<DynamicHoModule>(new DynamicHoModule(name));
+std::shared_ptr<DynamicHOModule> DynamicHOModule::create(const std::string& name) {
+    return std::shared_ptr<DynamicHOModule>(new DynamicHOModule(name));
 }
 
-std::shared_ptr<DynamicHoModule> DynamicHoModule::load(const std::string& library_path,
+std::shared_ptr<DynamicHOModule> DynamicHOModule::load(const std::string& library_path,
                                                        const std::string& module_name) {
-    auto module = std::shared_ptr<DynamicHoModule>(new DynamicHoModule(
+    auto module = std::shared_ptr<DynamicHOModule>(new DynamicHOModule(
         module_name.empty() ? std::filesystem::path(library_path).stem().string() : module_name));
     module->library_path_ = library_path;
 
@@ -559,7 +559,7 @@ std::shared_ptr<DynamicHoModule> DynamicHoModule::load(const std::string& librar
     return nullptr;
 }
 
-std::shared_ptr<DynamicHoModule> DynamicHoModule::load(const std::vector<std::string>& search_paths,
+std::shared_ptr<DynamicHOModule> DynamicHOModule::load(const std::vector<std::string>& search_paths,
                                                        const std::string& library_name,
                                                        const std::string& module_name) {
     std::string full_path;
@@ -587,7 +587,7 @@ std::shared_ptr<DynamicHoModule> DynamicHoModule::load(const std::vector<std::st
     return load(full_path, module_name);
 }
 
-bool DynamicHoModule::loadLibrary() {
+bool DynamicHOModule::loadLibrary() {
     if (library_loaded_) {
         return true;
     }
@@ -616,12 +616,12 @@ bool DynamicHoModule::loadLibrary() {
     return true;
 }
 
-bool DynamicHoModule::loadLibrary(const std::string& library_path) {
+bool DynamicHOModule::loadLibrary(const std::string& library_path) {
     library_path_ = library_path;
     return loadLibrary();
 }
 
-bool DynamicHoModule::unloadLibrary() {
+bool DynamicHOModule::unloadLibrary() {
     if (!library_loaded_ || !library_handle_) {
         return true;
     }
@@ -643,7 +643,7 @@ bool DynamicHoModule::unloadLibrary() {
     return result;
 }
 
-void* DynamicHoModule::resolveSymbol(const std::string& symbol_name) const {
+void* DynamicHOModule::resolveSymbol(const std::string& symbol_name) const {
     auto it = resolved_symbols_.find(symbol_name);
     if (it != resolved_symbols_.end()) {
         return it->second;
@@ -666,7 +666,7 @@ void* DynamicHoModule::resolveSymbol(const std::string& symbol_name) const {
     return addr;
 }
 
-void* DynamicHoModule::resolveSymbolMangled(const std::string& mangled_name) const {
+void* DynamicHOModule::resolveSymbolMangled(const std::string& mangled_name) const {
     auto it = resolved_symbols_.find(mangled_name);
     if (it != resolved_symbols_.end()) {
         return it->second;
@@ -684,7 +684,7 @@ void* DynamicHoModule::resolveSymbolMangled(const std::string& mangled_name) con
     return resolveSymbol(mangled_name);
 }
 
-bool DynamicHoModule::loadExportedSymbols() {
+bool DynamicHOModule::loadExportedSymbols() {
 #ifdef _WIN32
     HMODULE mod = static_cast<HMODULE>(library_handle_);
     DWORD size = 0;
@@ -785,14 +785,14 @@ bool DynamicHoModule::loadExportedSymbols() {
     return true;
 }
 
-void DynamicHoModule::addLoadedLibrary(const std::string& library_path) {
+void DynamicHOModule::addLoadedLibrary(const std::string& library_path) {
     auto it = std::find(loaded_libraries_.begin(), loaded_libraries_.end(), library_path);
     if (it == loaded_libraries_.end()) {
         loaded_libraries_.push_back(library_path);
     }
 }
 
-bool DynamicHoModule::serialize(std::vector<uint8_t>& output) const {
+bool DynamicHOModule::serialize(std::vector<uint8_t>& output) const {
     output.clear();
     output.reserve(256);
 
@@ -861,7 +861,7 @@ bool DynamicHoModule::serialize(std::vector<uint8_t>& output) const {
     return true;
 }
 
-bool DynamicHoModule::deserialize(const std::vector<uint8_t>& input) {
+bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
     if (input.size() < 40) {
         error_ = "Input too small for header";
         return false;
@@ -978,7 +978,7 @@ bool DynamicHoModule::deserialize(const std::vector<uint8_t>& input) {
     return true;
 }
 
-bool DynamicHoModule::serializeToFile(const std::string& file_path) const {
+bool DynamicHOModule::serializeToFile(const std::string& file_path) const {
     std::vector<uint8_t> data;
     if (!serialize(data)) {
         return false;
@@ -993,7 +993,7 @@ bool DynamicHoModule::serializeToFile(const std::string& file_path) const {
     return true;
 }
 
-bool DynamicHoModule::deserializeFromFile(const std::string& file_path) {
+bool DynamicHOModule::deserializeFromFile(const std::string& file_path) {
     auto provider = io_provider_ ? io_provider_ : std::make_shared<hooc::DefaultIOProvider>();
     auto data = provider->readBinaryFile(file_path);
     if (!data) {

@@ -92,7 +92,7 @@ std::unique_ptr<llvm::Module> HooCompiler::compile(
     return module;
 }
 
-std::unique_ptr<hvm::HoModule> HooCompiler::compileToHVM(
+std::unique_ptr<hvm::HOModule> HooCompiler::compileToHVM(
     const std::string& moduleName,
     const std::string& sourceCode) {
 

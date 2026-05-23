@@ -72,7 +72,7 @@ String-heavy behavior remains runtime-driven in core, not string-opcode driven.
 
 ## 5. Module Format Status
 
-`HoModule` and `HO_FILE_FORMAT.md` are aligned on:
+`HOModule` and `HO_FILE_FORMAT.md` are aligned on:
 
 - 64-byte header
 - 40-byte section entries

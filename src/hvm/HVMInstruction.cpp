@@ -1,4 +1,4 @@
-#include "hvm/HInstruction.h"
+#include "hvm/HVMInstruction.h"
 #include <sstream>
 #include <iomanip>
 #include <cstring>
@@ -66,14 +66,14 @@ bool decodeULEB128(const std::vector<uint8_t>& in, size_t start, uint32_t& value
 
 } // namespace
 
-HInstruction::HInstruction()
+HVMInstruction::HVMInstruction()
     : opcode_(Opcode::NOP)
     , operands_(OperandsR{0, 0, 0, 0})
     , format_(InstructionFormat::R)
     , mnemonic_("nop") {
 }
 
-HInstruction::HInstruction(Opcode opcode)
+HVMInstruction::HVMInstruction(Opcode opcode)
     : opcode_(opcode)
     , format_(getFormatForOpcode(opcode).value_or(InstructionFormat::R)) {
     
@@ -101,7 +101,7 @@ HInstruction::HInstruction(Opcode opcode)
     mnemonic_ = opcodeToString(opcode);
 }
 
-HInstruction::HInstruction(Opcode opcode, const Operands& operands)
+HVMInstruction::HVMInstruction(Opcode opcode, const Operands& operands)
     : opcode_(opcode)
     , operands_(operands)
     , format_(getFormatForOpcode(opcode).value_or(InstructionFormat::R)) {
@@ -113,7 +113,7 @@ HInstruction::HInstruction(Opcode opcode, const Operands& operands)
     mnemonic_ = opcodeToString(opcode, func);
 }
 
-std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed) {
+std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed) {
     bytesUsed = 0;
     if (bytes.empty()) return nullptr;
 
@@ -138,7 +138,7 @@ std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& b
 
         if (!info) return nullptr;
 
-        auto inst = std::make_unique<HInstruction>();
+        auto inst = std::make_unique<HVMInstruction>();
         inst->opcode_ = opcode;
         inst->format_ = info->format;
         inst->mnemonic_ = info->mnemonic;
@@ -207,12 +207,12 @@ std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& b
     return inst;
 }
 
-std::unique_ptr<HInstruction> HInstruction::decode(const std::vector<uint8_t>& bytes) {
+std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t>& bytes) {
     size_t ignored;
     return decode(bytes, ignored);
 }
 
-std::unique_ptr<HInstruction> HInstruction::decode(const uint32_t word) {
+std::unique_ptr<HVMInstruction> HVMInstruction::decode(const uint32_t word) {
     uint8_t opVal = (word >> 25) & 0x7F;
     Opcode opcode = static_cast<Opcode>(opVal);
 
@@ -224,14 +224,14 @@ std::unique_ptr<HInstruction> HInstruction::decode(const uint32_t word) {
     }
 
     if (!info) {
-        auto inst = std::make_unique<HInstruction>();
+        auto inst = std::make_unique<HVMInstruction>();
         inst->opcode_ = Opcode::UNKNOWN;
         inst->format_ = InstructionFormat::UNKNOWN;
         inst->mnemonic_ = "unknown";
         return inst;
     }
 
-    auto inst = std::make_unique<HInstruction>();
+    auto inst = std::make_unique<HVMInstruction>();
     inst->opcode_ = opcode;
     inst->format_ = info->format;
     inst->mnemonic_ = info->mnemonic;
@@ -292,7 +292,7 @@ std::unique_ptr<HInstruction> HInstruction::decode(const uint32_t word) {
     return inst;
 }
 
-std::vector<uint8_t> HInstruction::encode() const {
+std::vector<uint8_t> HVMInstruction::encode() const {
     const uint16_t opcodeVal = static_cast<uint16_t>(opcode_);
     // Opcodes >= 0x80 must be escaped because the base formats only have 7 bits for opcode.
     const bool forceExtended = opcodeVal >= 0x80 || std::holds_alternative<OperandsRI>(operands_);
@@ -317,7 +317,7 @@ std::vector<uint8_t> HInstruction::encode() const {
     return bytes;
 }
 
-uint32_t HInstruction::encode32() const {
+uint32_t HVMInstruction::encode32() const {
     uint32_t opVal = static_cast<uint32_t>(opcode_) & 0x7F;
     uint32_t word = (opVal << 25);
 
@@ -365,13 +365,13 @@ uint32_t HInstruction::encode32() const {
     return word;
 }
 
-std::string HInstruction::toString() const {
+std::string HVMInstruction::toString() const {
     std::ostringstream oss;
-    oss << "HInstruction(" << mnemonic_ << ", " << toAssembly() << ")";
+    oss << "HVMInstruction(" << mnemonic_ << ", " << toAssembly() << ")";
     return oss.str();
 }
 
-std::string HInstruction::toAssembly() const {
+std::string HVMInstruction::toAssembly() const {
     std::ostringstream oss;
     oss << mnemonic_ << " ";
     
@@ -427,29 +427,29 @@ std::string HInstruction::toAssembly() const {
     return oss.str();
 }
 
-std::string HInstruction::opcodeToString(Opcode opcode, uint16_t func) {
+std::string HVMInstruction::opcodeToString(Opcode opcode, uint16_t func) {
     auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, func);
     if (info) return info->mnemonic;
     return "unknown";
 }
 
-Opcode HInstruction::stringToOpcode(const std::string& name) {
+Opcode HVMInstruction::stringToOpcode(const std::string& name) {
     auto info = InstructionRegistry::instance().getInfoByMnemonic(name);
     if (info) return info->opcode;
     return Opcode::UNKNOWN;
 }
 
-std::optional<InstructionFormat> HInstruction::getFormatForOpcode(Opcode opcode) {
+std::optional<InstructionFormat> HVMInstruction::getFormatForOpcode(Opcode opcode) {
     auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, 0);
     if (info) return info->format;
     return std::nullopt;
 }
 
-bool HInstruction::validateRegister(uint8_t reg) {
+bool HVMInstruction::validateRegister(uint8_t reg) {
     return reg < 32;
 }
 
-bool HInstruction::validateImmediate(int64_t value, int bits) {
+bool HVMInstruction::validateImmediate(int64_t value, int bits) {
     int64_t min = -(1LL << (bits - 1));
     int64_t max = (1LL << (bits - 1)) - 1;
     return value >= min && value <= max;

@@ -1,4 +1,4 @@
-#include "hvm/ModuleBundle.h"
+#include "hvm/HVMModuleBundle.h"
 
 #include <algorithm>
 
@@ -16,16 +16,16 @@ std::string symbolTypeTag(SymbolType kind) {
 }
 } // namespace
 
-ModuleBundle& ModuleBundle::getModules() {
-    static ModuleBundle instance;
+HVMModuleBundle& HVMModuleBundle::getModules() {
+    static HVMModuleBundle instance;
     return instance;
 }
 
-void ModuleBundle::shutdown() {
+void HVMModuleBundle::shutdown() {
     getModules().clear();
 }
 
-void ModuleBundle::addModule(std::shared_ptr<HoModuleBase> module) {
+void HVMModuleBundle::addModule(std::shared_ptr<HOModuleBase> module) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     if (!module) return;
 
@@ -47,7 +47,7 @@ void ModuleBundle::addModule(std::shared_ptr<HoModuleBase> module) {
     }
 }
 
-bool ModuleBundle::removeModule(const std::string& name) {
+bool HVMModuleBundle::removeModule(const std::string& name) {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = modules_by_name_.find(name);
     if (it == modules_by_name_.end()) {
@@ -82,12 +82,12 @@ bool ModuleBundle::removeModule(const std::string& name) {
     return true;
 }
 
-bool ModuleBundle::hasModule(const std::string& name) const {
+bool HVMModuleBundle::hasModule(const std::string& name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     return modules_by_name_.count(name) > 0;
 }
 
-std::shared_ptr<HoModuleBase> ModuleBundle::getModule(const std::string& name) const {
+std::shared_ptr<HOModuleBase> HVMModuleBundle::getModule(const std::string& name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = modules_by_name_.find(name);
     if (it != modules_by_name_.end()) {
@@ -96,7 +96,7 @@ std::shared_ptr<HoModuleBase> ModuleBundle::getModule(const std::string& name) c
     return nullptr;
 }
 
-std::shared_ptr<HoModuleBase> ModuleBundle::findModuleBySymbol(const std::string& symbol_name) const {
+std::shared_ptr<HOModuleBase> HVMModuleBundle::findModuleBySymbol(const std::string& symbol_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = symbols_to_modules_.find(symbol_name);
     if (it != symbols_to_modules_.end() && !it->second.empty()) {
@@ -106,7 +106,7 @@ std::shared_ptr<HoModuleBase> ModuleBundle::findModuleBySymbol(const std::string
     return nullptr;
 }
 
-std::shared_ptr<HoModuleBase> ModuleBundle::findModuleBySymbolMangled(const std::string& mangled_name) const {
+std::shared_ptr<HOModuleBase> HVMModuleBundle::findModuleBySymbolMangled(const std::string& mangled_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = mangled_symbols_to_modules_.find(mangled_name);
     if (it != mangled_symbols_to_modules_.end() && !it->second.empty()) {
@@ -116,12 +116,12 @@ std::shared_ptr<HoModuleBase> ModuleBundle::findModuleBySymbolMangled(const std:
     return nullptr;
 }
 
-std::vector<std::shared_ptr<HoModuleBase>> ModuleBundle::getAllModules() const {
+std::vector<std::shared_ptr<HOModuleBase>> HVMModuleBundle::getAllModules() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    return std::vector<std::shared_ptr<HoModuleBase>>(module_set_.begin(), module_set_.end());
+    return std::vector<std::shared_ptr<HOModuleBase>>(module_set_.begin(), module_set_.end());
 }
 
-std::vector<std::string> ModuleBundle::getModuleNames() const {
+std::vector<std::string> HVMModuleBundle::getModuleNames() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<std::string> names;
     names.reserve(modules_by_name_.size());
@@ -131,7 +131,7 @@ std::vector<std::string> ModuleBundle::getModuleNames() const {
     return names;
 }
 
-void ModuleBundle::clear() {
+void HVMModuleBundle::clear() {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     module_set_.clear();
     modules_by_name_.clear();
@@ -143,14 +143,14 @@ void ModuleBundle::clear() {
     mangled_to_original_.clear();
 }
 
-std::vector<std::shared_ptr<HoModuleBase>> ModuleBundle::resolveDependencyOrder() const {
+std::vector<std::shared_ptr<HOModuleBase>> HVMModuleBundle::resolveDependencyOrder() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    std::vector<std::shared_ptr<HoModuleBase>> result;
+    std::vector<std::shared_ptr<HOModuleBase>> result;
     std::unordered_set<std::string> visited;
     std::unordered_set<std::string> recursion_stack;
 
-    std::function<void(const std::shared_ptr<HoModuleBase>&)> visit =
-        [&](const std::shared_ptr<HoModuleBase>& module) {
+    std::function<void(const std::shared_ptr<HOModuleBase>&)> visit =
+        [&](const std::shared_ptr<HOModuleBase>& module) {
             const std::string& name = module->getName();
             if (visited.count(name)) return;
             if (recursion_stack.count(name)) return;
@@ -176,12 +176,12 @@ std::vector<std::shared_ptr<HoModuleBase>> ModuleBundle::resolveDependencyOrder(
     return result;
 }
 
-std::vector<std::string> ModuleBundle::getModuleDependencyOrder(const std::string& module_name) const {
+std::vector<std::string> HVMModuleBundle::getModuleDependencyOrder(const std::string& module_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto module = getModule(module_name);
     if (!module) return {};
 
-    std::vector<std::shared_ptr<HoModuleBase>> all_modules;
+    std::vector<std::shared_ptr<HOModuleBase>> all_modules;
     all_modules.reserve(modules_by_name_.size());
     for (const auto& pair : modules_by_name_) {
         all_modules.push_back(pair.second.module);
@@ -191,7 +191,7 @@ std::vector<std::string> ModuleBundle::getModuleDependencyOrder(const std::strin
     return module->getDependencyOrder();
 }
 
-std::vector<std::string> ModuleBundle::getAllModulesThatDependOn(const std::string& module_name) const {
+std::vector<std::string> HVMModuleBundle::getAllModulesThatDependOn(const std::string& module_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<std::string> dependents;
 
@@ -214,12 +214,12 @@ std::vector<std::string> ModuleBundle::getAllModulesThatDependOn(const std::stri
     return dependents;
 }
 
-bool ModuleBundle::hasCircularDependency(const std::string& module_name) const {
+bool HVMModuleBundle::hasCircularDependency(const std::string& module_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto module = getModule(module_name);
     if (!module) return false;
 
-    std::vector<std::shared_ptr<HoModuleBase>> all_modules;
+    std::vector<std::shared_ptr<HOModuleBase>> all_modules;
     all_modules.reserve(modules_by_name_.size());
     for (const auto& pair : modules_by_name_) {
         all_modules.push_back(pair.second.module);
@@ -229,11 +229,11 @@ bool ModuleBundle::hasCircularDependency(const std::string& module_name) const {
     return module->hasCircularDependency();
 }
 
-bool ModuleBundle::hasCircularDependency() const {
+bool HVMModuleBundle::hasCircularDependency() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     for (const auto& pair : modules_by_name_) {
         auto module = pair.second.module;
-        std::vector<std::shared_ptr<HoModuleBase>> all_modules;
+        std::vector<std::shared_ptr<HOModuleBase>> all_modules;
         all_modules.reserve(modules_by_name_.size());
         for (const auto& p : modules_by_name_) {
             all_modules.push_back(p.second.module);
@@ -246,7 +246,7 @@ bool ModuleBundle::hasCircularDependency() const {
     return false;
 }
 
-std::shared_ptr<HoModuleBase> ModuleBundle::findModuleByNestedSymbol(const std::vector<std::string>& module_path,
+std::shared_ptr<HOModuleBase> HVMModuleBundle::findModuleByNestedSymbol(const std::vector<std::string>& module_path,
                                                             const std::string& member_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::string key;
@@ -266,7 +266,7 @@ std::shared_ptr<HoModuleBase> ModuleBundle::findModuleByNestedSymbol(const std::
     return nullptr;
 }
 
-std::shared_ptr<HoModuleBase> ModuleBundle::findModuleByExport(const std::string& export_name) const {
+std::shared_ptr<HOModuleBase> HVMModuleBundle::findModuleByExport(const std::string& export_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = exports_by_name_.find(export_name);
     if (it != exports_by_name_.end()) {
@@ -278,7 +278,7 @@ std::shared_ptr<HoModuleBase> ModuleBundle::findModuleByExport(const std::string
     return findModuleBySymbol(export_name);
 }
 
-void ModuleBundle::registerExport(const std::string& module_name,
+void HVMModuleBundle::registerExport(const std::string& module_name,
                                 const std::string& symbol_name,
                                 const std::string& mangled_name,
                                 SymbolType kind) {
@@ -292,7 +292,7 @@ void ModuleBundle::registerExport(const std::string& module_name,
     }
 }
 
-void ModuleBundle::registerNestedExport(const std::vector<std::string>& module_path,
+void HVMModuleBundle::registerNestedExport(const std::vector<std::string>& module_path,
                                         const std::string& member_name,
                                         const std::string& mangled_name,
                                         SymbolType kind) {
@@ -318,7 +318,7 @@ void ModuleBundle::registerNestedExport(const std::vector<std::string>& module_p
     }
 }
 
-void ModuleBundle::registerNamespaceExport(const std::string& namespace_name,
+void HVMModuleBundle::registerNamespaceExport(const std::string& namespace_name,
                                       const std::string& member_name,
                                       const std::string& mangled_name,
                                       SymbolType kind) {
@@ -329,7 +329,7 @@ void ModuleBundle::registerNamespaceExport(const std::string& namespace_name,
     mangled_to_original_[mangled_name] = key;
 }
 
-std::vector<std::string> ModuleBundle::findExportsByKind(SymbolType kind) const {
+std::vector<std::string> HVMModuleBundle::findExportsByKind(SymbolType kind) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<std::string> result;
     for (const auto& pair : exports_by_name_) {
@@ -340,7 +340,7 @@ std::vector<std::string> ModuleBundle::findExportsByKind(SymbolType kind) const 
     return result;
 }
 
-std::vector<std::string> ModuleBundle::findExportsInNamespace(const std::string& namespace_name) const {
+std::vector<std::string> HVMModuleBundle::findExportsInNamespace(const std::string& namespace_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto it = namespace_exports_.find(namespace_name);
     if (it != namespace_exports_.end()) {
@@ -349,12 +349,12 @@ std::vector<std::string> ModuleBundle::findExportsInNamespace(const std::string&
     return {};
 }
 
-bool ModuleBundle::hasExport(const std::string& symbol_name) const {
+bool HVMModuleBundle::hasExport(const std::string& symbol_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     return exports_by_name_.count(symbol_name) > 0;
 }
 
-bool ModuleBundle::hasNestedExport(const std::vector<std::string>& module_path,
+bool HVMModuleBundle::hasNestedExport(const std::vector<std::string>& module_path,
                                  const std::string& member_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::string key;
@@ -368,7 +368,7 @@ bool ModuleBundle::hasNestedExport(const std::vector<std::string>& module_path,
     return nested_exports_to_modules_.count(key) > 0;
 }
 
-std::string ModuleBundle::mangleExport(const std::vector<std::string>& module_path,
+std::string HVMModuleBundle::mangleExport(const std::vector<std::string>& module_path,
                                      const std::string& symbol_name,
                                      SymbolType kind) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -376,7 +376,7 @@ std::string ModuleBundle::mangleExport(const std::vector<std::string>& module_pa
     return hooc::SymbolMangler::mangleModuleSymbol(module_path, symbol_name + "_" + kindTag);
 }
 
-std::string ModuleBundle::mangleNestedMember(const std::vector<std::string>& module_path,
+std::string HVMModuleBundle::mangleNestedMember(const std::vector<std::string>& module_path,
                                          const std::string& member_name,
                                          SymbolType kind) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -385,7 +385,7 @@ std::string ModuleBundle::mangleNestedMember(const std::vector<std::string>& mod
     return mangleExport(path, member_name, kind);
 }
 
-std::string ModuleBundle::mangleNamespaceMember(const std::string& namespace_name,
+std::string HVMModuleBundle::mangleNamespaceMember(const std::string& namespace_name,
                                           const std::string& member_name,
                                           SymbolType kind) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -393,7 +393,7 @@ std::string ModuleBundle::mangleNamespaceMember(const std::string& namespace_nam
     return mangleExport(path, member_name, kind);
 }
 
-hooc::DemangledSymbol ModuleBundle::demangleExport(const std::string& mangled_name) const {
+hooc::DemangledSymbol HVMModuleBundle::demangleExport(const std::string& mangled_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     auto result = hooc::SymbolMangler::demangleSymbol(mangled_name);
     
@@ -414,7 +414,7 @@ hooc::DemangledSymbol ModuleBundle::demangleExport(const std::string& mangled_na
     return result;
 }
 
-std::vector<std::string> ModuleBundle::getAllExportedSymbols() const {
+std::vector<std::string> HVMModuleBundle::getAllExportedSymbols() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<std::string> result;
     for (const auto& pair : exports_by_name_) {
@@ -423,7 +423,7 @@ std::vector<std::string> ModuleBundle::getAllExportedSymbols() const {
     return result;
 }
 
-std::vector<std::string> ModuleBundle::getAllMangledExports() const {
+std::vector<std::string> HVMModuleBundle::getAllMangledExports() const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     std::vector<std::string> result;
     for (const auto& pair : mangled_to_original_) {

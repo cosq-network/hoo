@@ -44,7 +44,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     
     // In a real scenario, this would come from the compiler's source tracking.
     // For now we look for a marker or use default.
-    module_ = std::make_unique<hvm::HoModule>(moduleName);
+    module_ = std::make_unique<hvm::HOModule>(moduleName);
     instructions_.clear();
     currentByteOffset_ = 0;
     errors_.clear();
@@ -888,7 +888,7 @@ int32_t HVMCodeGenerator::getLocalOffset(const std::string& name) {
 }
 
 void HVMCodeGenerator::emit(Opcode op, const Operands& operands) {
-    HInstruction inst(op, operands);
+    HVMInstruction inst(op, operands);
     instructions_.push_back(inst);
     currentByteOffset_ += inst.getSize();
 }

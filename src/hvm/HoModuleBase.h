@@ -1,5 +1,5 @@
-#ifndef HVM_HO_MODULE_BASE_H
-#define HVM_HO_MODULE_BASE_H
+#ifndef HVM_HVM_MODULE_BASE_H
+#define HVM_HVM_MODULE_BASE_H
 
 #include <cstdint>
 #include <string>
@@ -11,7 +11,7 @@
 #include <functional>
 #include <tuple>
 
-#include "hvm/HInstruction.h"
+#include "hvm/HVMInstruction.h"
 
 namespace hooc {
 class IOProvider;
@@ -62,10 +62,10 @@ struct ModuleDependency {
     uint32_t version_max;
 };
 
-class HoModuleBase {
+class HOModuleBase {
 public:
-    HoModuleBase(ModuleType type, const std::string& name);
-    virtual ~HoModuleBase() = default;
+    HOModuleBase(ModuleType type, const std::string& name);
+    virtual ~HOModuleBase() = default;
 
     virtual ModuleType getModuleType() const { return module_type_; }
     virtual const std::string& getName() const { return module_name_; }
@@ -91,7 +91,7 @@ public:
     virtual bool hasDependency(const std::string& module_name) const;
     virtual const std::vector<std::string>& getDependencyOrder() const { return dependency_order_; }
 
-    virtual void resolveDependencyOrder(const std::vector<std::shared_ptr<HoModuleBase>>& all_modules);
+    virtual void resolveDependencyOrder(const std::vector<std::shared_ptr<HOModuleBase>>& all_modules);
     virtual bool hasCircularDependency() const { return has_circular_dependency_; }
 
     virtual std::string getError() const { return error_; }
@@ -136,12 +136,12 @@ protected:
     virtual void addSymbolInternal(const ModuleSymbol& symbol);
 };
 
-class StaticHoModule : public HoModuleBase {
+class StaticHOModule : public HOModuleBase {
 public:
-    StaticHoModule(const std::string& name);
-    virtual ~StaticHoModule() override;
+    StaticHOModule(const std::string& name);
+    virtual ~StaticHOModule() override;
 
-    static std::shared_ptr<StaticHoModule> create(const std::string& name);
+    static std::shared_ptr<StaticHOModule> create(const std::string& name);
 
     void registerFunction(const std::string& name, void* address,
                          const std::string& signature = "",
@@ -176,15 +176,15 @@ private:
     std::unordered_map<std::string, void*> object_addresses_;
 };
 
-class DynamicHoModule : public HoModuleBase {
+class DynamicHOModule : public HOModuleBase {
 public:
-    DynamicHoModule(const std::string& name);
-    virtual ~DynamicHoModule() override;
+    DynamicHOModule(const std::string& name);
+    virtual ~DynamicHOModule() override;
 
-    static std::shared_ptr<DynamicHoModule> create(const std::string& name);
-    static std::shared_ptr<DynamicHoModule> load(const std::string& library_path,
+    static std::shared_ptr<DynamicHOModule> create(const std::string& name);
+    static std::shared_ptr<DynamicHOModule> load(const std::string& library_path,
                                                 const std::string& module_name = "");
-    static std::shared_ptr<DynamicHoModule> load(const std::vector<std::string>& search_paths,
+    static std::shared_ptr<DynamicHOModule> load(const std::vector<std::string>& search_paths,
                                                const std::string& library_name,
                                                const std::string& module_name = "");
 

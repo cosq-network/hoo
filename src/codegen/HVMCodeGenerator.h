@@ -7,8 +7,8 @@
 
 #include "CodeGenerator.h"
 #include "HVMCodeGeneratorTypes.h"
-#include "hvm/HInstruction.h"
-#include "hvm/HoModule.h"
+#include "hvm/HVMInstruction.h"
+#include "hvm/HOModule.h"
 #include "modules/ModuleSystem.h"
 #include <vector>
 #include <unordered_map>
@@ -48,8 +48,8 @@ private:
     // Core state
     ModuleRegistry& moduleRegistry_;
     std::vector<std::string> modulePath_;
-    std::unique_ptr<hvm::HoModule> module_;
-    std::vector<hvm::HInstruction> instructions_;
+    std::unique_ptr<hvm::HOModule> module_;
+    std::vector<hvm::HVMInstruction> instructions_;
     uint32_t currentByteOffset_ = 0;
     std::vector<std::string> errors_;
 

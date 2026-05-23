@@ -1,7 +1,7 @@
 #include "core/HooCLI.h"
 #include "jit/HoocJIT.h"
 #include "core/HooCompiler.h"
-#include "hvm/HoModule.h"
+#include "hvm/HOModule.h"
 
 #include <iostream>
 #include <cstdlib>

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "core/HooCompiler.h"
 #include "codegen/HVMCodeGenerator.h"
-#include "hvm/HoModule.h"
+#include "hvm/HOModule.h"
 
 using namespace hooc;
 using namespace hvm;

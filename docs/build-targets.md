@@ -77,10 +77,10 @@ cmake --build build --target hoo-compiler
 Hooc VM/module artifacts support.
 
 - Sources:
-  - `src/hvm/HoModuleBase.cpp`
-  - `src/hvm/HoModule.cpp`
-  - `src/hvm/HInstruction.cpp`
-  - `src/hvm/ModuleBundle.cpp`
+  - `src/hvm/HOModuleBase.cpp`
+  - `src/hvm/HOModule.cpp`
+  - `src/hvm/HVMInstruction.cpp`
+  - `src/hvm/HVMModuleBundle.cpp`
 - Links: `${llvm_libs}`
 - Build:
 

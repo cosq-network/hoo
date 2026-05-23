@@ -1,17 +1,17 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include <vector>
-#include "hvm/HInstruction.h"
+#include "hvm/HVMInstruction.h"
 
 using namespace hvm;
 
-class HInstructionTest : public ::testing::Test {
+class HVMInstructionTest : public ::testing::Test {
 protected:
     void SetUp() override {}
 };
 
-TEST_F(HInstructionTest, DefaultConstructor) {
-    HInstruction inst;
+TEST_F(HVMInstructionTest, DefaultConstructor) {
+    HVMInstruction inst;
     EXPECT_EQ(inst.getOpcode(), Opcode::NOP);
     EXPECT_EQ(inst.getMnemonic(), "nop");
     EXPECT_EQ(inst.getFormat(), InstructionFormat::R);
@@ -19,15 +19,15 @@ TEST_F(HInstructionTest, DefaultConstructor) {
     EXPECT_EQ(inst.getSize(), 4);
 }
 
-TEST_F(HInstructionTest, OpcodeConstructor) {
-    HInstruction inst(Opcode::ARITH);
+TEST_F(HVMInstructionTest, OpcodeConstructor) {
+    HVMInstruction inst(Opcode::ARITH);
     EXPECT_EQ(inst.getOpcode(), Opcode::ARITH);
     EXPECT_EQ(inst.getMnemonic(), "add"); // default for 0x10 is add (func 0)
     EXPECT_EQ(inst.getFormat(), InstructionFormat::R);
 }
 
-TEST_F(HInstructionTest, OpcodeWithOperands) {
-    HInstruction inst(Opcode::ARITH, OperandsR{1, 2, 3, 0});
+TEST_F(HVMInstructionTest, OpcodeWithOperands) {
+    HVMInstruction inst(Opcode::ARITH, OperandsR{1, 2, 3, 0});
     EXPECT_EQ(inst.getOpcode(), Opcode::ARITH);
     EXPECT_EQ(inst.getMnemonic(), "add");
     
@@ -38,19 +38,19 @@ TEST_F(HInstructionTest, OpcodeWithOperands) {
     EXPECT_EQ(ops.rs2, 3);
 }
 
-TEST_F(HInstructionTest, EncodeDecode32) {
-    HInstruction orig(Opcode::ARITH, OperandsR{5, 10, 15, 1}); // sub
+TEST_F(HVMInstructionTest, EncodeDecode32) {
+    HVMInstruction orig(Opcode::ARITH, OperandsR{5, 10, 15, 1}); // sub
     uint32_t encoded = orig.encode32();
     
-    auto decoded = HInstruction::decode(encoded);
+    auto decoded = HVMInstruction::decode(encoded);
     ASSERT_NE(decoded, nullptr);
     EXPECT_EQ(decoded->getOpcode(), Opcode::ARITH);
     EXPECT_EQ(decoded->getMnemonic(), "sub");
     EXPECT_EQ(decoded->getSize(), 4);
 }
 
-TEST_F(HInstructionTest, EncodeDecodeBytes) {
-    HInstruction orig(Opcode::ARITH, OperandsR{5, 10, 15, 0}); // add
+TEST_F(HVMInstructionTest, EncodeDecodeBytes) {
+    HVMInstruction orig(Opcode::ARITH, OperandsR{5, 10, 15, 0}); // add
     auto encoded = orig.encode();
     
     ASSERT_EQ(encoded.size(), 4);
@@ -67,7 +67,7 @@ TEST_F(HInstructionTest, EncodeDecodeBytes) {
     EXPECT_EQ(encoded[1], 0x3C);
     EXPECT_EQ(encoded[0], 0x00);
     
-    auto decoded = HInstruction::decode(encoded);
+    auto decoded = HVMInstruction::decode(encoded);
     ASSERT_NE(decoded, nullptr);
     EXPECT_EQ(decoded->getOpcode(), Opcode::ARITH);
     EXPECT_EQ(decoded->getMnemonic(), "add");
@@ -79,13 +79,13 @@ TEST_F(HInstructionTest, EncodeDecodeBytes) {
     EXPECT_EQ(ops.rs2, 15);
 }
 
-TEST_F(HInstructionTest, EncodeDecodeBranch) {
-    HInstruction orig(Opcode::BEQ, OperandsB{5, 10, -50});
+TEST_F(HVMInstructionTest, EncodeDecodeBranch) {
+    HVMInstruction orig(Opcode::BEQ, OperandsB{5, 10, -50});
     auto encoded = orig.encode();
     
     ASSERT_EQ(encoded.size(), 4);
     
-    auto decoded = HInstruction::decode(encoded);
+    auto decoded = HVMInstruction::decode(encoded);
     ASSERT_NE(decoded, nullptr);
     EXPECT_EQ(decoded->getOpcode(), Opcode::BEQ);
     ASSERT_TRUE(std::holds_alternative<OperandsB>(decoded->getOperands()));
@@ -95,13 +95,13 @@ TEST_F(HInstructionTest, EncodeDecodeBranch) {
     EXPECT_EQ(ops.imm15, -50);
 }
 
-TEST_F(HInstructionTest, EncodeDecodeJump) {
-    HInstruction orig(Opcode::JAL, OperandsJ{1, 0x12345});
+TEST_F(HVMInstructionTest, EncodeDecodeJump) {
+    HVMInstruction orig(Opcode::JAL, OperandsJ{1, 0x12345});
     auto encoded = orig.encode();
     
     ASSERT_EQ(encoded.size(), 4);
     
-    auto decoded = HInstruction::decode(encoded);
+    auto decoded = HVMInstruction::decode(encoded);
     ASSERT_NE(decoded, nullptr);
     EXPECT_EQ(decoded->getOpcode(), Opcode::JAL);
     ASSERT_TRUE(std::holds_alternative<OperandsJ>(decoded->getOperands()));
@@ -110,85 +110,85 @@ TEST_F(HInstructionTest, EncodeDecodeJump) {
     EXPECT_EQ(ops.offset, 0x12345);
 }
 
-TEST_F(HInstructionTest, ToAssembly) {
-    HInstruction inst(Opcode::ARITH, OperandsR{5, 10, 15, 0});
+TEST_F(HVMInstructionTest, ToAssembly) {
+    HVMInstruction inst(Opcode::ARITH, OperandsR{5, 10, 15, 0});
     EXPECT_EQ(inst.toAssembly(), "add r5, r10, r15");
     
-    HInstruction inst2(Opcode::ARITH, OperandsR{5, 10, 15, 1});
+    HVMInstruction inst2(Opcode::ARITH, OperandsR{5, 10, 15, 1});
     EXPECT_EQ(inst2.toAssembly(), "sub r5, r10, r15");
 }
 
-TEST_F(HInstructionTest, ToAssemblyIFormat) {
-    HInstruction inst(Opcode::ADDI, OperandsI{3, 5, 100});
+TEST_F(HVMInstructionTest, ToAssemblyIFormat) {
+    HVMInstruction inst(Opcode::ADDI, OperandsI{3, 5, 100});
     EXPECT_EQ(inst.toAssembly(), "addi r3, r5, 100");
 }
 
-TEST_F(HInstructionTest, ToAssemblyBFormat) {
-    HInstruction inst(Opcode::BEQ, OperandsB{5, 10, -50});
+TEST_F(HVMInstructionTest, ToAssemblyBFormat) {
+    HVMInstruction inst(Opcode::BEQ, OperandsB{5, 10, -50});
     EXPECT_EQ(inst.toAssembly(), "beq r5, r10, -50");
 }
 
-TEST_F(HInstructionTest, ToAssemblyJFormat) {
-    HInstruction inst(Opcode::JAL, OperandsJ{1, 4096});
+TEST_F(HVMInstructionTest, ToAssemblyJFormat) {
+    HVMInstruction inst(Opcode::JAL, OperandsJ{1, 4096});
     EXPECT_EQ(inst.toAssembly(), "jal r1, 4096");
     
-    HInstruction inst2(Opcode::JMP, OperandsJ{0, 4096});
+    HVMInstruction inst2(Opcode::JMP, OperandsJ{0, 4096});
     EXPECT_EQ(inst2.toAssembly(), "jmp 4096");
 }
 
-TEST_F(HInstructionTest, ToString) {
-    HInstruction inst(Opcode::RET, OperandsR{0, 0, 0, 0});
+TEST_F(HVMInstructionTest, ToString) {
+    HVMInstruction inst(Opcode::RET, OperandsR{0, 0, 0, 0});
     auto str = inst.toString();
     EXPECT_TRUE(str.find("ret") != std::string::npos);
 }
 
-TEST_F(HInstructionTest, OpcodeToString) {
-    EXPECT_EQ(HInstruction::opcodeToString(Opcode::NOP), "nop");
-    EXPECT_EQ(HInstruction::opcodeToString(Opcode::ARITH, 0), "add");
-    EXPECT_EQ(HInstruction::opcodeToString(Opcode::ARITH, 1), "sub");
-    EXPECT_EQ(HInstruction::opcodeToString(Opcode::JMP), "jmp");
-    EXPECT_EQ(HInstruction::opcodeToString(Opcode::SYSCALL), "syscall");
+TEST_F(HVMInstructionTest, OpcodeToString) {
+    EXPECT_EQ(HVMInstruction::opcodeToString(Opcode::NOP), "nop");
+    EXPECT_EQ(HVMInstruction::opcodeToString(Opcode::ARITH, 0), "add");
+    EXPECT_EQ(HVMInstruction::opcodeToString(Opcode::ARITH, 1), "sub");
+    EXPECT_EQ(HVMInstruction::opcodeToString(Opcode::JMP), "jmp");
+    EXPECT_EQ(HVMInstruction::opcodeToString(Opcode::SYSCALL), "syscall");
 }
 
-TEST_F(HInstructionTest, StringToOpcode) {
-    EXPECT_EQ(HInstruction::stringToOpcode("nop"), Opcode::NOP);
-    EXPECT_EQ(HInstruction::stringToOpcode("add"), Opcode::ARITH);
-    EXPECT_EQ(HInstruction::stringToOpcode("sub"), Opcode::ARITH);
-    EXPECT_EQ(HInstruction::stringToOpcode("jmp"), Opcode::JMP);
-    EXPECT_EQ(HInstruction::stringToOpcode("unknown_mnemonic"), Opcode::UNKNOWN);
+TEST_F(HVMInstructionTest, StringToOpcode) {
+    EXPECT_EQ(HVMInstruction::stringToOpcode("nop"), Opcode::NOP);
+    EXPECT_EQ(HVMInstruction::stringToOpcode("add"), Opcode::ARITH);
+    EXPECT_EQ(HVMInstruction::stringToOpcode("sub"), Opcode::ARITH);
+    EXPECT_EQ(HVMInstruction::stringToOpcode("jmp"), Opcode::JMP);
+    EXPECT_EQ(HVMInstruction::stringToOpcode("unknown_mnemonic"), Opcode::UNKNOWN);
 }
 
-TEST_F(HInstructionTest, GetFormatForOpcode) {
-    EXPECT_EQ(HInstruction::getFormatForOpcode(Opcode::ARITH), InstructionFormat::R);
-    EXPECT_EQ(HInstruction::getFormatForOpcode(Opcode::ADDI), InstructionFormat::I);
-    EXPECT_EQ(HInstruction::getFormatForOpcode(Opcode::BEQ), InstructionFormat::B);
-    EXPECT_EQ(HInstruction::getFormatForOpcode(Opcode::JMP), InstructionFormat::J);
+TEST_F(HVMInstructionTest, GetFormatForOpcode) {
+    EXPECT_EQ(HVMInstruction::getFormatForOpcode(Opcode::ARITH), InstructionFormat::R);
+    EXPECT_EQ(HVMInstruction::getFormatForOpcode(Opcode::ADDI), InstructionFormat::I);
+    EXPECT_EQ(HVMInstruction::getFormatForOpcode(Opcode::BEQ), InstructionFormat::B);
+    EXPECT_EQ(HVMInstruction::getFormatForOpcode(Opcode::JMP), InstructionFormat::J);
 }
 
-TEST_F(HInstructionTest, ValidateRegister) {
-    EXPECT_TRUE(HInstruction::validateRegister(0));
-    EXPECT_TRUE(HInstruction::validateRegister(15));
-    EXPECT_TRUE(HInstruction::validateRegister(31));
-    EXPECT_FALSE(HInstruction::validateRegister(32));
-    EXPECT_FALSE(HInstruction::validateRegister(255));
+TEST_F(HVMInstructionTest, ValidateRegister) {
+    EXPECT_TRUE(HVMInstruction::validateRegister(0));
+    EXPECT_TRUE(HVMInstruction::validateRegister(15));
+    EXPECT_TRUE(HVMInstruction::validateRegister(31));
+    EXPECT_FALSE(HVMInstruction::validateRegister(32));
+    EXPECT_FALSE(HVMInstruction::validateRegister(255));
 }
 
-TEST_F(HInstructionTest, ValidateImmediate) {
-    EXPECT_TRUE(HInstruction::validateImmediate(0, 16));
-    EXPECT_TRUE(HInstruction::validateImmediate(32767, 16));
-    EXPECT_TRUE(HInstruction::validateImmediate(-32768, 16));
-    EXPECT_FALSE(HInstruction::validateImmediate(32768, 16));
-    EXPECT_FALSE(HInstruction::validateImmediate(-32769, 16));
+TEST_F(HVMInstructionTest, ValidateImmediate) {
+    EXPECT_TRUE(HVMInstruction::validateImmediate(0, 16));
+    EXPECT_TRUE(HVMInstruction::validateImmediate(32767, 16));
+    EXPECT_TRUE(HVMInstruction::validateImmediate(-32768, 16));
+    EXPECT_FALSE(HVMInstruction::validateImmediate(32768, 16));
+    EXPECT_FALSE(HVMInstruction::validateImmediate(-32769, 16));
 }
 
-TEST_F(HInstructionTest, GetMnemonicMap) {
+TEST_F(HVMInstructionTest, GetMnemonicMap) {
     const auto& map = InstructionRegistry::instance().getAllInfo();
     EXPECT_GT(map.size(), 50);
     EXPECT_EQ(map.at("add").opcode, Opcode::ARITH);
 }
 
-TEST_F(HInstructionTest, SettersAndGetters) {
-    HInstruction inst;
+TEST_F(HVMInstructionTest, SettersAndGetters) {
+    HVMInstruction inst;
     inst.setOpcode(Opcode::NOP);
     EXPECT_EQ(inst.getOpcode(), Opcode::NOP);
     
@@ -199,13 +199,13 @@ TEST_F(HInstructionTest, SettersAndGetters) {
     EXPECT_EQ(inst.getMnemonic(), "test");
 }
 
-TEST_F(HInstructionTest, InstructionRegistrySingleton) {
+TEST_F(HVMInstructionTest, InstructionRegistrySingleton) {
     InstructionRegistry& reg1 = InstructionRegistry::instance();
     InstructionRegistry& reg2 = InstructionRegistry::instance();
     EXPECT_EQ(&reg1, &reg2);
 }
 
-TEST_F(HInstructionTest, InstructionRegistryGetInfoByMnemonic) {
+TEST_F(HVMInstructionTest, InstructionRegistryGetInfoByMnemonic) {
     InstructionRegistry& reg = InstructionRegistry::instance();
     auto info = reg.getInfoByMnemonic("nop");
     ASSERT_TRUE(info.has_value());
@@ -222,7 +222,7 @@ TEST_F(HInstructionTest, InstructionRegistryGetInfoByMnemonic) {
     EXPECT_EQ(info3->func, 1);
 }
 
-TEST_F(HInstructionTest, InstructionRegistryGetInfoByOpcode) {
+TEST_F(HVMInstructionTest, InstructionRegistryGetInfoByOpcode) {
     InstructionRegistry& reg = InstructionRegistry::instance();
     auto info = reg.getInfoByOpcode(Opcode::NOP);
     ASSERT_TRUE(info.has_value());
@@ -237,12 +237,12 @@ TEST_F(HInstructionTest, InstructionRegistryGetInfoByOpcode) {
     EXPECT_EQ(info3->mnemonic, "sub");
 }
 
-TEST_F(HInstructionTest, DecodeInvalidSize) {
-    auto result = HInstruction::decode(std::vector<uint8_t>{0x01, 0x02, 0x03});
+TEST_F(HVMInstructionTest, DecodeInvalidSize) {
+    auto result = HVMInstruction::decode(std::vector<uint8_t>{0x01, 0x02, 0x03});
     EXPECT_EQ(result, nullptr);
 }
 
-TEST_F(HInstructionTest, MultipleEncodeDecode) {
+TEST_F(HVMInstructionTest, MultipleEncodeDecode) {
     std::vector<std::pair<Opcode, Operands>> testCases = {
         {Opcode::NOP, OperandsR{0, 0, 0, 0}},
         {Opcode::ARITH, OperandsR{1, 2, 3, 0}}, // add
@@ -250,24 +250,24 @@ TEST_F(HInstructionTest, MultipleEncodeDecode) {
     };
     
     for (const auto& [opcode, ops] : testCases) {
-        HInstruction orig(opcode, ops);
+        HVMInstruction orig(opcode, ops);
         auto encoded = orig.encode();
-        auto decoded = HInstruction::decode(encoded);
+        auto decoded = HVMInstruction::decode(encoded);
         
         ASSERT_NE(decoded, nullptr);
         EXPECT_EQ(decoded->getOpcode(), opcode);
     }
 }
 
-TEST_F(HInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
+TEST_F(HVMInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
     // Opcode::SYSCALL is 0xC0 (>= 0x80)
-    HInstruction orig(Opcode::SYSCALL, OperandsI{1, 0, 100});
+    HVMInstruction orig(Opcode::SYSCALL, OperandsI{1, 0, 100});
     auto encoded = orig.encode();
     // 1 (escape) + 2 (ULEB for 0xC0) + 1 (padding) + 4 (payload) = 8 bytes
     ASSERT_EQ(encoded.size(), 8);
     EXPECT_EQ(encoded[0], 0xFE);
 
-    auto decoded = HInstruction::decode(encoded);
+    auto decoded = HVMInstruction::decode(encoded);
     ASSERT_NE(decoded, nullptr);
     EXPECT_TRUE(decoded->isExtended());
     EXPECT_EQ(decoded->getOpcode(), Opcode::SYSCALL);

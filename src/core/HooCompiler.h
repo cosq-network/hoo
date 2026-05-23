@@ -46,7 +46,7 @@
 #include "modules/ModuleSystem.h"
 
 namespace hvm {
-class HoModule;
+class HOModule;
 }
 
 namespace hooc {
@@ -113,12 +113,12 @@ public:
                                          const std::string& sourceCode);
 
     /**
-     * @brief Compile Hooc source code to an HVM HoModule
+     * @brief Compile Hooc source code to an HVM HOModule
      * @param moduleName Name for the compiled module
      * @param sourceCode Hooc source code to compile
-     * @return HVM HoModule on success, nullptr on failure
+     * @return HVM HOModule on success, nullptr on failure
      */
-    std::unique_ptr<hvm::HoModule> compileToHVM(const std::string& moduleName,
+    std::unique_ptr<hvm::HOModule> compileToHVM(const std::string& moduleName,
                                                const std::string& sourceCode);
 
     /// @brief Get error message from last failed compilation

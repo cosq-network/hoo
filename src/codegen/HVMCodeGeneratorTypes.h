@@ -1,27 +1,27 @@
 #pragma once
 
 #include "CodeGeneratorTypes.h"
-#include "hvm/HoModule.h"
+#include "hvm/HOModule.h"
 #include <memory>
 
 namespace hooc {
 
 /**
  * HVM implementation of GeneratedModule.
- * Holds the resulting HoModule containing bytecode.
+ * Holds the resulting HOModule containing bytecode.
  */
 class HVMGeneratedModule : public GeneratedModule {
 public:
-    explicit HVMGeneratedModule(std::unique_ptr<hvm::HoModule> module)
+    explicit HVMGeneratedModule(std::unique_ptr<hvm::HOModule> module)
         : module_(std::move(module)) {}
 
     void* getImplementation() override { return module_.get(); }
     const void* getImplementation() const override { return module_.get(); }
 
-    std::unique_ptr<hvm::HoModule> takeModule() { return std::move(module_); }
+    std::unique_ptr<hvm::HOModule> takeModule() { return std::move(module_); }
 
 private:
-    std::unique_ptr<hvm::HoModule> module_;
+    std::unique_ptr<hvm::HOModule> module_;
 };
 
 /**

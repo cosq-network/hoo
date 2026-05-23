@@ -1,5 +1,5 @@
-#ifndef HVM_MODULE_BUNDLE_H
-#define HVM_MODULE_BUNDLE_H
+#ifndef HVM_HVM_HVM_MODULE_BUNDLE_H
+#define HVM_HVM_HVM_MODULE_BUNDLE_H
 
 #include <set>
 #include <unordered_map>
@@ -9,24 +9,24 @@
 #include <vector>
 #include <mutex>
 
-#include "hvm/HoModuleBase.h"
+#include "hvm/HOModuleBase.h"
 #include "core/SymbolMangler.h"
 
 namespace hvm {
 
-class ModuleBundle {
+class HVMModuleBundle {
 public:
-    ModuleBundle() = default;
-    ~ModuleBundle() = default;
+    HVMModuleBundle() = default;
+    ~HVMModuleBundle() = default;
 
-    void addModule(std::shared_ptr<HoModuleBase> module);
+    void addModule(std::shared_ptr<HOModuleBase> module);
     bool removeModule(const std::string& name);
     bool hasModule(const std::string& name) const;
-    std::shared_ptr<HoModuleBase> getModule(const std::string& name) const;
-    std::shared_ptr<HoModuleBase> findModuleBySymbol(const std::string& symbol_name) const;
-    std::shared_ptr<HoModuleBase> findModuleBySymbolMangled(const std::string& mangled_name) const;
+    std::shared_ptr<HOModuleBase> getModule(const std::string& name) const;
+    std::shared_ptr<HOModuleBase> findModuleBySymbol(const std::string& symbol_name) const;
+    std::shared_ptr<HOModuleBase> findModuleBySymbolMangled(const std::string& mangled_name) const;
 
-    std::vector<std::shared_ptr<HoModuleBase>> getAllModules() const;
+    std::vector<std::shared_ptr<HOModuleBase>> getAllModules() const;
     std::vector<std::string> getModuleNames() const;
 
     void clear();
@@ -34,7 +34,7 @@ public:
     size_t size() const { return modules_by_name_.size(); }
     bool empty() const { return modules_by_name_.empty(); }
 
-    std::vector<std::shared_ptr<HoModuleBase>> resolveDependencyOrder() const;
+    std::vector<std::shared_ptr<HOModuleBase>> resolveDependencyOrder() const;
 
     std::vector<std::string> getModuleDependencyOrder(const std::string& module_name) const;
     std::vector<std::string> getAllModulesThatDependOn(const std::string& module_name) const;
@@ -42,12 +42,12 @@ public:
     bool hasCircularDependency(const std::string& module_name) const;
     bool hasCircularDependency() const;
 
-    static ModuleBundle& getModules();
+    static HVMModuleBundle& getModules();
     static void shutdown();
 
-    std::shared_ptr<HoModuleBase> findModuleByNestedSymbol(const std::vector<std::string>& module_path,
+    std::shared_ptr<HOModuleBase> findModuleByNestedSymbol(const std::vector<std::string>& module_path,
                                                             const std::string& member_name) const;
-    std::shared_ptr<HoModuleBase> findModuleByExport(const std::string& export_name) const;
+    std::shared_ptr<HOModuleBase> findModuleByExport(const std::string& export_name) const;
 
     void registerExport(const std::string& module_name,
                        const std::string& symbol_name,
@@ -90,18 +90,18 @@ public:
 
 private:
     struct ModuleComparator {
-        bool operator()(const std::shared_ptr<HoModuleBase>& a,
-                        const std::shared_ptr<HoModuleBase>& b) const {
+        bool operator()(const std::shared_ptr<HOModuleBase>& a,
+                        const std::shared_ptr<HOModuleBase>& b) const {
             return a->getName() < b->getName();
         }
     };
 
     struct ModuleEntry {
-        std::shared_ptr<HoModuleBase> module;
-        std::set<std::shared_ptr<HoModuleBase>, ModuleComparator>::iterator set_iterator;
+        std::shared_ptr<HOModuleBase> module;
+        std::set<std::shared_ptr<HOModuleBase>, ModuleComparator>::iterator set_iterator;
     };
 
-    std::set<std::shared_ptr<HoModuleBase>, ModuleComparator> module_set_;
+    std::set<std::shared_ptr<HOModuleBase>, ModuleComparator> module_set_;
     std::unordered_map<std::string, ModuleEntry> modules_by_name_;
     std::unordered_map<std::string, std::unordered_set<std::string>> symbols_to_modules_;
     std::unordered_map<std::string, std::unordered_set<std::string>> mangled_symbols_to_modules_;

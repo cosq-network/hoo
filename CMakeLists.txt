@@ -159,10 +159,10 @@ endif()
 
 # HVM (Hooc Virtual Machine) library - object file format and module management
 add_library(hvm STATIC
-    src/hvm/HoModuleBase.cpp
-    src/hvm/HoModule.cpp
-    src/hvm/HInstruction.cpp
-    src/hvm/ModuleBundle.cpp
+    src/hvm/HOModuleBase.cpp
+    src/hvm/HOModule.cpp
+    src/hvm/HVMInstruction.cpp
+    src/hvm/HVMModuleBundle.cpp
 )
 
 target_include_directories(hvm PUBLIC
@@ -418,9 +418,9 @@ if(HOOC_BUILD_TESTS)
         tests/core/HooCLITest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/ho/HoCLITest.cpp
-        tests/hvm/HInstructionTest.cpp
-        tests/hvm/HoModuleTest.cpp
-        tests/hvm/ModuleBundleTest.cpp
+        tests/hvm/HVMInstructionTest.cpp
+        tests/hvm/HOModuleTest.cpp
+        tests/hvm/HVMModuleBundleTest.cpp
         tests/ast/CompilationUnitTest.cpp
     )
 

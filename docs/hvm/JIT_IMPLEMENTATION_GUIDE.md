@@ -173,7 +173,7 @@ The JIT enforces a strict "Bottom-Up" execution order for these symbols:
 
 ## 4. Module Loading: Understanding `.ho` (v1.4)
 
-The JIT must use `src/hvm/HoModule.cpp` to parse HVM binaries.
+The JIT must use `src/hvm/HOModule.cpp` to parse HVM binaries.
 
 ### **4.1 Parsing Pass**
 1.  **Header Verification**: Validate `MAGIC`, `VERSION_MAJOR` (1), and `VERSION_MINOR` (4).
@@ -219,7 +219,7 @@ _F_module_init_v:
 When the JIT is requested to load a primary `.ho` file, it must execute the following normative sequence to ensure a stable environment:
 
 1.  **Stage 1: Recursive Discovery & Parsing**
-    - The JIT parses the primary module using `HoModule::parse`.
+    - The JIT parses the primary module using `HOModule::parse`.
     - It extracts the `SHT_IMPORT` list.
     - It recursively repeats this for every dependency until all required `.ho` files are in memory and an **Initialization DAG** (Directed Acyclic Graph) is built.
 
@@ -253,7 +253,7 @@ If any `_F_module_init_v` triggers a hardware trap (`BREAK`) or a software excep
 
 ## 5. The Lowering Engine: HVM to LLVM IR
 
-The JIT translates HVM instructions (using `src/hvm/HInstruction.cpp`) into LLVM IR.
+The JIT translates HVM instructions (using `src/hvm/HVMInstruction.cpp`) into LLVM IR.
 
 ### **5.1 State Mapping**
 - **Registers**: Represent HVM `r0..r31` as an array of 32 `i64` values.
@@ -305,22 +305,22 @@ setRegister(rd, val);
 
 ## 6. Module System & Linkage
 
-### **6.1 Inter-Module Symbol Resolution & ModuleBundle**
-The JIT environment utilizes the **`ModuleBundle`** (see `src/hvm/ModuleBundle.cpp`) as its central "System Registry". This component acts as the global linker and orchestrator for all loaded code units.
+### **6.1 Inter-Module Symbol Resolution & HVMModuleBundle**
+The JIT environment utilizes the **`HVMModuleBundle`** (see `src/hvm/HVMModuleBundle.cpp`) as its central "System Registry". This component acts as the global linker and orchestrator for all loaded code units.
 
-#### **A. The Role of `ModuleBundle`**
+#### **A. The Role of `HVMModuleBundle`**
 1.  **Global Symbol Table**: It maintains a thread-safe map of all exported symbols across all modules.
-2.  **Cross-Dylib Bridge**: When the JIT encounters a `CALL` to an external symbol, it queries `ModuleBundle::findModuleBySymbolMangled()`.
+2.  **Cross-Dylib Bridge**: When the JIT encounters a `CALL` to an external symbol, it queries `HVMModuleBundle::findModuleBySymbolMangled()`.
 3.  **Topological Orchestration**: It uses the `HoocModuleBase::resolveDependencyOrder()` logic to build the normative initialization sequence for the entire session.
 
 #### **B. Module Sub-Types: Unifying Bytecode and Native Code**
-The JIT treats all code units as subclasses of **`HoModuleBase`** (`src/hvm/HoModuleBase.cpp`), providing a unified interface for symbol resolution:
+The JIT treats all code units as subclasses of **`HOModuleBase`** (`src/hvm/HOModuleBase.cpp`), providing a unified interface for symbol resolution:
 
 | Module Type | Implementation Class | Role in JIT |
 | :--- | :--- | :--- |
-| **Compiled** | `HoModule` | Loads HVM bytecode from `.ho` files. |
-| **Static Runtime**| `StaticHoModule` | Wraps process-local C++ code (like `libhoort`). |
-| **Dynamic Library**| `DynamicHoModule` | Wraps native OS binaries (`.so`, `.dll`) via `dlopen`. |
+| **Compiled** | `HOModule` | Loads HVM bytecode from `.ho` files. |
+| **Static Runtime**| `StaticHOModule` | Wraps process-local C++ code (like `libhoort`). |
+| **Dynamic Library**| `DynamicHOModule` | Wraps native OS binaries (`.so`, `.dll`) via `dlopen`. |
 
 #### **C. Grammar Context: The Import Statement**
 Consider the following Hooc source code:
@@ -346,7 +346,7 @@ func: void main() {
 #### **E. JIT Resolution Workflow**
 When the JIT loads `app.ho`:
 1.  **Dependency Scanning**: It reads `SHT_IMPORT` and identifies that it needs the symbol `_F_calculateArea_i8_i8_i8` from `math.geometry`.
-2.  **Dynamic Loading**: If `math/geometry.ho` is not already in memory, the JIT uses `HoModule::parse` to load it.
+2.  **Dynamic Loading**: If `math/geometry.ho` is not already in memory, the JIT uses `HOModule::parse` to load it.
 3.  **Dylib Lookup**:
     - The JIT creates (or retrieves) an `llvm::orc::JITDylib` named `math.geometry`.
     - It performs a lookup: `ExecutionSession::lookup({ &math_geom_dylib }, "_F_calculateArea_i8_i8_i8")`.
@@ -396,7 +396,7 @@ When a Hooc function is passed as a `FUNCTION` parameter to an `extern native` c
 The JIT environment distinguishes between **User Modules** (external `.ho` files) and **Built-in Modules** (the `hoo` standard library).
 
 #### **A. User Module Linkage (.ho Files)**
-The JIT implements a dynamic loader that consumes the `src/hvm/HoModule.cpp` API:
+The JIT implements a dynamic loader that consumes the `src/hvm/HOModule.cpp` API:
 1.  **SHT_IMPORT Scan**: The loader reads the `SHT_IMPORT` section of the primary module.
 2.  **Path Resolution**: It converts module paths (e.g., `app.network.protocol`) into file system paths (`app/network/protocol.ho`).
 3.  **Dylib Mapping**: Each unique `.ho` file is mapped to its own `llvm::orc::JITDylib`. This ensures that module-level private symbols do not collide across the global session.
@@ -504,26 +504,26 @@ The JIT maintains an **Import Dependency Stack**.
 ---
 
 ## 7. Runtime Library Integration (`hoort`)
-The **Hooc Runtime Library (`hoort`)** is integrated as a core system component using a modular, object-oriented linkage model. The JIT leverages the **`ModuleBundle`** and **`HoModuleBase`** hierarchy to unify native code with HVM bytecode.
+The **Hooc Runtime Library (`hoort`)** is integrated as a core system component using a modular, object-oriented linkage model. The JIT leverages the **`HVMModuleBundle`** and **`HOModuleBase`** hierarchy to unify native code with HVM bytecode.
 
 ### **7.1 The Global Module Registry**
-The JIT maintains a static instance of **`ModuleBundle`** (see `src/hvm/ModuleBundle.cpp`) which serves as the "System Bus" for all executable code units.
+The JIT maintains a static instance of **`HVMModuleBundle`** (see `src/hvm/HVMModuleBundle.cpp`) which serves as the "System Bus" for all executable code units.
 
-1.  **Unified Storage**: The `ModuleBundle::getModules()` instance holds a thread-safe collection of `std::shared_ptr<HoModuleBase>`.
-2.  **Polymorphic Dispatch**: The bundle stores both HVM bytecode modules (`HoModule`) and specialized native modules (`StaticHoModule` derivatives).
-3.  **Cross-Binary Linkage**: When a `CALL` target or `LDA` handle is not found in the local module, the JIT queries the `ModuleBundle` to resolve the physical address in a native runtime module.
+1.  **Unified Storage**: The `HVMModuleBundle::getModules()` instance holds a thread-safe collection of `std::shared_ptr<HOModuleBase>`.
+2.  **Polymorphic Dispatch**: The bundle stores both HVM bytecode modules (`HOModule`) and specialized native modules (`StaticHOModule` derivatives).
+3.  **Cross-Binary Linkage**: When a `CALL` target or `LDA` handle is not found in the local module, the JIT queries the `HVMModuleBundle` to resolve the physical address in a native runtime module.
 
 ### **7.2 Specialized Runtime Modules**
-To represent the `hoort` standard library, the JIT defines a hierarchy of classes deriving from **`StaticHoModule`**. Each runtime class (String, Array, Map, etc.) is encapsulated in its own module instance.
+To represent the `hoort` standard library, the JIT defines a hierarchy of classes deriving from **`StaticHOModule`**. Each runtime class (String, Array, Map, etc.) is encapsulated in its own module instance.
 
 #### **A. Implementation Pattern**
 For each runtime component in `src/runtime/lib`, a dedicated bridge class is implemented:
 
 ```cpp
 // Example: The String Runtime Bridge (HooStringModule.cpp)
-class HooStringModule : public StaticHoModule {
+class HooStringModule : public StaticHOModule {
 public:
-    HooStringModule() : StaticHoModule("hoo.String") {
+    HooStringModule() : StaticHOModule("hoo.String") {
         // 1. Register Native Functions
         registerFunction("new", (void*)&hoo_string_new, "_F_hoo_String_CT_p");
         registerFunction("from_cstr", (void*)&hoo_string_from_cstr, "_F_hoo_String_from_cstr_p_p");
@@ -542,7 +542,7 @@ During JIT startup, these specialized modules are instantiated and injected into
 ```cpp
 // JIT Initialization Sequence
 void bootstrapRuntime() {
-    auto& bundle = ModuleBundle::getModules();
+    auto& bundle = HVMModuleBundle::getModules();
     
     // Inject specialized hoort modules
     bundle.addModule(std::make_shared<HooStringModule>());
@@ -551,7 +551,7 @@ void bootstrapRuntime() {
     bundle.addModule(std::make_shared<HooExceptionModule>());
     
     // Inject the core 'hoo' system module for low-level intrinsics
-    auto core = StaticHoModule::create("hoo");
+    auto core = StaticHOModule::create("hoo");
     core->registerFunction("alloc", (void*)&hoo_alloc, "_F_hoo_alloc_p_i8_i8");
     core->registerFunction("retain", (void*)&hoo_retain, "_F_hoo_retain_p_p");
     core->registerFunction("release", (void*)&hoo_release, "_F_hoo_release_v_p");
@@ -560,9 +560,9 @@ void bootstrapRuntime() {
 ```
 
 ### **7.3 Technical Implementation Details**
-1.  **Symbol Resolution**: The JIT's IR generator uses `ModuleBundle::findModuleBySymbolMangled()` to obtain a `ModuleSymbol` pointer during `CALL` lowering.
-2.  **Machine Code Generation**: If the `ModuleSymbol` contains a physical address (from a `StaticHoModule`), the JIT emits a direct LLVM `call` or `load` to that absolute address, bypassing standard PLT/GOT overhead.
-3.  **VTable Integration**: Runtime classes that can be extended by HVM code (like `hoo.Exception`) have their base VTables pre-populated in the `StaticHoModule::registerObject` phase.
+1.  **Symbol Resolution**: The JIT's IR generator uses `HVMModuleBundle::findModuleBySymbolMangled()` to obtain a `ModuleSymbol` pointer during `CALL` lowering.
+2.  **Machine Code Generation**: If the `ModuleSymbol` contains a physical address (from a `StaticHOModule`), the JIT emits a direct LLVM `call` or `load` to that absolute address, bypassing standard PLT/GOT overhead.
+3.  **VTable Integration**: Runtime classes that can be extended by HVM code (like `hoo.Exception`) have their base VTables pre-populated in the `StaticHOModule::registerObject` phase.
 
 ### **7.4 Memory Model & The 16-Byte Header**
 All managed objects share a normative physical layout required for interoperability between JIT machine code and native `hoort` methods.
@@ -587,9 +587,9 @@ The JIT must strictly adhere to the `libhoort` ownership model:
 ### **7.6 Runtime Expansion & Contribution Guidelines**
 When adding new features to `src/runtime/lib`:
 1.  **Header Integrity**: Maintain strict `extern "C"` linkage for all entry points.
-2.  **Derived Class**: Create a new class deriving from `StaticHoModule` (e.g., `HooNetModule`).
+2.  **Derived Class**: Create a new class deriving from `StaticHOModule` (e.g., `HooNetModule`).
 3.  **Signature Mapping**: Use the HVM mangled name format for all `registerFunction` calls.
-4.  **Injection**: Add the new module to the `ModuleBundle` bootstrap sequence in the JIT host.
+4.  **Injection**: Add the new module to the `HVMModuleBundle` bootstrap sequence in the JIT host.
 
 ### **7.7 Type-Specific Native Bridges**
 The JIT maps HVM `CALL` sequences to specific `hoort` entry points, maintaining the standard library namespaces defined in `hoo` and `hoo.io`. These bridges are categorized by the core type they manage.

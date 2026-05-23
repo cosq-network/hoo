@@ -79,8 +79,8 @@ Not in core:
 
 Binary module handling is defined by:
 
-- `src/hvm/HoModule.h`
-- `src/hvm/HoModule.cpp`
+- `src/hvm/HOModule.h`
+- `src/hvm/HOModule.cpp`
 - `docs/hvm/HO_FILE_FORMAT.md`
 
 Key points:
@@ -132,6 +132,6 @@ When grammar evolves, update in this order:
 4. `docs/hvm/HVM_SPEC.md`
 5. `docs/hvm/hvm_instruction_set.csv`
 6. `docs/hvm/instructions.md`
-7. `docs/hvm/HO_FILE_FORMAT.md` and `src/hvm/HoModule*` if binary/module semantics change
+7. `docs/hvm/HO_FILE_FORMAT.md` and `src/hvm/HOModule*` if binary/module semantics change
 
 Optional families should go to `docs/hvm/HVM_EXTENSIONS.md`, not the core profile.

@@ -1,4 +1,4 @@
-#include "hvm/HoModule.h"
+#include "hvm/HOModule.h"
 #include "core/DefaultIOProvider.h"
 
 #include <algorithm>
@@ -170,8 +170,8 @@ std::string defaultSectionName(SectionType type) {
 
 }  // namespace
 
-HoModule::HoModule()
-    : HoModuleBase(ModuleType::Compiled, "")
+HOModule::HOModule()
+    : HOModuleBase(ModuleType::Compiled, "")
     , magic_(MAGIC)
     , version_major_(VERSION_MAJOR)
     , version_minor_(VERSION_MINOR)
@@ -184,8 +184,8 @@ HoModule::HoModule()
     , base_address_(0)
     , string_pool_(1, '\0') {}
 
-HoModule::HoModule(const std::string& name)
-    : HoModuleBase(ModuleType::Compiled, name)
+HOModule::HOModule(const std::string& name)
+    : HOModuleBase(ModuleType::Compiled, name)
     , magic_(MAGIC)
     , version_major_(VERSION_MAJOR)
     , version_minor_(VERSION_MINOR)
@@ -198,15 +198,15 @@ HoModule::HoModule(const std::string& name)
     , base_address_(0)
     , string_pool_(1, '\0') {}
 
-HoModule::~HoModule() = default;
+HOModule::~HOModule() = default;
 
-std::unique_ptr<HoModule> HoModule::create() { return std::unique_ptr<HoModule>(new HoModule()); }
+std::unique_ptr<HOModule> HOModule::create() { return std::unique_ptr<HOModule>(new HOModule()); }
 
-std::unique_ptr<HoModule> HoModule::create(const std::string& name) {
-    return std::unique_ptr<HoModule>(new HoModule(name));
+std::unique_ptr<HOModule> HOModule::create(const std::string& name) {
+    return std::unique_ptr<HOModule>(new HOModule(name));
 }
 
-bool HoModule::serialize(std::vector<uint8_t>& output) const {
+bool HOModule::serialize(std::vector<uint8_t>& output) const {
     output.clear();
     error_.clear();
 
@@ -482,7 +482,7 @@ bool HoModule::serialize(std::vector<uint8_t>& output) const {
     return true;
 }
 
-bool HoModule::serialize(const std::string& file_path) const {
+bool HOModule::serialize(const std::string& file_path) const {
     error_.clear();
     std::ofstream file(file_path, std::ios::binary);
     if (!file.is_open()) {
@@ -499,7 +499,7 @@ bool HoModule::serialize(const std::string& file_path) const {
     return file.good();
 }
 
-bool HoModule::serialize(FILE* file) const {
+bool HOModule::serialize(FILE* file) const {
     error_.clear();
     if (!file) {
         error_ = "Cannot write to null FILE*";
@@ -518,7 +518,7 @@ bool HoModule::serialize(FILE* file) const {
     return true;
 }
 
-bool HoModule::parseHeader(const std::vector<uint8_t>& data, size_t& offset) {
+bool HOModule::parseHeader(const std::vector<uint8_t>& data, size_t& offset) {
     uint32_t magic = 0;
     if (data.size() < HEADER_SIZE || !readU32LE(data, 0x00, magic)) {
         error_ = "File too small for header";
@@ -569,7 +569,7 @@ bool HoModule::parseHeader(const std::vector<uint8_t>& data, size_t& offset) {
     return true;
 }
 
-bool HoModule::parseSectionTable(const std::vector<uint8_t>& data, size_t& offset) {
+bool HOModule::parseSectionTable(const std::vector<uint8_t>& data, size_t& offset) {
     uint64_t section_count64 = 0;
     if (!readU64LE(data, 0x20, section_count64)) {
         error_ = "Failed to read section count";
@@ -660,7 +660,7 @@ bool HoModule::parseSectionTable(const std::vector<uint8_t>& data, size_t& offse
     return true;
 }
 
-bool HoModule::parseSymbols(const std::vector<uint8_t>& /*data*/, const Section& symtab) {
+bool HOModule::parseSymbols(const std::vector<uint8_t>& /*data*/, const Section& symtab) {
     if (symtab.data.size() % kSymbolEntrySize != 0) {
         error_ = "Invalid symbol table size";
         return false;
@@ -697,7 +697,7 @@ bool HoModule::parseSymbols(const std::vector<uint8_t>& /*data*/, const Section&
     return true;
 }
 
-bool HoModule::parseRelocations(const std::vector<uint8_t>& /*data*/, const Section& reloc) {
+bool HOModule::parseRelocations(const std::vector<uint8_t>& /*data*/, const Section& reloc) {
     if (reloc.data.size() % kRelocationEntrySize != 0) {
         error_ = "Invalid relocation table size";
         return false;
@@ -725,7 +725,7 @@ bool HoModule::parseRelocations(const std::vector<uint8_t>& /*data*/, const Sect
     return true;
 }
 
-bool HoModule::parseExports(const std::vector<uint8_t>& /*data*/, const Section& exports) {
+bool HOModule::parseExports(const std::vector<uint8_t>& /*data*/, const Section& exports) {
     if (exports.data.size() % kExportEntrySize != 0) {
         error_ = "Invalid export table size";
         return false;
@@ -755,7 +755,7 @@ bool HoModule::parseExports(const std::vector<uint8_t>& /*data*/, const Section&
     return true;
 }
 
-bool HoModule::parseImports(const std::vector<uint8_t>& /*data*/, const Section& imports) {
+bool HOModule::parseImports(const std::vector<uint8_t>& /*data*/, const Section& imports) {
     if (imports.data.size() % kImportEntrySize != 0) {
         error_ = "Invalid import table size";
         return false;
@@ -789,7 +789,7 @@ bool HoModule::parseImports(const std::vector<uint8_t>& /*data*/, const Section&
     return true;
 }
 
-bool HoModule::parseFunctionMetadata(const std::vector<uint8_t>& /*data*/, const Section& funcmeta) {
+bool HOModule::parseFunctionMetadata(const std::vector<uint8_t>& /*data*/, const Section& funcmeta) {
     if (funcmeta.data.size() % kFunctionMetadataEntrySize != 0) {
         error_ = "Invalid function metadata table size";
         return false;
@@ -826,103 +826,103 @@ bool HoModule::parseFunctionMetadata(const std::vector<uint8_t>& /*data*/, const
     return true;
 }
 
-void HoModule::setMagic(uint32_t magic) { magic_ = magic; }
-uint32_t HoModule::getMagic() const { return magic_; }
+void HOModule::setMagic(uint32_t magic) { magic_ = magic; }
+uint32_t HOModule::getMagic() const { return magic_; }
 
-void HoModule::setVersion(uint16_t major, uint16_t minor) {
+void HOModule::setVersion(uint16_t major, uint16_t minor) {
     version_major_ = major;
     version_minor_ = minor;
 }
-uint16_t HoModule::getVersionMajor() const { return version_major_; }
-uint16_t HoModule::getVersionMinor() const { return version_minor_; }
+uint16_t HOModule::getVersionMajor() const { return version_major_; }
+uint16_t HOModule::getVersionMinor() const { return version_minor_; }
 
-void HoModule::setFileType(FileType type) { file_type_ = type; }
-FileType HoModule::getFileType() const { return file_type_; }
+void HOModule::setFileType(FileType type) { file_type_ = type; }
+FileType HOModule::getFileType() const { return file_type_; }
 
-void HoModule::setTargetArch(TargetArch arch) { target_arch_ = arch; }
-TargetArch HoModule::getTargetArch() const { return target_arch_; }
+void HOModule::setTargetArch(TargetArch arch) { target_arch_ = arch; }
+TargetArch HOModule::getTargetArch() const { return target_arch_; }
 
-void HoModule::setEndianness(Endianness endian) { endianness_ = endian; }
-Endianness HoModule::getEndianness() const { return endianness_; }
+void HOModule::setEndianness(Endianness endian) { endianness_ = endian; }
+Endianness HOModule::getEndianness() const { return endianness_; }
 
-void HoModule::setPointerSize(uint8_t size) { pointer_size_ = size; }
-uint8_t HoModule::getPointerSize() const { return pointer_size_; }
+void HOModule::setPointerSize(uint8_t size) { pointer_size_ = size; }
+uint8_t HOModule::getPointerSize() const { return pointer_size_; }
 
-void HoModule::setFlags(uint32_t flags) { flags_ = flags; }
-uint32_t HoModule::getFlags() const { return flags_; }
+void HOModule::setFlags(uint32_t flags) { flags_ = flags; }
+uint32_t HOModule::getFlags() const { return flags_; }
 
-void HoModule::setEntryPoint(uint64_t rva) { entry_point_ = rva; }
-uint64_t HoModule::getEntryPoint() const { return entry_point_; }
+void HOModule::setEntryPoint(uint64_t rva) { entry_point_ = rva; }
+uint64_t HOModule::getEntryPoint() const { return entry_point_; }
 
-void HoModule::setBaseAddress(uint64_t addr) { base_address_ = addr; }
-uint64_t HoModule::getBaseAddress() const { return base_address_; }
+void HOModule::setBaseAddress(uint64_t addr) { base_address_ = addr; }
+uint64_t HOModule::getBaseAddress() const { return base_address_; }
 
-void HoModule::addSection(Section section) { sections_.push_back(std::move(section)); }
-Section* HoModule::getSection(const std::string& name) {
+void HOModule::addSection(Section section) { sections_.push_back(std::move(section)); }
+Section* HOModule::getSection(const std::string& name) {
     for (auto& sec : sections_) {
         if (sec.name == name) return &sec;
     }
     return nullptr;
 }
-const Section* HoModule::getSection(const std::string& name) const {
+const Section* HOModule::getSection(const std::string& name) const {
     for (const auto& sec : sections_) {
         if (sec.name == name) return &sec;
     }
     return nullptr;
 }
-const std::vector<Section>& HoModule::getSections() const { return sections_; }
-std::vector<Section>& HoModule::getSections() { return sections_; }
-size_t HoModule::getSectionCount() const { return sections_.size(); }
+const std::vector<Section>& HOModule::getSections() const { return sections_; }
+std::vector<Section>& HOModule::getSections() { return sections_; }
+size_t HOModule::getSectionCount() const { return sections_.size(); }
 
-std::optional<uint32_t> HoModule::addString(const std::string& str) {
+std::optional<uint32_t> HOModule::addString(const std::string& str) {
     uint32_t offset = 0;
     if (!appendString(string_pool_, str, offset)) {
         return std::nullopt;
     }
     return offset;
 }
-std::string HoModule::getString(uint32_t offset) const { return readStringFromPool(string_pool_, offset); }
-const std::string& HoModule::getStringPool() const { return string_pool_; }
+std::string HOModule::getString(uint32_t offset) const { return readStringFromPool(string_pool_, offset); }
+const std::string& HOModule::getStringPool() const { return string_pool_; }
 
-void HoModule::addSymbol(const Symbol& symbol) { symbols_.push_back(symbol); }
-const std::vector<Symbol>& HoModule::getSymbols() const { return symbols_; }
-std::vector<Symbol>& HoModule::getSymbols() { return symbols_; }
-const Symbol* HoModule::getSymbol(const std::string& name) const {
+void HOModule::addSymbol(const Symbol& symbol) { symbols_.push_back(symbol); }
+const std::vector<Symbol>& HOModule::getSymbols() const { return symbols_; }
+std::vector<Symbol>& HOModule::getSymbols() { return symbols_; }
+const Symbol* HOModule::getSymbol(const std::string& name) const {
     for (const auto& sym : symbols_) {
         if (sym.name == name) return &sym;
     }
     return nullptr;
 }
 
-void HoModule::addRelocation(const Relocation& reloc) { relocations_.push_back(reloc); }
-const std::vector<Relocation>& HoModule::getRelocations() const { return relocations_; }
-std::vector<Relocation>& HoModule::getRelocations() { return relocations_; }
+void HOModule::addRelocation(const Relocation& reloc) { relocations_.push_back(reloc); }
+const std::vector<Relocation>& HOModule::getRelocations() const { return relocations_; }
+std::vector<Relocation>& HOModule::getRelocations() { return relocations_; }
 
-void HoModule::addExport(const ExportEntry& exp) { exports_.push_back(exp); }
-const std::vector<ExportEntry>& HoModule::getExports() const { return exports_; }
-std::vector<ExportEntry>& HoModule::getExports() { return exports_; }
+void HOModule::addExport(const ExportEntry& exp) { exports_.push_back(exp); }
+const std::vector<ExportEntry>& HOModule::getExports() const { return exports_; }
+std::vector<ExportEntry>& HOModule::getExports() { return exports_; }
 
-void HoModule::addImport(const ImportEntry& imp) { imports_.push_back(imp); }
-const std::vector<ImportEntry>& HoModule::getImports() const { return imports_; }
-std::vector<ImportEntry>& HoModule::getImports() { return imports_; }
+void HOModule::addImport(const ImportEntry& imp) { imports_.push_back(imp); }
+const std::vector<ImportEntry>& HOModule::getImports() const { return imports_; }
+std::vector<ImportEntry>& HOModule::getImports() { return imports_; }
 
-void HoModule::addFunctionMetadata(const FunctionMetadata& meta) { function_metadata_.push_back(meta); }
-const std::vector<FunctionMetadata>& HoModule::getFunctionMetadata() const { return function_metadata_; }
-std::vector<FunctionMetadata>& HoModule::getFunctionMetadata() { return function_metadata_; }
+void HOModule::addFunctionMetadata(const FunctionMetadata& meta) { function_metadata_.push_back(meta); }
+const std::vector<FunctionMetadata>& HOModule::getFunctionMetadata() const { return function_metadata_; }
+std::vector<FunctionMetadata>& HOModule::getFunctionMetadata() { return function_metadata_; }
 
-bool HoModule::hasDebugInfo() const { return (flags_ & 0x8000) != 0; }
-bool HoModule::hasTypeInfo() const { return (flags_ & 0x4000) != 0; }
-bool HoModule::isStripped() const { return (flags_ & 0x2000) != 0; }
-bool HoModule::isPIE() const { return (flags_ & 0x1000) != 0; }
-uint8_t HoModule::getOptimizationLevel() const { return static_cast<uint8_t>((flags_ >> 8) & 0x0F); }
+bool HOModule::hasDebugInfo() const { return (flags_ & 0x8000) != 0; }
+bool HOModule::hasTypeInfo() const { return (flags_ & 0x4000) != 0; }
+bool HOModule::isStripped() const { return (flags_ & 0x2000) != 0; }
+bool HOModule::isPIE() const { return (flags_ & 0x1000) != 0; }
+uint8_t HOModule::getOptimizationLevel() const { return static_cast<uint8_t>((flags_ >> 8) & 0x0F); }
 
-void HoModule::setDebugInfo(bool has) { flags_ = (flags_ & ~0x8000) | (has ? 0x8000 : 0); }
-void HoModule::setTypeInfo(bool has) { flags_ = (flags_ & ~0x4000) | (has ? 0x4000 : 0); }
-void HoModule::setStripped(bool stripped) { flags_ = (flags_ & ~0x2000) | (stripped ? 0x2000 : 0); }
-void HoModule::setPIE(bool pie) { flags_ = (flags_ & ~0x1000) | (pie ? 0x1000 : 0); }
-void HoModule::setOptimizationLevel(uint8_t level) { flags_ = (flags_ & ~0x0F00) | ((level & 0x0F) << 8); }
+void HOModule::setDebugInfo(bool has) { flags_ = (flags_ & ~0x8000) | (has ? 0x8000 : 0); }
+void HOModule::setTypeInfo(bool has) { flags_ = (flags_ & ~0x4000) | (has ? 0x4000 : 0); }
+void HOModule::setStripped(bool stripped) { flags_ = (flags_ & ~0x2000) | (stripped ? 0x2000 : 0); }
+void HOModule::setPIE(bool pie) { flags_ = (flags_ & ~0x1000) | (pie ? 0x1000 : 0); }
+void HOModule::setOptimizationLevel(uint8_t level) { flags_ = (flags_ & ~0x0F00) | ((level & 0x0F) << 8); }
 
-std::vector<uint8_t> HoModule::encodeInstructions(const std::vector<HInstruction>& instructions) const {
+std::vector<uint8_t> HOModule::encodeInstructions(const std::vector<HVMInstruction>& instructions) const {
     std::vector<uint8_t> encoded;
     encoded.reserve(instructions.size() * 8);
 
@@ -934,13 +934,13 @@ std::vector<uint8_t> HoModule::encodeInstructions(const std::vector<HInstruction
     return encoded;
 }
 
-std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t>& data, bool /*extended*/) const {
-    std::vector<HInstruction> instructions;
+std::vector<HVMInstruction> HOModule::decodeInstructions(const std::vector<uint8_t>& data, bool /*extended*/) const {
+    std::vector<HVMInstruction> instructions;
 
     for (size_t i = 0; i < data.size(); ) {
         std::vector<uint8_t> remaining(data.begin() + static_cast<std::ptrdiff_t>(i), data.end());
         size_t bytesUsed = 0;
-        auto inst = HInstruction::decode(remaining, bytesUsed);
+        auto inst = HVMInstruction::decode(remaining, bytesUsed);
         if (inst && bytesUsed > 0) {
             instructions.push_back(std::move(*inst));
             i += bytesUsed;
@@ -953,7 +953,7 @@ std::vector<HInstruction> HoModule::decodeInstructions(const std::vector<uint8_t
     return instructions;
 }
 
-std::string HoModule::instructionsToAssembly(const std::vector<HInstruction>& instructions) const {
+std::string HOModule::instructionsToAssembly(const std::vector<HVMInstruction>& instructions) const {
     std::ostringstream oss;
 
     for (size_t i = 0; i < instructions.size(); ++i) {
@@ -963,8 +963,8 @@ std::string HoModule::instructionsToAssembly(const std::vector<HInstruction>& in
     return oss.str();
 }
 
-std::vector<HInstruction> HoModule::parseAssembly(const std::string& assembly) const {
-    std::vector<HInstruction> instructions;
+std::vector<HVMInstruction> HOModule::parseAssembly(const std::string& assembly) const {
+    std::vector<HVMInstruction> instructions;
     std::istringstream iss(assembly);
     std::string line;
 
@@ -986,23 +986,23 @@ std::vector<HInstruction> HoModule::parseAssembly(const std::string& assembly) c
 
         if (mnemonic.empty()) continue;
 
-        const Opcode opcode = HInstruction::stringToOpcode(mnemonic);
+        const Opcode opcode = HVMInstruction::stringToOpcode(mnemonic);
         if (opcode == Opcode::UNKNOWN) {
             continue;
         }
 
-        HInstruction inst(opcode);
+        HVMInstruction inst(opcode);
         instructions.push_back(inst);
     }
 
     return instructions;
 }
 
-std::string HoModule::getError() const { return error_; }
-bool HoModule::hasError() const { return !error_.empty(); }
-void HoModule::clearError() { error_.clear(); }
+std::string HOModule::getError() const { return error_; }
+bool HOModule::hasError() const { return !error_.empty(); }
+void HOModule::clearError() { error_.clear(); }
 
-bool HoModule::serializeToFile(const std::string& file_path) const {
+bool HOModule::serializeToFile(const std::string& file_path) const {
     std::vector<uint8_t> data;
     if (!serialize(data)) {
         return false;
@@ -1017,7 +1017,7 @@ bool HoModule::serializeToFile(const std::string& file_path) const {
     return true;
 }
 
-bool HoModule::deserializeFromFile(const std::string& file_path) {
+bool HOModule::deserializeFromFile(const std::string& file_path) {
     auto provider = getIOProvider() ? getIOProvider() : std::make_shared<hooc::DefaultIOProvider>();
     auto data = provider->readBinaryFile(file_path);
     if (!data) {
@@ -1028,10 +1028,10 @@ bool HoModule::deserializeFromFile(const std::string& file_path) {
     return deserialize(*data);
 }
 
-bool HoModule::deserialize(const std::vector<uint8_t>& input) {
+bool HOModule::deserialize(const std::vector<uint8_t>& input) {
     auto parsed = parse(input);
     if (!parsed) {
-        HoModule tmp;
+        HOModule tmp;
         size_t off = 0;
         if (!tmp.parseHeader(input, off) || !tmp.parseSectionTable(input, off)) {
             error_ = tmp.getError().empty() ? "Failed to parse module" : tmp.getError();
@@ -1126,8 +1126,8 @@ bool HoModule::deserialize(const std::vector<uint8_t>& input) {
     return true;
 }
 
-std::unique_ptr<HoModule> HoModule::parse(const std::vector<uint8_t>& data) {
-    auto module = std::unique_ptr<HoModule>(new HoModule());
+std::unique_ptr<HOModule> HOModule::parse(const std::vector<uint8_t>& data) {
+    auto module = std::unique_ptr<HOModule>(new HOModule());
     size_t offset = 0;
 
     if (!module->parseHeader(data, offset)) {
@@ -1210,7 +1210,7 @@ std::unique_ptr<HoModule> HoModule::parse(const std::vector<uint8_t>& data) {
     return module;
 }
 
-std::unique_ptr<HoModule> HoModule::parse(const std::string& file_path) {
+std::unique_ptr<HOModule> HOModule::parse(const std::string& file_path) {
     std::ifstream file(file_path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
         return nullptr;
@@ -1232,7 +1232,7 @@ std::unique_ptr<HoModule> HoModule::parse(const std::string& file_path) {
     return parse(data);
 }
 
-std::unique_ptr<HoModule> HoModule::parse(FILE* file) {
+std::unique_ptr<HOModule> HOModule::parse(FILE* file) {
     if (!file) {
         return nullptr;
     }

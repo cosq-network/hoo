@@ -2,19 +2,19 @@
 #include <memory>
 #include <vector>
 #include <string>
-#include "hvm/ModuleBundle.h"
-#include "hvm/HoModuleBase.h"
+#include "hvm/HVMModuleBundle.h"
+#include "hvm/HOModuleBase.h"
 
 using namespace hvm;
 
-class ModuleBundleTest : public ::testing::Test {
+class HVMModuleBundleTest : public ::testing::Test {
 protected:
     void SetUp() override {}
 };
 
-TEST_F(ModuleBundleTest, AddModule) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, AddModule) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     bundle.addModule(module);
     
@@ -22,9 +22,9 @@ TEST_F(ModuleBundleTest, AddModule) {
     EXPECT_EQ(bundle.size(), 1);
 }
 
-TEST_F(ModuleBundleTest, GetModule) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, GetModule) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     bundle.addModule(module);
     
@@ -33,16 +33,16 @@ TEST_F(ModuleBundleTest, GetModule) {
     EXPECT_EQ(result->getName(), "test");
 }
 
-TEST_F(ModuleBundleTest, GetModuleNotFound) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, GetModuleNotFound) {
+    HVMModuleBundle bundle;
     
     auto result = bundle.getModule("nonexistent");
     EXPECT_EQ(result, nullptr);
 }
 
-TEST_F(ModuleBundleTest, RemoveModule) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, RemoveModule) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     bundle.addModule(module);
     EXPECT_TRUE(bundle.hasModule("test"));
@@ -53,19 +53,19 @@ TEST_F(ModuleBundleTest, RemoveModule) {
     EXPECT_EQ(bundle.size(), 0);
 }
 
-TEST_F(ModuleBundleTest, RemoveModuleNotFound) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, RemoveModuleNotFound) {
+    HVMModuleBundle bundle;
     
     bool removed = bundle.removeModule("nonexistent");
     EXPECT_FALSE(removed);
 }
 
-TEST_F(ModuleBundleTest, AddMultipleModules) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, AddMultipleModules) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::StaticRuntime, "module2");
-    auto module3 = std::make_shared<HoModuleBase>(ModuleType::DynamicLibrary, "module3");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::StaticRuntime, "module2");
+    auto module3 = std::make_shared<HOModuleBase>(ModuleType::DynamicLibrary, "module3");
     
     bundle.addModule(module1);
     bundle.addModule(module2);
@@ -77,9 +77,9 @@ TEST_F(ModuleBundleTest, AddMultipleModules) {
     EXPECT_TRUE(bundle.hasModule("module3"));
 }
 
-TEST_F(ModuleBundleTest, DuplicateModuleNotAdded) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, DuplicateModuleNotAdded) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     bundle.addModule(module);
     bundle.addModule(module);
@@ -87,12 +87,12 @@ TEST_F(ModuleBundleTest, DuplicateModuleNotAdded) {
     EXPECT_EQ(bundle.size(), 1);
 }
 
-TEST_F(ModuleBundleTest, GetModuleNames) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, GetModuleNames) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "aaa");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "bbb");
-    auto module3 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "ccc");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "aaa");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "bbb");
+    auto module3 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "ccc");
     
     bundle.addModule(module1);
     bundle.addModule(module2);
@@ -102,11 +102,11 @@ TEST_F(ModuleBundleTest, GetModuleNames) {
     EXPECT_EQ(names.size(), 3);
 }
 
-TEST_F(ModuleBundleTest, GetAllModules) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, GetAllModules) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module2");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module2");
     
     bundle.addModule(module1);
     bundle.addModule(module2);
@@ -115,11 +115,11 @@ TEST_F(ModuleBundleTest, GetAllModules) {
     EXPECT_EQ(modules.size(), 2);
 }
 
-TEST_F(ModuleBundleTest, Clear) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, Clear) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module2");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module2");
     
     bundle.addModule(module1);
     bundle.addModule(module2);
@@ -130,30 +130,30 @@ TEST_F(ModuleBundleTest, Clear) {
     EXPECT_EQ(bundle.size(), 0);
 }
 
-TEST_F(ModuleBundleTest, Empty) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, Empty) {
+    HVMModuleBundle bundle;
     
     EXPECT_TRUE(bundle.empty());
     EXPECT_EQ(bundle.size(), 0);
     
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     EXPECT_FALSE(bundle.empty());
     EXPECT_EQ(bundle.size(), 1);
 }
 
-TEST_F(ModuleBundleTest, NullModuleNotAdded) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, NullModuleNotAdded) {
+    HVMModuleBundle bundle;
     
     bundle.addModule(nullptr);
     
     EXPECT_TRUE(bundle.empty());
 }
 
-TEST_F(ModuleBundleTest, AddModuleWithSymbols) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, AddModuleWithSymbols) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     ModuleSymbol sym1;
     sym1.name = "func1";
@@ -176,9 +176,9 @@ TEST_F(ModuleBundleTest, AddModuleWithSymbols) {
     EXPECT_EQ(found->getName(), "test");
 }
 
-TEST_F(ModuleBundleTest, FindModuleBySymbolNotFound) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindModuleBySymbolNotFound) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     bundle.addModule(module);
     
@@ -186,15 +186,15 @@ TEST_F(ModuleBundleTest, FindModuleBySymbolNotFound) {
     EXPECT_EQ(found, nullptr);
 }
 
-TEST_F(ModuleBundleTest, AddDependencies) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, AddDependencies) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
     module1->addDependency("module2", ModuleType::Compiled);
     module1->addDependency("module3", ModuleType::StaticRuntime);
     
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module2");
-    auto module3 = std::make_shared<HoModuleBase>(ModuleType::StaticRuntime, "module3");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module2");
+    auto module3 = std::make_shared<HOModuleBase>(ModuleType::StaticRuntime, "module3");
     
     bundle.addModule(module1);
     bundle.addModule(module2);
@@ -204,13 +204,13 @@ TEST_F(ModuleBundleTest, AddDependencies) {
     EXPECT_GE(depOrder.size(), 1);
 }
 
-TEST_F(ModuleBundleTest, GetAllModulesThatDependOn) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, GetAllModulesThatDependOn) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module2");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module2");
     module2->addDependency("module1", ModuleType::Compiled);
-    auto module3 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module3");
+    auto module3 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module3");
     module3->addDependency("module1", ModuleType::Compiled);
     
     bundle.addModule(module1);
@@ -221,16 +221,16 @@ TEST_F(ModuleBundleTest, GetAllModulesThatDependOn) {
     EXPECT_EQ(dependents.size(), 2);
 }
 
-TEST_F(ModuleBundleTest, FindModuleBySymbolWithMultipleModules) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, FindModuleBySymbolWithMultipleModules) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
     ModuleSymbol sym1;
     sym1.name = "shared_symbol";
     sym1.type = SymbolType::Function;
     module1->addSymbol(sym1);
     
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module2");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module2");
     ModuleSymbol sym2;
     sym2.name = "shared_symbol";
     sym2.type = SymbolType::Function;
@@ -243,8 +243,8 @@ TEST_F(ModuleBundleTest, FindModuleBySymbolWithMultipleModules) {
     ASSERT_NE(found, nullptr);
 }
 
-TEST_F(ModuleBundleTest, ManglingSeparatesExportDomains) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, ManglingSeparatesExportDomains) {
+    HVMModuleBundle bundle;
     std::vector<std::string> modulePath = {"pkg", "mod"};
     std::string symbol = "item";
 
@@ -257,8 +257,8 @@ TEST_F(ModuleBundleTest, ManglingSeparatesExportDomains) {
     EXPECT_NE(nestedMangled, namespaceMangled);
 }
 
-TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForExports) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, ManglingSeparatesSymbolKindsForExports) {
+    HVMModuleBundle bundle;
     std::vector<std::string> modulePath = {"pkg", "mod"};
     std::string symbol = "same_name";
 
@@ -268,8 +268,8 @@ TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForExports) {
     EXPECT_NE(fnMangled, objMangled);
 }
 
-TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForNestedMembers) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, ManglingSeparatesSymbolKindsForNestedMembers) {
+    HVMModuleBundle bundle;
     std::vector<std::string> modulePath = {"pkg", "mod"};
     std::string symbol = "member";
 
@@ -279,8 +279,8 @@ TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForNestedMembers) {
     EXPECT_NE(fnMangled, objMangled);
 }
 
-TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForNamespaceMembers) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, ManglingSeparatesSymbolKindsForNamespaceMembers) {
+    HVMModuleBundle bundle;
     std::string ns = "pkg.mod";
     std::string symbol = "member";
 
@@ -290,8 +290,8 @@ TEST_F(ModuleBundleTest, ManglingSeparatesSymbolKindsForNamespaceMembers) {
     EXPECT_NE(fnMangled, objMangled);
 }
 
-TEST_F(ModuleBundleTest, ManglingUsesStableKindTags) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, ManglingUsesStableKindTags) {
+    HVMModuleBundle bundle;
     std::vector<std::string> modulePath = {"pkg", "mod"};
 
     auto fnMangled = bundle.mangleExport(modulePath, "sym", SymbolType::Function);
@@ -307,8 +307,8 @@ TEST_F(ModuleBundleTest, ManglingUsesStableKindTags) {
     EXPECT_NE(noTypeMangled.find("_nt"), std::string::npos);
 }
 
-TEST_F(ModuleBundleTest, DemangleExportStripsKindTags) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, DemangleExportStripsKindTags) {
+    HVMModuleBundle bundle;
     std::vector<std::string> modulePath = {"pkg", "mod"};
 
     auto fnMangled = bundle.mangleExport(modulePath, "myfunc", SymbolType::Function);
@@ -333,16 +333,16 @@ TEST_F(ModuleBundleTest, DemangleExportStripsKindTags) {
 
 // ============ HIGH PRIORITY: Symbol Lookup ============
 
-TEST_F(ModuleBundleTest, FindModuleBySymbolMangled) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindModuleBySymbolMangled) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     ModuleSymbol sym1;
     sym1.name = "func1";
     sym1.type = SymbolType::Function;
     module->addSymbol(sym1);
     
-    // Note: HoModuleBase::addSymbol generates its own mangled name
+    // Note: HOModuleBase::addSymbol generates its own mangled name
     // For module "test" and symbol "func1", it generates "_H_test_func1"
     bundle.addModule(module);
     
@@ -351,9 +351,9 @@ TEST_F(ModuleBundleTest, FindModuleBySymbolMangled) {
     EXPECT_EQ(found->getName(), "test");
 }
 
-TEST_F(ModuleBundleTest, FindModuleBySymbolMangledNotFound) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindModuleBySymbolMangledNotFound) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     auto found = bundle.findModuleBySymbolMangled("_Znonexistentv");
@@ -362,15 +362,15 @@ TEST_F(ModuleBundleTest, FindModuleBySymbolMangledNotFound) {
 
 // ============ HIGH PRIORITY: Dependency Resolution ============
 
-TEST_F(ModuleBundleTest, ResolveDependencyOrder) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, ResolveDependencyOrder) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "base");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "dep1");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "base");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "dep1");
     module2->addDependency("base", ModuleType::Compiled);
-    auto module3 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "dep2");
+    auto module3 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "dep2");
     module3->addDependency("base", ModuleType::Compiled);
-    auto module4 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "top");
+    auto module4 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "top");
     module4->addDependency("dep1", ModuleType::Compiled);
     module4->addDependency("dep2", ModuleType::Compiled);
     
@@ -401,14 +401,14 @@ TEST_F(ModuleBundleTest, ResolveDependencyOrder) {
     }
 }
 
-// Note: HoModuleBase::resolveDependencyOrder has a known issue with cycle detection
+// Note: HOModuleBase::resolveDependencyOrder has a known issue with cycle detection
 // that causes false positives for simple dependency chains. These tests use self-dependencies
-// to test the ModuleBundle wrapper methods without triggering the HoModuleBase bug.
+// to test the HVMModuleBundle wrapper methods without triggering the HOModuleBase bug.
 
-TEST_F(ModuleBundleTest, HasCircularDependencySelfDependency) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, HasCircularDependencySelfDependency) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
     // Create a self-dependency: module1 depends on itself
     module1->addDependency("module1", ModuleType::Compiled);
     
@@ -419,16 +419,16 @@ TEST_F(ModuleBundleTest, HasCircularDependencySelfDependency) {
     EXPECT_TRUE(bundle.hasCircularDependency());
 }
 
-TEST_F(ModuleBundleTest, HasCircularDependencyNotFound) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, HasCircularDependencyNotFound) {
+    HVMModuleBundle bundle;
     EXPECT_FALSE(bundle.hasCircularDependency("nonexistent"));
 }
 
-TEST_F(ModuleBundleTest, HasCircularDependencyNoDependencies) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, HasCircularDependencyNoDependencies) {
+    HVMModuleBundle bundle;
     
-    auto module1 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module1");
-    auto module2 = std::make_shared<HoModuleBase>(ModuleType::Compiled, "module2");
+    auto module1 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module1");
+    auto module2 = std::make_shared<HOModuleBase>(ModuleType::Compiled, "module2");
     
     bundle.addModule(module1);
     bundle.addModule(module2);
@@ -441,9 +441,9 @@ TEST_F(ModuleBundleTest, HasCircularDependencyNoDependencies) {
 
 // ============ HIGH PRIORITY: Export Registration ============
 
-TEST_F(ModuleBundleTest, RegisterExport) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, RegisterExport) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     bundle.registerExport("test", "myFunc", "_Z6myFuncv", SymbolType::Function);
@@ -458,17 +458,17 @@ TEST_F(ModuleBundleTest, RegisterExport) {
     EXPECT_NE(std::find(mangled.begin(), mangled.end(), "_Z6myFuncv"), mangled.end());
 }
 
-TEST_F(ModuleBundleTest, RegisterExportModuleNotFound) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, RegisterExportModuleNotFound) {
+    HVMModuleBundle bundle;
     // Don't add any modules
     bundle.registerExport("nonexistent", "func", "_Zfuncv", SymbolType::Function);
     EXPECT_FALSE(bundle.hasExport("func"));
 }
 
-TEST_F(ModuleBundleTest, RegisterNestedExport) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, RegisterNestedExport) {
+    HVMModuleBundle bundle;
     // Create a module named "mod" - registerNestedExport uses module_path.back() for lookup
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "mod");
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "mod");
     bundle.addModule(module);
     
     bundle.registerNestedExport({"pkg", "mod"}, "member", "_Zmember", SymbolType::Object);
@@ -478,9 +478,9 @@ TEST_F(ModuleBundleTest, RegisterNestedExport) {
     EXPECT_FALSE(bundle.hasNestedExport({"pkg"}, "member"));
 }
 
-TEST_F(ModuleBundleTest, RegisterNestedExportEmptyPath) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, RegisterNestedExportEmptyPath) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     // Empty path should be silently ignored
@@ -488,9 +488,9 @@ TEST_F(ModuleBundleTest, RegisterNestedExportEmptyPath) {
     EXPECT_FALSE(bundle.hasNestedExport({}, "member"));
 }
 
-TEST_F(ModuleBundleTest, RegisterNamespaceExport) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, RegisterNamespaceExport) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     bundle.registerNamespaceExport("myns", "func", "_Z3ns3funcv", SymbolType::Function);
@@ -501,10 +501,10 @@ TEST_F(ModuleBundleTest, RegisterNamespaceExport) {
 
 // ============ HIGH PRIORITY: Module Lookup by Export/Symbol ============
 
-TEST_F(ModuleBundleTest, FindModuleByNestedSymbol) {
-    ModuleBundle bundle;
+TEST_F(HVMModuleBundleTest, FindModuleByNestedSymbol) {
+    HVMModuleBundle bundle;
     // Module name must match the last component of the path
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "sub");
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "sub");
     bundle.addModule(module);
     
     bundle.registerNestedExport({"pkg", "sub"}, "func", "_Zfunc", SymbolType::Function);
@@ -514,18 +514,18 @@ TEST_F(ModuleBundleTest, FindModuleByNestedSymbol) {
     EXPECT_EQ(found->getName(), "sub");
 }
 
-TEST_F(ModuleBundleTest, FindModuleByNestedSymbolNotFound) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindModuleByNestedSymbolNotFound) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     auto found = bundle.findModuleByNestedSymbol({"pkg", "sub"}, "nonexistent");
     EXPECT_EQ(found, nullptr);
 }
 
-TEST_F(ModuleBundleTest, FindModuleByExport) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindModuleByExport) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     ModuleSymbol sym;
     sym.name = "exportedFunc";
@@ -540,9 +540,9 @@ TEST_F(ModuleBundleTest, FindModuleByExport) {
     EXPECT_EQ(found->getName(), "test");
 }
 
-TEST_F(ModuleBundleTest, FindModuleByExportFallsBackToSymbol) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindModuleByExportFallsBackToSymbol) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     
     ModuleSymbol sym;
     sym.name = "someSymbol";
@@ -560,9 +560,9 @@ TEST_F(ModuleBundleTest, FindModuleByExportFallsBackToSymbol) {
 
 // ============ HIGH PRIORITY: Export Queries ============
 
-TEST_F(ModuleBundleTest, FindExportsByKind) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, FindExportsByKind) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     bundle.registerExport("test", "func1", "_Z5func1v", SymbolType::Function);
@@ -582,9 +582,9 @@ TEST_F(ModuleBundleTest, FindExportsByKind) {
     EXPECT_EQ(types[0], "type1");
 }
 
-TEST_F(ModuleBundleTest, HasExport) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, HasExport) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     EXPECT_FALSE(bundle.hasExport("nonexistent"));
@@ -593,9 +593,9 @@ TEST_F(ModuleBundleTest, HasExport) {
     EXPECT_TRUE(bundle.hasExport("myExport"));
 }
 
-TEST_F(ModuleBundleTest, GetAllExportedSymbols) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, GetAllExportedSymbols) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     bundle.registerExport("test", "export1", "_Z7export1v", SymbolType::Function);
@@ -607,9 +607,9 @@ TEST_F(ModuleBundleTest, GetAllExportedSymbols) {
     EXPECT_NE(std::find(exports.begin(), exports.end(), "export2"), exports.end());
 }
 
-TEST_F(ModuleBundleTest, GetAllMangledExports) {
-    ModuleBundle bundle;
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+TEST_F(HVMModuleBundleTest, GetAllMangledExports) {
+    HVMModuleBundle bundle;
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     bundle.registerExport("test", "func", "_Z4funcv", SymbolType::Function);
@@ -623,22 +623,22 @@ TEST_F(ModuleBundleTest, GetAllMangledExports) {
 
 // ============ MEDIUM PRIORITY: Singleton Lifecycle ============
 
-TEST_F(ModuleBundleTest, GetModulesReturnsSameInstance) {
-    ModuleBundle& instance1 = ModuleBundle::getModules();
-    ModuleBundle& instance2 = ModuleBundle::getModules();
+TEST_F(HVMModuleBundleTest, GetModulesReturnsSameInstance) {
+    HVMModuleBundle& instance1 = HVMModuleBundle::getModules();
+    HVMModuleBundle& instance2 = HVMModuleBundle::getModules();
     EXPECT_EQ(&instance1, &instance2);
 }
 
-TEST_F(ModuleBundleTest, ShutdownClearsModules) {
-    ModuleBundle& bundle = ModuleBundle::getModules();
+TEST_F(HVMModuleBundleTest, ShutdownClearsModules) {
+    HVMModuleBundle& bundle = HVMModuleBundle::getModules();
     
-    auto module = std::make_shared<HoModuleBase>(ModuleType::Compiled, "test");
+    auto module = std::make_shared<HOModuleBase>(ModuleType::Compiled, "test");
     bundle.addModule(module);
     
     EXPECT_EQ(bundle.size(), 1);
     EXPECT_TRUE(bundle.hasModule("test"));
     
-    ModuleBundle::shutdown();
+    HVMModuleBundle::shutdown();
     
     EXPECT_EQ(bundle.size(), 0);
     EXPECT_FALSE(bundle.hasModule("test"));

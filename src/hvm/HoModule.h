@@ -1,5 +1,5 @@
-#ifndef HVM_HO_MODULE_H
-#define HVM_HO_MODULE_H
+#ifndef HVM_HVM_MODULE_H
+#define HVM_HVM_MODULE_H
 
 #include <cstdint>
 #include <string>
@@ -7,8 +7,8 @@
 #include <memory>
 #include <optional>
 
-#include "hvm/HInstruction.h"
-#include "hvm/HoModuleBase.h"
+#include "hvm/HVMInstruction.h"
+#include "hvm/HOModuleBase.h"
 
 namespace hvm {
 
@@ -148,14 +148,14 @@ struct FunctionMetadata {
     uint32_t debug_offset;
 };
 
-class HoModule : public HoModuleBase {
+class HOModule : public HOModuleBase {
 public:
-    HoModule();
-    explicit HoModule(const std::string& name);
-    ~HoModule() override;
+    HOModule();
+    explicit HOModule(const std::string& name);
+    ~HOModule() override;
 
-    static std::unique_ptr<HoModule> create();
-    static std::unique_ptr<HoModule> create(const std::string& name);
+    static std::unique_ptr<HOModule> create();
+    static std::unique_ptr<HOModule> create(const std::string& name);
 
     bool serialize(std::vector<uint8_t>& output) const override;
     bool deserialize(const std::vector<uint8_t>& input) override;
@@ -238,19 +238,19 @@ public:
     void setPIE(bool pie);
     void setOptimizationLevel(uint8_t level);
 
-    std::vector<uint8_t> encodeInstructions(const std::vector<HInstruction>& instructions) const;
-    std::vector<HInstruction> decodeInstructions(const std::vector<uint8_t>& data, bool extended = false) const;
+    std::vector<uint8_t> encodeInstructions(const std::vector<HVMInstruction>& instructions) const;
+    std::vector<HVMInstruction> decodeInstructions(const std::vector<uint8_t>& data, bool extended = false) const;
 
-    std::string instructionsToAssembly(const std::vector<HInstruction>& instructions) const;
-    std::vector<HInstruction> parseAssembly(const std::string& assembly) const;
+    std::string instructionsToAssembly(const std::vector<HVMInstruction>& instructions) const;
+    std::vector<HVMInstruction> parseAssembly(const std::string& assembly) const;
 
     std::string getError() const override;
     bool hasError() const override;
     void clearError() override;
 
-    static std::unique_ptr<HoModule> parse(const std::vector<uint8_t>& data);
-    static std::unique_ptr<HoModule> parse(const std::string& file_path);
-    static std::unique_ptr<HoModule> parse(FILE* file);
+    static std::unique_ptr<HOModule> parse(const std::vector<uint8_t>& data);
+    static std::unique_ptr<HOModule> parse(const std::string& file_path);
+    static std::unique_ptr<HOModule> parse(FILE* file);
 
     static constexpr uint32_t MAGIC = 0x484F4F43;
     static constexpr uint16_t VERSION_MAJOR = 1;

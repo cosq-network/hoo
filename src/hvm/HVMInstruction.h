@@ -1,5 +1,5 @@
-#ifndef HVM_H_INSTRUCTION_H
-#define HVM_H_INSTRUCTION_H
+#ifndef HVM_HVM_INSTRUCTION_H
+#define HVM_HVM_INSTRUCTION_H
 
 #include <cstdint>
 #include <string>
@@ -104,16 +104,16 @@ struct OperandsRI {
 
 using Operands = std::variant<OperandsR, OperandsI, OperandsB, OperandsJ, OperandsRI>;
 
-class HInstruction {
+class HVMInstruction {
 public:
-    HInstruction();
-    explicit HInstruction(Opcode opcode);
-    HInstruction(Opcode opcode, const Operands& operands);
-    ~HInstruction() = default;
+    HVMInstruction();
+    explicit HVMInstruction(Opcode opcode);
+    HVMInstruction(Opcode opcode, const Operands& operands);
+    ~HVMInstruction() = default;
 
-    static std::unique_ptr<HInstruction> decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed);
-    static std::unique_ptr<HInstruction> decode(const std::vector<uint8_t>& bytes); // convenience wrapper
-    static std::unique_ptr<HInstruction> decode(const uint32_t word);
+    static std::unique_ptr<HVMInstruction> decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed);
+    static std::unique_ptr<HVMInstruction> decode(const std::vector<uint8_t>& bytes); // convenience wrapper
+    static std::unique_ptr<HVMInstruction> decode(const uint32_t word);
 
     std::vector<uint8_t> encode() const;
     uint32_t encode32() const;

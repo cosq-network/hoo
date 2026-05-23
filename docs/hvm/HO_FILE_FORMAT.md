@@ -4,7 +4,7 @@ Version: `1.4`
 Extension: `.ho`  
 Endianness: little-endian only
 
-This document is the normative binary format for `src/hvm/HoModule.h` and `src/hvm/HoModule.cpp`.
+This document is the normative binary format for `src/hvm/HOModule.h` and `src/hvm/HOModule.cpp`.
 It is aligned with the current hardware-ready core ISA profile in `docs/hvm/HVM_SPEC.md`.
 
 ## 1. File Kinds
@@ -61,7 +61,7 @@ Each section table entry is exactly `40` bytes.
 
 ## 5. Section Types
 
-These IDs match `enum class SectionType` in `src/hvm/HoModule.h`.
+These IDs match `enum class SectionType` in `src/hvm/HOModule.h`.
 
 | ID | Name |
 |---:|---|
@@ -178,7 +178,7 @@ Bit masks from `SectionFlags`:
 
 ## 10. Parsing and Validation Guarantees
 
-`HoModule` parser rejects:
+`HOModule` parser rejects:
 
 - invalid magic
 - non-little-endian files

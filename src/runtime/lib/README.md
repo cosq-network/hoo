@@ -43,7 +43,7 @@ HVM strings are immutable UTF-8 buffers.
 
 ## 4. JIT Integration (Static Linkage)
 
-The library is integrated into the JIT via the **`StaticHoModule`** bridge. This allows the JIT to emit direct `call` instructions to absolute physical host addresses for runtime services.
+The library is integrated into the JIT via the **`StaticHOModule`** bridge. This allows the JIT to emit direct `call` instructions to absolute physical host addresses for runtime services.
 
 ```cpp
 // Mapping HVM symbol to Native Address
