@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(HoocParser LANGUAGES C CXX)
+project(Hooc LANGUAGES C CXX)
 
 option(HOOC_BUILD_TESTS "Build Hooc unit tests" OFF)
 option(HOOC_BUILD_SHARED_RUNTIME "Build the Hooc runtime as a shared library" OFF)
@@ -10,32 +10,22 @@ set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE 
 set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/parsing/Hooc.g4" CACHE FILEPATH "Path to the Hooc ANTLR4 grammar")
 set(ANTLR4_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated/antlr4" CACHE PATH "Directory for generated ANTLR4 C++ files")
 
-# Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# On Windows, force Release runtime to match LLVM libraries
-# Use RelWithDebInfo to get debug symbols while using Release runtime
 if(WIN32 AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "Build type" FORCE)
 endif()
 
-# Force Release runtime library on Windows for all configurations
 if(MSVC)
-    # Use Release runtime (/MD) even in Debug mode to match LLVM
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-
-    # Override default flags for Debug configuration to use /MD instead of /MDd
     string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     string(REPLACE "/MTd" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
-
-    # Suppress C4624 warning from LLVM headers (destructor implicitly defined as deleted)
-    # This is a false positive in LLVM's intentional design
     add_compile_options(/wd4624)
 endif()
 
-# Find ANTLR4 C++ runtime
+# Dependencies
 find_path(ANTLR4_INCLUDE_DIR
     NAMES antlr4-runtime.h
     HINTS
@@ -68,15 +58,12 @@ message(STATUS "ANTLR4 Include Dir: ${ANTLR4_INCLUDE_DIR}")
 message(STATUS "ANTLR4 Library: ${ANTLR4_LIBRARY}")
 
 find_package(LLVM REQUIRED CONFIG)
-
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-# Set up LLVM
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
-# Find the LLVM libraries we need
 llvm_map_components_to_libnames(llvm_libs
     Core
     ExecutionEngine
@@ -89,7 +76,10 @@ llvm_map_components_to_libnames(llvm_libs
 
 find_package(Java REQUIRED COMPONENTS Runtime)
 
-# ANTLR4 generation command
+# =============================================================================
+# ANTLR4 Parser Generation
+# =============================================================================
+
 set(ANTLR4_GENERATED_FILES
     "${ANTLR4_GENERATED_DIR}/HoocLexer.cpp"
     "${ANTLR4_GENERATED_DIR}/HoocLexer.h"
@@ -112,17 +102,13 @@ set(ANTLR4_GENERATED_BYPRODUCTS
     "${ANTLR4_GENERATED_DIR}/HoocLexer.tokens"
 )
 
-# Custom target to generate ANTLR4 files
 add_custom_command(
     OUTPUT ${ANTLR4_GENERATED_FILES}
     BYPRODUCTS ${ANTLR4_GENERATED_BYPRODUCTS}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${ANTLR4_GENERATED_DIR}
     COMMAND ${Java_JAVA_EXECUTABLE} -jar ${ANTLR4_JAR_PATH}
-        -Dlanguage=Cpp
-        -visitor
-        -listener
-        -o ${ANTLR4_GENERATED_DIR}
-        -package hooc
+        -Dlanguage=Cpp -visitor -listener
+        -o ${ANTLR4_GENERATED_DIR} -package hooc
         Hooc.g4
     DEPENDS ${ANTLR4_GRAMMAR_FILE}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/src/parsing
@@ -130,74 +116,21 @@ add_custom_command(
     VERBATIM
 )
 
-# Create a target for the generated files
-add_custom_target(generate_parser
-    DEPENDS ${ANTLR4_GENERATED_FILES}
-)
+add_custom_target(generate_parser DEPENDS ${ANTLR4_GENERATED_FILES})
 
-# Library for the generated parser
-add_library(hoo-parser
-    ${ANTLR4_GENERATED_FILES}
-)
-
-# Include directories
-target_include_directories(hoo-parser PUBLIC
-    ${ANTLR4_GENERATED_DIR}
-    ${ANTLR4_INCLUDE_DIR}
-)
-
-# Link ANTLR4 runtime
-target_link_libraries(hoo-parser PUBLIC
-    ${ANTLR4_LIBRARY}
-)
+add_library(hoo-parser ${ANTLR4_GENERATED_FILES})
+target_include_directories(hoo-parser PUBLIC ${ANTLR4_GENERATED_DIR} ${ANTLR4_INCLUDE_DIR})
+target_link_libraries(hoo-parser PUBLIC ${ANTLR4_LIBRARY})
 
 if(ANTLR4_USE_STATIC_RUNTIME)
-    target_compile_definitions(hoo-parser PUBLIC
-        ANTLR4CPP_STATIC
-    )
+    target_compile_definitions(hoo-parser PUBLIC ANTLR4CPP_STATIC)
 endif()
 
-# HVM (Hooc Virtual Machine) library - object file format and module management
-add_library(hvm STATIC
-    src/hvm/HOModuleBase.cpp
-    src/hvm/HOModule.cpp
-    src/hvm/HVMInstruction.cpp
-    src/hvm/HVMModuleBundle.cpp
-    src/hvm/HVMJIT.cpp
-)
-
-target_include_directories(hvm PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/hvm
-)
-
-target_link_libraries(hvm PUBLIC
-    hoort
-    ${llvm_libs}
-)
-
-# Ensure generated files are created before building the library
 add_dependencies(hoo-parser generate_parser)
 
-# Create hoo-compiler library
-add_library(hoo-compiler
-    src/core/HooCompiler.cpp
-    src/core/SymbolMangler.cpp
-    src/core/DefaultIOProvider.cpp
-    src/core/HooCLI.cpp
-    src/parsing/ProcessIsolatedParser.cpp
-    src/codegen/HVMCodeGenerator.cpp
-    src/ast/SimpleASTBuilder.cpp
-    src/ast/ASTImpl.cpp
-    src/modules/ModuleSystem.cpp
-)
-
-target_link_libraries(hoo-compiler PUBLIC
-    hvm
-    hoo-parser
-    hoort
-    ${llvm_libs}
-)
+# =============================================================================
+# Runtime Library (hoort) - Standalone C/C++ runtime, no LLVM dependency
+# =============================================================================
 
 if(HOOC_BUILD_SHARED_RUNTIME)
     set(HOOC_RUNTIME_LIBRARY_TYPE SHARED)
@@ -205,7 +138,6 @@ else()
     set(HOOC_RUNTIME_LIBRARY_TYPE STATIC)
 endif()
 
-# Hooc runtime library (reference counting, memory management, string support, generic array support, I/O, exceptions)
 add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_string.cpp
@@ -218,53 +150,69 @@ add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
 )
 
 target_include_directories(hoort PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
     ${CMAKE_SOURCE_DIR}/src/runtime/lib
-    ${CMAKE_SOURCE_DIR}/src/runtime/llvm
-    ${LLVM_INCLUDE_DIRS}
 )
 
 target_compile_definitions(hoort PRIVATE
     $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
 )
 
-target_link_libraries(hoo-compiler PUBLIC
-    hoo-parser
-    hoort
-    ${llvm_libs}
+# =============================================================================
+# Core Compiler + HVM (hoo-core) - Merged from hvm + hoo-compiler
+# =============================================================================
+
+add_library(hoo-core
+    # AST
+    src/ast/SimpleASTBuilder.cpp
+    src/ast/ASTImpl.cpp
+    # Code generation
+    src/codegen/HVMCodeGenerator.cpp
+    # Compiler core
+    src/core/HooCompiler.cpp
+    src/core/SymbolMangler.cpp
+    src/core/DefaultIOProvider.cpp
+    src/core/HooCLI.cpp
+    # HVM module format and JIT
+    src/hvm/HOModuleBase.cpp
+    src/hvm/HOModule.cpp
+    src/hvm/HVMInstruction.cpp
+    src/hvm/HVMModuleBundle.cpp
+    src/hvm/HVMJIT.cpp
+    # Module system
+    src/modules/ModuleSystem.cpp
+    # Parsing (manual wrapper)
+    src/parsing/ProcessIsolatedParser.cpp
 )
 
-target_include_directories(hoo-compiler PUBLIC
+target_include_directories(hoo-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/core
-    ${CMAKE_SOURCE_DIR}/src/hvm
-    ${CMAKE_SOURCE_DIR}/src/parsing
-    ${CMAKE_SOURCE_DIR}/src/codegen
-    ${CMAKE_SOURCE_DIR}/src/modules
-    ${CMAKE_SOURCE_DIR}/src/ast
-    ${CMAKE_SOURCE_DIR}/src/runtime/lib
-    ${CMAKE_SOURCE_DIR}/src/runtime/llvm
     ${LLVM_INCLUDE_DIRS}
     ${ANTLR4_INCLUDE_DIR}
     ${ANTLR4_GENERATED_DIR}
 )
 
-# Create main hooc compiler executable
-add_executable(hooc
-    src/core/main.cpp
+target_link_libraries(hoo-core PUBLIC
+    hoort
+    hoo-parser
+    ${llvm_libs}
 )
 
-target_link_libraries(hooc
-    hoo-compiler
-)
+# Generated ANTLR4 parser files must exist before hoo-core sources can include them
+add_dependencies(hoo-core generate_parser)
 
-target_include_directories(hooc PUBLIC
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/core
-)
+# =============================================================================
+# CLI Executable
+# =============================================================================
 
-# Install targets
-install(TARGETS hooc hoo-compiler hoo-parser hoort
+add_executable(hooc src/core/main.cpp)
+target_link_libraries(hooc hoo-core)
+target_include_directories(hooc PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+# =============================================================================
+# Install
+# =============================================================================
+
+install(TARGETS hooc hoo-core hoo-parser hoort
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -280,12 +228,14 @@ install(DIRECTORY src/
     FILES_MATCHING PATTERN "*.h"
 )
 
-# Print configuration information
+# =============================================================================
+# Utility Targets
+# =============================================================================
+
 message(STATUS "ANTLR4 JAR Path: ${ANTLR4_JAR_PATH}")
 message(STATUS "Grammar file: ${ANTLR4_GRAMMAR_FILE}")
 message(STATUS "Generated files directory: ${ANTLR4_GENERATED_DIR}")
 
-# Custom target to download ANTLR4 JAR if not present
 if(NOT EXISTS ${ANTLR4_JAR_PATH})
     file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/tools")
     find_program(CURL_EXECUTABLE curl)
@@ -301,18 +251,20 @@ if(NOT EXISTS ${ANTLR4_JAR_PATH})
     add_dependencies(generate_parser download_antlr4)
 endif()
 
-# Clean target for generated files
 add_custom_target(clean_generated
     COMMAND ${CMAKE_COMMAND} -E remove_directory ${ANTLR4_GENERATED_DIR}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${ANTLR4_GENERATED_DIR}
     COMMENT "Cleaning generated ANTLR4 files"
 )
 
+# =============================================================================
+# Tests
+# =============================================================================
+
 if(HOOC_BUILD_TESTS)
     enable_testing()
     find_package(GTest REQUIRED)
 
-    # Test executable
     add_executable(hoo-tests
         tests/test_main.cpp
         tests/parsing/ArrayLiteralParsingTest.cpp
@@ -359,35 +311,29 @@ if(HOOC_BUILD_TESTS)
         tests/hvm/HVMJITLoaderTest.cpp
         tests/hvm/HVMJITInstructionSemanticsTest.cpp
         tests/ast/CompilationUnitTest.cpp
+        tests/ast/ASTCoreTest.cpp
+        tests/ast/ASTTypeTest.cpp
+        tests/ast/ASTExpressionTest.cpp
+        tests/ast/ASTStatementTest.cpp
+        tests/ast/FFIDeclarationTest.cpp
     )
 
     target_link_libraries(hoo-tests
-        hvm
-        hoo-compiler
+        hoo-core
         GTest::gtest
         GTest::gtest_main
     )
 
-    # Include directories for tests
     target_include_directories(hoo-tests PUBLIC
         ${CMAKE_SOURCE_DIR}
         ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/src/core
-        ${CMAKE_SOURCE_DIR}/src/hvm
-        ${CMAKE_SOURCE_DIR}/src/parsing
-        ${CMAKE_SOURCE_DIR}/src/codegen
-        ${CMAKE_SOURCE_DIR}/src/modules
-        ${CMAKE_SOURCE_DIR}/src/ast
-        ${CMAKE_SOURCE_DIR}/tests/ast
         ${LLVM_INCLUDE_DIRS}
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_DIR}
     )
 
-    # Add test target
     add_test(NAME HooUnitTests COMMAND hoo-tests)
 
-    # Custom test target for convenience
     add_custom_target(run_tests
         COMMAND ${CMAKE_CTEST_COMMAND} --verbose
         DEPENDS hoo-tests

@@ -4,11 +4,12 @@ This document provides a comprehensive guide for AI assistants (like Claude) wor
 
 ## Project Overview
 
-Hooc is a modern, statically-typed programming language compiler that compiles to LLVM IR and provides JIT execution. The project is written in C++17 and uses ANTLR4 for parsing.
+Hooc is a modern, statically-typed programming language compiler that compiles to HVM bytecode with JIT execution via LLVM ORC JIT. The project is written in C++17 and uses ANTLR4 for parsing.
 
 **Key Technologies:**
-- **ANTLR4**: Parser generation (grammar in `src/Hooc.g4`)
-- **LLVM**: Code generation, optimization, and JIT execution
+- **ANTLR4**: Parser generation (grammar in `src/parsing/Hooc.g4`)
+- **LLVM**: ORC JIT backend for HVM bytecode execution
+- **HVM**: Homebrew Virtual Machine — custom instruction set, module format, and bytecode
 - **C++17**: Implementation language
 - **GoogleTest**: Testing framework
 - **CMake**: Build system
@@ -24,42 +25,51 @@ Source Code (.hoo)
     ↓
 [SimpleASTBuilder] → Abstract Syntax Tree (AST)
     ↓
-[LLVMCodeGenerator] → LLVM IR Module
+[HVMCodeGenerator] → HVM Bytecode
     ↓
-[LLVM Optimizer] → Optimized IR
-    ↓
-[LLVM OrcJIT] → Machine Code (JIT)
+[HVMJIT / LLVM ORC JIT] → Machine Code (JIT)
+    ↓  (or)
+[HOModule] → .ho Binary Module (AOT)
 ```
 
 ### Core Components
 
-1. **HooCompiler** (`src/HooCompiler.h/cpp`)
+1. **HooCompiler** (`src/core/HooCompiler.h/cpp`)
    - Main compiler interface
    - Orchestrates the entire compilation pipeline
    - Entry point: `compile(moduleName, sourceCode)`
 
-2. **ProcessIsolatedParser** (`src/ProcessIsolatedParser.h/cpp`)
+2. **ProcessIsolatedParser** (`src/parsing/ProcessIsolatedParser.h/cpp`)
    - Wraps ANTLR4 parser to isolate parsing errors
    - Converts source code to ANTLR4 parse tree
 
-3. **SimpleASTBuilder** (`src/SimpleASTBuilder.h/cpp`)
+3. **SimpleASTBuilder** (`src/ast/SimpleASTBuilder.h/cpp`)
    - Visitor pattern implementation for ANTLR4 parse tree
    - Converts parse tree to typed AST nodes
-   - Located in `src/ast/` directory
 
-4. **LLVMCodeGenerator** (`src/LLVMCodeGenerator.h/cpp`)
-   - Generates LLVM IR from AST
+4. **HVMCodeGenerator** (`src/codegen/HVMCodeGenerator.h/cpp`)
+   - Generates HVM bytecode from AST
    - Handles type checking, name mangling, and code emission
 
-5. **ModuleSystem** (`src/ModuleSystem.h/cpp`)
+5. **HVMJIT** (`src/hvm/HVMJIT.h/cpp`)
+   - JIT compiles HVM bytecode to machine code via LLVM ORC JIT
+   - Handles module loading, linking, and symbol resolution
+
+6. **HOModule / HVMModuleBundle** (`src/hvm/`)
+   - `.ho` binary module format (serialization/deserialization)
+   - Module bundle management with dependency resolution
+
+7. **ModuleSystem** (`src/modules/ModuleSystem.h/cpp`)
    - Manages module imports and exports
    - Resolves qualified names (e.g., `hoo.String`)
    - Provides standard library integration
 
-6. **Runtime Library** (`src/rt/`)
+8. **Runtime Library** (`src/runtime/lib/`)
    - **hoo_runtime.c**: Reference counting and memory management
    - **hoo_string.cpp**: UTF-8 string implementation
-   - **hoo_generic_array.cpp**: Generic array using `std::any`
+   - **hoo_generic_array.cpp**: Generic array implementation
+   - **hoo_io.c**: I/O operations
+   - **hoo_math.c**: Math functions
    - **Runtime Registry**: Dynamic class registration for FFI
 
 ### AST Structure
@@ -99,11 +109,11 @@ ASTNode (base)
 - Header files: `.h` extension
 - Implementation files: `.cpp` extension
 - Test files: `*Test.cpp` in `tests/` directory
-- Runtime files: `src/rt/` (C files use `.c`, C++ use `.cpp`)
+- Runtime files: `src/runtime/lib/`
 
 ### Naming Conventions
 
-- **Classes**: PascalCase (e.g., `HooCompiler`, `LLVMCodeGenerator`)
+- **Classes**: PascalCase (e.g., `HooCompiler`, `HVMCodeGenerator`)
 - **Functions/Methods**: camelCase (e.g., `generateCode`, `buildAST`)
 - **Variables**: camelCase with trailing underscore for private members (e.g., `context_`, `lastError_`)
 - **Constants**: UPPER_SNAKE_CASE
@@ -127,24 +137,25 @@ ASTNode (base)
 
 ### Grammar File Location
 
-`src/Hooc.g4` - Main grammar definition
+`src/parsing/Hooc.g4` - Main grammar definition
 
 ### Regenerating Parser
 
 ```bash
-cd build
-make clean_generated  # Clean old files
-make generate_parser  # Generate new parser files
-make                  # Rebuild project
+cmake --build build --target clean_generated
+cmake --build build --target generate_parser
+cmake --build build
 ```
+
+ANTLR4-generated sources are now placed under `build/<preset>/generated/antlr4/` (not committed to the repository).
 
 ### Adding New Syntax
 
-1. Update `src/Hooc.g4` with new grammar rules
+1. Update `src/parsing/Hooc.g4` with new grammar rules
 2. Regenerate parser
 3. Add AST node type in `src/ast/`
 4. Implement visitor method in `SimpleASTBuilder`
-5. Add code generation in `LLVMCodeGenerator`
+5. Add code generation in `HVMCodeGenerator`
 6. Add comprehensive tests
 
 ### Parser Rules Naming
@@ -152,57 +163,43 @@ make                  # Rebuild project
 - Lexer rules: UPPERCASE (e.g., `FUNC`, `IDENTIFIER`)
 - Parser rules: camelCase (e.g., `functionDeclaration`, `expression`)
 
-## Working with LLVM
+## Working with HVM
 
-### Context and Module Management
+### HVM Bytecode
 
-- Each compilation creates a fresh `LLVMContext`
-- Each source file generates one `llvm::Module`
-- Functions and types are registered in the module
+The HVM is a custom 32-bit RISC instruction set. See `docs/hvm/HVM_SPEC.md` and `docs/hvm/instructions.md` for the full ISA reference.
 
-### Type Mapping
-
-Hooc Type → LLVM Type:
-- `int64` → `i64`
-- `int8` → `i8`
-- `byte` → `i8`
-- `double` → `double`
-- `bool` → `i1`
-- `char` → `i32`
-- `string` → `i8*` (pointer to HooString)
-- `T[]` → `i8*` (pointer to HooArray)
-- `T?` → `i8*` (pointer, null allowed)
-- Classes → `i8*` (opaque pointer to object)
+Key properties:
+- 32 GPRs (`r0`–`r31`), `r1` is return value, `r29` is link register
+- Little-endian, 64-bit register machine
+- Instruction formats: I-type, B-type, J-type, plus escape prefix for extended opcodes
+- Symbol relocation via `SymbolFixup` for forward/recursive calls
 
 ### Name Mangling
 
-- Member functions: `ClassName_methodName`
+Member functions: `ClassName_methodName`  
+See `src/core/SymbolMangler.h` for full mangling/demangling scheme.
 
 ### Code Generation Patterns
 
 **Variable Declaration:**
 ```cpp
-llvm::AllocaInst* alloca = builder->CreateAlloca(type, nullptr, varName);
-llvm::Value* initValue = /* generate initializer */;
-builder->CreateStore(initValue, alloca);
+// HVM: generate a store from a register to a frame offset
+codegen.emitStore(reg, frameOffset);
 ```
 
 **Function Call:**
 ```cpp
-std::vector<llvm::Value*> args = { /* arguments */ };
-llvm::Function* func = module->getFunction(funcName);
-llvm::Value* result = builder->CreateCall(func, args);
+// HVM: CALL (immediate target) or CALLI (indirect)
+std::vector<uint8_t> regs = {argReg1, argReg2};
+codegen.emitCall(targetLabel, regs);
 ```
 
 **Reference Counting:**
 ```cpp
-// Retain: increment refcount
-llvm::Function* retainFunc = module->getFunction("hoo_retain");
-builder->CreateCall(retainFunc, {objPtr});
-
-// Release: decrement refcount
-llvm::Function* releaseFunc = module->getFunction("hoo_release");
-builder->CreateCall(releaseFunc, {objPtr});
+// HVM: SYSCALL_RETAIN / SYSCALL_RELEASE via the SYSCALL instruction
+codegen.emitSyscall(SyscallOp::RETAIN_FIELD, {objReg});
+codegen.emitSyscall(SyscallOp::RELEASE, {objReg});
 ```
 
 ## Testing Guidelines
@@ -241,29 +238,31 @@ TEST_F(MyFeatureTest, TestCase) {
 
 - **Parsing tests**: Verify correct parse tree construction
 - **AST tests**: Verify AST building from parse tree
-- **Code generation tests**: Verify LLVM IR generation
+- **Code generation tests**: Verify HVM bytecode generation
 - **Integration tests**: End-to-end compilation and execution
 - **Runtime tests**: Test runtime library functions
 
 ### Running Tests
 
 ```bash
-cd build
+cd build/<preset>
 ./hoo-tests                    # Run all tests
 ./hoo-tests --gtest_filter=ClassName.TestName  # Run specific test
-ctest --verbose                # Run via CTest
+ctest --preset <preset>        # Run via CTest
 ```
 
 ## Common Tasks
 
 ### Adding a New Language Feature
 
-1. **Update Grammar** (`src/Hooc.g4`)
+1. **Update Grammar** (`src/parsing/Hooc.g4`)
    ```antlr
    myNewStatement: MY_KEYWORD expression SEMICOLON;
    ```
 
-2. **Add AST Node** (`src/ast/MyNewStatement.h`)
+2. **Regenerate Parser** (`cmake --build build --target generate_parser`)
+
+3. **Add AST Node** (`src/ast/MyNewStatement.h`)
    ```cpp
    class MyNewStatement : public Statement {
    public:
@@ -272,7 +271,7 @@ ctest --verbose                # Run via CTest
    };
    ```
 
-3. **Update AST Builder** (`src/SimpleASTBuilder.cpp`)
+4. **Update AST Builder** (`src/ast/SimpleASTBuilder.cpp`)
    ```cpp
    std::any SimpleASTBuilder::visitMyNewStatement(
        HoocParser::MyNewStatementContext* ctx) {
@@ -280,15 +279,15 @@ ctest --verbose                # Run via CTest
    }
    ```
 
-4. **Add Code Generation** (`src/LLVMCodeGenerator.cpp`)
+5. **Add Code Generation** (`src/codegen/HVMCodeGenerator.cpp`)
    ```cpp
-   llvm::Value* LLVMCodeGenerator::generateMyNewStatement(
+   void HVMCodeGenerator::generateMyNewStatement(
        const MyNewStatement* stmt) {
-       // Generate LLVM IR
+       // Generate HVM bytecode
    }
    ```
 
-5. **Add Tests** (`tests/MyNewStatementTest.cpp`)
+6. **Add Tests** (`tests/MyNewStatementTest.cpp`)
    ```cpp
    TEST_F(MyFeatureTest, BasicMyNewStatement) {
        // Test cases
@@ -297,22 +296,16 @@ ctest --verbose                # Run via CTest
 
 ### Adding Runtime Functions
 
-1. Declare in header (`src/rt/hoo_myfeature.h`)
-2. Implement in C/C++ (`src/rt/hoo_myfeature.cpp`)
-3. Register with LLVM in code generator
-4. Add to CMakeLists.txt if new file
+1. Declare in header (`src/runtime/lib/hoo_myfeature.h`)
+2. Implement in C/C++ (`src/runtime/lib/hoo_myfeature.c` or `.cpp`)
+3. Register with HVMJIT for symbol export
+4. Add to `src/runtime/lib/CMakeLists.txt` if new file
 
 ### Debugging Tips
 
-**Print LLVM IR:**
+**Print HVM bytecode:**
 ```cpp
-module->print(llvm::errs(), nullptr);
-```
-
-**Check function exists:**
-```cpp
-llvm::Function* func = module->getFunction("functionName");
-assert(func != nullptr && "Function not found");
+module->printAssembly();
 ```
 
 **Memory debugging:**
@@ -360,14 +353,22 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 2. **Follow existing patterns** - Study similar features before implementing
 3. **Update all layers** - Grammar → AST → Code generation → Tests
 4. **Check memory management** - Ensure proper retain/release for objects
-5. **Verify LLVM IR** - Print and inspect generated IR for correctness
+5. **Verify HVM bytecode** - Print and inspect generated bytecode for correctness
+6. **Check ANTLR4 version compatibility** - The project targets ANTLR 4.13.2; regenerated sources must match
 
-### When Fixing Bugs
+### Build Targets
 
-1. **Add regression test** - Create test that reproduces the bug
-2. **Identify the layer** - Is it parsing, AST building, or code generation?
-3. **Check ANTLR4 output** - Use ANTLR4 visualizer if needed
-4. **Verify LLVM IR** - Ensure generated IR is valid
+The project defines these primary CMake targets:
+
+| Target | Type | Description |
+|--------|------|-------------|
+| `hooc` | Executable | CLI entry point (`src/core/main.cpp`) |
+| `hoo-core` | Static library | Core compiler + HVM + JIT (merged from `hvm` + `hoo-compiler`) |
+| `hoo-parser` | Static library | ANTLR4-generated parser |
+| `hoort` | Static/shared library | Runtime library (C/C++, no LLVM dependency) |
+| `hoo-tests` | Executable | Unit tests (GoogleTest, when `HOOC_BUILD_TESTS=ON`) |
+
+See `docs/build-targets.md` for the full target reference.
 
 ### When Refactoring
 
@@ -378,8 +379,8 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 
 ### Common Pitfalls
 
-- **LLVM ownership**: Don't delete LLVM objects manually
-- **String literals**: Use `builder->CreateGlobalStringPtr()` for constants
+- **LLVM ownership**: Don't delete LLVM objects manually (used internally by HVMJIT)
+- **HVM register pressure**: Ensure register allocation doesn't exceed r0..r31
 - **Type checking**: Always verify types before code generation
 - **Memory leaks**: Test with memory debugging enabled
 
@@ -388,7 +389,8 @@ std::cout << "Visiting node: " << typeid(*node).name() << std::endl;
 - [LLVM Programmer's Manual](https://llvm.org/docs/ProgrammersManual.html)
 - [ANTLR4 Documentation](https://github.com/antlr/antlr4/blob/master/doc/index.md)
 - [GoogleTest Primer](https://google.github.io/googletest/primer.html)
-- Grammar: `src/Hooc.g4`
+- HVM Spec: `docs/hvm/HVM_SPEC.md`
+- Grammar: `src/parsing/Hooc.g4`
 - Tests: `tests/` directory (comprehensive examples)
 
 ## Questions?

@@ -1,7 +1,7 @@
 #include "HooCompiler.h"
-#include "../parsing/ProcessIsolatedParser.h"
-#include "../ast/SimpleASTBuilder.h"
-#include "../codegen/HVMCodeGenerator.h"
+#include "parsing/ProcessIsolatedParser.h"
+#include "ast/SimpleASTBuilder.h"
+#include "codegen/HVMCodeGenerator.h"
 #include "HoocParser.h"
 
 namespace hooc {

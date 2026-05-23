@@ -4,7 +4,7 @@ This document summarizes the active grammar in `src/parsing/Hooc.g4` and its rel
 
 Normative grammar source:
 
-- `src/parsing/Hooc.g4`
+- `src/parsing/Hooc.g4` (generated ANTLR files are in `build/<preset>/generated/antlr4/`)
 
 Normative HVM sources:
 

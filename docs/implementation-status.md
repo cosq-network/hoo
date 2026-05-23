@@ -10,8 +10,8 @@ Last Updated: 2026-05-22
 |---|---|---|
 | Grammar (`src/parsing/Hooc.g4`) | Active | Current language source of truth |
 | AST Builder | Active | Tracks grammar-level constructs; handles int64_t |
-| LLVM code generation path | Active | Primary executable path |
-| HVM code generation path | Active | Pure RISC ISA; hardware-ready lowering |
+| HVM code generation path | Active | Primary executable path; pure RISC ISA |
+| LLVM (JIT engine) | Active | Used only as JIT backend for HVM bytecode execution |
 | HVM core spec/docs | Active | Hardware-ready profile documented (v1.4) |
 | HVM module format (`.ho`) | Active | `HOModule` and `HO_FILE_FORMAT.md` aligned |
 | HVM optional extensions | Documented | Non-core profiles in `HVM_EXTENSIONS.md` |

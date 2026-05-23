@@ -16,7 +16,7 @@ Primary near-term goals:
 ## 2. Current Baseline
 
 - Grammar and parser are active (`src/parsing/Hooc.g4`)
-- AST builder and LLVM codegen are active
+- AST builder and HVM codegen are active
 - HVM documentation has been consolidated around:
   - `docs/hvm/HVM_SPEC.md`
   - `docs/hvm/hvm_instruction_set.csv`

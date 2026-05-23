@@ -25,7 +25,7 @@ The compiler build depends on these components:
 | LLVM development package | Yes | Provides LLVM headers, libraries, and `LLVMConfig.cmake` |
 | ANTLR4 C++ runtime | Yes | Runtime library for generated parser code |
 | Java | Yes when regenerating parser sources | Runs the ANTLR jar |
-| ANTLR jar | Yes when regenerating parser sources | Generates C++ parser sources from `src/Hooc.g4` |
+| ANTLR jar | Yes when regenerating parser sources | Generates C++ parser sources from `src/parsing/Hooc.g4` |
 | Ninja or Make | Yes for single-config builds | Executes the generated build files |
 | Visual Studio Community C++ workload | Yes on Windows with the Visual Studio generator | Provides the MSVC compiler, linker, SDK, and IDE integration |
 | GoogleTest | Optional | Enables `hoo-tests`, `test`, and `run_tests` targets |
@@ -63,7 +63,7 @@ For the full target list, see [build-targets.md](build-targets.md).
 
 The project uses C++17 and CMake 3.16 or newer.
 
-The ANTLR grammar is `src/Hooc.g4`. Generated parser sources are written to `${CMAKE_BINARY_DIR}/generated/antlr4` by default. The repository includes `tools/antlr-4.13.2-complete.jar`, and CMake uses that path by default through `ANTLR4_JAR_PATH`.
+The ANTLR grammar is `src/parsing/Hooc.g4`. Generated parser sources are written to `build/<preset>/generated/antlr4` by default and are no longer committed to the repository. The repository includes `tools/antlr-4.13.2-complete.jar`, and CMake uses that path by default through `ANTLR4_JAR_PATH`.
 
 If CMake cannot find LLVM automatically, pass `LLVM_DIR`:
 
@@ -453,7 +453,7 @@ The build now uses these cross-platform conventions:
 - ANTLR4 parser output is generated under the build tree by default.
 - `HOOC_BUILD_TESTS` controls GoogleTest discovery and test target creation.
 - Debug-only runtime memory tracking uses a generator expression, so it works with single-config and multi-config generators.
-- Install rules include `hooc`, `hoo-compiler`, `hoo-parser`, `hoort`, generated parser headers, and project headers.
+- Install rules include `hooc`, `hoo-core`, `hoo-parser`, `hoort`, generated parser headers, and project headers.
 - `HOOC_BUILD_SHARED_RUNTIME` can switch `hoort` from a static runtime library to a shared runtime library.
 
 Remaining improvement to consider:
@@ -472,7 +472,7 @@ Recommended minimum matrix:
 
 ## Parser Regeneration
 
-Parser sources are regenerated automatically when needed by targets such as `hooc`, `hoo-compiler`, and `hoo-parser`.
+Parser sources are regenerated automatically when needed by targets such as `hooc`, `hoo-core`, and `hoo-parser`.
 
 To regenerate the parser directly:
 

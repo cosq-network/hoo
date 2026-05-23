@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../ast/AST.h"
+#include "ast/AST.h"
 #include "CodeGeneratorTypes.h"
 #include <memory>
 #include <string>

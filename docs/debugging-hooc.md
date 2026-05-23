@@ -35,16 +35,17 @@ Use these entry points for common debugging tasks:
 
 | Area | Useful files |
 |------|--------------|
-| CLI flow | `src/main.cpp` |
-| Source-to-LLVM pipeline | `src/HooCompiler.cpp` |
-| Parser integration | `src/ProcessIsolatedParser.cpp` |
-| AST building | `src/SimpleASTBuilder.cpp` |
-| LLVM IR generation | `src/LLVMCodeGenerator.cpp` |
-| JIT infrastructure | `src/HoocJIT.cpp` |
-| Runtime memory | `src/rt/hoo_runtime.c` |
-| Runtime strings/arrays | `src/rt/hoo_string.cpp`, `src/rt/hoo_generic_array.cpp` |
+| CLI flow | `src/core/main.cpp` |
+| Compilation pipeline | `src/core/HooCompiler.cpp` |
+| Parser integration | `src/parsing/ProcessIsolatedParser.cpp` |
+| AST building | `src/ast/SimpleASTBuilder.cpp` |
+| HVM bytecode generation | `src/codegen/HVMCodeGenerator.cpp` |
+| JIT infrastructure | `src/hvm/HVMJIT.cpp` |
+| HVM module format | `src/hvm/HOModule.cpp` |
+| Runtime memory | `src/runtime/lib/hoo_runtime.c` |
+| Runtime strings/arrays | `src/runtime/lib/hoo_string.cpp`, `src/runtime/lib/hoo_generic_array.cpp` |
 
-`hooc` currently compiles `.hoo` input to LLVM IR and prints the IR. JIT support is compiled into `hoo-compiler`, but command-line JIT execution is not fully wired into `src/main.cpp` yet.
+`hooc` currently compiles `.hoo` input to HVM bytecode and can either JIT execute it or serialize to `.ho` binary modules. The CLI supports compile-only mode (`--compile`), bytecode execution, and source execution.
 
 ## VS Code
 
@@ -288,14 +289,14 @@ main
 hooc::HooCompiler::compile
 hooc::ProcessIsolatedParser::parseForAST
 hooc::SimpleASTBuilder::buildAST
-hooc::LLVMCodeGenerator::generateLLVMModule
-hooc::HoocJIT::HoocJIT
+hooc::HVMCodeGenerator::generateCode
+hooc::HVMJIT::HVMJIT
 hoo_alloc
 hoo_retain
 hoo_release
 ```
 
-Use parser and AST breakpoints when debugging syntax or AST issues. Use `LLVMCodeGenerator` breakpoints when IR is missing or malformed. Use runtime breakpoints when debugging memory, string, or array behavior.
+Use parser and AST breakpoints when debugging syntax or AST issues. Use `HVMCodeGenerator` breakpoints when bytecode is missing or malformed. Use runtime breakpoints when debugging memory, string, or array behavior.
 
 ## Troubleshooting
 

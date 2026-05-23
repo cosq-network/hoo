@@ -65,7 +65,7 @@ from hoo import io;
 
 The compiler (and JIT) searches for modules in the following order:
 
-1.  **Built-in Modules**: The `hoo` namespace (registered in `src/runtime/llvm`).
+1.  **Built-in Modules**: The `hoo` namespace (registered in `src/runtime/lib/`).
 2.  **Relative Path**: Sibling files/folders relative to the importing file.
 3.  **Project Root**: The directory where the main `.hoo` file or `hooc.json` resides.
 4.  **Package Manager Path**: `hooc_modules/` directory (future support for npm-style packages).
@@ -76,9 +76,9 @@ The standard library is registered within the compiler via the `hoo` namespace.
 
 | Logical Name | Definition Location | Description |
 |--------------|-----------------|-------------|
-| `hoo.io`     | `src/runtime/llvm/hoo_io_registration.cpp` | Input/Output operations |
-| `hoo.string` | `src/runtime/llvm/hoo_string_registration.cpp` | String utilities |
-| `hoo.array`  | `src/runtime/llvm/hoo_array_registration.cpp` | Array and collection helpers |
+| `hoo.io`     | `src/runtime/lib/hoo_io.c` | Input/Output operations |
+| `hoo.string` | `src/runtime/lib/hoo_string.cpp` | String utilities |
+| `hoo.array`  | `src/runtime/lib/hoo_generic_array.cpp` | Array and collection helpers |
 
 ## 7. Implementation Architecture
 
@@ -104,7 +104,7 @@ Each `CompilationUnit` holds a `ModuleScope` containing:
 
 ### 7.3 Code Generation
 
-The `LLVMCodeGenerator` uses the `ModuleScope` to resolve identifiers.
+The `HVMCodeGenerator` uses the `ModuleScope` to resolve identifiers.
 - When it sees `println()`, it checks if `println` was selectively imported from `hoo.io`.
 - If found, it generates a call to the external symbol `hoo_io_println`.
 

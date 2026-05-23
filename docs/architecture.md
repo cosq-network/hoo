@@ -4,31 +4,28 @@ This document summarizes the current compiler/runtime/VM architecture after the 
 
 ## 1. System Overview
 
-Hooc currently has two execution paths:
+Hooc has a single execution path:
 
-1. LLVM path (implemented and primary):
-- Source (`.hoo`) -> ANTLR parser -> typed AST -> LLVM IR -> JIT/native execution
-
-2. HVM path (spec + module format + instruction/runtime boundary):
-- Source/IR lowering target -> HVM instruction stream + `.ho` module format
-- Core ISA profile is minimal and grammar-driven (see `docs/hvm/HVM_SPEC.md`)
+- Source (`.hoo`) -> ANTLR parser -> typed AST -> HVM bytecode -> JIT execution (via LLVM ORC JIT)
+- AOT path: `.hoo` -> HVM bytecode -> `.ho` binary module -> load and run via HVMJIT loader
 
 ## 2. Compiler Pipeline (Current)
 
 Core components:
 
-- Parser: `src/parsing/Hooc.g4`, generated parser in `src/parsing/*`
+- Parser: `src/parsing/Hooc.g4`, generated parser in `build/<preset>/generated/antlr4/`
 - AST builder: `src/ast/SimpleASTBuilder.*`
-- Code generation: `src/codegen/LLVMCodeGenerator.*`
-- Compiler orchestration: `src/HooCompiler.*`
-- JIT: `src/HoocJIT.*`
+- Code generation: `src/codegen/HVMCodeGenerator.*`
+- Compiler orchestration: `src/core/HooCompiler.*`
+- JIT: `src/hvm/HVMJIT.*`
 
 Pipeline:
 
-1. Parse source with ANTLR (`ProcessIsolatedParser`)
+1. Parse source with ANTLR (`ProcessIsolatedParser` in `src/parsing/`)
 2. Build typed AST (`SimpleASTBuilder`)
-3. Generate LLVM IR (`LLVMCodeGenerator`)
-4. Execute via ORC JIT or emit artifacts
+3. Generate HVM bytecode (`HVMCodeGenerator`)
+4. JIT compile and execute via LLVM ORC JIT (`HVMJIT`)
+5. Alternatively serialize to `.ho` module format (`HOModule`) for AOT
 
 ## 3. HVM Architectural Profile (Current Core)
 
@@ -96,7 +93,7 @@ Key points:
 Runtime responsibilities split into:
 
 1. Core runtime services (memory/object/array/string/host runtime functions)
-2. FFI bridge (`CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`)
+2. FFI bridge via SYSCALL opcode with runtime-resolved function addresses
 
 The core ISA intentionally relies on runtime/library functions instead of embedding many specialized instruction families.
 

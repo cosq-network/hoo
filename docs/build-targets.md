@@ -26,19 +26,16 @@ cmake --build build --target <target>
 cmake --build build --target help
 ```
 
-## Target Graph (non-test)
+## Target Graph
 
 ```text
 hooc
-└── hoo-compiler
-    ├── hvm
+└── hoo-core
     ├── hoo-parser
     │   └── generate_parser
     │       └── download_antlr4 (only when jar is missing at configure time)
-    └── hoort
-
-ho
-└── ho-lib
+    ├── hoort
+    └── LLVM (Core, OrcJIT, etc.)
 ```
 
 ## Primary Targets
@@ -46,47 +43,28 @@ ho
 ### `hooc` (executable)
 
 - Source: `src/core/main.cpp`
-- Links: `hoo-compiler`
+- Links: `hoo-core`
 - Build:
+  ```bash
+  cmake --build build --target hooc
+  ```
 
-```bash
-cmake --build build --target hooc
-```
+### `hoo-core` (library)
 
-### `hoo-compiler` (library)
+Core compiler + HVM + JIT library. Merged from the previous `hvm` and `hoo-compiler` targets.
 
-Core compiler/JIT/runtime-registration library.
-
-- Key sources under:
-  - `src/core/`
-  - `src/jit/`
-  - `src/parsing/`
-  - `src/codegen/`
-  - `src/ast/`
-  - `src/modules/`
-  - `src/runtime/llvm/`
-- Links: `hvm`, `hoo-parser`, `hoort`, `${llvm_libs}`
+- Sources under:
+  - `src/ast/` — AST node definitions and builder
+  - `src/codegen/` — HVM bytecode generator
+  - `src/core/` — Compiler orchestrator, CLI, symbol mangler, I/O
+  - `src/hvm/` — HVM module format, instructions, module bundle, JIT
+  - `src/modules/` — Module system for qualified name resolution
+  - `src/parsing/` — ProcessIsolatedParser (manual ANTLR4 wrapper)
+- Links: `hoort`, `hoo-parser`, `${llvm_libs}`
 - Build:
-
-```bash
-cmake --build build --target hoo-compiler
-```
-
-### `hvm` (static library)
-
-Hooc VM/module artifacts support.
-
-- Sources:
-  - `src/hvm/HOModuleBase.cpp`
-  - `src/hvm/HOModule.cpp`
-  - `src/hvm/HVMInstruction.cpp`
-  - `src/hvm/HVMModuleBundle.cpp`
-- Links: `${llvm_libs}`
-- Build:
-
-```bash
-cmake --build build --target hvm
-```
+  ```bash
+  cmake --build build --target hoo-core
+  ```
 
 ### `hoo-parser` (library)
 
@@ -98,43 +76,21 @@ ANTLR-generated parser library.
 - Depends on: `generate_parser`
 - Optional compile def: `ANTLR4CPP_STATIC` when `ANTLR4_USE_STATIC_RUNTIME=ON`
 - Build:
-
-```bash
-cmake --build build --target hoo-parser
-```
+  ```bash
+  cmake --build build --target hoo-parser
+  ```
 
 ### `hoort` (runtime library)
 
 Runtime (`STATIC` by default, `SHARED` when `HOOC_BUILD_SHARED_RUNTIME=ON`).
 
-- Sources under:
-  - `src/runtime/lib/`
-  - `src/runtime/llvm/`
+- Sources under `src/runtime/lib/`
+- No LLVM dependency
 - Debug compile def: `HOO_DEBUG_MEMORY`
 - Build:
-
-```bash
-cmake --build build --target hoort
-```
-
-### `ho` (executable)
-
-- Source: `src/ho/main.cpp`
-- Links: `ho-lib`
-- Build:
-
-```bash
-cmake --build build --target ho
-```
-
-### `ho-lib` (library)
-
-- Source: `src/ho/HoCLI.cpp`
-- Build:
-
-```bash
-cmake --build build --target ho-lib
-```
+  ```bash
+  cmake --build build --target hoort
+  ```
 
 ## Parser Utility Targets
 
@@ -179,23 +135,18 @@ cmake --build build --target hoo-tests
 
 ## Install Targets
 
-Configured install command:
-
 ```cmake
-install(TARGETS hooc ho hoo-compiler hoo-parser hoort ...)
+install(TARGETS hooc hoo-core hoo-parser hoort ...)
 ```
 
-So install includes:
+Install includes:
 
 - `hooc`
-- `ho`
-- `hoo-compiler`
+- `hoo-core`
 - `hoo-parser`
 - `hoort`
 - generated headers from `${ANTLR4_GENERATED_DIR}`
 - headers from `src/`
-
-Run install:
 
 ```bash
 cmake --build build --target install
@@ -209,6 +160,6 @@ cmake -S . -B build -DCMAKE_INSTALL_PREFIX=/desired/prefix
 
 ## Notes
 
-- `hvm` is built as `STATIC` in current CMake.
-- There is no standalone `jit` target; JIT implementation is part of `hoo-compiler`.
+- `hoo-core` subsumes the former `hvm` and `hoo-compiler` targets, which were tightly coupled via the JIT's dependency on the compiler.
+- `hoort` is a standalone C/C++ library with no LLVM or ANTLR4 dependency.
 - CMake-generated maintenance targets (`all`, `clean`, `rebuild_cache`, etc.) depend on generator/platform.
