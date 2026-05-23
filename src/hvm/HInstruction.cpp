@@ -540,7 +540,6 @@ InstructionRegistry::InstructionRegistry() {
     
     // Calls
     reg("call",     Opcode::CALL,     InstructionFormat::J);
-    reg("calli",    Opcode::CALLI,    InstructionFormat::I);
     reg("tailcall", Opcode::TAILCALL, InstructionFormat::J);
     
     // Hardware/System

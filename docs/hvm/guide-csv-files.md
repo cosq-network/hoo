@@ -13,9 +13,10 @@
 | **Opcode**      | The binary code (in hexadecimal) that represents the instruction in machine language.     |
 | **Format**      | The instruction format: `R`, `I`, `RI`, `B`, or `J`.                                       |
 | **Operands**    | Four fields: rd, rs1, rs2, imm (unused fields shown as `-`).                             |
-| **Operation**   | A concise description of what the instruction does (e.g., `rd = rs1 + rs2`).              |
-| **Description** | A human-readable explanation of the instruction's purpose and behavior.                   |
+| **Operation**   | A concise mathematical or logical expression of what the instruction does.              |
+| **Description** | A detailed human-readable explanation of the instruction's purpose and behavior.          |
 | **Func**        | (Optional) A sub-code for instructions that share the same opcode but differ in function. |
+| **Example**     | An illustrative assembly-language example of the instruction.                            |
 
 
 ---
@@ -95,23 +96,25 @@
 
 Suppose you encounter the following row in the `hvm_instruction_set.csv`:
 
-| Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func |
-| -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- |
-| ADD      | 0x10   | R      | rd, rs1, rs2, -     | rd = rs1 + rs2     | Add two registers.   | 0    |
+| Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func | Example |
+| -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- | ------- |
+| ADD      | 0x10   | R      | rd, rs1, rs2, -     | rd = rs1 + rs2     | Adds the contents... | 0    | add r1, r2, r3 |
 
 - **Interpretation**: The `ADD` instruction adds the values in `rs1` and `rs2`, storing the result in `rd`.
 - **Encoding**: The opcode is `0x10`, func is `0`. Instructions like `SUB=1`, `MUL=2` share this opcode.
 - **Format**: R-type with operands `rd, rs1, rs2, func`. The `-` indicates unused operand field.
+- **Example**: `add r1, r2, r3` adds the value in `r2` to `r3` and stores the sum in `r1`.
 
 **Example 2: Extended Instruction (Hardware/System)**
 
-| Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func |
-| -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- |
-| SYSCALL  | 0xC0   | I      | rd, -, imm15        | rd = os_syscall(imm)| System call          | -    |
+| Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func | Example |
+| -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- | ------- |
+| SYSCALL  | 0xC0   | I      | rd, -, imm15        | rd = os_syscall(imm)| Triggers a system... | -    | syscall r1, r0, 10 |
 
 - **Interpretation**: The `SYSCALL` instruction triggers an OS-level service.
 - **Encoding**: Opcode `0xC0` (>= 0x80) uses the `0xFE` escape prefix.
 - **Format**: I-type with operands `rd, rs1, imm15`. In the instruction stream, it occupies 8 bytes.
+- **Example**: `syscall r1, r0, 10` invokes system call ID 10 and stores the result in `r1`.
 
 ---
 

@@ -254,7 +254,7 @@ public:
 
     static constexpr uint32_t MAGIC = 0x484F4F43;
     static constexpr uint16_t VERSION_MAJOR = 1;
-    static constexpr uint16_t VERSION_MINOR = 3;
+    static constexpr uint16_t VERSION_MINOR = 4;
     static constexpr size_t HEADER_SIZE = 64;
 
 private:

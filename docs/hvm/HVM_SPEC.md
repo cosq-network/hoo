@@ -57,7 +57,7 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 - Branch/jump: `BEQ`, `BNE`, `BLT`, `BLE`, `JMP`, `JAL`, `JALR`, `RET`
 - Memory: `LD.B`, `LD.BU`, `LD.H`, `LD.HU`, `LD.W`, `LD.WU`, `LD.D`, `ST.B`, `ST.H`, `ST.W`, `ST.D`, `LDA`
 - Stack/frame: `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP`, `FRAME`
-- Calls/linking: `CALL`, `CALLI`, `TAILCALL`
+- Calls/linking: `CALL`, `TAILCALL`
 - Hardware/System: `SYSCALL`, `BREAK`
 
 ### 5.2 Explicitly Excluded from Core (Lowered to Software)
