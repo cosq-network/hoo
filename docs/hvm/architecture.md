@@ -6,35 +6,28 @@ This document describes the current HVM architecture as defined by:
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm_register_set.csv`
 
-The active profile is **core-minimalest**.
+The active profile is **core-minimalest** (Hardware Ready).
 
 ## 1. Architectural Scope
 
-HVM is a register-based VM profile intentionally limited to what the current grammar requires.
+HVM is a pure register-based RISC architecture. It is intentionally limited to physical CPU instructions. High-level language constructs are lowered by the compiler to standard memory operations and function calls.
 
-Supported language surface:
+Supported language surface (via lowering):
 
 - declarations (`func`, `class`, `var`, `const`)
 - expressions (arithmetic, logical, relational, assignment)
 - control flow (`if`, `while`, `for in .. by`, `break`, `continue`, `return`)
-- object/array operations (`new`, member/index access)
-- exceptions (`try/catch/finally`, `throw`, `rethrow`)
-- FFI declarations (`library`, `link dynamic`, `native`, `extern`)
-
-Explicitly out of core:
-
-- SIMD/vector families
-- threading/atomic/TLS families
-- interrupt/system/debug families
-- dedicated string opcode families
+- object/array operations (lowered to `hoo_malloc` + pointer arithmetic)
+- exceptions (lowered to `hoo_push_handler` + control flow)
+- FFI declarations (lowered to standard `CALL`s to external symbols)
 
 ## 2. Execution Model
 
 - 64-bit register machine
 - byte-addressable little-endian memory
 - downward-growing stack
-- runtime-managed object/array heap
-- 32-bit base instruction words plus escape-prefixed extended opcode space
+- physical memory model (software-managed heap)
+- 32-bit base instruction words plus escape-prefixed extended opcode space for ops >= 0x80
 
 ## 3. Register Architecture
 
@@ -61,7 +54,7 @@ Base formats:
 Opcode-space behavior:
 
 - `0x00..0x7F`: base 32-bit format path
-- `>= 0x100`: escape-prefixed extended path (used in core for exception/FFI opcodes)
+- `>= 0x80`: escape-prefixed extended path (`0xFE` prefix)
 
 Immediates/branches:
 
@@ -82,45 +75,35 @@ Family summary:
 - Control transfer: `BEQ`, `BNE`, `BLT`, `BLE`, `JMP`, `JAL`, `JALR`, `RET`
 - Memory: `LD.*`, `ST.*`, `LDA`
 - Stack/frame: `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP`, `FRAME`
-- Objects/arrays: `NEW`, `NEWA`, `LDF`, `STF`, `LDELEM`, `STELEM`, `ARRAYLEN`
-- Calls/linking: `CALL`, `CALLI`, `TAILCALL`
-- Exceptions: `TRY`, `THROW`, `CATCH`, `FINALLY`, `RETHROW`, `ENDFIN`
-- FFI/runtime bridge: `CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`
+- Calls: `CALL`, `CALLI`, `TAILCALL`
+- Hardware/System: `SYSCALL`, `BREAK`
 
-## 6. Minimality Rules (Derived Operations)
+## 6. Minimality Rules (Lowering)
 
-Certain operations are not first-class opcodes and must be lowered:
+Operations that are **NOT** first-class opcodes:
 
-- `SUBI` -> `ADDI` with negated immediate
+- `SUBI` -> `ADDI rd, rs, -imm`
 - `NEG` -> `SUB rd, r0, rs`
-- `CMPGT/CMPGE` -> swapped `CMPLT/CMPLE`
-- `BGT/BGE` -> swapped `BLT/BLE`
-- `MOVI` synthesized via `MOVZ`/`LUI` (+ arithmetic/logic)
+- `NEW/NEWA` -> `CALL hoo_malloc`
+- `LDF/STF` -> Pointer arithmetic + `LD.D/ST.D`
+- `TRY/THROW` -> `CALL hoo_push_handler` + control flow
 
-## 7. Runtime and FFI Boundary
+## 7. Runtime and OS Boundary
 
-Core profile deliberately pushes non-essential specialization to runtime/library calls:
+HVM relies on a software runtime library for:
 
-- string-heavy behavior via runtime helpers, not string-specific opcodes
-- host/native interop via `CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`
-
-This keeps ISA small while preserving language coverage.
+- Memory allocation (`hoo_malloc`)
+- Exception management (`hoo_push_handler`, `hoo_throw`)
+- String operations (`hoo_string_*`)
+- System interaction (`SYSCALL`)
 
 ## 8. Relationship to Module Format
 
-HVM module/container details are defined separately:
-
-- `docs/hvm/HO_FILE_FORMAT.md`
-- `src/hvm/HoModule.h`
-- `src/hvm/HoModule.cpp`
-
-Architecture and module format must evolve together when opcode-space, metadata, or calling-convention semantics change.
+HVM module/container details are defined separately in `docs/hvm/HO_FILE_FORMAT.md`.
 
 ## 9. Evolution Policy
 
-If new grammar features require new instruction families:
+If new language features require hardware support:
 
-1. keep core unchanged unless required
-2. add optional profile in `docs/hvm/HVM_EXTENSIONS.md`
-3. version/gate capability explicitly
-4. add compatibility tests before promoting to core
+1. Prioritize software lowering to existing RISC instructions.
+2. Add optional profiles in `docs/hvm/HVM_EXTENSIONS.md` only if performance or security necessitates silicon-level implementation.

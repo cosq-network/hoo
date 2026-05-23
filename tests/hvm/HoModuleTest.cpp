@@ -854,11 +854,11 @@ TEST_F(HoModuleTest, EncodeDecodeExtendedInstructions) {
     
     std::vector<HInstruction> instructions = {
         HInstruction(Opcode::NOP, OperandsR{0, 0, 0, 0}),
-        HInstruction(Opcode::TRY, OperandsI{1, 0, 100}), // TRY is extended (0x110)
+        HInstruction(Opcode::SYSCALL, OperandsI{1, 0, 100}), // SYSCALL is extended (0xC0)
     };
     
     auto encoded = module->encodeInstructions(instructions);
-    // NOP (4 bytes) + TRY (1 escape + 2 ULEB + 1 padding + 4 payload = 8 bytes) = 12 bytes
+    // NOP (4 bytes) + SYSCALL (1 escape + 2 ULEB + 1 padding + 4 payload = 8 bytes) = 12 bytes
     ASSERT_EQ(encoded.size(), 12);
     EXPECT_EQ(encoded[4], 0xFE);
     
@@ -868,7 +868,7 @@ TEST_F(HoModuleTest, EncodeDecodeExtendedInstructions) {
     EXPECT_EQ(decoded[0].getOpcode(), Opcode::NOP);
     EXPECT_FALSE(decoded[0].isExtended());
     
-    EXPECT_EQ(decoded[1].getOpcode(), Opcode::TRY);
+    EXPECT_EQ(decoded[1].getOpcode(), Opcode::SYSCALL);
     EXPECT_TRUE(decoded[1].isExtended());
     ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded[1].getOperands()));
     EXPECT_EQ(std::get<OperandsI>(decoded[1].getOperands()).rd, 1);

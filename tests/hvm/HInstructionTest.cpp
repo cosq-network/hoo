@@ -136,11 +136,6 @@ TEST_F(HInstructionTest, ToAssemblyJFormat) {
     EXPECT_EQ(inst2.toAssembly(), "jmp 4096");
 }
 
-TEST_F(HInstructionTest, ToAssemblyRIFormat) {
-    HInstruction inst(Opcode::NEWA, OperandsRI{1, 2, 3, 0});
-    EXPECT_EQ(inst.toAssembly(), "newa r1, r2, r3, 0");
-}
-
 TEST_F(HInstructionTest, ToString) {
     HInstruction inst(Opcode::RET, OperandsR{0, 0, 0, 0});
     auto str = inst.toString();
@@ -152,7 +147,7 @@ TEST_F(HInstructionTest, OpcodeToString) {
     EXPECT_EQ(HInstruction::opcodeToString(Opcode::ARITH, 0), "add");
     EXPECT_EQ(HInstruction::opcodeToString(Opcode::ARITH, 1), "sub");
     EXPECT_EQ(HInstruction::opcodeToString(Opcode::JMP), "jmp");
-    EXPECT_EQ(HInstruction::opcodeToString(Opcode::TRY), "try");
+    EXPECT_EQ(HInstruction::opcodeToString(Opcode::SYSCALL), "syscall");
 }
 
 TEST_F(HInstructionTest, StringToOpcode) {
@@ -265,17 +260,17 @@ TEST_F(HInstructionTest, MultipleEncodeDecode) {
 }
 
 TEST_F(HInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
-    // Opcode::TRY is 0x110 (>= 0x80)
-    HInstruction orig(Opcode::TRY, OperandsI{1, 0, 100});
+    // Opcode::SYSCALL is 0xC0 (>= 0x80)
+    HInstruction orig(Opcode::SYSCALL, OperandsI{1, 0, 100});
     auto encoded = orig.encode();
-    // 1 (escape) + 2 (ULEB for 0x110) + 1 (padding) + 4 (payload) = 8 bytes
+    // 1 (escape) + 2 (ULEB for 0xC0) + 1 (padding) + 4 (payload) = 8 bytes
     ASSERT_EQ(encoded.size(), 8);
     EXPECT_EQ(encoded[0], 0xFE);
 
     auto decoded = HInstruction::decode(encoded);
     ASSERT_NE(decoded, nullptr);
     EXPECT_TRUE(decoded->isExtended());
-    EXPECT_EQ(decoded->getOpcode(), Opcode::TRY);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::SYSCALL);
     ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded->getOperands()));
     const auto& ops = std::get<OperandsI>(decoded->getOperands());
     EXPECT_EQ(ops.rd, 1);

@@ -292,8 +292,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         bindLabel(endLabel);
     } else if (auto forIn = dynamic_cast<const ast::ForInStatement*>(&stmt)) {
         uint8_t iterReg = visitExpression(forIn->getIterable());
+        
+        // Lowered: Get length from header (offset 0)
         uint8_t lenReg = allocateRegister();
-        emit(Opcode::ARRAYLEN, OperandsR{lenReg, iterReg, 0, 0});
+        emit(Opcode::LD_D, OperandsI{lenReg, iterReg, 0});
+        
         uint8_t iReg = emitConstant(0);
         Label* startLabel = createLabel();
         Label* endLabel = createLabel();
@@ -303,8 +306,27 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::CMP, OperandsR{condReg, iReg, lenReg, 2});
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
+        
+        // Lowered: item = iter[i] -> addr = iter + 8 + i * 8
+        uint8_t shiftReg = emitConstant(3);
+        uint8_t scaledIdx = allocateRegister();
+        emit(Opcode::SHIFT, OperandsR{scaledIdx, iReg, shiftReg, 0}); // SHL
+        freeRegister(shiftReg);
+
+        uint8_t eightReg = emitConstant(8);
+        uint8_t offsetReg = allocateRegister();
+        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, eightReg, 0}); // ADD
+        freeRegister(eightReg);
+        freeRegister(scaledIdx);
+
+        uint8_t finalAddr = allocateRegister();
+        emit(Opcode::ARITH, OperandsR{finalAddr, iterReg, offsetReg, 0});
+        freeRegister(offsetReg);
+        
         uint8_t itemReg = allocateRegister();
-        emit(Opcode::LDELEM, OperandsR{itemReg, iterReg, iReg, 0});
+        emit(Opcode::LD_D, OperandsI{itemReg, finalAddr, 0});
+        freeRegister(finalAddr);
+        
         int32_t itemOffset = reserveLocal(forIn->getVariable(), 0);
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
@@ -326,21 +348,39 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
     } else if (auto tryCatch = dynamic_cast<const ast::TryCatchStatement*>(&stmt)) {
         Label* catchStartLabel = createLabel();
         Label* endLabel = createLabel();
-        emit(Opcode::TRY, OperandsI{0, 0, 0});
-        size_t tryIdx = instructions_.size() - 1;
-        uint32_t tryOff = currentByteOffset_ - instructions_.back().getSize();
+        
+        // 1. Register handler: CALL hoo_push_handler(catchStartLabel)
+        // We need the absolute byte offset of the catch block.
+        // For now, we'll emit a dummy call and fix it up if needed, or use a relative offset.
+        // Standard hardware approach: Store PC of handler in a shadow stack.
+        uint8_t handlerAddrReg = allocateRegister();
+        // We'll use a fixup for the label address
+        emit(Opcode::LDA, OperandsI{handlerAddrReg, 0, 0}); 
+        size_t ldaIdx = instructions_.size() - 1;
+        uint32_t ldaOff = currentByteOffset_ - instructions_.back().getSize();
+        
+        emit(Opcode::MOV, OperandsR{1, handlerAddrReg, 0, 0});
+        emitCall(Opcode::CALL, "hoo_push_handler");
+        freeRegister(handlerAddrReg);
+
         visitStatement(tryCatch->getTryBlock());
-        emit(Opcode::ENDFIN, OperandsR{0, 0, 0, 0});
+        
+        // 2. Unregister handler: CALL hoo_pop_handler()
+        emitCall(Opcode::CALL, "hoo_pop_handler");
         emitJump(Opcode::JMP, 0, endLabel);
+
         bindLabel(catchStartLabel);
-        int32_t catchOffset = (catchStartLabel->targetByteOffset - static_cast<int32_t>(tryOff)) / 4;
-        auto tryOps = instructions_[tryIdx].getOperands();
-        auto& tryOpsI = std::get<OperandsI>(tryOps);
-        tryOpsI.imm15 = static_cast<int16_t>(catchOffset);
-        instructions_[tryIdx].setOperands(tryOpsI);
+        // Fixup LDA with catch offset
+        int32_t catchOffset = catchStartLabel->targetByteOffset - static_cast<int32_t>(ldaOff);
+        auto ldaOps = instructions_[ldaIdx].getOperands();
+        auto& ldaOpsI = std::get<OperandsI>(ldaOps);
+        ldaOpsI.imm15 = static_cast<int16_t>(catchOffset);
+        instructions_[ldaIdx].setOperands(ldaOpsI);
+
         for (const auto& clause : tryCatch->getCatchClauses()) {
+            // Get exception from r1 (standard calling convention for handler entry)
             uint8_t excReg = allocateRegister();
-            emit(Opcode::CATCH, OperandsI{excReg, 0, 0});
+            emit(Opcode::MOV, OperandsR{excReg, 1, 0, 0});
             int32_t itemOffset = reserveLocal(clause.variable, 0);
             emit(Opcode::ST_D, OperandsI{excReg, 30, static_cast<int16_t>(itemOffset)});
             freeRegister(excReg);
@@ -348,17 +388,16 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, endLabel);
         }
         if (tryCatch->getFinallyBlock()) {
-            emit(Opcode::FINALLY, OperandsI{0, 0, 0});
             visitStatement(*tryCatch->getFinallyBlock());
-            emit(Opcode::ENDFIN, OperandsR{0, 0, 0, 0});
         }
         bindLabel(endLabel);
     } else if (auto throwStmt = dynamic_cast<const ast::ThrowStatement*>(&stmt)) {
         if (throwStmt->isRethrow()) {
-            emit(Opcode::RETHROW, OperandsR{0, 0, 0, 0});
+            emitCall(Opcode::CALL, "hoo_rethrow");
         } else {
             uint8_t excReg = visitExpression(*throwStmt->getExpression());
-            emit(Opcode::THROW, OperandsR{0, excReg, 0, 0});
+            emit(Opcode::MOV, OperandsR{1, excReg, 0, 0});
+            emitCall(Opcode::CALL, "hoo_throw");
             freeRegister(excReg);
         }
     }
@@ -396,14 +435,26 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             for (const auto& elem : elements) {
                 elementRegs.push_back(visitExpression(*elem));
             }
-            uint8_t sizeReg = emitConstant(static_cast<int64_t>(elements.size()));
+            
+            // 1. Allocate: CALL hoo_malloc(size)
+            // Header (8 bytes) + elements * 8
+            uint64_t totalSize = 8 + (elements.size() * 8);
+            uint8_t sizeReg = emitConstant(static_cast<int64_t>(totalSize));
+            emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
+            emitCall(Opcode::CALL, "hoo_malloc");
             uint8_t dest = allocateRegister();
-            emit(Opcode::NEWA, OperandsRI{dest, sizeReg, 0, 0});
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
             freeRegister(sizeReg);
+
+            // 2. Store length in header (offset 0)
+            uint8_t lenReg = emitConstant(static_cast<int64_t>(elements.size()));
+            emit(Opcode::ST_D, OperandsI{lenReg, dest, 0});
+            freeRegister(lenReg);
+
+            // 3. Store elements
             for (size_t i = 0; i < elementRegs.size(); ++i) {
-                uint8_t idxReg = emitConstant(static_cast<int64_t>(i));
-                emit(Opcode::STELEM, OperandsR{dest, idxReg, elementRegs[i], 0});
-                freeRegister(idxReg);
+                // Offset = 8 + i * 8
+                emit(Opcode::ST_D, OperandsI{elementRegs[i], dest, static_cast<int16_t>(8 + (i * 8))});
                 freeRegister(elementRegs[i]);
             }
             return dest;
@@ -427,9 +478,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emit(Opcode::LDA, OperandsI{addrReg, 0, static_cast<int16_t>(offset)}); 
 
             // 3. Call runtime allocator: hoo_string_from_cstr(addr)
+            emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
+            emitCall(Opcode::CALL, "hoo_string_from_cstr");
             uint8_t dest = allocateRegister();
-            // Host function ID 1 = string_from_cstr
-            emit(Opcode::CALLHOST, OperandsR{dest, addrReg, 0, 1});
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
 
             freeRegister(addrReg);
             return dest;
@@ -443,9 +495,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             addError("Unknown class: " + className);
             return 0;
         }
+        
+        // 1. Allocate: CALL hoo_malloc(size)
+        uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
+        emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
+        emitCall(Opcode::CALL, "hoo_malloc");
         uint8_t dest = allocateRegister();
-        // 1. Allocate: NEW rd, size
-        emit(Opcode::NEW, OperandsI{dest, 0, static_cast<int16_t>(it->second.totalSize)});
+        emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        freeRegister(sizeReg);
         
         // 2. Call constructor: className_init(this, ...args)
         std::string ctorName = className + "_init";
@@ -484,7 +541,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return objReg;
         }
         uint8_t dest = allocateRegister();
-        emit(Opcode::LDF, OperandsRI{dest, objReg, 0, static_cast<uint16_t>(offset)});
+        emit(Opcode::LD_D, OperandsI{dest, objReg, static_cast<int16_t>(offset)});
         freeRegister(objReg);
         return dest;
     }
@@ -629,7 +686,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
             if (found) {
-                emit(Opcode::STF, OperandsRI{0, objReg, valueReg, static_cast<uint16_t>(offset)});
+                emit(Opcode::ST_D, OperandsI{valueReg, objReg, static_cast<int16_t>(offset)});
             } else {
                 addError("Undefined member: " + leftMember->getMember());
             }
@@ -643,10 +700,28 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
         uint8_t arrReg = visitExpression(arrayAccess->getArray());
         uint8_t idxReg = visitExpression(arrayAccess->getIndex());
-        uint8_t dest = allocateRegister();
-        emit(Opcode::LDELEM, OperandsR{dest, arrReg, idxReg, 0});
-        freeRegister(arrReg);
+        
+        uint8_t shiftReg = emitConstant(3); // * 8
+        uint8_t scaledIdx = allocateRegister();
+        emit(Opcode::SHIFT, OperandsR{scaledIdx, idxReg, shiftReg, 0}); // SHL
+        freeRegister(shiftReg);
         freeRegister(idxReg);
+
+        uint8_t eightReg = emitConstant(8);
+        uint8_t offsetReg = allocateRegister();
+        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, eightReg, 0}); // ADD
+        freeRegister(eightReg);
+        freeRegister(scaledIdx);
+        
+        uint8_t finalAddr = allocateRegister();
+        emit(Opcode::ARITH, OperandsR{finalAddr, arrReg, offsetReg, 0});
+        freeRegister(arrReg);
+        freeRegister(offsetReg);
+
+        uint8_t dest = allocateRegister();
+        emit(Opcode::LD_D, OperandsI{dest, finalAddr, 0});
+        freeRegister(finalAddr);
+        
         return dest;
     }
 

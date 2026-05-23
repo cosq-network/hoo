@@ -11,8 +11,8 @@ Last Updated: 2026-05-22
 | Grammar (`src/parsing/Hooc.g4`) | Active | Current language source of truth |
 | AST Builder | Active | Tracks grammar-level constructs; handles int64_t |
 | LLVM code generation path | Active | Primary executable path |
-| HVM code generation path | Active | Feature-complete for objects, arrays, exceptions |
-| HVM core spec/docs | Active | Core-minimalest profile documented |
+| HVM code generation path | Active | Pure RISC ISA; hardware-ready lowering |
+| HVM core spec/docs | Active | Hardware-ready profile documented (v1.4) |
 | HVM module format (`.ho`) | Active | `HooModule` and `HO_FILE_FORMAT.md` aligned |
 | HVM optional extensions | Documented | Non-core profiles in `HVM_EXTENSIONS.md` |
 
@@ -59,13 +59,14 @@ The current core profile is sufficient for grammar-defined semantics in:
 - exception handling (`try/catch/finally`, `throw`, `rethrow`)
 - FFI declarations (`library`, `link dynamic`, `native`, `extern`) via runtime bridge opcodes
 
-## 4. Runtime/FFI Boundary Status
+## 4. Runtime/OS Boundary Status
 
-Current design uses runtime/library bridges for behavior that is not ISA-essential:
+Current design uses a software runtime library for:
 
-- host/runtime dispatch: `CALLHOST`
-- native ABI call: `CALLNATIVE`
-- dynamic loading and symbol lookup: `LOADLIB`, `GETSYM`
+- heap management: `hoo_malloc`
+- exception handling: `hoo_push_handler`, `hoo_throw`
+- string operations: `hoo_string_*`
+- system interaction: `SYSCALL` instruction
 
 String-heavy behavior remains runtime-driven in core, not string-opcode driven.
 

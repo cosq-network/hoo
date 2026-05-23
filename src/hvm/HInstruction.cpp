@@ -538,33 +538,14 @@ InstructionRegistry::InstructionRegistry() {
     reg("adjsp", Opcode::ADJSP, InstructionFormat::I);
     reg("frame", Opcode::FRAME, InstructionFormat::I);
     
-    // Objects/Arrays
-    reg("new",      Opcode::NEW,      InstructionFormat::I);
-    reg("newa",     Opcode::NEWA,     InstructionFormat::RI);
-    reg("ldf",      Opcode::LDF,      InstructionFormat::RI);
-    reg("stf",      Opcode::STF,      InstructionFormat::RI);
-    reg("ldelem",   Opcode::LDELEM,   InstructionFormat::R);
-    reg("stelem",   Opcode::STELEM,   InstructionFormat::R);
-    reg("arraylen", Opcode::ARRAYLEN, InstructionFormat::R);
-    
     // Calls
     reg("call",     Opcode::CALL,     InstructionFormat::J);
     reg("calli",    Opcode::CALLI,    InstructionFormat::I);
     reg("tailcall", Opcode::TAILCALL, InstructionFormat::J);
     
-    // Exceptions (Extended)
-    reg("try",      Opcode::TRY,      InstructionFormat::I);
-    reg("throw",    Opcode::THROW,    InstructionFormat::R);
-    reg("catch",    Opcode::CATCH,    InstructionFormat::I);
-    reg("finally",  Opcode::FINALLY,  InstructionFormat::I);
-    reg("rethrow",  Opcode::RETHROW,  InstructionFormat::R);
-    reg("endfin",   Opcode::ENDFIN,   InstructionFormat::R);
-    
-    // FFI/Runtime
-    reg("callhost",   Opcode::CALLHOST,   InstructionFormat::R);
-    reg("callnative", Opcode::CALLNATIVE, InstructionFormat::R);
-    reg("loadlib",    Opcode::LOADLIB,    InstructionFormat::I);
-    reg("getsym",     Opcode::GETSYM,     InstructionFormat::RI);
+    // Hardware/System
+    reg("syscall",  Opcode::SYSCALL,  InstructionFormat::I);
+    reg("break",    Opcode::BREAK,    InstructionFormat::R);
 }
 
 void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcode opcode,

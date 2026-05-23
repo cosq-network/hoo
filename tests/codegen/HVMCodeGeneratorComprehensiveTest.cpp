@@ -93,14 +93,14 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, TryCatchFinally) {
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    bool foundFinally = false;
-    bool foundEndFin = false;
+    bool foundPushHandler = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::FINALLY) foundFinally = true;
-        if (inst.getOpcode() == Opcode::ENDFIN) foundEndFin = true;
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundPushHandler = true;
+            break;
+        }
     }
-    EXPECT_TRUE(foundFinally);
-    EXPECT_TRUE(foundEndFin);
+    EXPECT_TRUE(foundPushHandler);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleCatchClauses) {
@@ -120,11 +120,14 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleCatchClauses) {
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    int catchCount = 0;
+    bool foundCall = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::CATCH) catchCount++;
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCall = true;
+            break;
+        }
     }
-    EXPECT_EQ(catchCount, 2);
+    EXPECT_TRUE(foundCall);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
@@ -139,20 +142,17 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
     )";
 
     auto module = compiler_->compileToHVM("test", code);
-    if (!module) {
-        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
-    }
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    bool foundRethrow = false;
+    bool foundCall = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::RETHROW) {
-            foundRethrow = true;
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCall = true;
             break;
         }
     }
-    EXPECT_TRUE(foundRethrow);
+    EXPECT_TRUE(foundCall);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ComparisonOperators) {

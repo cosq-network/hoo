@@ -54,23 +54,8 @@ ENTER,0x80,I,"-, -, imm15","sp -= 16; mem[sp] = r29; mem[sp+8] = r30; r30 = sp; 
 LEAVE,0x81,R,"-, -, -, -","sp = r30; r29 = mem[sp]; r30 = mem[sp+8]; sp += 16",Leave stack frame (restores lr and fp),-
 ADJSP,0x82,I,"-, -, imm15",sp += sign_extend(imm15),Adjust stack pointer,-
 FRAME,0x83,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Get frame address,-
-NEW,0xA8,I,"rd, -, imm15",rd = new_object(imm15),Allocate object by class ID,-
-NEWA,0xA9,RI,"rd, len, type, -",rd = new_array(len, type),Allocate array,-
-LDF,0xAA,RI,"rd, obj, -, idx",rd = obj.field[idx],Load object field,-
-STF,0xAB,RI,"val, obj, -, idx",obj.field[idx] = val,Store object field,-
-LDELEM,0xAC,R,"rd, arr, idx, -",rd = arr[idx],Load array element,-
-STELEM,0xAD,R,"val, arr, idx, -",arr[idx] = val,Store array element,-
-ARRAYLEN,0xAE,R,"rd, arr, -, -",rd = length(arr),Get array length,-
-CALL,0xB4,J,"rd, offset",call rd + offset,Call function,-
+CALL,0xB4,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Call function,-
 CALLI,0xB5,I,"rd, -, imm15",rd = call symbol_table[imm15],Call by symbol table index,-
 TAILCALL,0xB6,J,offset,tail_call offset,Tail call,-
-TRY,0x110,I,"rd, -, imm15",rd = handler_table.push(imm15); sp -= 16,Begin try block push handler,-
-THROW,0x112,R,"exc, -, -",throw_exception(exc),Throw exception value,-
-CATCH,0x113,I,"rd, -, imm15",rd = pop_handler(imm15),Catch exception pop handler,-
-FINALLY,0x114,I,"-, -, imm15",execute_finally(imm15),Execute finally block,-
-RETHROW,0x115,R,"-, exc, -",rethrow(exc),Rethrow current exception,-
-ENDFIN,0x117,R,"-, -, -",end_finally(),End finally block,-
-CALLHOST,0x120,I,"rd, -, imm15",rd = call_static_runtime(imm15),Call static runtime function by ID,-
-CALLNATIVE,0x122,R,"rd, addr, -, -",rd = call_c_abi(addr),Call native function with C ABI,-
-LOADLIB,0x125,I,"rd, -, imm15",rd = dlopen(imm15),Load dynamic library by name/index,-
-GETSYM,0x127,RI,"rd, lib, -, imm10",rd = dlsym(lib, imm10),Get symbol address from library,-
+SYSCALL,0xC0,I,"rd, -, imm15",rd = os_syscall(imm15),System call,-
+BREAK,0xC1,R,"-, -, -, -",trap_to_debugger,Breakpoint,-

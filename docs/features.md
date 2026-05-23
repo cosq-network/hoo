@@ -66,7 +66,7 @@ Supported expression families:
 
 The language is mapped to **core-minimalest** HVM.
 
-### 2.1 Included Core Families
+### 2.1 Included Core Families (Hardware Ready)
 
 - data movement: `NOP`, `MOV`, `MOVZ`, `LUI`, `ADDI`
 - integer arithmetic/shift: `ADD`, `SUB`, `MUL`, `DIV`, `DIVU`, `REM`, `SHL`, `SHR`, `SAR`
@@ -74,21 +74,20 @@ The language is mapped to **core-minimalest** HVM.
 - floating-point: `FADD`, `FSUB`, `FMUL`, `FDIV`
 - comparisons: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`, `FCMPEQ`, `FCMPLT`, `FCMPLE`
 - branches/jumps: `BEQ`, `BNE`, `BLT`, `BLE`, `JMP`, `JAL`, `JALR`, `RET`
-- memory/stack/frame: `LD.*`, `ST.*`, `LDA`, `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP`, `FRAME`
-- objects/arrays: `NEW`, `NEWA`, `LDF`, `STF`, `LDELEM`, `STELEM`, `ARRAYLEN`
+- memory: `LD.*`, `ST.*`, `LDA`
+- stack/frame: `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP`, `FRAME`
 - calls: `CALL`, `CALLI`, `TAILCALL`
-- exceptions: `TRY`, `THROW`, `CATCH`, `FINALLY`, `RETHROW`, `ENDFIN`
-- FFI bridge: `CALLHOST`, `CALLNATIVE`, `LOADLIB`, `GETSYM`
+- hardware/system: `SYSCALL`, `BREAK`
 
-### 2.2 Derived (Lowered) Operations
+### 2.2 Lowering Rules (Compiler Implemented)
 
-Not separate opcodes in core:
+The following high-level language constructs are lowered to the core ISA:
 
-- `SUBI` -> `ADDI rd, rs, -imm`
-- `NEG` -> `SUB rd, r0, rs`
-- `CMPGT/CMPGE` -> swapped `CMPLT/CMPLE`
-- `BGT/BGE` -> swapped `BLT/BLE`
-- `MOVI` synthesized via `MOVZ`/`LUI`, or spilled to `.rodata` for values > 15 bits.
+- **Objects**: `new Point()` -> `CALL hoo_malloc` + `CALL Point_init`.
+- **Arrays**: `[1, 2]` -> `CALL hoo_malloc` + `ST.D` sequence.
+- **Member/Index Access**: `p.x` or `arr[i]` -> pointer arithmetic + `LD.D`/`ST.D`.
+- **Exceptions**: `try/catch` -> `CALL hoo_push_handler` + control flow.
+- **Strings**: `"..."` -> `CALL hoo_string_from_cstr`.
 
 ### 2.3 Not in Core
 

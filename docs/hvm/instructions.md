@@ -1,21 +1,16 @@
 # HVM Core Instruction Reference
 
-Version: `1.3`  
-Profile: `core-minimalest`  
+Version: `1.4`  
+Profile: `core-minimalest` (Hardware Ready)  
 Normative sources:
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/HVM_SPEC.md`
 
-This document intentionally covers only the current core profile. Optional/extended families are documented separately in `docs/hvm/HVM_EXTENSIONS.md`.
+This reference defines a **pure hardware-ready ISA**. All high-level VM constructs have been purged and are now handled via software lowering or standard library calls.
 
 ## 1. Scope
 
-This reference matches the minimal ISA needed for the current grammar in `src/parsing/Hooc.g4`:
-- expressions and assignments
-- control flow
-- memory and stack/frame
-- object/array operations
-- calls, exceptions, and FFI bridge
+This reference defines the physical instructions supported by the HVM core. It is sufficient to support the Hooc language through aggressive compiler-level lowering.
 
 ## 2. Register Convention Summary
 
@@ -37,80 +32,56 @@ This reference matches the minimal ISA needed for the current grammar in `src/pa
 
 Opcode-space note:
 - `0x00..0x7F` use the base 32-bit encodings directly.
-- Core opcodes `>= 0x100` (exception/FFI entries such as `TRY`, `THROW`, `CALLHOST`) are represented via an escape-prefixed extended encoding as defined by `HVM_SPEC.md`.
-
-Immediate and branch semantics follow `docs/hvm/HVM_SPEC.md`.
+- Opcodes `>= 0x80` use an escape-prefixed extended encoding (`0xFE` prefix).
 
 ## 4. Core Instruction Set
 
 ### 4.1 Data movement
-
 - `NOP` `MOV` `MOVZ` `LUI` `ADDI`
 
 ### 4.2 Integer arithmetic and shifts
-
 - `ADD` `SUB` `MUL` `DIV` `DIVU` `REM`
 - `SHL` `SHR` `SAR`
 
 ### 4.3 Bitwise/logical
-
 - `AND` `OR` `XOR` `NOT`
 
 ### 4.4 Floating point
-
 - `FADD` `FSUB` `FMUL` `FDIV`
 
 ### 4.5 Comparisons
-
 - Integer: `CMPEQ` `CMPNE` `CMPLT` `CMPLE`
 - Float: `FCMPEQ` `FCMPLT` `FCMPLE`
 
 ### 4.6 Branch/jump
-
 - `BEQ` `BNE` `BLT` `BLE`
 - `JMP` `JAL` `JALR` `RET`
 
-### 4.7 Memory
-
+### 4.7 Memory (Standard Load/Store)
 - Loads: `LD.B` `LD.BU` `LD.H` `LD.HU` `LD.W` `LD.WU` `LD.D`
 - Stores: `ST.B` `ST.H` `ST.W` `ST.D`
 - Address: `LDA`
 
 ### 4.8 Stack/frame
-
 - `PUSH` `POP` `ENTER` `LEAVE` `ADJSP` `FRAME`
 
-### 4.9 Objects/arrays
-
-- `NEW` `NEWA`
-- `LDF` `STF`
-- `LDELEM` `STELEM`
-- `ARRAYLEN`
-
-### 4.10 Calls/linking
-
+### 4.9 Calls/linking
 - `CALL` `TAILCALL` (J-format, 20-bit relative offset)
 - `CALLI` (I-format, indirect)
 
-### 4.11 Exceptions
+### 4.10 Hardware/System
+- `SYSCALL`: Trigger a system call to the OS/Runtime.
+- `BREAK`: Trap to debugger.
 
-- `TRY` `THROW` `CATCH` `FINALLY` `RETHROW` `ENDFIN`
+## 5. Lowering Rules (Software Implemented)
 
-### 4.12 FFI/runtime bridge
+Operations removed from the ISA and now lowered to the above set:
 
-- `CALLHOST` `CALLNATIVE` `LOADLIB` `GETSYM`
-
-## 5. Derived Operations (Not Separate Opcodes)
-
-Lowering rules:
-
-- `SUBI rd, rs, imm` -> `ADDI rd, rs, -imm`
-- `NEG rd, rs` -> `SUB rd, r0, rs`
-- `CMPGT rd, a, b` -> `CMPLT rd, b, a`
-- `CMPGE rd, a, b` -> `CMPLE rd, b, a`
-- `BGT a, b, off` -> `BLT b, a, off`
-- `BGE a, b, off` -> `BLE b, a, off`
-- `MOVI` omitted; build constants via `MOVZ`/`LUI` (+ arithmetic/logic as needed), or spill to `.rodata` for values > 15 bits.
+- **Objects**: `NEW` -> `CALL hoo_malloc`.
+- **Arrays**: `NEWA` -> `CALL hoo_malloc`.
+- **Field/Element Access**: `LDF`/`STF`/`LDELEM` -> Explicit pointer arithmetic + `LD.D`/`ST.D`.
+- **Exceptions**: `TRY`/`THROW` -> `CALL hoo_push_handler` + control flow.
+- **FFI**: `CALLHOST` -> Standard `CALL` to linked symbol.
 
 ## 6. Canonical Opcode Table
 
