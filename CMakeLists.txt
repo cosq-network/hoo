@@ -163,6 +163,7 @@ add_library(hvm STATIC
     src/hvm/HOModule.cpp
     src/hvm/HVMInstruction.cpp
     src/hvm/HVMModuleBundle.cpp
+    src/hvm/HVMJIT.cpp
 )
 
 target_include_directories(hvm PUBLIC
@@ -421,6 +422,8 @@ if(HOOC_BUILD_TESTS)
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
         tests/hvm/HVMModuleBundleTest.cpp
+        tests/hvm/HVMJITLoaderTest.cpp
+        tests/hvm/HVMJITInstructionSemanticsTest.cpp
         tests/ast/CompilationUnitTest.cpp
     )
 

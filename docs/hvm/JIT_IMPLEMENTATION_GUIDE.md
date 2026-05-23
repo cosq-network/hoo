@@ -501,6 +501,143 @@ The JIT maintains an **Import Dependency Stack**.
 2.  The JIT ensures that the target module's `__hoo_init` is called before the current module's `import` processing completes.
 3.  **Circular Import Guard**: If an import node targets a module already on the active dependency stack, the JIT must either resolve it via deferred symbols (lazy linking) or emit a "Circular Dependency" trap if the language strictly forbids it.
 
+### **6.6 Loader Pipeline and Caching Rules**
+To avoid redundant parsing/translation and to guarantee deterministic linkage, the JIT module loader should follow a strict staged pipeline.
+
+#### **A. Canonical Module Identity**
+1.  Normalize module paths (`a.b.c`) and filesystem paths (`a/b/c.ho`) to one canonical key.
+2.  Use this key as the only identity in:
+    - module cache (`ParsedModuleCache`)
+    - ORC `JITDylib` naming
+    - initialization state map
+3.  Reject duplicate loads where two different physical files claim the same canonical module name.
+
+#### **B. Multi-Stage Load FSM**
+Each module should move through explicit states:
+`Discovered -> Parsed -> SymbolsRegistered -> IRReady -> Linked -> Initialized`.
+
+Guidelines:
+1.  State transitions must be monotonic and thread-safe.
+2.  On failure, mark module as `Failed` with diagnostic payload and prevent partial reuse.
+3.  Re-entrant import requests for a module already in-flight should wait on the same state transition future rather than creating a second loader task.
+
+#### **C. Recommended Caches**
+1.  **Byte Cache**: optional `path -> file bytes` for repeated test runs.
+2.  **Parse Cache**: `moduleKey -> HOModule`.
+3.  **Translation Cache**: `moduleHash -> ThreadSafeModule` (invalidated by compiler/runtime ABI version change).
+4.  **Address Cache**: `mangledSymbol -> JITEvaluatedSymbol` after first successful lookup.
+
+### **6.7 ORC Symbol Wiring and Search Order**
+The linkage layer should implement a deterministic ORC symbol lookup order to avoid ambiguous resolution.
+
+#### **A. Recommended Search Order**
+For a symbol requested from `ModuleA`:
+1.  `ModuleA` local/private symbols.
+2.  Explicitly imported modules of `ModuleA` in declared order.
+3.  Built-in runtime namespace (`hoo` / `hoort` virtual dylib).
+4.  Current process dynamic symbols (only when FFI policies allow it).
+
+#### **B. Visibility and Binding Policy**
+1.  Local (`STB_LOCAL`) symbols must never be exported to other `JITDylib`s.
+2.  Global exports are published once and treated immutable after publish.
+3.  Duplicate global export names across independent modules should fail fast unless explicitly marked as weak/override by policy.
+
+#### **C. Deferred Materialization**
+1.  Register callable exports as deferred materialization units where possible.
+2.  Materialize only on first lookup (`compile-on-demand`) to reduce startup latency.
+3.  Always materialize `_F_module_init_v` eagerly for modules participating in dependency bootstrap.
+
+### **6.8 Relocation, CALL Targeting, and Address Materialization**
+The linker path must preserve architectural correctness for direct calls, data handles, and function pointers.
+
+#### **A. Relocation Classes**
+At minimum, support these logical relocation intents:
+1.  `REL_CALL`: patch direct `CALL`/`JAL` targets.
+2.  `REL_ADDR`: patch absolute addresses for `LDA` and constant handle loads.
+3.  `REL_DATA`: patch references into `.data/.rodata` segments.
+
+#### **B. Patch Rules**
+1.  Validate target symbol exists and binding is compatible with relocation site type.
+2.  Validate displacement range for PC-relative forms; if out-of-range, synthesize veneer/stub trampoline.
+3.  Apply little-endian writes and preserve instruction encoding invariants from `HVMInstruction`.
+
+#### **C. Function Pointer Semantics**
+1.  Symbols loaded via `LDA` for callable use must resolve to executable addresses.
+2.  Indirect calls (`JALR`) through vtable/function-pointer slots must receive fully relocated host addresses before first invocation.
+3.  On lazy JIT, pointer loads should trigger materialization of not-yet-compiled targets.
+
+### **6.9 Dependency Graph Policy and Cycle Handling**
+Module graph behavior must be explicitly defined to avoid runtime ambiguity.
+
+#### **A. Graph Construction**
+1.  Nodes: canonical module keys.
+2.  Edges: `A -> B` if `A` imports `B`.
+3.  Build graph before initialization and keep immutable snapshot for bootstrap run.
+
+#### **B. Topological Initialization**
+1.  Execute `_F_module_init_v` in post-order (dependencies first).
+2.  Guard each module with once-only initialization flag (`std::once_flag` or equivalent).
+3.  If module has no initializer symbol, treat as initialized after symbol registration/link phase.
+
+#### **C. Cycle Strategy**
+Choose one global policy and enforce it consistently:
+1.  **Strict**: reject cycles at load time with complete cycle path diagnostics.
+2.  **Lazy**: allow cycles only for symbol references that can be resolved by deferred materialization and do not require immediate initializer completion.
+
+Recommended default: strict rejection for initial implementation.
+
+### **6.10 Failure Model, Rollback, and Diagnostics**
+The module linker must fail atomically per module and emit actionable diagnostics.
+
+#### **A. Atomic Failure Contract**
+1.  If any phase fails for `ModuleX`, do not expose partially linked symbols from `ModuleX`.
+2.  Roll back temporary registrations in its `JITDylib` (or mark dylib poisoned/unusable).
+3.  Preserve already-initialized unrelated modules.
+
+#### **B. Diagnostic Payload Requirements**
+Every load/link failure should include:
+1.  module key + filesystem path
+2.  phase (`parse`, `resolve`, `materialize`, `init`)
+3.  symbol name (if applicable)
+4.  relocation site offset / function name
+5.  root cause classification (`missing_symbol`, `abi_mismatch`, `cycle`, `bad_format`, `trap_in_init`)
+
+#### **C. Suggested Debug Logging Hooks**
+1.  `--jit-link-trace`: per-symbol lookup trace including searched dylibs.
+2.  `--jit-init-trace`: module init order and per-module timing.
+3.  `--jit-reloc-trace`: relocation records applied and any range-extension stubs generated.
+
+### **6.11 Versioning and Compatibility Gates**
+Linkage should be gated by explicit binary/runtime compatibility checks.
+
+#### **A. Required Checks at Module Parse Time**
+1.  HVM major/minor version compatibility (reject major mismatch).
+2.  Endianness compatibility (reject non-little-endian for current profile).
+3.  Section schema compatibility (`.symtab`, `.import`, `.export`, `.funcmeta` structural expectations).
+
+#### **B. Runtime ABI Compatibility**
+1.  Verify required runtime intrinsic symbols exist before module init begins.
+2.  Enforce mangling-version compatibility between compiler output and JIT demangler.
+3.  Optionally compare runtime ABI hash embedded in module metadata and host runtime bridge hash.
+
+### **6.12 Concurrency Guidelines for Parallel JIT**
+Parallel compilation/linking is desirable, but initialization and publish order must remain deterministic.
+
+#### **A. Safe Parallel Regions**
+1.  Parsing distinct modules.
+2.  Translating distinct functions to LLVM IR.
+3.  Materializing symbols that are not in dependency-critical init path.
+
+#### **B. Serialized Regions**
+1.  Final symbol publish for a given `JITDylib`.
+2.  `_F_module_init_v` execution per topological order.
+3.  Global bundle mutation (`addModule`, export registry updates).
+
+#### **C. Locking Recommendations**
+1.  Use reader/writer lock for global symbol registry.
+2.  Use per-module mutex for state machine transitions.
+3.  Avoid holding global locks while executing initializer code to prevent deadlock on nested import lookups.
+
 ---
 
 ## 7. Runtime Library Integration (`hoort`)
@@ -633,11 +770,253 @@ The JIT requires the following primitive functions to be available in the proces
 3.  **`void hoo_release(void* obj)`**:
     - Atomically decrements refcount.
     - If 0, calls the destructor (found via `type_id` lookup) and `free()`.
+4.  **ABI and call contract (normative)**:
+    - All intrinsic symbols must use `extern "C"` and a stable C ABI.
+    - Argument width is fixed at 64-bit for scalar values (`i64`), pointer-width for handles.
+    - The JIT must mark calls as `nounwind` only for intrinsics that are guaranteed not to throw host exceptions.
+    - The JIT must preserve host ABI stack alignment before every intrinsic call (16-byte on System V/ARM64; 32-byte shadow space on Win64).
+5.  **Null-safety requirements**:
+    - `hoo_retain(NULL)` and `hoo_release(NULL)` must be treated as no-op.
+    - JIT-generated ARC sequences may still include explicit `icmp ne ptr, null` guards to reduce call overhead on hot paths.
+    - Any intrinsic receiving non-null object handles may assume the pointer references byte 0 of the user payload (header lives at negative offsets).
+6.  **Overflow, bounds, and allocation failure semantics**:
+    - `hoo_alloc` must guard `size + 16` overflow before allocation.
+    - On allocation failure, the runtime must trigger a deterministic fatal path (trap or runtime exception) rather than returning invalid pointers.
+    - `size < 0` from malformed codegen is invalid input; runtime should fail-fast in debug builds.
+7.  **Header layout invariants required by JIT**:
+    - `obj - 16` => atomic refcount (`i64`), `obj - 8` => `type_id` (`i64`).
+    - Returned pointers from `hoo_alloc` must be at least 8-byte aligned; 16-byte alignment is preferred for vectorized host loads.
+    - `type_id` must remain immutable for the lifetime of an object and is authoritative for destructor dispatch and RTTI checks.
+8.  **Thread-safety and memory ordering**:
+    - Refcount increments/decrements must be atomic.
+    - Final-release path must execute exactly once across racing threads.
+    - Runtime implementation should use acquire/release ordering semantics so destructor-visible writes are not reordered past finalization.
+9.  **Destructor dispatch contract (`hoo_release`)**:
+    - When decrement reaches zero:
+      - Resolve destructor by `type_id`.
+      - Invoke destructor on the same user-data pointer.
+      - Destructor must release owned child references before memory free.
+      - Memory must be freed exactly once after destructor returns.
+    - Re-entrant `release` from inside destructors must be supported for child objects.
+10. **JIT lowering requirements around intrinsics**:
+    - For object stores (`ST.D` to owning slots), emit:
+      - `old = load slot`
+      - `retain(new)` (if non-null)
+      - `store new`
+      - `release(old)` (if non-null)
+    - For function returns of owning objects, return in `r1` with ownership `+1`.
+    - For exceptional edges and early returns, the cleanup stack must still emit `release` for all outstanding owned locals.
+11. **Mandatory symbol set for startup validation**:
+    - `hoo_alloc`, `hoo_retain`, `hoo_release` are required hard dependencies.
+    - JIT bootstrap should validate symbol presence before first module execution and fail module load if any intrinsic is missing.
+    - Optional diagnostics should print mangled and unmangled names to aid integration debugging.
+12. **Recommended extended intrinsics (non-core but practical)**:
+    - `hoo_try_retain(void*) -> bool` for lock-free weak-reference promotion patterns.
+    - `hoo_type_name(i64 type_id) -> const char*` for debugger/exception reporting.
+    - `hoo_alloc_aligned(i64 size, i64 type_id, i64 align)` for high-performance SIMD-aware runtime types.
+    - These are optional and must not replace the required baseline trio above.
 
 ### **7.9 RTTI & Heap Segmentation**
 The `type_id` stored in the object header is a unique 64-bit identifier used for **Runtime Type Information (RTTI)**.
 - **JIT Usage**: When HVM code performs a `CATCH` check or an `instanceof` check, the JIT emits a load from `obj - 8` and compares it against the expected class ID.
 - **Heap Safety**: The JIT can implement "Heap Zones" by checking the base address range before calling `release`, preventing ARC management of stack-allocated or static data.
+
+### **7.10 Runtime Bootstrap: Required Order and Contracts**
+Runtime integration must execute in a strict deterministic order to avoid symbol races and invalid early calls.
+
+#### **A. Required Startup Sequence**
+1.  Create ORC runtime `JITDylib` for `hoo`/`hoort` symbols.
+2.  Register mandatory intrinsic symbols (`hoo_alloc`, `hoo_retain`, `hoo_release`) and validate reachability.
+3.  Register type modules (`hoo.String`, `hoo.Array`, `hoo.Map`, `hoo.Exception`, etc.) as `StaticHOModule` instances.
+4.  Register runtime global objects (type tables, vtable roots, constants).
+5.  Publish runtime exports to the global bundle only after all required symbols are installed.
+6.  Execute a runtime self-test probe (small retain/release smoke path) before loading user `.ho` modules.
+
+#### **B. Failure Behavior**
+1.  If any required symbol is absent, runtime bootstrap fails hard and user modules must not load.
+2.  If self-test probe fails, JIT marks runtime state as poisoned and returns a startup error.
+3.  No partial runtime publication: either all required modules are visible or none are.
+
+### **7.11 Runtime Symbol Contract Table (Normative)**
+Every runtime-bridge symbol must define ownership and exception behavior so IR generation can be consistent.
+
+| Contract Field | Requirement |
+| :--- | :--- |
+| ABI | `extern "C"` stable C ABI |
+| Ownership of pointer args | Borrowed unless explicitly documented otherwise |
+| Ownership of pointer return | Owned (+1) for object constructors/factories, borrowed for raw accessors |
+| Null handling | Explicit: no-op, trap, or error return; must be documented per function |
+| Exception policy | Must be marked `noexcept` if JIT annotates calls `nounwind` |
+| Threading policy | Thread-safe, thread-affine, or externally synchronized |
+| Determinism | Must not mutate hidden global state unless explicitly part of contract |
+
+Recommended implementation metadata per symbol (for JIT lowering):
+- `name`
+- `mangled_name`
+- `arg_kinds` (`i64`, `ptr`, `string_handle`, `array_handle`, ...)
+- `return_kind`
+- `takes_ownership[]`
+- `returns_owned`
+- `may_throw`
+- `is_pure` / `has_side_effects`
+
+### **7.12 Type Registration and `type_id` Lifecycle**
+The runtime must define a stable mapping of logical type names to `type_id` values.
+
+#### **A. Registration Model**
+1.  Build a startup type registry: `qualified_name -> type_id`.
+2.  Registry must be immutable after bootstrap for deterministic cross-module behavior.
+3.  `type_id = 0` reserved for invalid/null sentinel (non-object).
+
+#### **B. Compatibility Rules**
+1.  Two modules may reference the same runtime type only if `type_id` agrees.
+2.  If compiler metadata and runtime registry disagree, module load fails with ABI mismatch.
+3.  `type_id` reuse across process runs is allowed only if external persistence is not required. If persisted data exists, `type_id` assignment must be versioned and stable.
+
+#### **C. Destructor/VTable Integration**
+For each `type_id`, runtime should register:
+1.  destructor function pointer
+2.  optional vtable root pointer
+3.  optional RTTI parent-chain pointer for fast subtype checks
+
+### **7.13 Object Layout, Alignment, and Allocation Classes**
+Beyond the 16-byte common header, runtime integration should formalize allocation classes.
+
+#### **A. Allocation Classes**
+1.  Small object class (fixed-size fast path).
+2.  Large object class (direct malloc/page allocator).
+3.  Optional aligned class (`>= 16-byte`) for SIMD payloads.
+
+#### **B. Alignment Guarantees**
+1.  Minimum user-data alignment: 8 bytes.
+2.  Preferred alignment: 16 bytes for vector-friendly layouts.
+3.  Runtime must preserve header-to-payload offset invariants when higher alignment is requested.
+
+#### **C. Optional Debug Header Fields (non-core)**
+Implementations may extend pre-header metadata in debug builds:
+1.  allocation site id
+2.  canary/hash
+3.  state bits (`freed`, `pinned`, `poisoned`)
+Any extension must not break the normative offsets used by generated code for `refcount` and `type_id`.
+
+### **7.14 ARC Lowering Templates Used by the JIT**
+The JIT should use canonical IR patterns for predictable optimization and correctness.
+
+#### **A. Store-to-Owned-Slot Template**
+```text
+old = load slot
+if (new != null) call hoo_retain(new)
+store new -> slot
+if (old != null) call hoo_release(old)
+```
+
+#### **B. Move Semantics Template**
+When ownership is transferred from `src` to `dst` without duplicating lifetime:
+```text
+tmp = load src
+store null -> src
+old = load dst
+store tmp -> dst
+if (old != null) call hoo_release(old)
+```
+
+#### **C. Phi/Merge Edge Rules**
+1.  For SSA merges carrying object handles, ownership must be normalized at incoming edges.
+2.  Avoid double-retain by assigning one edge as owner and converting others to borrowed with explicit retain where required.
+3.  On exceptional control flow, release list must mirror lexical ownership scopes.
+
+### **7.15 Function Boundary Ownership Rules**
+Runtime calls and generated functions must agree on ownership across calls.
+
+#### **A. Parameters**
+1.  Default parameter convention: borrowed references.
+2.  If callee takes ownership, symbol metadata must mark the parameter as consuming.
+3.  JIT should insert retain before call only when borrow-to-own promotion is required.
+
+#### **B. Return Values**
+1.  Owned object returns must be +1 in `r1`.
+2.  Borrowed object returns must never be released by caller unless caller promotes ownership.
+3.  Multi-return patterns via out-pointers must define ownership per out slot.
+
+#### **C. Constructors and Factory Calls**
+1.  `hoo_alloc` result is owned by caller.
+2.  Constructor must not drop the initial ownership unless construction fails.
+3.  Failure path must either free object internally or return null with deterministic cleanup.
+
+### **7.16 Exception Safety at Runtime Boundary**
+Runtime integration must define behavior for failures during native bridge calls.
+
+#### **A. Runtime Function Failure Modes**
+1.  trap/abort for invariant violations (debug or fatal mode)
+2.  throw managed exception handle (recoverable path)
+3.  error-code return (for specific APIs)
+
+Choose one policy per symbol and document it; mixed undocumented behavior is forbidden.
+
+#### **B. JIT Requirements**
+1.  If runtime symbol may throw managed exception, caller must register cleanup/landing pad before call.
+2.  If runtime symbol is `nounwind`, JIT may use straight-line lowering with no EH edges.
+3.  Partial side effects before failure must leave heap in releasable state.
+
+### **7.17 Concurrency and Memory Model Integration**
+ARC correctness under concurrency requires explicit rules at runtime boundary.
+
+#### **A. Atomic Refcount Operations**
+1.  `retain`: atomic increment (acquire/release relaxed pattern depending on implementation policy).
+2.  `release`: atomic decrement; transition to zero must provide release semantics and synchronize with destructor entry.
+3.  Deallocation must occur only after winning thread establishes zero ownership.
+
+#### **B. Shared Object Mutation Policy**
+1.  Runtime containers (`Array`, `Map`) must document whether internal mutation is thread-safe.
+2.  If non-thread-safe, JIT/runtime must require external synchronization at API boundary.
+3.  Iterator or view objects must define lifetime rules against concurrent mutation.
+
+### **7.18 VTable and Dynamic Dispatch Integration**
+Runtime types that participate in inheritance must expose vtable contracts compatible with JIT-generated calls.
+
+#### **A. VTable Shape**
+1.  Slot 0..N must be stable per type version.
+2.  Parent slot compatibility must be preserved for overrides.
+3.  Optional metadata slots (type name, interface map) must be documented.
+
+#### **B. Dispatch Rules**
+1.  Normal classes use indirect call via vtable slot.
+2.  Final classes may be devirtualized by JIT.
+3.  Cross-module overrides require patching with final host addresses after all modules are materialized.
+
+### **7.19 Runtime Bridge Validation and Test Matrix**
+Runtime integration should be gated by targeted validation suites.
+
+#### **A. Required Validation Buckets**
+1.  Symbol presence and signature check (startup).
+2.  ARC correctness: retain/release balance under normal, exceptional, and branch-heavy control flow.
+3.  Cross-module dispatch and vtable override correctness.
+4.  Container operations (String/Array/Map) with mixed ownership and failure injection.
+5.  Concurrency stress: racing retain/release and shared container operations.
+
+#### **B. Diagnostic Counters (recommended)**
+1.  total allocations / frees
+2.  retain/release counts
+3.  zero-transition releases
+4.  leaked object count at shutdown
+5.  failed symbol lookups and fallback path usage
+
+#### **C. Runtime Debug Modes**
+1.  ARC audit mode: track per-object retain/release events.
+2.  Poison-on-free mode: overwrite payload and detect use-after-free.
+3.  Strict ownership mode: trap on double-release or negative refcount.
+
+### **7.20 Implementation Checklist for New Runtime Modules**
+When adding a new `hoort` component, follow this checklist:
+
+1.  Define C ABI surface in `src/runtime/lib/*.h` with explicit ownership comments.
+2.  Implement native logic in `src/runtime/lib/*.cpp` with thread/exception policy notes.
+3.  Register symbol mappings in runtime registration layer (`src/runtime/llvm/*` and/or `StaticHOModule` bridge).
+4.  Add mangled-name mapping tests and ABI signature tests.
+5.  Add ARC interaction tests (parameter/return/store/release paths).
+6.  Add cross-module linkage tests with at least one imported user module.
+7.  Add failure-mode tests (allocation failure, null handling, type mismatch).
+8.  Update this guide’s type bridge tables and intrinsic requirements if contracts changed.
 
 ---
 

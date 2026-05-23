@@ -1,89 +1,106 @@
-# HVMJIT Detailed Test Plan
+# HVMJIT Detailed Test Plan (Current Progress)
 
-This document outlines the strategy for verifying the **`HVMJIT`** class. The goal is to ensure 100% compliance with the HVM v1.4 ISA and the correct execution of all language features defined in `src/parsing/Hooc.g4`.
-
----
-
-## 1. Test Strategy: Programmatic Binary Synthesis
-
-Testing a JIT-based binary translator using high-level source code is insufficient for verifying architectural parity. Instead, the test suite will utilize **Programmatic `HOModule` Synthesis**:
-1.  Tests will manually construct `HOModule` objects and populate the `.text` section with raw `HVMInstruction` sequences.
-2.  The `HVMJIT` will execute these synthetic modules.
-3.  Results will be verified by checking the virtual register state and memory buffers post-execution.
+This document describes the **current HVMJIT test coverage**, known gaps, and pending test work.
 
 ---
 
-## 2. Instruction-Level Unit Tests (ISA Parity)
+## 1. Current Test Strategy in Use
 
-Every opcode in `hvm_instruction_set.csv` must be tested in isolation.
-
-### **2.1 Data Movement & Arithmetic**
-- **`MOV`/`LUI`/`ADDI`**: Verify 64-bit constant materialization and sign-extension logic.
-- **Arithmetic Family (0x10)**: 
-    - `ADD`, `SUB`, `MUL`: Test boundary cases (max/min `i64`).
-    - `DIV`, `REM`: Verify correct behavior for negative operands and **Division by Zero Trap**.
-- **Shift Family (0x13)**: Test `SHL`, `SHR` (Logical), and `SAR` (Arithmetic) with shift counts 0, 1, 63, and 64.
-
-### **2.2 Logic & Comparisons**
-- **Bitwise**: `AND`, `OR`, `XOR`, `NOT`.
-- **Comparisons (0x40)**: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`. Verify that `rd` is set to exactly `0` or `1`.
-
-### **2.3 Memory Engine**
-- **Load/Store Widths**: `LD.B` (signed), `LD.BU` (unsigned), `LD.W`, `LD.D`.
-- **Offset Arithmetic**: Verify `addr + imm15` calculation.
-- **Alignment Verification**: Test 8-byte aligned and unaligned accesses (if supported by hardware profile).
+Implemented test strategy:
+1. Programmatic `HOModule` synthesis (instruction-level control over `.text` and symbols).
+2. In-memory `IOProvider` fixture for deterministic virtual filesystem and dependency tests.
+3. Dual-path verification where relevant:
+   - ORC execution path behavior
+   - interpreter fallback behavior
 
 ---
 
-## 3. Language Feature Verification (Grammar Mapping)
+## 2. Existing Test Suites
 
-These tests ensure that the JIT correctly executes the RISC sequences emitted by the `HVMCodeGenerator` for high-level constructs.
+### 2.1 `HVMJITLoaderTest`
 
-### **3.1 Control Flow (The "JIT-Break" Tests)**
-- **Rule `ifStatement`**: Test `BEQ` branching to a "then" block and fall-through to "else".
-- **Rule `whileStatement`**: Test backward `JMP` targets. Verify the JIT doesn't enter an infinite loop during IR generation.
-- **Rule `forRangeStatement`**: Verify manual iterator increment and boundary condition matching.
+Covers:
+1. missing input and parse/IO failures
+2. `.ho` and `.hoo` load paths
+3. dotted module-name resolution
+4. dependency loading and cycle rejection
+5. module init behavior
+6. rollback on dependency load failure
+7. logical search order construction
+8. validation gates (pointer-size, section flags, symbol bounds)
+9. runtime bootstrap sanity and runtime symbol availability
+10. runtime bridge extended symbol lookup checks
 
-### **3.2 Object Model & Arrays**
-- **Rule `newExpression`**: 
-    1. Verify call to `hoo_malloc`.
-    2. Verify `r1` (this) is correctly set before the constructor call.
-- **Rule `memberAccess`**: Verify `LD.D` with specific offsets calculated from `ClassLayout`.
-- **Array Indexing**: Verify `SHL 3` + `ADDI 8` + `ADD` sequence for `arr[i]`.
+### 2.2 `HVMJITInstructionSemanticsTest`
 
-### **3.3 Exception Handling (The Shadow Stack)**
-- **Rule `tryCatchStatement`**:
-    - Verify `hoo_push_handler` is called with the host address of the `catch` block.
-    - **Trigger**: Synthesize a `CALL _F_hoo_throw_v_p`.
-    - **Success**: JIT must resume execution at the registered catch block with `r1` holding the exception object.
-- **Rule `throwStatement`**: Verify `r1` is populated with the operand before the runtime call.
-
----
-
-## 4. System & Modular Linkage Tests
-
-### **4.1 Multi-Binary JIT**
-- **Scenario**: `Module A` calls `Module B`.
-- **Setup**: Create two `HOModule` objects. `Module A` contains a `CALL` to a mangled symbol in `Module B`'s `SHT_EXPORT` table.
-- **Verification**: `HVMJIT` must automatically load/resolve both units via `HVMModuleBundle`.
-
-### **4.2 SYSCALL & IO**
-- **Scenario**: Execution of `println("test")`.
-- **Setup**: Map `SYSCALL 10` (example) to `IOProvider::writeStdout`.
-- **Verification**: Verify that the `IOProvider` mock receives the correct string address and data.
-
-### **4.3 FFI Marshalling**
-- **Scenario**: Calling native `printf` from HVM.
-- **Verification**: 
-    - Verify register alignment (r1 -> RDI/RCX).
-    - Verify host stack alignment (16-byte).
-    - Verify return value propagation (RAX/X0 -> r1).
+Covers:
+1. branch and call semantics
+2. stack/frame operations (`ENTER/LEAVE/PUSH/POP/FRAME/ADJSP`)
+3. arithmetic and division-by-zero error behavior
+4. load/store width behavior (`B/H/W/D`) and alignment checks
+5. `JALR`, `TAILCALL`, `NOT`
+6. float arithmetic and float comparison opcodes
+7. syscall runtime bridge operations:
+   - alloc / retain / release / refcount / type-id
+   - runtime exception object creation
+8. ARC-aware `ST.D` retain/store/release behavior for managed handles
 
 ---
 
-## 5. Stress & Boundary Testing
+## 3. Current Pass Status
 
-- **Deep Recursion**: Execute a Fibonacci sequence to verify stack frame establishment.
-- **Register Spilling**: Execute a function with 30+ simultaneous temporaries (beyond `r9-r15`) to verify the generator's spilling logic.
-- **Large Constants**: Verify `.rodata` spilling and `LDA` resolution for 64-bit literals.
-- **Circular Imports**: Attempt to load two modules that import each other; verify that the JIT detects the cycle or handles it via deferred symbols.
+Latest verified status in workspace:
+1. `HVMJIT*` suites are passing.
+2. Full `hoo-tests` suite is passing.
+3. `ctest --test-dir build` is passing.
+
+---
+
+## 4. What Is Not Yet Fully Covered
+
+Even with current passing suites, these areas are still under-covered for “full coverage”:
+1. Full structured exception unwinding semantics (try/catch/finally control-flow transitions).
+2. Cleanup-stack ownership release behavior for every control-flow exit category.
+3. Ownership contract stress under complex CFG (nested branches, early return, cross-call ownership promotion).
+4. Multi-threaded ARC race stress and runtime audit/debug-mode coverage.
+5. Full bridge matrix from guide sections 7.19–7.20 (all listed validation modes).
+
+---
+
+## 5. Pending Test Work (Next)
+
+### 5.1 Exception and Unwind Tests
+
+1. Throw path should transfer control to registered handler.
+2. Catch path should receive expected exception handle in register convention.
+3. Finally path should execute under both normal and exceptional exits.
+
+### 5.2 Cleanup / Ownership Tests
+
+1. release-on-return for owned locals.
+2. release-on-branch-exit from nested blocks.
+3. release-on-error/unwind for partially-initialized state.
+
+### 5.3 ARC Stress Tests
+
+1. repeated `ST.D` overwrite of managed handles under loop-heavy bytecode.
+2. mixed managed/non-managed values in same memory slots.
+3. retained object lifetime after cross-function call boundaries.
+
+### 5.4 Runtime Bridge Matrix Tests
+
+1. mandatory intrinsic symbol absence should fail bootstrap deterministically.
+2. extended runtime symbol mismatch diagnostics.
+3. module init ordering with runtime bridge dependencies.
+
+---
+
+## 6. Coverage Goal Definition
+
+“Full coverage” for HVMJIT in this project should mean:
+1. instruction-semantic coverage for all implemented opcodes/func variants.
+2. branch/error-path coverage for loader, linker, bootstrap, runtime bridge.
+3. explicit exception-path and cleanup-path coverage.
+4. stress validation for ARC/runtime boundary correctness.
+
+Current status: strong functional coverage for implemented features, but not yet complete against the full Phase 3 guide matrix.
