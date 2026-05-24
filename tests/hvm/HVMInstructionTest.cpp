@@ -210,16 +210,23 @@ TEST_F(HVMInstructionTest, InstructionRegistryGetInfoByMnemonic) {
     auto info = reg.getInfoByMnemonic("nop");
     ASSERT_TRUE(info.has_value());
     EXPECT_EQ(info->opcode, Opcode::NOP);
+    EXPECT_EQ(info->encoding, InstructionEncoding::Base32);
     
     auto info2 = reg.getInfoByMnemonic("add");
     ASSERT_TRUE(info2.has_value());
     EXPECT_EQ(info2->opcode, Opcode::ARITH);
     EXPECT_EQ(info2->func, 0);
+    EXPECT_EQ(info2->encoding, InstructionEncoding::Base32);
     
     auto info3 = reg.getInfoByMnemonic("sub");
     ASSERT_TRUE(info3.has_value());
     EXPECT_EQ(info3->opcode, Opcode::ARITH);
     EXPECT_EQ(info3->func, 1);
+
+    auto info4 = reg.getInfoByMnemonic("syscall");
+    ASSERT_TRUE(info4.has_value());
+    EXPECT_EQ(info4->opcode, Opcode::SYSCALL);
+    EXPECT_EQ(info4->encoding, InstructionEncoding::Escape32);
 }
 
 TEST_F(HVMInstructionTest, InstructionRegistryGetInfoByOpcode) {
@@ -259,6 +266,18 @@ TEST_F(HVMInstructionTest, MultipleEncodeDecode) {
     }
 }
 
+TEST_F(HVMInstructionTest, RIFormatDoesNotForceEscapeEncoding) {
+    HVMInstruction inst(Opcode::NOP);
+    inst.setFormat(InstructionFormat::RI);
+    inst.setOperands(OperandsRI{1, 2, 3, 17});
+
+    EXPECT_EQ(inst.getSize(), 4);
+
+    auto encoded = inst.encode();
+    ASSERT_EQ(encoded.size(), 4);
+    EXPECT_NE(encoded[0], 0xFE);
+}
+
 TEST_F(HVMInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
     // Opcode::SYSCALL is 0xC0 (>= 0x80)
     HVMInstruction orig(Opcode::SYSCALL, OperandsI{1, 0, 100});
@@ -275,4 +294,23 @@ TEST_F(HVMInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
     const auto& ops = std::get<OperandsI>(decoded->getOperands());
     EXPECT_EQ(ops.rd, 1);
     EXPECT_EQ(ops.imm15, 100);
+}
+
+TEST_F(HVMInstructionTest, RejectEscapedBaseOpcode) {
+    HVMInstruction orig(Opcode::ARITH, OperandsR{1, 2, 3, 0});
+    const auto payload = orig.encode32();
+
+    std::vector<uint8_t> escaped;
+    escaped.reserve(8);
+    escaped.push_back(0xFE);
+    escaped.push_back(static_cast<uint8_t>(Opcode::ARITH));
+    escaped.push_back(0x00);
+    escaped.push_back(0x00);
+    escaped.push_back(static_cast<uint8_t>(payload & 0xFFU));
+    escaped.push_back(static_cast<uint8_t>((payload >> 8U) & 0xFFU));
+    escaped.push_back(static_cast<uint8_t>((payload >> 16U) & 0xFFU));
+    escaped.push_back(static_cast<uint8_t>((payload >> 24U) & 0xFFU));
+
+    auto decoded = HVMInstruction::decode(escaped);
+    EXPECT_EQ(decoded, nullptr);
 }

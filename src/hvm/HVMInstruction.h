@@ -71,6 +71,12 @@ enum class InstructionFormat {
     UNKNOWN
 };
 
+enum class InstructionEncoding {
+    Base32,
+    Escape32,
+    UNKNOWN
+};
+
 struct OperandsR {
     uint8_t rd;
     uint8_t rs1;
@@ -158,6 +164,7 @@ public:
     struct InstructionInfo {
         std::string mnemonic;
         Opcode opcode;
+        InstructionEncoding encoding;
         InstructionFormat format;
         uint16_t func;
     };

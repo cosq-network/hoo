@@ -9,6 +9,14 @@ namespace {
 
 constexpr uint8_t kExtendedOpcodeEscape = 0xFE;
 
+InstructionEncoding encodingForOpcode(Opcode opcode) {
+    const uint16_t opcodeVal = static_cast<uint16_t>(opcode);
+    if (opcodeVal >= 0x80U) {
+        return InstructionEncoding::Escape32;
+    }
+    return InstructionEncoding::Base32;
+}
+
 void writeU16LE(std::vector<uint8_t>& out, uint16_t value) {
     out.push_back(static_cast<uint8_t>(value & 0xFFU));
     out.push_back(static_cast<uint8_t>((value >> 8U) & 0xFFU));
@@ -122,6 +130,9 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t
         uint32_t opcodeVal = 0;
         size_t opcodeBytes = 0;
         if (!decodeULEB128(bytes, 1, opcodeVal, opcodeBytes)) return nullptr;
+        if (opcodeVal < 0x80U) {
+            return nullptr;
+        }
         
         // Payload always starts at offset 4 due to alignment padding
         if (8 > bytes.size()) return nullptr;
@@ -137,6 +148,7 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t
         }
 
         if (!info) return nullptr;
+        if (info->encoding != InstructionEncoding::Escape32) return nullptr;
 
         auto inst = std::make_unique<HVMInstruction>();
         inst->opcode_ = opcode;
@@ -295,7 +307,7 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const uint32_t word) {
 std::vector<uint8_t> HVMInstruction::encode() const {
     const uint16_t opcodeVal = static_cast<uint16_t>(opcode_);
     // Opcodes >= 0x80 must be escaped because the base formats only have 7 bits for opcode.
-    const bool forceExtended = opcodeVal >= 0x80 || std::holds_alternative<OperandsRI>(operands_);
+    const bool forceExtended = opcodeVal >= 0x80;
 
     if (!forceExtended) {
         std::vector<uint8_t> bytes;
@@ -549,7 +561,7 @@ InstructionRegistry::InstructionRegistry() {
 
 void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcode opcode,
                                     InstructionFormat format, uint16_t func) {
-    InstructionInfo info = {mnemonic, opcode, format, func};
+    InstructionInfo info = {mnemonic, opcode, encodingForOpcode(opcode), format, func};
     mnemonic_to_info_[mnemonic] = info;
     opcode_func_to_info_[static_cast<uint16_t>(opcode)][func] = info;
 }
