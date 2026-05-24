@@ -541,6 +541,43 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(&primary)) {
             return visitExpression(paren->getExpression());
         }
+        if (auto floatLit = dynamic_cast<const ast::FloatingLiteral*>(&primary)) {
+            double val = floatLit->getValue();
+            Section* rodata = module_->getSection(".rodata");
+            if (!rodata) {
+                Section s;
+                s.name = ".rodata";
+                s.type = SectionType::SHT_RODATA;
+                s.flags = SectionFlags::ALLOC;
+                module_->addSection(std::move(s));
+                rodata = module_->getSection(".rodata");
+            }
+            // Align to 8 bytes
+            while (rodata->data.size() % 8 != 0) rodata->data.push_back(0);
+            
+            uint32_t offset = static_cast<uint32_t>(rodata->data.size());
+            uint64_t bits;
+            std::memcpy(&bits, &val, sizeof(bits));
+            for (int i = 0; i < 8; ++i) {
+                rodata->data.push_back(static_cast<uint8_t>((bits >> (i * 8)) & 0xFF));
+            }
+            rodata->virtual_size = rodata->data.size();
+            
+            uint8_t addrReg = emitRoDataAddress(offset);
+            uint8_t dest = allocateRegister();
+            emit(Opcode::LD_D, OperandsI{dest, addrReg, 0});
+            freeRegister(addrReg);
+            return dest;
+        }
+        if (auto charLit = dynamic_cast<const ast::CharacterLiteral*>(&primary)) {
+            uint8_t cpReg = emitConstant(static_cast<int64_t>(charLit->getValue()));
+            emit(Opcode::MOV, OperandsR{1, cpReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_Character_from_codepoint_p_i8");
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            freeRegister(cpReg);
+            return dest;
+        }
         if (auto boolLit = dynamic_cast<const ast::BooleanLiteral*>(&primary)) {
             return emitConstant(boolLit->getValue() ? 1 : 0);
         }

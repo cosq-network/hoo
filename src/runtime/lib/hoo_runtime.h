@@ -30,6 +30,7 @@ extern "C" {
 #define HOO_TYPE_NET_URL      106  // HooURL
 #define HOO_TYPE_NET_HTTP_RES 107  // HooHttpResponse
 #define HOO_TYPE_NET_HTTP_CLI 108  // HooHttpClient
+#define HOO_TYPE_CHARACTER    109  // HooCharacter
 
 /**
  * Allocate a new object on the heap with reference count initialized to 1.

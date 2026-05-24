@@ -72,14 +72,14 @@ private:
 // Character literal
 class CharacterLiteral : public Primary {
 public:
-    CharacterLiteral(char value) : value_(value) {}
+    CharacterLiteral(int64_t value) : value_(value) {}
 
     std::string toString() const override;
 
-    char getValue() const { return value_; }
+    int64_t getValue() const { return value_; }
 
 private:
-    char value_;
+    int64_t value_;
 };
 
 // Boolean literal

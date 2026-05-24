@@ -141,6 +141,7 @@ endif()
 add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_string.cpp
+    src/runtime/lib/hoo_character.cpp
     src/runtime/lib/hoo_generic_array.cpp
     src/runtime/lib/hoo_map.cpp
     src/runtime/lib/hoo_io.cpp
@@ -293,6 +294,7 @@ if(HOOC_BUILD_TESTS)
         tests/codegen/ModuleRegistryTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp
+        tests/runtime/HooCharacterTest.cpp
         tests/runtime/HooRuntimeTest.cpp
         tests/runtime/HooMapTest.cpp
         tests/runtime/HooExceptionTest.cpp
@@ -301,6 +303,8 @@ if(HOOC_BUILD_TESTS)
         tests/runtime/HooNetTest.cpp
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp
+        tests/jit/CharacterLiteralTest.cpp
+        tests/jit/FloatingLiteralTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/core/SymbolManglerTest.cpp

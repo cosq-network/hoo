@@ -1,4 +1,5 @@
 #include "hoo_string.h"
+#include "hoo_character.h"
 #include "hoo_generic_array.h"
 #include "hoo_runtime.h"
 #include <cstring>
@@ -304,6 +305,40 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
             }
             break;
         }
+    }
+
+    return result;
+}
+
+HooArray hoo_string_to_characters(HooString str) {
+    HooArray result = hoo_array_new();
+    if (!result || !str) return result;
+
+    HooStringImpl* impl = (HooStringImpl*)str;
+    const unsigned char* data = (const unsigned char*)impl->data;
+    int64_t i = 0;
+    while (i < impl->length) {
+        int64_t char_len = 0;
+        unsigned char b = data[i];
+        if (b <= 0x7F) char_len = 1;
+        else if ((b & 0xE0) == 0xC0) char_len = 2;
+        else if ((b & 0xF0) == 0xE0) char_len = 3;
+        else if ((b & 0xF8) == 0xF0) char_len = 4;
+        else {
+            // Invalid UTF-8, skip 1 byte
+            i++;
+            continue;
+        }
+
+        if (i + char_len > impl->length) break;
+
+        HooCharacter ch = hoo_character_from_utf8((const char*)(data + i), char_len);
+        if (ch) {
+            hoo_character_retain(ch); // Retain for the array
+            hoo_array_push_object(result, ch);
+            hoo_character_release(ch); // Original ref
+        }
+        i += char_len;
     }
 
     return result;

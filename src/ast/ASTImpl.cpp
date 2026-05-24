@@ -282,7 +282,7 @@ std::string StringLiteral::toString() const {
 }
 
 std::string CharacterLiteral::toString() const {
-    return "CharacterLiteral('" + std::string(1, value_) + "')";
+    return "CharacterLiteral(" + std::to_string(value_) + ")";
 }
 
 std::string BooleanLiteral::toString() const {

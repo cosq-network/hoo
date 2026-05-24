@@ -82,11 +82,11 @@ public:
     double getDoubleValue(antlr4::tree::TerminalNode* node);
 
     /**
-     * @brief Extracts char value from CHAR_LITERAL token.
+     * @brief Extracts codepoint from CHAR_LITERAL token.
      * @param node CHAR_LITERAL terminal node.
-     * @return The character value.
+     * @return The Unicode codepoint value.
      */
-    char getCharValue(antlr4::tree::TerminalNode* node);
+    int64_t getCharValue(antlr4::tree::TerminalNode* node);
 
     /**
      * @brief Extracts string value from STRING_LITERAL token (removes quotes).

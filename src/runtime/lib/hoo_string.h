@@ -140,6 +140,14 @@ HooString hoo_string_replace(HooString str, HooString old, HooString replacement
  */
 HooArray hoo_string_split(HooString str, HooString delimiter);
 
+/**
+ * Get all characters in the string as an array of HooCharacter objects.
+ * 
+ * @param str Source string
+ * @return HooArray of HooCharacter (must be released by caller)
+ */
+HooArray hoo_string_to_characters(HooString str);
+
 // ============================================================================
 // String Query
 // ============================================================================

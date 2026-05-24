@@ -780,7 +780,7 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         auto stringLiteral = std::make_unique<StringLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(stringLiteral));
     } else if (ctx->CHAR_LITERAL()) {
-        char value = getCharValue(ctx->CHAR_LITERAL());
+        int64_t value = getCharValue(ctx->CHAR_LITERAL());
         auto charLiteral = std::make_unique<CharacterLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(charLiteral));
     } else if (ctx->TRUE() || ctx->FALSE()) {
@@ -1024,10 +1024,35 @@ double SimpleASTBuilder::getDoubleValue(antlr4::tree::TerminalNode* node) {
     }
 }
 
-char SimpleASTBuilder::getCharValue(antlr4::tree::TerminalNode* node) {
+int64_t SimpleASTBuilder::getCharValue(antlr4::tree::TerminalNode* node) {
     std::string text = node->getText();
     if (text.length() >= 3 && text.front() == '\'' && text.back() == '\'') {
-        return text[1];
+        std::string inner = text.substr(1, text.length() - 2);
+        if (inner.empty()) throw std::runtime_error("Empty character literal");
+
+        if (inner[0] == '\\' && inner.length() > 1) {
+            switch (inner[1]) {
+                case 'n': return '\n';
+                case 'r': return '\r';
+                case 't': return '\t';
+                case 'b': return '\b';
+                case 'f': return '\f';
+                case '\\': return '\\';
+                case '\'': return '\'';
+                case '"': return '\"';
+                case '0': return '\0';
+                default: return inner[1];
+            }
+        }
+
+        const unsigned char* data = (const unsigned char*)inner.c_str();
+        size_t len = inner.length();
+        if (len == 1) return data[0];
+        if (len == 2) return ((data[0] & 0x1F) << 6) | (data[1] & 0x3F);
+        if (len == 3) return ((data[0] & 0x0F) << 12) | ((data[1] & 0x3F) << 6) | (data[2] & 0x3F);
+        if (len == 4) return ((data[0] & 0x07) << 18) | ((data[1] & 0x3F) << 12) | ((data[2] & 0x3F) << 6) | (data[3] & 0x3F);
+        
+        return data[0]; // Fallback
     }
     throw std::runtime_error("Invalid character literal format: " + text);
 }

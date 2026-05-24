@@ -13,6 +13,7 @@
 #include "hvm/HOModuleBase.h"
 #include "runtime/lib/hoo_runtime.h"
 #include "runtime/lib/hoo_string.h"
+#include "runtime/lib/hoo_character.h"
 #include "runtime/lib/hoo_io.h"
 #include "runtime/lib/hoo_generic_array.h"
 #include "runtime/lib/hoo_map.h"
@@ -511,6 +512,31 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_data(reinterpret_cast<void*>(state->regs[1]))));
     }
+    uint64_t jit_hoo_string_to_characters(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_to_characters(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_hoo_character_from_utf8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* bytes = reinterpret_cast<const char*>(state->memory + state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_character_from_utf8(bytes, state->regs[2])));
+    }
+    uint64_t jit_hoo_character_from_codepoint(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_character_from_codepoint(state->regs[1])));
+    }
+    uint64_t jit_hoo_character_length(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_character_length(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_hoo_character_data(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_character_data(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_hoo_character_codepoint(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_character_codepoint(reinterpret_cast<void*>(state->regs[1])));
+    }
     uint64_t jit_hoo_print(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         hoo_print(reinterpret_cast<void*>(state->regs[1]));
@@ -684,6 +710,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_String_length_i8_p", reinterpret_cast<void*>(&jit_hoo_string_length)},
         {"_F_hoo_String_to_upper_p_p", reinterpret_cast<void*>(&jit_hoo_string_to_upper)},
         {"_F_hoo_String_data_p_p", reinterpret_cast<void*>(&jit_hoo_string_data)},
+        {"_F_hoo_String_to_characters_p_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
+        {"_F_hoo_Character_from_utf8_p_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_utf8)},
+        {"_F_hoo_Character_from_codepoint_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
+        {"_F_hoo_Character_length_i8_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
+        {"_F_hoo_Character_data_p_p", reinterpret_cast<void*>(&jit_hoo_character_data)},
+        {"_F_hoo_Character_codepoint_i8_p", reinterpret_cast<void*>(&jit_hoo_character_codepoint)},
         {"_F_M_hoo_E_print_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
         {"_F_M_hoo_E_println_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
         {"_F_hoo_Array_new_p", reinterpret_cast<void*>(&jit_hoo_array_new)},
@@ -1311,8 +1343,18 @@ bool HVMJIT::bootstrapRuntimeModules() {
                               "_F_hoo_String_length_i8_p");
     runtime->registerFunction("string_data", reinterpret_cast<void*>(&hoo_string_data),
                               "_F_hoo_String_data_p_p");
-    runtime->registerFunction("string_to_upper", reinterpret_cast<void*>(&hoo_string_to_upper),
-                              "_F_hoo_String_to_upper_p_p");
+    runtime->registerFunction("string_to_characters", reinterpret_cast<void*>(&hoo_string_to_characters),
+                              "_F_hoo_String_to_characters_p_p");
+    runtime->registerFunction("character_from_utf8", reinterpret_cast<void*>(&hoo_character_from_utf8),
+                              "_F_hoo_Character_from_utf8_p_p_i8");
+    runtime->registerFunction("character_from_codepoint", reinterpret_cast<void*>(&hoo_character_from_codepoint),
+                              "_F_hoo_Character_from_codepoint_p_i8");
+    runtime->registerFunction("character_length", reinterpret_cast<void*>(&hoo_character_length),
+                              "_F_hoo_Character_length_i8_p");
+    runtime->registerFunction("character_data", reinterpret_cast<void*>(&hoo_character_data),
+                              "_F_hoo_Character_data_p_p");
+    runtime->registerFunction("character_codepoint", reinterpret_cast<void*>(&hoo_character_codepoint),
+                              "_F_hoo_Character_codepoint_i8_p");
     runtime->registerFunction("print", reinterpret_cast<void*>(&hoo_print), "_F_M_hoo_E_print_v_p");
     runtime->registerFunction("println", reinterpret_cast<void*>(&hoo_println), "_F_M_hoo_E_println_v_p");
     runtime->registerFunction("array_new", reinterpret_cast<void*>(&hoo_array_new), "_F_hoo_Array_new_p");
