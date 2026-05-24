@@ -289,6 +289,7 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/QualifiedNewExpressionParsingTest.cpp
         tests/parsing/ThisKeywordParsingTest.cpp
         tests/parsing/FfiAndGrammarAstTest.cpp
+        tests/parsing/ProcessIsolatedParserTest.cpp
         tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
         tests/codegen/HVMCodeGeneratorTest.cpp
         tests/codegen/ModuleRegistryTest.cpp

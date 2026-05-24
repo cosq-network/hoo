@@ -1,318 +1,179 @@
-# Debugging Hooc
+# Developing and Debugging Hooc
 
-This document describes practical ways to debug the `hoo` compiler executable and related tests on macOS, Linux, and Windows.
+This guide provides a comprehensive walkthrough for setting up your development environment, configuring toolchains, and debugging the Hooc compiler on various platforms.
 
-## Build for Debugging
+---
 
-Use a build with debug symbols. The existing presets use `RelWithDebInfo`, which is usually enough for stepping through optimized-ish builds:
+## 1. Development Environment Setup
+
+### 1.1. macOS (Apple Silicon / Intel)
+macOS users should primarily use **Homebrew** for dependency management.
+
+1.  **Install Homebrew**: [brew.sh](https://brew.sh/)
+2.  **Install Toolchain**:
+    ```bash
+    brew install cmake ninja llvm antlr4-cpp-runtime googletest
+    ```
+3.  **Path Configuration**: Homebrew LLVM is "keg-only". You may need to add it to your PATH for command-line use:
+    ```bash
+    export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
+    ```
+
+### 1.2. Linux (Ubuntu / Debian)
+1.  **Update APT**: `sudo apt update`
+2.  **Install Toolchain**:
+    ```bash
+    sudo apt install build-essential cmake ninja-build clang lldb gdb \
+                     llvm-dev libantlr4-runtime-dev libgtest-dev java-common
+    ```
+3.  **LLVM Version**: If the default `llvm-dev` is too old (needs 15+), use the [LLVM Debian/Ubuntu nightly packages](https://apt.llvm.org/).
+
+### 1.3. Linux (RedHat / Fedora / CentOS)
+1.  **Install Toolchain via DNF**:
+    ```bash
+    sudo dnf groupinstall "Development Tools" "C Development Tools and Libraries"
+    sudo dnf install cmake ninja-build clang lldb gdb llvm-devel \
+                     antlr4-cpp-runtime-devel gtest-devel java-latest-openjdk
+    ```
+
+### 1.4. Windows (10 / 11)
+1.  **Visual Studio 2022**: Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/).
+    *   Select the **"Desktop development with C++"** workload.
+    *   Ensure "C++ CMake tools for Windows" is checked.
+2.  **LLVM for Windows**: Download the pre-built binaries from the [LLVM Releases page](https://github.com/llvm/llvm-project/releases).
+3.  **Dependency Manager (vcpkg)**: Recommended for managing libraries like GoogleTest.
+    ```powershell
+    git clone https://github.com/microsoft/vcpkg.git
+    .\vcpkg\bootstrap-vcpkg.bat
+    ```
+
+---
+
+## 2. Configuring and Building
+
+Hooc uses CMake Presets (CMake 3.20+) to simplify configuration.
+
+### 2.1. Configuration Targets
+*   **`hoo`**: The main compiler executable.
+*   **`hoo-core`**: The primary logic library.
+*   **`hoort`**: The Hoo Runtime library (required for execution).
+*   **`hoo-tests`**: The unit test suite.
+
+### 2.2. Building for Debugging
+To enable full debug symbols and disable optimizations, use the `Debug` build type:
 
 ```bash
-cmake --preset <preset>
-cmake --build --preset <preset>
-```
+# Using Presets (e.g., macos)
+cmake --preset macos-homebrew-ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build --preset macos-homebrew-ninja
 
-For a less optimized debug build, configure manually:
-
-```bash
-cmake -S . -B build/debug -G Ninja \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DHOOC_BUILD_TESTS=ON
+# Manual Configuration
+cmake -S . -B build/debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DHOOC_BUILD_TESTS=ON
 cmake --build build/debug --target hoo
 ```
 
-Useful executable paths:
+---
 
-```text
-build/macos-homebrew-ninja/hoo
-build/ubuntu-ninja/hoo
-build/windows-ninja/hoo.exe
-build/windows-vs-relwithdebinfo/RelWithDebInfo/hoo.exe
-```
+## 3. Debugging with VS Code
 
-## What to Debug
+VS Code is the recommended IDE for Hooc development.
 
-Use these entry points for common debugging tasks:
+### 3.1. Required Extensions
+- **C/C++** (Microsoft): Provides IntelliSense and debugging.
+- **CMake Tools** (Microsoft): Handles build configuration.
+- **CodeLLDB** (Vadim Chugunov): Highly recommended for macOS and Linux users for a better LLDB experience.
 
-| Area | Useful files |
-|------|--------------|
-| CLI flow | `src/core/main.cpp` |
-| Compilation pipeline | `src/core/HooCompiler.cpp` |
-| Parser integration | `src/parsing/ProcessIsolatedParser.cpp` |
-| AST building | `src/ast/SimpleASTBuilder.cpp` |
-| HVM bytecode generation | `src/codegen/HVMCodeGenerator.cpp` |
-| JIT infrastructure | `src/hvm/HVMJIT.cpp` |
-| HVM module format | `src/hvm/HOModule.cpp` |
-| Runtime memory | `src/runtime/lib/hoo_runtime.c` |
-| Runtime strings/arrays | `src/runtime/lib/hoo_string.cpp`, `src/runtime/lib/hoo_generic_array.cpp` |
+### 3.2. launch.json Configurations
 
-`hoo` currently compiles `.hoo` input to HVM bytecode and can either JIT execute it or serialize to `.ho` binary modules. The CLI supports compile-only mode (`--compile`), bytecode execution, and source execution.
+Create or update `.vscode/launch.json` in your workspace root:
 
-## VS Code
-
-Recommended extensions:
-
-- CMake Tools
-- C/C++
-- CodeLLDB on macOS or Linux if using LLDB
-
-Configure and build with CMake Tools:
-
-```text
-CMake: Select Configure Preset
-CMake: Configure
-CMake: Build
-```
-
-Then create `.vscode/launch.json` if needed.
-
-### macOS or Linux with LLDB
-
+#### macOS / Linux (using CodeLLDB)
 ```json
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug hoo",
-      "type": "lldb",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/macos-homebrew-ninja/hoo",
-      "args": ["${workspaceFolder}/path/to/file.hoo"],
-      "cwd": "${workspaceFolder}",
-      "stopOnEntry": false
-    }
-  ]
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Debug hoo (LLDB)",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": ["${workspaceFolder}/tests/integration/hello.hoo"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake: build",
+            "environment": [
+                { "name": "LLVM_SYMBOLIZER_PATH", "value": "/opt/homebrew/opt/llvm/bin/llvm-symbolizer" }
+            ]
+        }
+    ]
 }
 ```
 
-Change `program` to `build/ubuntu-ninja/hoo` on Linux.
-
-### Linux with GDB
-
+#### Linux (using GDB)
 ```json
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug hoo with GDB",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/ubuntu-ninja/hoo",
-      "args": ["${workspaceFolder}/path/to/file.hoo"],
-      "cwd": "${workspaceFolder}",
-      "MIMode": "gdb",
-      "miDebuggerPath": "gdb",
-      "stopAtEntry": false
-    }
-  ]
+    "name": "Debug hoo (GDB)",
+    "type": "cppdbg",
+    "request": "launch",
+    "program": "${command:cmake.launchTargetPath}",
+    "args": ["${workspaceFolder}/tests/integration/hello.hoo"],
+    "cwd": "${workspaceFolder}",
+    "MIMode": "gdb",
+    "setupCommands": [
+        {
+            "description": "Enable pretty-printing for gdb",
+            "text": "-enable-pretty-printing",
+            "ignoreFailures": true
+        }
+    ]
 }
 ```
 
-### Windows with Visual Studio Debugger
-
+#### Windows (Visual Studio Debugger)
 ```json
 {
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug hoo on Windows",
-      "type": "cppvsdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}\\build\\windows-vs-relwithdebinfo\\RelWithDebInfo\\hoo.exe",
-      "args": ["${workspaceFolder}\\path\\to\\file.hoo"],
-      "cwd": "${workspaceFolder}",
-      "stopAtEntry": false
-    }
-  ]
+    "name": "Debug hoo (MSVC)",
+    "type": "cppvsdbg",
+    "request": "launch",
+    "program": "${command:cmake.launchTargetPath}",
+    "args": ["${workspaceFolder}/tests/integration/hello.hoo"],
+    "cwd": "${workspaceFolder}"
 }
 ```
 
-If runtime DLLs are required, add their directories to `PATH` in the debug environment.
+---
 
-## Eclipse CDT
+## 4. Command-Line Debugging
 
-Use Eclipse CDT with CMake support when available.
-
-Recommended flow:
-
-1. Configure and build with a preset from the terminal.
-2. Import or open the repository in Eclipse.
-3. Point Eclipse at the generated build directory, such as `build/ubuntu-ninja/`.
-4. Create a C/C++ Application debug configuration.
-5. Set the executable to `hoo`.
-6. Set program arguments to a `.hoo` input file.
-
-Example executable paths:
-
-```text
-build/ubuntu-ninja/hoo
-build/macos-homebrew-ninja/hoo
-build/windows-ninja/hoo.exe
-```
-
-On Linux, choose GDB as the debugger. On macOS, use LLDB if available in the Eclipse installation. On Windows, Eclipse CDT commonly uses GDB when configured with MinGW/Clang toolchains; for MSVC builds, Visual Studio is usually the better debugger.
-
-## Command-Line Debuggers
-
-### macOS: LLDB
-
-LLDB is the default debugger on macOS.
-
+### 4.1. LLDB (macOS/Linux)
 ```bash
-lldb -- build/macos-homebrew-ninja/hoo path/to/file.hoo
+lldb -- ./build/debug/hoo path/to/file.hoo
+(lldb) b hooc::HooCompiler::compile
+(lldb) run
+(lldb) v  # View local variables
+(lldb) n  # Next line
 ```
 
-Useful LLDB commands:
-
-```text
-breakpoint set --file src/main.cpp --line 45
-breakpoint set --name hooc::HooCompiler::compile
-run
-bt
-frame variable
-next
-step
-continue
-```
-
-### Linux: GDB
-
-GDB is the common default debugger on Linux.
-
+### 4.2. GDB (Linux)
 ```bash
-gdb --args build/ubuntu-ninja/hoo path/to/file.hoo
+gdb --args ./build/debug/hoo path/to/file.hoo
+(gdb) break hooc::HooCompiler::compile
+(gdb) run
+(gdb) info locals
+(gdb) step
 ```
 
-Useful GDB commands:
+---
 
-```text
-break src/main.cpp:45
-break hooc::HooCompiler::compile
-run
-bt
-info locals
-next
-step
-continue
-```
+## 5. Debugging the JIT
 
-### Linux: LLDB
+Since Hooc uses LLVM ORC JIT, debugging the *generated* code can be tricky.
+- **Debug Symbols in JIT**: The `HVMJIT` class handles symbol resolution. To debug the JIT-ed code itself, you may need to enable LLVM's JIT event listeners for debuggers.
+- **Bytecode Inspection**: Use the `--dump-hvm` flag (if available) to see the HVM instructions being passed to the JIT.
 
-LLDB is also usable on Linux:
+---
 
-```bash
-lldb -- build/ubuntu-ninja/hoo path/to/file.hoo
-```
+## 6. Troubleshooting
 
-Use the same LLDB commands shown for macOS.
-
-## Windows Debuggers
-
-### Visual Studio
-
-For the Visual Studio preset:
-
-```powershell
-cmake --preset windows-vs-relwithdebinfo
-cmake --build --preset windows-vs-relwithdebinfo
-```
-
-Open the generated solution or open the folder in Visual Studio. Set `hoo` as the startup item and set the command argument to a `.hoo` file.
-
-Executable:
-
-```text
-build\windows-vs-relwithdebinfo\RelWithDebInfo\hoo.exe
-```
-
-### WinDbg
-
-WinDbg is useful for low-level crashes and postmortem debugging:
-
-```powershell
-windbg -- build\windows-vs-relwithdebinfo\RelWithDebInfo\hoo.exe path\to\file.hoo
-```
-
-Common commands:
-
-```text
-g
-k
-dv
-bp hoo!main
-```
-
-### CDB
-
-CDB is the command-line debugger from Windows Debugging Tools:
-
-```powershell
-cdb build\windows-vs-relwithdebinfo\RelWithDebInfo\hoo.exe path\to\file.hoo
-```
-
-## Debugging Tests
-
-Build tests first:
-
-```bash
-cmake -S . -B build/debug -G Ninja \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DHOOC_BUILD_TESTS=ON
-cmake --build build/debug --target hoo-tests
-```
-
-Run one test under GDB:
-
-```bash
-gdb --args build/debug/hoo-tests --gtest_filter=ArrayLiteralParsingTest.SimpleIntegerArrayLiteral
-```
-
-Run one test under LLDB:
-
-```bash
-lldb -- build/debug/hoo-tests --gtest_filter=ArrayLiteralParsingTest.SimpleIntegerArrayLiteral
-```
-
-In Visual Studio, set `hoo-tests` as the startup target and add:
-
-```text
---gtest_filter=ArrayLiteralParsingTest.SimpleIntegerArrayLiteral
-```
-
-as the command argument.
-
-## Useful Breakpoints
-
-Start with these breakpoints:
-
-```text
-main
-hooc::HooCompiler::compile
-hooc::ProcessIsolatedParser::parseForAST
-hooc::SimpleASTBuilder::buildAST
-hooc::HVMCodeGenerator::generateCode
-hooc::HVMJIT::HVMJIT
-hoo_alloc
-hoo_retain
-hoo_release
-```
-
-Use parser and AST breakpoints when debugging syntax or AST issues. Use `HVMCodeGenerator` breakpoints when bytecode is missing or malformed. Use runtime breakpoints when debugging memory, string, or array behavior.
-
-## Troubleshooting
-
-If breakpoints are not hit:
-
-- Verify you are debugging the executable from the same build directory you just built.
-- Prefer `Debug` or `RelWithDebInfo` builds.
-- Clean and rebuild if source paths look stale.
-
-If symbols are missing:
-
-- On Linux/macOS, verify the binary was not stripped.
-- On Windows, verify `.pdb` files are beside the executable or discoverable by the debugger.
-
-If shared libraries or DLLs fail to load:
-
-- Add LLVM and ANTLR4 runtime library directories to `PATH` on Windows.
-- Use `DYLD_LIBRARY_PATH` carefully on macOS if using nonstandard library locations.
-- Use `LD_LIBRARY_PATH` on Linux if runtime libraries are outside standard search paths.
+- **Breakpoints not hitting**: Ensure you are using `CMAKE_BUILD_TYPE=Debug`. Some presets default to `RelWithDebInfo` which applies optimizations that can "skip" lines in the debugger.
+- **Missing Includes**: Run `cmake --build build --target generate_parser` to ensure ANTLR4 headers are generated.
+- **Library Not Found**: On Linux, you might need to update your library cache: `sudo ldconfig`. On Windows, ensure DLLs for LLVM and ANTLR4 are in the same folder as `hoo.exe` or in your `PATH`.

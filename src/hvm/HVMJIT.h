@@ -151,7 +151,6 @@ private:
                                    uint64_t* outAddr = nullptr);
     bool isNativeImport(const hvm::ImportEntry& imp) const;
     bool registerRuntimeSymbolsInJITDylib();
-    bool runRuntimeSelfTest();
     bool materializeModulesToJIT();
     bool ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module);
     bool isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const;

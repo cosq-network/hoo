@@ -373,7 +373,7 @@ std::string HVMModuleBundle::mangleExport(const std::vector<std::string>& module
                                      SymbolType kind) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     const std::string kindTag = symbolTypeTag(kind);
-    return hooc::SymbolMangler::mangleModuleSymbol(module_path, symbol_name + "_" + kindTag);
+    return hooc::SymbolMangler::mangleModuleSymbol(module_path, symbol_name, kindTag);
 }
 
 std::string HVMModuleBundle::mangleNestedMember(const std::vector<std::string>& module_path,
@@ -395,23 +395,7 @@ std::string HVMModuleBundle::mangleNamespaceMember(const std::string& namespace_
 
 hooc::DemangledSymbol HVMModuleBundle::demangleExport(const std::string& mangled_name) const {
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    auto result = hooc::SymbolMangler::demangleSymbol(mangled_name);
-    
-    // Strip kind tag suffix (_fn, _ob, _ty, _tls, _nt, _uk) from the originalName
-    // The kind tag is appended in mangleExport, so we need to remove it during demangling
-    const std::vector<std::string> kindTags = {"_fn", "_ob", "_ty", "_tls", "_nt", "_uk"};
-    std::string& name = result.originalName;
-    for (const auto& tag : kindTags) {
-        if (name.length() >= tag.length()) {
-            std::string suffix = name.substr(name.length() - tag.length());
-            if (suffix == tag) {
-                name = name.substr(0, name.length() - tag.length());
-                break;
-            }
-        }
-    }
-    
-    return result;
+    return hooc::SymbolMangler::demangleSymbol(mangled_name);
 }
 
 std::vector<std::string> HVMModuleBundle::getAllExportedSymbols() const {

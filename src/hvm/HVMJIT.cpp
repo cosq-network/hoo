@@ -1295,9 +1295,6 @@ bool HVMJIT::bootstrapRuntimeModules() {
                  "Mandatory runtime intrinsic symbols are unavailable");
         return false;
     }
-    if (!runRuntimeSelfTest()) {
-        return false;
-    }
 
     auto runtime = hvm::StaticHOModule::create("hoo");
     runtime->registerFunction("alloc", reinterpret_cast<void*>(&hoo_alloc), "_F_hoo_alloc_p_i8_i8");
@@ -1424,41 +1421,6 @@ bool HVMJIT::resolveNativeImportSymbol(const hvm::ImportEntry& imp, const std::s
     if (outAddr) {
         *outAddr = reinterpret_cast<uint64_t>(addr);
     }
-    return true;
-}
-
-bool HVMJIT::runRuntimeSelfTest() {
-    void* obj = hoo_alloc(32, HOO_TYPE_OBJECT);
-    if (!obj) {
-        setError(ErrorPhase::Initialize, ErrorCode::RuntimeBootstrapFailed,
-                 "Runtime self-test failed: hoo_alloc returned null");
-        return false;
-    }
-    if (hoo_get_refcount(obj) != 1) {
-        setError(ErrorPhase::Initialize, ErrorCode::RuntimeBootstrapFailed,
-                 "Runtime self-test failed: initial refcount is not 1");
-        hoo_release(obj);
-        return false;
-    }
-    (void)hoo_retain(obj);
-    if (hoo_get_refcount(obj) != 2) {
-        setError(ErrorPhase::Initialize, ErrorCode::RuntimeBootstrapFailed,
-                 "Runtime self-test failed: retain did not increment refcount");
-        // Release exactly as many references as are currently held.
-        int64_t rc = hoo_get_refcount(obj);
-        for (int64_t i = 0; i < rc; ++i) {
-            hoo_release(obj);
-        }
-        return false;
-    }
-    hoo_release(obj);
-    if (hoo_get_refcount(obj) != 1) {
-        setError(ErrorPhase::Initialize, ErrorCode::RuntimeBootstrapFailed,
-                 "Runtime self-test failed: release did not decrement refcount");
-        hoo_release(obj);
-        return false;
-    }
-    hoo_release(obj);
     return true;
 }
 

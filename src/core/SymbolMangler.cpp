@@ -262,7 +262,8 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
 }
 
 std::string SymbolMangler::mangleModuleSymbol(const std::vector<std::string>& modulePath,
-                                             const std::string& symbolName) {
+                                             const std::string& symbolName,
+                                             const std::string& kindTag) {
     std::ostringstream ss;
     ss << "_H_";
     
@@ -271,6 +272,10 @@ std::string SymbolMangler::mangleModuleSymbol(const std::vector<std::string>& mo
     }
     
     ss << encodeComponent(symbolName);
+
+    if (!kindTag.empty()) {
+        ss << "_" << kindTag;
+    }
     
     return ss.str();
 }
@@ -282,6 +287,22 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
     if (mangledName.empty()) {
         return result;
     }
+
+    // Helper to strip kind tags (_fn, _ob, _ty, _tls, _nt, _uk)
+    auto stripKindTag = [](std::string& name) {
+        static const std::vector<std::string> kindTags = {"_fn", "_ob", "_ty", "_tls", "_nt", "_uk"};
+        for (const auto& tag : kindTags) {
+            if (name.length() >= tag.length()) {
+                std::string suffix = name.substr(name.length() - tag.length());
+                if (suffix == tag) {
+                    name = name.substr(0, name.length() - tag.length());
+                    return;
+                }
+            }
+        }
+    };
+
+    stripKindTag(result.originalName);
 
     auto splitComponents = [](const std::string& content) {
         std::vector<std::string> components;
@@ -324,6 +345,7 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
 
     if (mangledName.find("_F_") == 0) {
         std::string content = mangledName.substr(3);
+        stripKindTag(content);
         std::vector<std::string> components = splitComponents(content);
         
         auto isFunctionModifierCode = [](const std::string& comp) {
@@ -437,6 +459,7 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
         }
     } else if (mangledName.find("_H_") == 0) {
         std::string content = mangledName.substr(3);
+        stripKindTag(content);
         std::vector<std::string> components = splitComponents(content);
         if (!components.empty()) {
             result.functionName = components.back();

@@ -103,7 +103,7 @@ TEST_F(HooCLITest, ReturnsErrorWhenNoInputFile) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
 
     int result = cli->run(1, args.data());
 
@@ -117,7 +117,7 @@ TEST_F(HooCLITest, ReturnsErrorWhenFileNotFound) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("nonexistent.hoo"));
 
     int result = cli->run(2, args.data());
@@ -134,7 +134,7 @@ TEST_F(HooCLITest, ReturnsErrorWhenFileIsEmpty) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("empty.hoo"));
 
     int result = cli->run(2, args.data());
@@ -149,14 +149,14 @@ TEST_F(HooCLITest, ShowsVersion) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("--version"));
 
     int result = cli->run(2, args.data());
 
     EXPECT_EQ(result, 0);
     EXPECT_FALSE(cli->getIOProvider()->getStdout().empty());
-    EXPECT_TRUE(cli->getIOProvider()->getStdout().find("hooc version") != std::string::npos);
+    EXPECT_TRUE(cli->getIOProvider()->getStdout().find("hoo version") != std::string::npos);
 }
 
 TEST_F(HooCLITest, ShowsHelp) {
@@ -164,7 +164,7 @@ TEST_F(HooCLITest, ShowsHelp) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("--help"));
 
     int result = cli->run(2, args.data());
@@ -180,7 +180,7 @@ TEST_F(HooCLITest, ReturnsErrorOnMultipleInputFiles) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("file1.hoo"));
     args.push_back(const_cast<char*>("file2.hoo"));
 
@@ -195,7 +195,7 @@ TEST_F(HooCLITest, ReturnsErrorOnInvalidExtension) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("script.txt"));
 
     int result = cli->run(2, args.data());
@@ -209,7 +209,7 @@ TEST_F(HooCLITest, ReturnsErrorOnBytecodeWithCompileFlags) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("-c"));
     args.push_back(const_cast<char*>("script.ho"));
 
@@ -225,7 +225,7 @@ TEST_F(HooCLITest, CompileOnlyMode) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("--verbose"));
     args.push_back(const_cast<char*>("-c"));
     args.push_back(const_cast<char*>("test.hoo"));
@@ -242,7 +242,7 @@ TEST_F(HooCLITest, OutputOptionProducesBytecode) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("-o"));
     args.push_back(const_cast<char*>("out.ho"));
     args.push_back(const_cast<char*>("test.hoo"));
@@ -284,7 +284,7 @@ TEST_F(HooCLITest, ExecuteBytecodeFile) {
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
-    args.push_back(const_cast<char*>("hooc"));
+    args.push_back(const_cast<char*>("hoo"));
     args.push_back(const_cast<char*>("--verbose"));
     args.push_back(const_cast<char*>("test.ho"));
 

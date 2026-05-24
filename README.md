@@ -27,6 +27,8 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 
 ## 3. Build & Test
 
+For detailed instructions on dependencies, platform-specific guides, and troubleshooting, see the [Building Guide](docs/BUILDING.md) and the [Developing and Debugging Guide](docs/debugging-hoo.md).
+
 ### Prerequisites
 - CMake >= 3.16
 - C++17 compliant toolchain (Clang 15+ recommended)

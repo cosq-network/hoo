@@ -51,7 +51,8 @@ public:
     static std::string mangleFunctionName(const MangledFunctionParams& params);
 
     static std::string mangleModuleSymbol(const std::vector<std::string>& modulePath,
-                                          const std::string& symbolName);
+                                          const std::string& symbolName,
+                                          const std::string& kindTag = "");
 
     static DemangledSymbol demangleSymbol(const std::string& mangledName);
 
