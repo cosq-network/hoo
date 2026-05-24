@@ -11,6 +11,7 @@
 | --------------- | ----------------------------------------------------------------------------------------- |
 | **Mnemonic**    | The short name or symbol for the instruction (e.g., `ADD`, `MOV`, `LD.B`).                |
 | **Opcode**      | The binary code (in hexadecimal) that represents the instruction in machine language.     |
+| **Encoding**    | The emitted form of the instruction (`base32` or `escape32`).                            |
 | **Format**      | The instruction format: `R`, `I`, `RI`, `B`, or `J`.                                       |
 | **Operands**    | Four fields: rd, rs1, rs2, imm (unused fields shown as `-`).                             |
 | **Operation**   | A concise mathematical or logical expression of what the instruction does.              |
@@ -24,7 +25,8 @@
 ### 1.2 Terminologies
 
 - **Mnemonic**: A human-readable abbreviation for an instruction (e.g., `ADD` for addition).
-- **Opcode**: The numerical code that the VM uses to identify the instruction.
+- **Opcode**: The logical numerical code that identifies the instruction.
+- **Encoding**: The actual machine encoding used to emit the instruction bytes. `base32` means a normal 32-bit word; `escape32` means the opcode is emitted with the `0xFE` escape prefix.
 - **Register Operands** (`rd`, `rs1`, `rs2`):
   - `rd`: Destination register (where the result is stored).
   - `rs1`, `rs2`: Source registers (inputs to the operation).
@@ -36,7 +38,7 @@
   - **B-type**: Branch conditions. Format: `rs1, rs2, imm15`
   - **J-type**: Jump operations. Format: `rd, offset` or just `offset`
 - **Func Field**: Used to distinguish between instructions that share the same opcode (e.g., `ADD=0`, `SUB=1`, `MUL=2` at opcode 0x10).
-- **Extended Opcodes**: Instructions with opcodes >= 0x80 use the `0xFE` escape prefix in the instruction stream. Format field still indicates R/I/RI/B/J but the instruction occupies 8 bytes (including padding) to maintain alignment.
+- **Extended Opcodes**: Instructions with opcodes >= 0x80 have `Encoding=escape32` and use the `0xFE` escape prefix in the instruction stream. Format field still indicates R/I/RI/B/J but the instruction occupies 8 bytes (including padding) to maintain alignment.
 - **Operand Placeholders**: Unused operands are shown as `-` (e.g., `rd, rs, -, -` for single-operand instructions).
 
 ---
@@ -96,23 +98,23 @@
 
 Suppose you encounter the following row in the `hvm_instruction_set.csv`:
 
-| Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func | Example |
-| -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- | ------- |
-| ADD      | 0x10   | R      | rd, rs1, rs2, -     | rd = rs1 + rs2     | Adds the contents... | 0    | add r1, r2, r3 |
+| Mnemonic | Opcode | Encoding | Format | Operands            | Operation          | Description          | Func | Example |
+| -------- | ------ | -------- | ------ | ------------------- | ------------------ | -------------------- | ---- | ------- |
+| ADD      | 0x10   | base32   | R      | rd, rs1, rs2, -     | rd = rs1 + rs2     | Adds the contents... | 0    | add r1, r2, r3 |
 
 - **Interpretation**: The `ADD` instruction adds the values in `rs1` and `rs2`, storing the result in `rd`.
-- **Encoding**: The opcode is `0x10`, func is `0`. Instructions like `SUB=1`, `MUL=2` share this opcode.
+- **Encoding**: The opcode is `0x10`, `Encoding` is `base32`, and func is `0`. Instructions like `SUB=1`, `MUL=2` share this opcode.
 - **Format**: R-type with operands `rd, rs1, rs2, func`. The `-` indicates unused operand field.
 - **Example**: `add r1, r2, r3` adds the value in `r2` to `r3` and stores the sum in `r1`.
 
 **Example 2: Extended Instruction (Hardware/System)**
 
-| Mnemonic | Opcode | Format | Operands            | Operation          | Description          | Func | Example |
-| -------- | ------ | ------ | ------------------- | ------------------ | -------------------- | ---- | ------- |
-| SYSCALL  | 0xC0   | I      | rd, -, imm15        | rd = os_syscall(imm)| Triggers a system... | -    | syscall r1, r0, 10 |
+| Mnemonic | Opcode | Encoding | Format | Operands            | Operation          | Description          | Func | Example |
+| -------- | ------ | -------- | ------ | ------------------- | ------------------ | -------------------- | ---- | ------- |
+| SYSCALL  | 0xC0   | escape32 | I      | rd, -, imm15        | rd = os_syscall(imm)| Triggers a system... | -    | syscall r1, r0, 10 |
 
 - **Interpretation**: The `SYSCALL` instruction triggers an OS-level service.
-- **Encoding**: Opcode `0xC0` (>= 0x80) uses the `0xFE` escape prefix.
+- **Encoding**: Opcode `0xC0` uses `Encoding=escape32` and therefore the `0xFE` escape prefix.
 - **Format**: I-type with operands `rd, rs1, imm15`. In the instruction stream, it occupies 8 bytes.
 - **Example**: `syscall r1, r0, 10` invokes system call ID 10 and stores the result in `r1`.
 

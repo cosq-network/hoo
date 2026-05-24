@@ -53,7 +53,8 @@ static struct {
 typedef struct {
     _Atomic int64_t refcount;
     int64_t type_id;
-    int64_t capacity; // New field: capacity in bytes (excluding header)
+    int64_t capacity;
+    int64_t reserved; // Padding for 32-byte alignment
 } HooObjectHeader;
 
 typedef struct TLABObjNode {
@@ -271,6 +272,18 @@ int64_t hoo_get_type_id(void* obj) {
 
     HooObjectHeader* header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
     return header->type_id;
+}
+
+int64_t hoo_get_capacity(void* obj) {
+    if (!obj) return 0;
+    HooObjectHeader* header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
+    return header->capacity;
+}
+
+void hoo_set_capacity(void* obj, int64_t capacity) {
+    if (!obj) return;
+    HooObjectHeader* header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
+    header->capacity = capacity;
 }
 
 void hoo_print_memory_stats(void) {

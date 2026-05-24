@@ -93,6 +93,16 @@ int64_t hoo_get_refcount(void* obj);
 int64_t hoo_get_type_id(void* obj);
 
 /**
+ * Get the current capacity of a managed object in bytes.
+ */
+int64_t hoo_get_capacity(void* obj);
+
+/**
+ * Update the capacity field of a managed object (internal use).
+ */
+void hoo_set_capacity(void* obj, int64_t capacity);
+
+/**
  * Print memory statistics (for debugging).
  * Shows total allocations, deallocations, and current live objects.
  */

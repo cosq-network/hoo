@@ -1,60 +1,60 @@
-Mnemonic,Opcode,Format,Operands,Operation,Description,Func,Example
-NOP,0x00,R,"-, -, -, -",-,Performs no operation. Used for padding and timing.,-,nop
-MOV,0x01,R,"rd, rs, -, -",rd = rs,Copies the contents of source register rs to destination register rd.,-,mov r1, r2
-MOVZ,0x03,I,"rd, rs, imm15",rd = rs | zero_extend(imm15),Zero-extends a 15-bit immediate value and performs bitwise OR with rs; storing the result in rd.,-,movz r1, r0, 42
-LUI,0x04,I,"rd, rs, imm15",rd = rs | (imm15 << 32),Loads a 15-bit immediate value into bits 32-46 of rd; effectively loading the upper half of a 64-bit register when used with rs.,-,lui r1, r0, 0x1234
-ADDI,0x05,I,"rd, rs, imm15",rd = rs + sign_extend(imm15),Adds a sign-extended 15-bit immediate value to the contents of rs and stores the result in rd.,-,addi r1, r2, 10
-ADD,0x10,R,"rd, rs1, rs2, -",rd = rs1 + rs2,Adds the contents of rs1 and rs2 and stores the 64-bit result in rd.,0,add r1, r2, r3
-SUB,0x10,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtracts the contents of rs2 from rs1 and stores the 64-bit result in rd.,1,sub r1, r2, r3
-MUL,0x10,R,"rd, rs1, rs2, -",rd = (rs1 * rs2)[63:0],Multiplies the contents of rs1 and rs2 and stores the lower 64 bits of the result in rd.,2,mul r1, r2, r3
-DIV,0x10,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (signed),Performs signed integer division of rs1 by rs2 and stores the quotient in rd.,5,div r1, r2, r3
-DIVU,0x10,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (unsigned),Performs unsigned integer division of rs1 by rs2 and stores the quotient in rd.,6,divu r1, r2, r3
-REM,0x10,R,"rd, rs1, rs2, -",rd = rs1 % rs2 (signed),Performs signed integer division of rs1 by rs2 and stores the remainder in rd.,7,rem r1, r2, r3
-SHL,0x13,R,"rd, rs1, rs2, -",rd = rs1 << (rs2 & 63),Shifts the contents of rs1 left by the number of bits specified in rs2 (mod 64) and stores the result in rd.,0,shl r1, r2, r3
-SHR,0x13,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (logical),Performs logical right shift of rs1 by the number of bits specified in rs2 (mod 64) and stores the result in rd.,1,shr r1, r2, r3
-SAR,0x13,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (arithmetic),Performs arithmetic right shift of rs1 by the number of bits specified in rs2 (mod 64) and stores the result in rd.,2,sar r1, r2, r3
-AND,0x20,R,"rd, rs1, rs2, -",rd = rs1 & rs2,Performs bitwise AND of rs1 and rs2 and stores the result in rd.,0,and r1, r2, r3
-OR,0x20,R,"rd, rs1, rs2, -",rd = rs1 | rs2,Performs bitwise OR of rs1 and rs2 and stores the result in rd.,1,or r1, r2, r3
-XOR,0x20,R,"rd, rs1, rs2, -",rd = rs1 ^ rs2,Performs bitwise XOR of rs1 and rs2 and stores the result in rd.,2,xor r1, r2, r3
-NOT,0x21,R,"rd, rs, -, -",rd = ~rs,Performs bitwise NOT (one's complement) of rs and stores the result in rd.,-,not r1, r2
-CMPEQ,0x40,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0,Compares rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,cmpeq r1, r2, r3
-CMPNE,0x40,R,"rd, rs1, rs2, -",rd = (rs1 != rs2) ? 1 : 0,Compares rs1 and rs2 for inequality. Stores 1 in rd if not equal; 0 otherwise.,1,cmpne r1, r2, r3
-CMPLT,0x40,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 < rs2; 0 otherwise.,2,cmplt r1, r2, r3
-CMPLE,0x40,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 <= rs2; 0 otherwise.,3,cmple r1, r2, r3
-FCMPEQ,0x41,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,fcmpeq r1, r2, r3
-FCMPLT,0x41,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 < rs2; 0 otherwise.,1,fcmplt r1, r2, r3
-FCMPLE,0x41,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 <= rs2; 0 otherwise.,2,fcmple r1, r2, r3
-FADD,0x30,R,"rd, rs1, rs2, -",rd = rs1 + rs2 (f64),Adds floating-point values in rs1 and rs2 and stores the result in rd.,0,fadd r1, r2, r3
-FSUB,0x30,R,"rd, rs1, rs2, -",rd = rs1 - rs2 (f64),Subtracts floating-point value in rs2 from rs1 and stores the result in rd.,1,fsub r1, r2, r3
-FMUL,0x30,R,"rd, rs1, rs2, -",rd = rs1 * rs2 (f64),Multiplies floating-point values in rs1 and rs2 and stores the result in rd.,2,fmul r1, r2, r3
-FDIV,0x30,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (f64),Divides floating-point value in rs1 by rs2 and stores the result in rd.,3,fdiv r1, r2, r3
-BEQ,0x50,B,"rs1, rs2, imm15",if rs1 == rs2 then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 equals rs2.,-,beq r1, r2, 10
-BNE,0x51,B,"rs1, rs2, imm15",if rs1 != rs2 then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 does not equal rs2.,-,bne r1, r2, 10
-BLT,0x52,B,"rs1, rs2, imm15",if rs1 < rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than rs2 (signed).,-,blt r1, r2, 10
-BLE,0x53,B,"rs1, rs2, imm15",if rs1 <= rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than or equal to rs2 (signed).,-,ble r1, r2, 10
-JMP,0x60,J,offset,"pc += sign_extend(offset) * 4",Performs an unconditional jump to PC + sign_extend(offset) * 4.,-,jmp 100
-JAL,0x61,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and stores the return address (PC+4) in rd (typically r29).,-,jal r29, 100
-JALR,0x62,I,"rd, rs, imm15",rd = pc+4; pc = rs + sign_extend(imm15),Jumps to rs + sign_extend(imm15) and stores the return address (PC+4) in rd (typically r29).,-,jalr r29, r1, 0
-RET,0x63,R,"-, -, -, -",pc = r29,Returns from a subroutine by jumping to the address stored in the link register (r29).,-,ret
-LD.B,0x70,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:8),Loads a signed byte from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,ld.b r1, r2, 0
-LD.BU,0x71,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:8),Loads an unsigned byte from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,ld.bu r1, r2, 0
-LD.H,0x72,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:16),Loads a signed half-word (16 bits) from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,ld.h r1, r2, 0
-LD.HU,0x73,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:16),Loads an unsigned half-word (16 bits) from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,ld.hu r1, r2, 0
-LD.W,0x74,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:32),Loads a signed word (32 bits) from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,ld.w r1, r2, 0
-LD.WU,0x75,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:32),Loads an unsigned word (32 bits) from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,ld.wu r1, r2, 0
-LD.D,0x76,I,"rd, addr, imm15",rd = mem[addr + imm15]:64,Loads a double-word (64 bits) from memory at [addr + imm15] into rd.,-,ld.d r1, r2, 0
-ST.B,0x78,I,"data, addr, imm15",mem[addr + imm15]:8 = data,Stores the lower 8 bits of register data to memory at [addr + imm15].,-,st.b r1, r2, 0
-ST.H,0x79,I,"data, addr, imm15",mem[addr + imm15]:16 = data,Stores the lower 16 bits of register data to memory at [addr + imm15].,-,st.h r1, r2, 0
-ST.W,0x7A,I,"data, addr, imm15",mem[addr + imm15]:32 = data,Stores the lower 32 bits of register data to memory at [addr + imm15].,-,st.w r1, r2, 0
-ST.D,0x7B,I,"data, addr, imm15",mem[addr + imm15]:64 = data,Stores the 64-bit register data to memory at [addr + imm15].,-,st.d r1, r2, 0
-LDA,0x7D,I,"rd, addr, imm15",rd = addr + sign_extend(imm15),Calculates the address [addr + sign_extend(imm15)] and stores it in rd. Used for pointer arithmetic.,-,lda r1, r2, 8
-PUSH,0x7E,R,"rs, -, -, -",sp -= 8; mem[sp] = rs,Decrements the stack pointer (r31) by 8 and stores register rs at the top of the stack.,-,push r1
-POP,0x7F,R,"rd, -, -, -",rd = mem[sp]; sp += 8,Loads the value from the top of the stack into rd and increments the stack pointer (r31) by 8.,-,pop r1
-ENTER,0x80,I,"-, -, imm15","sp -= 16; mem[sp] = r29; mem[sp+8] = r30; r30 = sp; sp -= sign_extend(imm15)",Establishes a new stack frame: saves r29 and r30; sets r30 to current sp; and decrements sp by imm15.,-,enter 32
-LEAVE,0x81,R,"-, -, -, -","sp = r30; r29 = mem[sp]; r30 = mem[sp+8]; sp += 16",Tears down the stack frame: restores r29 and r30; and increments sp to the old value.,-,leave
-ADJSP,0x82,I,"-, -, imm15",sp += sign_extend(imm15),Adjusts the stack pointer (r31) by a sign-extended 15-bit immediate value.,-,adjsp -16
-FRAME,0x83,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Calculates the address [r30 + sign_extend(imm15)] and stores it in rd. Used for local variable access.,-,frame r1, -8
-CALL,0xB4,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and saves return address in rd (r29). Used for direct calls.,-,call r29, 200
-TAILCALL,0xB6,J,offset,tail_call offset,Performs an unconditional tail-call jump to PC + sign_extend(offset) * 4 without saving return address.,-,tailcall 200
-SYSCALL,0xC0,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Result is stored in rd.,-,syscall r1, r0, 10
-BREAK,0xC1,R,"-, -, -, -",trap_to_debugger,Triggers a software breakpoint trap to the host environment or debugger.,-,break
+Mnemonic,Opcode,Encoding,Format,Operands,Operation,Description,Func,Example
+NOP,0x00,base32,R,"-, -, -, -",-,Performs no operation. Used for padding and timing.,-,nop
+MOV,0x01,base32,R,"rd, rs, -, -",rd = rs,Copies the contents of source register rs to destination register rd.,-,mov r1, r2
+MOVZ,0x03,base32,I,"rd, rs, imm15",rd = rs | zero_extend(imm15),Zero-extends a 15-bit immediate value and performs bitwise OR with rs; storing the result in rd.,-,movz r1, r0, 42
+LUI,0x04,base32,I,"rd, rs, imm15",rd = rs | (imm15 << 32),Loads a 15-bit immediate value into bits 32-46 of rd; effectively loading the upper half of a 64-bit register when used with rs.,-,lui r1, r0, 0x1234
+ADDI,0x05,base32,I,"rd, rs, imm15",rd = rs + sign_extend(imm15),Adds a sign-extended 15-bit immediate value to the contents of rs and stores the result in rd.,-,addi r1, r2, 10
+ADD,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 + rs2,Adds the contents of rs1 and rs2 and stores the 64-bit result in rd.,0,add r1, r2, r3
+SUB,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtracts the contents of rs2 from rs1 and stores the 64-bit result in rd.,1,sub r1, r2, r3
+MUL,0x10,base32,R,"rd, rs1, rs2, -",rd = (rs1 * rs2)[63:0],Multiplies the contents of rs1 and rs2 and stores the lower 64 bits of the result in rd.,2,mul r1, r2, r3
+DIV,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (signed),Performs signed integer division of rs1 by rs2 and stores the quotient in rd.,5,div r1, r2, r3
+DIVU,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (unsigned),Performs unsigned integer division of rs1 by rs2 and stores the quotient in rd.,6,divu r1, r2, r3
+REM,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 % rs2 (signed),Performs signed integer division of rs1 by rs2 and stores the remainder in rd.,7,rem r1, r2, r3
+SHL,0x13,base32,R,"rd, rs1, rs2, -",rd = rs1 << (rs2 & 63),Shifts the contents of rs1 left by the number of bits specified in rs2 (mod 64) and stores the result in rd.,0,shl r1, r2, r3
+SHR,0x13,base32,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (logical),Performs logical right shift of rs1 by the number of bits specified in rs2 (mod 64) and stores the result in rd.,1,shr r1, r2, r3
+SAR,0x13,base32,R,"rd, rs1, rs2, -",rd = rs1 >> (rs2 & 63) (arithmetic),Performs arithmetic right shift of rs1 by the number of bits specified in rs2 (mod 64) and stores the result in rd.,2,sar r1, r2, r3
+AND,0x20,base32,R,"rd, rs1, rs2, -",rd = rs1 & rs2,Performs bitwise AND of rs1 and rs2 and stores the result in rd.,0,and r1, r2, r3
+OR,0x20,base32,R,"rd, rs1, rs2, -",rd = rs1 | rs2,Performs bitwise OR of rs1 and rs2 and stores the result in rd.,1,or r1, r2, r3
+XOR,0x20,base32,R,"rd, rs1, rs2, -",rd = rs1 ^ rs2,Performs bitwise XOR of rs1 and rs2 and stores the result in rd.,2,xor r1, r2, r3
+NOT,0x21,base32,R,"rd, rs, -, -",rd = ~rs,Performs bitwise NOT (one's complement) of rs and stores the result in rd.,-,not r1, r2
+CMPEQ,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0,Compares rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,cmpeq r1, r2, r3
+CMPNE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 != rs2) ? 1 : 0,Compares rs1 and rs2 for inequality. Stores 1 in rd if not equal; 0 otherwise.,1,cmpne r1, r2, r3
+CMPLT,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 < rs2; 0 otherwise.,2,cmplt r1, r2, r3
+CMPLE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 <= rs2; 0 otherwise.,3,cmple r1, r2, r3
+FCMPEQ,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,fcmpeq r1, r2, r3
+FCMPLT,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 < rs2; 0 otherwise.,1,fcmplt r1, r2, r3
+FCMPLE,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 <= rs2; 0 otherwise.,2,fcmple r1, r2, r3
+FADD,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 + rs2 (f64),Adds floating-point values in rs1 and rs2 and stores the result in rd.,0,fadd r1, r2, r3
+FSUB,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 - rs2 (f64),Subtracts floating-point value in rs2 from rs1 and stores the result in rd.,1,fsub r1, r2, r3
+FMUL,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 * rs2 (f64),Multiplies floating-point values in rs1 and rs2 and stores the result in rd.,2,fmul r1, r2, r3
+FDIV,0x30,base32,R,"rd, rs1, rs2, -",rd = rs1 / rs2 (f64),Divides floating-point value in rs1 by rs2 and stores the result in rd.,3,fdiv r1, r2, r3
+BEQ,0x50,base32,B,"rs1, rs2, imm15",if rs1 == rs2 then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 equals rs2.,-,beq r1, r2, 10
+BNE,0x51,base32,B,"rs1, rs2, imm15",if rs1 != rs2 then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 does not equal rs2.,-,bne r1, r2, 10
+BLT,0x52,base32,B,"rs1, rs2, imm15",if rs1 < rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than rs2 (signed).,-,blt r1, r2, 10
+BLE,0x53,base32,B,"rs1, rs2, imm15",if rs1 <= rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than or equal to rs2 (signed).,-,ble r1, r2, 10
+JMP,0x60,base32,J,offset,pc += sign_extend(offset) * 4,Performs an unconditional jump to PC + sign_extend(offset) * 4.,-,jmp 100
+JAL,0x61,base32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and stores the return address (PC+4) in rd (typically r29).,-,jal r29, 100
+JALR,0x62,base32,I,"rd, rs, imm15",rd = pc+4; pc = rs + sign_extend(imm15),Jumps to rs + sign_extend(imm15) and stores the return address (PC+4) in rd (typically r29).,-,jalr r29, r1, 0
+RET,0x63,base32,R,"-, -, -, -",pc = r29,Returns from a subroutine by jumping to the address stored in the link register (r29).,-,ret
+LD.B,0x70,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:8),Loads a signed byte from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,ld.b r1, r2, 0
+LD.BU,0x71,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:8),Loads an unsigned byte from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,ld.bu r1, r2, 0
+LD.H,0x72,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:16),Loads a signed half-word (16 bits) from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,ld.h r1, r2, 0
+LD.HU,0x73,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:16),Loads an unsigned half-word (16 bits) from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,ld.hu r1, r2, 0
+LD.W,0x74,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:32),Loads a signed word (32 bits) from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,ld.w r1, r2, 0
+LD.WU,0x75,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:32),Loads an unsigned word (32 bits) from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,ld.wu r1, r2, 0
+LD.D,0x76,base32,I,"rd, addr, imm15",rd = mem[addr + imm15]:64,Loads a double-word (64 bits) from memory at [addr + imm15] into rd.,-,ld.d r1, r2, 0
+ST.B,0x78,base32,I,"data, addr, imm15",mem[addr + imm15]:8 = data,Stores the lower 8 bits of register data to memory at [addr + imm15].,-,st.b r1, r2, 0
+ST.H,0x79,base32,I,"data, addr, imm15",mem[addr + imm15]:16 = data,Stores the lower 16 bits of register data to memory at [addr + imm15].,-,st.h r1, r2, 0
+ST.W,0x7A,base32,I,"data, addr, imm15",mem[addr + imm15]:32 = data,Stores the lower 32 bits of register data to memory at [addr + imm15].,-,st.w r1, r2, 0
+ST.D,0x7B,base32,I,"data, addr, imm15",mem[addr + imm15]:64 = data,Stores the 64-bit register data to memory at [addr + imm15].,-,st.d r1, r2, 0
+LDA,0x7D,base32,I,"rd, addr, imm15",rd = addr + sign_extend(imm15),Calculates the address [addr + sign_extend(imm15)] and stores it in rd. Used for pointer arithmetic.,-,lda r1, r2, 8
+PUSH,0x7E,base32,R,"rs, -, -, -",sp -= 8; mem[sp] = rs,Decrements the stack pointer (r31) by 8 and stores register rs at the top of the stack.,-,push r1
+POP,0x7F,base32,R,"rd, -, -, -",rd = mem[sp]; sp += 8,Loads the value from the top of the stack into rd and increments the stack pointer (r31) by 8.,-,pop r1
+ENTER,0x80,escape32,I,"-, -, imm15",sp -= 16; mem[sp] = r29; mem[sp+8] = r30; r30 = sp; sp -= sign_extend(imm15),Establishes a new stack frame: saves r29 and r30; sets r30 to current sp; and decrements sp by imm15.,-,enter 32
+LEAVE,0x81,escape32,R,"-, -, -, -",sp = r30; r29 = mem[sp]; r30 = mem[sp+8]; sp += 16,Tears down the stack frame: restores r29 and r30; and increments sp to the old value.,-,leave
+ADJSP,0x82,escape32,I,"-, -, imm15",sp += sign_extend(imm15),Adjusts the stack pointer (r31) by a sign-extended 15-bit immediate value.,-,adjsp -16
+FRAME,0x83,escape32,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Calculates the address [r30 + sign_extend(imm15)] and stores it in rd. Used for local variable access.,-,frame r1, -8
+CALL,0xB4,escape32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and saves return address in rd (r29). Used for direct calls.,-,call r29, 200
+TAILCALL,0xB6,escape32,J,offset,tail_call offset,Performs an unconditional tail-call jump to PC + sign_extend(offset) * 4 without saving return address.,-,tailcall 200
+SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Result is stored in rd.,-,syscall r1, r0, 10
+BREAK,0xC1,escape32,R,"-, -, -, -",trap_to_debugger,Triggers a software breakpoint trap to the host environment or debugger.,-,break

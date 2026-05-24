@@ -33,6 +33,8 @@ This reference defines the physical instructions supported by the HVM core. It i
 Opcode-space note:
 - `0x00..0x7F` use the base 32-bit encodings directly.
 - Opcodes `>= 0x80` use an escape-prefixed extended encoding (`0xFE` prefix).
+- In `docs/hvm/hvm_instruction_set.csv`, `Opcode` is the logical opcode value and `Encoding` records whether the row is `base32` or `escape32`.
+- Tooling must use `Encoding` to derive the emitted bytes; do not infer the wire format from `Opcode` alone.
 
 ## 4. Core Instruction Set
 
@@ -84,4 +86,6 @@ Operations removed from the ISA and now lowered to the above set:
 ## 6. Canonical Opcode Table
 
 The canonical machine-readable definition is `docs/hvm/hvm_instruction_set.csv`.
+That CSV is normative.
+
 Keep this document synchronized with that CSV and `docs/hvm/hvm-spec.md`.

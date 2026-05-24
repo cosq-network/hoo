@@ -332,13 +332,14 @@ HooArray hoo_string_to_characters(HooString str) {
         i += char_len;
     }
 
-    // Allocate raw array: [Header: length, capacity, elem_type][elements...]
-    #define ARRAY_HEADER_WORDS 3
+    // Allocate raw array: [Header: length, capacity, elem_type, reserved][elements...]
+    #define ARRAY_HEADER_WORDS 4
     size_t array_size = ARRAY_HEADER_WORDS * 8 + (count * 8);
     int64_t* raw_array = (int64_t*)hoo_alloc(array_size, HOO_TYPE_ARRAY);
     raw_array[0] = count;        // Length
     raw_array[1] = count;        // Capacity
     raw_array[2] = HOO_TYPE_CHARACTER; // Element Type
+    raw_array[3] = 0;            // Reserved
 
     // Second pass: create characters
     i = 0;
@@ -365,7 +366,7 @@ HooArray hoo_string_to_characters(HooString str) {
 HooString hoo_string_join(HooArray parts) {
     if (!parts) return hoo_string_new();
 
-    #define ARRAY_HEADER_WORDS 3
+    #define ARRAY_HEADER_WORDS 4
     int64_t* raw_array = (int64_t*)parts;
     int64_t count = raw_array[0];
     if (count == 0) return hoo_string_new();

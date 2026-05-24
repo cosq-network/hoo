@@ -599,7 +599,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
             
             // 1. Allocate: CALL hoo_alloc(size, typeId)
-            uint64_t totalSize = 8 + (elements.size() * 8);
+            uint64_t totalSize = 32 + (elements.size() * 8); // 4-word header (32 bytes)
             uint8_t sizeReg = emitConstant(static_cast<int64_t>(totalSize));
             uint8_t typeReg = emitConstant(102); // Array Type ID
             emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
@@ -611,14 +611,25 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             freeRegister(sizeReg);
             freeRegister(typeReg);
 
-            // 2. Store length in header (offset 0)
+            // 2. Store 4-word header
+            // length (offset 0)
             uint8_t lenReg = emitConstant(static_cast<int64_t>(elements.size()));
             emit(Opcode::ST_D, OperandsI{lenReg, dest, 0});
+            // capacity (offset 8)
+            emit(Opcode::ST_D, OperandsI{lenReg, dest, 8}); 
             freeRegister(lenReg);
+            // element_type (offset 16) - default to Object (100)
+            uint8_t elemTypeReg = emitConstant(100);
+            emit(Opcode::ST_D, OperandsI{elemTypeReg, dest, 16});
+            freeRegister(elemTypeReg);
+            // reserved/padding (offset 24)
+            uint8_t reservedReg = emitConstant(0);
+            emit(Opcode::ST_D, OperandsI{reservedReg, dest, 24});
+            freeRegister(reservedReg);
 
-            // 3. Store elements (offset 8+)
+            // 3. Store elements (offset 32+)
             for (size_t i = 0; i < elementRegs.size(); ++i) {
-                emit(Opcode::ST_D, OperandsI{elementRegs[i], dest, static_cast<int16_t>(8 + (i * 8))});
+                emit(Opcode::ST_D, OperandsI{elementRegs[i], dest, static_cast<int16_t>(32 + (i * 8))});
                 freeRegister(elementRegs[i]);
             }
             return dest;
