@@ -34,9 +34,6 @@ Hooc reserves the following keywords for language constructs:
 Hooc supports advanced class-level modifiers:
 `singleton`, `immutable`, `factory`, `observable`, `service`, `strategy`, `actor`, `final`.
 
-### FFI Keywords
-`native`, `extern`, `pointer`, `array`, `at`, `library`, `link`, `dynamic`.
-
 ## 2. Literals
 
 ### Numeric Literals
@@ -45,10 +42,11 @@ Hooc supports advanced class-level modifiers:
 
 ### String Literals
 - **Standard**: Double-quoted strings with escape support: `"Hello\nWorld"`.
+- **Interpolated**: Strings containing `${expression}` blocks.
 - **Multiline**: Triple-quoted strings: `"""Line 1\nLine 2"""`.
 
 ### Character Literals
-- Single-quoted characters: `'A'`, `'\n'`.
+- Single-quoted Unicode codepoints: `'A'`, `'€'`, `'😀'`, `'\n'`. Supports multi-byte UTF-8.
 
 ### Boolean & Null
 - `true`, `false`, `null`.
@@ -61,7 +59,7 @@ Identifiers must start with a letter or underscore, followed by any number of le
 ## 4. Delimiters & Operators
 
 - **Delimiters**: `;`, `,`, `.`, `:`, `(`, `)`, `{`, `}`, `[`, `]`.
-- **Operators**: `+`, `-`, `*`, `/`, `%`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `++`, `--`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `!`, `?`, `->`, `..`.
+- **Operators**: `+`, `-`, `*`, `/`, `%`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `++`, `--`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `!`, `?`, `..`.
 
 ## 5. Comments & Whitespace
 

@@ -4,21 +4,33 @@ The runtime provides high-level `Array` and `Map` primitives that are natively i
 
 ## 1. Arrays (`HooArray`)
 
-The generic dynamic array is backed by a custom `HooArrayImpl` class that wraps a `std::vector<std::any>`. 
-- **Type Safety via `std::any`**: Elements are securely wrapped in `std::any` (e.g., `std::any(int64_t)`).
-- **ARC Integration**: The `HooArrayImpl` instance itself is allocated via `hoo_alloc` so it possesses the standard 16-byte ARC header.
-- **Nested Arrays**: Supports multidimensional arrays. When an array is pushed into another, it is explicitly retained (`hoo_array_retain`).
+HVM arrays use a **hardware-ready, low-level representation** designed for direct ISA accessibility and zero-abstraction indexing.
+
+### Internal Layout
+An array is a contiguous memory block allocated via `hoo_alloc` with the `HOO_TYPE_ARRAY` identifier.
+```cpp
+// Format in memory:
+// [Header: 16 bytes (ARC refcount + Type ID)]
+// [Length: 8 bytes (int64_t)]
+// [Element 0: 8 bytes (int64_t / pointer)]
+// [Element 1: 8 bytes (int64_t / pointer)]
+// ...
+```
+- **Length-Prefixed**: The first 64-bit slot in the data area stores the current element count.
+- **Fixed-Width Slots**: All elements occupy exactly 64 bits. Primitives (`int64`, `double`) are stored as bit patterns, and managed objects (`String`, `Character`, nested `Array`) are stored as pointers.
+- **ARC Integration**: The array itself is ARC-managed. Currently, elements inside a low-level array are not automatically scanned for ARC; they must be managed via explicit `retain`/`release` if necessary (e.g., when popping an object).
 
 ### Key Operations
-- **Creation**: `hoo_array_new()`
-- **Type-Specific Push**: Because HVM registers hold raw 64-bit bits, type-specific push methods are used to correctly package the values into `std::any`:
+- **Creation**: `hoo_array_new()` allocates with initial capacity.
+- **Indexing**: Arrays support O(1) direct indexing. `val = arr[i]` maps to `LD.D dest, arr_base, (8 + i*8)`.
+- **Type-Specific Push**:
   - `hoo_array_push_int64(arr, val)`
   - `hoo_array_push_double(arr, val)`
   - `hoo_array_push_string(arr, str_handle)`
   - `hoo_array_push_object(arr, obj_handle)`
-- **Type-Specific Get**: Similarly, retrievals use type-specific functions to unpack the `std::any`.
-  - `hoo_array_get_int64(arr, index, *dest)` (Returns 1 on success, 0 on out-of-bounds/mismatch).
-- **Inspection**: `hoo_array_length(arr)`, `hoo_array_element_type(arr)`.
+- **Type-Specific Get**:
+  - `hoo_array_get_int64(arr, index, *dest)` (Returns 1 on success, 0 on out-of-bounds).
+- **Inspection**: `hoo_array_length(arr)`.
 
 ---
 

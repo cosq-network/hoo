@@ -13,10 +13,10 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 
 1. **[Memory Model & ARC](memory-model.md)**
    * Details the 16-byte object header, Reference Counting (ARC), and the Thread-Local Allocation Buffer (TLAB) system.
-2. **[Strings](strings.md)**
-   * `HooString` implementation, immutable UTF-8 buffers, and string manipulation intrinsics.
+2. **[Strings & Unicode](strings.md)**
+   * `HooString` and `HooCharacter` implementations, immutable UTF-8 buffers, and Unicode scalar support.
 3. **[Collections](collections.md)**
-   * Generic dynamic arrays (`HooArray`) using `std::any` and type-safe dictionaries (`HooMap`).
+   * Hardware-ready low-level arrays (`HooArray`) and type-safe dictionaries (`HooMap`).
 4. **[Exceptions](exceptions.md)**
    * `HooException` type IDs, stack unwinding, and shadow stack management.
 5. **[Math](math.md)**
@@ -24,7 +24,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 6. **[I/O & Networking](io-net.md)**
    * Console input/output (`print`, `readline`) and the HTTP/URL client implementation.
 7. **[JIT Integration](jit-integration.md)**
-   * System call mapping (`SYSCALL` 1-11), ARC optimization passes, and inbound FFI trampolines.
+   * System call mapping (`SYSCALL` 1-11), ARC optimization passes, and host symbol bridging.
 
 ## Integration & C-ABI
 The library exposes its API strictly via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively.

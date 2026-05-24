@@ -6,7 +6,8 @@ Expressions are combinations of literals, identifiers, and operators that evalua
 Hooc supports several types of literals:
 - **Numeric**: `42`, `3.14`.
 - **String**: `"Hello"`, `"""Multiline"""`.
-- **Char**: `'A'`.
+- **Interpolated String**: `"Value: ${x}"` (automatically converts primitives and joins parts).
+- **Char**: `'A'`, `'€'`, `'😀'` (supports multi-byte UTF-8 Unicode codepoints).
 - **Boolean**: `true`, `false`.
 - **Null**: `null`.
 - **Array**: `[1, 2, 3]`.

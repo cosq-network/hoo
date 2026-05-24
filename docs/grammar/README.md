@@ -18,8 +18,6 @@ This directory contains the normative documentation for the hoo language grammar
     *   Blocks, conditionals, loops, scopes, and exception handling.
 7.  **[Expressions & Operators](expressions.md)**
     *   Operator precedence, assignment, logical, relational, and arithmetic operations.
-8.  **[Foreign Function Interface (FFI)](ffi.md)**
-    *   Native imports, dynamic linkage, and external C-style declarations.
 
 ## Technical Foundation
 

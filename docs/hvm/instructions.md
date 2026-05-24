@@ -80,7 +80,6 @@ Operations removed from the ISA and now lowered to the above set:
 - **Arrays**: `NEWA` -> `CALL hoo_malloc`.
 - **Field/Element Access**: `LDF`/`STF`/`LDELEM` -> Explicit pointer arithmetic + `LD.D`/`ST.D`.
 - **Exceptions**: `TRY`/`THROW` -> `CALL hoo_push_handler` + control flow.
-- **FFI**: `CALLHOST` -> Standard `CALL` to linked symbol.
 
 ## 6. Canonical Opcode Table
 

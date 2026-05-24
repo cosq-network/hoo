@@ -268,12 +268,12 @@ st.d r11, r10, 16   # Store 64-bit value at [object_ptr + 16]
 ```
 
 #### **2.5.4 Array Layout and Operations**
-HVM arrays are represented as heap-allocated buffers with a **Metadata Header** at offset 0.
+HVM arrays use a low-level, length-prefixed hardware representation.
 
 **Array Memory Map**:
-- `[ptr + 0]`: **Length** (64-bit integer)
-- `[ptr + 8]`: **Element 0**
-- `[ptr + 16]`: **Element 1** ...
+- `[ptr + 0]`: **Length** (64-bit element count)
+- `[ptr + 8]`: **Element 0** (64-bit primitive or pointer)
+- `[ptr + 16 ..]`: **Element 1 ..**
 
 **Operation: Get Array Length** (`arr.length`)
 ```assembly
@@ -321,10 +321,10 @@ ld.d r10, r9, 0     # r10 now contains the 64-bit constant
 ```
 
 #### **2.6.3 String Constants and Allocation**
-Strings in Hooc are objects. The HVM backend lowers string literals into a two-step process: **Static Storage** and **Runtime Wrapping**.
+Strings in Hooc are objects. The HVM backend lowers literals via runtime wrapping.
 
-1.  **Static Storage**: The raw character data is stored in the `.rodata` section, followed by a `NUL` (`\0`) terminator.
-2.  **Runtime Wrapping**: A call is made to `hoo_string_from_cstr` which allocates a managed string object on the heap and copies the static data.
+1.  **Standard Strings**: Raw data is stored in `.rodata` and wrapped via `hoo_string_from_cstr`.
+2.  **Interpolated Strings**: Lowered to recursive `hoo_string_concat` calls. Expressions within `${}` are converted to strings using `hoo_string_from_any` (which handles primitives like int64 and double automatically).
 
 **HVM Assembly Sequence**:
 ```assembly
@@ -357,22 +357,7 @@ Every function in an `.ho` module includes a metadata entry (48 bytes) in the `.
 - **Stepping**: Map the current `PC` (Program Counter) to a `source_line`.
 - **Introspection**: Determine `local_size` and `param_count` to reconstruct the stack frame during a pause.
 
-### **2.8 Runtime & FFI Support**
-
-The HVM backend achieves hardware readiness by standardizing all external interactions through a common calling convention.
-
-#### **2.8.1 FFI (Foreign Function Interface)**
-Calling a native C function is lowered to a standard `call` targeting an external symbol.
-
-**Hooc Syntax**: `extern native void printf(string fmt, int64 val);`
-
-**HVM Assembly**:
-```assembly
-mov r1, r9          # fmt string object
-mov r2, r10         # val
-call r29, 0         # Offset 0 (placeholder for linker fixup)
-```
-*The HVM loader resolves the symbol "printf" and patches the call offset at load-time.*
+### **2.8 System Integration**
 
 #### **2.8.2 System Interaction (SYSCALL)**
 For operations that require Kernel/OS intervention (file I/O, network sockets), the `syscall` instruction is used. It follows the I-format where the immediate represents the syscall number.
@@ -398,11 +383,10 @@ syscall r1, r0, 10      # Invoke syscall #10, result in r1
 
 ### **3.2 Substantially Complete [85%]**
 - **Objects**: Basic allocation and field/method access are stable.
-- **Arrays**: 1D arrays with literal initialization and dynamic indexing are functional.
+- **Arrays**: Hardware-ready low-level representation with direct indexing support.
 - **Exceptions**: Control flow lowering is implemented; requires the `hoort` library for full system execution.
 
-### **3.3 Partially Complete [40%]**
-- **FFI**: Basic symbol resolution and calling work, but complex FFI types (e.g., nested structs/pointers) are not yet fully mapped in the HVM backend.
+
 - **Type Inference**: Works for local variables, but complex chained member access (e.g., `a.b.c.d`) requires more robust type-tracking in the generator.
 
 ---
@@ -417,15 +401,13 @@ syscall r1, r0, 10      # Invoke syscall #10, result in r1
 - **Current State**: The grammar and AST support `class A extends B`, but the `HVMCodeGenerator` calculates `ClassLayout` in isolation.
 - **Requirement**: Layout calculation must recursively aggregate field offsets from the base class to the child class.
 
-### **4.3 String Interpolation**
-- **Current State**: Handled as a constant placeholder or a simple string literal.
-- **Requirement**: Lowering must emit a sequence of `CALL`s to `hoo_string_concat` and `hoo_to_string` to build the final result at runtime.
 
-### **4.4 Multi-dimensional Arrays**
+
+### **4.3 Multi-dimensional Arrays**
 - **Current State**: Backend handles `[index]` but does not yet optimize or correctly scale for `[i][j]` without manual nested access.
 - **Requirement**: Implement recursive address calculation for nested array types.
 
-### **4.5 Advanced FFI Marshalling**
+
 - **Current State**: Lowers to standard `CALL`.
 - **Requirement**: Need logic to convert between HVM's 64-bit objects and native C ABI expectations (e.g., unboxing strings to `char*`).
 

@@ -73,7 +73,6 @@ The following are **NOT** in the ISA and must be lowered by the compiler:
 - `newExpression` -> `CALL hoo_malloc` + `CALL` constructor.
 - member/index access -> explicit pointer arithmetic + `LD.D`/`ST.D`.
 - `try/catch/finally` -> `CALL hoo_push_handler` + conditional control flow.
-- FFI grammar constructs -> standard `CALL` to external symbols resolved at link-time.
 
 ## 7. Notes
 
