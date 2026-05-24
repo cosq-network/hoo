@@ -1,0 +1,70 @@
+# Statements & Control Flow
+
+Statements are the building blocks of Hooc functions and blocks.
+
+## 1. Variables & Constants
+
+- **Variables**: Mutable storage.
+  - `var x = 10;`
+  - `var y: int64 = 20;`
+- **Constants**: Immutable storage.
+  - `const PI = 3.14;`
+
+## 2. Conditionals
+
+### If Statement
+Standard if-else construct.
+```hooc
+if (x > 0) {
+    print("Positive");
+} else {
+    print("Zero or Negative");
+}
+```
+
+## 3. Loops
+
+### While Loop
+Executes as long as the condition is true.
+```hooc
+while (i < 10) {
+    i++;
+}
+```
+
+### For-In Loop
+Supports iterating over ranges or collections.
+- **Range**: `for i in 0..10 by 2 { ... }`
+- **Collection**: `for item in array { ... }`
+
+### Loop Control
+- `break;`: Exits the innermost loop.
+- `continue;`: Jumps to the next iteration.
+
+## 4. Exception Handling
+
+Hooc provides a robust `try-catch-finally` model.
+
+**Implementation Note:** The exception model is implemented using an ARC-managed `HooException` object and a Shadow Stack for routing control flow across the native JIT boundary. For details, see [Runtime Exceptions & Shadow Stack](../runtime/exceptions.md).
+
+### Try-Catch-Finally
+```hooc
+try {
+    performAction();
+} catch (e: Exception) {
+    logError(e);
+} finally {
+    cleanup();
+}
+```
+
+### Throw & Rethrow
+- `throw new Exception("Error");`
+- `rethrow;` (Valid only within a catch block).
+
+## 5. Other Statements
+
+- **Return**: `return expr;` or `return;`.
+- **Block**: `{ statement* }`
+- **Expression Statement**: `expr;`
+- **Scope**: `scope { ... }` (Creates an isolated block for resource management).
