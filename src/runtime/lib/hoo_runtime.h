@@ -51,6 +51,14 @@ extern "C" {
 void* hoo_alloc(size_t size, int64_t type_id);
 
 /**
+ * Reallocate a managed object with a new size.
+ * If the existing capacity is sufficient, returns the same pointer.
+ * Otherwise, allocates a new block, copies data, and releases the old one.
+ * @return New pointer to object data.
+ */
+void* hoo_realloc(void* obj, size_t new_size);
+
+/**
  * Increment the reference count of an object.
  * Called automatically on assignment and parameter passing.
  *

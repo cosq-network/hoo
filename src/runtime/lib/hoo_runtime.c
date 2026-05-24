@@ -53,6 +53,7 @@ static struct {
 typedef struct {
     _Atomic int64_t refcount;
     int64_t type_id;
+    int64_t capacity; // New field: capacity in bytes (excluding header)
 } HooObjectHeader;
 
 typedef struct TLABObjNode {
@@ -127,6 +128,7 @@ void* hoo_alloc(size_t size, int64_t type_id) {
 
     header->refcount = 1;
     header->type_id = type_id;
+    header->capacity = (int64_t)size;
     memset((char*)header + header_size, 0, size);
 
     // Update statistics
@@ -153,6 +155,31 @@ void* hoo_alloc(size_t size, int64_t type_id) {
 #endif
 
     return obj;
+}
+
+void* hoo_realloc(void* obj, size_t new_size) {
+    if (!obj) return hoo_alloc(new_size, HOO_TYPE_OBJECT);
+
+    HooObjectHeader* old_header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
+    int64_t type_id = old_header->type_id;
+
+    // Check if current capacity is enough
+    if ((int64_t)new_size <= old_header->capacity) {
+        return obj;
+    }
+
+    // Allocate new block
+    void* new_obj = hoo_alloc(new_size, type_id);
+    if (!new_obj) return NULL;
+
+    // Copy old data
+    size_t copy_size = (size_t)old_header->capacity;
+    memcpy(new_obj, obj, copy_size);
+
+    // Release old object
+    hoo_release(obj);
+
+    return new_obj;
 }
 
 void* hoo_retain(void* obj) {

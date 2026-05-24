@@ -383,11 +383,12 @@ For Wasm, startup often benefits from compact binaries and a very standardized i
 | Validation | Implementation/runtime discipline | Core part of the format |
 | Safety boundary | Hardware/runtime dependent | Built into module validation and embedding |
 | Module format | `.ho` object/module pipeline | Portable binary module |
+| JIT performance profile | Strong steady-state potential; translation cost up front | Strong engine maturity; stack lowering handled by the runtime |
 | Best fit | RISC cores, JIT-to-native, low-level systems | Browsers, portable plugins, sandboxed runtimes |
 
-## 12. Practical Implications For Hooc
+## 13. Practical Implications For Hooc
 
-### 12.1 Why HVM Fits the Current Hooc Docs
+### 13.1 Why HVM Fits the Current Hooc Docs
 
 The current Hooc documentation is consistent with a compiler that wants:
 
@@ -398,7 +399,7 @@ The current Hooc documentation is consistent with a compiler that wants:
 
 That makes HVM a good match for the current architecture because the compiler can lower high-level semantics into a predictable low-level substrate.
 
-### 12.2 What Would Change If Hooc Targeted WebAssembly
+### 13.2 What Would Change If Hooc Targeted WebAssembly
 
 If Hooc targeted Wasm as a primary backend, the compiler and runtime design would shift:
 
@@ -409,9 +410,9 @@ If Hooc targeted Wasm as a primary backend, the compiler and runtime design woul
 
 That is feasible, but it is a different architecture. It would not preserve HVM's hardware-first shape.
 
-## 13. Strengths and Tradeoffs
+## 14. Strengths and Tradeoffs
 
-### 13.1 HVM Strengths
+### 14.1 HVM Strengths
 
 - Direct hardware mapping
 - Simple instruction-level semantics
@@ -419,14 +420,14 @@ That is feasible, but it is a different architecture. It would not preserve HVM'
 - Good fit for JITs and native code generation
 - Easier to model as a physical machine
 
-### 13.2 HVM Tradeoffs
+### 14.2 HVM Tradeoffs
 
 - Less inherent sandboxing
 - More implementation burden on compiler/runtime
 - More responsibility for memory safety and object semantics
 - Less portable as a distribution format without an embedding layer
 
-### 13.3 WebAssembly Strengths
+### 14.3 WebAssembly Strengths
 
 - Strong portability
 - Validation before instantiation
@@ -434,14 +435,14 @@ That is feasible, but it is a different architecture. It would not preserve HVM'
 - Standardized module format
 - Strong ecosystem around browser and server embeddings
 
-### 13.4 WebAssembly Tradeoffs
+### 14.4 WebAssembly Tradeoffs
 
 - Stack-based execution is less hardware-like
 - Control flow is more constrained
 - Low-level system integration depends heavily on the embedding
 - Some host capabilities are outside the core spec and depend on proposals or embeddings
 
-## 14. Bottom Line
+## 15. Bottom Line
 
 HVM and WebAssembly are both low-level execution targets, but they occupy different points in the design space:
 
@@ -452,7 +453,7 @@ If the goal is to model hardware, expose a stable RISC-style ABI, and keep contr
 
 If the goal is to distribute code safely across many hosts with a strong validation boundary and a standardized embedding model, WebAssembly is the more natural fit.
 
-## 15. References
+## 16. References
 
 - `docs/hvm/hvm-spec.md`
 - `docs/hvm/ho-file-format.md`

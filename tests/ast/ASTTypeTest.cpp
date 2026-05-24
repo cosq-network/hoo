@@ -135,9 +135,9 @@ TEST_F(ASTTypeTest, StringLiteralMultiline) {
 }
 
 TEST_F(ASTTypeTest, CharacterLiteralAccessors) {
-    CharacterLiteral lit('A');
-    EXPECT_EQ(lit.getValue(), 'A');
-    EXPECT_EQ(lit.toString(), "CharacterLiteral('A')");
+    CharacterLiteral lit(65);
+    EXPECT_EQ(lit.getValue(), 65);
+    EXPECT_EQ(lit.toString(), "CharacterLiteral(65)");
 }
 
 TEST_F(ASTTypeTest, BooleanLiteralAccessors) {
