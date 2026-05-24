@@ -441,6 +441,32 @@ TEST_F(HVMJITInstructionSemanticsTest, StDAppliesRetainStoreReleaseSequence) {
     EXPECT_EQ(jit.run("_F_main_v"), 2) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, StDSameValueElidesRetainRelease) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{12, 0, 96}),              // slot addr
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, HOO_TYPE_OBJECT}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),             // obj
+        makeI(Opcode::ST_D, OperandsI{4, 12, 0}),               // retain on first store => rc 2
+        makeI(Opcode::ST_D, OperandsI{4, 12, 0}),               // same pointer, should be elided
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{5, 0, 4}),             // rc should remain 2
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 3}),             // release caller => rc 1
+        makeI(Opcode::MOVZ, OperandsI{13, 0, 0}),
+        makeI(Opcode::ST_D, OperandsI{13, 12, 0}),              // release slot => free
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 2}),
+        makeR(Opcode::CMP, OperandsR{7, 5, 6, 0}),              // rc == 2
+        makeR(Opcode::MOV, OperandsR{1, 7, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["st_arc_same.ho"] = buildModuleBytes("st_arc_same", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("st_arc_same.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, SyscallCreatesRuntimeExceptionObject) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::SYSCALL, OperandsI{4, 0, 6}), // runtime exception

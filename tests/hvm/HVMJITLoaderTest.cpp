@@ -310,6 +310,25 @@ TEST_F(HVMJITLoaderTest, NativeImportMissingSymbolFailsLoad) {
     EXPECT_EQ(info->code, HVMJIT::ErrorCode::MissingDependency);
 }
 
+TEST_F(HVMJITLoaderTest, NativeImportMissingLibraryFailsLoad) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 3}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    std::vector<ImportEntry> imports{
+        importNative("some_symbol", "libhooc_missing_library_12345.dylib"),
+    };
+    io.binaryFiles["native_missing_lib.ho"] = buildModuleBytes("native.missing.lib", ins, syms, imports);
+
+    HVMJIT jit(io);
+    EXPECT_FALSE(jit.loadInput("native_missing_lib.ho"));
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Failed to load native library"), std::string::npos);
+}
+
 TEST_F(HVMJITLoaderTest, InboundTrampolineInvokesHvmFunction) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::ADDI, OperandsI{1, 1, 1}),
@@ -342,6 +361,99 @@ TEST_F(HVMJITLoaderTest, InboundTrampolineRejectsUnknownFunction) {
     ASSERT_TRUE(jit.loadInput("cb_missing.ho")) << jit.getLastError();
     EXPECT_EQ(jit.createInboundTrampoline("cb.missing", "_F_not_there_v"), nullptr);
     EXPECT_TRUE(jit.hasError());
+}
+
+TEST_F(HVMJITLoaderTest, InboundTrampolineInvokesTwoArgCallback) {
+    std::vector<HVMInstruction> ins{
+        makeR(Opcode::ARITH, OperandsR{1, 1, 2, 0}), // r1 = r1 + r2
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_cb2_v", 0),
+    };
+    io.binaryFiles["cb2.ho"] = buildModuleBytes("cb2", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cb2.ho")) << jit.getLastError();
+    void* tramp = jit.createInboundTrampoline("cb2", "_F_cb2_v", 2);
+    ASSERT_NE(tramp, nullptr) << jit.getLastError();
+    auto fn = reinterpret_cast<uint64_t(*)(uint64_t, uint64_t)>(tramp);
+    EXPECT_EQ(fn(20, 22), 42u);
+}
+
+TEST_F(HVMJITLoaderTest, InboundTrampolineRejectsUnsupportedArity) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 1}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_cb_v", 0),
+    };
+    io.binaryFiles["cb_arity.ho"] = buildModuleBytes("cb_arity", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cb_arity.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.createInboundTrampoline("cb_arity", "_F_cb_v", 3), nullptr);
+    EXPECT_TRUE(jit.hasError());
+}
+
+TEST_F(HVMJITLoaderTest, InspectorTraceExposesStepSnapshots) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 10}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 5}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["inspector.ho"] = buildModuleBytes("inspector", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("inspector.ho")) << jit.getLastError();
+    ASSERT_TRUE(jit.buildInspectorTrace("_F_main_v")) << jit.getLastError();
+    auto s0 = jit.getInspectorSnapshot();
+    ASSERT_TRUE(s0.has_value());
+    EXPECT_EQ(s0->opcode, "movz");
+    EXPECT_EQ(s0->regs[1], 0);
+
+    ASSERT_TRUE(jit.inspectorStep());
+    auto s1 = jit.getInspectorSnapshot();
+    ASSERT_TRUE(s1.has_value());
+    EXPECT_EQ(s1->opcode, "addi");
+    EXPECT_EQ(s1->regs[1], 10);
+
+    ASSERT_TRUE(jit.inspectorStep());
+    auto s2 = jit.getInspectorSnapshot();
+    ASSERT_TRUE(s2.has_value());
+    EXPECT_EQ(s2->opcode, "ret");
+    EXPECT_EQ(s2->regs[1], 15);
+}
+
+TEST_F(HVMJITLoaderTest, InspectorCanReadVirtualMemorySnapshot) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 140}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 0x41}),
+        makeI(Opcode::ST_B, OperandsI{1, 2, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["memsnap.ho"] = buildModuleBytes("memsnap", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("memsnap.ho")) << jit.getLastError();
+    ASSERT_TRUE(jit.buildInspectorTrace("_F_main_v")) << jit.getLastError();
+    while (jit.inspectorStep()) {
+    }
+    auto snap = jit.getInspectorSnapshot();
+    ASSERT_TRUE(snap.has_value());
+    EXPECT_EQ(snap->opcode, "ret");
+    EXPECT_EQ(snap->regs[1], 65);
+
+    auto bytes = jit.readVirtualMemory(140, 1);
+    ASSERT_EQ(bytes.size(), 1u);
+    EXPECT_EQ(bytes[0], 0x41u);
 }
 
 TEST_F(HVMJITLoaderTest, ModuleInitIsInvokedBeforeMain) {

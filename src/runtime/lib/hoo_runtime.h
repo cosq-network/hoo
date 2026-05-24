@@ -85,6 +85,37 @@ void hoo_print_memory_stats(void);
  */
 void hoo_reset_memory_stats(void);
 
+/**
+ * Thread-local allocation buffer (TLAB) runtime stats.
+ * Counts represent process lifetime unless reset APIs are called.
+ */
+typedef struct {
+    int64_t tlab_hits;
+    int64_t tlab_misses;
+    int64_t tlab_blocks_allocated;
+} HooTLABStats;
+
+/**
+ * Returns 1 when TLAB fast-path allocation is enabled.
+ */
+int32_t hoo_tlab_enabled(void);
+
+/**
+ * Returns current process TLAB stats counters.
+ */
+HooTLABStats hoo_get_tlab_stats(void);
+
+/**
+ * Reset TLAB stats counters to zero.
+ */
+void hoo_reset_tlab_stats(void);
+
+/**
+ * Release thread-local TLAB cached blocks for the calling thread.
+ * Safe to call multiple times.
+ */
+void hoo_tlab_reset_thread_cache(void);
+
 #ifdef __cplusplus
 }
 #endif

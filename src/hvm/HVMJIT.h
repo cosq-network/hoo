@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <optional>
 #include <mutex>
+#include <array>
+#include <atomic>
 
 #include "core/IOProvider.h"
 #include "core/HooCompiler.h"
@@ -16,6 +18,7 @@
 #include "hvm/HVMModuleBundle.h"
 
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
+#include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/ExecutionEngine/Orc/ThreadSafeModule.h"
 #include "llvm/IR/LLVMContext.h"
 
@@ -81,8 +84,9 @@ public:
     void* getSymbolAddress(const std::string& mangledName);
     bool hasModuleJITDylib(const std::string& moduleName) const;
     std::vector<std::string> getModuleLogicalSearchOrder(const std::string& moduleName) const;
-    void* createInboundTrampoline(const std::string& moduleName, const std::string& functionName);
-    int64_t invokeInboundCallback(size_t slot, uint64_t arg0);
+    void* createInboundTrampoline(const std::string& moduleName, const std::string& functionName,
+                                  size_t arity = 1);
+    int64_t invokeInboundCallback(size_t slot, const std::vector<uint64_t>& args);
     bool lastRunUsedJIT() const { return lastRunUsedJIT_; }
 
     const std::string& getLastError() const { return lastError_; }
@@ -98,6 +102,22 @@ public:
         uint8_t* memory = nullptr;
         IOProvider* io = nullptr;
     };
+    struct InspectorSnapshot {
+        std::array<int64_t, 32> regs{};
+        uint64_t pc = 0;
+        std::string moduleName;
+        std::string functionName;
+        std::string opcode;
+        bool halted = false;
+    };
+
+    bool buildInspectorTrace(const std::string& entryPoint = "_F_main_v");
+    bool inspectorStep();
+    std::optional<InspectorSnapshot> getInspectorSnapshot() const;
+    void resetInspector();
+    void stopExecution();
+    std::array<int64_t, 32> getRegisters() const;
+    std::vector<uint8_t> readVirtualMemory(uint64_t addr, size_t size) const;
 
 private:
 
@@ -142,6 +162,8 @@ private:
     bool loadU64(uint64_t addr, uint64_t& out) const;
     bool storeU64(uint64_t addr, uint64_t value);
     bool invokeStateAbiSymbol(const std::string& symbolName, HVMState& state, uint64_t& outValue);
+    void captureInspectorSnapshot(const HVMState& state, uint64_t pc, const std::string& moduleName,
+                                  const std::string& functionName, const std::string& opcode, bool halted);
     bool runModuleInitializer(const std::shared_ptr<hvm::HOModule>& module);
     bool runModuleVTableInitializers(const std::shared_ptr<hvm::HOModule>& module);
     std::shared_ptr<std::once_flag> getOrCreateModuleInitOnceFlag(const std::string& moduleName);
@@ -160,6 +182,7 @@ private:
     };
 
     std::unique_ptr<llvm::orc::LLJIT> jit_;
+    std::unique_ptr<llvm::JITEventListener> jitDebugListener_;
     llvm::orc::ThreadSafeContext tsc_;
     IOProvider& io_;
     std::unique_ptr<HooCompiler> sourceCompiler_;
@@ -195,8 +218,19 @@ private:
     std::unordered_map<std::string, std::shared_ptr<std::once_flag>> moduleVTableOnceFlags_;
     std::unordered_set<std::string> initializedVTableClasses_;
     std::mutex inboundTrampolineMu_;
-    std::unordered_map<size_t, std::pair<std::string, std::string>> inboundTrampolineTargets_;
+    struct InboundTarget {
+        std::string moduleName;
+        std::string functionName;
+        size_t arity = 1;
+    };
+    std::unordered_map<size_t, InboundTarget> inboundTrampolineTargets_;
     std::unordered_map<std::string, size_t> inboundTrampolineIndexByTarget_;
+    bool inspectorCaptureEnabled_ = false;
+    std::vector<InspectorSnapshot> inspectorTrace_;
+    size_t inspectorCursor_ = 0;
+    std::atomic<bool> stopExecutionRequested_{false};
+    mutable std::mutex lastRegistersMu_;
+    std::array<int64_t, 32> lastRegisters_{};
 };
 
 } // namespace hooc
