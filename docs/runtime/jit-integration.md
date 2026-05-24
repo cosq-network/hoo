@@ -24,10 +24,8 @@ To prevent severe performance degradation from excessive reference counting, the
 - **Pattern Matching**: It searches for `SYSCALL 2` (retain) and `SYSCALL 3` (release) pairs that apply to the same object within a linear execution block.
 - **Elimination**: If an object is retained and subsequently released with no branching or overriding writes to `r2` in between, the pass marks both instructions in the `skipPc` set, completely eliminating the ARC overhead at runtime.
 
-## 3. Inbound FFI Trampolines
-When a native C/C++ library needs to trigger a callback into Hooc-compiled code, it requires a raw function pointer. 
-- **The Problem**: LLVM-compiled HVM functions expect an `HVMState*` as their first parameter, making their ABI incompatible with standard C callbacks.
-- **The Solution**: The JIT provisions an array of predefined trampoline functions (`hooc_hvm_inbound_trampoline_N`). When `createInboundTrampoline` is called, it allocates an available trampoline slot and binds it to the requested HVM module/function pair. When the native library invokes the trampoline, it constructs a temporary `HVMState`, maps the C arguments into virtual registers (`r1`...`r7`), and initiates a re-entrant call into the JIT engine.
+## 3. Host Symbol Bridging
+The JIT maintains a registry of host-native functions that can be called directly via the `CALL` instruction. During module loading, any `UNDEFINED` symbols (global binding with `section_index == -1`) are resolved against the `hoo` JITDylib. This allows HVM code to interact with runtime services like `print`, `println`, and string conversion intrinsics without using the slow `SYSCALL` path.
 
 ## 4. The `HVMState` Struct
 In LLVM IR, the running state of the VM is passed around as a pointer to the `hvm.state` struct:

@@ -100,6 +100,11 @@ private:
     void bindLabel(Label* label);
     
     /**
+     * Map an AST type to its runtime Type ID.
+     */
+    uint32_t getTypeId(const ast::Type* type, const ast::Expression* initializer = nullptr);
+    
+    /**
      * Emit a call instruction with a deferred symbol target.
      */
     void emitCall(hvm::Opcode op, const std::string& symbol);

@@ -332,10 +332,13 @@ HooArray hoo_string_to_characters(HooString str) {
         i += char_len;
     }
 
-    // Allocate raw array: [length(8 bytes)][elements...]
-    size_t array_size = 8 + (count * 8);
+    // Allocate raw array: [Header: length, capacity, elem_type][elements...]
+    #define ARRAY_HEADER_WORDS 3
+    size_t array_size = ARRAY_HEADER_WORDS * 8 + (count * 8);
     int64_t* raw_array = (int64_t*)hoo_alloc(array_size, HOO_TYPE_ARRAY);
-    raw_array[0] = count;
+    raw_array[0] = count;        // Length
+    raw_array[1] = count;        // Capacity
+    raw_array[2] = HOO_TYPE_CHARACTER; // Element Type
 
     // Second pass: create characters
     i = 0;
@@ -351,7 +354,7 @@ HooArray hoo_string_to_characters(HooString str) {
         if (i + char_len > impl->length) break;
 
         HooCharacter ch = hoo_character_from_utf8((const char*)(data + i), char_len);
-        raw_array[idx + 1] = (int64_t)ch;
+        raw_array[idx + ARRAY_HEADER_WORDS] = (int64_t)ch;
         idx++;
         i += char_len;
     }
@@ -362,6 +365,7 @@ HooArray hoo_string_to_characters(HooString str) {
 HooString hoo_string_join(HooArray parts) {
     if (!parts) return hoo_string_new();
 
+    #define ARRAY_HEADER_WORDS 3
     int64_t* raw_array = (int64_t*)parts;
     int64_t count = raw_array[0];
     if (count == 0) return hoo_string_new();
@@ -369,7 +373,7 @@ HooString hoo_string_join(HooArray parts) {
     // Calculate total length
     int64_t total_len = 0;
     for (int64_t i = 0; i < count; i++) {
-        HooString part = (HooString)raw_array[i + 1];
+        HooString part = (HooString)raw_array[i + ARRAY_HEADER_WORDS];
         if (part) {
             total_len += get_impl(part)->length;
         }
@@ -380,7 +384,7 @@ HooString hoo_string_join(HooArray parts) {
     int64_t current_pos = 0;
 
     for (int64_t i = 0; i < count; i++) {
-        HooString part = (HooString)raw_array[i + 1];
+        HooString part = (HooString)raw_array[i + ARRAY_HEADER_WORDS];
         if (part) {
             HooStringImpl* part_impl = get_impl(part);
             std::memcpy(result_impl->data + current_pos, part_impl->data, (size_t)part_impl->length);

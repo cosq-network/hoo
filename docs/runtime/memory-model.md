@@ -12,13 +12,14 @@ Every object managed by the runtime (including Arrays, Strings, Maps, and User O
 | `0` | variable| User Data | The pointer passed around in HVM registers. |
 
 ### Reserved Type IDs
+- `1..9`: Primitive Type Placeholders (int64, float, bool, etc.)
 - `100`: Generic Object
 - `101`: HooString
 - `102`: HooArray
 - `103`: HooMap
 - `104`: HooException
-- `105`: HooRandom
-- `106-108`: Network handles (URL, HttpResponse, HttpClient)
+- `105-108`: Utility handles (Random, URL, Http)
+- `109`: HooCharacter
 
 ## 2. Thread-Local Allocation Buffer (TLAB)
 To minimize lock contention during allocation, the runtime utilizes a TLAB.
@@ -31,6 +32,7 @@ To minimize lock contention during allocation, the runtime utilizes a TLAB.
 ## 3. Core API (C ABI)
 
 - `void* hoo_alloc(size_t size, int64_t type_id)`: Allocates zeroed memory, initializing the header with `refcount = 1` and the specified `type_id`.
+- `void* hoo_realloc(void* obj, size_t new_size)`: Resizes a managed object, copying data if necessary.
 - `void* hoo_retain(void* obj)`: Atomically increments the `refcount`. Returns the original pointer.
 - `void hoo_release(void* obj)`: Atomically decrements the `refcount`. If it reaches `0`, the memory (and linked structures) are freed.
 - `int64_t hoo_get_refcount(void* obj)`: Returns the current reference count.

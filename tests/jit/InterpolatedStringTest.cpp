@@ -89,3 +89,22 @@ TEST_F(InterpolatedStringTest, CharInterpolation) {
     
     hoo_string_release(s);
 }
+
+TEST_F(InterpolatedStringTest, VariableInterpolation) {
+    const std::string source = R"(
+        func :string test() {
+            var x = 123;
+            return "Value: ${x}";
+        }
+    )";
+
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    
+    int64_t result = jit.run("_F_M_test_E_test_s");
+    ASSERT_NE(0, result);
+    
+    HooString s = (HooString)result;
+    EXPECT_STREQ("Value: 123", hoo_string_data(s));
+    
+    hoo_string_release(s);
+}

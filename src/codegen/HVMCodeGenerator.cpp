@@ -228,7 +228,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     auto mapParams = [&](const auto& params) {
         for (size_t i = 0; i < params.size() && i < maxArgRegs; ++i) {
-            int32_t offset = reserveLocal(params[i]->getName(), 0);
+            int32_t offset = reserveLocal(params[i]->getName(), getTypeId(&params[i]->getType(), nullptr));
             emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + firstArgReg), 30, static_cast<int16_t>(offset)});
         }
     };
@@ -341,7 +341,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
         auto& decl = varDecl->getDeclaration();
-        int32_t offset = reserveLocal(decl.getName(), 0);
+        int32_t offset = reserveLocal(decl.getName(), getTypeId(decl.getType(), decl.getInitializer()));
         if (decl.getInitializer()) {
             uint8_t reg = visitExpression(*decl.getInitializer());
             emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
@@ -388,7 +388,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, controlFlowStack_.top().continueLabel);
         }
     } else if (auto forRange = dynamic_cast<const ast::ForRangeStatement*>(&stmt)) {
-        int32_t offset = reserveLocal(forRange->getVariable(), 0);
+        int32_t offset = reserveLocal(forRange->getVariable(), 1);
         uint8_t startReg = visitExpression(forRange->getStart());
         emit(Opcode::ST_D, OperandsI{startReg, 30, static_cast<int16_t>(offset)});
         freeRegister(startReg);
@@ -457,7 +457,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::LD_D, OperandsI{itemReg, finalAddr, 0});
         freeRegister(finalAddr);
         
-        int32_t itemOffset = reserveLocal(forIn->getVariable(), 0);
+        int32_t itemOffset = reserveLocal(forIn->getVariable(), 100);
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
         controlFlowStack_.push({endLabel, stepLabel});
@@ -506,7 +506,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         for (const auto& clause : tryCatch->getCatchClauses()) {
             uint8_t excReg = allocateRegister();
             emit(Opcode::MOV, OperandsR{excReg, 1, 0, 0});
-            int32_t itemOffset = reserveLocal(clause.variable, 0);
+            int32_t itemOffset = reserveLocal(clause.variable, getTypeId(clause.type.get(), nullptr));
             emit(Opcode::ST_D, OperandsI{excReg, 30, static_cast<int16_t>(itemOffset)});
             freeRegister(excReg);
             visitStatement(*clause.block);
@@ -706,13 +706,23 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     
                     int64_t typeId = 100; // Default: Object
                     const ast::Expression* actualExpr = part.expression.get();
+                    
+                    // Unfold PrimaryExpression to find literals
+                    const ast::ASTNode* targetNode = actualExpr;
                     if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(actualExpr)) {
-                        const ast::ASTNode& node = pe->getPrimary();
-                        if (dynamic_cast<const ast::IntegerLiteral*>(&node)) typeId = 1;
-                        else if (dynamic_cast<const ast::FloatingLiteral*>(&node)) typeId = 2;
-                        else if (dynamic_cast<const ast::BooleanLiteral*>(&node)) typeId = 3;
-                        else if (dynamic_cast<const ast::StringLiteral*>(&node)) typeId = 101;
-                        else if (dynamic_cast<const ast::CharacterLiteral*>(&node)) typeId = 109;
+                        targetNode = &pe->getPrimary();
+                    }
+
+                    if (dynamic_cast<const ast::IntegerLiteral*>(targetNode)) typeId = 1;
+                    else if (dynamic_cast<const ast::FloatingLiteral*>(targetNode)) typeId = 2;
+                    else if (dynamic_cast<const ast::BooleanLiteral*>(targetNode)) typeId = 3;
+                    else if (dynamic_cast<const ast::StringLiteral*>(targetNode)) typeId = 101;
+                    else if (dynamic_cast<const ast::CharacterLiteral*>(targetNode)) typeId = 109;
+                    else if (auto id = dynamic_cast<const ast::Identifier*>(targetNode)) {
+                        auto it = locals_.find(id->getName());
+                        if (it != locals_.end()) {
+                            typeId = it->second.typeId != 0 ? it->second.typeId : 100;
+                        }
                     }
 
                     uint8_t typeIdReg = emitConstant(typeId);
@@ -1318,4 +1328,49 @@ void HVMCodeGenerator::emitBranch(Opcode op, uint8_t rs1, uint8_t rs2, Label* ta
     }
 }
 
+
+uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expression* initializer) {
+    if (!type) {
+        if (initializer) {
+            // Basic inference from literal
+            if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(initializer)) {
+                const ast::ASTNode& node = pe->getPrimary();
+                if (dynamic_cast<const ast::IntegerLiteral*>(&node)) return 1;
+                if (dynamic_cast<const ast::FloatingLiteral*>(&node)) return 2;
+                if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
+                if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
+                if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
+            }
+        }
+        return 100; // Default to Object
+    }
+    
+    if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
+        if (bt->isPrimitive()) {
+            switch (bt->getPrimitiveType()->getKind()) {
+                case ast::PrimitiveTypeKind::INT64: return 1;
+                case ast::PrimitiveTypeKind::FLOAT:
+                case ast::PrimitiveTypeKind::DOUBLE:
+                case ast::PrimitiveTypeKind::F64:   return 2;
+                case ast::PrimitiveTypeKind::BOOL:    return 3;
+                case ast::PrimitiveTypeKind::VOID:    return 4;
+                case ast::PrimitiveTypeKind::INT8:    return 5;
+                case ast::PrimitiveTypeKind::BYTE:    return 6;
+                case ast::PrimitiveTypeKind::CHAR:    return 7;
+                case ast::PrimitiveTypeKind::STRING:  return 101;
+                default: return 1;
+            }
+        } else {
+            std::string name = bt->getIdentifier();
+            if (name == "String") return 101;
+            if (name == "Character") return 109;
+            return 100;
+        }
+    }
+    if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
+    if (dynamic_cast<const ast::MapType*>(type)) return 103;
+    if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
+    
+    return 100;
+}
 } // namespace hooc
