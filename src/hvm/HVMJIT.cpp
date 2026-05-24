@@ -1703,7 +1703,7 @@ const hvm::Symbol* HVMJIT::findFunctionSymbol(const hvm::HOModule& module, const
 
     // 1. Exact match
     for (const auto& sym : symbols) {
-        if (isFunc(sym) && sym.name == functionName) return &sym;
+        if (isFunc(sym) && sym.name == functionName && sym.section_index != -1) return &sym;
     }
 
     // 2. If it's a known non-mangled name, try common mangled forms
@@ -1720,12 +1720,12 @@ const hvm::Symbol* HVMJIT::findFunctionSymbol(const hvm::HOModule& module, const
     // 3. Robust prefix match for mangled functions (_F_baseName_...)
     std::string prefix = "_F_" + baseName + "_";
     for (const auto& sym : symbols) {
-        if (isFunc(sym) && sym.name.rfind(prefix, 0) == 0) return &sym;
+        if (isFunc(sym) && sym.name.rfind(prefix, 0) == 0 && sym.section_index != -1) return &sym;
     }
 
     // 4. Case-insensitive or fuzzy match (last resort for tests)
     for (const auto& sym : symbols) {
-        if (isFunc(sym) && (sym.name.find(baseName) != std::string::npos)) return &sym;
+        if (isFunc(sym) && (sym.name.find(baseName) != std::string::npos) && sym.section_index != -1) return &sym;
     }
 
     return nullptr;
