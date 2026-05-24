@@ -160,9 +160,14 @@ TEST_F(ASTTypeTest, ThisLiteral) {
 }
 
 TEST_F(ASTTypeTest, InterpolatedString) {
-    InterpolatedString is("Hello ${name}");
-    EXPECT_EQ(is.getTemplate(), "Hello ${name}");
-    EXPECT_EQ(is.toString(), "InterpolatedString");
+    std::vector<InterpolatedString::Part> parts;
+    parts.push_back(InterpolatedString::Part("Hello "));
+    auto nameId = std::make_unique<Identifier>("name");
+    std::unique_ptr<Expression> nameExpr = std::make_unique<PrimaryExpression>(std::move(nameId));
+    parts.push_back(InterpolatedString::Part(std::move(nameExpr)));
+    InterpolatedString is(std::move(parts));
+    EXPECT_EQ(is.getParts().size(), 2u);
+    EXPECT_EQ(is.toString(), "InterpolatedString(\"Hello \", expr(PrimaryExpression(Identifier(name))))");
 }
 
 TEST_F(ASTTypeTest, IdentifierPrimary) {

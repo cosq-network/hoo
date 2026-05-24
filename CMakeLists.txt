@@ -305,6 +305,7 @@ if(HOOC_BUILD_TESTS)
         tests/jit/NewLanguageFeaturesTest.cpp
         tests/jit/CharacterLiteralTest.cpp
         tests/jit/FloatingLiteralTest.cpp
+        tests/jit/InterpolatedStringTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/core/SymbolManglerTest.cpp

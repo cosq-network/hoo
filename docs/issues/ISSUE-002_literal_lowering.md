@@ -6,13 +6,13 @@ The `HVMCodeGenerator` only supports `IntegerLiteral`, `StringLiteral`, `Boolean
 ## 2. Technical Analysis
 - **FloatingLiteral**: HVM supports 64-bit doubles. These need to be encoded as 8-byte bit-patterns in the `.rodata` section, then loaded into a register via `LD.D`.
 - **CharacterLiteral**: DONE. Lowered to heap-allocated `Character` runtime type.
-- **InterpolatedString**: Currently ignored. Requires lowering to a sequence of `hoo_String_from_cstr` and `hoo_String_concat` runtime calls.
+- **InterpolatedString**: DONE. Lowered to recursive `hoo_string_concat` calls with automatic type conversion via `hoo_string_from_any`.
 
 ## 3. Requirements & Lowering Suggestions
 - Implement `dynamic_cast` branches for `ast::FloatingLiteral` and `ast::CharacterLiteral` in `visitExpression`. [DONE]
-- For `ast::InterpolatedString`, use a recursive concatenation strategy using the `_F_hoo_String_concat_p_p_p` runtime bridge.
+- For `ast::InterpolatedString`, use a recursive concatenation strategy using the `_F_hoo_String_concat_p_p_p` runtime bridge. [DONE]
 
 ## 4. Status
 - **Date**: 2026-05-24
-- **Status**: **PARTIALLY IMPLEMENTED (Floating/Character DONE)**
+- **Status**: **IMPLEMENTED**
 - **Priority**: Medium

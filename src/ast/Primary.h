@@ -114,14 +114,23 @@ public:
 // Interpolated string - supports "text ${expr} more text"
 class InterpolatedString : public Primary {
 public:
-    InterpolatedString(const std::string& template_) : template_(template_) {}
+    struct Part {
+        bool isExpression;
+        std::string literal;
+        std::unique_ptr<Expression> expression;
+
+        Part(const std::string& lit) : isExpression(false), literal(lit) {}
+        Part(std::unique_ptr<Expression> expr) : isExpression(true), expression(std::move(expr)) {}
+    };
+
+    InterpolatedString(std::vector<Part> parts) : parts_(std::move(parts)) {}
 
     std::string toString() const override;
 
-    const std::string& getTemplate() const { return template_; }
+    const std::vector<Part>& getParts() const { return parts_; }
 
 private:
-    std::string template_;
+    std::vector<Part> parts_;
 };
 
 // Parenthesized expression

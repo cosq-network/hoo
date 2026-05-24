@@ -148,6 +148,28 @@ HooArray hoo_string_split(HooString str, HooString delimiter);
  */
 HooArray hoo_string_to_characters(HooString str);
 
+/**
+ * Join an array of strings into a single string.
+ * @param parts HooArray of HooString
+ * @return New concatenated HooString
+ */
+HooString hoo_string_join(HooArray parts);
+
+/**
+ * Convert any object to its string representation.
+ * @param obj Pointer to object
+ * @return New HooString
+ */
+HooString hoo_string_from_object(void* obj);
+
+/**
+ * Convert any value (primitive or object) to its string representation.
+ * @param val 64-bit value (pointer or raw data)
+ * @param type_id Type ID from hoo_runtime.h
+ * @return New HooString
+ */
+HooString hoo_string_from_any(int64_t val, int64_t type_id);
+
 // ============================================================================
 // String Query
 // ============================================================================

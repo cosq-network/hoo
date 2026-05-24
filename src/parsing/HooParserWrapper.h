@@ -26,6 +26,11 @@ public:
     HoocParser::CompilationUnitContext* parseForAST(const std::string& source);
     
     /**
+     * Parse just an expression.
+     */
+    HoocParser::ExpressionContext* parseExpression(const std::string& source);
+    
+    /**
      * Get the result of the last parse
      */
     bool wasSuccessful() const { return lastParseSuccessful_; }

@@ -298,7 +298,17 @@ std::string ThisLiteral::toString() const {
 }
 
 std::string InterpolatedString::toString() const {
-    return "InterpolatedString";
+    std::string result = "InterpolatedString(";
+    for (size_t i = 0; i < parts_.size(); ++i) {
+        if (i > 0) result += ", ";
+        if (parts_[i].isExpression) {
+            result += "expr(" + (parts_[i].expression ? parts_[i].expression->toString() : "null") + ")";
+        } else {
+            result += "\"" + parts_[i].literal + "\"";
+        }
+    }
+    result += ")";
+    return result;
 }
 
 std::string ParenthesizedExpression::toString() const {

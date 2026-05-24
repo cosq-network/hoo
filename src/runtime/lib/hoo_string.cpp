@@ -311,11 +311,13 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
 }
 
 HooArray hoo_string_to_characters(HooString str) {
-    HooArray result = hoo_array_new();
-    if (!result || !str) return result;
+    if (!str) return nullptr;
 
     HooStringImpl* impl = (HooStringImpl*)str;
     const unsigned char* data = (const unsigned char*)impl->data;
+    
+    // First pass: count characters
+    int64_t count = 0;
     int64_t i = 0;
     while (i < impl->length) {
         int64_t char_len = 0;
@@ -324,24 +326,118 @@ HooArray hoo_string_to_characters(HooString str) {
         else if ((b & 0xE0) == 0xC0) char_len = 2;
         else if ((b & 0xF0) == 0xE0) char_len = 3;
         else if ((b & 0xF8) == 0xF0) char_len = 4;
-        else {
-            // Invalid UTF-8, skip 1 byte
-            i++;
-            continue;
-        }
-
+        else { i++; continue; }
         if (i + char_len > impl->length) break;
-
-        HooCharacter ch = hoo_character_from_utf8((const char*)(data + i), char_len);
-        if (ch) {
-            hoo_character_retain(ch); // Retain for the array
-            hoo_array_push_object(result, ch);
-            hoo_character_release(ch); // Original ref
-        }
+        count++;
         i += char_len;
     }
 
+    // Allocate raw array: [length(8 bytes)][elements...]
+    size_t array_size = 8 + (count * 8);
+    int64_t* raw_array = (int64_t*)hoo_alloc(array_size, HOO_TYPE_ARRAY);
+    raw_array[0] = count;
+
+    // Second pass: create characters
+    i = 0;
+    int64_t idx = 0;
+    while (i < impl->length && idx < count) {
+        int64_t char_len = 0;
+        unsigned char b = data[i];
+        if (b <= 0x7F) char_len = 1;
+        else if ((b & 0xE0) == 0xC0) char_len = 2;
+        else if ((b & 0xF0) == 0xE0) char_len = 3;
+        else if ((b & 0xF8) == 0xF0) char_len = 4;
+        else { i++; continue; }
+        if (i + char_len > impl->length) break;
+
+        HooCharacter ch = hoo_character_from_utf8((const char*)(data + i), char_len);
+        raw_array[idx + 1] = (int64_t)ch;
+        idx++;
+        i += char_len;
+    }
+
+    return (HooArray)raw_array;
+}
+
+HooString hoo_string_join(HooArray parts) {
+    if (!parts) return hoo_string_new();
+
+    int64_t* raw_array = (int64_t*)parts;
+    int64_t count = raw_array[0];
+    if (count == 0) return hoo_string_new();
+
+    // Calculate total length
+    int64_t total_len = 0;
+    for (int64_t i = 0; i < count; i++) {
+        HooString part = (HooString)raw_array[i + 1];
+        if (part) {
+            total_len += get_impl(part)->length;
+        }
+    }
+
+    HooString result = allocate_string(total_len);
+    HooStringImpl* result_impl = get_impl(result);
+    int64_t current_pos = 0;
+
+    for (int64_t i = 0; i < count; i++) {
+        HooString part = (HooString)raw_array[i + 1];
+        if (part) {
+            HooStringImpl* part_impl = get_impl(part);
+            std::memcpy(result_impl->data + current_pos, part_impl->data, (size_t)part_impl->length);
+            current_pos += part_impl->length;
+        }
+    }
+
     return result;
+}
+
+HooString hoo_string_from_object(void* obj) {
+    if (!obj) return hoo_string_from_cstr("null");
+
+    int64_t type_id = hoo_get_type_id(obj);
+    if (type_id == HOO_TYPE_STRING) {
+        return (HooString)hoo_retain(obj);
+    }
+    if (type_id == HOO_TYPE_CHARACTER) {
+        return hoo_string_from_bytes(hoo_character_data(obj), hoo_character_length(obj));
+    }
+    
+    // Default: format address for other objects
+    char buffer[32];
+    std::snprintf(buffer, sizeof(buffer), "<object@%p>", obj);
+    return hoo_string_from_cstr(buffer);
+}
+
+HooString hoo_string_from_any(int64_t val, int64_t type_id) {
+    switch (type_id) {
+        case HOO_TYPE_INT64:
+            return hoo_string_from_int64(val);
+        case HOO_TYPE_FLOAT64: {
+            double dval;
+            std::memcpy(&dval, &val, sizeof(double));
+            return hoo_string_from_double(dval);
+        }
+        case HOO_TYPE_BOOL:
+            return hoo_string_from_bool(val);
+        case HOO_TYPE_STRING:
+            return (HooString)hoo_retain((void*)val);
+        case HOO_TYPE_CHARACTER:
+            return hoo_string_from_bytes(hoo_character_data((void*)val), hoo_character_length((void*)val));
+        case HOO_TYPE_CHAR: {
+            HooCharacter ch = hoo_character_from_codepoint(val);
+            HooString s = hoo_string_from_bytes(hoo_character_data(ch), hoo_character_length(ch));
+            hoo_character_release(ch);
+            return s;
+        }
+        case HOO_TYPE_OBJECT:
+            return hoo_string_from_object((void*)val);
+        default:
+            // If it's a known object type (>= 100), try to handle it as an object
+            if (type_id >= 100) return hoo_string_from_object((void*)val);
+            
+            // Fallback for unknowns
+            return hoo_string_from_int64(val);
+    }
 }
 
 // ============================================================================

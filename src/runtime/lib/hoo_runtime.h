@@ -32,6 +32,15 @@ extern "C" {
 #define HOO_TYPE_NET_HTTP_CLI 108  // HooHttpClient
 #define HOO_TYPE_CHARACTER    109  // HooCharacter
 
+// Primitive Type IDs (for runtime conversion/reflection)
+#define HOO_TYPE_INT64        1
+#define HOO_TYPE_FLOAT64      2
+#define HOO_TYPE_BOOL         3
+#define HOO_TYPE_VOID         4
+#define HOO_TYPE_INT8         5
+#define HOO_TYPE_BYTE         6
+#define HOO_TYPE_CHAR         7  // Raw char (not the Character object)
+
 /**
  * Allocate a new object on the heap with reference count initialized to 1.
  *

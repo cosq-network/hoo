@@ -8,6 +8,8 @@
 #include "ast/QualifiedIdentifier.h"
 #include "ast/ImportStatement.h"
 #include "core/SymbolMangler.h"
+#include "parsing/HooParserWrapper.h"
+#include "ast/SimpleASTBuilder.h"
 #include <stdexcept>
 #include <algorithm>
 #include <typeinfo>
@@ -646,6 +648,96 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             freeRegister(addrReg);
             return dest;
+        }
+        if (auto interpStr = dynamic_cast<const ast::InterpolatedString*>(&primary)) {
+            uint8_t resReg = 0;
+
+            auto appendToRes = [&](uint8_t partReg) {
+                if (resReg == 0) {
+                    resReg = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{resReg, partReg, 0, 0});
+                } else {
+                    uint8_t nextRes = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{1, resReg, 0, 0});
+                    emit(Opcode::MOV, OperandsR{2, partReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_String_concat_p_p_p");
+                    emit(Opcode::MOV, OperandsR{nextRes, 1, 0, 0});
+                    
+                    // Release old res and part
+                    emit(Opcode::MOV, OperandsR{1, resReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                    emit(Opcode::MOV, OperandsR{1, partReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                    
+                    freeRegister(resReg);
+                    freeRegister(partReg);
+                    resReg = nextRes;
+                }
+            };
+
+            auto emitStringPart = [&](const std::string& text) {
+                Section* rodata = module_->getSection(".rodata");
+                if (!rodata) {
+                    Section s;
+                    s.name = ".rodata";
+                    s.type = SectionType::SHT_RODATA;
+                    s.flags = SectionFlags::ALLOC;
+                    module_->addSection(std::move(s));
+                    rodata = module_->getSection(".rodata");
+                }
+                uint32_t offset = static_cast<uint32_t>(rodata->data.size());
+                for (char c : text) rodata->data.push_back(c);
+                rodata->data.push_back('\0');
+                rodata->virtual_size = rodata->data.size();
+                uint8_t addrReg = emitRoDataAddress(offset);
+                
+                emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_String_from_cstr_p_p");
+                uint8_t strReg = allocateRegister();
+                emit(Opcode::MOV, OperandsR{strReg, 1, 0, 0});
+                freeRegister(addrReg);
+                return strReg;
+            };
+
+            for (const auto& part : interpStr->getParts()) {
+                uint8_t partReg = 0;
+                if (part.isExpression) {
+                    uint8_t valReg = visitExpression(*part.expression);
+                    
+                    int64_t typeId = 100; // Default: Object
+                    const ast::Expression* actualExpr = part.expression.get();
+                    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(actualExpr)) {
+                        const ast::ASTNode& node = pe->getPrimary();
+                        if (dynamic_cast<const ast::IntegerLiteral*>(&node)) typeId = 1;
+                        else if (dynamic_cast<const ast::FloatingLiteral*>(&node)) typeId = 2;
+                        else if (dynamic_cast<const ast::BooleanLiteral*>(&node)) typeId = 3;
+                        else if (dynamic_cast<const ast::StringLiteral*>(&node)) typeId = 101;
+                        else if (dynamic_cast<const ast::CharacterLiteral*>(&node)) typeId = 109;
+                    }
+
+                    uint8_t typeIdReg = emitConstant(typeId);
+                    emit(Opcode::MOV, OperandsR{1, valReg, 0, 0});
+                    emit(Opcode::MOV, OperandsR{2, typeIdReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_String_from_any_p_i8_i8");
+                    
+                    partReg = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{partReg, 1, 0, 0});
+                    
+                    freeRegister(valReg);
+                    freeRegister(typeIdReg);
+                } else {
+                    partReg = emitStringPart(part.literal);
+                }
+                appendToRes(partReg);
+            }
+
+            if (resReg == 0) {
+                emitCall(Opcode::CALL, "_F_hoo_String_new_p");
+                resReg = allocateRegister();
+                emit(Opcode::MOV, OperandsR{resReg, 1, 0, 0});
+            }
+
+            return resReg;
         }
     }
 

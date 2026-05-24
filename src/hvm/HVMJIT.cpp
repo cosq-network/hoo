@@ -496,6 +496,16 @@ extern "C" {
         const char* cstr = reinterpret_cast<const char*>(state->memory + state->regs[1]);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(cstr)));
     }
+    uint64_t jit_hoo_string_from_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_int64(state->regs[1])));
+    }
+    uint64_t jit_hoo_string_from_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double val;
+        std::memcpy(&val, &state->regs[1], sizeof(double));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_double(val)));
+    }
     uint64_t jit_hoo_string_concat(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_concat(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2]))));
@@ -515,6 +525,18 @@ extern "C" {
     uint64_t jit_hoo_string_to_characters(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_to_characters(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_hoo_string_join(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_join(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_hoo_string_from_object(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_object(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_hoo_string_from_any(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_any(state->regs[1], state->regs[2])));
     }
     uint64_t jit_hoo_character_from_utf8(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -706,11 +728,16 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_get_refcount_i8_p", reinterpret_cast<void*>(&jit_hoo_get_refcount)},
         {"_F_hoo_get_type_id_i8_p", reinterpret_cast<void*>(&jit_hoo_get_type_id)},
         {"_F_hoo_String_from_cstr_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_cstr)},
+        {"_F_hoo_String_from_int64_p_i8", reinterpret_cast<void*>(&jit_hoo_string_from_int64)},
+        {"_F_hoo_String_from_double_p_d", reinterpret_cast<void*>(&jit_hoo_string_from_double)},
         {"_F_hoo_String_concat_p_p_p", reinterpret_cast<void*>(&jit_hoo_string_concat)},
         {"_F_hoo_String_length_i8_p", reinterpret_cast<void*>(&jit_hoo_string_length)},
         {"_F_hoo_String_to_upper_p_p", reinterpret_cast<void*>(&jit_hoo_string_to_upper)},
         {"_F_hoo_String_data_p_p", reinterpret_cast<void*>(&jit_hoo_string_data)},
         {"_F_hoo_String_to_characters_p_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
+        {"_F_hoo_String_join_p_p", reinterpret_cast<void*>(&jit_hoo_string_join)},
+        {"_F_hoo_String_from_object_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_object)},
+        {"_F_hoo_String_from_any_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_string_from_any)},
         {"_F_hoo_Character_from_utf8_p_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_utf8)},
         {"_F_hoo_Character_from_codepoint_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
         {"_F_hoo_Character_length_i8_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
@@ -1337,6 +1364,10 @@ bool HVMJIT::bootstrapRuntimeModules() {
 
     runtime->registerFunction("string_from_cstr", reinterpret_cast<void*>(&hoo_string_from_cstr),
                               "_F_hoo_String_from_cstr_p_p");
+    runtime->registerFunction("string_from_int64", reinterpret_cast<void*>(&hoo_string_from_int64),
+                              "_F_hoo_String_from_int64_p_i8");
+    runtime->registerFunction("string_from_double", reinterpret_cast<void*>(&hoo_string_from_double),
+                              "_F_hoo_String_from_double_p_d");
     runtime->registerFunction("string_concat", reinterpret_cast<void*>(&hoo_string_concat),
                               "_F_hoo_String_concat_p_p_p");
     runtime->registerFunction("string_length", reinterpret_cast<void*>(&hoo_string_length),
@@ -1345,6 +1376,12 @@ bool HVMJIT::bootstrapRuntimeModules() {
                               "_F_hoo_String_data_p_p");
     runtime->registerFunction("string_to_characters", reinterpret_cast<void*>(&hoo_string_to_characters),
                               "_F_hoo_String_to_characters_p_p");
+    runtime->registerFunction("string_join", reinterpret_cast<void*>(&hoo_string_join),
+                              "_F_hoo_String_join_p_p");
+    runtime->registerFunction("string_from_object", reinterpret_cast<void*>(&hoo_string_from_object),
+                              "_F_hoo_String_from_object_p_p");
+    runtime->registerFunction("string_from_any", reinterpret_cast<void*>(&hoo_string_from_any),
+                              "_F_hoo_String_from_any_p_i8_i8");
     runtime->registerFunction("character_from_utf8", reinterpret_cast<void*>(&hoo_character_from_utf8),
                               "_F_hoo_Character_from_utf8_p_p_i8");
     runtime->registerFunction("character_from_codepoint", reinterpret_cast<void*>(&hoo_character_from_codepoint),

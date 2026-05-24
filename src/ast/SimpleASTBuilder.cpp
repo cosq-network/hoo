@@ -1,5 +1,6 @@
 #include "SimpleASTBuilder.h"
 #include "AST.h"
+#include "parsing/HooParserWrapper.h"
 #include <iostream>
 #include <stdexcept>
 
@@ -765,7 +766,8 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
     } else if (ctx->STRING_LITERAL()) {
         std::string value = getStringValue(ctx->STRING_LITERAL());
         if (isInterpolatedString(ctx->STRING_LITERAL())) {
-            auto interpolatedString = std::make_unique<InterpolatedString>(value);
+            auto parts = parseInterpolatedString(value);
+            auto interpolatedString = std::make_unique<InterpolatedString>(std::move(parts));
             return std::make_unique<PrimaryExpression>(std::move(interpolatedString));
         }
         auto stringLiteral = std::make_unique<StringLiteral>(value);
@@ -1065,4 +1067,40 @@ bool SimpleASTBuilder::getBoolValue(antlr4::tree::TerminalNode* node) {
 bool SimpleASTBuilder::isInterpolatedString(antlr4::tree::TerminalNode* node) {
     std::string text = node->getText();
     return text.find("${") != std::string::npos;
+}
+
+std::vector<InterpolatedString::Part> SimpleASTBuilder::parseInterpolatedString(const std::string& tpl) {
+    std::vector<InterpolatedString::Part> parts;
+    HooParserWrapper parser;
+    
+    size_t i = 0;
+    while (i < tpl.length()) {
+        size_t start = tpl.find("${", i);
+        if (start == std::string::npos) {
+            parts.push_back(InterpolatedString::Part(tpl.substr(i)));
+            break;
+        }
+
+        if (start > i) {
+            parts.push_back(InterpolatedString::Part(tpl.substr(i, start - i)));
+        }
+
+        size_t end = tpl.find("}", start);
+        if (end == std::string::npos) {
+            parts.push_back(InterpolatedString::Part(tpl.substr(start)));
+            break;
+        }
+
+        std::string exprText = tpl.substr(start + 2, end - start - 2);
+        auto* exprCtx = parser.parseExpression(exprText);
+        if (exprCtx) {
+            parts.push_back(InterpolatedString::Part(buildExpression(exprCtx)));
+        } else {
+            // Fallback: treat failed expression as literal for now or throw error
+            parts.push_back(InterpolatedString::Part("${" + exprText + "}"));
+        }
+        
+        i = end + 1;
+    }
+    return parts;
 }

@@ -117,6 +117,21 @@ public:
      */
     bool isInterpolatedString(antlr4::tree::TerminalNode* node);
 
+    /**
+     * @brief Builds an Expression from any expression context.
+     * Entry point for expression building (delegates to assignmentExpression).
+     * @param ctx Expression context.
+     * @return Unique pointer to the built Expression.
+     */
+    std::unique_ptr<ast::Expression> buildExpression(HoocParser::ExpressionContext* ctx);
+
+    /**
+     * @brief Parses an interpolated string into its parts.
+     * @param templateText The raw string containing placeholders.
+     * @return A vector of InterpolatedString::Part.
+     */
+    std::vector<ast::InterpolatedString::Part> parseInterpolatedString(const std::string& templateText);
+
 private:
     // ===== Declaration Building =====
 
@@ -306,7 +321,6 @@ private:
      * @param ctx Expression context.
      * @return Unique pointer to the built Expression.
      */
-    std::unique_ptr<ast::Expression> buildExpression(HoocParser::ExpressionContext* ctx);
 
     /**
      * @brief Builds an AssignmentExpression.

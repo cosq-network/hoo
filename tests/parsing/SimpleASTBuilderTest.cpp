@@ -1041,7 +1041,10 @@ TEST_F(SimpleASTBuilderTest, BuildInterpolatedString) {
 
     auto* interpStr = dynamic_cast<const InterpolatedString*>(&primaryExpr->getPrimary());
     ASSERT_NE(interpStr, nullptr);
-    EXPECT_EQ(interpStr->getTemplate(), "Hello ${name}!");
+    ASSERT_EQ(interpStr->getParts().size(), 3u);
+    EXPECT_EQ(interpStr->getParts()[0].literal, "Hello ");
+    EXPECT_TRUE(interpStr->getParts()[1].isExpression);
+    EXPECT_EQ(interpStr->getParts()[2].literal, "!");
 }
 
 TEST_F(SimpleASTBuilderTest, BuildInterpolatedStringWithMultiplePlaceholders) {
@@ -1069,7 +1072,12 @@ TEST_F(SimpleASTBuilderTest, BuildInterpolatedStringWithMultiplePlaceholders) {
 
     auto* interpStr = dynamic_cast<const InterpolatedString*>(&primaryExpr->getPrimary());
     ASSERT_NE(interpStr, nullptr);
-    EXPECT_EQ(interpStr->getTemplate(), "${greeting} ${name} at ${location}");
+    ASSERT_EQ(interpStr->getParts().size(), 5u);
+    EXPECT_TRUE(interpStr->getParts()[0].isExpression);
+    EXPECT_EQ(interpStr->getParts()[1].literal, " ");
+    EXPECT_TRUE(interpStr->getParts()[2].isExpression);
+    EXPECT_EQ(interpStr->getParts()[3].literal, " at ");
+    EXPECT_TRUE(interpStr->getParts()[4].isExpression);
 }
 
 TEST_F(SimpleASTBuilderTest, BuildBooleanLiterals) {
