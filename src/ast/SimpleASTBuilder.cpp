@@ -181,20 +181,10 @@ std::unique_ptr<FFIType> SimpleASTBuilder::buildFfiType(HoocParser::FfiTypeConte
     }
     if (ctx->FUNCTION()) {
         std::vector<std::unique_ptr<FFIType>> params;
-        auto allTypes = ctx->ffiType();
-        size_t paramCount = allTypes.size();
-        bool hasReturn = ctx->ARROW() != nullptr;
-        if (hasReturn && paramCount > 0) {
-            paramCount -= 1;
+        for (auto paramTypeCtx : ctx->ffiType()) {
+            params.push_back(buildFfiType(paramTypeCtx));
         }
-        for (size_t i = 0; i < paramCount; i++) {
-            params.push_back(buildFfiType(allTypes[i]));
-        }
-        std::unique_ptr<FFIType> ret;
-        if (hasReturn && !allTypes.empty()) {
-            ret = buildFfiType(allTypes.back());
-        }
-        return std::make_unique<FFIFunctionType>(std::move(params), std::move(ret));
+        return std::make_unique<FFIFunctionType>(std::move(params), nullptr);
     }
     return std::make_unique<FFIQualifiedType>(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{"unknown"}));
 }
@@ -215,16 +205,12 @@ std::unique_ptr<FFINativeFunctionDeclaration> SimpleASTBuilder::buildFfiNativeFu
         modifiers.push_back(getFunctionModifier(modCtx));
     }
 
-    auto symbolType = buildType(ctx->type(0));
+    auto symbolType = buildType(ctx->type());
     std::string symbolName = ctx->IDENTIFIER()->getText();
     auto params = buildFfiParameterList(ctx->ffiParameterList());
-    std::unique_ptr<Type> returnType;
-    if (ctx->type().size() > 1) {
-        returnType = buildType(ctx->type(1));
-    }
 
     return std::make_unique<FFINativeFunctionDeclaration>(
-        true, nullptr, std::move(symbolType), symbolName, std::move(params), std::move(returnType), std::move(modifiers));
+        true, nullptr, std::move(symbolType), symbolName, std::move(params), nullptr, std::move(modifiers));
 }
 
 std::unique_ptr<FFINativeVariableDeclaration> SimpleASTBuilder::buildFfiNativeDeclaration(HoocParser::FfiNativeDeclarationContext* ctx) {

@@ -279,7 +279,6 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/SimpleASTBuilderTest.cpp
         tests/parsing/MapTypeParsingTest.cpp
         tests/parsing/OptionalReturnTypeTest.cpp
-        tests/parsing/ArrowFunctionSyntaxTest.cpp
         tests/parsing/MathModuleParsingTest.cpp
         tests/parsing/NetworkModuleParsingTest.cpp
         tests/parsing/NewExpressionParsingTest.cpp

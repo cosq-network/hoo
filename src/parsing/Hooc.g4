@@ -95,7 +95,6 @@ AND: '&&';
 OR: '||';
 NOT: '!';
 QUESTION: '?';
-ARROW: '->';
 RANGE: '..';
 
 // Delimiters
@@ -231,7 +230,7 @@ ffiLinkDeclaration
 
 ffiNativeFunction
     : NATIVE functionDeclaration
-    | EXTERN functionModifier* NATIVE type IDENTIFIER LPAREN ffiParameterList? RPAREN (ARROW type)? SEMICOLON
+    | EXTERN functionModifier* NATIVE type IDENTIFIER LPAREN ffiParameterList? RPAREN SEMICOLON
     ;
 
 ffiNativeDeclaration
@@ -248,7 +247,7 @@ ffiType
     | qualifiedIdentifier
     | POINTER LBRACKET ffiType RBRACKET
     | ARRAY LBRACKET INTEGER_LITERAL RBRACKET ffiType
-    | FUNCTION LPAREN ffiType (COMMA ffiType)* RPAREN (ARROW ffiType)?
+    | FUNCTION LPAREN ffiType (COMMA ffiType)* RPAREN
     ;
 
 librarySearchPaths: LBRACKET STRING_LITERAL (COMMA STRING_LITERAL)* RBRACKET;
