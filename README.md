@@ -9,7 +9,7 @@ Hooc is a high-performance, statically-typed systems programming language and co
 The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
 
 - **ISA Purity**: No "magic" opcodes for objects or exceptions. The instruction set is limited to fundamental arithmetic, memory, and control-flow primitives.
-- **Aggressive Lowering**: The compiler (`hooc`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
+- **Aggressive Lowering**: The compiler (`hoo`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
 - **Unified Execution**: The JIT compiler (LLVM ORC-based) functions as a high-fidelity dynamic binary translator, mirroring physical silicon behavior with zero abstraction overhead.
 
 ## 2. Project Status & Focus

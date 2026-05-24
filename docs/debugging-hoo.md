@@ -1,6 +1,6 @@
 # Debugging Hooc
 
-This document describes practical ways to debug the `hooc` compiler executable and related tests on macOS, Linux, and Windows.
+This document describes practical ways to debug the `hoo` compiler executable and related tests on macOS, Linux, and Windows.
 
 ## Build for Debugging
 
@@ -17,16 +17,16 @@ For a less optimized debug build, configure manually:
 cmake -S . -B build/debug -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \
   -DHOOC_BUILD_TESTS=ON
-cmake --build build/debug --target hooc
+cmake --build build/debug --target hoo
 ```
 
 Useful executable paths:
 
 ```text
-build/macos-homebrew-ninja/hooc
-build/ubuntu-ninja/hooc
-build/windows-ninja/hooc.exe
-build/windows-vs-relwithdebinfo/RelWithDebInfo/hooc.exe
+build/macos-homebrew-ninja/hoo
+build/ubuntu-ninja/hoo
+build/windows-ninja/hoo.exe
+build/windows-vs-relwithdebinfo/RelWithDebInfo/hoo.exe
 ```
 
 ## What to Debug
@@ -45,7 +45,7 @@ Use these entry points for common debugging tasks:
 | Runtime memory | `src/runtime/lib/hoo_runtime.c` |
 | Runtime strings/arrays | `src/runtime/lib/hoo_string.cpp`, `src/runtime/lib/hoo_generic_array.cpp` |
 
-`hooc` currently compiles `.hoo` input to HVM bytecode and can either JIT execute it or serialize to `.ho` binary modules. The CLI supports compile-only mode (`--compile`), bytecode execution, and source execution.
+`hoo` currently compiles `.hoo` input to HVM bytecode and can either JIT execute it or serialize to `.ho` binary modules. The CLI supports compile-only mode (`--compile`), bytecode execution, and source execution.
 
 ## VS Code
 
@@ -72,10 +72,10 @@ Then create `.vscode/launch.json` if needed.
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug hooc",
+      "name": "Debug hoo",
       "type": "lldb",
       "request": "launch",
-      "program": "${workspaceFolder}/build/macos-homebrew-ninja/hooc",
+      "program": "${workspaceFolder}/build/macos-homebrew-ninja/hoo",
       "args": ["${workspaceFolder}/path/to/file.hoo"],
       "cwd": "${workspaceFolder}",
       "stopOnEntry": false
@@ -84,7 +84,7 @@ Then create `.vscode/launch.json` if needed.
 }
 ```
 
-Change `program` to `build/ubuntu-ninja/hooc` on Linux.
+Change `program` to `build/ubuntu-ninja/hoo` on Linux.
 
 ### Linux with GDB
 
@@ -93,10 +93,10 @@ Change `program` to `build/ubuntu-ninja/hooc` on Linux.
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug hooc with GDB",
+      "name": "Debug hoo with GDB",
       "type": "cppdbg",
       "request": "launch",
-      "program": "${workspaceFolder}/build/ubuntu-ninja/hooc",
+      "program": "${workspaceFolder}/build/ubuntu-ninja/hoo",
       "args": ["${workspaceFolder}/path/to/file.hoo"],
       "cwd": "${workspaceFolder}",
       "MIMode": "gdb",
@@ -114,10 +114,10 @@ Change `program` to `build/ubuntu-ninja/hooc` on Linux.
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Debug hooc on Windows",
+      "name": "Debug hoo on Windows",
       "type": "cppvsdbg",
       "request": "launch",
-      "program": "${workspaceFolder}\\build\\windows-vs-relwithdebinfo\\RelWithDebInfo\\hooc.exe",
+      "program": "${workspaceFolder}\\build\\windows-vs-relwithdebinfo\\RelWithDebInfo\\hoo.exe",
       "args": ["${workspaceFolder}\\path\\to\\file.hoo"],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false
@@ -138,15 +138,15 @@ Recommended flow:
 2. Import or open the repository in Eclipse.
 3. Point Eclipse at the generated build directory, such as `build/ubuntu-ninja/`.
 4. Create a C/C++ Application debug configuration.
-5. Set the executable to `hooc`.
+5. Set the executable to `hoo`.
 6. Set program arguments to a `.hoo` input file.
 
 Example executable paths:
 
 ```text
-build/ubuntu-ninja/hooc
-build/macos-homebrew-ninja/hooc
-build/windows-ninja/hooc.exe
+build/ubuntu-ninja/hoo
+build/macos-homebrew-ninja/hoo
+build/windows-ninja/hoo.exe
 ```
 
 On Linux, choose GDB as the debugger. On macOS, use LLDB if available in the Eclipse installation. On Windows, Eclipse CDT commonly uses GDB when configured with MinGW/Clang toolchains; for MSVC builds, Visual Studio is usually the better debugger.
@@ -158,7 +158,7 @@ On Linux, choose GDB as the debugger. On macOS, use LLDB if available in the Ecl
 LLDB is the default debugger on macOS.
 
 ```bash
-lldb -- build/macos-homebrew-ninja/hooc path/to/file.hoo
+lldb -- build/macos-homebrew-ninja/hoo path/to/file.hoo
 ```
 
 Useful LLDB commands:
@@ -179,7 +179,7 @@ continue
 GDB is the common default debugger on Linux.
 
 ```bash
-gdb --args build/ubuntu-ninja/hooc path/to/file.hoo
+gdb --args build/ubuntu-ninja/hoo path/to/file.hoo
 ```
 
 Useful GDB commands:
@@ -200,7 +200,7 @@ continue
 LLDB is also usable on Linux:
 
 ```bash
-lldb -- build/ubuntu-ninja/hooc path/to/file.hoo
+lldb -- build/ubuntu-ninja/hoo path/to/file.hoo
 ```
 
 Use the same LLDB commands shown for macOS.
@@ -216,12 +216,12 @@ cmake --preset windows-vs-relwithdebinfo
 cmake --build --preset windows-vs-relwithdebinfo
 ```
 
-Open the generated solution or open the folder in Visual Studio. Set `hooc` as the startup item and set the command argument to a `.hoo` file.
+Open the generated solution or open the folder in Visual Studio. Set `hoo` as the startup item and set the command argument to a `.hoo` file.
 
 Executable:
 
 ```text
-build\windows-vs-relwithdebinfo\RelWithDebInfo\hooc.exe
+build\windows-vs-relwithdebinfo\RelWithDebInfo\hoo.exe
 ```
 
 ### WinDbg
@@ -229,7 +229,7 @@ build\windows-vs-relwithdebinfo\RelWithDebInfo\hooc.exe
 WinDbg is useful for low-level crashes and postmortem debugging:
 
 ```powershell
-windbg -- build\windows-vs-relwithdebinfo\RelWithDebInfo\hooc.exe path\to\file.hoo
+windbg -- build\windows-vs-relwithdebinfo\RelWithDebInfo\hoo.exe path\to\file.hoo
 ```
 
 Common commands:
@@ -238,7 +238,7 @@ Common commands:
 g
 k
 dv
-bp hooc!main
+bp hoo!main
 ```
 
 ### CDB
@@ -246,7 +246,7 @@ bp hooc!main
 CDB is the command-line debugger from Windows Debugging Tools:
 
 ```powershell
-cdb build\windows-vs-relwithdebinfo\RelWithDebInfo\hooc.exe path\to\file.hoo
+cdb build\windows-vs-relwithdebinfo\RelWithDebInfo\hoo.exe path\to\file.hoo
 ```
 
 ## Debugging Tests

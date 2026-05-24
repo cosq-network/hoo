@@ -1,6 +1,6 @@
-# Hooc Runtime Library (`hoort`) Reference
+# hoo Runtime Library (`hoort`) Reference
 
-This directory contains the normative documentation for the Hooc Runtime Library (`hoort`). The runtime provides the high-level services and intrinsic functions necessary to execute Hooc applications, acting as a bridge between the physical HVM RISC core and the host system.
+This directory contains the normative documentation for the hoo Runtime Library (`hoort`). The runtime provides the high-level services and intrinsic functions necessary to execute hoo applications, acting as a bridge between the physical HVM RISC core and the host system.
 
 ## Core Philosophy: The Opaque Handle Model
 

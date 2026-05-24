@@ -15,7 +15,7 @@ using namespace hooc;
 
 namespace fs = std::filesystem;
 
-constexpr const char* COMPILER_NAME = "hooc";
+constexpr const char* COMPILER_NAME = "hoo";
 constexpr const char* VERSION = "1.4.0"; // Aligned with HVM 1.4
 
 HooCLI::HooCLI(std::unique_ptr<IOProvider> ioProvider)

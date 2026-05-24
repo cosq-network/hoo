@@ -34,7 +34,7 @@ jobs:
 
       - name: Build compiler
         run: |
-          cmake --build --preset macos-homebrew-ninja --target hooc
+          cmake --build --preset macos-homebrew-ninja --target hoo
 
       - name: Build tests
         run: |
@@ -49,25 +49,25 @@ jobs:
         run: |
           mkdir -p package/bin
           mkdir -p package/lib
-          cp build/macos-homebrew-ninja/hooc package/bin/
+          cp build/macos-homebrew-ninja/hoo package/bin/
           cp build/macos-homebrew-ninja/libhvm.a package/lib/ || true
           cp build/macos-homebrew-ninja/libhoo-compiler.a package/lib/ || true
           cp build/macos-homebrew-ninja/libhoo-parser.a package/lib/ || true
           cp build/macos-homebrew-ninja/libhoort.* package/lib/ || true
-          tar -czf hooc-macos-arm64.tar.gz -C package .
+          tar -czf hoo-macos-arm64.tar.gz -C package .
 
       - name: Verify package contents
         run: |
           ls -la package/bin/
           ls -la package/lib/
-          test -f package/bin/hooc || (echo "ERROR: hooc binary missing!" && exit 1)
+          test -f package/bin/hoo || (echo "ERROR: hoo binary missing!" && exit 1)
           echo "Package verification successful"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hooc-macos-arm64
-          path: hooc-macos-arm64.tar.gz
+          name: hoo-macos-arm64
+          path: hoo-macos-arm64.tar.gz
           retention-days: 30
 
   build-ubuntu:
@@ -139,7 +139,7 @@ jobs:
 
       - name: Build compiler
         run: |
-          cmake --build --preset ubuntu-ninja --target hooc
+          cmake --build --preset ubuntu-ninja --target hoo
 
       - name: Build tests
         run: |
@@ -165,25 +165,25 @@ jobs:
         run: |
           mkdir -p package/bin
           mkdir -p package/lib
-          cp build/ubuntu-ninja/hooc package/bin/
+          cp build/ubuntu-ninja/hoo package/bin/
           cp build/ubuntu-ninja/libhvm.a package/lib/ || true
           cp build/ubuntu-ninja/libhoo-compiler.a package/lib/ || true
           cp build/ubuntu-ninja/libhoo-parser.a package/lib/ || true
           cp build/ubuntu-ninja/libhoort.* package/lib/ || true
-          tar -czf hooc-ubuntu-x86_64.tar.gz -C package .
+          tar -czf hoo-ubuntu-x86_64.tar.gz -C package .
 
       - name: Verify package contents
         run: |
           ls -la package/bin/
           ls -la package/lib/
-          test -f package/bin/hooc || (echo "ERROR: hooc binary missing!" && exit 1)
+          test -f package/bin/hoo || (echo "ERROR: hoo binary missing!" && exit 1)
           echo "Package verification successful"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hooc-ubuntu-x86_64
-          path: hooc-ubuntu-x86_64.tar.gz
+          name: hoo-ubuntu-x86_64
+          path: hoo-ubuntu-x86_64.tar.gz
           retention-days: 30
 
   build-windows:
@@ -250,7 +250,7 @@ jobs:
       - name: Build compiler
         shell: pwsh
         run: |
-          cmake --build build --config RelWithDebInfo --target hooc
+          cmake --build build --config RelWithDebInfo --target hoo
 
       - name: Build tests
         shell: pwsh
@@ -269,22 +269,22 @@ jobs:
           New-Item -ItemType Directory -Force -Path package\bin
           New-Item -ItemType Directory -Force -Path package\lib
 
-          Copy-Item build\RelWithDebInfo\hooc.exe package\bin\
+          Copy-Item build\RelWithDebInfo\hoo.exe package\bin\
           Copy-Item build\RelWithDebInfo\hvm.lib package\lib\ -ErrorAction SilentlyContinue
           Copy-Item build\RelWithDebInfo\hoo-compiler.lib package\lib\ -ErrorAction SilentlyContinue
           Copy-Item build\RelWithDebInfo\hoo-parser.lib package\lib\ -ErrorAction SilentlyContinue
           Copy-Item build\RelWithDebInfo\hoort.lib package\lib\ -ErrorAction SilentlyContinue
           Copy-Item build\RelWithDebInfo\hoort.dll package\lib\ -ErrorAction SilentlyContinue
 
-          tar -czf hooc-windows-x64.tar.gz -C package .
+          tar -czf hoo-windows-x64.tar.gz -C package .
 
       - name: Verify package contents
         shell: pwsh
         run: |
           Get-ChildItem -Path package\bin -Recurse
           Get-ChildItem -Path package\lib -Recurse
-          if (-not (Test-Path package\bin\hooc.exe)) {
-            Write-Error "ERROR: hooc.exe binary missing!"
+          if (-not (Test-Path package\bin\hoo.exe)) {
+            Write-Error "ERROR: hoo.exe binary missing!"
             exit 1
           }
           Write-Host "Package verification successful"
@@ -292,8 +292,8 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: hooc-windows-x64
-          path: hooc-windows-x64.tar.gz
+          name: hoo-windows-x64
+          path: hoo-windows-x64.tar.gz
           retention-days: 30
 
   create-release-bundle:
@@ -311,15 +311,15 @@ jobs:
       - name: Create combined archive
         run: |
           mkdir -p release
-          cp artifacts/hooc-macos-arm64/hooc-macos-arm64.tar.gz release/
-          cp artifacts/hooc-ubuntu-x86_64/hooc-ubuntu-x86_64.tar.gz release/
+          cp artifacts/hoo-macos-arm64/hoo-macos-arm64.tar.gz release/
+          cp artifacts/hoo-ubuntu-x86_64/hoo-ubuntu-x86_64.tar.gz release/
 
           cd release
-          tar -czf hooc-all-platforms.tar.gz *.tar.gz
+          tar -czf hoo-all-platforms.tar.gz *.tar.gz
 
       - name: Upload combined bundle
         uses: actions/upload-artifact@v4
         with:
-          name: hooc-all-platforms
-          path: release/hooc-all-platforms.tar.gz
+          name: hoo-all-platforms
+          path: release/hoo-all-platforms.tar.gz
           retention-days: 90

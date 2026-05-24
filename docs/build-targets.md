@@ -29,7 +29,7 @@ cmake --build build --target help
 ## Target Graph
 
 ```text
-hooc
+hoo
 └── hoo-core
     ├── hoo-parser
     │   └── generate_parser
@@ -40,13 +40,13 @@ hooc
 
 ## Primary Targets
 
-### `hooc` (executable)
+### `hoo` (executable)
 
 - Source: `src/core/main.cpp`
 - Links: `hoo-core`
 - Build:
   ```bash
-  cmake --build build --target hooc
+  cmake --build build --target hoo
   ```
 
 ### `hoo-core` (library)
@@ -136,12 +136,12 @@ cmake --build build --target hoo-tests
 ## Install Targets
 
 ```cmake
-install(TARGETS hooc hoo-core hoo-parser hoort ...)
+install(TARGETS hoo hoo-core hoo-parser hoort ...)
 ```
 
 Install includes:
 
-- `hooc`
+- `hoo`
 - `hoo-core`
 - `hoo-parser`
 - `hoort`

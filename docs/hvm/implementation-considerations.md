@@ -6,7 +6,7 @@ This guide provides normative implementation details for HVM-compliant systems (
 
 The HVM v1.4 architecture has transitioned from a high-level Virtual Machine to a **Physical RISC ISA**. 
 - **No VM "Magic"**: The hardware has no knowledge of objects, strings, or exception stacks.
-- **Aggressive Lowering**: Complexity is moved to the compiler (`hooc`).
+- **Aggressive Lowering**: Complexity is moved to the compiler (`hoo`).
 - **Software Runtime**: Features like heap allocation and exception unwinding are provided by a thin C/C++ library (`hoort`).
 
 ---

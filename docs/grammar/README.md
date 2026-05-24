@@ -1,6 +1,6 @@
-# Hooc Language Grammar Reference
+# hoo Language Grammar Reference
 
-This directory contains the normative documentation for the Hooc language grammar, as defined in `src/parsing/Hooc.g4`. Hooc is a high-performance, statically-typed object-oriented language designed for the HVM (Hooc Virtual Machine).
+This directory contains the normative documentation for the hoo language grammar, as defined in `src/parsing/hoo.g4`. hoo is a high-performance, statically-typed object-oriented language designed for the HVM (hoo Virtual Machine).
 
 ## Documentation Index
 
@@ -23,8 +23,8 @@ This directory contains the normative documentation for the Hooc language gramma
 
 ## Technical Foundation
 
-The Hooc compiler uses **ANTLR4** for parsing. The grammar is designed to support an aggressive lowering pipeline that translates these high-level constructs into a pure 64-bit RISC ISA (`.ho` bytecode) for physical hardware compatibility. 
+The hoo compiler uses **ANTLR4** for parsing. The grammar is designed to support an aggressive lowering pipeline that translates these high-level constructs into a pure 64-bit RISC ISA (`.ho` bytecode) for physical hardware compatibility. 
 
 When executed, the `HVMJIT` dynamically translates this bytecode into host-native LLVM IR via LLVM ORC v2, providing zero-abstraction execution while bridging high-level operations via the `SYSCALL` interface.
 
-For details on how the HVM dynamic translator and host environment execute these constructs, see the **[Hooc Runtime Library Reference](../runtime/README.md)**.
+For details on how the HVM dynamic translator and host environment execute these constructs, see the **[hoo Runtime Library Reference](../runtime/README.md)**.

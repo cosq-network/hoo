@@ -68,28 +68,28 @@
       "name": "ninja-relwithdebinfo",
       "configurePreset": "ninja-relwithdebinfo",
       "targets": [
-        "hooc"
+        "hoo"
       ]
     },
     {
       "name": "ninja-release-no-tests",
       "configurePreset": "ninja-release-no-tests",
       "targets": [
-        "hooc"
+        "hoo"
       ]
     },
     {
       "name": "macos-homebrew-ninja",
       "configurePreset": "macos-homebrew-ninja",
       "targets": [
-        "hooc"
+        "hoo"
       ]
     },
     {
       "name": "ubuntu-ninja",
       "configurePreset": "ubuntu-ninja",
       "targets": [
-        "hooc"
+        "hoo"
       ]
     },
     {
@@ -97,14 +97,14 @@
       "configurePreset": "windows-vs-relwithdebinfo",
       "configuration": "RelWithDebInfo",
       "targets": [
-        "hooc"
+        "hoo"
       ]
     },
     {
       "name": "windows-ninja",
       "configurePreset": "windows-ninja",
       "targets": [
-        "hooc"
+        "hoo"
       ]
     },
     {

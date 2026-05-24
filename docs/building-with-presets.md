@@ -30,7 +30,7 @@ This repository defines a small set of reusable CMake presets for common platfor
 | `windows-vs-relwithdebinfo` | Windows with Visual Studio 2022 | Uses the VS generator and `RelWithDebInfo` configuration |
 | `windows-ninja` | Windows with Clang + Ninja | Inherits `ninja-relwithdebinfo` and sets Clang compilers |
 | `ninja-relwithdebinfo` | Generic Ninja build | Builds with `RelWithDebInfo` and tests enabled |
-| `ninja-release-no-tests` | Generic Ninja release build without tests | Builds only the `hooc` target and disables `HOOC_BUILD_TESTS` |
+| `ninja-release-no-tests` | Generic Ninja release build without tests | Builds only the `hoo` target and disables `HOOC_BUILD_TESTS` |
 
 Example:
 
@@ -39,7 +39,7 @@ cmake --preset macos-homebrew-ninja
 cmake --build --preset macos-homebrew-ninja
 ```
 
-The build presets above default to compiling the `hooc` target.
+The build presets above default to compiling the `hoo` target.
 
 Build presets for running the test target are available too:
 
@@ -116,8 +116,8 @@ build/<preset-name>/
 For example:
 
 ```text
-build/macos-homebrew-ninja/hooc
-build/windows-vs-relwithdebinfo/RelWithDebInfo/hooc.exe
+build/macos-homebrew-ninja/hoo
+build/windows-vs-relwithdebinfo/RelWithDebInfo/hoo.exe
 ```
 
 ## VS Code
@@ -165,7 +165,7 @@ Preferred flow:
 1. Configure the project from a terminal with a preset.
 2. Open or import the repository in Eclipse.
 3. Point Eclipse at the generated build directory under `build/<preset-name>/`.
-4. Build the `hooc` target from Eclipse, or continue building from the terminal.
+4. Build the `hoo` target from Eclipse, or continue building from the terminal.
 
 Example:
 

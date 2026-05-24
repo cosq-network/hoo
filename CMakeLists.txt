@@ -204,15 +204,15 @@ add_dependencies(hoo-core generate_parser)
 # CLI Executable
 # =============================================================================
 
-add_executable(hooc src/core/main.cpp)
-target_link_libraries(hooc hoo-core)
-target_include_directories(hooc PRIVATE ${CMAKE_SOURCE_DIR}/src)
+add_executable(hoo src/core/main.cpp)
+target_link_libraries(hoo hoo-core)
+target_include_directories(hoo PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 # =============================================================================
 # Install
 # =============================================================================
 
-install(TARGETS hooc hoo-core hoo-parser hoort
+install(TARGETS hoo hoo-core hoo-parser hoort
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
