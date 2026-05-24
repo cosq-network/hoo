@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <memory>
 #include "src/ast/SimpleASTBuilder.h"
-#include "src/parsing/ProcessIsolatedParser.h"
+#include "src/parsing/HooParserWrapper.h"
 #include "HoocParser.h"
 #include "src/ast/Declaration.h"
 #include "src/ast/ClassDeclaration.h"
@@ -22,11 +22,11 @@ using namespace hooc::ast;
 class ClassDeclarationParsingTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        parser = std::make_unique<ProcessIsolatedParser>();
+        parser = std::make_unique<HooParserWrapper>();
         astBuilder = std::make_unique<SimpleASTBuilder>();
     }
 
-    std::unique_ptr<ProcessIsolatedParser> parser;
+    std::unique_ptr<HooParserWrapper> parser;
     std::unique_ptr<SimpleASTBuilder> astBuilder;
 
     antlr4::tree::ParseTree* parseCode(const std::string& code) {

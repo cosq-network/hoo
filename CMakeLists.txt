@@ -181,7 +181,7 @@ add_library(hoo-core
     # Module system
     src/modules/ModuleSystem.cpp
     # Parsing (manual wrapper)
-    src/parsing/ProcessIsolatedParser.cpp
+    src/parsing/HooParserWrapper.cpp
 )
 
 target_include_directories(hoo-core PUBLIC
@@ -289,7 +289,7 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/QualifiedNewExpressionParsingTest.cpp
         tests/parsing/ThisKeywordParsingTest.cpp
         tests/parsing/FfiAndGrammarAstTest.cpp
-        tests/parsing/ProcessIsolatedParserTest.cpp
+        tests/parsing/HooParserWrapperTest.cpp
         tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
         tests/codegen/HVMCodeGeneratorTest.cpp
         tests/codegen/ModuleRegistryTest.cpp

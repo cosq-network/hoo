@@ -1,20 +1,20 @@
 #include <gtest/gtest.h>
 #include <memory>
-#include "src/parsing/ProcessIsolatedParser.h"
+#include "src/parsing/HooParserWrapper.h"
 #include "HoocParser.h"
 
 using namespace hooc;
 
-class ProcessIsolatedParserTest : public ::testing::Test {
+class HooParserWrapperTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        parser = std::make_unique<ProcessIsolatedParser>();
+        parser = std::make_unique<HooParserWrapper>();
     }
 
-    std::unique_ptr<ProcessIsolatedParser> parser;
+    std::unique_ptr<HooParserWrapper> parser;
 };
 
-TEST_F(ProcessIsolatedParserTest, ParseValidFunction) {
+TEST_F(HooParserWrapperTest, ParseValidFunction) {
     std::string code = "func test() { return; }";
     auto* parseTree = parser->parseForAST(code);
     
@@ -22,7 +22,7 @@ TEST_F(ProcessIsolatedParserTest, ParseValidFunction) {
     EXPECT_TRUE(parser->getLastError().empty());
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseMultipleFunctions) {
+TEST_F(HooParserWrapperTest, ParseMultipleFunctions) {
     std::string code = R"(
         func first() { return; }
         func second() { return; }
@@ -33,7 +33,7 @@ TEST_F(ProcessIsolatedParserTest, ParseMultipleFunctions) {
     EXPECT_TRUE(parser->getLastError().empty());
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseEmptySource) {
+TEST_F(HooParserWrapperTest, ParseEmptySource) {
     std::string code = "";
     auto* parseTree = parser->parseForAST(code);
     
@@ -44,7 +44,7 @@ TEST_F(ProcessIsolatedParserTest, ParseEmptySource) {
     }
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseFunctionWithParameters) {
+TEST_F(HooParserWrapperTest, ParseFunctionWithParameters) {
     std::string code = "func:int64 add(a: int64, b: int64) { return a + b; }";
     auto* parseTree = parser->parseForAST(code);
     
@@ -52,7 +52,7 @@ TEST_F(ProcessIsolatedParserTest, ParseFunctionWithParameters) {
     EXPECT_TRUE(parser->getLastError().empty());
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseFunctionWithStatements) {
+TEST_F(HooParserWrapperTest, ParseFunctionWithStatements) {
     std::string code = R"(
         func:int64 complex() {
             var x = 10;
@@ -69,7 +69,7 @@ TEST_F(ProcessIsolatedParserTest, ParseFunctionWithStatements) {
     EXPECT_TRUE(parser->getLastError().empty());
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseInvalidSyntax) {
+TEST_F(HooParserWrapperTest, ParseInvalidSyntax) {
     std::string code = "func { invalid syntax";
     auto* parseTree = parser->parseForAST(code);
     
@@ -77,7 +77,7 @@ TEST_F(ProcessIsolatedParserTest, ParseInvalidSyntax) {
     EXPECT_FALSE(parser->getLastError().empty());
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseMultipleCalls) {
+TEST_F(HooParserWrapperTest, ParseMultipleCalls) {
     // Test that parser can be reused
     std::string code1 = "func first() { return; }";
     std::string code2 = "func second() { return; }";
@@ -89,7 +89,7 @@ TEST_F(ProcessIsolatedParserTest, ParseMultipleCalls) {
     ASSERT_NE(parseTree2, nullptr);
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseVariableDeclarations) {
+TEST_F(HooParserWrapperTest, ParseVariableDeclarations) {
     std::string code = R"(
         func:int64 test() {
             var x = 42;
@@ -103,7 +103,7 @@ TEST_F(ProcessIsolatedParserTest, ParseVariableDeclarations) {
     EXPECT_TRUE(parser->getLastError().empty());
 }
 
-TEST_F(ProcessIsolatedParserTest, ParseControlFlow) {
+TEST_F(HooParserWrapperTest, ParseControlFlow) {
     std::string code = R"(
         func controlFlow() {
             while (true) {

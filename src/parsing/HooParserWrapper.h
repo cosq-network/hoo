@@ -10,14 +10,14 @@
 namespace hooc {
 
 /**
- * Parser that can work in both isolated and direct modes.
- * Isolated mode uses process isolation to avoid ANTLR4 global state issues.
- * Direct mode provides access to parse trees for AST building.
+ * Wrapper for the ANTLR4-generated Hooc parser.
+ * This class encapsulates the ANTLR4 runtime components and provides
+ * a simplified interface for producing parse trees for AST building.
  */
-class ProcessIsolatedParser {
+class HooParserWrapper {
 public:
-    ProcessIsolatedParser();
-    ~ProcessIsolatedParser();
+    HooParserWrapper();
+    ~HooParserWrapper();
     
     /**
      * Parse source code directly and return parse tree context

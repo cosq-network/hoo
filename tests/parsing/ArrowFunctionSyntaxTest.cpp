@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <memory>
-#include "src/parsing/ProcessIsolatedParser.h"
+#include "src/parsing/HooParserWrapper.h"
 #include "HoocParser.h"
 
 using namespace hooc;
@@ -8,10 +8,10 @@ using namespace hooc;
 class ArrowFunctionSyntaxTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        parser = std::make_unique<ProcessIsolatedParser>();
+        parser = std::make_unique<HooParserWrapper>();
     }
 
-    std::unique_ptr<ProcessIsolatedParser> parser;
+    std::unique_ptr<HooParserWrapper> parser;
 };
 
 TEST_F(ArrowFunctionSyntaxTest, ArrowSyntaxParsingFails) {

@@ -1,4 +1,4 @@
-#include "ProcessIsolatedParser.h"
+#include "HooParserWrapper.h"
 #include "HoocLexer.h"
 #include "HoocParser.h"
 #include "antlr4-runtime.h"
@@ -10,16 +10,16 @@
 
 namespace hooc {
 
-ProcessIsolatedParser::ProcessIsolatedParser() 
+HooParserWrapper::HooParserWrapper() 
     : lastParseSuccessful_(false), currentParseTree_(nullptr) {
 }
 
-ProcessIsolatedParser::~ProcessIsolatedParser() {
+HooParserWrapper::~HooParserWrapper() {
     // Clean up ANTLR4 objects
     currentParseTree_ = nullptr;
 }
 
-HoocParser::CompilationUnitContext* ProcessIsolatedParser::parseForAST(const std::string& source) {
+HoocParser::CompilationUnitContext* HooParserWrapper::parseForAST(const std::string& source) {
     const char* stage = "initializing";
     try {
         // Clean up previous parse state

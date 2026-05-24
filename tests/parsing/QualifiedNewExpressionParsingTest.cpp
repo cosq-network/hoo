@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "src/parsing/ProcessIsolatedParser.h"
+#include "src/parsing/HooParserWrapper.h"
 #include "src/ast/SimpleASTBuilder.h"
 #include "src/ast/AST.h"
 
@@ -7,7 +7,7 @@ using namespace hooc;
 
 class QualifiedNewExpressionParsingTest : public ::testing::Test {
 protected:
-    ProcessIsolatedParser parser;
+    HooParserWrapper parser;
     SimpleASTBuilder builder;
 
     std::unique_ptr<ast::CompilationUnit> parseCode(const std::string& code) {

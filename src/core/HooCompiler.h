@@ -34,7 +34,7 @@
 ///
 /// @see HVMCodeGenerator for the code generation backend
 /// @see SimpleASTBuilder for AST construction
-/// @see ProcessIsolatedParser for parsing
+/// @see HooParserWrapper for parsing
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -53,7 +53,7 @@ namespace hooc {
 // Forward Declarations
 // ============================================================================
 
-class ProcessIsolatedParser;
+class HooParserWrapper;
 class SimpleASTBuilder;
 class CodeGenerator;
 
@@ -111,7 +111,7 @@ private:
     // ========================================================================
 
     /// @brief Parser for source code
-    std::unique_ptr<ProcessIsolatedParser> parser_;
+    std::unique_ptr<HooParserWrapper>      parser_;
 
     /// @brief AST builder from parse tree
     std::unique_ptr<SimpleASTBuilder>      astBuilder_;

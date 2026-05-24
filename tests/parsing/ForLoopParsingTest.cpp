@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <memory>
-#include "src/parsing/ProcessIsolatedParser.h"
+#include "src/parsing/HooParserWrapper.h"
 #include "src/ast/SimpleASTBuilder.h"
 #include "src/ast/AST.h"
 
@@ -10,11 +10,11 @@ using namespace hooc::ast;
 class ForLoopParsingTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        parser = std::make_unique<ProcessIsolatedParser>();
+        parser = std::make_unique<HooParserWrapper>();
         astBuilder = std::make_unique<SimpleASTBuilder>();
     }
 
-    std::unique_ptr<ProcessIsolatedParser> parser;
+    std::unique_ptr<HooParserWrapper> parser;
     std::unique_ptr<SimpleASTBuilder> astBuilder;
 
     std::unique_ptr<CompilationUnit> parseAndBuildAST(const std::string& code) {

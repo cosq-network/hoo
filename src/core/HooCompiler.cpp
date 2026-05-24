@@ -1,8 +1,9 @@
 #include "HooCompiler.h"
-#include "parsing/ProcessIsolatedParser.h"
+#include "parsing/HooParserWrapper.h"
 #include "ast/SimpleASTBuilder.h"
 #include "codegen/HVMCodeGenerator.h"
 #include "HoocParser.h"
+#include <numeric>
 
 namespace hooc {
 
@@ -12,7 +13,7 @@ namespace hooc {
 
 HooCompiler::HooCompiler()
     : lastCompilationSuccessful_(false)
-    , parser_(std::make_unique<ProcessIsolatedParser>())
+    , parser_(std::make_unique<HooParserWrapper>())
     , astBuilder_(std::make_unique<SimpleASTBuilder>())
     , codeGenerator_(std::make_unique<HVMCodeGenerator>(moduleRegistry_)) {
 }
@@ -52,12 +53,25 @@ std::unique_ptr<hvm::HOModule> HooCompiler::compile(
     }
 
     // 3. Generate HVM Bytecode
-    auto* hvmCodeGen = static_cast<HVMCodeGenerator*>(codeGenerator_.get());
-    hvmCodeGen->setModuleContext(moduleName);
-    auto generatedModule = hvmCodeGen->generateModule(*ast);
+    // We can cast here as long as we only support HVMCodeGenerator in this method,
+    // but we use the virtual interface where possible.
+    auto* hvmCodeGen = dynamic_cast<HVMCodeGenerator*>(codeGenerator_.get());
+    if (hvmCodeGen) {
+        hvmCodeGen->setModuleContext(moduleName);
+    }
+    
+    auto generatedModule = codeGenerator_->generateModule(*ast);
 
-    if (hvmCodeGen->hasErrors()) {
-        lastError_ = "HVM Code generation failed: " + hvmCodeGen->getErrors().front();
+    if (hvmCodeGen && hvmCodeGen->hasErrors()) {
+        const auto& errors = hvmCodeGen->getErrors();
+        if (errors.size() == 1) {
+            lastError_ = "HVM Code generation failed: " + errors.front();
+        } else {
+            lastError_ = "HVM Code generation failed with " + std::to_string(errors.size()) + " errors:\n";
+            for (const auto& err : errors) {
+                lastError_ += "  - " + err + "\n";
+            }
+        }
         return nullptr;
     }
 
