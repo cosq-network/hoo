@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "core/IOProvider.h"
+#include "core/SymbolMangler.h"
 #include "hvm/HOModule.h"
 #include "hvm/HVMInstruction.h"
 #include "hvm/HVMJIT.h"
@@ -352,6 +353,96 @@ TEST_F(HVMJITInstructionSemanticsTest, JalrPerformsIndirectIntraFunctionJump) {
     EXPECT_EQ(jit.run("_F_main_v"), 33) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, JalrSpeculativelyDevirtualizesFinalMethodSymbol) {
+    MangledFunctionParams p{};
+    p.modulePath = {"demo"};
+    p.className = "Widget";
+    p.baseClassName = "";
+    p.classModifiers = {"FINAL"};
+    p.functionName = "compute";
+    p.functionModifiers = {};
+    p.returnType = "int64";
+    p.parameterTypes = {};
+    p.isConstructor = false;
+    p.isDestructor = false;
+    p.isStatic = false;
+    p.isVirtual = true;
+    const std::string finalSym = SymbolMangler::mangleFunctionName(p);
+
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::JALR, OperandsI{29, 2, 0}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 1}), // executes only on devirtualized call-return path
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 40}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        funcSym(finalSym, 16),
+    };
+    io.binaryFiles["jalr_final.ho"] = buildModuleBytes("jalr_final", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("jalr_final.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 41) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, JalrNonFinalTargetUsesNormalJumpPath) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::JALR, OperandsI{29, 2, 0}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 1}), // should not execute in normal jump path
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 40}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        funcSym("_F_plain_v", 16),
+    };
+    io.binaryFiles["jalr_plain.ho"] = buildModuleBytes("jalr_plain", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("jalr_plain.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 40) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, JalrFinalImportSymbolFallsBackToNormalJumpPath) {
+    MangledFunctionParams p{};
+    p.modulePath = {"demo"};
+    p.className = "Widget";
+    p.baseClassName = "";
+    p.classModifiers = {"FINAL"};
+    p.functionName = "compute";
+    p.functionModifiers = {};
+    p.returnType = "int64";
+    p.parameterTypes = {};
+    p.isConstructor = false;
+    p.isDestructor = false;
+    p.isStatic = false;
+    p.isVirtual = true;
+    const std::string finalImportSym = SymbolMangler::mangleFunctionName(p);
+
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::JALR, OperandsI{29, 2, 0}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 1}), // should not execute on jump fallback
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 52}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        importFuncSym(finalImportSym, 16),
+    };
+    io.binaryFiles["jalr_final_import.ho"] = buildModuleBytes("jalr_final_import", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("jalr_final_import.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 52) << jit.getLastError();
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, FloatArithmeticAndComparisonUsingSubnormalBits) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),
@@ -410,6 +501,92 @@ TEST_F(HVMJITInstructionSemanticsTest, SyscallRuntimeIntrinsicsManageRefcount) {
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("sysarc.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ArcUseDefOptInSmokeDoesNotBreakExecution) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 9}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["arc_usedef_smoke.ho"] = buildModuleBytes("arc_usedef_smoke", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("arc_usedef_smoke.ho")) << jit.getLastError();
+
+    setenv("HOOC_ENABLE_ARC_USEDEF", "1", 1);
+    auto rv = jit.run("_F_main_v");
+    unsetenv("HOOC_ENABLE_ARC_USEDEF");
+    EXPECT_EQ(rv, 9) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ArcUseDefElidesAcrossBranchEdgeWithoutBarriers) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, HOO_TYPE_OBJECT}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),    // alloc
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),     // r2 = obj
+        makeI(Opcode::MOVZ, OperandsI{9, 0, 123}),     // sentinel for retain result
+        makeI(Opcode::MOVZ, OperandsI{10, 0, 124}),    // sentinel for release result
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 1}),       // branch predicate
+        makeB(Opcode::BEQ, OperandsB{5, 5, 2}),        // jump to retain block
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),      // dead path
+        makeI(Opcode::SYSCALL, OperandsI{9, 0, 2}),    // retain
+        makeI(Opcode::SYSCALL, OperandsI{10, 0, 3}),   // release
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 3}),    // final release to free object
+        makeI(Opcode::MOVZ, OperandsI{11, 0, 123}),
+        makeI(Opcode::MOVZ, OperandsI{12, 0, 124}),
+        makeR(Opcode::CMP, OperandsR{13, 9, 11, 0}),   // retain syscall elided => rd9 unchanged
+        makeR(Opcode::CMP, OperandsR{14, 10, 12, 0}),  // release syscall elided => rd10 unchanged
+        makeR(Opcode::ARITH, OperandsR{1, 13, 14, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["arc_branch_elide.ho"] = buildModuleBytes("arc_branch_elide", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("arc_branch_elide.ho")) << jit.getLastError();
+    setenv("HOOC_ENABLE_ARC_USEDEF", "1", 1);
+    const auto rv = jit.run("_F_main_v");
+    unsetenv("HOOC_ENABLE_ARC_USEDEF");
+    EXPECT_EQ(rv, 2) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ArcUseDefDoesNotElideAcrossCallBarrier) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, HOO_TYPE_OBJECT}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),    // alloc
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),     // r2 = obj
+        makeI(Opcode::MOVZ, OperandsI{9, 0, 123}),     // sentinel for retain result
+        makeI(Opcode::MOVZ, OperandsI{10, 0, 124}),    // sentinel for release result
+        makeI(Opcode::SYSCALL, OperandsI{9, 0, 2}),    // retain
+        makeJ(Opcode::CALL, OperandsJ{29, 9}),         // barrier call to helper
+        makeI(Opcode::SYSCALL, OperandsI{10, 0, 3}),   // release
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 3}),    // final release to free object
+        makeI(Opcode::MOVZ, OperandsI{11, 0, 123}),
+        makeI(Opcode::MOVZ, OperandsI{12, 0, 124}),
+        makeR(Opcode::CMP, OperandsR{13, 9, 11, 1}),   // retain executed => rd9 != sentinel
+        makeR(Opcode::CMP, OperandsR{14, 10, 12, 1}),  // release executed => rd10 != sentinel
+        makeR(Opcode::ARITH, OperandsR{1, 13, 14, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::NOP, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::NOP, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{20, 0, 1}),      // helper start
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        funcSym("_F_helper_v", 72),
+    };
+    io.binaryFiles["arc_call_barrier.ho"] = buildModuleBytes("arc_call_barrier", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("arc_call_barrier.ho")) << jit.getLastError();
+    setenv("HOOC_ENABLE_ARC_USEDEF", "1", 1);
+    const auto rv = jit.run("_F_main_v");
+    unsetenv("HOOC_ENABLE_ARC_USEDEF");
+    EXPECT_EQ(rv, 2) << jit.getLastError();
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, StDAppliesRetainStoreReleaseSequence) {

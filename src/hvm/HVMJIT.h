@@ -118,6 +118,7 @@ public:
     void stopExecution();
     std::array<int64_t, 32> getRegisters() const;
     std::vector<uint8_t> readVirtualMemory(uint64_t addr, size_t size) const;
+    bool getStopExecutionRequested() const { return stopExecutionRequested_.load(std::memory_order_relaxed); }
 
 private:
 

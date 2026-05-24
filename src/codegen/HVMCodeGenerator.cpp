@@ -11,6 +11,8 @@
 #include <stdexcept>
 #include <algorithm>
 #include <typeinfo>
+#include <atomic>
+#include <sstream>
 
 using namespace hvm;
 
@@ -38,10 +40,26 @@ HVMCodeGenerator::HVMCodeGenerator(ModuleRegistry& moduleRegistry)
     classes_["hoo.Exception"] = excLayout;
 }
 
+void HVMCodeGenerator::setModuleContext(const std::string& moduleName) {
+    pendingModuleName_ = moduleName;
+}
+
 std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::CompilationUnit& compilationUnit) {
     // 1. Determine Module Name/Path
-    std::string moduleName = "hvm_module";
+    static std::atomic<uint64_t> sSyntheticModuleCounter{0};
+    std::string moduleName = pendingModuleName_;
+    if (moduleName.empty()) {
+        moduleName = "hvm_module_" + std::to_string(++sSyntheticModuleCounter);
+    }
+    pendingModuleName_.clear();
     modulePath_.clear();
+    {
+        std::stringstream ss(moduleName);
+        std::string part;
+        while (std::getline(ss, part, '.')) {
+            if (!part.empty()) modulePath_.push_back(part);
+        }
+    }
     
     // In a real scenario, this would come from the compiler's source tracking.
     // For now we look for a marker or use default.
@@ -52,6 +70,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     locals_.clear();
     currentStackOffset_ = 0;
     allLabels_.clear();
+    symbolFixups_.clear();
 
     // 2. Process Imports (SHT_IMPORT)
     for (const auto& imp : compilationUnit.getImports()) {
@@ -580,8 +599,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             for (char c : val) rodata->data.push_back(c);
             rodata->data.push_back('\0');
             rodata->virtual_size = rodata->data.size();
-            uint8_t addrReg = allocateRegister();
-            emit(Opcode::LDA, OperandsI{addrReg, 0, static_cast<int16_t>(offset)}); 
+            uint8_t addrReg = emitRoDataAddress(offset);
 
             // 3. Call runtime allocator
             emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
@@ -1065,13 +1083,32 @@ uint8_t HVMCodeGenerator::emitConstant(int64_t value) {
         }
         rodata->virtual_size = rodata->data.size();
         
-        uint8_t addrReg = allocateRegister();
-        emit(Opcode::LDA, OperandsI{addrReg, 0, static_cast<int16_t>(offset)});
+        uint8_t addrReg = emitRoDataAddress(offset);
         emit(Opcode::LD_D, OperandsI{reg, addrReg, 0});
-        
         freeRegister(addrReg);
     }
     return reg;
+}
+
+uint8_t HVMCodeGenerator::emitRoDataAddress(uint32_t offset) {
+    // LDA with rs=r0 is interpreted as .rodata-base addressing by the HVM runtime.
+    // For large offsets, build the full address with bounded ADDI steps.
+    uint8_t addrReg = allocateRegister();
+    const int64_t kLdaMax = 16383;
+    const int64_t kAddiMax = 16383;
+
+    int64_t remaining = static_cast<int64_t>(offset);
+    int16_t baseImm = static_cast<int16_t>(std::min<int64_t>(remaining, kLdaMax));
+    emit(Opcode::LDA, OperandsI{addrReg, 0, baseImm});
+    remaining -= baseImm;
+
+    while (remaining > 0) {
+        int16_t step = static_cast<int16_t>(std::min<int64_t>(remaining, kAddiMax));
+        emit(Opcode::ADDI, OperandsI{addrReg, addrReg, step});
+        remaining -= step;
+    }
+
+    return addrReg;
 }
 
 HVMCodeGenerator::Label* HVMCodeGenerator::createLabel() {

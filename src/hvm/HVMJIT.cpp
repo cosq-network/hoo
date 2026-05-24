@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <functional>
@@ -68,8 +69,26 @@ constexpr int16_t kSysStringData = 11;
 constexpr uint64_t kNoHandlerPc = ~uint64_t{0};
 constexpr size_t kMaxInboundTrampolineSlots = 8;
 constexpr bool kEnableEscapeAllocaPromotion = false;
-constexpr bool kEnableDwarfDebugInfo = false;
-constexpr bool kEnableARCUseDefGraph = false;
+bool isArcUseDefGraphEnabled() {
+    if (const char* v = std::getenv("HOOC_ENABLE_ARC_USEDEF")) {
+        return std::string(v) == "1" || std::string(v) == "true" || std::string(v) == "TRUE";
+    }
+    return false;
+}
+
+bool isEscapeAllocaPromotionEnabled() {
+    if (const char* v = std::getenv("HOOC_ENABLE_ESCAPE_ALLOCA")) {
+        return std::string(v) == "1" || std::string(v) == "true" || std::string(v) == "TRUE";
+    }
+    return false;
+}
+
+bool isDwarfDebugInfoEnabled() {
+    if (const char* v = std::getenv("HOOC_ENABLE_DWARF")) {
+        return std::string(v) == "1" || std::string(v) == "true" || std::string(v) == "TRUE";
+    }
+    return false;
+}
 
 struct ARCUseDefGraph {
     // Map of instruction PC to "skip as no-op".
@@ -91,55 +110,153 @@ ARCUseDefGraph buildARCUseDefGraph(const hvm::Section& text, uint64_t entryPc) {
             break;
         }
         stream.emplace_back(pc, std::move(ins));
-        if (ins->getOpcode() == hvm::Opcode::RET) {
+        if (stream.back().second && stream.back().second->getOpcode() == hvm::Opcode::RET) {
             break;
         }
         pc += used;
     }
 
+    std::unordered_map<uint64_t, size_t> indexByPc;
+    indexByPc.reserve(stream.size());
     for (size_t i = 0; i < stream.size(); ++i) {
-        const auto& [pcA, insA] = stream[i];
-        if (insA->getOpcode() != hvm::Opcode::SYSCALL) {
+        indexByPc.emplace(stream[i].first, i);
+    }
+
+    auto writesReg2 = [](const hvm::HVMInstruction& ins) -> bool {
+        if (std::holds_alternative<hvm::OperandsI>(ins.getOperands())) {
+            return std::get<hvm::OperandsI>(ins.getOperands()).rd == 2;
+        }
+        if (std::holds_alternative<hvm::OperandsR>(ins.getOperands())) {
+            return std::get<hvm::OperandsR>(ins.getOperands()).rd == 2;
+        }
+        if (std::holds_alternative<hvm::OperandsJ>(ins.getOperands())) {
+            return std::get<hvm::OperandsJ>(ins.getOperands()).rd == 2;
+        }
+        return false;
+    };
+    auto isArcSyscall = [](const hvm::HVMInstruction& ins) -> bool {
+        if (ins.getOpcode() != hvm::Opcode::SYSCALL ||
+            !std::holds_alternative<hvm::OperandsI>(ins.getOperands())) {
+            return false;
+        }
+        const auto oi = std::get<hvm::OperandsI>(ins.getOperands());
+        return oi.imm15 == kSysRetain || oi.imm15 == kSysRelease;
+    };
+    auto isControlBarrier = [](hvm::Opcode op) -> bool {
+        return op == hvm::Opcode::RET || op == hvm::Opcode::CALL ||
+               op == hvm::Opcode::TAILCALL || op == hvm::Opcode::JAL ||
+               op == hvm::Opcode::JALR;
+    };
+
+    std::vector<std::vector<size_t>> succ(stream.size());
+    for (size_t i = 0; i < stream.size(); ++i) {
+        const auto& [pcI, insI] = stream[i];
+        const auto op = insI->getOpcode();
+        auto addSuccByPc = [&](uint64_t targetPc) {
+            auto it = indexByPc.find(targetPc);
+            if (it != indexByPc.end()) {
+                succ[i].push_back(it->second);
+            }
+        };
+        if (op == hvm::Opcode::RET || op == hvm::Opcode::CALL ||
+            op == hvm::Opcode::TAILCALL || op == hvm::Opcode::JAL ||
+            op == hvm::Opcode::JALR) {
             continue;
         }
-        auto oa = std::get<hvm::OperandsI>(insA->getOperands());
-        if (oa.imm15 != kSysRetain && oa.imm15 != kSysRelease) {
+        if (op == hvm::Opcode::JMP) {
+            auto o = std::get<hvm::OperandsJ>(insI->getOperands());
+            const uint64_t target = static_cast<uint64_t>(
+                static_cast<int64_t>(pcI) + static_cast<int64_t>(o.offset) * 4);
+            addSuccByPc(target);
             continue;
         }
-        // Look ahead inside straight-line code until control-flow barrier.
-        bool sawR2Write = false;
-        for (size_t j = i + 1; j < stream.size(); ++j) {
-            const auto& [pcB, insB] = stream[j];
-            auto op = insB->getOpcode();
-            if (op == hvm::Opcode::RET || op == hvm::Opcode::CALL || op == hvm::Opcode::TAILCALL ||
-                op == hvm::Opcode::JMP || op == hvm::Opcode::JAL || op == hvm::Opcode::JALR ||
-                op == hvm::Opcode::BEQ || op == hvm::Opcode::BNE || op == hvm::Opcode::BLT ||
-                op == hvm::Opcode::BLE) {
-                break;
-            }
-            if (std::holds_alternative<hvm::OperandsI>(insB->getOperands())) {
-                auto oi = std::get<hvm::OperandsI>(insB->getOperands());
-                if (oi.rd == 2) sawR2Write = true;
-            } else if (std::holds_alternative<hvm::OperandsR>(insB->getOperands())) {
-                auto orr = std::get<hvm::OperandsR>(insB->getOperands());
-                if (orr.rd == 2) sawR2Write = true;
-            } else if (std::holds_alternative<hvm::OperandsJ>(insB->getOperands())) {
-                auto oj = std::get<hvm::OperandsJ>(insB->getOperands());
-                if (oj.rd == 2) sawR2Write = true;
-            }
-            if (sawR2Write) {
-                break;
-            }
-            if (op == hvm::Opcode::SYSCALL) {
-                auto ob = std::get<hvm::OperandsI>(insB->getOperands());
+        if (op == hvm::Opcode::BEQ || op == hvm::Opcode::BNE ||
+            op == hvm::Opcode::BLT || op == hvm::Opcode::BLE) {
+            auto o = std::get<hvm::OperandsB>(insI->getOperands());
+            const uint64_t target = static_cast<uint64_t>(
+                static_cast<int64_t>(pcI) + static_cast<int64_t>(o.imm15) * 4);
+            addSuccByPc(target);
+        }
+        if (i + 1 < stream.size()) {
+            addSuccByPc(stream[i + 1].first);
+        }
+    }
+
+    struct PendingArc {
+        size_t startIndex = 0;
+        int16_t kind = 0;
+    };
+    std::vector<std::optional<PendingArc>> inPending(stream.size());
+    std::vector<bool> inConflict(stream.size(), false);
+    std::vector<size_t> worklist;
+    worklist.push_back(0);
+
+    while (!worklist.empty()) {
+        const size_t idx = worklist.back();
+        worklist.pop_back();
+        if (idx >= stream.size()) {
+            continue;
+        }
+        auto pending = inPending[idx];
+        bool conflict = inConflict[idx];
+        const auto& ins = *stream[idx].second;
+        const auto op = ins.getOpcode();
+
+        if (writesReg2(ins) || isControlBarrier(op)) {
+            pending.reset();
+            conflict = false;
+        } else if (isArcSyscall(ins)) {
+            const auto oi = std::get<hvm::OperandsI>(ins.getOperands());
+            if (pending.has_value()) {
                 const bool inverse =
-                    (oa.imm15 == kSysRetain && ob.imm15 == kSysRelease) ||
-                    (oa.imm15 == kSysRelease && ob.imm15 == kSysRetain);
-                if (inverse) {
-                    g.skipPc.insert(pcA);
-                    g.skipPc.insert(pcB);
+                    (pending->kind == kSysRetain && oi.imm15 == kSysRelease) ||
+                    (pending->kind == kSysRelease && oi.imm15 == kSysRetain);
+                if (inverse && !conflict) {
+                    g.skipPc.insert(stream[pending->startIndex].first);
+                    g.skipPc.insert(stream[idx].first);
+                    pending.reset();
+                    conflict = false;
+                } else {
+                    pending = PendingArc{idx, oi.imm15};
+                    conflict = false;
                 }
-                break;
+            } else {
+                pending = PendingArc{idx, oi.imm15};
+                conflict = false;
+            }
+        }
+
+        for (size_t next : succ[idx]) {
+            if (next >= stream.size()) {
+                continue;
+            }
+            bool changed = false;
+            if (!inPending[next].has_value() && pending.has_value()) {
+                inPending[next] = pending;
+                inConflict[next] = conflict;
+                changed = true;
+            } else if (inPending[next].has_value() && pending.has_value()) {
+                if (inPending[next]->startIndex != pending->startIndex ||
+                    inPending[next]->kind != pending->kind) {
+                    if (!inConflict[next]) {
+                        inConflict[next] = true;
+                        changed = true;
+                    }
+                } else if (inConflict[next] != conflict) {
+                    inConflict[next] = inConflict[next] || conflict;
+                    changed = true;
+                }
+            } else if (!pending.has_value() && inPending[next].has_value()) {
+                if (!inConflict[next]) {
+                    inConflict[next] = true;
+                    changed = true;
+                }
+            } else if (conflict && !inConflict[next]) {
+                inConflict[next] = true;
+                changed = true;
+            }
+            if (changed) {
+                worklist.push_back(next);
             }
         }
     }
@@ -147,8 +264,13 @@ ARCUseDefGraph buildARCUseDefGraph(const hvm::Section& text, uint64_t entryPc) {
 }
 
 bool isSpecDevirtualizableName(const std::string& name) {
-    return name.find("final") != std::string::npos ||
-           name.find("singleton") != std::string::npos;
+    const auto sym = SymbolMangler::demangleSymbol(name);
+    for (const auto& mod : sym.classModifiers) {
+        if (mod == "FINAL" || mod == "SINGLETON") {
+            return true;
+        }
+    }
+    return false;
 }
 
 std::mutex gManagedObjectsMu;
@@ -164,6 +286,8 @@ struct ShadowHandlerFrame {
 
 std::unordered_map<void*, std::vector<ShadowHandlerFrame>> gShadowHandlers;
 std::unordered_map<void*, uint64_t> gCurrentExceptionByState;
+std::mutex gStateOwnerMu;
+std::unordered_map<void*, HVMJIT*> gStateOwnerByPtr;
 std::mutex gInboundTrampolineOwnerMu;
 std::array<HVMJIT*, kMaxInboundTrampolineSlots> gInboundTrampolineOwnerBySlot{};
 size_t gInboundNextSlot = 0;
@@ -269,6 +393,16 @@ void shadow_clear_state(HVMJIT::HVMState* state) {
     std::lock_guard<std::mutex> lk(gShadowHandlersMu);
     gShadowHandlers.erase(state);
     gCurrentExceptionByState.erase(state);
+}
+
+uint64_t shadow_should_stop_state(void* state_ptr) {
+    if (!state_ptr) return 0;
+    std::lock_guard<std::mutex> lk(gStateOwnerMu);
+    auto it = gStateOwnerByPtr.find(state_ptr);
+    if (it == gStateOwnerByPtr.end() || !it->second) {
+        return 0;
+    }
+    return it->second->getStopExecutionRequested() ? 1 : 0;
 }
 
 // JIT-compatible wrappers for runtime functions.
@@ -502,6 +636,9 @@ extern "C" {
     extern "C" uint64_t hooc_hvm_sys_string_data(uint64_t strObj) {
         return static_cast<uint64_t>(
             reinterpret_cast<uintptr_t>(hoo_string_data(reinterpret_cast<void*>(strObj))));
+    }
+    extern "C" uint64_t hooc_hvm_sys_should_stop_state(void* state_ptr) {
+        return shadow_should_stop_state(state_ptr);
     }
 
     void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
@@ -1733,7 +1870,8 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
 
     uint64_t pc = sym->value;
     const uint64_t textSize = text->data.size();
-    const ARCUseDefGraph arcUseDef = kEnableARCUseDefGraph
+    const bool arcUseDefEnabled = isArcUseDefGraphEnabled();
+    const ARCUseDefGraph arcUseDef = arcUseDefEnabled
                                          ? buildARCUseDefGraph(*text, pc)
                                          : ARCUseDefGraph{};
     stopExecutionRequested_.store(false, std::memory_order_relaxed);
@@ -1777,7 +1915,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
         };
 
         const uint64_t nextPc = pc + used;
-        if (kEnableARCUseDefGraph && arcUseDef.skipPc.count(pc)) {
+        if (arcUseDefEnabled && arcUseDef.skipPc.count(pc)) {
             pc = nextPc;
             continue;
         }
@@ -1982,21 +2120,24 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 writeReg(o.rd, nextPc);
                 const uint64_t targetPc =
                     static_cast<uint64_t>(static_cast<int64_t>(readReg(o.rs)) + static_cast<int64_t>(o.imm15));
-                const std::string maybeCallee = [&]() -> std::string {
+                const hvm::Symbol* maybeCalleeSym = [&]() -> const hvm::Symbol* {
                     for (const auto& s : module->getSymbols()) {
                         if ((s.type == hvm::Symbol::STT_FUNC || s.type == hvm::Symbol::STT_NOTYPE) &&
                             s.value == targetPc) {
-                            return s.name;
+                            return &s;
                         }
                     }
-                    return "";
+                    return nullptr;
                 }();
-                if (!maybeCallee.empty() && isSpecDevirtualizableName(maybeCallee)) {
+                const bool devirtEligible =
+                    maybeCalleeSym && isSpecDevirtualizableName(maybeCalleeSym->name) &&
+                    maybeCalleeSym->section_index != -1;
+                if (devirtEligible) {
                     if (stopExecutionRequested_.load(std::memory_order_relaxed)) {
                         lastError_ = "Execution stopped by inspector";
                         return -1;
                     }
-                    int64_t rv = executeFunction(module, maybeCallee, state);
+                    int64_t rv = executeFunction(module, maybeCalleeSym->name, state);
                     if (rv == -1 && !lastError_.empty()) {
                         return -1;
                     }
@@ -2653,11 +2794,12 @@ bool HVMJIT::loadModule(std::unique_ptr<hvm::HOModule> module) {
 }
 
 llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModule& hvmModule) {
+    const bool dwarfEnabled = isDwarfDebugInfoEnabled();
     auto context = std::make_unique<llvm::LLVMContext>();
     auto module = std::make_unique<llvm::Module>(hvmModule.getName(), *context);
     std::unique_ptr<llvm::DIBuilder> diBuilder;
     llvm::DIFile* diFile = nullptr;
-    if (kEnableDwarfDebugInfo) {
+    if (dwarfEnabled) {
         diBuilder = std::make_unique<llvm::DIBuilder>(*module);
         const std::string srcPath = hvmModule.getSourcePath().empty()
                                         ? (hvmModule.getName() + ".hoo")
@@ -2709,7 +2851,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             lineStart = fit->second->source_line;
         }
         llvm::DISubprogram* sp = nullptr;
-        if (kEnableDwarfDebugInfo && diBuilder && diFile) {
+        if (dwarfEnabled && diBuilder && diFile) {
             auto* subTy = diBuilder->createSubroutineType(diBuilder->getOrCreateTypeArray({}));
             sp = diBuilder->createFunction(
                 diFile, sym.name, sym.name, diFile, lineStart, subTy, lineStart,
@@ -2763,6 +2905,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             "hooc_hvm_sys_rethrow_to_handler_state", llvm::FunctionType::get(i64, {statePtrTy}, false));
         auto stringDataCallee = module->getOrInsertFunction(
             "hooc_hvm_sys_string_data", llvm::FunctionType::get(i64, {i64}, false));
+        auto shouldStopStateCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_should_stop_state", llvm::FunctionType::get(i64, {statePtrTy}, false));
 
         uint64_t pc = sym.value;
         const uint64_t textSize = text->data.size();
@@ -2797,52 +2941,136 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             }
         };
         auto allocEscapes = [&](uint64_t allocPc, uint8_t allocReg) -> bool {
-            uint64_t scanPc = allocPc;
-            while (scanPc < textSize) {
+            std::unordered_map<uint64_t, std::pair<std::unique_ptr<hvm::HVMInstruction>, size_t>> decodedByPc;
+            decodedByPc.reserve(validPcs.size());
+            for (uint64_t vpc : validPcs) {
+                if (vpc >= textSize) return true;
                 std::vector<uint8_t> scanSlice;
-                size_t maxRead = static_cast<size_t>(std::min<uint64_t>(8, textSize - scanPc));
-                scanSlice.insert(scanSlice.end(), text->data.begin() + static_cast<ptrdiff_t>(scanPc),
-                                 text->data.begin() + static_cast<ptrdiff_t>(scanPc + maxRead));
+                size_t maxRead = static_cast<size_t>(std::min<uint64_t>(8, textSize - vpc));
+                scanSlice.insert(scanSlice.end(), text->data.begin() + static_cast<ptrdiff_t>(vpc),
+                                 text->data.begin() + static_cast<ptrdiff_t>(vpc + maxRead));
                 size_t used = 0;
                 auto sin = hvm::HVMInstruction::decode(scanSlice, used);
                 if (!sin || used == 0) return true;
-                auto sop = sin->getOpcode();
-                auto isWriteToReg = [&](uint8_t r) {
-                    if (std::holds_alternative<hvm::OperandsI>(sin->getOperands())) {
-                        return std::get<hvm::OperandsI>(sin->getOperands()).rd == r;
+                decodedByPc.emplace(vpc, std::make_pair(std::move(sin), used));
+            }
+            auto hasPc = [&](uint64_t targetPc) -> bool {
+                return decodedByPc.find(targetPc) != decodedByPc.end();
+            };
+            auto nextPcOf = [&](uint64_t curPc) -> uint64_t {
+                auto it = decodedByPc.find(curPc);
+                if (it == decodedByPc.end()) return textSize;
+                return curPc + static_cast<uint64_t>(it->second.second);
+            };
+            auto isWriteToAllocReg = [&](const hvm::HVMInstruction& ins) -> bool {
+                if (std::holds_alternative<hvm::OperandsI>(ins.getOperands())) {
+                    return std::get<hvm::OperandsI>(ins.getOperands()).rd == allocReg;
+                }
+                if (std::holds_alternative<hvm::OperandsR>(ins.getOperands())) {
+                    return std::get<hvm::OperandsR>(ins.getOperands()).rd == allocReg;
+                }
+                if (std::holds_alternative<hvm::OperandsJ>(ins.getOperands())) {
+                    return std::get<hvm::OperandsJ>(ins.getOperands()).rd == allocReg;
+                }
+                return false;
+            };
+            auto isReadOfAllocReg = [&](const hvm::HVMInstruction& ins) -> bool {
+                const auto op = ins.getOpcode();
+                if (std::holds_alternative<hvm::OperandsI>(ins.getOperands())) {
+                    const auto oi = std::get<hvm::OperandsI>(ins.getOperands());
+                    if (oi.rs == allocReg) return true;
+                    if ((op == hvm::Opcode::ST_B || op == hvm::Opcode::ST_H ||
+                         op == hvm::Opcode::ST_W || op == hvm::Opcode::ST_D) &&
+                        oi.rd == allocReg) {
+                        return true;
                     }
-                    if (std::holds_alternative<hvm::OperandsR>(sin->getOperands())) {
-                        return std::get<hvm::OperandsR>(sin->getOperands()).rd == r;
-                    }
-                    if (std::holds_alternative<hvm::OperandsJ>(sin->getOperands())) {
-                        return std::get<hvm::OperandsJ>(sin->getOperands()).rd == r;
-                    }
-                    return false;
-                };
-                if (isWriteToReg(allocReg)) return false;
-                if (sop == hvm::Opcode::RET || sop == hvm::Opcode::CALL || sop == hvm::Opcode::TAILCALL ||
-                    sop == hvm::Opcode::JMP || sop == hvm::Opcode::JAL || sop == hvm::Opcode::JALR ||
-                    sop == hvm::Opcode::BEQ || sop == hvm::Opcode::BNE || sop == hvm::Opcode::BLT ||
-                    sop == hvm::Opcode::BLE) {
+                } else if (std::holds_alternative<hvm::OperandsR>(ins.getOperands())) {
+                    const auto orr = std::get<hvm::OperandsR>(ins.getOperands());
+                    if (orr.rs1 == allocReg || orr.rs2 == allocReg) return true;
+                    if (op == hvm::Opcode::PUSH && orr.rd == allocReg) return true;
+                } else if (std::holds_alternative<hvm::OperandsB>(ins.getOperands())) {
+                    const auto ob = std::get<hvm::OperandsB>(ins.getOperands());
+                    if (ob.rs1 == allocReg || ob.rs2 == allocReg) return true;
+                }
+                if (op == hvm::Opcode::SYSCALL && allocReg == 2) {
                     return true;
                 }
-                // Any read of allocReg marks potential escape; stay conservative.
-                if (std::holds_alternative<hvm::OperandsI>(sin->getOperands())) {
-                    auto oi = std::get<hvm::OperandsI>(sin->getOperands());
-                    if (oi.rs == allocReg) return true;
-                } else if (std::holds_alternative<hvm::OperandsR>(sin->getOperands())) {
-                    auto orr = std::get<hvm::OperandsR>(sin->getOperands());
-                    if (orr.rs1 == allocReg || orr.rs2 == allocReg || orr.rd == allocReg) return true;
+                return false;
+            };
+
+            std::vector<std::pair<uint64_t, bool>> wl;
+            std::unordered_set<uint64_t> visitedLive;
+            std::unordered_set<uint64_t> visitedDead;
+            wl.emplace_back(allocPc, true);
+
+            auto pushState = [&](uint64_t nextPc, bool live) {
+                if (!hasPc(nextPc)) return;
+                auto& seen = live ? visitedLive : visitedDead;
+                if (seen.insert(nextPc).second) {
+                    wl.emplace_back(nextPc, live);
                 }
-                scanPc += used;
+            };
+
+            while (!wl.empty()) {
+                auto [curPc, live] = wl.back();
+                wl.pop_back();
+                auto dit = decodedByPc.find(curPc);
+                if (dit == decodedByPc.end()) {
+                    return true;
+                }
+                const auto& ins = *dit->second.first;
+                const auto op = ins.getOpcode();
+                if (live && isReadOfAllocReg(ins)) {
+                    return true;
+                }
+
+                bool nextLive = live;
+                if (live && isWriteToAllocReg(ins)) {
+                    nextLive = false;
+                }
+
+                if (live && (op == hvm::Opcode::CALL || op == hvm::Opcode::TAILCALL ||
+                             op == hvm::Opcode::JAL || op == hvm::Opcode::JALR)) {
+                    return true;
+                }
+                if (op == hvm::Opcode::RET) {
+                    continue;
+                }
+                if (op == hvm::Opcode::JMP) {
+                    auto oj = std::get<hvm::OperandsJ>(ins.getOperands());
+                    uint64_t targetPc = static_cast<uint64_t>(
+                        static_cast<int64_t>(curPc) + static_cast<int64_t>(oj.offset) * 4);
+                    pushState(targetPc, nextLive);
+                    continue;
+                }
+                if (op == hvm::Opcode::BEQ || op == hvm::Opcode::BNE ||
+                    op == hvm::Opcode::BLT || op == hvm::Opcode::BLE) {
+                    auto ob = std::get<hvm::OperandsB>(ins.getOperands());
+                    uint64_t targetPc = static_cast<uint64_t>(
+                        static_cast<int64_t>(curPc) + static_cast<int64_t>(ob.imm15) * 4);
+                    pushState(targetPc, nextLive);
+                    pushState(nextPcOf(curPc), nextLive);
+                    continue;
+                }
+                pushState(nextPcOf(curPc), nextLive);
             }
-            return true;
+            return false;
         };
 
         while (!work.empty()) {
             uint64_t curr = work.back();
             work.pop_back();
             builder.SetInsertPoint(blockByPc[curr]);
+            {
+                auto* shouldStop = builder.CreateCall(shouldStopStateCallee, {stateArg});
+                auto* stopNow = builder.CreateICmpNE(shouldStop, builder.getInt64(0));
+                auto* stopBB = llvm::BasicBlock::Create(*context, "stop_now", fn);
+                auto* contBB = llvm::BasicBlock::Create(*context, "stop_cont", fn);
+                builder.CreateCondBr(stopNow, stopBB, contBB);
+                builder.SetInsertPoint(stopBB);
+                builder.CreateRet(builder.getInt64(-1));
+                builder.SetInsertPoint(contBB);
+            }
             uint64_t ipc = curr;
             while (ipc < textSize) {
                 std::vector<uint8_t> slice;
@@ -2857,7 +3085,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                 }
                 uint64_t nextPc = ipc + used;
                 auto op = ins->getOpcode();
-                if (kEnableDwarfDebugInfo && sp) {
+                if (dwarfEnabled && sp) {
                     const uint32_t line = lineStart + static_cast<uint32_t>((ipc - sym.value) / 4U);
                     builder.SetCurrentDebugLocation(llvm::DILocation::get(*context, line, 1, sp));
                 }
@@ -3189,11 +3417,12 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.SetInsertPoint(allocBB);
                     llvm::Value* allocRet = nullptr;
                     auto escape = allocEscapes(nextPc, o.rd);
-                    if (!escape && kEnableEscapeAllocaPromotion) {
+                    if (!escape && isEscapeAllocaPromotionEnabled()) {
                         // Escape analysis: if allocation result cannot escape the current
                         // linear region, keep storage on stack and avoid runtime heap call.
                         auto* bytes = readReg(2);
                         auto* tmp = builder.CreateAlloca(builder.getInt8Ty(), bytes, "esc_alloca");
+                        builder.CreateMemSet(tmp, builder.getInt8(0), bytes, llvm::Align(1));
                         allocRet = builder.CreatePtrToInt(tmp, i64);
                     } else {
                         allocRet = builder.CreateCall(allocCallee, {readReg(2), readReg(3)});
@@ -3327,7 +3556,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             }
         }
     }
-    if (kEnableDwarfDebugInfo && diBuilder) {
+    if (dwarfEnabled && diBuilder) {
         diBuilder->finalize();
     }
 
@@ -3411,7 +3640,15 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
     lastRunUsedJIT_ = true;
+    {
+        std::lock_guard<std::mutex> lk(gStateOwnerMu);
+        gStateOwnerByPtr[&state] = this;
+    }
     const int64_t rv = fn(&state);
+    {
+        std::lock_guard<std::mutex> lk(gStateOwnerMu);
+        gStateOwnerByPtr.erase(&state);
+    }
     shadow_clear_state(&state);
     return rv;
 }
@@ -3419,6 +3656,7 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
 int64_t HVMJIT::run(const std::string& entryPoint) {
     clearError();
     lastRunUsedJIT_ = false;
+    stopExecutionRequested_.store(false, std::memory_order_relaxed);
     if (!ensureJIT()) {
         return -1;
     }

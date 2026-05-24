@@ -53,6 +53,7 @@ std::unique_ptr<hvm::HOModule> HooCompiler::compile(
 
     // 3. Generate HVM Bytecode
     auto* hvmCodeGen = static_cast<HVMCodeGenerator*>(codeGenerator_.get());
+    hvmCodeGen->setModuleContext(moduleName);
     auto generatedModule = hvmCodeGen->generateModule(*ast);
 
     if (hvmCodeGen->hasErrors()) {

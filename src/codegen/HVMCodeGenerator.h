@@ -21,6 +21,7 @@ class HVMCodeGenerator : public CodeGenerator {
 public:
     explicit HVMCodeGenerator(ModuleRegistry& moduleRegistry);
     virtual ~HVMCodeGenerator() = default;
+    void setModuleContext(const std::string& moduleName);
 
     /**
      * Main entry point: translates a full AST unit into a bytecode module.
@@ -43,6 +44,7 @@ private:
     // Core state
     ModuleRegistry& moduleRegistry_;
     std::vector<std::string> modulePath_;
+    std::string pendingModuleName_;
     std::unique_ptr<hvm::HOModule> module_;
     std::vector<hvm::HVMInstruction> instructions_;
     uint32_t currentByteOffset_ = 0;
@@ -140,6 +142,7 @@ private:
     // Instruction Helpers
     void emit(hvm::Opcode op, const hvm::Operands& operands);
     uint8_t emitConstant(int64_t value);
+    uint8_t emitRoDataAddress(uint32_t offset);
     void addError(const std::string& message);
 };
 

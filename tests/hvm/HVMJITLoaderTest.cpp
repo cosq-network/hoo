@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <cstdlib>
+#include <chrono>
 #include <map>
 #include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "core/IOProvider.h"
@@ -454,6 +457,171 @@ TEST_F(HVMJITLoaderTest, InspectorCanReadVirtualMemorySnapshot) {
     auto bytes = jit.readVirtualMemory(140, 1);
     ASSERT_EQ(bytes.size(), 1u);
     EXPECT_EQ(bytes[0], 0x41u);
+}
+
+TEST_F(HVMJITLoaderTest, EscapeAllocaPromotionOptInDoesNotBreakExecution) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 100}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}), // alloc
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 0}),    // kill allocated value (non-escaping)
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 7}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["esc_alloca_optin.ho"] = buildModuleBytes("esc_alloca_optin", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("esc_alloca_optin.ho")) << jit.getLastError();
+
+    setenv("HOOC_ENABLE_ESCAPE_ALLOCA", "1", 1);
+    const auto rv = jit.run("_F_main_v");
+    unsetenv("HOOC_ENABLE_ESCAPE_ALLOCA");
+
+    EXPECT_EQ(rv, 7) << jit.getLastError();
+}
+
+TEST_F(HVMJITLoaderTest, EscapeAllocaPromotionDoesNotPromoteEscapingValue) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 100}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}), // alloc
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),  // pass pointer in r2
+        makeI(Opcode::SYSCALL, OperandsI{5, 0, 4}), // refcount(r2) => must be 1 for managed heap obj
+        makeR(Opcode::MOV, OperandsR{1, 5, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 3}), // release
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["esc_alloca_escape_guard.ho"] = buildModuleBytes("esc_alloca_escape_guard", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("esc_alloca_escape_guard.ho")) << jit.getLastError();
+
+    setenv("HOOC_ENABLE_ESCAPE_ALLOCA", "1", 1);
+    const auto rv = jit.run("_F_main_v");
+    unsetenv("HOOC_ENABLE_ESCAPE_ALLOCA");
+
+    EXPECT_EQ(rv, 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITLoaderTest, DwarfDebugInfoOptInDoesNotBreakExecution) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 77}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["dwarf_optin.ho"] = buildModuleBytes("dwarf_optin", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("dwarf_optin.ho")) << jit.getLastError();
+
+    setenv("HOOC_ENABLE_DWARF", "1", 1);
+    const auto rv = jit.run("_F_main_v");
+    unsetenv("HOOC_ENABLE_DWARF");
+
+    EXPECT_EQ(rv, 77) << jit.getLastError();
+}
+
+TEST_F(HVMJITLoaderTest, DwarfDebugInfoOptInWorksWithInspectorTrace) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 5}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 2}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["dwarf_inspector.ho"] = buildModuleBytes("dwarf_inspector", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("dwarf_inspector.ho")) << jit.getLastError();
+
+    setenv("HOOC_ENABLE_DWARF", "1", 1);
+    ASSERT_TRUE(jit.buildInspectorTrace("_F_main_v")) << jit.getLastError();
+    while (jit.inspectorStep()) {
+    }
+    unsetenv("HOOC_ENABLE_DWARF");
+
+    auto snap = jit.getInspectorSnapshot();
+    ASSERT_TRUE(snap.has_value());
+    EXPECT_EQ(snap->opcode, "ret");
+    EXPECT_EQ(snap->regs[1], 7);
+}
+
+TEST_F(HVMJITLoaderTest, JitDebugListenerLifecycleSurvivesRepeatedInstances) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 11}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["jit_listener_lifecycle.ho"] = buildModuleBytes("jit_listener_lifecycle", ins, syms);
+
+    for (int i = 0; i < 8; ++i) {
+        HVMJIT jit(io);
+        ASSERT_TRUE(jit.loadInput("jit_listener_lifecycle.ho")) << jit.getLastError();
+        const auto rv = jit.run("_F_main_v");
+        EXPECT_EQ(rv, 11) << "iteration=" << i << " err=" << jit.getLastError();
+    }
+}
+
+TEST_F(HVMJITLoaderTest, StopExecutionConcurrentCallIsSafeDuringCompiledRun) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32767}), // outer count
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 32767}), // inner init template
+        makeR(Opcode::MOV, OperandsR{3, 4, 0, 0}),   // inner = template
+        makeI(Opcode::ADDI, OperandsI{1, 1, 1}),     // work
+        makeI(Opcode::ADDI, OperandsI{3, 3, -1}),
+        makeB(Opcode::BNE, OperandsB{3, 0, -2}),     // back to work
+        makeI(Opcode::ADDI, OperandsI{2, 2, -1}),
+        makeB(Opcode::BNE, OperandsB{2, 0, -5}),     // back to inner reset
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["stop_compiled_loop.ho"] = buildModuleBytes("stop_compiled_loop", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("stop_compiled_loop.ho")) << jit.getLastError();
+
+    int64_t rv = 0;
+    std::thread worker([&]() { rv = jit.run("_F_main_v"); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    jit.stopExecution();
+    worker.join();
+
+    EXPECT_TRUE(rv == 1 || rv == -1);
+}
+
+TEST_F(HVMJITLoaderTest, StopExecutionInterruptsCompiledInfiniteLoop) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ADDI, OperandsI{1, 1, 1}),
+        makeB(Opcode::BNE, OperandsB{1, 0, -1}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+    };
+    io.binaryFiles["stop_infinite_loop.ho"] = buildModuleBytes("stop_infinite_loop", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("stop_infinite_loop.ho")) << jit.getLastError();
+
+    int64_t rv = 0;
+    std::thread worker([&]() { rv = jit.run("_F_main_v"); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    jit.stopExecution();
+    worker.join();
+
+    EXPECT_EQ(rv, -1);
 }
 
 TEST_F(HVMJITLoaderTest, ModuleInitIsInvokedBeforeMain) {

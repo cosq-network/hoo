@@ -5,18 +5,20 @@
 #include "HoocLexer.h"
 #include "HoocParser.h"
 
-#include "src/parsing/ProcessIsolatedParser.h"
-
 using namespace hooc;
 using namespace hooc::ast;
 
 namespace {
 
 bool compilationUnitAccepted(const std::string& code) {
-    static ProcessIsolatedParser parser;
     try {
-        return parser.parseForAST(code) != nullptr;
-    } catch (const std::exception&) {
+        antlr4::ANTLRInputStream input(code);
+        HoocLexer lexer(&input);
+        antlr4::CommonTokenStream tokens(&lexer);
+        HoocParser parser(&tokens);
+        parser.compilationUnit();
+        return parser.getNumberOfSyntaxErrors() == 0;
+    } catch (...) {
         return false;
     }
 }
@@ -107,4 +109,18 @@ TEST(FfiAndGrammarAstTest, ParsesVersionRangeTextMalformedReturnsEmpty) {
 
 TEST(FfiAndGrammarAstTest, RejectsDoubleSemicolonAfterFfiDeclaration) {
     EXPECT_FALSE(compilationUnitAccepted("library \"x\";;"));
+}
+
+TEST(FfiAndGrammarAstTest, LexerEmitsTwoSemicolonsForDoubleSemicolonInput) {
+    antlr4::ANTLRInputStream input("library \"x\";;");
+    HoocLexer lexer(&input);
+    antlr4::CommonTokenStream tokens(&lexer);
+    tokens.fill();
+    int semicolonCount = 0;
+    for (auto* t : tokens.getTokens()) {
+        if (t->getText() == ";") {
+            ++semicolonCount;
+        }
+    }
+    EXPECT_EQ(semicolonCount, 2);
 }
