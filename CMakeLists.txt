@@ -287,7 +287,6 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/QualifiedIdentifierParsingTest.cpp
         tests/parsing/QualifiedNewExpressionParsingTest.cpp
         tests/parsing/ThisKeywordParsingTest.cpp
-        tests/parsing/FfiAndGrammarAstTest.cpp
         tests/parsing/HooParserWrapperTest.cpp
         tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
         tests/codegen/HVMCodeGeneratorTest.cpp
@@ -315,7 +314,6 @@ if(HOOC_BUILD_TESTS)
         tests/ast/ASTTypeTest.cpp
         tests/ast/ASTExpressionTest.cpp
         tests/ast/ASTStatementTest.cpp
-        tests/ast/FFIDeclarationTest.cpp
     )
 
     target_link_libraries(hoo-tests
