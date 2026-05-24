@@ -1,6 +1,6 @@
 # Hooc Development Roadmap
 
-Last Updated: 2026-05-22
+Last Updated: 2026-05-24
 
 This roadmap reflects the current HVM **core-minimalest** direction and current grammar surface.
 
@@ -24,6 +24,8 @@ Primary near-term goals:
   - `docs/hvm/instructions.md`
   - `docs/hvm/ho-file-format.md`
 - HVM optional families are now explicitly separated into extension profiles
+- HVMJIT Phase 4 bootstrap/init work is completed and covered by unit tests
+- HVMJIT Phase 5 has started with native linkage and callback-trampoline scaffolding
 
 ## 3. Phase Plan
 
@@ -59,6 +61,12 @@ Exit criteria:
 
 - documented, tested APIs with practical examples
 - stable behavior across supported platforms
+
+Phase C near-term addendum (active):
+- finish Phase 5 FFI/linkage depth in JIT:
+  - ABI-specific trampoline details (SysV/Win64)
+  - richer type marshalling rules
+  - callback safety/guard hardening
 
 ## Phase D: Optional HVM Extension Profiles
 

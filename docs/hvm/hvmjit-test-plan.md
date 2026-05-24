@@ -30,6 +30,8 @@ Covers:
 8. validation gates (pointer-size, section flags, symbol bounds)
 9. runtime bootstrap sanity and runtime symbol availability
 10. runtime bridge extended symbol lookup checks
+11. native import success/failure resolution checks
+12. inbound callback trampoline registration/dispatch checks
 
 ### 2.2 `HVMJITInstructionSemanticsTest`
 
@@ -44,6 +46,7 @@ Covers:
    - alloc / retain / release / refcount / type-id
    - runtime exception object creation
 8. ARC-aware `ST.D` retain/store/release behavior for managed handles
+9. runtime string-data bridge path (`hoo_string_data`) behavior
 
 ---
 
@@ -52,7 +55,7 @@ Covers:
 Latest verified status in workspace:
 1. `HVMJIT*` suites are passing.
 2. Full `hoo-tests` suite is passing.
-3. `ctest --test-dir build` is passing.
+3. `ctest --preset macos-homebrew-ninja` is passing.
 
 ---
 
@@ -103,4 +106,4 @@ Even with current passing suites, these areas are still under-covered for “ful
 3. explicit exception-path and cleanup-path coverage.
 4. stress validation for ARC/runtime boundary correctness.
 
-Current status: strong functional coverage for implemented features, but not yet complete against the full Phase 3 guide matrix.
+Current status: strong functional coverage for implemented features through completed Phase 4 and current Phase 5 slices, but not yet complete against the full Phase 5 guide matrix.

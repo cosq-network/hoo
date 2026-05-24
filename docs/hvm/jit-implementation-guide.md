@@ -1402,28 +1402,28 @@ This roadmap defines a multi-phase technical execution plan to build the HVM JIT
     - [ ] Map Bridge: Link type-specialized native entry points (e.g., `hoo_map_set_string_i8`).
 
 ### **Phase 4: Module Bootstrap & Initialization**
-- [ ] **Module Entry Point Executor**
-    - [ ] Implement `PostLoadInitializer` to automatically invoke `_F_module_init_v`.
-    - [ ] Enforce post-order execution based on the `TopologicalSorter` DAG.
-- [ ] **VTable Construction**
-    - [ ] Implement `VTableManager` to allocate memory for class virtual tables.
-    - [ ] Populate vtable slots with physical host addresses of child implementations.
-    - [ ] Perform recursive parent-vtable merging for `EXTENDS` support.
-- [ ] **Static Memory Setup**
-    - [ ] Allocate and zero-initialize `.data` and `.bss` segments for each module.
-    - [ ] Once-Only Guards: Implement thread-safe `std::call_once` flags for every module.
+- [x] **Module Entry Point Executor**
+    - [x] Implement `PostLoadInitializer` to automatically invoke `_F_module_init_v`.
+    - [x] Enforce post-order execution based on the `TopologicalSorter` DAG.
+- [x] **VTable Construction**
+    - [x] Implement `VTableManager`-equivalent runtime flow to execute class vtable initializers.
+    - [x] Populate vtable slots with physical host addresses of child implementations.
+    - [x] Perform recursive parent-vtable merging for `EXTENDS` support.
+- [x] **Static Memory Setup**
+    - [x] Allocate and zero-initialize `.data` and `.bss` segments for each module.
+    - [x] Once-Only Guards: Implement thread-safe `std::call_once` flags for every module.
 
 ### **Phase 5: FFI & Multi-Binary Linkage**
-- [ ] **Dynamic Library Integration**
-    - [ ] Implement `LibraryManager` to handle `LIBRARY` and `LINK DYNAMIC` nodes.
-    - [ ] Configure `DynamicLibrarySearchGenerator` for host `.so`/`.dylib` files.
+- [x] **Dynamic Library Integration** (partial)
+    - [x] Implement loader-side native library preload and native import symbol resolution.
+    - [x] Configure `DynamicLibrarySearchGenerator` for host process symbol search in per-module ORC dylibs.
 - [ ] **ABI Trampoline Generation**
     - [ ] Implement `TrampolineGenerator` to map HVM registers to `System V` and `Win64` ABIs.
     - [ ] Handle `XMM/D` register mapping for floating-point parameter passing.
     - [ ] Implement `WindowsShadowSpace` reservation on the host stack.
-- [ ] **Callback & Type Marshalling**
-    - [ ] Implement `InboundTrampoline` to wrap JIT functions for native library callbacks.
-    - [ ] Inject `hoo_string_data` IR to unwrap `HooString` handles to `char*`.
+- [x] **Callback & Type Marshalling** (partial)
+    - [x] Implement `InboundTrampoline` scaffolding to wrap JIT functions for native library callbacks.
+    - [x] Inject `hoo_string_data` IR/runtime bridge path to unwrap `HooString` handles to `char*`.
 
 ### **Phase 6: Optimization & Hardening**
 - [ ] **Advanced ARC Optimization**

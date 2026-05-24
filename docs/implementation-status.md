@@ -2,7 +2,7 @@
 
 This document tracks implementation status with emphasis on current HVM alignment.
 
-Last Updated: 2026-05-22
+Last Updated: 2026-05-24
 
 ## 1. High-Level Status
 
@@ -15,6 +15,8 @@ Last Updated: 2026-05-22
 | HVM core spec/docs | Active | Hardware-ready profile documented (v1.4) |
 | HVM module format (`.ho`) | Active | `HOModule` and `HO_FILE_FORMAT.md` aligned |
 | HVM optional extensions | Documented | Non-core profiles in `HVM_EXTENSIONS.md` |
+| HVMJIT Phase 4 bootstrap/init | Active | Implemented and unit-tested |
+| HVMJIT Phase 5 FFI/linkage | Active (partial) | Native linkage + callback trampoline scaffolding implemented |
 
 ## 2. HVM Profile Status
 
@@ -102,6 +104,12 @@ String-heavy behavior remains runtime-driven in core, not string-opcode driven.
   ### 6.4 Register Management
   - Implement stack-based register spilling for extremely complex expression trees.
   - Add robust name mangling for cross-module symbol resolution.
+
+### 6.5 HVMJIT Phase Status
+
+- Phase 4: completed in current workspace, including post-load module init ordering, vtable init ordering, static section mapping, and once-only guards.
+- Phase 5 (partial): implemented native/process symbol import resolution, dynamic library preload path, state-ABI runtime bridge dispatch for imported symbols, inbound callback trampoline slot dispatcher, and `hoo_string_data` bridge path.
+- Remaining Phase 5 work: full ABI trampoline specialization (SysV/Win64 register-class mapping incl. floating-point/XMM and Windows shadow space), richer marshalling contracts, and hardened FFI safety guards.
 
 ## 7. Source-of-Truth Index
 

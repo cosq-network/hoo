@@ -1,6 +1,6 @@
 # Hooc
 
-Last Updated: 2026-05-23
+Last Updated: 2026-05-24
 
 Hooc is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -18,7 +18,9 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Aggressive Backend**: Functionally complete HVM code generator with manual object/array lowering.
 - [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation and 16-byte headers.
 - [x] **JIT Translator (`HVMJIT`)**: High-performance LLVM ORC v2 dynamic binary translator with per-module `JITDylib` isolation.
-- [x] **Verification**: 1,258/1,258 tests passing across all suites.
+- [x] **Phase 4 (Bootstrap/Init)**: module post-load initialization, dependency-order init, vtable init ordering, and once-only guards implemented and covered by tests.
+- [x] **Phase 5 (In Progress)**: native import/dynamic linkage path, process-symbol resolution, inbound callback trampoline scaffolding, and `hoo_string_data` bridge path implemented.
+- [x] **Verification**: full preset test run passing (`ctest --preset macos-homebrew-ninja`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 

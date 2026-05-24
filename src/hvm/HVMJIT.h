@@ -8,6 +8,7 @@
 #include <vector>
 #include <cstdint>
 #include <optional>
+#include <mutex>
 
 #include "core/IOProvider.h"
 #include "core/HooCompiler.h"
@@ -80,6 +81,8 @@ public:
     void* getSymbolAddress(const std::string& mangledName);
     bool hasModuleJITDylib(const std::string& moduleName) const;
     std::vector<std::string> getModuleLogicalSearchOrder(const std::string& moduleName) const;
+    void* createInboundTrampoline(const std::string& moduleName, const std::string& functionName);
+    int64_t invokeInboundCallback(size_t slot, uint64_t arg0);
     bool lastRunUsedJIT() const { return lastRunUsedJIT_; }
 
     const std::string& getLastError() const { return lastError_; }
@@ -122,6 +125,10 @@ private:
     void buildLogicalSearchOrder();
     bool hasExportedOrDefinedSymbol(const std::string& moduleName, const std::string& symbolName) const;
     bool configureJITDylibs();
+    bool preloadNativeLibrariesFromImports();
+    bool resolveNativeImportSymbol(const hvm::ImportEntry& imp, const std::string& importerModuleName,
+                                   uint64_t* outAddr = nullptr);
+    bool isNativeImport(const hvm::ImportEntry& imp) const;
     bool registerRuntimeSymbolsInJITDylib();
     bool runRuntimeSelfTest();
     bool materializeModulesToJIT();
@@ -134,6 +141,12 @@ private:
     const hvm::Symbol* findFunctionSymbol(const hvm::HOModule& module, const std::string& functionName) const;
     bool loadU64(uint64_t addr, uint64_t& out) const;
     bool storeU64(uint64_t addr, uint64_t value);
+    bool invokeStateAbiSymbol(const std::string& symbolName, HVMState& state, uint64_t& outValue);
+    bool runModuleInitializer(const std::shared_ptr<hvm::HOModule>& module);
+    bool runModuleVTableInitializers(const std::shared_ptr<hvm::HOModule>& module);
+    std::shared_ptr<std::once_flag> getOrCreateModuleInitOnceFlag(const std::string& moduleName);
+    std::shared_ptr<std::once_flag> getOrCreateModuleVTableOnceFlag(const std::string& moduleName);
+    bool runPostLoadInitializers();
 
     struct ModuleMemoryLayout {
         uint64_t textBase = 0;
@@ -164,6 +177,7 @@ private:
     std::unordered_map<std::string, std::vector<std::string>> moduleDependencies_;
     std::unordered_map<std::string, std::vector<std::string>> moduleSearchOrder_;
     std::unordered_map<std::string, llvm::orc::JITDylib*> moduleDylibs_;
+    std::unordered_set<std::string> loadedNativeLibraries_;
     std::unordered_map<std::string, std::unordered_map<uint64_t, std::string>> functionNameByOffset_;
     bool modulesMaterialized_ = false;
     std::unordered_map<std::string, ModuleMemoryLayout> moduleLayouts_;
@@ -175,6 +189,14 @@ private:
     bool modulesInitialized_ = false;
     std::optional<ErrorInfo> lastErrorInfo_;
     bool lastRunUsedJIT_ = false;
+    std::mutex moduleInitOnceMu_;
+    std::unordered_map<std::string, std::shared_ptr<std::once_flag>> moduleInitOnceFlags_;
+    std::mutex moduleVTableOnceMu_;
+    std::unordered_map<std::string, std::shared_ptr<std::once_flag>> moduleVTableOnceFlags_;
+    std::unordered_set<std::string> initializedVTableClasses_;
+    std::mutex inboundTrampolineMu_;
+    std::unordered_map<size_t, std::pair<std::string, std::string>> inboundTrampolineTargets_;
+    std::unordered_map<std::string, size_t> inboundTrampolineIndexByTarget_;
 };
 
 } // namespace hooc

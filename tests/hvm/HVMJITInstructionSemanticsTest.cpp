@@ -82,7 +82,9 @@ HVMInstruction makeJ(Opcode op, OperandsJ ops) {
 std::vector<uint8_t> buildModuleBytes(
     const std::string& moduleName,
     const std::vector<HVMInstruction>& instructions,
-    const std::vector<Symbol>& symbols) {
+    const std::vector<Symbol>& symbols,
+    const std::vector<Section>& extraSections = {},
+    const std::vector<ImportEntry>& imports = {}) {
     auto module = HOModule::create(moduleName);
     module->setName(moduleName);
 
@@ -95,8 +97,14 @@ std::vector<uint8_t> buildModuleBytes(
     text.alignment = 16;
     module->addSection(std::move(text));
 
+    for (const auto& sec : extraSections) {
+        module->addSection(sec);
+    }
     for (const auto& s : symbols) {
         module->addSymbol(s);
+    }
+    for (const auto& i : imports) {
+        module->addImport(i);
     }
 
     std::vector<uint8_t> bytes;
@@ -115,6 +123,24 @@ Symbol funcSym(const std::string& name, uint64_t offset) {
     s.section_index = 0;
     s.symbol_index = 0;
     return s;
+}
+
+Symbol importFuncSym(const std::string& name, uint64_t pseudoTarget) {
+    Symbol s = funcSym(name, pseudoTarget);
+    s.type = Symbol::STT_NOTYPE;
+    s.section_index = -1;
+    return s;
+}
+
+ImportEntry importFrom(const std::string& symbol, const std::string& library) {
+    ImportEntry i{};
+    i.name = symbol;
+    i.library = library;
+    i.import_type = ImportEntry::IT_RUNTIME;
+    i.version = 1;
+    i.flags = 0;
+    i.resolved_address = 0;
+    return i;
 }
 
 } // namespace
@@ -255,6 +281,40 @@ TEST_F(HVMJITInstructionSemanticsTest, ByteHalfWordWordLoadStoreSemantics) {
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("ldst_widths.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 13816) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, RuntimeStringDataBridgeReturnsCharPointerBytes) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::LDA, OperandsI{1, 0, 0}),               // rodata "hello\0"
+        makeJ(Opcode::CALL, OperandsJ{29, 9}),                // import _F_hoo_String_from_cstr_p_p at pseudo-PC 40
+        makeR(Opcode::MOV, OperandsR{2, 1, 0, 0}),            // r2 = HooString
+        makeI(Opcode::SYSCALL, OperandsI{3, 0, 11}),          // r3 = hoo_string_data(r2)
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 0}),
+        makeR(Opcode::CMP, OperandsR{5, 3, 4, 1}),            // pointer != 0
+        makeR(Opcode::MOV, OperandsR{1, 5, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    Section rodata;
+    rodata.name = ".rodata";
+    rodata.type = SectionType::SHT_RODATA;
+    rodata.flags = SectionFlags::ALLOC;
+    rodata.data = {'h', 'e', 'l', 'l', 'o', '\0'};
+    rodata.virtual_size = rodata.data.size();
+    rodata.alignment = 1;
+
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        importFuncSym("_F_hoo_String_from_cstr_p_p", 40),
+    };
+    std::vector<ImportEntry> imports{
+        importFrom("_F_hoo_String_from_cstr_p_p", "hoo"),
+    };
+    io.binaryFiles["string_data_bridge.ho"] = buildModuleBytes(
+        "string_data_bridge", ins, syms, {rodata}, imports);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("string_data_bridge.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, TailCallTransfersControlToCallee) {
@@ -401,6 +461,55 @@ TEST_F(HVMJITInstructionSemanticsTest, SyscallCreatesRuntimeExceptionObject) {
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("sys_exc.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 2) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallThrowTransfersControlToRegisteredHandlerAndRestoresFrame) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{30, 0, 111}),            // fp sentinel
+        makeI(Opcode::MOVZ, OperandsI{31, 0, 222}),            // sp sentinel
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 52}),              // handler pc (byte offset)
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 7}),            // push handler
+        makeI(Opcode::MOVZ, OperandsI{30, 0, 1}),              // clobber fp
+        makeI(Opcode::MOVZ, OperandsI{31, 0, 2}),              // clobber sp
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 6}),            // runtime exception
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),             // arg: exc
+        makeI(Opcode::SYSCALL, OperandsI{5, 0, 9}),            // throw -> jump to handler
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),              // skipped
+        makeI(Opcode::MOVZ, OperandsI{7, 0, 111}),             // handler start
+        makeR(Opcode::CMP, OperandsR{8, 30, 7, 0}),            // fp restored?
+        makeI(Opcode::MOVZ, OperandsI{9, 0, 222}),
+        makeR(Opcode::CMP, OperandsR{10, 31, 9, 0}),           // sp restored?
+        makeR(Opcode::CMP, OperandsR{11, 1, 0, 1}),            // exception in r1?
+        makeR(Opcode::ARITH, OperandsR{1, 8, 10, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 1, 11, 0}),          // 3 if all true
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_throw_handler.ho"] = buildModuleBytes("sys_throw_handler", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_throw_handler.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallThrowWithoutHandlerFailsAsUnhandled) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 7}),            // push
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 8}),            // pop
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 6}),            // runtime exception
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{5, 0, 9}),            // throw, unhandled
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_throw_unhandled.ho"] = buildModuleBytes("sys_throw_unhandled", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_throw_unhandled.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Unhandled exception trap"), std::string::npos);
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, DivisionByZeroReportsError) {
