@@ -23,7 +23,7 @@ The AST is not just a structural mirror of the code; it is an enriched semantic 
 ## 3. Architecture & Ownership
 
 - **Ownership**: The tree is constructed using `std::unique_ptr` and `std::vector<std::unique_ptr<T>>`, ensuring clear ownership hierarchies and automatic memory management.
-- **Visitors**: The backends utilize the **Visitor Pattern** (implemented in `HVMCodeGenerator` and `LLVMCodeGenerator`) to perform recursive translation and lowering.
+- **Visitors**: The backends utilize the **Visitor Pattern** (implemented in `HVMCodeGenerator`) to perform recursive translation and lowering.
 
 ## 4. Main Files
 
@@ -52,3 +52,4 @@ When extending the Hooc language:
 3. Update `SimpleASTBuilder` to populate the new node.
 4. Update `src/codegen/HVMCodeGenerator.cpp` to implement the lowering rule for the new node.
 5. Add comprehensive unit tests in `tests/ast/` and `tests/codegen/`.
+ `tests/codegen/`.

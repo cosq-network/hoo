@@ -19,7 +19,8 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation and 16-byte headers.
 - [x] **JIT Translator (`HVMJIT`)**: High-performance LLVM ORC v2 dynamic binary translator with per-module `JITDylib` isolation.
 - [x] **Phase 4 (Bootstrap/Init)**: module post-load initialization, dependency-order init, vtable init ordering, and once-only guards implemented and covered by tests.
-- [x] **Phase 5 (In Progress)**: native import/dynamic linkage path, process-symbol resolution, inbound callback trampoline scaffolding, and `hoo_string_data` bridge path implemented.
+- [x] **Phase 5 (FFI/Linkage)**: native import/dynamic linkage path, process-symbol resolution, inbound callback trampoline scaffolding, and `hoo_string_data` bridge path implemented.
+- [x] **Phase 6 (Hardening)**: stabilized full test suite, improved symbol resolution validation, and established inspector/TLAB scaffolding.
 - [x] **Verification**: full preset test run passing (`ctest --preset macos-homebrew-ninja`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
