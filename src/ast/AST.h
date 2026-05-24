@@ -7,7 +7,6 @@
 #include "Declaration.h"
 #include "ClassDeclaration.h"
 #include "Type.h"
-#include "FFIDeclaration.h"
 #include "Statement.h"
 #include "Expression.h"
 #include "Primary.h"

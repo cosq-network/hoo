@@ -182,18 +182,6 @@ private:
      */
     std::unique_ptr<ast::ClassDeclaration> buildClassDeclaration(HoocParser::ClassDeclarationContext* ctx);
 
-    // ===== FFI Declaration Building =====
-    std::unique_ptr<ast::Declaration> buildFfiDeclaration(HoocParser::FfiDeclarationContext* ctx);
-    std::unique_ptr<ast::FFILibraryImportDeclaration> buildFfiImportDeclaration(HoocParser::FfiImportDeclarationContext* ctx);
-    std::unique_ptr<ast::FFILinkDeclaration> buildFfiLinkDeclaration(HoocParser::FfiLinkDeclarationContext* ctx);
-    std::unique_ptr<ast::FFINativeFunctionDeclaration> buildFfiNativeFunction(HoocParser::FfiNativeFunctionContext* ctx);
-    std::unique_ptr<ast::FFINativeVariableDeclaration> buildFfiNativeDeclaration(HoocParser::FfiNativeDeclarationContext* ctx);
-    std::vector<std::unique_ptr<ast::FFIParameter>> buildFfiParameterList(HoocParser::FfiParameterListContext* ctx);
-    std::unique_ptr<ast::FFIType> buildFfiType(HoocParser::FfiTypeContext* ctx);
-    static std::pair<std::optional<int64_t>, std::optional<int64_t>> parseVersionRangeText(const std::string& rangeText);
-    static std::unique_ptr<ast::FFINativeVariableDeclaration> makeFfiNativeVariableDeclaration(
-        bool isExtern, std::unique_ptr<ast::VariableDeclaration> var);
-
     // ===== Type Building =====
 
     /**

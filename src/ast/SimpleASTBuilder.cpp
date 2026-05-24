@@ -6,34 +6,6 @@
 using namespace hooc;
 using namespace hooc::ast;
 
-std::pair<std::optional<int64_t>, std::optional<int64_t>> SimpleASTBuilder::parseVersionRangeText(const std::string& rawText) {
-    std::optional<int64_t> versionMin;
-    std::optional<int64_t> versionMax;
-
-    std::string rangeText = rawText;
-    if (rangeText.size() >= 4 && rangeText.front() == '[' && rangeText.back() == ']') {
-        rangeText = rangeText.substr(1, rangeText.size() - 2); // strip brackets
-    }
-
-    size_t dotsPos = rangeText.find("..");
-    if (dotsPos != std::string::npos) {
-        std::string left = rangeText.substr(0, dotsPos);
-        std::string right = rangeText.substr(dotsPos + 2);
-        try {
-            if (!left.empty()) {
-                versionMin = std::stoll(left);
-            }
-            if (!right.empty()) {
-                versionMax = std::stoll(right);
-            }
-        } catch (const std::exception&) {
-            return {std::nullopt, std::nullopt};
-        }
-    }
-
-    return {versionMin, versionMax};
-}
-
 std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::CompilationUnitContext* ctx) {
     if (!ctx) {
         throw std::runtime_error("CompilationUnitContext is null");
@@ -55,23 +27,12 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
             if (decl) {
                 declarations.push_back(std::move(decl));
             }
-        } else if (auto* ffiDeclCtx = dynamic_cast<HoocParser::FfiDeclarationContext*>(child)) {
-            auto decl = buildFfiDeclaration(ffiDeclCtx);
-            if (decl) {
-                declarations.push_back(std::move(decl));
-            }
         }
     }
     return std::make_unique<CompilationUnit>(std::move(imports), std::move(declarations));
 }
 
-std::unique_ptr<FFINativeVariableDeclaration> SimpleASTBuilder::makeFfiNativeVariableDeclaration(
-    bool isExtern, std::unique_ptr<VariableDeclaration> var) {
-    if (var) {
-        var->setGlobal(true);
-    }
-    return std::make_unique<FFINativeVariableDeclaration>(isExtern, std::move(var));
-}
+
 
 std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::DeclarationContext* ctx) {
     if (ctx->functionDeclaration()) {
@@ -93,133 +54,6 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
         return buildClassDeclaration(ctx->classDeclaration());
     }
     throw std::runtime_error("Unknown declaration type encountered");
-}
-
-std::unique_ptr<Declaration> SimpleASTBuilder::buildFfiDeclaration(HoocParser::FfiDeclarationContext* ctx) {
-    if (!ctx) {
-        throw std::runtime_error("FfiDeclarationContext is null");
-    }
-    if (ctx->ffiImportDeclaration()) {
-        return buildFfiImportDeclaration(ctx->ffiImportDeclaration());
-    }
-    if (ctx->ffiLinkDeclaration()) {
-        return buildFfiLinkDeclaration(ctx->ffiLinkDeclaration());
-    }
-    if (ctx->ffiNativeFunction()) {
-        return buildFfiNativeFunction(ctx->ffiNativeFunction());
-    }
-    if (ctx->ffiNativeDeclaration()) {
-        return buildFfiNativeDeclaration(ctx->ffiNativeDeclaration());
-    }
-    throw std::runtime_error("Unknown FFI declaration type encountered");
-}
-
-std::unique_ptr<FFILibraryImportDeclaration> SimpleASTBuilder::buildFfiImportDeclaration(HoocParser::FfiImportDeclarationContext* ctx) {
-    std::string path = getStringValue(ctx->STRING_LITERAL());
-    std::string alias;
-    if (ctx->IDENTIFIER()) {
-        alias = ctx->IDENTIFIER()->getText();
-    }
-    return std::make_unique<FFILibraryImportDeclaration>(path, alias);
-}
-
-std::unique_ptr<FFILinkDeclaration> SimpleASTBuilder::buildFfiLinkDeclaration(HoocParser::FfiLinkDeclarationContext* ctx) {
-    auto modulePath = buildModulePath(ctx->modulePath());
-    std::optional<int64_t> versionMin;
-    std::optional<int64_t> versionMax;
-    std::vector<std::string> searchPaths;
-
-    if (ctx->versionRange()) {
-        auto parsed = parseVersionRangeText(ctx->versionRange()->getText());
-        versionMin = parsed.first;
-        versionMax = parsed.second;
-    }
-
-    if (ctx->librarySearchPaths()) {
-        for (auto s : ctx->librarySearchPaths()->STRING_LITERAL()) {
-            searchPaths.push_back(getStringValue(s));
-        }
-    }
-
-    return std::make_unique<FFILinkDeclaration>(
-        std::move(modulePath), versionMin, versionMax, std::move(searchPaths));
-}
-
-std::vector<std::unique_ptr<FFIParameter>> SimpleASTBuilder::buildFfiParameterList(HoocParser::FfiParameterListContext* ctx) {
-    std::vector<std::unique_ptr<FFIParameter>> params;
-    if (!ctx) {
-        return params;
-    }
-    for (auto paramCtx : ctx->ffiParameter()) {
-        auto paramType = buildFfiType(paramCtx->ffiType());
-        params.push_back(std::make_unique<FFIParameter>(paramCtx->IDENTIFIER()->getText(), std::move(paramType)));
-    }
-    return params;
-}
-
-std::unique_ptr<FFIType> SimpleASTBuilder::buildFfiType(HoocParser::FfiTypeContext* ctx) {
-    if (ctx->primitiveType()) {
-        auto k = getPrimitiveTypeKind(ctx->primitiveType()->getText());
-        return std::make_unique<FFIPrimitiveType>(k);
-    }
-    if (ctx->qualifiedIdentifier()) {
-        return std::make_unique<FFIQualifiedType>(buildQualifiedIdentifier(ctx->qualifiedIdentifier()));
-    }
-    if (ctx->POINTER()) {
-        return std::make_unique<FFIPointerType>(buildFfiType(ctx->ffiType(0)));
-    }
-    if (ctx->ARRAY()) {
-        int64_t size = 0;
-        if (ctx->INTEGER_LITERAL()) {
-            try {
-                size = std::stoll(ctx->INTEGER_LITERAL()->getText());
-            } catch (const std::exception& e) {
-                throw std::runtime_error("Failed to parse FFI array size: " + ctx->INTEGER_LITERAL()->getText());
-            }
-        }
-        return std::make_unique<FFIArrayType>(size, buildFfiType(ctx->ffiType(0)));
-    }
-    if (ctx->FUNCTION()) {
-        std::vector<std::unique_ptr<FFIType>> params;
-        for (auto paramTypeCtx : ctx->ffiType()) {
-            params.push_back(buildFfiType(paramTypeCtx));
-        }
-        return std::make_unique<FFIFunctionType>(std::move(params), nullptr);
-    }
-    return std::make_unique<FFIQualifiedType>(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{"unknown"}));
-}
-
-std::unique_ptr<FFINativeFunctionDeclaration> SimpleASTBuilder::buildFfiNativeFunction(HoocParser::FfiNativeFunctionContext* ctx) {
-    if (!ctx) {
-        throw std::runtime_error("FfiNativeFunctionContext is null");
-    }
-
-    if (ctx->functionDeclaration()) {
-        auto fn = buildFunctionDeclaration(ctx->functionDeclaration());
-        return std::make_unique<FFINativeFunctionDeclaration>(
-            false, std::move(fn), nullptr, "", std::vector<std::unique_ptr<FFIParameter>>{}, nullptr, std::vector<FunctionModifier>{});
-    }
-
-    std::vector<FunctionModifier> modifiers;
-    for (auto modCtx : ctx->functionModifier()) {
-        modifiers.push_back(getFunctionModifier(modCtx));
-    }
-
-    auto symbolType = buildType(ctx->type());
-    std::string symbolName = ctx->IDENTIFIER()->getText();
-    auto params = buildFfiParameterList(ctx->ffiParameterList());
-
-    return std::make_unique<FFINativeFunctionDeclaration>(
-        true, nullptr, std::move(symbolType), symbolName, std::move(params), nullptr, std::move(modifiers));
-}
-
-std::unique_ptr<FFINativeVariableDeclaration> SimpleASTBuilder::buildFfiNativeDeclaration(HoocParser::FfiNativeDeclarationContext* ctx) {
-    if (!ctx || !ctx->variableDeclaration()) {
-        throw std::runtime_error("FfiNativeDeclarationContext or variableDeclaration is null");
-    }
-    bool isExtern = ctx->EXTERN() != nullptr;
-    auto var = buildVariableDeclaration(ctx->variableDeclaration());
-    return makeFfiNativeVariableDeclaration(isExtern, std::move(var));
 }
 
 std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx) {

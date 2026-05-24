@@ -47,15 +47,6 @@ RETHROW: 'rethrow';
 MAP: 'map';
 FUNCTION: 'function';
 
-// FFI Keywords
-NATIVE: 'native';
-EXTERN: 'extern';
-POINTER: 'pointer';
-ARRAY: 'array';
-AT: 'at';
-LIBRARY: 'library';
-LINK: 'link';
-DYNAMIC: 'dynamic';
 
 // Primitive Types
 INT8: 'int8';
@@ -133,7 +124,7 @@ MULTI_LINE_COMMENT: '/*' .*? '*/' -> skip;
 // ===== PARSER RULES =====
 
 // Compilation Unit
-compilationUnit: importStatement* ((declaration SEMICOLON?) | ffiDeclaration)* EOF;
+compilationUnit: importStatement* ((declaration SEMICOLON?))* EOF;
 
 // Import Statements (Python-style)
 importStatement
@@ -212,47 +203,6 @@ mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 
 primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
 
-// FFI Declarations
-ffiDeclaration
-    : ffiImportDeclaration
-    | ffiLinkDeclaration
-    | ffiNativeFunction
-    | ffiNativeDeclaration
-    ;
-
-ffiImportDeclaration
-    : LIBRARY STRING_LITERAL (AS IDENTIFIER)? SEMICOLON
-    ;
-
-ffiLinkDeclaration
-    : LINK DYNAMIC modulePath (AT versionRange)? (librarySearchPaths)? SEMICOLON
-    ;
-
-ffiNativeFunction
-    : NATIVE functionDeclaration
-    | EXTERN functionModifier* NATIVE type IDENTIFIER LPAREN ffiParameterList? RPAREN SEMICOLON
-    ;
-
-ffiNativeDeclaration
-    : NATIVE variableDeclaration SEMICOLON
-    | EXTERN NATIVE variableDeclaration SEMICOLON
-    ;
-
-ffiParameterList: ffiParameter (COMMA ffiParameter)*;
-
-ffiParameter: IDENTIFIER COLON ffiType;
-
-ffiType
-    : primitiveType
-    | qualifiedIdentifier
-    | POINTER LBRACKET ffiType RBRACKET
-    | ARRAY LBRACKET INTEGER_LITERAL RBRACKET ffiType
-    | FUNCTION LPAREN ffiType (COMMA ffiType)* RPAREN
-    ;
-
-librarySearchPaths: LBRACKET STRING_LITERAL (COMMA STRING_LITERAL)* RBRACKET;
-
-versionRange: LBRACKET (INTEGER_LITERAL)? DOT DOT (INTEGER_LITERAL)? RBRACKET;
 
 // Statements
 statement
