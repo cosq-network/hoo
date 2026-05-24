@@ -23,6 +23,8 @@ This directory contains the normative documentation for the Hooc language gramma
 
 ## Technical Foundation
 
-The Hooc compiler uses **ANTLR4** for parsing. The grammar is designed to support an aggressive lowering pipeline that translates these high-level constructs into a pure 64-bit RISC ISA for physical hardware compatibility.
+The Hooc compiler uses **ANTLR4** for parsing. The grammar is designed to support an aggressive lowering pipeline that translates these high-level constructs into a pure 64-bit RISC ISA (`.ho` bytecode) for physical hardware compatibility. 
+
+When executed, the `HVMJIT` dynamically translates this bytecode into host-native LLVM IR via LLVM ORC v2, providing zero-abstraction execution while bridging high-level operations via the `SYSCALL` interface.
 
 For details on how the HVM dynamic translator and host environment execute these constructs, see the **[Hooc Runtime Library Reference](../runtime/README.md)**.

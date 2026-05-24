@@ -7,7 +7,7 @@ The JIT lowers the `SYSCALL` instruction (`0xC0`) directly into highly optimized
 
 | Syscall ID | Target Implementation | Register Usage | Description |
 | :--- | :--- | :--- | :--- |
-| `1` | `hooc_hvm_sys_alloc` | `rd = alloc(r2, r3)` | Heap allocation with ARC tracking. |
+| `1` | `hooc_hvm_sys_alloc` | `rd = alloc(r2, r3)` | Heap allocation. `r2` = size, `r3` = type_id. |
 | `2` | `hooc_hvm_sys_retain` | `rd = retain(r2)` | Atomically increments refcount. |
 | `3` | `hooc_hvm_sys_release` | `rd = release(r2)` | Atomically decrements refcount. |
 | `4` | `hooc_hvm_sys_refcount` | `rd = refcount(r2)`| Returns current refcount. |
