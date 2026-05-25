@@ -3,7 +3,14 @@
   "version-string": "0.1.0",
   "dependencies": [
     "gtest",
-    "antlr4-cpp-runtime"
+    "antlr4",
+    {
+      "name": "llvm",
+      "default-features": false,
+      "features": [
+        "target-x86"
+      ]
+    }
   ],
-  "builtin-baseline": "ae7999818817743d56782df82b3a985e8d91c784"
+  "builtin-baseline": "aa40adda5352e87655b8583cfb2451d5e9e276fd"
 }

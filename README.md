@@ -30,18 +30,31 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 For detailed instructions on dependencies, platform-specific guides, and troubleshooting, see the [Building Guide](docs/BUILDING.md) and the [Developing and Debugging Guide](docs/debugging-hoo.md).
 
 ### Prerequisites
-- CMake >= 3.16
+- CMake >= 3.20 for presets (`3.16+` only for manual configuration)
 - C++17 compliant toolchain (Clang 15+ recommended)
 - LLVM 15+ development headers
 - ANTLR4 runtime
 
 ### Standard Workflow
 ```bash
-mkdir -p build && cd build
-cmake ..
-cmake --build . -j$(nproc)
-./hoo-tests --gtest_brief=1
+cmake --preset ninja-relwithdebinfo
+cmake --build --preset ninja-relwithdebinfo
+cmake --build --preset ninja-relwithdebinfo-tests
+ctest --preset ninja-relwithdebinfo
 ```
+
+### Windows Workflow
+
+On Windows, the checked-in Visual Studio 18 preset with repo-local dependencies is:
+
+```powershell
+cmake --preset windows-vs18-local
+cmake --build --preset windows-vs18-local
+cmake --build --preset windows-vs18-local-tests
+ctest --preset windows-vs18-local
+```
+
+This preset expects dependencies in `vcpkg_installed/x64-windows/` and uses the repo-local LLVM CMake package at `vcpkg_installed/x64-windows/share/llvm` when present.
 
 ## 4. Project Layout
 
@@ -53,7 +66,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (1,250+ tests).
+tests/        Exhaustive unit and integration test suites (899+ tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
