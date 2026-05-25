@@ -425,3 +425,44 @@ if(HOOC_BUILD_TESTS)
 else()
     message(STATUS "Unit tests disabled. Configure with -DHOOC_BUILD_TESTS=ON to enable them.")
 endif()
+
+# =============================================================================
+# Packaging (CPack)
+# =============================================================================
+
+if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
+    set(HOOC_VCPKG_BIN_DIR "")
+    if(DEFINED VCPKG_ROOT AND EXISTS "${VCPKG_ROOT}/installed/x64-windows/bin")
+        set(HOOC_VCPKG_BIN_DIR "${VCPKG_ROOT}/installed/x64-windows/bin")
+    elseif(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
+        set(HOOC_VCPKG_BIN_DIR "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        set(HOOC_VCPKG_BIN_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+    endif()
+
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/cmake/install_windows_dlls.cmake.in"
+        "${CMAKE_BINARY_DIR}/cmake/install_windows_dlls.cmake"
+        @ONLY
+    )
+    install(SCRIPT "${CMAKE_BINARY_DIR}/cmake/install_windows_dlls.cmake")
+endif()
+
+set(CPACK_PACKAGE_NAME "Hooc")
+set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_VENDOR "Hooc Project")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hooc Programming Language Compiler")
+
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")
+    find_program(NSIS_EXECUTABLE makensis)
+    if(NSIS_EXECUTABLE)
+        list(APPEND CPACK_GENERATOR "NSIS")
+    endif()
+    set(CPACK_PACKAGE_FILE_NAME "hoo-windows-x64")
+    set(CPACK_NSIS_DISPLAY_NAME "Hooc Compiler")
+    set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+endif()
+
+include(CPack)
