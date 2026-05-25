@@ -1313,6 +1313,19 @@ TEST_F(HVMJITLoaderTest, ValidationRejectsNonWritableDataSection) {
     EXPECT_EQ(info->code, HVMJIT::ErrorCode::InvalidSection);
 }
 
+TEST_F(HVMJITLoaderTest, RunFailsWhenNoModuleLoaded) {
+    HVMJIT jit(io);
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("No module loaded"), std::string::npos);
+}
+
+TEST_F(HVMJITLoaderTest, GetSymbolAddressFailsWhenJitNotReady) {
+    HVMJIT jit(io);
+    EXPECT_EQ(jit.getSymbolAddress("_F_any_v"), nullptr);
+    EXPECT_TRUE(jit.hasError());
+}
+
 TEST_F(HVMJITLoaderTest, ImportSymbolValidationRejectsMissingDependencySymbol) {
     std::vector<HVMInstruction> depIns{
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),

@@ -37,15 +37,25 @@ macOS users should primarily use **Homebrew** for dependency management.
     ```
 
 ### 1.4. Windows (10 / 11)
-1.  **Visual Studio 2022**: Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/).
+1.  **Visual Studio 2022 or 18 (2026)**: Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/).
     *   Select the **"Desktop development with C++"** workload.
     *   Ensure "C++ CMake tools for Windows" is checked.
-2.  **LLVM for Windows**: Download the pre-built binaries from the [LLVM Releases page](https://github.com/llvm/llvm-project/releases).
-3.  **Dependency Manager (vcpkg)**: Recommended for managing libraries like GoogleTest.
+    *   Use the `windows-vs18-local` preset for Visual Studio 18/2026, or `windows-vs-relwithdebinfo` for Visual Studio 2022.
+2.  **LLVM for Windows**: The bundled Visual Studio Clang is only a compiler driver — it does not ship LLVM development headers. Install the full LLVM release:
+    ```powershell
+    winget install LLVM -v 19.1.7
+    ```
+    Or download from the [LLVM Releases page](https://github.com/llvm/llvm-project/releases).
+3.  **Dependency Manager (vcpkg)**: The repository uses manifest mode (`vcpkg.json`). vcpkg is bundled with Visual Studio 18 at `C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg`. Otherwise, install it from [vcpkg.io](https://vcpkg.io):
     ```powershell
     git clone https://github.com/microsoft/vcpkg.git
     .\vcpkg\bootstrap-vcpkg.bat
     ```
+    Install dependencies:
+    ```powershell
+    vcpkg install --triplet x64-windows
+    ```
+    The manifest includes `antlr4`, `gtest`, and `llvm[target-x86]`.
 
 ---
 
