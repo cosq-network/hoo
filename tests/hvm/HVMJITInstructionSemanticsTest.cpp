@@ -11,6 +11,7 @@
 #include "hvm/HVMInstruction.h"
 #include "hvm/HVMJIT.h"
 #include "runtime/lib/hoo_runtime.h"
+#include "runtime/lib/hoo_exception.h"
 
 using namespace hvm;
 using namespace hooc;
@@ -751,4 +752,62 @@ TEST_F(HVMJITInstructionSemanticsTest, InvalidStoreAddressReportsError) {
     const bool invalid = err.find("Invalid ST.D address") != std::string::npos;
     const bool unaligned = err.find("Unaligned ST.D address") != std::string::npos;
     EXPECT_TRUE(invalid || unaligned);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, RunFailsWithNonexistentEntryPoint) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 42}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["missing_entry.ho"] = buildModuleBytes("missing_entry", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("missing_entry.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_nonexistent_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    const auto err = jit.getLastError();
+    EXPECT_NE(err.find("Function symbol not found"), std::string::npos)
+        << "Unexpected error: " << err;
+}
+
+TEST(HooExceptionSetCurrentTest, SetCurrentReleasesPrevious) {
+    HooException exc1 = hoo_exception_create(HOO_EXCEPTION_RUNTIME, "first");
+    HooException exc2 = hoo_exception_create(HOO_EXCEPTION_RUNTIME, "second");
+    ASSERT_NE(exc1, nullptr);
+    ASSERT_NE(exc2, nullptr);
+
+    hoo_exception_set_current(exc1);
+    EXPECT_EQ(hoo_exception_current(), exc1);
+
+    hoo_exception_set_current(exc2);
+    EXPECT_EQ(hoo_exception_current(), exc2);
+
+    hoo_exception_clear();
+    EXPECT_EQ(hoo_exception_current(), nullptr);
+}
+
+TEST(HooExceptionSetCurrentTest, SetCurrentNullClearsWithoutRelease) {
+    HooException exc = hoo_exception_create(HOO_EXCEPTION_RUNTIME, "test");
+    ASSERT_NE(exc, nullptr);
+
+    hoo_exception_set_current(exc);
+    ASSERT_EQ(hoo_exception_current(), exc);
+
+    hoo_exception_set_current(nullptr);
+    EXPECT_EQ(hoo_exception_current(), nullptr);
+}
+
+TEST(HooExceptionSetCurrentTest, SetCurrentSameObjectNoDoubleRelease) {
+    HooException exc = hoo_exception_create(HOO_EXCEPTION_RUNTIME, "same");
+    ASSERT_NE(exc, nullptr);
+
+    hoo_exception_set_current(exc);
+    EXPECT_EQ(hoo_exception_current(), exc);
+
+    hoo_exception_set_current(exc);
+    EXPECT_EQ(hoo_exception_current(), exc);
+
+    hoo_exception_clear();
+    EXPECT_EQ(hoo_exception_current(), nullptr);
 }

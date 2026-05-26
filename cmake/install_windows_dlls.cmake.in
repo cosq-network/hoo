@@ -1,0 +1,66 @@
+if(NOT WIN32)
+    return()
+endif()
+
+set(HOO_EXE "${CMAKE_INSTALL_PREFIX}/bin/hoo.exe")
+if(NOT EXISTS "${HOO_EXE}")
+    message(WARNING "hoo.exe not found at ${HOO_EXE} - skipping DLL collection")
+    return()
+endif()
+
+message(STATUS "Collecting runtime DLL dependencies for hoo.exe")
+
+file(GET_RUNTIME_DEPENDENCIES
+    EXECUTABLES "${HOO_EXE}"
+    RESOLVED_DEPENDENCIES_VAR DEP_DLLS
+    UNRESOLVED_DEPENDENCIES_VAR UNRESOLVED_DLLS
+    DIRECTORIES
+        "${CMAKE_INSTALL_PREFIX}/bin"
+        @HOOC_VCPKG_BIN_DIR@
+)
+
+set(MSVC_REDIST
+    vcruntime140.dll vcruntime140_1.dll vcruntime140_threads.dll
+    msvcp140.dll msvcp140_1.dll msvcp140_2.dll
+    msvcp140_atomic_wait.dll msvcp140_codecvt_ids.dll
+    concrt140.dll
+)
+
+set(ALLOWED
+    "${CMAKE_INSTALL_PREFIX}/bin"
+    "@HOOC_VCPKG_BIN_DIR@"
+)
+
+foreach(DLL IN LISTS DEP_DLLS)
+    get_filename_component(DLL_DIR "${DLL}" DIRECTORY)
+    get_filename_component(DLL_NAME "${DLL}" NAME)
+
+    string(TOLOWER "${DLL_DIR}/" DIR_LOWER)
+    string(TOLOWER "${DLL_NAME}" NAME_LOWER)
+
+    set(KEEP FALSE)
+
+    foreach(ADIR IN LISTS ALLOWED)
+        if(ADIR)
+            string(TOLOWER "${ADIR}/" ADIR_LOWER)
+            string(FIND "${DIR_LOWER}" "${ADIR_LOWER}" POS)
+            if(POS EQUAL 0)
+                set(KEEP TRUE)
+                break()
+            endif()
+        endif()
+    endforeach()
+
+    if(NOT KEEP AND NAME_LOWER IN_LIST MSVC_REDIST)
+        set(KEEP TRUE)
+    endif()
+
+    if(KEEP)
+        message(STATUS "Packaging dependency: ${DLL_NAME}")
+        file(INSTALL
+            DESTINATION "${CMAKE_INSTALL_PREFIX}/bin"
+            TYPE FILE
+            FILES "${DLL}"
+        )
+    endif()
+endforeach()

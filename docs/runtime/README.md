@@ -24,7 +24,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 6. **[I/O & Networking](io-net.md)**
    * Console input/output (`print`, `readline`) and the HTTP/URL client implementation.
 7. **[JIT Integration](jit-integration.md)**
-   * System call mapping (`SYSCALL` 1-11), ARC optimization passes, and host symbol bridging.
+   * System call mapping (`SYSCALL` 1-11) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
 
 ## Integration & C-ABI
 The library exposes its API strictly via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively.

@@ -18,6 +18,23 @@ if(WIN32 AND NOT CMAKE_BUILD_TYPE)
 endif()
 
 if(MSVC)
+    set(CMAKE_MAP_IMPORTED_CONFIG_RELWITHDEBINFO Release)
+    set(CMAKE_MAP_IMPORTED_CONFIG_MINSIZEREL Release)
+endif()
+
+if(WIN32)
+    if(NOT ANTLR4_INCLUDE_DIR AND NOT ANTLR4_ROOT AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/include/antlr4-runtime/antlr4-runtime.h")
+        set(ANTLR4_ROOT "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows" CACHE PATH "ANTLR4 C++ runtime installation prefix" FORCE)
+    endif()
+
+    if(NOT DEFINED LLVM_DIR AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/share/llvm/LLVMConfig.cmake")
+        set(LLVM_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/share/llvm" CACHE PATH "Path to LLVM CMake package directory" FORCE)
+    elseif(NOT DEFINED LLVM_DIR AND EXISTS "C:/Program Files/LLVM/lib/cmake/llvm")
+        set(LLVM_DIR "C:/Program Files/LLVM/lib/cmake/llvm" CACHE PATH "Path to LLVM CMake package directory" FORCE)
+    endif()
+endif()
+
+if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
     string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     string(REPLACE "/MTd" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
@@ -57,7 +74,21 @@ endif()
 message(STATUS "ANTLR4 Include Dir: ${ANTLR4_INCLUDE_DIR}")
 message(STATUS "ANTLR4 Library: ${ANTLR4_LIBRARY}")
 
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM QUIET CONFIG)
+if(NOT LLVM_FOUND)
+    if(WIN32 AND NOT "${LLVM_DIR}" STREQUAL "" AND EXISTS "${LLVM_DIR}" AND NOT EXISTS "${LLVM_DIR}/LLVMConfig.cmake" AND NOT EXISTS "${LLVM_DIR}/llvm-config.cmake")
+        message(FATAL_ERROR
+            "LLVM appears to be installed at '${LLVM_DIR}', but the CMake package files are missing. "
+            "This project requires LLVMConfig.cmake from a full LLVM development installation. "
+            "Reinstall LLVM with development components, or point -DLLVM_DIR to a directory containing LLVMConfig.cmake."
+        )
+    endif()
+
+    message(FATAL_ERROR
+        "LLVM CMake package not found. Pass -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm, "
+        "or add the LLVM installation prefix to CMAKE_PREFIX_PATH."
+    )
+endif()
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
@@ -122,6 +153,10 @@ add_library(hoo-parser ${ANTLR4_GENERATED_FILES})
 target_include_directories(hoo-parser PUBLIC ${ANTLR4_GENERATED_DIR} ${ANTLR4_INCLUDE_DIR})
 target_link_libraries(hoo-parser PUBLIC ${ANTLR4_LIBRARY})
 
+if(MSVC)
+    target_compile_options(hoo-parser PRIVATE /FS)
+endif()
+
 if(ANTLR4_USE_STATIC_RUNTIME)
     target_compile_definitions(hoo-parser PUBLIC ANTLR4CPP_STATIC)
 endif()
@@ -157,6 +192,20 @@ target_include_directories(hoort PUBLIC
 target_compile_definitions(hoort PRIVATE
     $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
 )
+
+set_source_files_properties(
+    src/runtime/lib/hoo_runtime.c
+    PROPERTIES
+        LANGUAGE C
+)
+
+if(MSVC)
+    set_source_files_properties(
+        src/runtime/lib/hoo_runtime.c
+        PROPERTIES
+            COMPILE_OPTIONS "/TC;/std:c11;/experimental:c11atomics"
+    )
+endif()
 
 # =============================================================================
 # Core Compiler + HVM (hoo-core) - Merged from hvm + hoo-compiler
@@ -197,6 +246,13 @@ target_link_libraries(hoo-core PUBLIC
     hoo-parser
     ${llvm_libs}
 )
+
+if(WIN32)
+    target_link_libraries(hoo-core PUBLIC
+        Psapi
+        Dbghelp
+    )
+endif()
 
 # Generated ANTLR4 parser files must exist before hoo-core sources can include them
 add_dependencies(hoo-core generate_parser)
@@ -306,6 +362,7 @@ if(HOOC_BUILD_TESTS)
         tests/jit/CharacterLiteralTest.cpp
         tests/jit/FloatingLiteralTest.cpp
         tests/jit/InterpolatedStringTest.cpp
+        tests/jit/HVMJITLifecycleTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
         tests/core/SymbolManglerTest.cpp
@@ -335,7 +392,28 @@ if(HOOC_BUILD_TESTS)
         ${ANTLR4_GENERATED_DIR}
     )
 
+    if(WIN32)
+        set(HOOC_WINDOWS_TEST_COMPAT_HEADER "${CMAKE_BINARY_DIR}/generated/hooc_windows_test_compat.h")
+        configure_file(
+            "${CMAKE_SOURCE_DIR}/cmake/hooc_windows_test_compat.h.in"
+            "${HOOC_WINDOWS_TEST_COMPAT_HEADER}"
+            COPYONLY
+        )
+        target_compile_options(hoo-tests PRIVATE /FI"${HOOC_WINDOWS_TEST_COMPAT_HEADER}")
+
+        set(HOOC_WINDOWS_TEST_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        set_target_properties(hoo-tests PROPERTIES
+            VS_DEBUGGER_ENVIRONMENT "PATH=${HOOC_WINDOWS_TEST_PATH};%PATH%"
+        )
+    endif()
+
     add_test(NAME HooUnitTests COMMAND hoo-tests)
+
+    if(WIN32)
+        set_tests_properties(HooUnitTests PROPERTIES
+            ENVIRONMENT "PATH=${HOOC_WINDOWS_TEST_PATH};$ENV{PATH}"
+        )
+    endif()
 
     add_custom_target(run_tests
         COMMAND ${CMAKE_CTEST_COMMAND} --verbose
@@ -347,3 +425,44 @@ if(HOOC_BUILD_TESTS)
 else()
     message(STATUS "Unit tests disabled. Configure with -DHOOC_BUILD_TESTS=ON to enable them.")
 endif()
+
+# =============================================================================
+# Packaging (CPack)
+# =============================================================================
+
+if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
+    set(HOOC_VCPKG_BIN_DIR "")
+    if(DEFINED VCPKG_ROOT AND EXISTS "${VCPKG_ROOT}/installed/x64-windows/bin")
+        set(HOOC_VCPKG_BIN_DIR "${VCPKG_ROOT}/installed/x64-windows/bin")
+    elseif(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
+        set(HOOC_VCPKG_BIN_DIR "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
+    elseif(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        set(HOOC_VCPKG_BIN_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+    endif()
+
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/cmake/install_windows_dlls.cmake.in"
+        "${CMAKE_BINARY_DIR}/cmake/install_windows_dlls.cmake"
+        @ONLY
+    )
+    install(SCRIPT "${CMAKE_BINARY_DIR}/cmake/install_windows_dlls.cmake")
+endif()
+
+set(CPACK_PACKAGE_NAME "Hooc")
+set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_VENDOR "Hooc Project")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hooc Programming Language Compiler")
+
+if(WIN32)
+    set(CPACK_GENERATOR "ZIP")
+    find_program(NSIS_EXECUTABLE makensis)
+    if(NSIS_EXECUTABLE)
+        list(APPEND CPACK_GENERATOR "NSIS")
+    endif()
+    set(CPACK_PACKAGE_FILE_NAME "hoo-windows-x64")
+    set(CPACK_NSIS_DISPLAY_NAME "Hooc Compiler")
+    set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+    set(CPACK_NSIS_MODIFY_PATH ON)
+endif()
+
+include(CPack)

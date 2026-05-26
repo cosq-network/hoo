@@ -287,6 +287,13 @@ HooException hoo_exception_current(void) {
     return currentException;
 }
 
+void hoo_exception_set_current(HooException exc) {
+    if (currentException && currentException != exc) {
+        hoo_exception_release(currentException);
+    }
+    currentException = exc;
+}
+
 void hoo_exception_clear(void) {
     if (currentException) {
         hoo_exception_release(currentException);

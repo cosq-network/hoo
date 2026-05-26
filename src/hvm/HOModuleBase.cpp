@@ -8,6 +8,8 @@
 
 #ifdef _WIN32
 #include <windows.h>
+#include <psapi.h>
+#include <dbghelp.h>
 #elif defined(__APPLE__)
 #include <dlfcn.h>
 #include <mach-o/dyld.h>

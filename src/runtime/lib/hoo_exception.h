@@ -242,6 +242,16 @@ void hoo_exception_throw(HooException exc);
 HooException hoo_exception_current(void);
 
 /**
+ * Set the current exception without using native unwinding.
+ *
+ * Intended for runtimes that perform control transfer outside C++ exceptions.
+ * Ownership of `exc` is transferred to the current-exception slot.
+ *
+ * @param exc Exception, or NULL to clear without release
+ */
+void hoo_exception_set_current(HooException exc);
+
+/**
  * Clear the current exception
  *
  * Called after handling an exception to clear the current exception.

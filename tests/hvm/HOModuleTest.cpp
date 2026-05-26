@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <filesystem>
 #include <memory>
 #include <vector>
 #include <fstream>
@@ -519,7 +520,7 @@ TEST_F(HOModuleTest, SerializeToFilePath) {
     text.data.resize(16, 0);
     module->addSection(std::move(text));
     
-    std::string tempPath = "/tmp/hvm_test_module.bin";
+    std::string tempPath = (std::filesystem::temp_directory_path() / "hvm_test_module.bin").string();
     ASSERT_TRUE(module->serialize(tempPath));
     
     auto parsed = HOModule::parse(tempPath);

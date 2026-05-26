@@ -51,6 +51,80 @@ std::vector<std::string> splitModulePath(const std::string& moduleName) {
     return parts;
 }
 
+void appendUnique(std::vector<std::string>& values, const std::string& value) {
+    if (value.empty()) {
+        return;
+    }
+    if (std::find(values.begin(), values.end(), value) == values.end()) {
+        values.push_back(value);
+    }
+}
+
+std::string extractLegacyBaseFunctionName(const std::string& symbolName) {
+    if (symbolName.rfind("_F_", 0) != 0) {
+        return symbolName;
+    }
+    const size_t start = 3;
+    const size_t end = symbolName.find('_', start);
+    if (end == std::string::npos) {
+        return symbolName.substr(start);
+    }
+    return symbolName.substr(start, end - start);
+}
+
+std::vector<std::string> buildLookupCandidates(const std::string& symbolName,
+                                               const std::string& moduleName) {
+    std::vector<std::string> candidates;
+    appendUnique(candidates, symbolName);
+
+    const auto demangled = SymbolMangler::demangleSymbol(symbolName);
+    std::string baseFunctionName = demangled.functionName;
+    if (baseFunctionName.empty() && !demangled.className.empty()) {
+        baseFunctionName = demangled.className;
+    }
+    if (baseFunctionName.empty()) {
+        baseFunctionName = extractLegacyBaseFunctionName(symbolName);
+    }
+
+    if (symbolName.rfind("_F_", 0) == 0 && !baseFunctionName.empty()) {
+        // Legacy tests often ask for plain "_F_name_sig" entry points, while
+        // source compilation now emits module-qualified names. Try both a
+        // top-level function reconstruction and a class/member reconstruction.
+        MangledFunctionParams plainParams{};
+        plainParams.modulePath = demangled.modulePath;
+        if (plainParams.modulePath.empty() && !moduleName.empty()) {
+            plainParams.modulePath = splitModulePath(moduleName);
+        }
+        plainParams.functionName = baseFunctionName;
+        plainParams.functionModifiers = demangled.functionModifiers;
+        plainParams.returnType = demangled.returnType;
+        plainParams.parameterTypes = demangled.parameterTypes;
+        plainParams.isStatic = demangled.isStatic;
+        plainParams.isVirtual = demangled.isVirtual;
+        appendUnique(candidates, SymbolMangler::mangleFunctionName(plainParams));
+
+        MangledFunctionParams memberParams{};
+        memberParams.modulePath = demangled.modulePath;
+        if (memberParams.modulePath.empty() && !moduleName.empty()) {
+            memberParams.modulePath = splitModulePath(moduleName);
+        }
+        memberParams.className = demangled.className;
+        memberParams.baseClassName = demangled.baseClassName;
+        memberParams.classModifiers = demangled.classModifiers;
+        memberParams.functionName = baseFunctionName;
+        memberParams.functionModifiers = demangled.functionModifiers;
+        memberParams.returnType = demangled.returnType;
+        memberParams.parameterTypes = demangled.parameterTypes;
+        memberParams.isConstructor = demangled.isConstructor;
+        memberParams.isDestructor = demangled.isDestructor;
+        memberParams.isStatic = demangled.isStatic;
+        memberParams.isVirtual = demangled.isVirtual;
+        appendUnique(candidates, SymbolMangler::mangleFunctionName(memberParams));
+    }
+
+    return candidates;
+}
+
 struct RuntimeSymbolContract {
     const char* name;
     void* addr;
@@ -601,7 +675,7 @@ extern "C" {
     }
     uint64_t jit_hoo_push_handler(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const uint64_t handlerPc = static_cast<uint64_t>(state->regs[1]);
+        const uint64_t handlerPc = static_cast<uint64_t>(state->regs[2]);
         hoo_push_handler(reinterpret_cast<void*>(handlerPc));
         return shadow_push_handler(state, handlerPc);
     }
@@ -612,21 +686,29 @@ extern "C" {
     }
     uint64_t jit_hoo_throw(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+#ifdef _WIN32
+        const uint64_t exc = static_cast<uint64_t>(state->regs[2]);
+        hoo_exception_set_current(reinterpret_cast<HooException>(exc));
+        return shadow_throw_to_handler(state, exc, false);
+#else
         try {
             hoo_exception_throw(reinterpret_cast<HooException>(state->regs[1]));
         } catch (...) {
-            // Expected runtime throw path; handler transfer is performed by the JIT shadow stack.
         }
         return shadow_throw_to_handler(state, static_cast<uint64_t>(state->regs[1]), false);
+#endif
     }
     uint64_t jit_hoo_rethrow(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+#ifdef _WIN32
+        return shadow_throw_to_handler(state, 0, true);
+#else
         try {
             hoo_exception_rethrow();
         } catch (...) {
-            // Expected runtime rethrow path; handler transfer is performed by the JIT shadow stack.
         }
         return shadow_throw_to_handler(state, 0, true);
+#endif
     }
 
     // HVM internal sys calls (for interpreter)
@@ -665,21 +747,28 @@ extern "C" {
     }
     extern "C" uint64_t hooc_hvm_sys_throw_to_handler_state(void* state_ptr, uint64_t exc) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+#ifdef _WIN32
+        hoo_exception_set_current(reinterpret_cast<HooException>(exc));
+        return shadow_throw_to_handler(state, exc, false);
+#else
         try {
             hoo_exception_throw(reinterpret_cast<HooException>(exc));
         } catch (...) {
-            // Expected runtime throw path; control transfer is completed by shadow handler routing.
         }
         return shadow_throw_to_handler(state, exc, false);
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_rethrow_to_handler_state(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+#ifdef _WIN32
+        return shadow_throw_to_handler(state, 0, true);
+#else
         try {
             hoo_exception_rethrow();
         } catch (...) {
-            // Expected runtime rethrow path; control transfer is completed by shadow handler routing.
         }
         return shadow_throw_to_handler(state, 0, true);
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_string_data(uint64_t strObj) {
         return static_cast<uint64_t>(
@@ -756,6 +845,31 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_throw_v_p", reinterpret_cast<void*>(&jit_hoo_throw)},
         {"_F_hoo_rethrow_v", reinterpret_cast<void*>(&jit_hoo_rethrow)},
     };
+}
+
+void* lookupPlainRuntimeSymbolAddress(const std::string& name) {
+    static const std::unordered_map<std::string, void*> kPlainRuntimeSymbols{
+        {"hoo_alloc", reinterpret_cast<void*>(&hoo_alloc)},
+        {"hoo_retain", reinterpret_cast<void*>(&hoo_retain)},
+        {"hoo_release", reinterpret_cast<void*>(&hoo_release)},
+        {"hoo_get_refcount", reinterpret_cast<void*>(&hoo_get_refcount)},
+        {"hoo_get_type_id", reinterpret_cast<void*>(&hoo_get_type_id)},
+        {"hoo_string_from_cstr", reinterpret_cast<void*>(&hoo_string_from_cstr)},
+        {"hoo_string_from_int64", reinterpret_cast<void*>(&hoo_string_from_int64)},
+        {"hoo_string_from_double", reinterpret_cast<void*>(&hoo_string_from_double)},
+        {"hoo_string_concat", reinterpret_cast<void*>(&hoo_string_concat)},
+        {"hoo_string_length", reinterpret_cast<void*>(&hoo_string_length)},
+        {"hoo_string_data", reinterpret_cast<void*>(&hoo_string_data)},
+        {"hoo_string_to_characters", reinterpret_cast<void*>(&hoo_string_to_characters)},
+        {"hoo_array_new", reinterpret_cast<void*>(&hoo_array_new)},
+        {"hoo_array_push_int64", reinterpret_cast<void*>(&hoo_array_push_int64)},
+        {"hoo_array_get_int64", reinterpret_cast<void*>(&hoo_array_get_int64)},
+        {"hoo_map_new", reinterpret_cast<void*>(&hoo_map_new)},
+        {"hoo_map_set_string_int64", reinterpret_cast<void*>(&hoo_map_set_string_int64)},
+        {"hoo_map_set_string_object", reinterpret_cast<void*>(&hoo_map_set_string_object)},
+    };
+    auto it = kPlainRuntimeSymbols.find(name);
+    return it == kPlainRuntimeSymbols.end() ? nullptr : it->second;
 }
 
 bool validateRuntimeSymbolMap(const std::vector<RuntimeSymbolContract>& runtimeSymbols) {
@@ -862,10 +976,14 @@ bool HVMJIT::ensureJIT() {
     // Expose JITed symbols/objects to host debuggers when supported by the
     // underlying ORC object linking layer.
     if (auto* rtLayer = llvm::dyn_cast<llvm::orc::RTDyldObjectLinkingLayer>(&jit_->getObjLinkingLayer())) {
+#ifndef _WIN32
         if (llvm::JITEventListener* gdbListener = llvm::JITEventListener::createGDBRegistrationListener()) {
             jitDebugListener_.reset(gdbListener);
             rtLayer->registerJITEventListener(*jitDebugListener_);
         }
+#else
+        (void)rtLayer;
+#endif
     }
 
     auto processSymbols = llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
@@ -898,7 +1016,7 @@ std::string HVMJIT::moduleNameToPath(const std::string& moduleName) const {
         p /= part;
     }
     p += ".ho";
-    return p.string();
+    return p.generic_string();
 }
 
 bool HVMJIT::loadInput(const std::string& pathOrModuleName) {
@@ -1741,32 +1859,38 @@ bool HVMJIT::storeU64(uint64_t addr, uint64_t value) {
 const hvm::Symbol* HVMJIT::findFunctionSymbol(const hvm::HOModule& module, const std::string& functionName) const {
     const auto& symbols = module.getSymbols();
     auto isFunc = [](const hvm::Symbol& s) { return s.type == hvm::Symbol::STT_FUNC; };
+    const auto candidates = buildLookupCandidates(functionName, module.getName());
 
-    // 1. Exact match
-    for (const auto& sym : symbols) {
-        if (isFunc(sym) && sym.name == functionName && sym.section_index != -1) return &sym;
-    }
-
-    // 2. If it's a known non-mangled name, try common mangled forms
-    std::string baseName = functionName;
-    if (functionName.rfind("_F_", 0) == 0) {
-        // Already mangled, try to extract base name for more flexible search if exact failed
-        size_t start = 3;
-        size_t end = functionName.find('_', start);
-        if (end != std::string::npos) {
-            baseName = functionName.substr(start, end - start);
+    // 1. Exact match.
+    for (const auto& candidate : candidates) {
+        for (const auto& sym : symbols) {
+            if (isFunc(sym) && sym.name == candidate && sym.section_index != -1) {
+                return &sym;
+            }
         }
     }
 
-    // 3. Robust prefix match for mangled functions (_F_baseName_...)
-    std::string prefix = "_F_" + baseName + "_";
-    for (const auto& sym : symbols) {
-        if (isFunc(sym) && sym.name.rfind(prefix, 0) == 0 && sym.section_index != -1) return &sym;
+    // 2. Prefix match.
+    for (const auto& candidate : candidates) {
+        if (candidate.empty()) {
+            continue;
+        }
+        std::string prefix = candidate.rfind("_F_", 0) == 0
+            ? candidate + "_"
+            : "_F_" + candidate + "_";
+        for (const auto& sym : symbols) {
+            if (isFunc(sym) && sym.name.rfind(prefix, 0) == 0 && sym.section_index != -1) {
+                return &sym;
+            }
+        }
     }
 
-    // 4. Case-insensitive or fuzzy match (last resort for tests)
+    // 3. Fuzzy containment fallback.
+    const std::string baseName = extractLegacyBaseFunctionName(functionName);
     for (const auto& sym : symbols) {
-        if (isFunc(sym) && (sym.name.find(baseName) != std::string::npos) && sym.section_index != -1) return &sym;
+        if (isFunc(sym) && sym.name.find(baseName) != std::string::npos && sym.section_index != -1) {
+            return &sym;
+        }
     }
 
     return nullptr;
@@ -1831,20 +1955,22 @@ bool HVMJIT::mapModuleSections(const std::shared_ptr<hvm::HOModule>& module) {
 
 bool HVMJIT::invokeStateAbiSymbol(const std::string& symbolName, HVMState& state, uint64_t& outValue) {
     using StateAbiFn = uint64_t(*)(void*);
-    for (const auto& rs : buildRuntimeSymbols()) {
-        if (rs.name && symbolName == rs.name && rs.addr) {
-            auto fn = reinterpret_cast<StateAbiFn>(rs.addr);
-            try {
-                outValue = fn(&state);
-                return true;
-            } catch (const std::exception& ex) {
-                setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed,
-                         "Runtime bridge exception in " + symbolName + ": " + ex.what());
-                return false;
-            } catch (...) {
-                setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed,
-                         "Runtime bridge exception in " + symbolName);
-                return false;
+    for (const auto& candidate : buildLookupCandidates(symbolName, "hoo")) {
+        for (const auto& rs : buildRuntimeSymbols()) {
+            if (rs.name && candidate == rs.name && rs.addr) {
+                auto fn = reinterpret_cast<StateAbiFn>(rs.addr);
+                try {
+                    outValue = fn(&state);
+                    return true;
+                } catch (const std::exception& ex) {
+                    setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed,
+                             "Runtime bridge exception in " + candidate + ": " + ex.what());
+                    return false;
+                } catch (...) {
+                    setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed,
+                             "Runtime bridge exception in " + candidate);
+                    return false;
+                }
             }
         }
     }
@@ -3626,6 +3752,16 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
             if (ins->getFormat() == hvm::InstructionFormat::R) {
                 func = std::get<hvm::OperandsR>(ins->getOperands()).func;
             }
+#ifdef _WIN32
+            if (ins->getOpcode() == hvm::Opcode::SYSCALL &&
+                std::holds_alternative<hvm::OperandsI>(ins->getOperands())) {
+                const auto syscallId = std::get<hvm::OperandsI>(ins->getOperands()).imm15;
+                if (syscallId == kSysPushHandler || syscallId == kSysPopHandler ||
+                    syscallId == kSysThrowToHandler || syscallId == kSysRethrowToHandler) {
+                    return false;
+                }
+            }
+#endif
             if (!isSupportedForIRLowering(ins->getOpcode(), func)) {
                 return false;
             }
@@ -3668,14 +3804,22 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
     if (!materializeModulesToJIT()) {
         return -1;
     }
-    auto sym = jit_->lookup(entryPoint);
-    if (!sym) {
+    std::optional<uintptr_t> resolvedAddress;
+    for (const auto& candidate : buildLookupCandidates(entryPoint, primaryModuleName_)) {
+        auto sym = jit_->lookup(candidate);
+        if (sym) {
+            resolvedAddress = static_cast<uintptr_t>(sym->getValue());
+            break;
+        }
+        consumeError(sym.takeError());
+    }
+    if (!resolvedAddress.has_value()) {
         setError(ErrorPhase::Execute, ErrorCode::MissingEntryPoint,
                  "JIT entry point not found: " + entryPoint, primaryModuleName_, entryPoint);
         return -1;
     }
     using EntryFn = int64_t(*)(HVMState*);
-    auto fn = reinterpret_cast<EntryFn>(static_cast<uintptr_t>(sym->getValue()));
+    auto fn = reinterpret_cast<EntryFn>(*resolvedAddress);
     HVMState state{};
     state.io = &io_;
     state.memory = memory_.data();
@@ -3698,9 +3842,6 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     clearError();
     lastRunUsedJIT_ = false;
     stopExecutionRequested_.store(false, std::memory_order_relaxed);
-    if (!ensureJIT()) {
-        return -1;
-    }
     if (loadedModules_.empty()) {
         setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed,
                  "No module loaded");
@@ -3716,6 +3857,9 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
         return -1;
     }
 
+    if (!ensureJIT()) {
+        return -1;
+    }
     int64_t jitResult = runViaJIT(entryPoint);
     if (jitResult != -1) {
         return jitResult;
@@ -3914,20 +4058,28 @@ void* HVMJIT::getSymbolAddress(const std::string& mangledName) {
         return nullptr;
     }
 
-    auto sym = jit_->lookup(mangledName);
-    if (!sym) {
-        auto mod = bundle_.findModuleBySymbolMangled(mangledName);
+    for (const auto& candidate : buildLookupCandidates(mangledName, primaryModuleName_)) {
+        auto sym = jit_->lookup(candidate);
+        if (sym) {
+            return reinterpret_cast<void*>(static_cast<uintptr_t>(sym->getValue()));
+        }
+        consumeError(sym.takeError());
+
+        auto mod = bundle_.findModuleBySymbolMangled(candidate);
         if (mod) {
-            if (const auto* s = mod->findSymbolMangled(mangledName)) {
+            if (const auto* s = mod->findSymbolMangled(candidate)) {
                 return reinterpret_cast<void*>(static_cast<uintptr_t>(s->address));
             }
         }
-        setError(ErrorPhase::Resolve, ErrorCode::MissingDependency,
-                 "Symbol not found: " + mangledName, "", mangledName);
-        return nullptr;
     }
 
-    return reinterpret_cast<void*>(static_cast<uintptr_t>(sym->getValue()));
+    if (void* runtimeAddr = lookupPlainRuntimeSymbolAddress(mangledName)) {
+        return runtimeAddr;
+    }
+
+    setError(ErrorPhase::Resolve, ErrorCode::MissingDependency,
+             "Symbol not found: " + mangledName, "", mangledName);
+    return nullptr;
 }
 
 bool HVMJIT::hasModuleJITDylib(const std::string& moduleName) const {

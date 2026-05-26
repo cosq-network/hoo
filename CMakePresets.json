@@ -54,6 +54,27 @@
       }
     },
     {
+      "name": "windows-vs18-relwithdebinfo",
+      "displayName": "Windows Visual Studio 18 RelWithDebInfo",
+      "generator": "Visual Studio 18 2026",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "HOOC_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "windows-vs18-local",
+      "displayName": "Windows Visual Studio 18 Local Dependencies",
+      "inherits": "windows-vs18-relwithdebinfo",
+      "cacheVariables": {
+        "ANTLR4_INCLUDE_DIR": "${sourceDir}/vcpkg_installed/x64-windows/include/antlr4-runtime",
+        "ANTLR4_LIBRARY": "${sourceDir}/vcpkg_installed/x64-windows/lib/antlr4-runtime.lib",
+        "CMAKE_PREFIX_PATH": "${sourceDir}/vcpkg_installed/x64-windows",
+        "LLVM_DIR": "${sourceDir}/vcpkg_installed/x64-windows/share/llvm"
+      }
+    },
+    {
       "name": "windows-ninja",
       "displayName": "Windows Ninja RelWithDebInfo",
       "inherits": "ninja-relwithdebinfo",
@@ -101,6 +122,22 @@
       ]
     },
     {
+      "name": "windows-vs18-relwithdebinfo",
+      "configurePreset": "windows-vs18-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "targets": [
+        "hoo"
+      ]
+    },
+    {
+      "name": "windows-vs18-local",
+      "configurePreset": "windows-vs18-local",
+      "configuration": "RelWithDebInfo",
+      "targets": [
+        "hoo"
+      ]
+    },
+    {
       "name": "windows-ninja",
       "configurePreset": "windows-ninja",
       "targets": [
@@ -131,6 +168,22 @@
     {
       "name": "windows-vs-relwithdebinfo-tests",
       "configurePreset": "windows-vs-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "windows-vs18-relwithdebinfo-tests",
+      "configurePreset": "windows-vs18-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "windows-vs18-local-tests",
+      "configurePreset": "windows-vs18-local",
       "configuration": "RelWithDebInfo",
       "targets": [
         "hoo-tests"
@@ -169,6 +222,22 @@
     {
       "name": "windows-vs-relwithdebinfo",
       "configurePreset": "windows-vs-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-vs18-relwithdebinfo",
+      "configurePreset": "windows-vs18-relwithdebinfo",
+      "configuration": "RelWithDebInfo",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-vs18-local",
+      "configurePreset": "windows-vs18-local",
       "configuration": "RelWithDebInfo",
       "output": {
         "outputOnFailure": true

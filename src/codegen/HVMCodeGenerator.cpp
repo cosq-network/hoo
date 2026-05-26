@@ -305,6 +305,7 @@ void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
     sym.value = info.funcStartOffset;
     sym.type = Symbol::STT_FUNC;
     sym.binding = Symbol::STB_GLOBAL;
+    sym.section_index = 0;
     module_->addSymbol(sym);
 
     locals_.clear();

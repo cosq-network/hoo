@@ -19,6 +19,8 @@ The JIT lowers the `SYSCALL` instruction (`0xC0`) directly into highly optimized
 | `10` | `hooc_hvm_sys_rethrow_to_handler_state`| `rd = rethrow()` | Rethrows, returns target handler PC. |
 | `11` | `hooc_hvm_sys_string_data` | `rd = strdata(r2)` | Returns absolute host pointer to raw UTF-8. |
 
+**Platform note**: On Windows, syscalls 7-10 are not lowered to LLVM IR. `ensureJITFunctionTable()` returns `false` for these opcodes, causing the JIT to fall back to the interpreter for handler operations. The JIT bridge functions (`jit_hoo_throw`, `jit_hoo_rethrow`, `hooc_hvm_sys_throw_to_handler_state`, `hooc_hvm_sys_rethrow_to_handler_state`) use `hoo_exception_set_current()` instead of C++ try/catch on Windows, while macOS/Linux retain the original C++ exception-based path.
+
 ## 2. ARC Optimization Pass (`ARCUseDefGraph`)
 To prevent severe performance degradation from excessive reference counting, the JIT executes an `ARCUseDefGraph` analysis pass over the instruction stream before IR translation.
 - **Pattern Matching**: It searches for `SYSCALL 2` (retain) and `SYSCALL 3` (release) pairs that apply to the same object within a linear execution block.
@@ -26,6 +28,18 @@ To prevent severe performance degradation from excessive reference counting, the
 
 ## 3. Host Symbol Bridging
 The JIT maintains a registry of host-native functions that can be called directly via the `CALL` instruction. During module loading, any `UNDEFINED` symbols (global binding with `section_index == -1`) are resolved against the `hoo` JITDylib. This allows HVM code to interact with runtime services like `print`, `println`, and string conversion intrinsics without using the slow `SYSCALL` path.
+
+Defined function symbols now set `section_index = 0` (instead of leaving it uninitialized) to ensure consistent section-aware lookups in `HVMCodeGenerator::endFunction()`.
+
+### 3.1 Flexible Symbol Resolution
+The JIT employs `buildLookupCandidates()` to resolve symbols that may have been compiled with different mangling conventions:
+
+1. **Direct match**: The exact symbol name is tried first.
+2. **Demangled reconstruction**: The symbol is demangled via `SymbolMangler::demangleSymbol()`, and both top-level function and class member forms are re-mangled with module path qualification.
+3. **Legacy prefix match**: For `_F_`-prefixed symbols from older test bytecode, the base function name is extracted and searched with a prefix pattern.
+4. **Fuzzy fallback**: A substring containment check is used as a last resort.
+
+`lookupPlainRuntimeSymbolAddress()` provides a static map of common runtime symbols (`hoo_alloc`, `hoo_retain`, `hoo_release`, etc.) as a fast fallback in `getSymbolAddress()` when JIT and module lookups fail.
 
 ## 4. The `HVMState` Struct
 In LLVM IR, the running state of the VM is passed around as a pointer to the `hvm.state` struct:
