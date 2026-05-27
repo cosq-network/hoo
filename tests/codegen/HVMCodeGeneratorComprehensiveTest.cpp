@@ -952,3 +952,126 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassMethodsNoRestriction) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 }
+
+// ============================================================================
+// Public/Private Access Modifier Enforcement Tests
+// ============================================================================
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PublicMethodAccessibleOutsideClass) {
+    std::string code = R"(
+        class Helper {
+            public func : void doSomething() {}
+        }
+        func : void test() {
+            var h = new Helper();
+            h.doSomething();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleOutsideClass) {
+    std::string code = R"(
+        class Helper {
+            private func : void helper() {}
+        }
+        func : void test() {
+            var h = new Helper();
+            h.helper();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot access private method") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultMethodAccessibleOutsideClass) {
+    std::string code = R"(
+        class Helper {
+            func : void doSomething() {}
+        }
+        func : void test() {
+            var h = new Helper();
+            h.doSomething();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodAccessibleFromSameClass) {
+    std::string code = R"(
+        class Helper {
+            private func : void helper() {}
+            public func : void callHelper() {
+                this.helper();
+            }
+        }
+        func : void test() {
+            var h = new Helper();
+            h.callHelper();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodAccessibleFromDerivedClass) {
+    std::string code = R"(
+        class Base {
+            private func : void helper() {}
+        }
+        class Derived extends Base {
+            public func : void callHelper() {
+                this.helper();
+            }
+        }
+        func : void test() {
+            var d = new Derived();
+            d.callHelper();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PublicMethodAccessibleFromDerivedClass) {
+    std::string code = R"(
+        class Base {
+            public func : void helper() {}
+        }
+        class Derived extends Base {
+            public func : void callHelper() {
+                this.helper();
+            }
+        }
+        func : void test() {
+            var d = new Derived();
+            d.callHelper();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleFromUnrelatedClass) {
+    std::string code = R"(
+        class Helper {
+            private func : void helper() {}
+        }
+        class Caller {
+            public func : void callHelper(h: Helper) {
+                h.helper();
+            }
+        }
+        func : void test() {
+            var h = new Helper();
+            var c = new Caller();
+            c.callHelper(h);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot access private method") != std::string::npos);
+}

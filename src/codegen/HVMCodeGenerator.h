@@ -67,7 +67,9 @@ private:
     // Object & Class Management
     struct ClassLayout {
         std::string name;
+        std::string baseClass; // empty if no base class
         std::unordered_map<std::string, int32_t> fieldOffsets;
+        std::unordered_map<std::string, bool> privateMethods; // methodName -> isPrivate
         int32_t totalSize = 0;
         bool isSingleton = false;
         bool isFinal = false;
@@ -141,6 +143,7 @@ private:
 
     // AST Visiting logic
     void visitStatement(const ast::Statement& stmt);
+    bool isDerivedFrom(const std::string& className, const std::string& potentialBase) const;
     uint8_t visitExpression(const ast::Expression& expr); // Returns register index
     void visitFunction(const ast::FunctionDeclaration& decl);
     void visitConstructor(const ast::ConstructorDeclaration& decl);

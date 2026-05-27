@@ -183,6 +183,9 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 }
             }
             layout.totalSize = currentOffset;
+            if (classDecl->hasBaseClass()) {
+                layout.baseClass = classDecl->getBaseClass();
+            }
             classes_[layout.name] = layout;
 
             // Index methods for name-based mangling resolution
@@ -190,9 +193,11 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 if (auto declMember = member->getDeclaration()) {
                     if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
                         methodNameToClass_[fn->getName()] = layout.name;
+                        layout.privateMethods[fn->getName()] = fn->isPrivate();
                     }
                 }
             }
+            classes_[layout.name].privateMethods = layout.privateMethods;
 
             // Singleton validation: constructor must have no arguments
             if (layout.isSingleton) {
@@ -968,11 +973,31 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
 
             std::string methodName = memberAccess->getMember();
+            std::string owningClass;
             MangledFunctionParams mp;
             {
                 auto it = methodNameToClass_.find(methodName);
                 if (it != methodNameToClass_.end()) {
                     mp.className = it->second;
+                    owningClass = it->second;
+                }
+            }
+            // Private access check
+            if (!owningClass.empty()) {
+                auto classIt = classes_.find(owningClass);
+                if (classIt != classes_.end()) {
+                    auto privIt = classIt->second.privateMethods.find(methodName);
+                    if (privIt != classIt->second.privateMethods.end() && privIt->second) {
+                        bool canAccess = false;
+                        if (currentClass_ && currentClass_->name == owningClass) {
+                            canAccess = true; // Same class
+                        } else if (currentClass_ && isDerivedFrom(currentClass_->name, owningClass)) {
+                            canAccess = true; // Derived class
+                        }
+                        if (!canAccess) {
+                            addError("Cannot access private method '" + methodName + "' of class '" + owningClass + "'");
+                        }
+                    }
                 }
             }
             mp.functionName = methodName;
@@ -1573,5 +1598,15 @@ void HVMCodeGenerator::emitModuleInit() {
 
     scopeStack_.clear();
     currentStackOffset_ = 0;
+}
+
+bool HVMCodeGenerator::isDerivedFrom(const std::string& className, const std::string& potentialBase) const {
+    auto it = classes_.find(className);
+    if (it == classes_.end()) return false;
+    if (it->second.baseClass == potentialBase) return true;
+    if (!it->second.baseClass.empty()) {
+        return isDerivedFrom(it->second.baseClass, potentialBase);
+    }
+    return false;
 }
 } // namespace hooc
