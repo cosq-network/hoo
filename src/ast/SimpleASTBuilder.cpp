@@ -323,8 +323,6 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildIfStatement(ctx->ifStatement());
     } else if (ctx->whileStatement()) {
         return buildWhileStatement(ctx->whileStatement());
-    } else if (ctx->scopeStatement()) {
-        return buildScopeStatement(ctx->scopeStatement());
     } else if (ctx->forStatement()) {
         auto forCtx = ctx->forStatement();
         // Check if it's a for-range loop (has RANGE ..) or for-in loop (has 1 expression)
@@ -368,17 +366,6 @@ std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser
     auto condition = buildExpression(ctx->expression());
     auto body = buildBlock(ctx->block());
     return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
-}
-
-std::unique_ptr<ScopeStatement> SimpleASTBuilder::buildScopeStatement(HoocParser::ScopeStatementContext* ctx) {
-    if (!ctx) {
-        throw std::runtime_error("ScopeStatementContext is null");
-    }
-    auto body = buildBlock(ctx->block());
-    if (!body) {
-        throw std::runtime_error("Failed to build block for ScopeStatement");
-    }
-    return std::make_unique<ScopeStatement>(std::move(body));
 }
 
 std::unique_ptr<TryCatchStatement> SimpleASTBuilder::buildTryCatchStatement(HoocParser::TryCatchStatementContext* ctx) {

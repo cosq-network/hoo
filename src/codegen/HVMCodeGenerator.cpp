@@ -143,6 +143,15 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             layout.totalSize = currentOffset;
             classes_[layout.name] = layout;
 
+            // Index methods for name-based mangling resolution
+            for (const auto& member : classDecl->getBody().getMembers()) {
+                if (auto declMember = member->getDeclaration()) {
+                    if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
+                        methodNameToClass_[fn->getName()] = layout.name;
+                    }
+                }
+            }
+
             // Process methods
             currentClass_ = &classes_[layout.name];
             for (const auto& member : classDecl->getBody().getMembers()) {
@@ -859,8 +868,23 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            // Logic for method mangling resolution needed here
-            emitCall(Opcode::CALL, memberAccess->getMember()); 
+            std::string methodName = memberAccess->getMember();
+            MangledFunctionParams mp;
+            {
+                auto it = methodNameToClass_.find(methodName);
+                if (it != methodNameToClass_.end()) {
+                    mp.className = it->second;
+                }
+            }
+            mp.functionName = methodName;
+            mp.returnType = "void";
+            if (funcCall->getArguments()) {
+                for (size_t i = 0; i < funcCall->getArguments()->getArguments().size(); ++i) {
+                    mp.parameterTypes.push_back("ptr");
+                }
+            }
+            std::string mangledName = SymbolMangler::mangleFunctionName(mp);
+            emitCall(Opcode::CALL, mangledName); 
             
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0}); 

@@ -146,19 +146,6 @@ private:
     std::unique_ptr<Expression> expression_;
 };
 
-// Scope statement
-class ScopeStatement : public Statement {
-public:
-    ScopeStatement(std::unique_ptr<Block> body) : body_(std::move(body)) {}
-
-    std::string toString() const override;
-
-    const Block& getBody() const { return *body_; }
-
-private:
-    std::unique_ptr<Block> body_;
-};
-
 // Variable declaration statement
 class VariableDeclarationStatement : public Statement {
 public:

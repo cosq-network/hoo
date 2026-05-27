@@ -71,6 +71,7 @@ private:
         int32_t totalSize = 0;
     };
     std::unordered_map<std::string, ClassLayout> classes_;
+    std::unordered_map<std::string, std::string> methodNameToClass_; // methodName -> className
     ClassLayout* currentClass_ = nullptr;
     
     /**

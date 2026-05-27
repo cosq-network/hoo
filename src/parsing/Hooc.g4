@@ -22,7 +22,7 @@ FROM: 'from';
 NEW: 'new';
 VAR: 'var';
 CONST: 'const';
-SCOPE: 'scope';
+
 FINAL: 'final';
 SINGLETON: 'singleton';
 IMMUTABLE: 'immutable';
@@ -213,7 +213,6 @@ statement
     | ifStatement
     | whileStatement
     | forStatement
-    | scopeStatement
     | breakStatement
     | continueStatement
     | tryCatchStatement
@@ -243,8 +242,6 @@ forStatement
 whileStatement: WHILE expression block;
 
 returnStatement: RETURN expression? SEMICOLON;
-
-scopeStatement: SCOPE block;
 
 breakStatement: BREAK SEMICOLON;
 

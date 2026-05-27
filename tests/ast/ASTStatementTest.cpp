@@ -101,11 +101,6 @@ TEST_F(ASTStatementTest, ReturnStatementWithExpression) {
     EXPECT_EQ(rs.toString(), "ReturnStatement");
 }
 
-TEST_F(ASTStatementTest, ScopeStatement) {
-    ScopeStatement ss(emptyBlock());
-    EXPECT_EQ(ss.toString(), "ScopeStatement");
-}
-
 TEST_F(ASTStatementTest, VariableDeclarationStatement) {
     auto type = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
     auto vd = std::make_unique<VariableDeclaration>(std::move(type), "x");

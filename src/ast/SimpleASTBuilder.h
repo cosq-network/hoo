@@ -290,14 +290,6 @@ private:
     std::unique_ptr<ast::ForRangeStatement> buildForRangeStatement(HoocParser::ForStatementContext* ctx);
 
     /**
-     * @brief Builds a ScopeStatement from its context.
-     * Scope syntax: scope { } creates an explicit block scope.
-     * @param ctx Scope statement context.
-     * @return Unique pointer to ScopeStatement, or nullptr on failure.
-     */
-    std::unique_ptr<ast::ScopeStatement> buildScopeStatement(HoocParser::ScopeStatementContext* ctx);
-
-    /**
      * @brief Builds a TryCatchStatement from its context.
      * try...catch...finally syntax.
      * @param ctx Try-catch statement context.
