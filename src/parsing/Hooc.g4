@@ -6,7 +6,6 @@ grammar Hooc;
 FUNC: 'func';
 PUBLIC: 'public';
 PRIVATE: 'private';
-ASYNC: 'async';
 RETURN: 'return';
 IF: 'if';
 ELSE: 'else';
@@ -26,12 +25,8 @@ CONST: 'const';
 FINAL: 'final';
 SINGLETON: 'singleton';
 IMMUTABLE: 'immutable';
-FACTORY: 'factory';
-OBSERVABLE: 'observable';
 CONSTRUCTOR: 'constructor';
 SERVICE: 'service';
-STRATEGY: 'strategy';
-ACTOR: 'actor';
 HOO_INIT: '__hoo_init';
 AS: 'as';
 BY: 'by';
@@ -160,7 +155,7 @@ classDeclaration
     : classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? classBody
     ;
 
-classModifier: SINGLETON | IMMUTABLE | FACTORY | OBSERVABLE | SERVICE | STRATEGY | ACTOR | FINAL;
+classModifier: SINGLETON | IMMUTABLE | SERVICE | FINAL;
 
 classBody: LBRACE classMember* RBRACE;
 
@@ -172,7 +167,7 @@ classMember
 
 constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block;
 
-functionModifier: PUBLIC | PRIVATE | ASYNC;
+functionModifier: PUBLIC | PRIVATE;
 
 // Variable Declaration
 variableDeclaration

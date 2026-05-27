@@ -2469,6 +2469,8 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 if (o.rs == 0 && layout.rodataBase != 0 && o.imm15 >= 0 &&
                     static_cast<uint64_t>(o.imm15) < layout.rodataSize) {
                     writeReg(o.rd, layout.rodataBase + static_cast<uint64_t>(o.imm15));
+                } else if (o.rs == 1 && layout.dataBase != 0) {
+                    writeReg(o.rd, layout.dataBase + static_cast<uint64_t>(static_cast<int16_t>(o.imm15)));
                 } else {
                     writeReg(o.rd, static_cast<uint64_t>(static_cast<int64_t>(readReg(o.rs)) + static_cast<int64_t>(o.imm15)));
                 }
@@ -2991,9 +2993,11 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
         return llvm::createStringError(std::errc::invalid_argument, "missing .text section");
     }
     uint64_t rodataBase = 0;
+    uint64_t dataBase = 0;
     auto layoutIt = moduleLayouts_.find(hvmModule.getName());
     if (layoutIt != moduleLayouts_.end()) {
         rodataBase = layoutIt->second.rodataBase;
+        dataBase = layoutIt->second.dataBase;
     }
     uint64_t rodataSize = 0;
     if (const hvm::Section* rodata = hvmModule.getSection(".rodata")) {
@@ -3535,6 +3539,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     if (o.rs == 0 && rodataBase != 0 && o.imm15 >= 0 &&
                         static_cast<uint64_t>(o.imm15) < rodataSize) {
                         writeReg(o.rd, builder.getInt64(rodataBase + static_cast<uint64_t>(o.imm15)));
+                    } else if (o.rs == 1 && dataBase != 0) {
+                        writeReg(o.rd, builder.getInt64(dataBase + static_cast<uint64_t>(static_cast<int16_t>(o.imm15))));
                     } else {
                         writeReg(o.rd, builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15))));
                     }

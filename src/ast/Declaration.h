@@ -47,10 +47,6 @@ public:
         return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PRIVATE) != modifiers_.end();
     }
 
-    bool isAsync() const {
-        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::ASYNC) != modifiers_.end();
-    }
-
 private:
     std::string name_;
     std::vector<std::unique_ptr<Parameter>> parameters_;

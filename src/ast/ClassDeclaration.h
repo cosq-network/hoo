@@ -17,11 +17,7 @@ class Block;
 enum class ClassModifier {
     SINGLETON,
     IMMUTABLE,
-    FACTORY,
-    OBSERVABLE,
     SERVICE,
-    STRATEGY,
-    ACTOR,
     FINAL
 };
 

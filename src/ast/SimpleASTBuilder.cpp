@@ -958,11 +958,7 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
 ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContext* ctx) {
     if (ctx->SINGLETON()) return ClassModifier::SINGLETON;
     if (ctx->IMMUTABLE()) return ClassModifier::IMMUTABLE;
-    if (ctx->FACTORY()) return ClassModifier::FACTORY;
-    if (ctx->OBSERVABLE()) return ClassModifier::OBSERVABLE;
     if (ctx->SERVICE()) return ClassModifier::SERVICE;
-    if (ctx->STRATEGY()) return ClassModifier::STRATEGY;
-    if (ctx->ACTOR()) return ClassModifier::ACTOR;
     if (ctx->FINAL()) return ClassModifier::FINAL;
     throw std::runtime_error("Unknown class modifier: " + ctx->getText());
 }
@@ -970,7 +966,6 @@ ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContex
 FunctionModifier SimpleASTBuilder::getFunctionModifier(HoocParser::FunctionModifierContext* ctx) {
     if (ctx->PUBLIC()) return FunctionModifier::PUBLIC;
     if (ctx->PRIVATE()) return FunctionModifier::PRIVATE;
-    if (ctx->ASYNC()) return FunctionModifier::ASYNC;
     throw std::runtime_error("Unknown function modifier: " + ctx->getText());
 }
 

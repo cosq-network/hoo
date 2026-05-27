@@ -75,11 +75,7 @@ const std::vector<std::pair<std::string, std::string>>& getModifierCodeMap() {
     static std::vector<std::pair<std::string, std::string>> map = {
         {"SINGLETON", "N"},
         {"IMMUTABLE", "I"},
-        {"FACTORY", "F"},
-        {"OBSERVABLE", "O"},
         {"SERVICE", "S"},
-        {"STRATEGY", "Y"},
-        {"ACTOR", "A"},
         {"FINAL", "Z"}
     };
     return map;
@@ -88,8 +84,7 @@ const std::vector<std::pair<std::string, std::string>>& getModifierCodeMap() {
 const std::vector<std::pair<std::string, std::string>>& getFunctionModifierCodeMap() {
     static std::vector<std::pair<std::string, std::string>> map = {
         {"PUBLIC", "Pb"},
-        {"PRIVATE", "Pv"},
-        {"ASYNC", "Ay"}
+        {"PRIVATE", "Pv"}
     };
     return map;
 }
@@ -349,26 +344,21 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
         std::vector<std::string> components = splitComponents(content);
         
         auto isFunctionModifierCode = [](const std::string& comp) {
-            return comp == "Pb" || comp == "Pv" || comp == "Ay";
+            return comp == "Pb" || comp == "Pv";
         };
         auto isClassModifierCode = [](const std::string& comp) {
-            return comp == "N" || comp == "I" || comp == "F" || comp == "O" ||
-                   comp == "S" || comp == "Y" || comp == "A" || comp == "Z";
+            return comp == "N" || comp == "I" ||
+                   comp == "S" || comp == "Z";
         };
         auto pushClassModifier = [&](const std::string& comp) {
             if (comp == "N") result.classModifiers.push_back("SINGLETON");
             else if (comp == "I") result.classModifiers.push_back("IMMUTABLE");
-            else if (comp == "F") result.classModifiers.push_back("FACTORY");
-            else if (comp == "O") result.classModifiers.push_back("OBSERVABLE");
             else if (comp == "S") result.classModifiers.push_back("SERVICE");
-            else if (comp == "Y") result.classModifiers.push_back("STRATEGY");
-            else if (comp == "A") result.classModifiers.push_back("ACTOR");
             else if (comp == "Z") result.classModifiers.push_back("FINAL");
         };
         auto pushFunctionModifier = [&](const std::string& comp) {
             if (comp == "Pb") result.functionModifiers.push_back("PUBLIC");
             else if (comp == "Pv") result.functionModifiers.push_back("PRIVATE");
-            else if (comp == "Ay") result.functionModifiers.push_back("ASYNC");
         };
 
         size_t i = 0;

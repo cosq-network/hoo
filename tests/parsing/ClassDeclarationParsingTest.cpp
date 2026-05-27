@@ -240,7 +240,7 @@ TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
 // Test 16: Class with all modifiers
 TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
     std::string code = R"(
-        singleton immutable factory observable service strategy actor final class AllModifiers {
+        singleton immutable service final class AllModifiers {
         }
     )";
 
@@ -254,14 +254,10 @@ TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
     ASSERT_NE(classDecl, nullptr);
 
     // Verify all modifiers
-    EXPECT_EQ(classDecl->getModifiers().size(), 8);
+    EXPECT_EQ(classDecl->getModifiers().size(), 4);
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SINGLETON));
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::IMMUTABLE));
-    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::FACTORY));
-    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::OBSERVABLE));
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERVICE));
-    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::STRATEGY));
-    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::ACTOR));
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::FINAL));
 }
 

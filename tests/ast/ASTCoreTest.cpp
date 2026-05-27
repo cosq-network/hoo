@@ -53,11 +53,7 @@ TEST_F(ASTCoreTest, QualifiedIdentifierToString) {
 TEST_F(ASTCoreTest, ClassModifierToStringAll) {
     EXPECT_EQ(classModifierToString(ClassModifier::SINGLETON), "singleton");
     EXPECT_EQ(classModifierToString(ClassModifier::IMMUTABLE), "immutable");
-    EXPECT_EQ(classModifierToString(ClassModifier::FACTORY), "factory");
-    EXPECT_EQ(classModifierToString(ClassModifier::OBSERVABLE), "observable");
     EXPECT_EQ(classModifierToString(ClassModifier::SERVICE), "service");
-    EXPECT_EQ(classModifierToString(ClassModifier::STRATEGY), "strategy");
-    EXPECT_EQ(classModifierToString(ClassModifier::ACTOR), "actor");
     EXPECT_EQ(classModifierToString(ClassModifier::FINAL), "final");
 }
 
@@ -131,17 +127,15 @@ TEST_F(ASTCoreTest, FunctionDeclarationDefaultModifiers) {
     EXPECT_EQ(fd.getName(), "test");
     EXPECT_FALSE(fd.isPublic());
     EXPECT_FALSE(fd.isPrivate());
-    EXPECT_FALSE(fd.isAsync());
 }
 
 TEST_F(ASTCoreTest, FunctionDeclarationWithModifiers) {
     auto returnType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
     auto body = std::make_unique<Block>(std::vector<std::unique_ptr<Statement>>{});
     FunctionDeclaration fd("add", {}, std::move(returnType), std::move(body),
-                          {FunctionModifier::PUBLIC, FunctionModifier::ASYNC});
+                          {FunctionModifier::PUBLIC});
     EXPECT_TRUE(fd.isPublic());
     EXPECT_FALSE(fd.isPrivate());
-    EXPECT_TRUE(fd.isAsync());
 }
 
 TEST_F(ASTCoreTest, FunctionDeclarationWithParameter) {

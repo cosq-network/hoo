@@ -486,3 +486,469 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ClassWithMethodAndFieldAccess) {
     EXPECT_TRUE(foundArith);
     EXPECT_TRUE(foundStore);
 }
+
+// ============================================================================
+// Class Modifier Enforcement Tests
+// ============================================================================
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonNoConstructor) {
+    std::string code = R"(
+        singleton class AppConfig {
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(module->getSymbol("_F_module_init_v"), nullptr);
+    auto* dataSec = module->getSection(".data");
+    ASSERT_NE(dataSec, nullptr);
+    EXPECT_GE(dataSec->data.size(), 8);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonWithNoArgConstructor) {
+    std::string code = R"(
+        singleton class AppConfig {
+            var value: int64;
+            constructor() {
+                this.value = 42;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(module->getSymbol("_F_module_init_v"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonConstructorWithArgs) {
+    std::string code = R"(
+        singleton class AppConfig {
+            var value: int64;
+            constructor(name: int64) {
+                this.value = name;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("constructor must have no parameters") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonNewExpressionReturnsInstance) {
+    std::string code = R"(
+        singleton class App {
+            var x: int64;
+            constructor() {
+                this.x = 1;
+            }
+        }
+        func : void test() {
+            var a = new App();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(module->getSymbol("_F_module_init_v"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonWithMethods) {
+    std::string code = R"(
+        singleton class Logger {
+            var level: int64;
+            constructor() {
+                this.level = 0;
+            }
+            func : void setLevel(l: int64) {
+                this.level = l;
+            }
+        }
+        func : void test() {
+            var log = new Logger();
+            log.setLevel(1);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(module->getSymbol("_F_module_init_v"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleSingletons) {
+    std::string code = R"(
+        singleton class A {
+            var x: int64;
+            constructor() { this.x = 1; }
+        }
+        singleton class B {
+            var y: int64;
+            constructor() { this.y = 2; }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(module->getSymbol("_F_module_init_v"), nullptr);
+    auto* dataSec = module->getSection(".data");
+    ASSERT_NE(dataSec, nullptr);
+    EXPECT_GE(dataSec->data.size(), 16);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableAssignmentInConstructor) {
+    std::string code = R"(
+        immutable class Point {
+            var x: int64;
+            constructor(x: int64) {
+                this.x = x;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableAssignmentOutsideConstructor) {
+    std::string code = R"(
+        immutable class Point {
+            var x: int64;
+            constructor(x: int64) {
+                this.x = x;
+            }
+            func : void setX(v: int64) {
+                this.x = v;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot modify field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableCompoundAssignmentOutsideConstructor) {
+    std::string code = R"(
+        immutable class Counter {
+            var count: int64;
+            constructor() {
+                this.count = 0;
+            }
+            func : void increment() {
+                this.count += 1;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot modify field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableIncrementOutsideConstructor) {
+    std::string code = R"(
+        immutable class Counter {
+            var count: int64;
+            constructor() {
+                this.count = 0;
+            }
+            func : void increment() {
+                this.count++;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot modify field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableDecrementOutsideConstructor) {
+    std::string code = R"(
+        immutable class Counter {
+            var count: int64;
+            constructor() {
+                this.count = 0;
+            }
+            func : void decrement() {
+                this.count--;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot modify field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableReadInMethod) {
+    std::string code = R"(
+        immutable class Point {
+            var x: int64;
+            constructor(x: int64) {
+                this.x = x;
+            }
+            func : int64 getX() {
+                return this.x;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, MutableClassFieldAssignmentWorks) {
+    std::string code = R"(
+        class Point {
+            var x: int64;
+            constructor(x: int64) {
+                this.x = x;
+            }
+            func : void setX(v: int64) {
+                this.x = v;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FinalClassExtension) {
+    std::string code = R"(
+        final class Base {}
+        class Derived extends Base {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot extend final class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NonFinalClassExtension) {
+    std::string code = R"(
+        class Base {}
+        class Derived extends Base {}
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FinalIndirectExtension) {
+    std::string code = R"(
+        final class Base {}
+        class Middle extends Base {}
+        class Derived extends Middle {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot extend final class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceModifierAccepted) {
+    std::string code = R"(
+        service class MyService {
+            func : void doSomething() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, AllRemainingModifiersCombined) {
+    std::string code = R"(
+        singleton immutable final class App {
+            var x: int64;
+            constructor() {
+                this.x = 1;
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_NE(module->getSymbol("_F_module_init_v"), nullptr);
+}
+
+// ============================================================================
+// Service Class Modifier Tests
+// ============================================================================
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNoConstructor) {
+    std::string code = R"(
+        service class Logger {
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNoArgConstructor) {
+    std::string code = R"(
+        service class Logger {
+            constructor() {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithServiceParam) {
+    std::string code = R"(
+        service class Config {
+            constructor() {}
+        }
+        service class Logger {
+            constructor(cfg: Config) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithMultipleServiceParams) {
+    std::string code = R"(
+        service class Config {
+            constructor() {}
+        }
+        service class Cache {
+            constructor() {}
+        }
+        service class Logger {
+            constructor(cfg: Config, cache: Cache) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithServiceParamNoArg) {
+    std::string code = R"(
+        service class Config {}
+        service class Logger {
+            constructor(cfg: Config) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithSingleton) {
+    std::string code = R"(
+        service singleton class Bad {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot also be singleton") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithImmutable) {
+    std::string code = R"(
+        service immutable class Bad {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot also be immutable") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithFinal) {
+    std::string code = R"(
+        service final class Bad {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot also be final") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithAllConflicting) {
+    std::string code = R"(
+        service singleton immutable final class Bad {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot also be") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNewKeyword) {
+    std::string code = R"(
+        service class Logger {
+            constructor() {}
+        }
+        func : void test() {
+            var log = new Logger();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot create instance of service class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorPrimitiveParam) {
+    std::string code = R"(
+        service class Logger {
+            constructor(name: int64) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot be primitive type") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorStringParam) {
+    std::string code = R"(
+        service class Logger {
+            constructor(name: string) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot be primitive type") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorNonServiceClassParam) {
+    std::string code = R"(
+        class Config {}
+        service class Logger {
+            constructor(cfg: Config) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("must be a service class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorNonServiceClassParamForward) {
+    std::string code = R"(
+        service class Logger {
+            constructor(cfg: Config) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("must be a service class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorMixedParams) {
+    std::string code = R"(
+        service class Config {
+            constructor() {}
+        }
+        service class Logger {
+            constructor(cfg: Config, name: int64) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot be primitive type") != std::string::npos ||
+                compiler_->getLastError().find("must be a service class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassMethodsNoRestriction) {
+    std::string code = R"(
+        service class Calculator {
+            constructor() {}
+            func : int64 add(a: int64, b: int64) {
+                return a + b;
+            }
+            func : void log(msg: string) {
+            }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}

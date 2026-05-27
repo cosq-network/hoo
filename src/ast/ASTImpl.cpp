@@ -316,11 +316,7 @@ std::string hooc::ast::classModifierToString(ClassModifier modifier) {
     switch (modifier) {
         case ClassModifier::SINGLETON: return "singleton";
         case ClassModifier::IMMUTABLE: return "immutable";
-        case ClassModifier::FACTORY: return "factory";
-        case ClassModifier::OBSERVABLE: return "observable";
         case ClassModifier::SERVICE: return "service";
-        case ClassModifier::STRATEGY: return "strategy";
-        case ClassModifier::ACTOR: return "actor";
         case ClassModifier::FINAL: return "final";
         default: return "unknown";
     }

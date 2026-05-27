@@ -6,8 +6,7 @@ namespace ast {
 // Function modifiers (for member functions)
 enum class FunctionModifier {
     PUBLIC,
-    PRIVATE,
-    ASYNC
+    PRIVATE
 };
 
 } // namespace hooc

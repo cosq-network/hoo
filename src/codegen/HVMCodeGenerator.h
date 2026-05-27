@@ -69,10 +69,22 @@ private:
         std::string name;
         std::unordered_map<std::string, int32_t> fieldOffsets;
         int32_t totalSize = 0;
+        bool isSingleton = false;
+        bool isFinal = false;
+        bool isImmutable = false;
+        bool isService = false;
+        uint32_t singletonDataOffset = 0; // .data offset for singleton pointer
     };
     std::unordered_map<std::string, ClassLayout> classes_;
     std::unordered_map<std::string, std::string> methodNameToClass_; // methodName -> className
     ClassLayout* currentClass_ = nullptr;
+    bool inConstructor_ = false;
+    std::vector<std::pair<std::string, uint32_t>> pendingSingletons_; // className, .data offset
+    
+    /**
+     * Emit a module_init function that runs once at module load time.
+     */
+    void emitModuleInit();
     
     /**
      * Reserve space on stack for a local variable.

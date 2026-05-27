@@ -129,6 +129,48 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         } else if (auto classDecl = dynamic_cast<const ast::ClassDeclaration*>(decl.get())) {
             ClassLayout layout;
             layout.name = classDecl->getName();
+            layout.isSingleton = classDecl->hasModifier(ast::ClassModifier::SINGLETON);
+            layout.isFinal = classDecl->hasModifier(ast::ClassModifier::FINAL);
+            layout.isImmutable = classDecl->hasModifier(ast::ClassModifier::IMMUTABLE);
+            layout.isService = classDecl->hasModifier(ast::ClassModifier::SERVICE);
+            
+            // Service validation: cannot be combined with singleton, immutable, or final
+            if (layout.isService) {
+                if (layout.isSingleton) {
+                    addError("Service class '" + layout.name + "' cannot also be singleton");
+                }
+                if (layout.isImmutable) {
+                    addError("Service class '" + layout.name + "' cannot also be immutable");
+                }
+                if (layout.isFinal) {
+                    addError("Service class '" + layout.name + "' cannot also be final");
+                }
+                // Validate constructor parameters
+                for (const auto& member : classDecl->getBody().getMembers()) {
+                    if (auto ctor = member->getConstructor()) {
+                        for (const auto& param : ctor->getParameters()) {
+                            auto* bt = dynamic_cast<const ast::BaseType*>(&param->getType());
+                            if (bt && bt->isPrimitive()) {
+                                addError("Service class '" + layout.name + "' constructor parameter '" + param->getName() + "' cannot be primitive type");
+                            } else {
+                                std::string typeName = bt ? bt->getIdentifier() : "object";
+                                auto depIt = classes_.find(typeName);
+                                if (depIt == classes_.end() || !depIt->second.isService) {
+                                    addError("Service class '" + layout.name + "' constructor parameter '" + param->getName() + "' must be a service class, got '" + typeName + "'");
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Final check: validate base class is not final
+            if (classDecl->hasBaseClass()) {
+                auto baseIt = classes_.find(classDecl->getBaseClass());
+                if (baseIt != classes_.end() && baseIt->second.isFinal) {
+                    addError("Cannot extend final class '" + classDecl->getBaseClass() + "'");
+                }
+            }
             
             // Calculate field offsets
             int32_t currentOffset = 0;
@@ -152,8 +194,36 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 }
             }
 
+            // Singleton validation: constructor must have no arguments
+            if (layout.isSingleton) {
+                for (const auto& member : classDecl->getBody().getMembers()) {
+                    if (auto ctor = member->getConstructor()) {
+                        if (!ctor->getParameters().empty()) {
+                            addError("Singleton class '" + layout.name + "' constructor must have no parameters");
+                        }
+                    }
+                }
+                // Reserve .data slot for singleton instance pointer
+                Section* dataSec = module_->getSection(".data");
+                if (!dataSec) {
+                    Section s;
+                    s.name = ".data";
+                    s.type = SectionType::SHT_DATA;
+                    s.flags = SectionFlags::ALLOC | SectionFlags::WRITE;
+                    module_->addSection(std::move(s));
+                    dataSec = module_->getSection(".data");
+                }
+                layout.singletonDataOffset = static_cast<uint32_t>(dataSec->data.size());
+                for (int i = 0; i < 8; ++i) dataSec->data.push_back(0);
+                dataSec->virtual_size = dataSec->data.size();
+                pendingSingletons_.push_back({layout.name, layout.singletonDataOffset});
+                // Update the layout in classes_ after allocation
+                classes_[layout.name] = layout;
+            }
+
             // Process methods
             currentClass_ = &classes_[layout.name];
+            inConstructor_ = false;
             for (const auto& member : classDecl->getBody().getMembers()) {
                 if (auto declMember = member->getDeclaration()) {
                     if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
@@ -165,6 +235,11 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             }
             currentClass_ = nullptr;
         }
+    }
+
+    // Emit module_init function if needed (e.g., singleton initialization)
+    if (!pendingSingletons_.empty()) {
+        emitModuleInit();
     }
 
     if (hasErrors()) {
@@ -328,8 +403,10 @@ void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
 }
 
 void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl) {
+    inConstructor_ = true;
     auto info = beginFunction(nullptr, &decl, true, true);
     endFunction(info);
+    inConstructor_ = false;
 }
 
 void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
@@ -786,6 +863,22 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return 0;
         }
         
+        // Service classes cannot be instantiated with 'new'
+        if (it->second.isService) {
+            addError("Cannot create instance of service class '" + className + "'");
+            return 0;
+        }
+        
+        // Singleton: load pre-allocated instance from .data
+        if (it->second.isSingleton) {
+            uint8_t addrReg = allocateRegister();
+            emit(Opcode::LDA, OperandsI{addrReg, 1, static_cast<int16_t>(it->second.singletonDataOffset)});
+            uint8_t dest = allocateRegister();
+            emit(Opcode::LD_D, OperandsI{dest, addrReg, 0});
+            freeRegister(addrReg);
+            return dest;
+        }
+        
         // 1. Allocate: CALL hoo_alloc(size, typeId)
         uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
         uint8_t typeReg = emitConstant(100); // Generic Object typeId
@@ -1032,16 +1125,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&compoundAssign->getLeft())) {
             objReg = visitExpression(leftMember->getObject());
             isMember = true;
-            bool found = false;
+            std::string foundClass;
             for (const auto& [className, layout] : classes_) {
                 auto it = layout.fieldOffsets.find(leftMember->getMember());
                 if (it != layout.fieldOffsets.end()) {
                     offset = it->second;
-                    found = true;
+                    foundClass = className;
                     break;
                 }
             }
-            if (found) {
+            if (!foundClass.empty()) {
+                auto classIt = classes_.find(foundClass);
+                if (classIt != classes_.end() && classIt->second.isImmutable && !inConstructor_) {
+                    addError("Cannot modify field '" + leftMember->getMember() + "' of immutable class '" + foundClass + "'");
+                }
                 lhsReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
             } else {
@@ -1095,16 +1192,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&incDec->getOperand())) {
             objReg = visitExpression(leftMember->getObject());
             isMember = true;
-            bool found = false;
+            std::string foundClass;
             for (const auto& [className, layout] : classes_) {
                 auto it = layout.fieldOffsets.find(leftMember->getMember());
                 if (it != layout.fieldOffsets.end()) {
                     offset = it->second;
-                    found = true;
+                    foundClass = className;
                     break;
                 }
             }
-            if (found) {
+            if (!foundClass.empty()) {
+                auto classIt = classes_.find(foundClass);
+                if (classIt != classes_.end() && classIt->second.isImmutable && !inConstructor_) {
+                    addError("Cannot modify field '" + leftMember->getMember() + "' of immutable class '" + foundClass + "'");
+                }
                 lhsReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
             } else {
@@ -1148,16 +1249,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&assign->getLeft())) {
             uint8_t objReg = visitExpression(leftMember->getObject());
             int32_t offset = 0;
-            bool found = false;
+            std::string foundClass;
             for (const auto& [className, layout] : classes_) {
                 auto it = layout.fieldOffsets.find(leftMember->getMember());
                 if (it != layout.fieldOffsets.end()) {
                     offset = it->second;
-                    found = true;
+                    foundClass = className;
                     break;
                 }
             }
-            if (found) {
+            if (!foundClass.empty()) {
+                auto classIt = classes_.find(foundClass);
+                if (classIt != classes_.end() && classIt->second.isImmutable && !inConstructor_) {
+                    addError("Cannot modify field '" + leftMember->getMember() + "' of immutable class '" + foundClass + "'");
+                }
                 emit(Opcode::ST_D, OperandsI{valueReg, objReg, static_cast<int16_t>(offset)});
             } else {
                 addError("Undefined member: " + leftMember->getMember());
@@ -1419,5 +1524,54 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
     if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
     
     return 100;
+}
+
+void HVMCodeGenerator::emitModuleInit() {
+    uint32_t funcStart = currentByteOffset_;
+    size_t enterIdx = instructions_.size();
+
+    emit(Opcode::ENTER, OperandsI{0, 0, 0});
+    scopeStack_.push_back({});
+
+    for (const auto& [className, dataOffset] : pendingSingletons_) {
+        auto it = classes_.find(className);
+        if (it == classes_.end()) continue;
+
+        // Allocate: hoo_alloc(size, typeId)
+        uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
+        emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
+        uint8_t typeReg = emitConstant(100);
+        emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
+        freeRegister(sizeReg);
+        freeRegister(typeReg);
+
+        uint8_t instanceReg = allocateRegister();
+        emit(Opcode::MOV, OperandsR{instanceReg, 1, 0, 0});
+
+        // Store singleton pointer in .data section via LDA with rs=1 (dataBase)
+        uint8_t addrReg = allocateRegister();
+        emit(Opcode::LDA, OperandsI{addrReg, 1, static_cast<int16_t>(dataOffset)});
+        emit(Opcode::ST_D, OperandsI{instanceReg, addrReg, 0});
+        freeRegister(addrReg);
+        freeRegister(instanceReg);
+    }
+
+    emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+    emit(Opcode::RET, OperandsR{0, 0, 0, 0});
+
+    int32_t frameSize = -currentStackOffset_;
+    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
+
+    Symbol sym;
+    sym.name = "_F_module_init_v";
+    sym.value = funcStart;
+    sym.type = Symbol::STT_FUNC;
+    sym.binding = Symbol::STB_GLOBAL;
+    sym.section_index = 0;
+    module_->addSymbol(sym);
+
+    scopeStack_.clear();
+    currentStackOffset_ = 0;
 }
 } // namespace hooc
