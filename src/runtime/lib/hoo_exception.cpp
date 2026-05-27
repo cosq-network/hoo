@@ -6,6 +6,7 @@
 #include <cstdarg>
 #include <atomic>
 #include <new>
+#include <mutex>
 
 // ============================================================================
 // Internal Structure (Hidden from hoo Code)
@@ -38,6 +39,7 @@ static const char* type_names[] = {
 
 static thread_local HooException currentException = nullptr;
 static thread_local std::stack<void*> handlerStack;
+static std::mutex gExceptionReleaseMu;
 
 class HooStdException : public std::exception {
 public:
@@ -240,8 +242,15 @@ HooException hoo_exception_retain(HooException exc) {
 void hoo_exception_release(HooException exc) {
     if (!exc) return;
 
-    // Check if we're about to free the object (refcount == 1)
-    if (hoo_get_refcount(exc) == 1) {
+    bool doCleanup = false;
+    {
+        std::lock_guard<std::mutex> lk(gExceptionReleaseMu);
+        if (hoo_get_refcount(exc) == 1) {
+            doCleanup = true;
+        }
+    }
+
+    if (doCleanup) {
         HooExceptionImpl* impl = get_impl(exc);
         if (impl->message && impl->message[0] != '\0') {
             std::free((void*)impl->message);
@@ -375,13 +384,13 @@ void hoo_exception_println(HooException exc) {
 
 const char* hoo_exception_debug(HooException exc) {
     if (!exc) {
-        return "<null>";
+        return strdup("<null>");
     }
 
     HooExceptionImpl* impl = get_impl(exc);
 
-    static thread_local char buffer[512];
-    std::snprintf(buffer, sizeof(buffer),
+    char buffer[512];
+    int written = std::snprintf(buffer, sizeof(buffer),
         "HooException { typeId=%lld, type=\"%s\", message=\"%s\", refcount=%lld, hasCause=%s }",
         (long long)impl->typeId,
         impl->typeName,
@@ -390,7 +399,8 @@ const char* hoo_exception_debug(HooException exc) {
         impl->cause ? "true" : "false"
     );
 
-    return buffer;
+    if (written < 0) return strdup("");
+    return strndup(buffer, (size_t)written);
 }
 
 #ifdef __cplusplus

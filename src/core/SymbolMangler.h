@@ -16,10 +16,10 @@ struct DemangledSymbol {
     std::vector<std::string> functionModifiers;
     std::string returnType;
     std::vector<std::string> parameterTypes;
-    bool isConstructor;
-    bool isDestructor;
-    bool isStatic;
-    bool isVirtual;
+    bool isConstructor = false;
+    bool isDestructor = false;
+    bool isStatic = false;
+    bool isVirtual = false;
 };
 
 struct MangledFunctionParams {
@@ -31,10 +31,10 @@ struct MangledFunctionParams {
     std::vector<std::string> functionModifiers;
     std::string returnType;
     std::vector<std::string> parameterTypes;
-    bool isConstructor;
-    bool isDestructor;
-    bool isStatic;
-    bool isVirtual;
+    bool isConstructor = false;
+    bool isDestructor = false;
+    bool isStatic = false;
+    bool isVirtual = false;
 };
 
 const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap();

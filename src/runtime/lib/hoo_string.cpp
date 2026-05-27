@@ -108,20 +108,22 @@ HooString hoo_string_repeat(char ch, int64_t count) {
 // ============================================================================
 
 HooString hoo_string_concat(HooString dst, HooString src) {
-    // Handle NULL inputs
-    if (!dst) dst = hoo_string_new();
-    if (!src) src = hoo_string_new();
+    HooStringImpl* dst_impl = dst ? get_impl(dst) : nullptr;
+    HooStringImpl* src_impl = src ? get_impl(src) : nullptr;
 
-    HooStringImpl* dst_impl = get_impl(dst);
-    HooStringImpl* src_impl = get_impl(src);
+    int64_t dst_len = dst_impl ? dst_impl->length : 0;
+    int64_t src_len = src_impl ? src_impl->length : 0;
+    int64_t new_length = dst_len + src_len;
 
-    int64_t new_length = dst_impl->length + src_impl->length;
     HooString result = allocate_string(new_length);
     HooStringImpl* result_impl = get_impl(result);
 
-    // Copy destination, then source
-    std::memcpy(result_impl->data, dst_impl->data, dst_impl->length);
-    std::memcpy(result_impl->data + dst_impl->length, src_impl->data, src_impl->length);
+    if (dst_impl && dst_len > 0) {
+        std::memcpy(result_impl->data, dst_impl->data, dst_len);
+    }
+    if (src_impl && src_len > 0) {
+        std::memcpy(result_impl->data + dst_len, src_impl->data, src_len);
+    }
 
     return result;
 }
@@ -290,7 +292,11 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
             if (part_len > 0) {
                 HooString part = hoo_string_from_bytes(str_impl->data + pos, part_len);
                 void* ptr = part;
-                hoo_array_push(result, &ptr);
+                if (!hoo_array_push_h(&result, &ptr)) {
+                    hoo_string_release(part);
+                    hoo_array_release(result);
+                    return nullptr;
+                }
                 hoo_string_release(part);
             }
 
@@ -300,7 +306,11 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
             if (remaining_len > 0) {
                 HooString part = hoo_string_from_bytes(str_impl->data + pos, remaining_len);
                 void* ptr = part;
-                hoo_array_push(result, &ptr);
+                if (!hoo_array_push_h(&result, &ptr)) {
+                    hoo_string_release(part);
+                    hoo_array_release(result);
+                    return nullptr;
+                }
                 hoo_string_release(part);
             }
             break;
@@ -545,8 +555,9 @@ int64_t hoo_string_ends_with(HooString str, HooString suffix) {
 // ============================================================================
 
 int64_t hoo_string_compare(HooString a, HooString b) {
-    if (!a) a = hoo_string_new();
-    if (!b) b = hoo_string_new();
+    if (!a && !b) return 0;
+    if (!a) return -1;
+    if (!b) return 1;
 
     HooStringImpl* a_impl = get_impl(a);
     HooStringImpl* b_impl = get_impl(b);

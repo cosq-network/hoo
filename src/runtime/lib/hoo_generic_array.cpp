@@ -76,27 +76,17 @@ int64_t hoo_array_set(HooArray arr, int64_t index, const void* value) {
     return 1;
 }
 
-int64_t hoo_array_push(HooArray arr_handle, const void* value) {
-    if (!arr_handle || !value) return -1;
+HooArray hoo_array_push(HooArray arr_handle, const void* value) {
+    if (!arr_handle || !value) return nullptr;
     int64_t* raw = (int64_t*)arr_handle;
     int64_t len = raw[0];
     int64_t cap = raw[1];
     
     if (len >= cap) {
-        // Since we are hardware-ready and want to avoid complex handle logic for now,
-        // we use hoo_realloc but we must BE CAREFUL because the handle passed by the JIT
-        // might become stale. 
-        // For runtime internal usage (like splitting strings), we can return the new length.
-        // In the future, HVM should use a "Handle" type (pointer-to-pointer).
-        
         int64_t new_cap = (cap <= 0) ? 8 : cap * 2;
-        int64_t* new_raw = (int64_t*)hoo_realloc(arr_handle, ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8);
-        if (!new_raw) return -1;
-        
-        // This is tricky. If hoo_realloc moved the memory, the original pointer is dead.
-        // We can't update the caller's pointer easily from here.
-        // But for unit tests and simple linear growth, it might just work if we are lucky
-        // or if we strictly use handles.
+        size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
+        int64_t* new_raw = (int64_t*)hoo_realloc(arr_handle, new_size);
+        if (!new_raw) return nullptr;
         
         raw = new_raw;
         raw[1] = new_cap;
@@ -104,7 +94,15 @@ int64_t hoo_array_push(HooArray arr_handle, const void* value) {
     
     raw[len + ARRAY_HEADER_WORDS] = *(const int64_t*)value;
     raw[0] = len + 1;
-    return raw[0];
+    return (HooArray)raw;
+}
+
+int64_t hoo_array_push_h(HooArray* arr_ptr, const void* value) {
+    if (!arr_ptr || !value) return 0;
+    HooArray new_arr = hoo_array_push(*arr_ptr, value);
+    if (!new_arr) return 0;
+    *arr_ptr = new_arr;
+    return 1;
 }
 
 int64_t hoo_array_pop(HooArray arr, void* dest) {
@@ -129,38 +127,38 @@ int64_t hoo_array_empty(HooArray arr) {
 
 // Type-specific implementations mapping to generic 64-bit slots
 
-int64_t hoo_array_push_int64(HooArray arr, int64_t value) {
+HooArray hoo_array_push_int64(HooArray arr, int64_t value) {
     return hoo_array_push(arr, &value);
 }
 
-int64_t hoo_array_push_double(HooArray arr, double value) {
+HooArray hoo_array_push_double(HooArray arr, double value) {
     return hoo_array_push(arr, &value);
 }
 
-int64_t hoo_array_push_float(HooArray arr, float value) {
+HooArray hoo_array_push_float(HooArray arr, float value) {
     double dval = value;
     return hoo_array_push(arr, &dval);
 }
 
-int64_t hoo_array_push_bool(HooArray arr, int64_t value) {
+HooArray hoo_array_push_bool(HooArray arr, int64_t value) {
     int64_t bval = value ? 1 : 0;
     return hoo_array_push(arr, &bval);
 }
 
-int64_t hoo_array_push_char(HooArray arr, char value) {
+HooArray hoo_array_push_char(HooArray arr, char value) {
     int64_t cval = value;
     return hoo_array_push(arr, &cval);
 }
 
-int64_t hoo_array_push_string(HooArray arr, const char* value) {
+HooArray hoo_array_push_string(HooArray arr, const char* value) {
     return hoo_array_push(arr, &value);
 }
 
-int64_t hoo_array_push_object(HooArray arr, void* value) {
+HooArray hoo_array_push_object(HooArray arr, void* value) {
     return hoo_array_push(arr, &value);
 }
 
-int64_t hoo_array_push_array(HooArray arr, HooArray value) {
+HooArray hoo_array_push_array(HooArray arr, HooArray value) {
     if (value) hoo_retain(value);
     return hoo_array_push(arr, &value);
 }

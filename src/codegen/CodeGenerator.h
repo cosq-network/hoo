@@ -34,7 +34,7 @@ public:
      * @param funcDecl The function declaration AST node
      * @return A function representation (implementation-specific), or nullptr on failure
      */
-    virtual GeneratedFunction* generateFunction(const ast::FunctionDeclaration& funcDecl) = 0;
+    virtual std::unique_ptr<GeneratedFunction> generateFunction(const ast::FunctionDeclaration& funcDecl) = 0;
 
     /**
      * Generate code for an expression.
@@ -42,7 +42,7 @@ public:
      * @param expr The expression AST node
      * @return A value representation (implementation-specific), or nullptr on failure
      */
-    virtual GeneratedValue* generateExpression(const ast::Expression& expr) = 0;
+    virtual std::unique_ptr<GeneratedValue> generateExpression(const ast::Expression& expr) = 0;
 
     /**
      * Generate code for a statement.
@@ -57,7 +57,7 @@ public:
      * @param type The type AST node
      * @return A type representation (implementation-specific), or nullptr on failure
      */
-    virtual GeneratedType* generateType(const ast::Type& type) = 0;
+    virtual std::unique_ptr<GeneratedType> generateType(const ast::Type& type) = 0;
 
 protected:
     // Protected constructor - only derived classes can instantiate

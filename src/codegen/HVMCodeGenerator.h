@@ -29,10 +29,10 @@ public:
     std::unique_ptr<GeneratedModule> generateModule(const ast::CompilationUnit& compilationUnit) override;
 
     // CodeGenerator interface overrides (internal usage)
-    GeneratedFunction* generateFunction(const ast::FunctionDeclaration& funcDecl) override;
-    GeneratedValue* generateExpression(const ast::Expression& expr) override;
+    std::unique_ptr<GeneratedFunction> generateFunction(const ast::FunctionDeclaration& funcDecl) override;
+    std::unique_ptr<GeneratedValue> generateExpression(const ast::Expression& expr) override;
     void generateStatement(const ast::Statement& stmt) override;
-    GeneratedType* generateType(const ast::Type& type) override;
+    std::unique_ptr<GeneratedType> generateType(const ast::Type& type) override;
 
     /**
      * Get any errors that occurred during generation.

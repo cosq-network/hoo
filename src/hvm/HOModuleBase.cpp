@@ -210,10 +210,13 @@ bool HOModuleBase::serialize(std::vector<uint8_t>& output) const {
 
     output.resize(16, 0);
     uint32_t magic = 0x484F4F48;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x00) = magic;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x04) = static_cast<uint32_t>(module_type_);
-    *reinterpret_cast<uint32_t*>(output.data() + 0x08) = 1;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x0C) = static_cast<uint32_t>(module_name_.size());
+    uint32_t moduleType = static_cast<uint32_t>(module_type_);
+    uint32_t version = 1;
+    uint32_t nameLen = static_cast<uint32_t>(module_name_.size());
+    std::memcpy(output.data() + 0x00, &magic, sizeof(magic));
+    std::memcpy(output.data() + 0x04, &moduleType, sizeof(moduleType));
+    std::memcpy(output.data() + 0x08, &version, sizeof(version));
+    std::memcpy(output.data() + 0x0C, &nameLen, sizeof(nameLen));
 
     output.insert(output.end(), module_name_.begin(), module_name_.end());
 
@@ -226,19 +229,22 @@ bool HOModuleBase::deserialize(const std::vector<uint8_t>& input) {
         return false;
     }
 
-    uint32_t magic = *reinterpret_cast<const uint32_t*>(input.data() + 0x00);
+    uint32_t magic = 0;
+    std::memcpy(&magic, input.data() + 0x00, sizeof(magic));
     if (magic != 0x484F4F48) {
         error_ = "Invalid magic number";
         return false;
     }
 
-    uint32_t recordedType = *reinterpret_cast<const uint32_t*>(input.data() + 0x04);
+    uint32_t recordedType = 0;
+    std::memcpy(&recordedType, input.data() + 0x04, sizeof(recordedType));
     if (recordedType != static_cast<uint32_t>(module_type_)) {
         error_ = "Module type mismatch";
         return false;
     }
 
-    uint32_t nameLen = *reinterpret_cast<const uint32_t*>(input.data() + 0x0C);
+    uint32_t nameLen = 0;
+    std::memcpy(&nameLen, input.data() + 0x0C, sizeof(nameLen));
     if (input.size() < 16 + nameLen) {
         error_ = "Input too small for name";
         return false;

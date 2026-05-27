@@ -84,11 +84,22 @@ int64_t hoo_array_set(HooArray arr, int64_t index, const void* value);
 
 /**
  * Add element to end of array
- * @param arr Array
+ * @param arr Array handle
  * @param value Pointer to value
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly a new handle if reallocation occurred),
+ *         or NULL on failure. The returned handle must be used for all
+ *         subsequent operations; the original handle may be invalid after growth.
  */
-int64_t hoo_array_push(HooArray arr, const void* value);
+HooArray hoo_array_push(HooArray arr, const void* value);
+
+/**
+ * Push a value and update the handle in-place.
+ * Safe for variables that may be invalidated by reallocation.
+ * @param arr_ptr Pointer to array handle (will be updated if reallocation occurs)
+ * @param value Pointer to value
+ * @return 1 on success, 0 on failure
+ */
+int64_t hoo_array_push_h(HooArray* arr_ptr, const void* value);
 
 /**
  * Remove and return last element
@@ -117,67 +128,67 @@ int64_t hoo_array_empty(HooArray arr);
 
 /**
  * Push int64 value
- * @param arr Array
+ * @param arr Array handle
  * @param value int64 value
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new if reallocation occurred), or NULL on failure
  */
-int64_t hoo_array_push_int64(HooArray arr, int64_t value);
+HooArray hoo_array_push_int64(HooArray arr, int64_t value);
 
 /**
  * Push double value
- * @param arr Array
+ * @param arr Array handle
  * @param value double value
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_double(HooArray arr, double value);
+HooArray hoo_array_push_double(HooArray arr, double value);
 
 /**
  * Push float value
- * @param arr Array
+ * @param arr Array handle
  * @param value float value
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_float(HooArray arr, float value);
+HooArray hoo_array_push_float(HooArray arr, float value);
 
 /**
  * Push bool value
- * @param arr Array
+ * @param arr Array handle
  * @param value bool value
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_bool(HooArray arr, int64_t value);
+HooArray hoo_array_push_bool(HooArray arr, int64_t value);
 
 /**
  * Push char value
- * @param arr Array
+ * @param arr Array handle
  * @param value char value
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_char(HooArray arr, char value);
+HooArray hoo_array_push_char(HooArray arr, char value);
 
 /**
  * Push string pointer
- * @param arr Array
+ * @param arr Array handle
  * @param value Pointer to string
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_string(HooArray arr, const char* value);
+HooArray hoo_array_push_string(HooArray arr, const char* value);
 
 /**
  * Push object pointer (class instance)
- * @param arr Array
+ * @param arr Array handle
  * @param value Pointer to object
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_object(HooArray arr, void* value);
+HooArray hoo_array_push_object(HooArray arr, void* value);
 
 /**
  * Push array (for multi-dimensional arrays)
- * @param arr Array
+ * @param arr Array handle
  * @param value HooArray handle
- * @return New length on success, -1 on failure
+ * @return The array handle (possibly new), or NULL on failure
  */
-int64_t hoo_array_push_array(HooArray arr, HooArray value);
+HooArray hoo_array_push_array(HooArray arr, HooArray value);
 
 // ============================================================================
 // Type-Specific Get Operations

@@ -191,22 +191,22 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     return std::make_unique<HVMGeneratedModule>(std::move(module_));
 }
 
-GeneratedFunction* HVMCodeGenerator::generateFunction(const ast::FunctionDeclaration& funcDecl) {
+std::unique_ptr<GeneratedFunction> HVMCodeGenerator::generateFunction(const ast::FunctionDeclaration& funcDecl) {
     visitFunction(funcDecl);
-    return new HVMGeneratedFunction(0);
+    return std::make_unique<HVMGeneratedFunction>(0);
 }
 
-GeneratedValue* HVMCodeGenerator::generateExpression(const ast::Expression& expr) {
+std::unique_ptr<GeneratedValue> HVMCodeGenerator::generateExpression(const ast::Expression& expr) {
     uint8_t reg = visitExpression(expr);
-    return new HVMGeneratedValue(HVMGeneratedValue::Kind::Register, reg);
+    return std::make_unique<HVMGeneratedValue>(HVMGeneratedValue::Kind::Register, reg);
 }
 
 void HVMCodeGenerator::generateStatement(const ast::Statement& stmt) {
     visitStatement(stmt);
 }
 
-GeneratedType* HVMCodeGenerator::generateType(const ast::Type& /*type*/) {
-    return new HVMGeneratedType(0);
+std::unique_ptr<GeneratedType> HVMCodeGenerator::generateType(const ast::Type& /*type*/) {
+    return std::make_unique<HVMGeneratedType>(0);
 }
 
 // ============================================================================
@@ -1182,6 +1182,8 @@ uint8_t HVMCodeGenerator::allocateRegister() {
             return i;
         }
     }
+    // Register exhaustion is a compiler bug - fail hard rather than silently
+    // using r0 (hardwired zero).
     addError("Register pressure: out of temporary registers");
     return 0;
 }

@@ -6,6 +6,7 @@
 #include <random>
 #include <atomic>
 #include <algorithm>
+#include <mutex>
 
 #ifdef __cplusplus
 extern "C" {
@@ -26,7 +27,10 @@ double hoo_math_get_nan(void) { return NAN; }
 // Basic Functions
 // ============================================================================
 
-int64_t hoo_math_abs_int64(int64_t x) { return x >= 0 ? x : -x; }
+int64_t hoo_math_abs_int64(int64_t x) {
+    if (x == INT64_MIN) return INT64_MAX;
+    return x >= 0 ? x : -x;
+}
 double hoo_math_abs_double(double x) { return std::fabs(x); }
 
 int64_t hoo_math_min_int64(int64_t a, int64_t b) { return a < b ? a : b; }
@@ -162,10 +166,20 @@ void* hoo_math_random_retain(void* state) {
     return (void*)hoo_retain(state);
 }
 
+static std::mutex gRandomReleaseMu;
+
 void hoo_math_random_release(void* state) {
     if (!state) return;
 
-    if (hoo_get_refcount(state) == 1) {
+    bool doCleanup = false;
+    {
+        std::lock_guard<std::mutex> lk(gRandomReleaseMu);
+        if (hoo_get_refcount(state) == 1) {
+            doCleanup = true;
+        }
+    }
+
+    if (doCleanup) {
         HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
         impl->~HooRandomImpl();
     }

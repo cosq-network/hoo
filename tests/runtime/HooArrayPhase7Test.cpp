@@ -30,7 +30,8 @@ TEST_F(HooArrayPhase7Test, ArrayLength) {
 
     // Push 5 elements
     for (int64_t i = 0; i < 5; i++) {
-        EXPECT_GE(hoo_array_push_int64(arr, i), 0);
+        arr = hoo_array_push_int64(arr, i);
+        ASSERT_NE(arr, nullptr);
     }
 
     EXPECT_EQ(hoo_array_length(arr), 5);
@@ -44,7 +45,8 @@ TEST_F(HooArrayPhase7Test, ClearArray) {
     ASSERT_NE(arr, nullptr);
 
     for (int64_t i = 0; i < 10; i++) {
-        hoo_array_push_int64(arr, i);
+        arr = hoo_array_push_int64(arr, i);
+        ASSERT_NE(arr, nullptr);
     }
 
     EXPECT_EQ(hoo_array_length(arr), 10);
@@ -98,11 +100,10 @@ TEST_F(HooArrayPhase7Test, PushInt64Values) {
     int64_t values[] = {1, 2, 3, -100, 9223372036854775807LL};  // Include max int64
 
     for (size_t i = 0; i < 5; i++) {
-        int64_t result = hoo_array_push_int64(arr, values[i]);
-        EXPECT_EQ(result, static_cast<int64_t>(i + 1));
+        arr = hoo_array_push_int64(arr, values[i]);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), static_cast<int64_t>(i + 1));
     }
-
-    EXPECT_EQ(hoo_array_length(arr), 5);
 
     hoo_array_release(arr);
 }
@@ -114,7 +115,8 @@ TEST_F(HooArrayPhase7Test, GetInt64Values) {
     int64_t values[] = {42, -17, 0, 1000000, -1000000};
 
     for (size_t i = 0; i < 5; i++) {
-        hoo_array_push_int64(arr, values[i]);
+        arr = hoo_array_push_int64(arr, values[i]);
+        ASSERT_NE(arr, nullptr);
     }
 
     // Verify we can get them back
@@ -139,11 +141,10 @@ TEST_F(HooArrayPhase7Test, PushDoubleValues) {
     double values[] = {1.5, -3.14, 0.0, 2.71828, 1e100};
 
     for (size_t i = 0; i < 5; i++) {
-        int64_t result = hoo_array_push_double(arr, values[i]);
-        EXPECT_EQ(result, static_cast<int64_t>(i + 1));
+        arr = hoo_array_push_double(arr, values[i]);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), static_cast<int64_t>(i + 1));
     }
-
-    EXPECT_EQ(hoo_array_length(arr), 5);
 
     hoo_array_release(arr);
 }
@@ -155,7 +156,8 @@ TEST_F(HooArrayPhase7Test, GetDoubleValues) {
     double values[] = {3.14, -2.71828, 0.0, 1.414, 1e-10};
 
     for (size_t i = 0; i < 5; i++) {
-        hoo_array_push_double(arr, values[i]);
+        arr = hoo_array_push_double(arr, values[i]);
+        ASSERT_NE(arr, nullptr);
     }
 
     // Verify with tolerance
@@ -176,8 +178,9 @@ TEST_F(HooArrayPhase7Test, PushFloatValues) {
     float values[] = {1.5f, -3.14f, 0.0f, 2.71f};
 
     for (size_t i = 0; i < 4; i++) {
-        int64_t result = hoo_array_push_float(arr, values[i]);
-        EXPECT_EQ(result, static_cast<int64_t>(i + 1));
+        arr = hoo_array_push_float(arr, values[i]);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), static_cast<int64_t>(i + 1));
     }
 
     EXPECT_EQ(hoo_array_length(arr), 4);
@@ -190,10 +193,10 @@ TEST_F(HooArrayPhase7Test, PushBoolValues) {
     ASSERT_NE(arr, nullptr);
 
     // Push bool values (1 for true, 0 for false)
-    hoo_array_push_bool(arr, 1);
-    hoo_array_push_bool(arr, 0);
-    hoo_array_push_bool(arr, 1);
-    hoo_array_push_bool(arr, 1);
+    arr = hoo_array_push_bool(arr, 1); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_bool(arr, 0); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_bool(arr, 1); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_bool(arr, 1); ASSERT_NE(arr, nullptr);
 
     EXPECT_EQ(hoo_array_length(arr), 4);
 
@@ -204,9 +207,9 @@ TEST_F(HooArrayPhase7Test, GetBoolValues) {
     HooArray arr = hoo_array_new();
     ASSERT_NE(arr, nullptr);
 
-    hoo_array_push_bool(arr, 1);
-    hoo_array_push_bool(arr, 0);
-    hoo_array_push_bool(arr, 1);
+    arr = hoo_array_push_bool(arr, 1); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_bool(arr, 0); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_bool(arr, 1); ASSERT_NE(arr, nullptr);
 
     int64_t value1 = 0, value2 = 0, value3 = 0;
     EXPECT_EQ(hoo_array_get_bool(arr, 0, &value1), 1);
@@ -231,8 +234,9 @@ TEST_F(HooArrayPhase7Test, PushCharValues) {
     char values[] = {'a', 'b', 'c', 'x', 'z'};
 
     for (size_t i = 0; i < 5; i++) {
-        int64_t result = hoo_array_push_char(arr, values[i]);
-        EXPECT_EQ(result, static_cast<int64_t>(i + 1));
+        arr = hoo_array_push_char(arr, values[i]);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), static_cast<int64_t>(i + 1));
     }
 
     EXPECT_EQ(hoo_array_length(arr), 5);
@@ -247,8 +251,9 @@ TEST_F(HooArrayPhase7Test, PushStringPointers) {
     const char* strings[] = {"hello", "world", "test", "phase7"};
 
     for (size_t i = 0; i < 4; i++) {
-        int64_t result = hoo_array_push_string(arr, strings[i]);
-        EXPECT_EQ(result, static_cast<int64_t>(i + 1));
+        arr = hoo_array_push_string(arr, strings[i]);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), static_cast<int64_t>(i + 1));
     }
 
     EXPECT_EQ(hoo_array_length(arr), 4);
@@ -277,8 +282,9 @@ TEST_F(HooArrayPhase7Test, PushObjectPointers) {
     void* pointers[] = {&obj1, &obj2, &obj3};
 
     for (size_t i = 0; i < 3; i++) {
-        int64_t result = hoo_array_push_object(arr, pointers[i]);
-        EXPECT_EQ(result, static_cast<int64_t>(i + 1));
+        arr = hoo_array_push_object(arr, pointers[i]);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), static_cast<int64_t>(i + 1));
     }
 
     EXPECT_EQ(hoo_array_length(arr), 3);
@@ -294,7 +300,7 @@ TEST_F(HooArrayPhase7Test, GetObjectPointers) {
     void* pointers[] = {&obj1, &obj2, &obj3};
 
     for (size_t i = 0; i < 3; i++) {
-        hoo_array_push_object(arr, pointers[i]);
+        arr = hoo_array_push_object(arr, pointers[i]); ASSERT_NE(arr, nullptr);
     }
 
     // Retrieve and verify pointers
@@ -313,8 +319,8 @@ TEST_F(HooArrayPhase7Test, ObjectPointerArrays) {
     HooArray objects2 = hoo_array_new();
 
     static int obj1 = 1, obj2 = 2;
-    hoo_array_push_object(objects1, &obj1);
-    hoo_array_push_object(objects1, &obj2);
+    objects1 = hoo_array_push_object(objects1, &obj1); ASSERT_NE(objects1, nullptr);
+    objects1 = hoo_array_push_object(objects1, &obj2); ASSERT_NE(objects1, nullptr);
 
     EXPECT_EQ(hoo_array_length(objects1), 2);
     EXPECT_EQ(hoo_array_length(objects2), 0);
@@ -334,17 +340,17 @@ TEST_F(HooArrayPhase7Test, MultiDimensionalArrayBasic) {
 
     // Create first row
     HooArray row1 = hoo_array_new();
-    hoo_array_push_int64(row1, 1);
-    hoo_array_push_int64(row1, 2);
+    row1 = hoo_array_push_int64(row1, 1); ASSERT_NE(row1, nullptr);
+    row1 = hoo_array_push_int64(row1, 2); ASSERT_NE(row1, nullptr);
 
     // Create second row
     HooArray row2 = hoo_array_new();
-    hoo_array_push_int64(row2, 3);
-    hoo_array_push_int64(row2, 4);
+    row2 = hoo_array_push_int64(row2, 3); ASSERT_NE(row2, nullptr);
+    row2 = hoo_array_push_int64(row2, 4); ASSERT_NE(row2, nullptr);
 
     // Push rows into outer array
-    hoo_array_push_array(outer, row1);
-    hoo_array_push_array(outer, row2);
+    outer = hoo_array_push_array(outer, row1); ASSERT_NE(outer, nullptr);
+    outer = hoo_array_push_array(outer, row2); ASSERT_NE(outer, nullptr);
 
     EXPECT_EQ(hoo_array_length(outer), 2);
 
@@ -386,7 +392,7 @@ TEST_F(HooArrayPhase7Test, NestedArrayRefCounting) {
     EXPECT_EQ(hoo_array_refcount(inner), 1);
 
     // Push inner into outer (should retain)
-    hoo_array_push_array(outer, inner);
+    outer = hoo_array_push_array(outer, inner); ASSERT_NE(outer, nullptr);
 
     // Now inner should have refcount 2 (one from creation, one from push/retain)
     EXPECT_EQ(hoo_array_refcount(inner), 2);
@@ -408,20 +414,20 @@ TEST_F(HooArrayPhase7Test, TripleDimensionalArray) {
     // Create [[1, 2]]
     HooArray level2_1 = hoo_array_new();
     HooArray level1_1 = hoo_array_new();
-    hoo_array_push_int64(level1_1, 1);
-    hoo_array_push_int64(level1_1, 2);
-    hoo_array_push_array(level2_1, level1_1);
+    level1_1 = hoo_array_push_int64(level1_1, 1); ASSERT_NE(level1_1, nullptr);
+    level1_1 = hoo_array_push_int64(level1_1, 2); ASSERT_NE(level1_1, nullptr);
+    level2_1 = hoo_array_push_array(level2_1, level1_1); ASSERT_NE(level2_1, nullptr);
 
     // Create [[3, 4]]
     HooArray level2_2 = hoo_array_new();
     HooArray level1_2 = hoo_array_new();
-    hoo_array_push_int64(level1_2, 3);
-    hoo_array_push_int64(level1_2, 4);
-    hoo_array_push_array(level2_2, level1_2);
+    level1_2 = hoo_array_push_int64(level1_2, 3); ASSERT_NE(level1_2, nullptr);
+    level1_2 = hoo_array_push_int64(level1_2, 4); ASSERT_NE(level1_2, nullptr);
+    level2_2 = hoo_array_push_array(level2_2, level1_2); ASSERT_NE(level2_2, nullptr);
 
     // Push both into level 3
-    hoo_array_push_array(level3, level2_1);
-    hoo_array_push_array(level3, level2_2);
+    level3 = hoo_array_push_array(level3, level2_1); ASSERT_NE(level3, nullptr);
+    level3 = hoo_array_push_array(level3, level2_2); ASSERT_NE(level3, nullptr);
 
     EXPECT_EQ(hoo_array_length(level3), 2);
 
@@ -434,7 +440,7 @@ TEST_F(HooArrayPhase7Test, TripleDimensionalArray) {
 
 TEST_F(HooArrayPhase7Test, TypeInformationInt64) {
     HooArray arr = hoo_array_new();
-    hoo_array_push_int64(arr, 42);
+    arr = hoo_array_push_int64(arr, 42); ASSERT_NE(arr, nullptr);
 
     const char* type_name = hoo_array_element_type(arr);
     EXPECT_NE(type_name, nullptr);
@@ -448,7 +454,7 @@ TEST_F(HooArrayPhase7Test, TypeInformationInt64) {
 
 TEST_F(HooArrayPhase7Test, TypeInformationDouble) {
     HooArray arr = hoo_array_new();
-    hoo_array_push_double(arr, 3.14);
+    arr = hoo_array_push_double(arr, 3.14); ASSERT_NE(arr, nullptr);
 
     const char* type_name = hoo_array_element_type(arr);
     EXPECT_NE(type_name, nullptr);
@@ -472,8 +478,8 @@ TEST_F(HooArrayPhase7Test, EmptyArrayTypeInfo) {
 
 TEST_F(HooArrayPhase7Test, OutOfBoundsGet) {
     HooArray arr = hoo_array_new();
-    hoo_array_push_int64(arr, 1);
-    hoo_array_push_int64(arr, 2);
+    arr = hoo_array_push_int64(arr, 1); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 2); ASSERT_NE(arr, nullptr);
 
     int64_t value = 0;
     EXPECT_EQ(hoo_array_get_int64(arr, -1, &value), 0);  // Negative index
@@ -487,8 +493,9 @@ TEST_F(HooArrayPhase7Test, LargeArrayInt64) {
 
     // Push 1000 elements
     for (int64_t i = 0; i < 1000; i++) {
-        int64_t result = hoo_array_push_int64(arr, i);
-        EXPECT_GE(result, 0);
+        arr = hoo_array_push_int64(arr, i);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), i + 1);
     }
 
     EXPECT_EQ(hoo_array_length(arr), 1000);
@@ -513,8 +520,9 @@ TEST_F(HooArrayPhase7Test, LargeArrayDouble) {
     // Push 500 double values
     for (int64_t i = 0; i < 500; i++) {
         double val = static_cast<double>(i) * 1.5;
-        int64_t result = hoo_array_push_double(arr, val);
-        EXPECT_GE(result, 0);
+        arr = hoo_array_push_double(arr, val);
+        ASSERT_NE(arr, nullptr);
+        EXPECT_EQ(hoo_array_length(arr), i + 1);
     }
 
     EXPECT_EQ(hoo_array_length(arr), 500);
@@ -534,7 +542,7 @@ TEST_F(HooArrayPhase7Test, MixedInt64Array) {
     int64_t values[] = {-1000, -1, 0, 1, 1000, -2147483648LL, 2147483647LL};
 
     for (size_t i = 0; i < 7; i++) {
-        hoo_array_push_int64(arr, values[i]);
+        arr = hoo_array_push_int64(arr, values[i]); ASSERT_NE(arr, nullptr);
     }
 
     EXPECT_EQ(hoo_array_length(arr), 7);
@@ -554,14 +562,14 @@ TEST_F(HooArrayPhase7Test, ComplexMixedArray) {
     // This tests the flexibility of std::any
     HooArray arr = hoo_array_new();
 
-    hoo_array_push_int64(arr, 42);      // int64
-    hoo_array_push_double(arr, 3.14);   // double
-    hoo_array_push_bool(arr, 1);        // bool
-    hoo_array_push_float(arr, 2.71f);   // float
-    hoo_array_push_char(arr, 'X');      // char
-    hoo_array_push_string(arr, "test"); // string pointer
+    arr = hoo_array_push_int64(arr, 42); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_double(arr, 3.14); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_bool(arr, 1); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_float(arr, 2.71f); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_char(arr, 'X'); ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_string(arr, "test"); ASSERT_NE(arr, nullptr);
     static int obj = 100;
-    hoo_array_push_object(arr, &obj);   // object pointer
+    arr = hoo_array_push_object(arr, &obj); ASSERT_NE(arr, nullptr);
 
     EXPECT_EQ(hoo_array_length(arr), 7);
 
@@ -609,7 +617,7 @@ TEST_F(HooArrayPhase7Test, RepeatedCreateDestroy) {
         EXPECT_NE(arr, nullptr);
 
         for (int j = 0; j < 10; j++) {
-            hoo_array_push_int64(arr, j);
+            arr = hoo_array_push_int64(arr, j); ASSERT_NE(arr, nullptr);
         }
 
         EXPECT_EQ(hoo_array_length(arr), 10);
@@ -622,7 +630,7 @@ TEST_F(HooArrayPhase7Test, ClearAndReuse) {
 
     // First use
     for (int64_t i = 0; i < 5; i++) {
-        hoo_array_push_int64(arr, i);
+        arr = hoo_array_push_int64(arr, i); ASSERT_NE(arr, nullptr);
     }
     EXPECT_EQ(hoo_array_length(arr), 5);
 
@@ -631,7 +639,7 @@ TEST_F(HooArrayPhase7Test, ClearAndReuse) {
     EXPECT_EQ(hoo_array_length(arr), 0);
 
     for (int64_t i = 100; i < 105; i++) {
-        hoo_array_push_int64(arr, i);
+        arr = hoo_array_push_int64(arr, i); ASSERT_NE(arr, nullptr);
     }
     EXPECT_EQ(hoo_array_length(arr), 5);
 
@@ -644,7 +652,7 @@ TEST_F(HooArrayPhase7Test, ClearAndReuse) {
 
 TEST_F(HooArrayPhase7Test, RetainReleaseMultiple) {
     HooArray arr = hoo_array_new();
-    hoo_array_push_int64(arr, 42);
+    arr = hoo_array_push_int64(arr, 42); ASSERT_NE(arr, nullptr);
 
     EXPECT_EQ(hoo_array_refcount(arr), 1);
 
@@ -674,11 +682,11 @@ TEST_F(HooArrayPhase7Test, NestedArrayLifecycle) {
     HooArray inner1 = hoo_array_new();
     HooArray inner2 = hoo_array_new();
 
-    hoo_array_push_int64(inner1, 1);
-    hoo_array_push_int64(inner2, 2);
+    inner1 = hoo_array_push_int64(inner1, 1); ASSERT_NE(inner1, nullptr);
+    inner2 = hoo_array_push_int64(inner2, 2); ASSERT_NE(inner2, nullptr);
 
-    hoo_array_push_array(outer, inner1);
-    hoo_array_push_array(outer, inner2);
+    outer = hoo_array_push_array(outer, inner1); ASSERT_NE(outer, nullptr);
+    outer = hoo_array_push_array(outer, inner2); ASSERT_NE(outer, nullptr);
 
     EXPECT_EQ(hoo_array_length(outer), 2);
 

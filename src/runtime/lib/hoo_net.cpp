@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <new>
+#include <mutex>
 
 #ifdef __cplusplus
 extern "C" {
@@ -150,13 +151,22 @@ char* hoo_net_url_to_string(HooURL url) {
     return strdup(result.c_str());
 }
 
+static std::mutex gNetUrlReleaseMu;
+
 HooURL hoo_net_url_retain(HooURL url) {
     return (HooURL)hoo_retain(url);
 }
 
 void hoo_net_url_release(HooURL url) {
     if (!url) return;
-    if (hoo_get_refcount(url) == 1) {
+    bool doCleanup = false;
+    {
+        std::lock_guard<std::mutex> lk(gNetUrlReleaseMu);
+        if (hoo_get_refcount(url) == 1) {
+            doCleanup = true;
+        }
+    }
+    if (doCleanup) {
         HooURLImpl* impl = static_cast<HooURLImpl*>(url);
         impl->~HooURLImpl();
     }
@@ -214,13 +224,22 @@ int64_t hoo_net_http_response_is_success(HooHttpResponse response) {
     return (impl->statusCode >= 200 && impl->statusCode < 300) ? 1 : 0;
 }
 
+static std::mutex gHttpResponseReleaseMu;
+
 HooHttpResponse hoo_net_http_response_retain(HooHttpResponse response) {
     return (HooHttpResponse)hoo_retain(response);
 }
 
 void hoo_net_http_response_release(HooHttpResponse response) {
     if (!response) return;
-    if (hoo_get_refcount(response) == 1) {
+    bool doCleanup = false;
+    {
+        std::lock_guard<std::mutex> lk(gHttpResponseReleaseMu);
+        if (hoo_get_refcount(response) == 1) {
+            doCleanup = true;
+        }
+    }
+    if (doCleanup) {
         HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(response);
         impl->~HooHttpResponseImpl();
     }
@@ -297,13 +316,22 @@ HooHttpResponse hoo_net_http_client_delete(HooHttpClient client, const char* url
     return mock_http_request("DELETE", url, nullptr);
 }
 
+static std::mutex gHttpClientReleaseMu;
+
 HooHttpClient hoo_net_http_client_retain(HooHttpClient client) {
     return (HooHttpClient)hoo_retain(client);
 }
 
 void hoo_net_http_client_release(HooHttpClient client) {
     if (!client) return;
-    if (hoo_get_refcount(client) == 1) {
+    bool doCleanup = false;
+    {
+        std::lock_guard<std::mutex> lk(gHttpClientReleaseMu);
+        if (hoo_get_refcount(client) == 1) {
+            doCleanup = true;
+        }
+    }
+    if (doCleanup) {
         HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
         impl->~HooHttpClientImpl();
     }

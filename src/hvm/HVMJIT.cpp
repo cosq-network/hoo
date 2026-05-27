@@ -648,7 +648,8 @@ extern "C" {
     }
     uint64_t jit_hoo_array_push_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        hoo_array_push_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2]);
+        HooArray new_arr = hoo_array_push_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2]);
+        state->regs[1] = static_cast<int64_t>(reinterpret_cast<intptr_t>(new_arr));
         return 0;
     }
     uint64_t jit_hoo_array_get_int64(void* state_ptr) {
@@ -3860,11 +3861,22 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     if (!ensureJIT()) {
         return -1;
     }
+    std::string jitError;
     int64_t jitResult = runViaJIT(entryPoint);
     if (jitResult != -1) {
         return jitResult;
     }
-    // Fallback path for unsupported/failed JIT lowering.
+    // JIT returned -1. Capture the JIT error but fall through to interpreter
+    // if the error is a lookup/missing-entry failure (the interpreter has a
+    // more flexible symbol resolution). Only skip fallback for hard JIT
+    // translation/compilation errors.
+    {
+        jitError = lastError_;
+        auto errInfo = lastErrorInfo_;
+        if (errInfo && errInfo->code != ErrorCode::MissingEntryPoint) {
+            return -1;
+        }
+    }
     clearError();
     lastRunUsedJIT_ = false;
     auto primary = loadedModules_[primaryModuleName_];
@@ -3873,6 +3885,9 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
     const int64_t rv = executeFunction(primary, entryPoint, state);
+    if (rv == -1 && !jitError.empty()) {
+        lastError_ = "[JIT] " + jitError + " | [Interp] " + lastError_;
+    }
     shadow_clear_state(&state);
     return rv;
 }

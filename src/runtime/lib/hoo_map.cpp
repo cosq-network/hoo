@@ -4,6 +4,7 @@
 #include <cstring>
 #include <cassert>
 #include <unordered_map>
+#include <mutex>
 
 namespace hooc {
 
@@ -522,6 +523,8 @@ int64_t hoo_map_get_string_value(HooMap map, const char* key, void* dest) {
     return impl->getStringValue(key, dest);
 }
 
+static std::mutex gMapReleaseMu;
+
 // Reference counting
 HooMap hoo_map_retain(HooMap map) {
     return (HooMap)hoo_retain(map);
@@ -530,7 +533,15 @@ HooMap hoo_map_retain(HooMap map) {
 void hoo_map_release(HooMap map) {
     if (!map) return;
 
-    if (hoo_get_refcount(map) == 1) {
+    bool doCleanup = false;
+    {
+        std::lock_guard<std::mutex> lk(gMapReleaseMu);
+        if (hoo_get_refcount(map) == 1) {
+            doCleanup = true;
+        }
+    }
+
+    if (doCleanup) {
         auto* impl = static_cast<hooc::HooMapImpl*>(map);
         impl->~HooMapImpl();
     }
