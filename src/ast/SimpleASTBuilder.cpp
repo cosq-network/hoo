@@ -57,7 +57,8 @@ std::unique_ptr<Declaration> SimpleASTBuilder::buildDeclaration(HoocParser::Decl
     throw std::runtime_error("Unknown declaration type encountered");
 }
 
-std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx) {
+std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx,
+    std::vector<FunctionModifier> modifiers) {
     std::string name = ctx->IDENTIFIER()->getText();
 
     if (ctx->type()) {
@@ -67,11 +68,11 @@ std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(
         if (ctx->expression()) {
             initializer = buildExpression(ctx->expression());
         }
-        return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer));
+        return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer), false, false, std::move(modifiers));
     } else {
         // Type inference: var x = expr
         auto initializer = buildExpression(ctx->expression());
-        return std::make_unique<VariableDeclaration>(name, std::move(initializer));
+        return std::make_unique<VariableDeclaration>(name, std::move(initializer), false, false, std::move(modifiers));
     }
 }
 
@@ -939,7 +940,11 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
         throw std::runtime_error("ClassMemberContext is null");
     }
     if (ctx->variableDeclaration()) {
-        auto varDecl = buildVariableDeclaration(ctx->variableDeclaration());
+        std::vector<FunctionModifier> modifiers;
+        for (auto modCtx : ctx->functionModifier()) {
+            modifiers.push_back(getFunctionModifier(modCtx));
+        }
+        auto varDecl = buildVariableDeclaration(ctx->variableDeclaration(), std::move(modifiers));
         return std::make_unique<ClassMember>(std::move(varDecl));
     } else if (ctx->constructorDeclaration()) {
         auto constructor = buildConstructorDeclaration(ctx->constructorDeclaration());

@@ -172,7 +172,8 @@ private:
      * @param ctx Variable declaration context.
      * @return Unique pointer to VariableDeclaration.
      */
-    std::unique_ptr<ast::VariableDeclaration> buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx);
+    std::unique_ptr<ast::VariableDeclaration> buildVariableDeclaration(HoocParser::VariableDeclarationContext* ctx,
+        std::vector<ast::FunctionModifier> modifiers = {});
 
     /**
      * @brief Builds a ConstantDeclaration from its context.

@@ -178,6 +178,13 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 if (auto declMember = member->getDeclaration()) {
                     if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
                         layout.fieldOffsets[var->getName()] = currentOffset;
+                        if (var->isPrivate()) {
+                            layout.fieldAccess[var->getName()] = FieldAccess::PRIVATE;
+                        } else if (var->isPublic()) {
+                            layout.fieldAccess[var->getName()] = FieldAccess::PUBLIC;
+                        } else {
+                            layout.fieldAccess[var->getName()] = FieldAccess::DEFAULT_VAR;
+                        }
                         currentOffset += 8;
                     }
                 }
@@ -927,17 +934,21 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&expr)) {
         uint8_t objReg = visitExpression(memberAccess->getObject());
         int32_t offset = 0; 
-        bool found = false;
+        std::string foundClass;
         for (const auto& [className, layout] : classes_) {
             auto it = layout.fieldOffsets.find(memberAccess->getMember());
             if (it != layout.fieldOffsets.end()) {
                 offset = it->second;
-                found = true;
+                foundClass = className;
                 break;
             }
         }
-        if (!found) {
+        if (foundClass.empty()) {
             addError("Undefined member: " + memberAccess->getMember());
+            return objReg;
+        }
+        if (!canReadField(memberAccess->getMember(), foundClass)) {
+            addError("Cannot access private field '" + memberAccess->getMember() + "' of class '" + foundClass + "'");
             return objReg;
         }
         uint8_t dest = allocateRegister();
@@ -1164,6 +1175,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (classIt != classes_.end() && classIt->second.isImmutable && !inConstructor_) {
                     addError("Cannot modify field '" + leftMember->getMember() + "' of immutable class '" + foundClass + "'");
                 }
+                if (!canWriteField(leftMember->getMember(), foundClass)) {
+                    addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
+                }
                 lhsReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
             } else {
@@ -1231,6 +1245,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (classIt != classes_.end() && classIt->second.isImmutable && !inConstructor_) {
                     addError("Cannot modify field '" + leftMember->getMember() + "' of immutable class '" + foundClass + "'");
                 }
+                if (!canWriteField(leftMember->getMember(), foundClass)) {
+                    addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
+                }
                 lhsReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
             } else {
@@ -1287,6 +1304,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 auto classIt = classes_.find(foundClass);
                 if (classIt != classes_.end() && classIt->second.isImmutable && !inConstructor_) {
                     addError("Cannot modify field '" + leftMember->getMember() + "' of immutable class '" + foundClass + "'");
+                }
+                if (!canWriteField(leftMember->getMember(), foundClass)) {
+                    addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
                 }
                 emit(Opcode::ST_D, OperandsI{valueReg, objReg, static_cast<int16_t>(offset)});
             } else {
@@ -1606,6 +1626,32 @@ bool HVMCodeGenerator::isDerivedFrom(const std::string& className, const std::st
     if (it->second.baseClass == potentialBase) return true;
     if (!it->second.baseClass.empty()) {
         return isDerivedFrom(it->second.baseClass, potentialBase);
+    }
+    return false;
+}
+
+bool HVMCodeGenerator::canReadField(const std::string& fieldName, const std::string& owningClass) const {
+    auto classIt = classes_.find(owningClass);
+    if (classIt == classes_.end()) return true;
+    auto accessIt = classIt->second.fieldAccess.find(fieldName);
+    if (accessIt == classIt->second.fieldAccess.end()) return true;
+    if (accessIt->second == FieldAccess::PUBLIC || accessIt->second == FieldAccess::DEFAULT_VAR) return true;
+    // PRIVATE: accessible from same class or derived class
+    if (currentClass_ && (currentClass_->name == owningClass || isDerivedFrom(currentClass_->name, owningClass))) {
+        return true;
+    }
+    return false;
+}
+
+bool HVMCodeGenerator::canWriteField(const std::string& fieldName, const std::string& owningClass) const {
+    auto classIt = classes_.find(owningClass);
+    if (classIt == classes_.end()) return true;
+    auto accessIt = classIt->second.fieldAccess.find(fieldName);
+    if (accessIt == classIt->second.fieldAccess.end()) return true;
+    if (accessIt->second == FieldAccess::PUBLIC) return true;
+    // PRIVATE or DEFAULT_VAR: writable from same class or derived class
+    if (currentClass_ && (currentClass_->name == owningClass || isDerivedFrom(currentClass_->name, owningClass))) {
+        return true;
     }
     return false;
 }

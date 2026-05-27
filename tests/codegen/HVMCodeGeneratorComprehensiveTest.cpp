@@ -954,6 +954,257 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassMethodsNoRestriction) {
 }
 
 // ============================================================================
+// Field Access Modifier Enforcement Tests
+// ============================================================================
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PublicFieldReadOutsideClass) {
+    std::string code = R"(
+        class Data {
+            public var value: int64;
+            constructor() { this.value = 42; }
+        }
+        func : void test() {
+            var d = new Data();
+            var v = d.value;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PublicFieldWriteOutsideClass) {
+    std::string code = R"(
+        class Data {
+            public var value: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            d.value = 99;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadOutsideClass) {
+    std::string code = R"(
+        class Data {
+            private var secret: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            var v = d.secret;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot access private field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteOutsideClass) {
+    std::string code = R"(
+        class Data {
+            private var secret: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            d.secret = 99;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot write to field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldReadOutsideClass) {
+    std::string code = R"(
+        class Data {
+            var value: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            var v = d.value;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldWriteOutsideClass) {
+    std::string code = R"(
+        class Data {
+            var value: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            d.value = 99;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot write to field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadFromSameClass) {
+    std::string code = R"(
+        class Data {
+            private var secret: int64;
+            constructor() { this.secret = 42; }
+            public func : int64 getSecret() {
+                return this.secret;
+            }
+        }
+        func : void test() {
+            var d = new Data();
+            var v = d.getSecret();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteFromSameClass) {
+    std::string code = R"(
+        class Data {
+            private var secret: int64;
+            public func : void setSecret(v: int64) {
+                this.secret = v;
+            }
+        }
+        func : void test() {
+            var d = new Data();
+            d.setSecret(99);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldReadFromDerivedClass) {
+    std::string code = R"(
+        class Base {
+            var value: int64;
+        }
+        class Derived extends Base {
+            public func : int64 getValue() {
+                return this.value;
+            }
+        }
+        func : void test() {
+            var d = new Derived();
+            var v = d.getValue();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldWriteFromDerivedClass) {
+    std::string code = R"(
+        class Base {
+            var value: int64;
+        }
+        class Derived extends Base {
+            public func : void setValue(v: int64) {
+                this.value = v;
+            }
+        }
+        func : void test() {
+            var d = new Derived();
+            d.setValue(99);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadFromDerivedClass) {
+    std::string code = R"(
+        class Base {
+            private var secret: int64;
+            constructor() { this.secret = 42; }
+        }
+        class Derived extends Base {
+            public func : int64 getSecret() {
+                return this.secret;
+            }
+        }
+        func : void test() {
+            var d = new Derived();
+            var v = d.getSecret();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteFromDerivedClass) {
+    std::string code = R"(
+        class Base {
+            private var secret: int64;
+        }
+        class Derived extends Base {
+            public func : void setSecret(v: int64) {
+                this.secret = v;
+            }
+        }
+        func : void test() {
+            var d = new Derived();
+            d.setSecret(99);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldCompoundAssignOutsideClass) {
+    std::string code = R"(
+        class Data {
+            private var count: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            d.count += 1;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot write to field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldIncrementOutsideClass) {
+    std::string code = R"(
+        class Data {
+            var count: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            d.count++;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot write to field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldDecrementOutsideClass) {
+    std::string code = R"(
+        class Data {
+            var count: int64;
+        }
+        func : void test() {
+            var d = new Data();
+            d.count--;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot write to field") != std::string::npos);
+}
+
+// ============================================================================
+// Class Modifier Enforcement Tests
+// ============================================================================
 // Public/Private Access Modifier Enforcement Tests
 // ============================================================================
 

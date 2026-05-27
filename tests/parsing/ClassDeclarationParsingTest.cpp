@@ -501,3 +501,159 @@ TEST_F(ClassDeclarationParsingTest, ClassWithNoConstructorShouldSucceed) {
     }
     EXPECT_EQ(constructorCount, 0);
 }
+
+// Test 17: Class with public field
+TEST_F(ClassDeclarationParsingTest, ClassWithPublicField) {
+    std::string code = R"(
+        class MyClass {
+            public var x: int64;
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 1);
+
+    auto* declMember = members[0]->getDeclaration();
+    ASSERT_NE(declMember, nullptr);
+
+    auto* varDecl = dynamic_cast<const VariableDeclaration*>(declMember);
+    ASSERT_NE(varDecl, nullptr);
+    EXPECT_EQ(varDecl->getName(), "x");
+    EXPECT_TRUE(varDecl->isPublic());
+    EXPECT_FALSE(varDecl->isPrivate());
+}
+
+// Test 18: Class with private field
+TEST_F(ClassDeclarationParsingTest, ClassWithPrivateField) {
+    std::string code = R"(
+        class MyClass {
+            private var x: int64;
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 1);
+
+    auto* declMember = members[0]->getDeclaration();
+    ASSERT_NE(declMember, nullptr);
+
+    auto* varDecl = dynamic_cast<const VariableDeclaration*>(declMember);
+    ASSERT_NE(varDecl, nullptr);
+    EXPECT_EQ(varDecl->getName(), "x");
+    EXPECT_FALSE(varDecl->isPublic());
+    EXPECT_TRUE(varDecl->isPrivate());
+}
+
+// Test 19: Class with var field (no modifier)
+TEST_F(ClassDeclarationParsingTest, ClassWithDefaultField) {
+    std::string code = R"(
+        class MyClass {
+            var x: int64;
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 1);
+
+    auto* declMember = members[0]->getDeclaration();
+    ASSERT_NE(declMember, nullptr);
+
+    auto* varDecl = dynamic_cast<const VariableDeclaration*>(declMember);
+    ASSERT_NE(varDecl, nullptr);
+    EXPECT_EQ(varDecl->getName(), "x");
+    EXPECT_FALSE(varDecl->isPublic());
+    EXPECT_FALSE(varDecl->isPrivate());
+}
+
+// Test 20: Class with mixed private and public fields
+TEST_F(ClassDeclarationParsingTest, ClassWithMixedFieldAccess) {
+    std::string code = R"(
+        class MyClass {
+            public var name: string;
+            private var ssn: int64;
+            var email: string;
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 3);
+
+    auto* var0 = dynamic_cast<const VariableDeclaration*>(members[0]->getDeclaration());
+    ASSERT_NE(var0, nullptr);
+    EXPECT_EQ(var0->getName(), "name");
+    EXPECT_TRUE(var0->isPublic());
+    EXPECT_FALSE(var0->isPrivate());
+
+    auto* var1 = dynamic_cast<const VariableDeclaration*>(members[1]->getDeclaration());
+    ASSERT_NE(var1, nullptr);
+    EXPECT_EQ(var1->getName(), "ssn");
+    EXPECT_FALSE(var1->isPublic());
+    EXPECT_TRUE(var1->isPrivate());
+
+    auto* var2 = dynamic_cast<const VariableDeclaration*>(members[2]->getDeclaration());
+    ASSERT_NE(var2, nullptr);
+    EXPECT_EQ(var2->getName(), "email");
+    EXPECT_FALSE(var2->isPublic());
+    EXPECT_FALSE(var2->isPrivate());
+}
+
+// Test 21: Class with private inferred field
+TEST_F(ClassDeclarationParsingTest, ClassWithPrivateInferredField) {
+    std::string code = R"(
+        class MyClass {
+            private var data = 42;
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 1);
+
+    auto* varDecl = dynamic_cast<const VariableDeclaration*>(members[0]->getDeclaration());
+    ASSERT_NE(varDecl, nullptr);
+    EXPECT_TRUE(varDecl->isPrivate());
+}

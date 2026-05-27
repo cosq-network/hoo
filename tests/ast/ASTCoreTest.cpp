@@ -243,3 +243,37 @@ TEST_F(ASTCoreTest, ParenthesizedExpression) {
     ParenthesizedExpression pe(std::move(inner));
     EXPECT_EQ(pe.toString(), "ParenthesizedExpression");
 }
+
+TEST_F(ASTCoreTest, VariableDeclarationDefaultModifier) {
+    auto varDecl = std::make_unique<VariableDeclaration>(
+        std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64), "x");
+    EXPECT_FALSE(varDecl->isPublic());
+    EXPECT_FALSE(varDecl->isPrivate());
+}
+
+TEST_F(ASTCoreTest, VariableDeclarationPublicModifier) {
+    std::vector<FunctionModifier> mods = {FunctionModifier::PUBLIC};
+    auto varDecl = std::make_unique<VariableDeclaration>(
+        std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64), "x",
+        nullptr, false, false, std::move(mods));
+    EXPECT_TRUE(varDecl->isPublic());
+    EXPECT_FALSE(varDecl->isPrivate());
+}
+
+TEST_F(ASTCoreTest, VariableDeclarationPrivateModifier) {
+    std::vector<FunctionModifier> mods = {FunctionModifier::PRIVATE};
+    auto varDecl = std::make_unique<VariableDeclaration>(
+        std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64), "x",
+        nullptr, false, false, std::move(mods));
+    EXPECT_FALSE(varDecl->isPublic());
+    EXPECT_TRUE(varDecl->isPrivate());
+}
+
+TEST_F(ASTCoreTest, VariableDeclarationInferredWithModifier) {
+    std::vector<FunctionModifier> mods = {FunctionModifier::PUBLIC};
+    auto varDecl = std::make_unique<VariableDeclaration>(
+        "y", std::make_unique<PrimaryExpression>(std::make_unique<IntegerLiteral>(42)),
+        false, false, std::move(mods));
+    EXPECT_TRUE(varDecl->isPublic());
+    EXPECT_FALSE(varDecl->isPrivate());
+}

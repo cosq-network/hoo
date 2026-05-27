@@ -60,17 +60,21 @@ class VariableDeclaration : public Declaration {
 public:
     VariableDeclaration(std::unique_ptr<Type> type, const std::string& name,
                        std::unique_ptr<Expression> initializer = nullptr,
-                       bool isGlobal = false, bool isConstant = false)
+                       bool isGlobal = false, bool isConstant = false,
+                       std::vector<FunctionModifier> modifiers = {})
         : type_(std::move(type)), name_(name), 
           initializer_(std::move(initializer)), 
-          isGlobal_(isGlobal), isConstant_(isConstant) {}
+          isGlobal_(isGlobal), isConstant_(isConstant),
+          modifiers_(std::move(modifiers)) {}
 
     // Constructor for 'var' declarations with type inference
     VariableDeclaration(const std::string& name, std::unique_ptr<Expression> initializer,
-                       bool isGlobal = false, bool isConstant = false)
+                       bool isGlobal = false, bool isConstant = false,
+                       std::vector<FunctionModifier> modifiers = {})
         : type_(nullptr), name_(name), 
           initializer_(std::move(initializer)), 
-          isGlobal_(isGlobal), isConstant_(isConstant) {}
+          isGlobal_(isGlobal), isConstant_(isConstant),
+          modifiers_(std::move(modifiers)) {}
 
     std::string toString() const override;
 
@@ -83,12 +87,23 @@ public:
     bool isConstant() const { return isConstant_; }
     void setConstant(bool constant) { isConstant_ = constant; }
 
+    bool isPublic() const {
+        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PUBLIC) != modifiers_.end();
+    }
+
+    bool isPrivate() const {
+        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PRIVATE) != modifiers_.end();
+    }
+
+    const std::vector<FunctionModifier>& getModifiers() const { return modifiers_; }
+
 private:
     std::unique_ptr<Type> type_;
     std::string name_;
     std::unique_ptr<Expression> initializer_;
     bool isGlobal_;
     bool isConstant_;
+    std::vector<FunctionModifier> modifiers_;
 };
 
 // Function parameter

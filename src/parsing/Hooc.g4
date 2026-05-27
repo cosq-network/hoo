@@ -160,9 +160,8 @@ classModifier: SINGLETON | IMMUTABLE | SERVICE | FINAL;
 classBody: LBRACE classMember* RBRACE;
 
 classMember
-    : variableDeclaration SEMICOLON
+    : functionModifier* (variableDeclaration SEMICOLON | functionDeclaration)
     | constructorDeclaration
-    | functionModifier* functionDeclaration
     ;
 
 constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block;
