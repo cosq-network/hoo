@@ -389,6 +389,30 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ManyLocalVariablesSucceed) {
     EXPECT_GE(arithCount, 11); // 12 values combined = 11 additions
 }
 
+TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallMangledSymbol) {
+    std::string code = R"(
+        class Calculator {
+            var value: int64;
+            func : void add(x: int64) {
+                this.value = this.value + x;
+            }
+        }
+        func : void test() {
+            var calc = new Calculator();
+            calc.add(10);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    // The call site uses "ptr" (p) for arguments since type inference is not yet available.
+    // The symbol is registered as undefined; the mangled format includes className and methodName.
+    auto* sym = module->getSymbol("_F_Calculator_add_v_p");
+    ASSERT_NE(sym, nullptr);
+    EXPECT_EQ(sym->type, Symbol::STT_FUNC);
+}
+
 TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeNesting) {
     std::string code = R"(
         func : int64 test() {
