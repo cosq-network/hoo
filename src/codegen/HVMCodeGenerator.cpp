@@ -69,7 +69,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     instructions_.clear();
     currentByteOffset_ = 0;
     errors_.clear();
-    locals_.clear();
+    scopeStack_.clear();
     currentStackOffset_ = 0;
     allLabels_.clear();
     symbolFixups_.clear();
@@ -230,6 +230,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     FunctionPrologueInfo info;
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
+    scopeStack_.push_back({});
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
 
     uint8_t firstArgReg = isMethod ? 2 : 1;
@@ -317,7 +318,7 @@ void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
     sym.section_index = 0;
     module_->addSymbol(sym);
 
-    locals_.clear();
+    scopeStack_.clear();
     currentStackOffset_ = 0;
 }
 
@@ -338,9 +339,11 @@ void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
 
 void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
     if (auto block = dynamic_cast<const ast::Block*>(&stmt)) {
+        scopeStack_.push_back({});
         for (const auto& s : block->getStatements()) {
             visitStatement(*s);
         }
+        scopeStack_.pop_back();
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
         if (ret->hasExpression()) {
             uint8_t reg = visitExpression(*ret->getExpression());
@@ -740,9 +743,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     else if (dynamic_cast<const ast::StringLiteral*>(targetNode)) typeId = 101;
                     else if (dynamic_cast<const ast::CharacterLiteral*>(targetNode)) typeId = 109;
                     else if (auto id = dynamic_cast<const ast::Identifier*>(targetNode)) {
-                        auto it = locals_.find(id->getName());
-                        if (it != locals_.end()) {
-                            typeId = it->second.typeId != 0 ? it->second.typeId : 100;
+                        for (auto si = scopeStack_.rbegin(); si != scopeStack_.rend(); ++si) {
+                            auto it = si->find(id->getName());
+                            if (it != si->end()) {
+                                typeId = it->second.typeId != 0 ? it->second.typeId : 100;
+                                break;
+                            }
                         }
                     }
 
@@ -1219,13 +1225,16 @@ void HVMCodeGenerator::freeRegister(uint8_t reg) {
 
 int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId) {
     currentStackOffset_ -= 8;
-    locals_[name] = {currentStackOffset_, typeId};
+    if (scopeStack_.empty()) scopeStack_.push_back({});
+    scopeStack_.back()[name] = {currentStackOffset_, typeId};
     return currentStackOffset_;
 }
 
 int32_t HVMCodeGenerator::getLocalOffset(const std::string& name) {
-    auto it = locals_.find(name);
-    if (it != locals_.end()) return it->second.offset;
+    for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
+        auto found = it->find(name);
+        if (found != it->end()) return found->second.offset;
+    }
     addError("Undefined variable: " + name);
     return 0;
 }

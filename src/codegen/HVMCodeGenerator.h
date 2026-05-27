@@ -61,7 +61,7 @@ private:
         int32_t offset; // Offset relative to FP (r30)
         uint32_t typeId;
     };
-    std::unordered_map<std::string, Local> locals_;
+    std::vector<std::unordered_map<std::string, Local>> scopeStack_;
     int32_t currentStackOffset_ = 0;
     
     // Object & Class Management
