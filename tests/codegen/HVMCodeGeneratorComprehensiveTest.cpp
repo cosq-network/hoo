@@ -389,6 +389,52 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ManyLocalVariablesSucceed) {
     EXPECT_GE(arithCount, 11); // 12 values combined = 11 additions
 }
 
+TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeNesting) {
+    std::string code = R"(
+        func : int64 test() {
+            var x = 1;
+            if (true) {
+                var x = 2;
+            }
+            return x;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundStore = false;
+    bool foundReturnMov = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::ST_D) foundStore = true;
+        if (inst.getOpcode() == Opcode::MOV) {
+            auto ops = inst.getOperands();
+            if (std::holds_alternative<OperandsR>(ops)) {
+                auto r = std::get<OperandsR>(ops);
+                if (r.rd == 1) foundReturnMov = true;
+            }
+        }
+    }
+    EXPECT_TRUE(foundStore);
+    EXPECT_TRUE(foundReturnMov);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeIsolationError) {
+    std::string code = R"(
+        func : int64 test() {
+            if (true) {
+                var x = 42;
+            }
+            return x;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Undefined variable") != std::string::npos);
+}
+
 TEST_F(HVMCodeGeneratorComprehensiveTest, ClassWithMethodAndFieldAccess) {
     std::string code = R"(
         class Counter {
