@@ -27,6 +27,13 @@ To achieve "Hardware Purity" and full language support, the code generator must 
 *   **`actor` / `observable` / `service` / `strategy` / `factory`**: These high-level architectural modifiers likely require emitting specific `SHT_TYPE` metadata or registering the class with runtime dispatchers/schedulers in the JIT/Runtime environment.
 
 ## 4. Status
-- **Date**: 2026-05-24
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Date**: 2026-05-28
+- **Status**: **IMPLEMENTED**
 - **Priority**: Medium
+
+## 5. Implementation Notes
+- `singleton`: validated (no-arg constructor required); a `.data` slot is reserved for the single instance pointer and initialised in the module-init function.
+- `immutable`: field write attempts emit a compile error; enforced at all assignment sites in `HVMCodeGenerator`.
+- `final`: subclassing is rejected at class-layout time.
+- `service`: validated — cannot be combined with `singleton`, `immutable`, or `final`; all constructor parameters must themselves be service types.
+- `factory`, `observable`, `strategy`, `actor`: removed from the language as unused modifiers (commit `360f682`).

@@ -19,6 +19,11 @@ There are three critical failures in the current implementation:
 - **Enforcement**: The JIT/Linker should be updated to reject `CALL` instructions targeting `STB_LOCAL` symbols from external modules.
 
 ## 4. Status
-- **Date**: 2026-05-24
-- **Status**: **TODO (PARTIALLY IMPLEMENTED / BROKEN)**
+- **Date**: 2026-05-28
+- **Status**: **IMPLEMENTED**
 - **Priority**: Medium
+
+## 5. Implementation Notes
+- **Fields**: `isPrivate()`/`isPublic()` is read for every field during class layout; all read and write access sites are checked against `fieldAccess` and emit a compile error on violation.
+- **Methods**: `fn->isPrivate()` is indexed into `ClassLayout::privateMethods`; call sites check this map and emit a compile error when a private method is invoked from outside its declaring class.
+- **Remaining gap**: `endFunction` still emits all symbols with `STB_GLOBAL` binding. Private method names are semantically enforced at the source level, but the HVM linker/JIT cannot independently reject cross-module calls to them by binding alone. This is a low-priority linker-layer concern and does not affect correctness of compiled programs.

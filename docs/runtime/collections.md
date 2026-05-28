@@ -18,16 +18,15 @@ An array is a contiguous memory block allocated via `hoo_alloc` with the `HOO_TY
 ```
 - **Length-Prefixed**: The first 64-bit slot in the data area stores the current element count.
 - **Fixed-Width Slots**: All elements occupy exactly 64 bits. Primitives (`int64`, `double`) are stored as bit patterns, and managed objects (`String`, `Character`, nested `Array`) are stored as pointers.
-- **ARC Integration**: The array itself is ARC-managed. Currently, elements inside a low-level array are not automatically scanned for ARC; they must be managed via explicit `retain`/`release` if necessary (e.g., when popping an object).
+- **ARC Integration**: The array itself is ARC-managed. Elements inside a low-level array are not automatically scanned for ARC; they must be managed via explicit `retain`/`release` if necessary (e.g., when popping an object). The `hoo_array_push_h` helper function provides handle-safe pushing that updates the caller's handle after potential reallocation.
 
 ### Key Operations
 - **Creation**: `hoo_array_new()` allocates with initial capacity.
 - **Indexing**: Arrays support O(1) direct indexing. `val = arr[i]` maps to `LD.D dest, arr_base, (8 + i*8)`.
-- **Type-Specific Push**:
-  - `hoo_array_push_int64(arr, val)`
-  - `hoo_array_push_double(arr, val)`
-  - `hoo_array_push_string(arr, str_handle)`
-  - `hoo_array_push_object(arr, obj_handle)`
+- **Push** — All push functions return the (possibly new) `HooArray` handle, since reallocation may invalidate the original pointer. Returns NULL on failure.
+  - `hoo_array_push(arr, &val)` — Generic push of a 64-bit slot.
+  - `hoo_array_push_h(&arr, &val)` — Handle-safe push: automatically updates the handle in-place if reallocation occurs.
+  - `hoo_array_push_int64(arr, val)`, `hoo_array_push_double(arr, val)`, `hoo_array_push_string(arr, str_handle)`, `hoo_array_push_object(arr, obj_handle)`, etc.
 - **Type-Specific Get**:
   - `hoo_array_get_int64(arr, index, *dest)` (Returns 1 on success, 0 on out-of-bounds).
 - **Inspection**: `hoo_array_length(arr)`.
@@ -48,6 +47,7 @@ std::unordered_map<std::string, std::any> data_string_;
 
 ### Key Operations
 - **Creation**: `hoo_map_new(int keyType)` initializes the map bound to a specific `HOO_MAP_KEY_*` identifier.
+- **Thread Safety**: Map and random state release operations now use a mutex to guard the refcount check, ensuring safe concurrent access.
 - **Insertion**: Utilizes the cross-product of key and value types.
   - `hoo_map_set_string_int64(map, "key", 42)`
   - `hoo_map_set_int64_object(map, 100, obj_handle)`

@@ -22,8 +22,8 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
    * `HooException` type IDs, stack unwinding, and shadow stack management.
 5. **[Math](math.md)**
    * Mathematical constants, functions, and the random number generator state.
-6. **[I/O & Networking](io-net.md)**
-   * Console input/output (`print`, `readline`) and the HTTP/URL client implementation.
+6. **[Console I/O](io-net.md)**
+   * Console input/output (`print`, `readline`, `readchar`).
 
 ### System & Platform
 7. **[File System](fs.md)**
@@ -58,7 +58,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
     * `hoo.args` — CLI argument parser for `--key=value`, `--flag`, `-k`, and positional args. Returns a struct result (`HooArgsResult`).
 
 ### Network & Concurrency
-19. **[Networking](net.md)**
+19. **[Networking & HTTP](net.md)**
     * `hoo.net` — URL parsing (scheme, host, port, path, query, fragment), HTTP client (GET, POST, PUT, DELETE) via libcurl with custom headers, timeout, and redirect following.
 20. **[Threading](thread.md)**
     * `hoo.thread` — thread spawn/join/self via pthreads, mutex create/lock/unlock/destroy for concurrent synchronization.

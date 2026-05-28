@@ -11,6 +11,7 @@ The `hoo.math` module exposes mathematical primitives and random number generati
 ## 2. Operations
 The math library provides both `int64` and `double` variants for standard operations.
 - **Basic**: `abs`, `min`, `max`, `clamp`, `sign`.
+  - `hoo_math_abs_int64` clamps `INT64_MIN` to `INT64_MAX` to avoid overflow.
 - **Power/Roots**: `pow`, `sqrt`, `cbrt`, `hypot`.
 - **Trigonometry**: `sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`, `tanh`.
 - **Exponentials**: `exp`, `exp2`, `expm1`, `log`, `log10`, `log2`, `log1p`.
@@ -25,6 +26,8 @@ The math library provides both `int64` and `double` variants for standard operat
 
 ## 4. Random Number Generation
 Random generation uses an ARC-managed opaque handle representing a `std::mt19937_64` generator (`HooRandomImpl`).
+
+Release operations are thread-safe — a mutex guards the refcount check during final cleanup.
 
 - **Creation**: `hoo_math_random_new()` (auto-seeded) or `hoo_math_random_new_with_seed(int64)`.
 - **Operations**:

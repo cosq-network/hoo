@@ -20,6 +20,8 @@ Every object managed by the runtime (including Arrays, Strings, Maps, and User O
 - `104`: HooException
 - `105-108`: Utility handles (Random, URL, Http)
 - `109`: HooCharacter
+- `110`: HooUUID
+- `111`: HooRegex
 
 ## 2. Thread-Local Allocation Buffer (TLAB)
 To minimize lock contention during allocation, the runtime utilizes a TLAB.

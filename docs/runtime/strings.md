@@ -22,12 +22,12 @@ Because it is null-terminated, the internal `data` pointer can be safely passed 
 
 ## 3. Manipulation
 Since strings are immutable, all manipulation functions allocate and return a *new* `HooString` handle with `refcount=1`.
-- `hoo_string_concat(a, b)`
+- `hoo_string_concat(a, b)`: NULL-safe — NULL inputs are treated as empty strings.
 - `hoo_string_substring(str, start, length)`
 - `hoo_string_to_upper(str)` / `hoo_string_to_lower(str)` (ASCII only)
 - `hoo_string_trim(str)`: Removes leading/trailing whitespace.
 - `hoo_string_replace(str, old, new)`
-- `hoo_string_split(str, delim)`: Returns a `HooArray` of `HooString`s.
+- `hoo_string_split(str, delim)`: Returns a `HooArray` of `HooString`s. Uses `hoo_array_push_h` internally for handle-safe reallocation.
 - `hoo_string_join(parts)`: Joins a `HooArray` of strings.
 - `hoo_string_to_characters(str)`: Returns a `HooArray` of `HooCharacter` objects.
 
@@ -54,7 +54,7 @@ struct HooCharacterImpl {
 - `hoo_character_length(ch)`: Returns the byte length (1-4).
 
 ## 6. Comparison
-- `hoo_string_compare(a, b)`: Lexicographic C-style comparison (-1, 0, 1).
+- `hoo_string_compare(a, b)`: Lexicographic C-style comparison (-1, 0, 1). NULL-safe — NULL string sorts before non-NULL.
 - `hoo_string_equals(a, b)`
 - `hoo_string_equals_ignore_case(a, b)`
 
