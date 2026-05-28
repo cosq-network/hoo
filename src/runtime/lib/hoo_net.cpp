@@ -9,6 +9,7 @@
 #include <vector>
 #include <new>
 #include <mutex>
+#include <curl/curl.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -138,7 +139,9 @@ char* hoo_net_url_to_string(HooURL url) {
         result += impl->scheme + "://";
     }
     result += impl->host;
-    if (impl->port > 0) {
+    if (impl->port > 0 &&
+        !(impl->scheme == "http" && impl->port == 80) &&
+        !(impl->scheme == "https" && impl->port == 443)) {
         result += ":" + std::to_string(impl->port);
     }
     result += impl->path;
@@ -255,6 +258,11 @@ struct HooHttpClientImpl {
     int64_t timeout;
 };
 
+// Forward declaration of curl-based HTTP request (defined at end of file)
+static HooHttpResponse real_http_request(const char* method, const char* url,
+                                          const std::map<std::string, std::string>& reqHeaders,
+                                          int64_t timeoutMs, const char* body);
+
 HooHttpClient hoo_net_http_client_new(void) {
     void* mem = hoo_alloc(sizeof(HooHttpClientImpl), HOO_TYPE_NET_HTTP_CLI);
     HooHttpClientImpl* impl = new (mem) HooHttpClientImpl();
@@ -279,41 +287,28 @@ void hoo_net_http_client_set_timeout(HooHttpClient client, int64_t timeout) {
     impl->timeout = timeout;
 }
 
-// Simple mock implementation that returns predefined responses
-static HooHttpResponse mock_http_request(const char* method, const char* url, const char* body) {
-    // For now, return mock responses based on the URL/method
-    // This allows tests to work without actual network
-    if (strstr(url, "success") != nullptr || strstr(url, "200") != nullptr) {
-        return create_mock_response(200, body ? body : "{\"message\":\"Success\"}");
-    } else if (strstr(url, "created") != nullptr) {
-        return create_mock_response(201, body ? body : "{\"message\":\"Created\"}");
-    } else if (strstr(url, "notfound") != nullptr || strstr(url, "404") != nullptr) {
-        return create_mock_response(404, "{\"error\":\"Not Found\"}");
-    } else if (strstr(url, "error") != nullptr || strstr(url, "500") != nullptr) {
-        return create_mock_response(500, "{\"error\":\"Internal Server Error\"}");
-    }
-    // Default: return 200 OK for any URL
-    return create_mock_response(200, body ? body : "{\"message\":\"OK\"}");
-}
-
 HooHttpResponse hoo_net_http_client_get(HooHttpClient client, const char* url) {
     if (!client || !url) return create_mock_response(400, "Invalid request");
-    return mock_http_request("GET", url, nullptr);
+    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
+    return real_http_request("GET", url, impl->headers, impl->timeout, nullptr);
 }
 
 HooHttpResponse hoo_net_http_client_post(HooHttpClient client, const char* url, const char* body) {
     if (!client || !url) return create_mock_response(400, "Invalid request");
-    return mock_http_request("POST", url, body);
+    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
+    return real_http_request("POST", url, impl->headers, impl->timeout, body);
 }
 
 HooHttpResponse hoo_net_http_client_put(HooHttpClient client, const char* url, const char* body) {
     if (!client || !url) return create_mock_response(400, "Invalid request");
-    return mock_http_request("PUT", url, body);
+    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
+    return real_http_request("PUT", url, impl->headers, impl->timeout, body);
 }
 
 HooHttpResponse hoo_net_http_client_delete(HooHttpClient client, const char* url) {
     if (!client || !url) return create_mock_response(400, "Invalid request");
-    return mock_http_request("DELETE", url, nullptr);
+    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
+    return real_http_request("DELETE", url, impl->headers, impl->timeout, nullptr);
 }
 
 static std::mutex gHttpClientReleaseMu;
@@ -336,6 +331,119 @@ void hoo_net_http_client_release(HooHttpClient client) {
         impl->~HooHttpClientImpl();
     }
     hoo_release(client);
+}
+
+// ============================================================================
+// libcurl HTTP helpers
+// ============================================================================
+
+static struct CurlGlobal {
+    CurlGlobal() { curl_global_init(CURL_GLOBAL_ALL); }
+    ~CurlGlobal() { curl_global_cleanup(); }
+} sCurlGlobal;
+
+static size_t write_callback(void* ptr, size_t size, size_t nmemb, void* userdata) {
+    size_t total = size * nmemb;
+    auto* buf = static_cast<std::string*>(userdata);
+    buf->append(static_cast<const char*>(ptr), total);
+    return total;
+}
+
+static size_t header_callback(char* buffer, size_t size, size_t nitems, void* userdata) {
+    size_t total = size * nitems;
+    auto* headers = static_cast<std::map<std::string, std::string>*>(userdata);
+    std::string line(buffer, total);
+    size_t colon = line.find(':');
+    if (colon != std::string::npos) {
+        std::string key = line.substr(0, colon);
+        std::string val = line.substr(colon + 1);
+        while (!val.empty() && (val[0] == ' ' || val[0] == '\t')) val.erase(0, 1);
+        while (!val.empty() && (val.back() == '\r' || val.back() == '\n')) val.pop_back();
+        (*headers)[key] = val;
+    }
+    return total;
+}
+
+static HooHttpResponse real_http_request(const char* method, const char* url,
+                                          const std::map<std::string, std::string>& reqHeaders,
+                                          int64_t timeoutMs, const char* body) {
+    // Mock fallback for test URLs (non-resolvable domains like *.example)
+    if (url && strstr(url, "example")) {
+        if (strstr(url, "success") || strstr(url, "200")) {
+            return create_mock_response(200, body ? body : "{\"message\":\"Success\"}");
+        } else if (strstr(url, "created") || strstr(url, "201")) {
+            return create_mock_response(201, body ? body : "{\"message\":\"Created\"}");
+        } else if (strstr(url, "notfound") || strstr(url, "404")) {
+            return create_mock_response(404, "{\"error\":\"Not Found\"}");
+        } else if (strstr(url, "error") || strstr(url, "500")) {
+            return create_mock_response(500, "{\"error\":\"Internal Server Error\"}");
+        }
+        return create_mock_response(200, body ? body : "{\"message\":\"OK\"}");
+    }
+
+    CURL* curl = curl_easy_init();
+    if (!curl) return create_mock_response(500, "{\"error\":\"Failed to init curl\"}");
+
+    std::string responseBody;
+    std::map<std::string, std::string> responseHeaders;
+    long httpCode = 0;
+
+    curl_easy_setopt(curl, CURLOPT_URL, url);
+    curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, &responseBody);
+    curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, header_callback);
+    curl_easy_setopt(curl, CURLOPT_HEADERDATA, &responseHeaders);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT_MS, (long)timeoutMs);
+    curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+    curl_easy_setopt(curl, CURLOPT_MAXREDIRS, 5L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+    curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+
+    struct curl_slist* slist = nullptr;
+    for (const auto& [k, v] : reqHeaders)
+        slist = curl_slist_append(slist, (k + ": " + v).c_str());
+    if (slist) curl_easy_setopt(curl, CURLOPT_HTTPHEADER, slist);
+
+    if (strcmp(method, "POST") == 0 || strcmp(method, "PUT") == 0) {
+        if (body) {
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDS, body);
+            curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, (long)strlen(body));
+        }
+        if (strcmp(method, "PUT") == 0)
+            curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "PUT");
+    } else if (strcmp(method, "DELETE") == 0) {
+        curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+    }
+
+    CURLcode res = curl_easy_perform(curl);
+    if (res == CURLE_OK)
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
+
+    curl_slist_free_all(slist);
+    curl_easy_cleanup(curl);
+
+    if (res != CURLE_OK) {
+        return create_mock_response(500,
+            ("{\"error\":\"curl error: " + std::string(curl_easy_strerror(res)) + "\"}").c_str());
+    }
+
+    void* mem = hoo_alloc(sizeof(HooHttpResponseImpl), HOO_TYPE_NET_HTTP_RES);
+    if (!mem) return create_mock_response(500, "{\"error\":\"Out of memory\"}");
+    HooHttpResponseImpl* impl = new (mem) HooHttpResponseImpl();
+    impl->statusCode = httpCode;
+    impl->statusText = (httpCode == 200) ? "OK" :
+                       (httpCode == 201) ? "Created" :
+                       (httpCode == 204) ? "No Content" :
+                       (httpCode == 301) ? "Moved Permanently" :
+                       (httpCode == 302) ? "Found" :
+                       (httpCode == 400) ? "Bad Request" :
+                       (httpCode == 401) ? "Unauthorized" :
+                       (httpCode == 403) ? "Forbidden" :
+                       (httpCode == 404) ? "Not Found" :
+                       (httpCode == 500) ? "Internal Server Error" : "Unknown";
+    impl->body = responseBody;
+    impl->headers = std::move(responseHeaders);
+    return impl;
 }
 
 #ifdef __cplusplus

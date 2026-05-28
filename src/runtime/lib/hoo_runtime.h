@@ -31,6 +31,8 @@ extern "C" {
 #define HOO_TYPE_NET_HTTP_RES 107  // HooHttpResponse
 #define HOO_TYPE_NET_HTTP_CLI 108  // HooHttpClient
 #define HOO_TYPE_CHARACTER    109  // HooCharacter
+#define HOO_TYPE_UUID         110  // HooUUID
+#define HOO_TYPE_REGEX        111  // HooRegex
 
 // Primitive Type IDs (for runtime conversion/reflection)
 #define HOO_TYPE_INT64        1

@@ -183,6 +183,19 @@ add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_exception.cpp
     src/runtime/lib/hoo_math.cpp
     src/runtime/lib/hoo_net.cpp
+    src/runtime/lib/hoo_fs.cpp
+    src/runtime/lib/hoo_datetime.cpp
+    src/runtime/lib/hoo_encoding.cpp
+    src/runtime/lib/hoo_system.cpp
+    src/runtime/lib/hoo_regex.cpp
+    src/runtime/lib/hoo_csv.cpp
+    src/runtime/lib/hoo_uuid.cpp
+    src/runtime/lib/hoo_path.cpp
+    src/runtime/lib/hoo_hashing.cpp
+    src/runtime/lib/hoo_process.cpp
+    src/runtime/lib/hoo_compression.cpp
+    src/runtime/lib/hoo_args.cpp
+    src/runtime/lib/hoo_thread.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -245,6 +258,7 @@ target_link_libraries(hoo-core PUBLIC
     hoort
     hoo-parser
     ${llvm_libs}
+    curl
 )
 
 if(WIN32)
@@ -357,6 +371,25 @@ if(HOOC_BUILD_TESTS)
         tests/runtime/HooMathTest.cpp
         tests/runtime/HooIOTest.cpp
         tests/runtime/HooNetTest.cpp
+        tests/runtime/HooEncodingTest.cpp
+        tests/runtime/HooFSTest.cpp
+        tests/runtime/HooDateTimeTest.cpp
+        tests/runtime/HooSystemTest.cpp
+        tests/runtime/HooRegexTest.cpp
+        tests/runtime/HooCsvTest.cpp
+        tests/runtime/HooUuidTest.cpp
+        tests/runtime/HooPathTest.cpp
+        tests/runtime/HooHashingTest.cpp
+        tests/runtime/HooProcessTest.cpp
+        tests/runtime/HooCompressionTest.cpp
+        tests/runtime/HooArgsTest.cpp
+        tests/runtime/HooNetTest.cpp
+        tests/runtime/HooThreadTest.cpp
+        tests/jit/HooMathJitTest.cpp
+        tests/jit/HooStringJitTest.cpp
+        tests/jit/HooMapJitTest.cpp
+        tests/jit/HooArrayJitTest.cpp
+        tests/jit/HooStandardLibraryJitTest.cpp
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp
         tests/jit/CharacterLiteralTest.cpp

@@ -1,0 +1,73 @@
+#include <gtest/gtest.h>
+#include "hvm/HVMJIT.h"
+#include "core/DefaultIOProvider.h"
+
+using namespace hooc;
+
+class HooStandardLibraryJitTest : public ::testing::Test {
+protected:
+    DefaultIOProvider io;
+    HVMJIT jit{io};
+};
+
+TEST_F(HooStandardLibraryJitTest, SystemHostname) {
+    const std::string source = R"(
+        func:int64 test() {
+            var name = system_hostname();
+            return string_length(name);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    // Assuming hostname length is > 0
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooStandardLibraryJitTest, FsExists) {
+    const std::string source = R"(
+        func:int64 test() {
+            // Check if current directory exists, should be true (1)
+            return fs_exists(".");
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooStandardLibraryJitTest, RegexCompile) {
+    const std::string source = R"(
+        func:int64 test() {
+            var re = regex_compile("[a-z]+");
+            var result = regex_match(re, "hello");
+            return result;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooStandardLibraryJitTest, UuidV4) {
+    const std::string source = R"(
+        func:int64 test() {
+            var id = uuid_v4();
+            var str = uuid_to_string(id);
+            return string_length(str);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 36); // UUID is 36 chars long
+}
+
+TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
+    const std::string source = R"(
+        func:int64 test() {
+            var str = "Hello";
+            var bytes = string_data(str);
+            var len = string_length(str);
+            var b64 = encoding_base64_encode(bytes, len);
+            return string_length(b64);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    // "Hello" is 5 bytes -> base64 is 8 bytes
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 8);
+}

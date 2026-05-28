@@ -9,8 +9,9 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 *   **JIT / HVM View**: An opaque 64-bit integer (`int64_t`) representing an absolute host memory pointer.
 *   **Runtime View**: A fully managed C++ instance preceded by a normative 16-byte Automatic Reference Counting (ARC) header.
 
-## Documentation Index
+## Module Reference
 
+### Core
 1. **[Memory Model & ARC](memory-model.md)**
    * Details the 16-byte object header, Reference Counting (ARC), and the Thread-Local Allocation Buffer (TLAB) system.
 2. **[Strings & Unicode](strings.md)**
@@ -23,8 +24,51 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
    * Mathematical constants, functions, and the random number generator state.
 6. **[I/O & Networking](io-net.md)**
    * Console input/output (`print`, `readline`) and the HTTP/URL client implementation.
-7. **[JIT Integration](jit-integration.md)**
-   * System call mapping (`SYSCALL` 1-11) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
+
+### System & Platform
+7. **[File System](fs.md)**
+   * `hoo.fs` — file I/O, directory traversal, temporary files, and file metadata queries wrapping C++17 `<filesystem>`.
+8. **[Date & Time](datetime.md)**
+   * `hoo.datetime` — current time, decompose/compose fields, ISO 8601 formatting, duration arithmetic via `<chrono>`.
+9. **[System Information](system.md)**
+   * `hoo.system` — environment variables, OS name, hostname, CPU count, process ID, user info, current/working directory.
+10. **[Path Manipulation](path.md)**
+    * `hoo.path` — dirname, basename, extension, join, normalize, absolute/relative resolution, split on `std::filesystem`.
+
+### Data & Text Processing
+11. **[Encoding](encoding.md)**
+    * `hoo.encoding` — Base64, hex, and URL percent-encoding encode/decode with round-trip guarantees.
+12. **[Regular Expressions](regex.md)**
+    * `hoo.regex` — compile, match, search, find-all, replace, split, and capture groups via C++ `<regex>` with opaque handles and reference counting.
+13. **[CSV](csv.md)**
+    * `hoo.csv` — parse and generate comma-separated values with quoting, escape handling, custom delimiters, and file I/O.
+14. **[UUID](uuid.md)**
+    * `hoo.uuid` — UUID v4 generation, nil UUID, parse/format, byte access, equality/ordering comparison, and ARC-managed opaque handles.
+
+### Security & Data Integrity
+15. **[Hashing](hashing.md)**
+    * `hoo.hashing` — SHA-256, SHA-1, MD5, CRC-32, HMAC-SHA256 using Apple CommonCrypto with table-based CRC-32. Hex-encoded string output.
+16. **[Compression](compression.md)**
+    * `hoo.compression` — gzip and raw deflate compress/decompress using zlib. Result is heap-allocated byte buffer.
+
+### System & Process Control
+17. **[Process](process.md)**
+    * `hoo.process` — spawn (fork/exec), wait, kill, self-pid, and command capture via POSIX APIs and `popen`.
+18. **[Args](args.md)**
+    * `hoo.args` — CLI argument parser for `--key=value`, `--flag`, `-k`, and positional args. Returns a struct result (`HooArgsResult`).
+
+### Network & Concurrency
+19. **[Networking](net.md)**
+    * `hoo.net` — URL parsing (scheme, host, port, path, query, fragment), HTTP client (GET, POST, PUT, DELETE) via libcurl with custom headers, timeout, and redirect following.
+20. **[Threading](thread.md)**
+    * `hoo.thread` — thread spawn/join/self via pthreads, mutex create/lock/unlock/destroy for concurrent synchronization.
+
+### JIT Bridge
+21. **[JIT Integration](jit-integration.md)**
+    * System call mapping (`SYSCALL` 1-11) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
 
 ## Integration & C-ABI
-The library exposes its API strictly via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively.
+The library exposes its API strictly via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively. Each module has corresponding JIT wrapper functions in `src/hvm/HVMJIT.cpp` and a mangled symbol entry in `buildRuntimeSymbols()`. The code generator in `src/codegen/HVMCodeGenerator.cpp` redirects built-in function calls (prefix-matched as `fs_`, `datetime_`, `encoding_`, `system_`, `regex_`, `csv_`, `uuid_`, `path_`, `hashing_`, `process_`, `compression_`, `args_`, `net_`, `thread_`) to the `hoo` module path.
+
+## Build
+All runtime sources live in `src/runtime/lib/` and are compiled into the `hoort` static library target. Test sources in `tests/runtime/` are linked into the `hoo-tests` executable. Legacy C-ABI function pointers are additionally registered in `lookupPlainRuntimeSymbolAddress()` for interpreter and non-JIT code paths.

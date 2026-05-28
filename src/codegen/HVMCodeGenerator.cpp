@@ -919,10 +919,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         
         if (newExpr->getArguments()) {
             auto& args = newExpr->getArguments()->getArguments();
+            std::vector<uint8_t> argRegs;
             for (size_t i = 0; i < args.size() && i < 7; ++i) {
-                uint8_t argReg = visitExpression(*args[i]);
-                emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 2), argReg, 0, 0});
-                freeRegister(argReg);
+                argRegs.push_back(visitExpression(*args[i]));
+            }
+            for (size_t i = 0; i < argRegs.size(); ++i) {
+                emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 2), argRegs[i], 0, 0});
+                freeRegister(argRegs[i]);
             }
         }
 
@@ -976,10 +979,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (funcCall->getArguments()) {
                 auto& args = funcCall->getArguments()->getArguments();
+                std::vector<uint8_t> argRegs;
                 for (size_t i = 0; i < args.size() && i < 7; ++i) {
-                    uint8_t argReg = visitExpression(*args[i]);
-                    emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 2), argReg, 0, 0});
-                    freeRegister(argReg);
+                    argRegs.push_back(visitExpression(*args[i]));
+                }
+                for (size_t i = 0; i < argRegs.size(); ++i) {
+                    emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 2), argRegs[i], 0, 0});
+                    freeRegister(argRegs[i]);
                 }
             }
 
@@ -1039,18 +1045,27 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
 
-                // Redirect built-ins to hoo namespace
+                // Redirect built-ins and standard library to hoo namespace
                 if (functionName == "print" || functionName == "println" ||
-                    functionName == "readline" || functionName == "readchar") {
+                    functionName == "readline" || functionName == "readchar" ||
+                    functionName.rfind("fs_", 0) == 0 ||
+                    functionName.rfind("system_", 0) == 0 ||
+                    functionName.rfind("regex_", 0) == 0 ||
+                    functionName.rfind("uuid_", 0) == 0 ||
+                    functionName.rfind("encoding_", 0) == 0 ||
+                    functionName.rfind("math_", 0) == 0) {
                     mp.modulePath = {"hoo"};
                 }
 
                 if (funcCall->getArguments()) {
                     auto& args = funcCall->getArguments()->getArguments();
+                    std::vector<uint8_t> argRegs;
                     for (size_t i = 0; i < args.size() && i < 8; ++i) {
-                        uint8_t argReg = visitExpression(*args[i]);
-                        emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 1), argReg, 0, 0});
-                        freeRegister(argReg);
+                        argRegs.push_back(visitExpression(*args[i]));
+                    }
+                    for (size_t i = 0; i < argRegs.size(); ++i) {
+                        emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 1), argRegs[i], 0, 0});
+                        freeRegister(argRegs[i]);
                     }
                 }
                 
