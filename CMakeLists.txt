@@ -196,6 +196,7 @@ add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_compression.cpp
     src/runtime/lib/hoo_args.cpp
     src/runtime/lib/hoo_thread.cpp
+    src/runtime/lib/hoo_json.cpp
 )
 
 target_include_directories(hoort PUBLIC
@@ -241,8 +242,7 @@ add_library(hoo-core
     src/hvm/HVMInstruction.cpp
     src/hvm/HVMModuleBundle.cpp
     src/hvm/HVMJIT.cpp
-    # Module system
-    src/modules/ModuleSystem.cpp
+    # Module system (reserved for future use)
     # Parsing (manual wrapper)
     src/parsing/HooParserWrapper.cpp
 )
@@ -361,7 +361,6 @@ if(HOOC_BUILD_TESTS)
         tests/parsing/HooParserWrapperTest.cpp
         tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
         tests/codegen/HVMCodeGeneratorTest.cpp
-        tests/codegen/ModuleRegistryTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
         tests/runtime/StringBasicsTest.cpp
         tests/runtime/HooCharacterTest.cpp
@@ -390,6 +389,16 @@ if(HOOC_BUILD_TESTS)
         tests/jit/HooMapJitTest.cpp
         tests/jit/HooArrayJitTest.cpp
         tests/jit/HooStandardLibraryJitTest.cpp
+        tests/jit/HooThreadJitTest.cpp
+        tests/jit/HooCsvJitTest.cpp
+        tests/jit/HooDatetimeJitTest.cpp
+        tests/jit/HooPathJitTest.cpp
+        tests/jit/HooHashingJitTest.cpp
+        tests/jit/HooProcessJitTest.cpp
+        tests/jit/HooCompressionJitTest.cpp
+        tests/jit/HooArgsJitTest.cpp
+        tests/jit/HooNetJitTest.cpp
+        tests/jit/HooJsonJitTest.cpp
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp
         tests/jit/CharacterLiteralTest.cpp

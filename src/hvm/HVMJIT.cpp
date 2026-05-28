@@ -24,6 +24,16 @@
 #include "runtime/lib/hoo_regex.h"
 #include "runtime/lib/hoo_uuid.h"
 #include "runtime/lib/hoo_encoding.h"
+#include "runtime/lib/hoo_thread.h"
+#include "runtime/lib/hoo_csv.h"
+#include "runtime/lib/hoo_datetime.h"
+#include "runtime/lib/hoo_path.h"
+#include "runtime/lib/hoo_hashing.h"
+#include "runtime/lib/hoo_process.h"
+#include "runtime/lib/hoo_compression.h"
+#include "runtime/lib/hoo_args.h"
+#include "runtime/lib/hoo_net.h"
+#include "runtime/lib/hoo_json.h"
 
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
@@ -987,6 +997,36 @@ extern "C" {
         hoo_uuid_free_string(cstr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
+    // ── Thread module ──────────────────────────────────────────────────
+    uint64_t jit_thread_spawn(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        auto func = reinterpret_cast<int64_t (*)(void*)>(state->regs[1]);
+        void* arg = reinterpret_cast<void*>(state->regs[2]);
+        return static_cast<uint64_t>(hoo_thread_spawn(func, arg));
+    }
+    uint64_t jit_thread_join(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_join(static_cast<int64_t>(state->regs[1])));
+    }
+    uint64_t jit_thread_self(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_thread_self());
+    }
+    uint64_t jit_thread_mutex_create(void* /*state_ptr*/) {
+        return reinterpret_cast<uint64_t>(hoo_thread_mutex_create());
+    }
+    uint64_t jit_thread_mutex_lock(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_mutex_lock(reinterpret_cast<HooMutex>(state->regs[1])));
+    }
+    uint64_t jit_thread_mutex_unlock(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_mutex_unlock(reinterpret_cast<HooMutex>(state->regs[1])));
+    }
+    uint64_t jit_thread_mutex_destroy(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_mutex_destroy(reinterpret_cast<HooMutex>(state->regs[1])));
+    }
+
     uint64_t jit_encoding_base64_encode(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
@@ -996,6 +1036,566 @@ extern "C" {
         void* str = hoo_string_from_cstr(encoded);
         hoo_encoding_free_string(encoded);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+
+    // ── CSV module ─────────────────────────────────────────────────────────
+    uint64_t jit_csv_escape(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_csv_escape(static_cast<char>(state->regs[1])));
+    }
+    uint64_t jit_csv_read_file(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        int64_t rows, cols;
+        char*** table = hoo_csv_read_file(path, &rows, &cols);
+        if (!table) return 0;
+        hoo_csv_free_table(table, rows, cols);
+        return 1;
+    }
+
+    // ── Datetime module ─────────────────────────────────────────────────────
+    uint64_t jit_datetime_now(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_datetime_now());
+    }
+    uint64_t jit_datetime_now_seconds(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_datetime_now_seconds());
+    }
+    uint64_t jit_datetime_format(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* fmt = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        char* result = hoo_datetime_format(state->regs[1], fmt);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_datetime_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_datetime_iso8601(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char* result = hoo_datetime_iso8601(state->regs[1]);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_datetime_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_datetime_parse(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* str = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* fmt = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_datetime_parse(str, fmt));
+    }
+    uint64_t jit_datetime_from_iso8601(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* str = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_datetime_from_iso8601(str));
+    }
+    uint64_t jit_datetime_add_days(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_add_days(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_add_hours(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_add_hours(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_add_minutes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_add_minutes(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_add_seconds(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_add_seconds(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_add_milliseconds(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_add_milliseconds(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_diff_days(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_diff_days(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_diff_hours(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_diff_hours(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_datetime_diff_seconds(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double result = hoo_datetime_diff_seconds(state->regs[1], state->regs[2]);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_datetime_compare(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_datetime_compare(state->regs[1], state->regs[2]));
+    }
+
+    // ── Path module ─────────────────────────────────────────────────────────
+    uint64_t jit_path_dirname(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_dirname(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_basename(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_basename(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_extension(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_extension(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_stem(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_stem(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_normalize(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_normalize(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_absolute(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_absolute(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_join(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* a = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* b = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        char* result = hoo_path_join(a, b);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_relative(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* base = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        char* result = hoo_path_relative(path, base);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_is_absolute(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_path_is_absolute(path));
+    }
+    uint64_t jit_path_is_relative(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_path_is_relative(path));
+    }
+    uint64_t jit_path_has_extension(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_path_has_extension(path));
+    }
+    uint64_t jit_path_separator(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(static_cast<uint8_t>(hoo_path_separator()));
+    }
+    uint64_t jit_path_list_separator(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(static_cast<uint8_t>(hoo_path_list_separator()));
+    }
+
+    // ── Hashing module ──────────────────────────────────────────────────────
+    uint64_t jit_hashing_sha256(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t len = state->regs[2];
+        char* result = hoo_hashing_sha256(data, len);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_sha1(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t len = state->regs[2];
+        char* result = hoo_hashing_sha1(data, len);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_md5(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t len = state->regs[2];
+        char* result = hoo_hashing_md5(data, len);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_sha256_file(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_hashing_sha256_file(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_crc32(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t len = state->regs[2];
+        return static_cast<uint64_t>(hoo_hashing_crc32(data, len));
+    }
+    uint64_t jit_hashing_hmac_sha256(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* key = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t key_len = state->regs[2];
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[3]);
+        int64_t data_len = state->regs[4];
+        char* result = hoo_hashing_hmac_sha256(key, key_len, data, data_len);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+
+    // ── Process module ──────────────────────────────────────────────────────
+    uint64_t jit_process_kill(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_process_kill(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_process_self_pid(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_process_self_pid());
+    }
+    uint64_t jit_process_capture(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* cmd = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_process_capture(cmd);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_process_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+
+    // ── Compression module ───────────────────────────────────────────────────
+    uint64_t jit_compression_gzip_compress(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t data_len = state->regs[2];
+        uint8_t* out_data = nullptr;
+        int64_t out_len = 0;
+        int64_t ok = hoo_compression_gzip_compress(data, data_len, &out_data, &out_len);
+        if (ok != 0 || !out_data) return 0;
+        void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
+        hoo_compression_free_bytes(out_data);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_compression_gzip_decompress(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t data_len = state->regs[2];
+        uint8_t* out_data = nullptr;
+        int64_t out_len = 0;
+        int64_t ok = hoo_compression_gzip_decompress(data, data_len, &out_data, &out_len);
+        if (ok != 0 || !out_data) return 0;
+        void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
+        hoo_compression_free_bytes(out_data);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_compression_deflate_compress(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t data_len = state->regs[2];
+        uint8_t* out_data = nullptr;
+        int64_t out_len = 0;
+        int64_t ok = hoo_compression_deflate_compress(data, data_len, &out_data, &out_len);
+        if (ok != 0 || !out_data) return 0;
+        void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
+        hoo_compression_free_bytes(out_data);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_compression_deflate_decompress(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t data_len = state->regs[2];
+        uint8_t* out_data = nullptr;
+        int64_t out_len = 0;
+        int64_t ok = hoo_compression_deflate_decompress(data, data_len, &out_data, &out_len);
+        if (ok != 0 || !out_data) return 0;
+        void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
+        hoo_compression_free_bytes(out_data);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+
+    // ── Args module ─────────────────────────────────────────────────────────
+    uint64_t jit_args_count(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        auto* result = reinterpret_cast<HooArgsResult*>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_args_count(result));
+    }
+    uint64_t jit_args_has(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        auto* result = reinterpret_cast<HooArgsResult*>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_args_has(result, key));
+    }
+
+    // ── Net module ──────────────────────────────────────────────────────────
+    uint64_t jit_net_url_new(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* url_str = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_url_new(url_str)));
+    }
+    uint64_t jit_net_url_get_scheme(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        char* result = hoo_net_url_get_scheme(url);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_url_get_host(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        char* result = hoo_net_url_get_host(url);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_url_get_port(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_net_url_get_port(url));
+    }
+    uint64_t jit_net_url_get_path(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        char* result = hoo_net_url_get_path(url);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_url_get_query(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        char* result = hoo_net_url_get_query(url);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_url_get_fragment(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        char* result = hoo_net_url_get_fragment(url);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_url_to_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooURL url = reinterpret_cast<HooURL>(state->regs[1]);
+        char* result = hoo_net_url_to_string(url);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_url_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_net_url_release(reinterpret_cast<HooURL>(state->regs[1]));
+        return 0;
+    }
+    uint64_t jit_net_http_client_new(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_http_client_new()));
+    }
+    uint64_t jit_net_http_client_set_header(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpClient client = reinterpret_cast<HooHttpClient>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* val = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(hoo_net_http_client_set_header(client, key, val));
+    }
+    uint64_t jit_net_http_client_set_timeout(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpClient client = reinterpret_cast<HooHttpClient>(state->regs[1]);
+        hoo_net_http_client_set_timeout(client, state->regs[2]);
+        return 0;
+    }
+    uint64_t jit_net_http_client_get(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpClient client = reinterpret_cast<HooHttpClient>(state->regs[1]);
+        const char* url = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_http_client_get(client, url)));
+    }
+    uint64_t jit_net_http_client_post(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpClient client = reinterpret_cast<HooHttpClient>(state->regs[1]);
+        const char* url = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* body = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_http_client_post(client, url, body)));
+    }
+    uint64_t jit_net_http_client_put(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpClient client = reinterpret_cast<HooHttpClient>(state->regs[1]);
+        const char* url = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* body = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_http_client_put(client, url, body)));
+    }
+    uint64_t jit_net_http_client_delete(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpClient client = reinterpret_cast<HooHttpClient>(state->regs[1]);
+        const char* url = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_http_client_delete(client, url)));
+    }
+    uint64_t jit_net_http_response_get_status_code(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_net_http_response_get_status_code(reinterpret_cast<HooHttpResponse>(state->regs[1])));
+    }
+    uint64_t jit_net_http_response_get_body(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpResponse resp = reinterpret_cast<HooHttpResponse>(state->regs[1]);
+        char* result = hoo_net_http_response_get_body(resp);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_net_http_response_is_success(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_net_http_response_is_success(reinterpret_cast<HooHttpResponse>(state->regs[1])));
+    }
+    uint64_t jit_net_http_response_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_net_http_response_release(reinterpret_cast<HooHttpResponse>(state->regs[1]));
+        return 0;
+    }
+    uint64_t jit_net_http_client_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_net_http_client_release(reinterpret_cast<HooHttpClient>(state->regs[1]));
+        return 0;
+    }
+
+    // ── JSON module ─────────────────────────────────────────────────────────
+    uint64_t jit_json_parse(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* json = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_parse(json)));
+    }
+    uint64_t jit_json_stringify(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* obj = reinterpret_cast<void*>(state->regs[1]);
+        char* result = hoo_json_stringify(obj);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_json_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_json_get(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* obj = reinterpret_cast<void*>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_get(obj, key)));
+    }
+    uint64_t jit_json_get_int(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* obj = reinterpret_cast<void*>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_json_get_int(obj, key));
+    }
+    uint64_t jit_json_get_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* obj = reinterpret_cast<void*>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        char* result = hoo_json_get_string(obj, key);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_json_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_json_set(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* obj = reinterpret_cast<void*>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* val = reinterpret_cast<void*>(state->regs[3]);
+        return static_cast<uint64_t>(hoo_json_set(obj, key, val));
+    }
+    uint64_t jit_json_array_get(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* arr = reinterpret_cast<void*>(state->regs[1]);
+        int64_t index = state->regs[2];
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_array_get(arr, index)));
+    }
+    uint64_t jit_json_array_push(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* arr = reinterpret_cast<void*>(state->regs[1]);
+        void* val = reinterpret_cast<void*>(state->regs[2]);
+        return static_cast<uint64_t>(hoo_json_array_push(arr, val));
+    }
+    uint64_t jit_json_array_length(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* arr = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_json_array_length(arr));
+    }
+    uint64_t jit_json_type(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* obj = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_json_type(obj));
+    }
+    uint64_t jit_json_new_object(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_object()));
+    }
+    uint64_t jit_json_new_array(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_array()));
+    }
+    uint64_t jit_json_new_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* s = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_string(s)));
+    }
+    uint64_t jit_json_new_int(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_int(state->regs[1])));
+    }
+    uint64_t jit_json_new_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_bool(state->regs[1])));
+    }
+    uint64_t jit_json_new_null(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_null()));
+    }
+    uint64_t jit_json_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_json_release(reinterpret_cast<void*>(state->regs[1]));
+        return 0;
     }
 
     // HVM internal sys calls (for interpreter)
@@ -1196,6 +1796,105 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_uuid_v4_v", reinterpret_cast<void*>(&jit_uuid_v4)},
         {"_F_M_hoo_E_uuid_to_string_v_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
         {"_F_M_hoo_E_encoding_base64_encode_v_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
+        {"_F_M_hoo_E_thread_spawn_v_p_p", reinterpret_cast<void*>(&jit_thread_spawn)},
+        {"_F_M_hoo_E_thread_join_v_p", reinterpret_cast<void*>(&jit_thread_join)},
+        {"_F_M_hoo_E_thread_self_v", reinterpret_cast<void*>(&jit_thread_self)},
+        {"_F_M_hoo_E_thread_mutex_create_v", reinterpret_cast<void*>(&jit_thread_mutex_create)},
+        {"_F_M_hoo_E_thread_mutex_lock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
+        {"_F_M_hoo_E_thread_mutex_unlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
+        {"_F_M_hoo_E_thread_mutex_destroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
+        // CSV module
+        {"_F_M_hoo_E_csv_escape_v_p", reinterpret_cast<void*>(&jit_csv_escape)},
+        {"_F_M_hoo_E_csv_read_file_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
+        // Datetime module
+        {"_F_M_hoo_E_datetime_now_v", reinterpret_cast<void*>(&jit_datetime_now)},
+        {"_F_M_hoo_E_datetime_now_seconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
+        {"_F_M_hoo_E_datetime_format_v_p_p", reinterpret_cast<void*>(&jit_datetime_format)},
+        {"_F_M_hoo_E_datetime_iso8601_v_p", reinterpret_cast<void*>(&jit_datetime_iso8601)},
+        {"_F_M_hoo_E_datetime_parse_v_p_p", reinterpret_cast<void*>(&jit_datetime_parse)},
+        {"_F_M_hoo_E_datetime_from_iso8601_v_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
+        {"_F_M_hoo_E_datetime_add_days_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
+        {"_F_M_hoo_E_datetime_add_hours_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
+        {"_F_M_hoo_E_datetime_add_minutes_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
+        {"_F_M_hoo_E_datetime_add_seconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
+        {"_F_M_hoo_E_datetime_add_milliseconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
+        {"_F_M_hoo_E_datetime_diff_days_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
+        {"_F_M_hoo_E_datetime_diff_hours_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
+        {"_F_M_hoo_E_datetime_diff_seconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
+        {"_F_M_hoo_E_datetime_compare_v_p_p", reinterpret_cast<void*>(&jit_datetime_compare)},
+        // Path module
+        {"_F_M_hoo_E_path_dirname_v_p", reinterpret_cast<void*>(&jit_path_dirname)},
+        {"_F_M_hoo_E_path_basename_v_p", reinterpret_cast<void*>(&jit_path_basename)},
+        {"_F_M_hoo_E_path_extension_v_p", reinterpret_cast<void*>(&jit_path_extension)},
+        {"_F_M_hoo_E_path_stem_v_p", reinterpret_cast<void*>(&jit_path_stem)},
+        {"_F_M_hoo_E_path_join_v_p_p", reinterpret_cast<void*>(&jit_path_join)},
+        {"_F_M_hoo_E_path_normalize_v_p", reinterpret_cast<void*>(&jit_path_normalize)},
+        {"_F_M_hoo_E_path_absolute_v_p", reinterpret_cast<void*>(&jit_path_absolute)},
+        {"_F_M_hoo_E_path_relative_v_p_p", reinterpret_cast<void*>(&jit_path_relative)},
+        {"_F_M_hoo_E_path_is_absolute_v_p", reinterpret_cast<void*>(&jit_path_is_absolute)},
+        {"_F_M_hoo_E_path_is_relative_v_p", reinterpret_cast<void*>(&jit_path_is_relative)},
+        {"_F_M_hoo_E_path_has_extension_v_p", reinterpret_cast<void*>(&jit_path_has_extension)},
+        {"_F_M_hoo_E_path_separator_v", reinterpret_cast<void*>(&jit_path_separator)},
+        {"_F_M_hoo_E_path_list_separator_v", reinterpret_cast<void*>(&jit_path_list_separator)},
+        // Hashing module
+        {"_F_M_hoo_E_hashing_sha256_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha256)},
+        {"_F_M_hoo_E_hashing_sha1_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha1)},
+        {"_F_M_hoo_E_hashing_md5_v_p_p", reinterpret_cast<void*>(&jit_hashing_md5)},
+        {"_F_M_hoo_E_hashing_sha256_file_v_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
+        {"_F_M_hoo_E_hashing_crc32_v_p_p", reinterpret_cast<void*>(&jit_hashing_crc32)},
+        {"_F_M_hoo_E_hashing_hmac_sha256_v_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
+        // Process module
+        {"_F_M_hoo_E_process_kill_v_p_p", reinterpret_cast<void*>(&jit_process_kill)},
+        {"_F_M_hoo_E_process_self_pid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
+        {"_F_M_hoo_E_process_capture_v_p", reinterpret_cast<void*>(&jit_process_capture)},
+        // Compression module
+        {"_F_M_hoo_E_compression_gzip_compress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
+        {"_F_M_hoo_E_compression_gzip_decompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
+        {"_F_M_hoo_E_compression_deflate_compress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
+        {"_F_M_hoo_E_compression_deflate_decompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
+        // Args module
+        {"_F_M_hoo_E_args_count_v_p", reinterpret_cast<void*>(&jit_args_count)},
+        {"_F_M_hoo_E_args_has_v_p_p", reinterpret_cast<void*>(&jit_args_has)},
+        // Net module
+        {"_F_M_hoo_E_net_url_new_v_p", reinterpret_cast<void*>(&jit_net_url_new)},
+        {"_F_M_hoo_E_net_url_get_scheme_v_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},
+        {"_F_M_hoo_E_net_url_get_host_v_p", reinterpret_cast<void*>(&jit_net_url_get_host)},
+        {"_F_M_hoo_E_net_url_get_port_v_p", reinterpret_cast<void*>(&jit_net_url_get_port)},
+        {"_F_M_hoo_E_net_url_get_path_v_p", reinterpret_cast<void*>(&jit_net_url_get_path)},
+        {"_F_M_hoo_E_net_url_get_query_v_p", reinterpret_cast<void*>(&jit_net_url_get_query)},
+        {"_F_M_hoo_E_net_url_get_fragment_v_p", reinterpret_cast<void*>(&jit_net_url_get_fragment)},
+        {"_F_M_hoo_E_net_url_to_string_v_p", reinterpret_cast<void*>(&jit_net_url_to_string)},
+        {"_F_M_hoo_E_net_url_release_v_p", reinterpret_cast<void*>(&jit_net_url_release)},
+        {"_F_M_hoo_E_net_http_client_new_v", reinterpret_cast<void*>(&jit_net_http_client_new)},
+        {"_F_M_hoo_E_net_http_client_set_header_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
+        {"_F_M_hoo_E_net_http_client_set_timeout_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
+        {"_F_M_hoo_E_net_http_client_get_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_get)},
+        {"_F_M_hoo_E_net_http_client_post_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_post)},
+        {"_F_M_hoo_E_net_http_client_put_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_put)},
+        {"_F_M_hoo_E_net_http_client_delete_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_delete)},
+        {"_F_M_hoo_E_net_http_response_get_status_code_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
+        {"_F_M_hoo_E_net_http_response_get_body_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
+        {"_F_M_hoo_E_net_http_response_is_success_v_p", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
+        {"_F_M_hoo_E_net_http_response_release_v_p", reinterpret_cast<void*>(&jit_net_http_response_release)},
+        {"_F_M_hoo_E_net_http_client_release_v_p", reinterpret_cast<void*>(&jit_net_http_client_release)},
+        // JSON module
+        {"_F_M_hoo_E_json_parse_v_p", reinterpret_cast<void*>(&jit_json_parse)},
+        {"_F_M_hoo_E_json_stringify_v_p", reinterpret_cast<void*>(&jit_json_stringify)},
+        {"_F_M_hoo_E_json_get_v_p_p", reinterpret_cast<void*>(&jit_json_get)},
+        {"_F_M_hoo_E_json_get_int_v_p_p", reinterpret_cast<void*>(&jit_json_get_int)},
+        {"_F_M_hoo_E_json_get_string_v_p_p", reinterpret_cast<void*>(&jit_json_get_string)},
+        {"_F_M_hoo_E_json_set_v_p_p_p", reinterpret_cast<void*>(&jit_json_set)},
+        {"_F_M_hoo_E_json_array_get_v_p_p", reinterpret_cast<void*>(&jit_json_array_get)},
+        {"_F_M_hoo_E_json_array_push_v_p_p", reinterpret_cast<void*>(&jit_json_array_push)},
+        {"_F_M_hoo_E_json_array_length_v_p", reinterpret_cast<void*>(&jit_json_array_length)},
+        {"_F_M_hoo_E_json_type_v_p", reinterpret_cast<void*>(&jit_json_type)},
+        {"_F_M_hoo_E_json_new_object_v", reinterpret_cast<void*>(&jit_json_new_object)},
+        {"_F_M_hoo_E_json_new_array_v", reinterpret_cast<void*>(&jit_json_new_array)},
+        {"_F_M_hoo_E_json_new_string_v_p", reinterpret_cast<void*>(&jit_json_new_string)},
+        {"_F_M_hoo_E_json_new_int_v_p", reinterpret_cast<void*>(&jit_json_new_int)},
+        {"_F_M_hoo_E_json_new_bool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
+        {"_F_M_hoo_E_json_new_null_v", reinterpret_cast<void*>(&jit_json_new_null)},
+        {"_F_M_hoo_E_json_release_v_p", reinterpret_cast<void*>(&jit_json_release)},
     };
 }
 

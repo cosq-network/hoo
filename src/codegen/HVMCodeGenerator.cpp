@@ -20,8 +20,7 @@ using namespace hvm;
 
 namespace hooc {
 
-HVMCodeGenerator::HVMCodeGenerator(ModuleRegistry& moduleRegistry)
-    : moduleRegistry_(moduleRegistry) {
+HVMCodeGenerator::HVMCodeGenerator() {
     for (int i = 0; i < 32; ++i) usedRegs_[i] = false;
     // Reserved registers
     usedRegs_[0] = true; // r0 is hardwired zero
@@ -1053,7 +1052,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     functionName.rfind("regex_", 0) == 0 ||
                     functionName.rfind("uuid_", 0) == 0 ||
                     functionName.rfind("encoding_", 0) == 0 ||
-                    functionName.rfind("math_", 0) == 0) {
+                    functionName.rfind("math_", 0) == 0 ||
+                    functionName.rfind("thread_", 0) == 0 ||
+                    functionName.rfind("csv_", 0) == 0 ||
+                    functionName.rfind("datetime_", 0) == 0 ||
+                    functionName.rfind("path_", 0) == 0 ||
+                    functionName.rfind("hashing_", 0) == 0 ||
+                    functionName.rfind("process_", 0) == 0 ||
+                    functionName.rfind("compression_", 0) == 0 ||
+                    functionName.rfind("args_", 0) == 0 ||
+                    functionName.rfind("net_", 0) == 0 ||
+                    functionName.rfind("json_", 0) == 0) {
                     mp.modulePath = {"hoo"};
                 }
 

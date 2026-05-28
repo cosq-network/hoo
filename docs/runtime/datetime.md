@@ -54,6 +54,22 @@ typedef struct {
 
 - `hoo_datetime_compare(a, b)` — Returns -1, 0, or 1.
 
+## Usage from Hoo Source
+
+All `datetime_` functions are available with the `datetime_` prefix:
+
+```hoo
+func :int64 demo() {
+    var now = datetime_now();                        // ms since Unix epoch
+    var iso = datetime_iso8601(now);                 // "2024-01-15T10:30:00.000Z"
+    var formatted = datetime_format(now, "%Y-%m-%d");
+    var parsed = datetime_from_iso8601("2024-01-15T10:30:00Z");
+    var later = datetime_add_days(now, 7);
+    var cmp = datetime_compare(now, later);           // -1, 0, or 1
+    return string_length(formatted);                  // 10 for "2024-01-15"
+}
+```
+
 ## Memory Management
 
 Allocated strings must be freed with `hoo_datetime_free_string(str)`.

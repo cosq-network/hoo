@@ -14,6 +14,19 @@ The `hoo.process` module provides spawn (fork/exec), wait, kill, self-pid, and c
 - `hoo_process_capture(command)` — Execute command and capture stdout into allocated string (free with `hoo_process_free_string`).
 - `hoo_process_capture_status(command, &out_stdout, &out_exit_code)` — Execute command, capture both stdout and exit status. Returns 0 on success.
 
+## Usage from Hoo Source
+
+All `process_` functions are available with the `process_` prefix:
+
+```hoo
+func :int64 demo() {
+    var pid = process_self_pid();
+    var out = process_capture("echo hello");         // captured stdout
+    var ok = process_kill(pid, 0);                    // signal 0 = existence check
+    return string_length(out);
+}
+```
+
 ## Memory Management
 
 Output strings must be freed with `hoo_process_free_string(str)`.

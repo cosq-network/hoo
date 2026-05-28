@@ -38,6 +38,24 @@ The `hoo.path` module provides dirname, basename, extension, join, normalize, ab
 - `hoo_path_separator()` — Returns `'/'` on Unix, `'\\'` on Windows.
 - `hoo_path_list_separator()` — Returns `':'` on Unix, `';'` on Windows.
 
+## Usage from Hoo Source
+
+All `path_` functions are available with the `path_` prefix:
+
+```hoo
+func :int64 demo() {
+    var dir = path_dirname("a/b/c.txt");            // "a/b"
+    var base = path_basename("a/b/c.txt");          // "c.txt"
+    var ext = path_extension("a/b/c.txt");          // ".txt"
+    var stem = path_stem("a/b/resume.pdf");         // "resume"
+    var joined = path_join("a", "b");               // "a/b"
+    var norm = path_normalize("a/b/../c");          // "a/c"
+    var abs = path_is_absolute("/usr/bin");         // 1
+    var sep = path_separator();                     // '/' on Unix
+    return string_length(dir);
+}
+```
+
 ## Memory Management
 
 Strings allocated by `hoo.path` functions must be freed with `hoo_path_free_string(str)`. Parts arrays must be freed with `hoo_path_free_parts(parts, count)`.

@@ -57,18 +57,26 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 18. **[Args](args.md)**
     * `hoo.args` — CLI argument parser for `--key=value`, `--flag`, `-k`, and positional args. Returns a struct result (`HooArgsResult`).
 
+### Data Interchange
+19. **[JSON](json.md)**
+    * `hoo.json` — parse, stringify, query, and construct JSON values (objects, arrays, strings, numbers, bools, null) with ARC-managed opaque handles.
+
 ### Network & Concurrency
-19. **[Networking & HTTP](net.md)**
+20. **[Networking & HTTP](net.md)**
     * `hoo.net` — URL parsing (scheme, host, port, path, query, fragment), HTTP client (GET, POST, PUT, DELETE) via libcurl with custom headers, timeout, and redirect following.
-20. **[Threading](thread.md)**
+21. **[Threading](thread.md)**
     * `hoo.thread` — thread spawn/join/self via pthreads, mutex create/lock/unlock/destroy for concurrent synchronization.
 
 ### JIT Bridge
-21. **[JIT Integration](jit-integration.md)**
+22. **[JIT Integration](jit-integration.md)**
     * System call mapping (`SYSCALL` 1-11) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
+23. **[Name Mangling & Demangling](name-mangling.md)**
+    * Complete reference for the `_F_` (function) and `_H_` (header) symbol formats, type encoding, module path qualification, class member qualification, and JIT symbol resolution conventions.
+24. **[New Module Guide](new-module-guide.md)**
+    * Step-by-step walkthrough for wiring a new runtime library function through the codegen, JIT wrapper, and symbol table layers.
 
 ## Integration & C-ABI
-The library exposes its API strictly via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively. Each module has corresponding JIT wrapper functions in `src/hvm/HVMJIT.cpp` and a mangled symbol entry in `buildRuntimeSymbols()`. The code generator in `src/codegen/HVMCodeGenerator.cpp` redirects built-in function calls (prefix-matched as `fs_`, `datetime_`, `encoding_`, `system_`, `regex_`, `csv_`, `uuid_`, `path_`, `hashing_`, `process_`, `compression_`, `args_`, `net_`, `thread_`) to the `hoo` module path.
+The library exposes its API strictly via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively. Each module has corresponding JIT wrapper functions in `src/hvm/HVMJIT.cpp` and a mangled symbol entry in `buildRuntimeSymbols()`. The code generator in `src/codegen/HVMCodeGenerator.cpp` redirects built-in function calls (prefix-matched as `fs_`, `datetime_`, `encoding_`, `system_`, `regex_`, `csv_`, `uuid_`, `path_`, `hashing_`, `process_`, `compression_`, `args_`, `net_`, `thread_`, `json_`) to the `hoo` module path.
 
 ## Build
 All runtime sources live in `src/runtime/lib/` and are compiled into the `hoort` static library target. Test sources in `tests/runtime/` are linked into the `hoo-tests` executable. Legacy C-ABI function pointers are additionally registered in `lookupPlainRuntimeSymbolAddress()` for interpreter and non-JIT code paths.

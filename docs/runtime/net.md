@@ -41,6 +41,24 @@ Each verb call returns a retained `HooHttpResponse` handle:
 
 For test URLs containing `"example"` in the domain, the HTTP client falls back to keyword-matched mock responses (e.g., URLs with `"success"` or `"200"` return 200). This allows offline testing without network access.
 
+## Usage from Hoo Source
+
+All `net_` functions are available with the `net_` prefix:
+
+```hoo
+func :int64 demo() {
+    var url = net_url_new("https://example.com:8080/path?q=1#frag");
+    var scheme = net_url_get_scheme(url);             // "https"
+    var host = net_url_get_host(url);                  // "example.com"
+    var port = net_url_get_port(url);                  // 8080
+    var path = net_url_get_path(url);                  // "/path"
+    var query = net_url_get_query(url);                // "q=1"
+    var frag = net_url_get_fragment(url);              // "frag"
+    net_url_release(url);
+    return port;
+}
+```
+
 ## 3. Memory Management
 
 - `hoo_net_free_string(str)` — Free allocated string.

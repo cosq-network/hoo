@@ -41,7 +41,6 @@
 #include <string>
 #include <memory>
 
-#include "modules/ModuleSystem.h"
 
 namespace hvm {
 class HOModule;
@@ -129,8 +128,7 @@ private:
     /// @brief Success flag from last compilation
     bool        lastCompilationSuccessful_;
 
-    /// @brief Module registry for symbol resolution
-    ModuleRegistry moduleRegistry_;
+
 
     // ========================================================================
     // Non-Copyable

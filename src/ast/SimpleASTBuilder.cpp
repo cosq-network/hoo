@@ -992,7 +992,28 @@ PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& type
 std::string SimpleASTBuilder::getStringValue(antlr4::tree::TerminalNode* node) {
     std::string text = node->getText();
     if (text.length() >= 2 && text.front() == '"' && text.back() == '"') {
-        return text.substr(1, text.length() - 2);
+        std::string inner = text.substr(1, text.length() - 2);
+        std::string result;
+        result.reserve(inner.size());
+        for (size_t i = 0; i < inner.size(); ++i) {
+            if (inner[i] == '\\' && i + 1 < inner.size()) {
+                ++i;
+                switch (inner[i]) {
+                    case '"': result += '"'; break;
+                    case '\\': result += '\\'; break;
+                    case '/': result += '/'; break;
+                    case 'n': result += '\n'; break;
+                    case 'r': result += '\r'; break;
+                    case 't': result += '\t'; break;
+                    case 'b': result += '\b'; break;
+                    case 'f': result += '\f'; break;
+                    default: result += inner[i]; break;
+                }
+            } else {
+                result += inner[i];
+            }
+        }
+        return result;
     }
     throw std::runtime_error("Invalid string literal format: " + text);
 }

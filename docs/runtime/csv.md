@@ -21,6 +21,18 @@ The `hoo.csv` module provides parse and generate comma-separated values with quo
 
 - `hoo_csv_escape(c)` — Check if character needs escaping in CSV output.
 
+## Usage from Hoo Source
+
+All `csv_` functions are available with the `csv_` prefix:
+
+```hoo
+func :int64 demo() {
+    var ok = csv_read_file("/path/to/data.csv");  // 0 = error, 1 = success
+    var needs_escape = csv_escape(44);              // 1 if comma needs quoting
+    return ok;
+}
+```
+
 ## Memory Management
 
 - `hoo_csv_free_table(table, rows, cols)` — Free 2D table.

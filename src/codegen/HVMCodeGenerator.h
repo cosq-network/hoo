@@ -9,7 +9,6 @@
 #include "HVMCodeGeneratorTypes.h"
 #include "hvm/HVMInstruction.h"
 #include "hvm/HOModule.h"
-#include "modules/ModuleSystem.h"
 #include <vector>
 #include <unordered_map>
 #include <stack>
@@ -19,7 +18,7 @@ namespace hooc {
 
 class HVMCodeGenerator : public CodeGenerator {
 public:
-    explicit HVMCodeGenerator(ModuleRegistry& moduleRegistry);
+    HVMCodeGenerator();
     virtual ~HVMCodeGenerator() = default;
     void setModuleContext(const std::string& moduleName);
 
@@ -42,7 +41,6 @@ public:
 
 private:
     // Core state
-    ModuleRegistry& moduleRegistry_;
     std::vector<std::string> modulePath_;
     std::string pendingModuleName_;
     std::unique_ptr<hvm::HOModule> module_;

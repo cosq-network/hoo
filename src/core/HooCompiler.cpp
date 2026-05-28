@@ -15,7 +15,7 @@ HooCompiler::HooCompiler()
     : lastCompilationSuccessful_(false)
     , parser_(std::make_unique<HooParserWrapper>())
     , astBuilder_(std::make_unique<SimpleASTBuilder>())
-    , codeGenerator_(std::make_unique<HVMCodeGenerator>(moduleRegistry_)) {
+    , codeGenerator_(std::make_unique<HVMCodeGenerator>()) {
 }
 
 HooCompiler::~HooCompiler() = default;
