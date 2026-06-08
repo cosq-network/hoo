@@ -15,7 +15,10 @@ This reference defines the physical instructions supported by the HVM core. It i
 ## 2. Register Convention Summary
 
 - `r0`: hardwired zero
-- `r1..r8`: argument registers (`r1` also return value)
+- `r1`: return-value register
+- `r2..r3`: argument registers
+- `r4`: thread pointer (`tp`)
+- `r5..r8`: argument registers
 - `r9..r15`: caller-saved temporaries
 - `r16..r28`: callee-saved
 - `r29`: link register (`RET` target)
@@ -74,24 +77,25 @@ Tooling must encode and decode instructions using this 8-byte layout for any opc
 - Stores: `ST.B` `ST.H` `ST.W` `ST.D`
 - Address: `LDA`
 
-### 4.8 Stack/frame
+### 4.8 Atomic memory
+- `LR.D` `SC.D`: Load-reserve / store-conditional for atomic synchronisation.
+
+### 4.9 Stack/frame
 - `PUSH` `POP` `ENTER` `LEAVE` `ADJSP` `FRAME`
 
-### 4.9 Calls/linking
+### 4.10 Calls/linking
 - `CALL` `TAILCALL` (J-format, 20-bit relative offset)
 
-### 4.10 Hardware/System
+### 4.11 Hardware/System
 - `SYSCALL`: Trigger a system call to the runtime.
 - `BREAK`: Trap to debugger.
 
 **SYSCALL calling convention**: The immediate field selects the service; arguments are
-passed in `r2` (and `r3` for two-argument calls). The result is written to `rd`.
-See `docs/hvm/hvm-spec.md` §7 for the full syscall number table.
+passed in `r2` (and `r3` for two-argument calls, `r4` for three-argument calls).
+The result is written to `rd`. See `docs/hvm/hvm-spec.md` §7 for the full
+syscall number table.
 
-### 4.11 Atomic memory operations (system profile)
-- `LR.D` `SC.D`: Load-reserve / store-conditional for atomic synchronisation.
-
-### 4.12 System/Trap (system profile)
+### 4.12 System/Trap (system profile; privileged)
 - `ECALL`: Trap to supervisor mode (U-mode only; illegal in S-mode).
 - `TRAPRET`: Return from supervisor trap (S-mode only; illegal in U-mode).
 - `CSRRW`: Atomic read-write of CSR (S-mode only; traps in U-mode).

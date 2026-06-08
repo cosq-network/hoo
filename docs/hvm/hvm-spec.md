@@ -24,7 +24,10 @@ Anything not required by a pure RISC core (SIMD, threading, interrupts, speciali
 
 The core profile uses 32 general-purpose 64-bit registers (`r0..r31`):
 - `r0`: hardwired zero
-- `r1..r8`: argument registers, `r1` is return-value register
+- `r1`: return-value register
+- `r2..r3`: argument registers
+- `r4`: thread pointer (`tp`)
+- `r5..r8`: argument registers
 - `r9..r15`: caller-saved temporaries
 - `r16..r28`: callee-saved
 - `r29`: link register (`lr`, return address)
@@ -60,6 +63,7 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 - Comparisons: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`, `FCMPEQ`, `FCMPLT`, `FCMPLE`
 - Branch/jump: `BEQ`, `BNE`, `BLT`, `BLE`, `JMP`, `JAL`, `JALR`, `RET`
 - Memory: `LD.B`, `LD.BU`, `LD.H`, `LD.HU`, `LD.W`, `LD.WU`, `LD.D`, `ST.B`, `ST.H`, `ST.W`, `ST.D`, `LDA`
+- Atomic memory: `LR.D`, `SC.D`
 - Stack/frame: `PUSH`, `POP`, `ENTER`, `LEAVE`, `ADJSP`, `FRAME`
 - Calls/linking: `CALL`, `TAILCALL`
 - Hardware/System: `SYSCALL`, `BREAK`
@@ -77,7 +81,6 @@ The following are **NOT** in the ISA and must be lowered by the compiler:
 The following are **only** required for the system-level profile (e.g., running a kernel). They are not part of `core-minimalest`:
 
 - Supervisor traps: `ECALL`, `TRAPRET`
-- Atomic memory: `LR.D`, `SC.D`
 - System register access: `CSRRW`
 - TLB management: `SFENCE.VMA`
 
@@ -104,8 +107,20 @@ The following are **only** required for the system-level profile (e.g., running 
 | 9     | `kSysThrowToHandler`| `rd = hoo_throw_handler(r2)`     | r2 (exception) | rd |
 | 10    | `kSysRethrowToHandler`| `rd = hoo_rethrow_handler()`   | —             | rd |
 | 11    | `kSysStringData`| `rd = hoo_string_data(r2)`            | r2 (string)   | rd |
+| 12    | `kSysThreadCreate`   | `rd = thread_create(r2, r3)`     | r2 (entry), r3 (arg) | rd (TID) |
+| 13    | `kSysThreadExit`     | `thread_exit(r2)`                 | r2 (retval)   | — |
+| 14    | `kSysFutex`          | `rd = futex(r2, r3, r4)`          | r2 (uaddr), r3 (op), r4 (val) | rd |
+| 15    | `kSysGetTid`         | `rd = get_tid()`                   | —             | rd |
+| 16    | `kSysOpen`           | `rd = open(r2, r3, r4)`            | r2 (path), r3 (flags), r4 (mode) | rd (fd) |
+| 17    | `kSysRead`           | `rd = read(r2, r3, r4)`            | r2 (fd), r3 (buf), r4 (count) | rd (bytes) |
+| 18    | `kSysWrite`          | `rd = write(r2, r3, r4)`           | r2 (fd), r3 (buf), r4 (count) | rd (bytes) |
+| 19    | `kSysClose`          | `rd = close(r2)`                   | r2 (fd)       | rd |
+| 20    | `kSysLseek`          | `rd = lseek(r2, r3, r4)`           | r2 (fd), r3 (offset), r4 (whence) | rd (pos) |
+| 21    | `kSysFstat`          | `rd = fstat(r2, r3)`               | r2 (fd), r3 (buf) | rd |
+| 22    | `kSysClockGetTime`   | `rd = clock_gettime(r2, r3)`       | r2 (clk_id), r3 (ts_ptr) | rd |
+| 23    | `kSysGetRandom`      | `rd = getrandom(r2, r3)`           | r2 (buf), r3 (len) | rd (bytes) |
 
-Arguments are passed in registers `r2` and `r3`; the result is written to `rd` (the `rd` field of the I-format instruction).
+Arguments are passed in registers `r2`, `r3`, and `r4` (for three-argument calls); the result is written to `rd`. Syscalls 1–11 are runtime-internal services. Syscalls 12–23 are platform OS services (threading, file I/O, clock); their presence depends on the host environment.
 
 ## 8. Notes
 

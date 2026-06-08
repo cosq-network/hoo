@@ -3,11 +3,11 @@ r0,zero,64,Hardwired to zero. Reading always returns 0; writing has no effect.
 r1,arg1/ret,64,First argument and return value register.
 r2,arg2,64,Second argument register.
 r3,arg3,64,Third argument register.
-r4,arg4,64,Fourth argument register.
-r5,arg5,64,Fifth argument register.
-r6,arg6,64,Sixth argument register.
-r7,arg7,64,Seventh argument register.
-r8,arg8,64,Eighth argument register.
+r4,tp,64,"Thread pointer. Used for thread-local storage (TLS). Preserved across function calls."
+r5,arg4,64,Fourth argument register.
+r6,arg5,64,Fifth argument register.
+r7,arg6,64,Sixth argument register.
+r8,arg7,64,Seventh argument register.
 r9,temp1,64,Temporary register.
 r10,temp2,64,Temporary register.
 r11,temp3,64,Temporary register.
