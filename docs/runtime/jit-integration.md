@@ -18,8 +18,22 @@ The JIT lowers the `SYSCALL` instruction (`0xC0`) directly into highly optimized
 | `9` | `hooc_hvm_sys_throw_to_handler_state` | `rd = throw(r2)` | Throws exc `r2`, returns target handler PC. |
 | `10` | `hooc_hvm_sys_rethrow_to_handler_state`| `rd = rethrow()` | Rethrows, returns target handler PC. |
 | `11` | `hooc_hvm_sys_string_data` | `rd = strdata(r2)` | Returns absolute host pointer to raw UTF-8. |
+| `12` | `hooc_hvm_sys_thread_create` | `rd = thread_create(r2, r3)` | Spawns a thread running function at offset `r2` with argument `r3`. |
+| `13` | `hooc_hvm_sys_thread_exit` | `rd = thread_exit(r2)` | Exits current thread returning `r2`. |
+| `14` | `hooc_hvm_sys_futex` | `rd = futex(r2, r3, r4, r5)` | Linux futex. Returns -1 on non-Linux (stub). |
+| `15` | `hooc_hvm_sys_get_tid` | `rd = get_tid()` | Returns the calling thread's OS-level ID. |
+| `16` | `hooc_hvm_sys_open` | `rd = open(r2, r3, r4)` | Opens file at HVM-memory path offset `r2` with flags `r3` and mode `r4`. |
+| `17` | `hooc_hvm_sys_read` | `rd = read(r2, r3, r4)` | Reads up to `r4` bytes from fd `r2` into buffer at HVM offset `r3`. |
+| `18` | `hooc_hvm_sys_write` | `rd = write(r2, r3, r4)` | Writes `r4` bytes from buffer at HVM offset `r3` to fd `r2`. |
+| `19` | `hooc_hvm_sys_close` | `rd = close(r2)` | Closes file descriptor `r2`. |
+| `20` | `hooc_hvm_sys_lseek` | `rd = lseek(r2, r3, r4)` | Seeks fd `r2` to offset `r3` relative to whence `r4`. |
+| `21` | `hooc_hvm_sys_fstat` | `rd = fstat(r2, r3)` | Gets file status for fd `r2` into `struct stat` at HVM offset `r3`. |
+| `22` | `hooc_hvm_sys_clock_gettime` | `rd = clock_gettime(r2, r3)` | Gets clock `r2` time into `struct timespec` at HVM offset `r3`. |
+| `23` | `hooc_hvm_sys_getrandom` | `rd = getrandom(r2, r3)` | Fills buffer at HVM offset `r2` with `r3` random bytes. |
 
-**Platform note**: On Windows, syscalls 7-10 are not lowered to LLVM IR. `ensureJITFunctionTable()` returns `false` for these opcodes, causing the JIT to fall back to the interpreter for handler operations. The JIT bridge functions (`jit_hoo_throw`, `jit_hoo_rethrow`, `hooc_hvm_sys_throw_to_handler_state`, `hooc_hvm_sys_rethrow_to_handler_state`) use `hoo_exception_set_current()` instead of C++ try/catch on Windows, while macOS/Linux retain the original C++ exception-based path.
+**Pointer note**: Syscalls 16-18, 21-23 take HVM-memory offsets (not host virtual addresses) for buffer/string/path arguments. The runtime translates these offsets to real addresses at call time via an internal `g_hvm_memory` base pointer, so HVM code passes raw register values without manual address arithmetic.
+
+**Platform note**: On Windows, syscalls 7-10 are not lowered to LLVM IR. `ensureJITFunctionTable()` returns `false` for these opcodes, causing the JIT to fall back to the interpreter for handler operations. The JIT bridge functions (`jit_hoo_throw`, `jit_hoo_rethrow`, `hooc_hvm_sys_throw_to_handler_state`, `hooc_hvm_sys_rethrow_to_handler_state`) use `hoo_exception_set_current()` instead of C++ try/catch on Windows, while macOS/Linux retain the original C++ exception-based path. Syscalls 12-15 (threading) are implemented via pthreads and are unavailable on Windows.
 
 ## 2. ARC Optimization Pass (`ARCUseDefGraph`)
 To prevent severe performance degradation from excessive reference counting, the JIT executes an `ARCUseDefGraph` analysis pass over the instruction stream before IR translation.
@@ -46,5 +60,5 @@ In LLVM IR, the running state of the VM is passed around as a pointer to the `hv
 ```llvm
 %hvm.state = type { [32 x i64], i8*, i8* }
 ```
-- `[32 x i64]`: The 32 general-purpose 64-bit registers.
+- `[32 x i64]`: The 32 general-purpose 64-bit registers. Register `r4` is reserved as `tp` (thread pointer) and is skipped during codegen argument allocation.
 - `i8*`: The base pointer to the emulated 16MB module memory (for `.text`, `.data`, `.rodata`).

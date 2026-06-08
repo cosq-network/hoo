@@ -69,7 +69,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 
 ### JIT Bridge
 22. **[JIT Integration](jit-integration.md)**
-    * System call mapping (`SYSCALL` 1-11) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
+    * System call mapping (`SYSCALL` 1-23) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
 23. **[Name Mangling & Demangling](name-mangling.md)**
     * Complete reference for the `_F_` (function) and `_H_` (header) symbol formats, type encoding, module path qualification, class member qualification, and JIT symbol resolution conventions.
 24. **[New Module Guide](new-module-guide.md)**
