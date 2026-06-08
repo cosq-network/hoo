@@ -58,3 +58,9 @@ CALL,0xB4,escape32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps
 TAILCALL,0xB6,escape32,J,offset,tail_call offset,Performs an unconditional tail-call jump to PC + sign_extend(offset) * 4 without saving return address.,-,tailcall 200
 SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Arguments passed in r2 (and r3 for two-arg syscalls). Result stored in rd.,-,syscall r1, r0, 10
 BREAK,0xC1,escape32,R,"-, -, -, -",trap_to_debugger,Triggers a software breakpoint trap to the host environment or debugger.,-,break
+ECALL,0xC2,escape32,R,"-, -, -, -",trap_to_supervisor,Traps to supervisor mode. Sets sepc=PC scause=8 and jumps to stvec.BASE.,-,ecall
+TRAPRET,0xC3,escape32,R,"-, -, -, -",return_from_trap,Returns from supervisor trap. Restores privilege from sstatus.SPP and jumps to sepc.,-,trapret
+LR.D,0xC4,escape32,R,"rd, rs1, -, -",rd = *rs1 (load-reserve),Loads a doubleword from memory at rs1 and creates a reservation for a subsequent SC.D.,-,lr.d r1, r2
+SC.D,0xC5,escape32,R,"rd, rs1, rs2, -",*rs1 = rs2 if reservation valid,Writes rs2 to memory at rs1 if reservation is still valid. rd=0 on success; nonzero on failure.,-,sc.d r1, r2, r3
+CSRRW,0xC6,escape32,I,"rd, rs, imm15",rd = CSR[imm15]; CSR[imm15] = rs,Atomically reads CSR at address imm15 into rd and writes rs to it. If rs=r0 the write is suppressed.,-,csrrw r1, r2, 0x005
+SFENCE.VMA,0xC8,escape32,R,"-, -, -, -",fence_vma,Synchronizes page-table updates with address translation (TLB flush). All prior stores to page tables are visible to subsequent translations.,-,sfence.vma

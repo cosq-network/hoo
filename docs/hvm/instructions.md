@@ -88,6 +88,15 @@ Tooling must encode and decode instructions using this 8-byte layout for any opc
 passed in `r2` (and `r3` for two-argument calls). The result is written to `rd`.
 See `docs/hvm/hvm-spec.md` §7 for the full syscall number table.
 
+### 4.11 Atomic memory operations (system profile)
+- `LR.D` `SC.D`: Load-reserve / store-conditional for atomic synchronisation.
+
+### 4.12 System/Trap (system profile)
+- `ECALL`: Trap to supervisor mode (U-mode only; illegal in S-mode).
+- `TRAPRET`: Return from supervisor trap (S-mode only; illegal in U-mode).
+- `CSRRW`: Atomic read-write of CSR (S-mode only; traps in U-mode).
+- `SFENCE.VMA`: TLB flush after page-table modification (S-mode only).
+
 ## 5. Lowering Rules (Software Implemented)
 
 Operations removed from the ISA and now lowered to the above set:
