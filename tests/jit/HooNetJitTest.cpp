@@ -13,14 +13,14 @@ protected:
 TEST_F(HooNetJitTest, UrlNew) {
     const std::string source = R"(
         func :int64 test() {
-            var url = net_url_new("https://example.com/path?q=1#frag");
-            var scheme = net_url_get_scheme(url);
-            var host = net_url_get_host(url);
-            var port = net_url_get_port(url);
-            var path = net_url_get_path(url);
-            var query = net_url_get_query(url);
-            var frag = net_url_get_fragment(url);
-            net_url_release(url);
+            var url = url_new("https://example.com/path?q=1#frag");
+            var scheme = url_scheme(url);
+            var host = url_host(url);
+            var port = url_port(url);
+            var path = url_path(url);
+            var query = url_query(url);
+            var frag = url_fragment(url);
+            url_release(url);
             return 1;
         }
     )";
@@ -31,10 +31,10 @@ TEST_F(HooNetJitTest, UrlNew) {
 TEST_F(HooNetJitTest, UrlScheme) {
     const std::string source = R"(
         func :int64 test() {
-            var url = net_url_new("https://example.com");
-            var s = net_url_get_scheme(url);
+            var url = url_new("https://example.com");
+            var s = url_scheme(url);
             var len = string_length(s);
-            net_url_release(url);
+            url_release(url);
             return len;
         }
     )";
@@ -45,9 +45,9 @@ TEST_F(HooNetJitTest, UrlScheme) {
 TEST_F(HooNetJitTest, UrlPort) {
     const std::string source = R"(
         func :int64 test() {
-            var url = net_url_new("https://example.com:8080/path");
-            var p = net_url_get_port(url);
-            net_url_release(url);
+            var url = url_new("https://example.com:8080/path");
+            var p = url_port(url);
+            url_release(url);
             return p;
         }
     )";
@@ -58,9 +58,9 @@ TEST_F(HooNetJitTest, UrlPort) {
 TEST_F(HooNetJitTest, UrlNoPort) {
     const std::string source = R"(
         func :int64 test() {
-            var url = net_url_new("https://example.com/path");
-            var p = net_url_get_port(url);
-            net_url_release(url);
+            var url = url_new("https://example.com/path");
+            var p = url_port(url);
+            url_release(url);
             return p;
         }
     )";
@@ -72,15 +72,56 @@ TEST_F(HooNetJitTest, UrlNoPort) {
 TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
     const std::string source = R"(
         func :int64 test() {
-            var client = net_http_client_new();
-            net_http_client_set_timeout(client, 10000);
-            var resp = net_http_client_get(client, "https://example.com/");
-            var code = net_http_response_get_status_code(resp);
-            net_http_response_release(resp);
-            net_http_client_release(client);
+            var client = http_client_new();
+            http_client_set_timeout(client, 10000);
+            var resp = http_client_get(client, "https://example.com/");
+            var code = http_response_status_code(resp);
+            http_response_release(resp);
+            http_client_release(client);
             return code;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 200);
+}
+
+TEST_F(HooNetJitTest, UrlJustRelease) {
+    const std::string source = R"(
+        func :int64 test() {
+            var url = url_new("x");
+            url_release(url);
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooNetJitTest, ProcessThroughRedirectWorks) {
+    const std::string source = R"(
+        func :int64 test() { return process_self_pid(); }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooNetJitTest, UrlNoString) {
+    const std::string source = R"(
+        func :int64 test() {
+            return 42;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 42);
+}
+
+TEST_F(HooNetJitTest, UrlNewWithString) {
+    const std::string source = R"(
+        func :int64 test() {
+            var url = url_new("x");
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }

@@ -368,6 +368,13 @@ std::mutex gManagedObjectsMu;
 std::unordered_set<uintptr_t> gManagedObjects;
 std::mutex gShadowHandlersMu;
 
+// Bump allocator for HVM memory space objects (used by JIT for `new` expressions)
+// Objects are allocated at offsets into the HVM memory array.
+// The stack grows down from the top, so we allocate from a reserved region upward.
+static constexpr uint64_t kHvmHeapStart = 1024 * 1024; // 1 MB for heap
+static constexpr uint64_t kHvmHeapLimit = 14 * 1024 * 1024; // 14 MB limit
+static std::atomic<uint64_t> gHvmBumpNext{kHvmHeapStart};
+
 struct ShadowHandlerFrame {
     uint64_t handlerPc = 0;
     int64_t savedLr = 0;
@@ -562,7 +569,27 @@ extern "C" {
 
     uint64_t jit_hoo_alloc(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_alloc(static_cast<size_t>(state->regs[1]), state->regs[2])));
+        fprintf(stderr, "JIT_DEBUG: jit_hoo_alloc state=%p memory=%p regs[1]=%lld regs[2]=%lld\n",
+                (void*)state, (void*)state->memory,
+                (long long)state->regs[1], (long long)state->regs[2]);
+        // Allocate from HVM memory space (bump allocator), not from C heap.
+        // The returned offset is used as an index into state->memory[] for ST.D/LD.D.
+        size_t size = static_cast<size_t>(state->regs[1]);
+        // Align to 8 bytes
+        size = (size + 7) & ~7;
+        uint64_t offset = gHvmBumpNext.fetch_add(size);
+        fprintf(stderr, "JIT_DEBUG: jit_hoo_alloc size=%zu offset=%llu heap_next=%llu\n",
+                size, (unsigned long long)offset, (unsigned long long)gHvmBumpNext.load());
+        if (offset + size > kHvmHeapLimit) {
+            fprintf(stderr, "JIT_DEBUG: HVM heap exhausted (%llu + %zu > %llu)\n",
+                    (unsigned long long)offset, size, (unsigned long long)kHvmHeapLimit);
+            return 0;
+        }
+        // Zero-initialize the allocation
+        if (state->memory) {
+            std::memset(state->memory + offset, 0, size);
+        }
+        return offset;
     }
     uint64_t jit_hoo_retain(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -658,6 +685,12 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         hoo_println(reinterpret_cast<void*>(state->regs[1]));
         return 0;
+    }
+    uint64_t jit_hoo_readline(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_readline()));
+    }
+    uint64_t jit_hoo_readchar(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_readchar());
     }
     uint64_t jit_hoo_array_new(void* /*state_ptr*/) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_array_new()));
@@ -1489,6 +1522,15 @@ extern "C" {
         std::free(result);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
+    uint64_t jit_net_http_response_get_status_text(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooHttpResponse resp = reinterpret_cast<HooHttpResponse>(state->regs[1]);
+        char* result = hoo_net_http_response_get_status_text(resp);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        std::free(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
     uint64_t jit_net_http_response_is_success(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_net_http_response_is_success(reinterpret_cast<HooHttpResponse>(state->regs[1])));
@@ -1714,6 +1756,39 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_String_join_p_p", reinterpret_cast<void*>(&jit_hoo_string_join)},
         {"_F_hoo_String_from_object_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_object)},
         {"_F_hoo_String_from_any_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_string_from_any)},
+        // String class methods (hoo module, String class)
+        {"_F_M_hoo_E_String_new_static_p", reinterpret_cast<void*>(&jit_string_new)},
+        {"_F_M_hoo_E_String_fromCStr_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_cstr)},
+        {"_F_M_hoo_E_String_fromInt64_static_p_i8", reinterpret_cast<void*>(&jit_hoo_string_from_int64)},
+        {"_F_M_hoo_E_String_fromDouble_static_p_d", reinterpret_cast<void*>(&jit_hoo_string_from_double)},
+        {"_F_M_hoo_E_String_fromAny_static_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_string_from_any)},
+        {"_F_M_hoo_E_String_fromObject_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_object)},
+        {"_F_M_hoo_E_String_join_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_join)},
+        {"_F_M_hoo_E_String_repeat_static_p_p_p", reinterpret_cast<void*>(&jit_string_repeat)},
+        {"_F_M_hoo_E_String_concat_p_p", reinterpret_cast<void*>(&jit_hoo_string_concat)},
+        {"_F_M_hoo_E_String_length_i8", reinterpret_cast<void*>(&jit_hoo_string_length)},
+        {"_F_M_hoo_E_String_data_p", reinterpret_cast<void*>(&jit_hoo_string_data)},
+        {"_F_M_hoo_E_String_isEmpty_i8", reinterpret_cast<void*>(&jit_string_is_empty)},
+        {"_F_M_hoo_E_String_toUpper_p", reinterpret_cast<void*>(&jit_hoo_string_to_upper)},
+        {"_F_M_hoo_E_String_toLower_p", reinterpret_cast<void*>(&jit_string_to_lower)},
+        {"_F_M_hoo_E_String_equals_i8_p", reinterpret_cast<void*>(&jit_string_equals)},
+        {"_F_M_hoo_E_String_contains_i8_p", reinterpret_cast<void*>(&jit_string_contains)},
+        {"_F_M_hoo_E_String_startsWith_i8_p", reinterpret_cast<void*>(&jit_string_starts_with)},
+        {"_F_M_hoo_E_String_trim_p", reinterpret_cast<void*>(&jit_string_trim)},
+        {"_F_M_hoo_E_String_indexOf_i8_p", reinterpret_cast<void*>(&jit_string_index_of)},
+        {"_F_M_hoo_E_String_toCharacters_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
+        // String class method redirect names (snake_case, from Hooc source string_*())
+        {"_F_M_hoo_E_String_from_cstr_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_cstr)},
+        {"_F_M_hoo_E_String_from_int64_static_p_i8", reinterpret_cast<void*>(&jit_hoo_string_from_int64)},
+        {"_F_M_hoo_E_String_from_double_static_p_d", reinterpret_cast<void*>(&jit_hoo_string_from_double)},
+        {"_F_M_hoo_E_String_from_any_static_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_string_from_any)},
+        {"_F_M_hoo_E_String_from_object_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_object)},
+        {"_F_M_hoo_E_String_is_empty_i8", reinterpret_cast<void*>(&jit_string_is_empty)},
+        {"_F_M_hoo_E_String_to_upper_p", reinterpret_cast<void*>(&jit_hoo_string_to_upper)},
+        {"_F_M_hoo_E_String_to_lower_p", reinterpret_cast<void*>(&jit_string_to_lower)},
+        {"_F_M_hoo_E_String_starts_with_i8_p", reinterpret_cast<void*>(&jit_string_starts_with)},
+        {"_F_M_hoo_E_String_index_of_i8_p", reinterpret_cast<void*>(&jit_string_index_of)},
+        {"_F_M_hoo_E_String_to_characters_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
         {"_F_hoo_Character_from_utf8_p_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_utf8)},
         {"_F_hoo_Character_from_codepoint_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
         {"_F_hoo_Character_length_i8_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
@@ -1877,6 +1952,40 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_http_response_is_success_v_p", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
         {"_F_M_hoo_E_net_http_response_release_v_p", reinterpret_cast<void*>(&jit_net_http_response_release)},
         {"_F_M_hoo_E_net_http_client_release_v_p", reinterpret_cast<void*>(&jit_net_http_client_release)},
+        // URL class methods
+        {"_F_M_hoo_E_URL_new_static_p_p", reinterpret_cast<void*>(&jit_net_url_new)},
+        {"_F_M_hoo_E_URL_scheme_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},
+        {"_F_M_hoo_E_URL_host_p", reinterpret_cast<void*>(&jit_net_url_get_host)},
+        {"_F_M_hoo_E_URL_port_i8", reinterpret_cast<void*>(&jit_net_url_get_port)},
+        {"_F_M_hoo_E_URL_path_p", reinterpret_cast<void*>(&jit_net_url_get_path)},
+        {"_F_M_hoo_E_URL_query_p", reinterpret_cast<void*>(&jit_net_url_get_query)},
+        {"_F_M_hoo_E_URL_fragment_p", reinterpret_cast<void*>(&jit_net_url_get_fragment)},
+        {"_F_M_hoo_E_URL_to_string_p", reinterpret_cast<void*>(&jit_net_url_to_string)},
+        {"_F_M_hoo_E_URL_release_v", reinterpret_cast<void*>(&jit_net_url_release)},
+        // HttpResponse class methods
+        {"_F_M_hoo_E_HttpResponse_status_code_i8", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
+        {"_F_M_hoo_E_HttpResponse_status_text_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_text)},
+        {"_F_M_hoo_E_HttpResponse_body_p", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
+        {"_F_M_hoo_E_HttpResponse_is_success_i8", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
+        {"_F_M_hoo_E_HttpResponse_release_v", reinterpret_cast<void*>(&jit_net_http_response_release)},
+        // HttpClient class methods
+        {"_F_M_hoo_E_HttpClient_new_static_p", reinterpret_cast<void*>(&jit_net_http_client_new)},
+        {"_F_M_hoo_E_HttpClient_set_header_i8_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
+        {"_F_M_hoo_E_HttpClient_set_timeout_v_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
+        {"_F_M_hoo_E_HttpClient_get_p_p", reinterpret_cast<void*>(&jit_net_http_client_get)},
+        {"_F_M_hoo_E_HttpClient_post_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_post)},
+        {"_F_M_hoo_E_HttpClient_put_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_put)},
+        {"_F_M_hoo_E_HttpClient_delete_p_p", reinterpret_cast<void*>(&jit_net_http_client_delete)},
+        {"_F_M_hoo_E_HttpClient_release_v", reinterpret_cast<void*>(&jit_net_http_client_release)},
+        // Process class methods
+        {"_F_M_hoo_E_Process_self_pid_static_i8", reinterpret_cast<void*>(&jit_process_self_pid)},
+        {"_F_M_hoo_E_Process_capture_static_p_p", reinterpret_cast<void*>(&jit_process_capture)},
+        {"_F_M_hoo_E_Process_kill_static_i8_p_p", reinterpret_cast<void*>(&jit_process_kill)},
+        // Console class methods
+        {"_F_M_hoo_E_Console_print_static_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
+        {"_F_M_hoo_E_Console_println_static_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
+        {"_F_M_hoo_E_Console_readline_static_p", reinterpret_cast<void*>(&jit_hoo_readline)},
+        {"_F_M_hoo_E_Console_readchar_static_i8", reinterpret_cast<void*>(&jit_hoo_readchar)},
         // JSON module
         {"_F_M_hoo_E_json_parse_v_p", reinterpret_cast<void*>(&jit_json_parse)},
         {"_F_M_hoo_E_json_stringify_v_p", reinterpret_cast<void*>(&jit_json_stringify)},
@@ -2360,7 +2469,7 @@ bool HVMJIT::registerModuleInBundle(const std::shared_ptr<hvm::HOModule>& module
     buildModuleRegistryEntry(module);
     functionNameByOffset_[moduleName].clear();
     for (const auto& sym : module->getSymbols()) {
-        if (sym.type == hvm::Symbol::STT_FUNC) {
+        if (sym.type == hvm::Symbol::STT_FUNC && sym.section_index >= 0) {
             functionNameByOffset_[moduleName][sym.value] = sym.name;
         }
     }
@@ -2532,25 +2641,66 @@ bool HVMJIT::bootstrapRuntimeModules() {
     runtime->registerFunction("get_type_id", reinterpret_cast<void*>(&hoo_get_type_id), "_F_hoo_get_type_id_i8_p");
 
     runtime->registerFunction("string_from_cstr", reinterpret_cast<void*>(&hoo_string_from_cstr),
-                              "_F_hoo_String_from_cstr_p_p");
+                              "_F_M_hoo_E_String_fromCStr_static_p_p");
     runtime->registerFunction("string_from_int64", reinterpret_cast<void*>(&hoo_string_from_int64),
-                              "_F_hoo_String_from_int64_p_i8");
+                              "_F_M_hoo_E_String_fromInt64_static_p_i8");
     runtime->registerFunction("string_from_double", reinterpret_cast<void*>(&hoo_string_from_double),
-                              "_F_hoo_String_from_double_p_d");
+                              "_F_M_hoo_E_String_fromDouble_static_p_d");
     runtime->registerFunction("string_concat", reinterpret_cast<void*>(&hoo_string_concat),
-                              "_F_hoo_String_concat_p_p_p");
+                              "_F_M_hoo_E_String_concat_p_p");
     runtime->registerFunction("string_length", reinterpret_cast<void*>(&hoo_string_length),
-                              "_F_hoo_String_length_i8_p");
+                              "_F_M_hoo_E_String_length_i8");
     runtime->registerFunction("string_data", reinterpret_cast<void*>(&hoo_string_data),
-                              "_F_hoo_String_data_p_p");
+                              "_F_M_hoo_E_String_data_p");
     runtime->registerFunction("string_to_characters", reinterpret_cast<void*>(&hoo_string_to_characters),
-                              "_F_hoo_String_to_characters_p_p");
+                              "_F_M_hoo_E_String_toCharacters_p");
     runtime->registerFunction("string_join", reinterpret_cast<void*>(&hoo_string_join),
-                              "_F_hoo_String_join_p_p");
+                              "_F_M_hoo_E_String_join_static_p_p");
     runtime->registerFunction("string_from_object", reinterpret_cast<void*>(&hoo_string_from_object),
-                              "_F_hoo_String_from_object_p_p");
+                              "_F_M_hoo_E_String_fromObject_static_p_p");
     runtime->registerFunction("string_from_any", reinterpret_cast<void*>(&hoo_string_from_any),
-                              "_F_hoo_String_from_any_p_i8_i8");
+                              "_F_M_hoo_E_String_fromAny_static_p_i8_i8");
+    runtime->registerFunction("string_new", reinterpret_cast<void*>(&hoo_string_new),
+                              "_F_M_hoo_E_String_new_static_p");
+    runtime->registerFunction("string_is_empty", reinterpret_cast<void*>(&hoo_string_is_empty),
+                              "_F_M_hoo_E_String_isEmpty_i8");
+    runtime->registerFunction("string_to_lower", reinterpret_cast<void*>(&hoo_string_to_lower),
+                              "_F_M_hoo_E_String_toLower_p");
+    runtime->registerFunction("string_equals", reinterpret_cast<void*>(&hoo_string_equals),
+                              "_F_M_hoo_E_String_equals_i8_p");
+    runtime->registerFunction("string_contains", reinterpret_cast<void*>(&hoo_string_contains),
+                              "_F_M_hoo_E_String_contains_i8_p");
+    runtime->registerFunction("string_starts_with", reinterpret_cast<void*>(&hoo_string_starts_with),
+                              "_F_M_hoo_E_String_startsWith_i8_p");
+    runtime->registerFunction("string_trim", reinterpret_cast<void*>(&hoo_string_trim),
+                              "_F_M_hoo_E_String_trim_p");
+    runtime->registerFunction("string_repeat", reinterpret_cast<void*>(&hoo_string_repeat),
+                              "_F_M_hoo_E_String_repeat_static_p_p_p");
+    runtime->registerFunction("string_index_of", reinterpret_cast<void*>(&hoo_string_index_of),
+                              "_F_M_hoo_E_String_indexOf_i8_p");
+    // String class redirect names (snake_case)
+    runtime->registerFunction("string_from_cstr_snake", reinterpret_cast<void*>(&hoo_string_from_cstr),
+                              "_F_M_hoo_E_String_from_cstr_static_p_p");
+    runtime->registerFunction("string_from_int64_snake", reinterpret_cast<void*>(&hoo_string_from_int64),
+                              "_F_M_hoo_E_String_from_int64_static_p_i8");
+    runtime->registerFunction("string_from_double_snake", reinterpret_cast<void*>(&hoo_string_from_double),
+                              "_F_M_hoo_E_String_from_double_static_p_d");
+    runtime->registerFunction("string_from_any_snake", reinterpret_cast<void*>(&hoo_string_from_any),
+                              "_F_M_hoo_E_String_from_any_static_p_i8_i8");
+    runtime->registerFunction("string_from_object_snake", reinterpret_cast<void*>(&hoo_string_from_object),
+                              "_F_M_hoo_E_String_from_object_static_p_p");
+    runtime->registerFunction("string_is_empty_snake", reinterpret_cast<void*>(&hoo_string_is_empty),
+                              "_F_M_hoo_E_String_is_empty_i8");
+    runtime->registerFunction("string_to_upper_snake", reinterpret_cast<void*>(&hoo_string_to_upper),
+                              "_F_M_hoo_E_String_to_upper_p");
+    runtime->registerFunction("string_to_lower_snake", reinterpret_cast<void*>(&hoo_string_to_lower),
+                              "_F_M_hoo_E_String_to_lower_p");
+    runtime->registerFunction("string_starts_with_snake", reinterpret_cast<void*>(&hoo_string_starts_with),
+                              "_F_M_hoo_E_String_starts_with_i8_p");
+    runtime->registerFunction("string_index_of_snake", reinterpret_cast<void*>(&hoo_string_index_of),
+                              "_F_M_hoo_E_String_index_of_i8_p");
+    runtime->registerFunction("string_to_characters_snake", reinterpret_cast<void*>(&hoo_string_to_characters),
+                              "_F_M_hoo_E_String_to_characters_p");
     runtime->registerFunction("character_from_utf8", reinterpret_cast<void*>(&hoo_character_from_utf8),
                               "_F_hoo_Character_from_utf8_p_p_i8");
     runtime->registerFunction("character_from_codepoint", reinterpret_cast<void*>(&hoo_character_from_codepoint),
@@ -4102,6 +4252,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
 
     for (const auto& sym : hvmModule.getSymbols()) {
         if (sym.type != hvm::Symbol::STT_FUNC) continue;
+        // Skip undefined symbols (section_index == -1) — these are imports resolved by the JIT linker
+        if (sym.section_index < 0) continue;
         auto* fn = fnMap[sym.name];
         uint32_t lineStart = 1;
         auto fit = fnMetaByName.find(sym.name);
@@ -4866,45 +5018,98 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
 }
 
 bool HVMJIT::materializeModulesToJIT() {
+    fprintf(stderr, "JIT_DEBUG: materializeModulesToJIT modulesMaterialized_=%d\n", modulesMaterialized_);
     if (modulesMaterialized_) return true;
     for (const auto& [moduleName, module] : loadedModules_) {
         auto jdIt = moduleDylibs_.find(moduleName);
-        if (jdIt == moduleDylibs_.end() || !jdIt->second) continue;
+        if (jdIt == moduleDylibs_.end() || !jdIt->second) {
+            fprintf(stderr, "JIT_DEBUG:   skip module '%s' (no dylib)\n", moduleName.c_str());
+            continue;
+        }
+        fprintf(stderr, "JIT_DEBUG:   processing module '%s'\n", moduleName.c_str());
         if (!ensureJITFunctionTable(module)) {
+            fprintf(stderr, "JIT_DEBUG:   ensureJITFunctionTable FAILED for '%s'\n", moduleName.c_str());
             setError(ErrorPhase::Initialize, ErrorCode::UnsupportedInstruction,
                      "Module contains instructions outside current JIT-lowering subset: " + moduleName,
                      moduleName);
             modulesMaterialized_ = false;
             return false;
         }
+        fprintf(stderr, "JIT_DEBUG:   ensureJITFunctionTable PASSED for '%s'\n", moduleName.c_str());
         auto tsmOrErr = translateModule(*module);
         if (!tsmOrErr) {
+            fprintf(stderr, "JIT_DEBUG:   translateModule FAILED for '%s'\n", moduleName.c_str());
             setError(ErrorPhase::Initialize, ErrorCode::ExecutionFailed,
                      "Failed to translate module to LLVM IR: " + moduleName, moduleName);
             return false;
         }
+        fprintf(stderr, "JIT_DEBUG:   translateModule PASSED for '%s'\n", moduleName.c_str());
+        // Dump LLVM IR for debugging
+        {
+            tsmOrErr->withModuleDo([](llvm::Module& mod) {
+                mod.print(llvm::errs(), nullptr);
+            });
+        }
         if (auto err = jit_->addIRModule(*jdIt->second, std::move(*tsmOrErr))) {
+            auto errStr = llvm::toString(std::move(err));
+            fprintf(stderr, "JIT_DEBUG:   addIRModule FAILED for '%s': %s\n", moduleName.c_str(), errStr.c_str());
             setError(ErrorPhase::Initialize, ErrorCode::ExecutionFailed,
-                     "Failed to add LLVM IR module to ORC: " + moduleName, moduleName);
+                     "Failed to add LLVM IR module to ORC: " + moduleName + " - " + errStr, moduleName);
             return false;
         }
+        fprintf(stderr, "JIT_DEBUG:   addIRModule PASSED for '%s'\n", moduleName.c_str());
     }
     modulesMaterialized_ = true;
+    fprintf(stderr, "JIT_DEBUG: materializeModulesToJIT SUCCESS\n");
     return true;
 }
 
 int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
+    fprintf(stderr, "JIT_DEBUG: runViaJIT entryPoint='%s' primaryModule='%s'\n",
+            entryPoint.c_str(), primaryModuleName_.c_str());
+    fprintf(stderr, "JIT_DEBUG: loadedModules_ has %zu entries, moduleDylibs_ has %zu entries\n",
+            loadedModules_.size(), moduleDylibs_.size());
+    for (const auto& [name, _] : loadedModules_) {
+        auto jdIt = moduleDylibs_.find(name);
+        fprintf(stderr, "JIT_DEBUG:   loadedModule='%s' hasDylib=%s\n",
+                name.c_str(), (jdIt != moduleDylibs_.end() && jdIt->second) ? "yes" : "no");
+    }
     if (!materializeModulesToJIT()) {
+        fprintf(stderr, "JIT_DEBUG: materializeModulesToJIT failed\n");
         return -1;
     }
+    // Reset the HVM heap allocator for this run
+    gHvmBumpNext.store(kHvmHeapStart);
+    
     std::optional<uintptr_t> resolvedAddress;
-    for (const auto& candidate : buildLookupCandidates(entryPoint, primaryModuleName_)) {
+    // Search the primary module's JITDylib (NOT the main dylib)
+    auto primaryJdIt = moduleDylibs_.find(primaryModuleName_);
+    auto candidates = buildLookupCandidates(entryPoint, primaryModuleName_);
+    fprintf(stderr, "JIT_DEBUG: lookup candidates (%zu):\n", candidates.size());
+    for (const auto& candidate : candidates) {
+        // Try searching the primary module's dylib first
+        if (primaryJdIt != moduleDylibs_.end() && primaryJdIt->second) {
+            auto sym = jit_->lookup(*primaryJdIt->second, candidate);
+            if (sym) {
+                fprintf(stderr, "JIT_DEBUG:   candidate='%s' -> FOUND in '%s' dylib addr=%lx\n",
+                        candidate.c_str(), primaryModuleName_.c_str(), (unsigned long)sym->getValue());
+                resolvedAddress = static_cast<uintptr_t>(sym->getValue());
+                break;
+            }
+            consumeError(sym.takeError());
+        }
+        // Fallback: try the main JITDylib
         auto sym = jit_->lookup(candidate);
         if (sym) {
+            fprintf(stderr, "JIT_DEBUG:   candidate='%s' -> FOUND in main dylib addr=%lx\n",
+                    candidate.c_str(), (unsigned long)sym->getValue());
             resolvedAddress = static_cast<uintptr_t>(sym->getValue());
             break;
+        } else {
+            auto err = llvm::toString(sym.takeError());
+            fprintf(stderr, "JIT_DEBUG:   candidate='%s' -> NOT FOUND (%s)\n",
+                    candidate.c_str(), err.c_str());
         }
-        consumeError(sym.takeError());
     }
     if (!resolvedAddress.has_value()) {
         setError(ErrorPhase::Execute, ErrorCode::MissingEntryPoint,
@@ -4955,6 +5160,9 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     }
     std::string jitError;
     int64_t jitResult = runViaJIT(entryPoint);
+    fprintf(stderr, "JIT_DEBUG: runViaJIT(\"%s\") = %lld, error='%s', code=%d\n",
+            entryPoint.c_str(), (long long)jitResult, lastError_.c_str(),
+            lastErrorInfo_ ? (int)lastErrorInfo_->code : -1);
     if (jitResult != -1) {
         return jitResult;
     }
@@ -4966,9 +5174,12 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
         jitError = lastError_;
         auto errInfo = lastErrorInfo_;
         if (errInfo && errInfo->code != ErrorCode::MissingEntryPoint) {
+            fprintf(stderr, "JIT_DEBUG: Hard JIT error (%d), NOT falling back to interpreter\n",
+                    (int)errInfo->code);
             return -1;
         }
     }
+    fprintf(stderr, "JIT_DEBUG: Falling back to interpreter\n");
     clearError();
     lastRunUsedJIT_ = false;
     auto primary = loadedModules_[primaryModuleName_];

@@ -447,5 +447,155 @@ TEST_F(NewExpressionParsingTest, NewExpressionInComplexContext) {
     EXPECT_EQ(ast->getDeclarations().size(), 2);
 }
 
+// ============================================================================
+// DEEPER AST VERIFICATION TESTS
+// ============================================================================
+
+// Helper: extract NewObjectExpression from a simple var decl statement
+const NewObjectExpression* extractNewExpression(const Statement* stmt) {
+    if (!stmt) return nullptr;
+    if (auto varDeclStmt = dynamic_cast<const VariableDeclarationStatement*>(stmt)) {
+        auto* init = varDeclStmt->getDeclaration().getInitializer();
+        return dynamic_cast<const NewObjectExpression*>(init);
+    }
+    if (auto exprStmt = dynamic_cast<const ExpressionStatement*>(stmt)) {
+        return dynamic_cast<const NewObjectExpression*>(&exprStmt->getExpression());
+    }
+    return nullptr;
+}
+
+TEST_F(NewExpressionParsingTest, AST_SimpleNewObjectExpressionNode) {
+    std::string code = R"(
+        class Widget {
+            constructor() {}
+        }
+        func test() {
+            var w = new Widget();
+        }
+    )";
+    auto ast = buildAST(code);
+    ASSERT_NE(ast, nullptr);
+    auto* stmt = findStatementInFunction(*ast, 1);
+    ASSERT_NE(stmt, nullptr);
+    auto* newExpr = extractNewExpression(stmt);
+    ASSERT_NE(newExpr, nullptr);
+    EXPECT_EQ(newExpr->getClassName(), "Widget");
+    EXPECT_NE(newExpr->getQualifiedClassName(), nullptr);
+    EXPECT_EQ(newExpr->getQualifiedClassName()->getName(), "Widget");
+    EXPECT_EQ(newExpr->getQualifiedClassName()->getFullName(), "Widget");
+    EXPECT_NE(newExpr->getArguments(), nullptr);
+    EXPECT_TRUE(newExpr->getArguments()->getArguments().empty());
+}
+
+TEST_F(NewExpressionParsingTest, AST_NewObjectWithArguments) {
+    std::string code = R"(
+        class Point {
+            constructor(x: int64, y: int64) {}
+        }
+        func test() {
+            var p = new Point(10, 20);
+        }
+    )";
+    auto ast = buildAST(code);
+    ASSERT_NE(ast, nullptr);
+    auto* stmt = findStatementInFunction(*ast, 1);
+    ASSERT_NE(stmt, nullptr);
+    auto* newExpr = extractNewExpression(stmt);
+    ASSERT_NE(newExpr, nullptr);
+    EXPECT_EQ(newExpr->getClassName(), "Point");
+    ASSERT_NE(newExpr->getArguments(), nullptr);
+    EXPECT_EQ(newExpr->getArguments()->getArguments().size(), 2);
+}
+
+TEST_F(NewExpressionParsingTest, AST_NewObjectWithStringArgument) {
+    std::string code = R"(
+        class Name {
+            constructor(n: string) {}
+        }
+        func test() {
+            var n = new Name("hello");
+        }
+    )";
+    auto ast = buildAST(code);
+    ASSERT_NE(ast, nullptr);
+    auto* stmt = findStatementInFunction(*ast, 1);
+    ASSERT_NE(stmt, nullptr);
+    auto* newExpr = extractNewExpression(stmt);
+    ASSERT_NE(newExpr, nullptr);
+    EXPECT_EQ(newExpr->getClassName(), "Name");
+    ASSERT_NE(newExpr->getArguments(), nullptr);
+    EXPECT_EQ(newExpr->getArguments()->getArguments().size(), 1);
+}
+
+TEST_F(NewExpressionParsingTest, AST_NewObjectInReturnStatement) {
+    std::string code = R"(
+        class Box {
+            constructor() {}
+        }
+        func:Box createBox() {
+            return new Box();
+        }
+    )";
+    auto ast = buildAST(code);
+    ASSERT_NE(ast, nullptr);
+    // Find the function
+    auto& decls = ast->getDeclarations();
+    auto* funcDecl = dynamic_cast<const FunctionDeclaration*>(decls[1].get());
+    ASSERT_NE(funcDecl, nullptr);
+    EXPECT_EQ(funcDecl->getName(), "createBox");
+    auto& stmts = funcDecl->getBody().getStatements();
+    ASSERT_EQ(stmts.size(), 1);
+    auto* returnStmt = dynamic_cast<const ReturnStatement*>(stmts[0].get());
+    ASSERT_NE(returnStmt, nullptr);
+    ASSERT_TRUE(returnStmt->hasExpression());
+    auto* newExpr = dynamic_cast<const NewObjectExpression*>(returnStmt->getExpression());
+    ASSERT_NE(newExpr, nullptr);
+    EXPECT_EQ(newExpr->getClassName(), "Box");
+}
+
+TEST_F(NewExpressionParsingTest, AST_QualifiedNewExpression) {
+    std::string code = R"(
+        func test() {
+            var u = new hoo.net.URL("https://example.com");
+        }
+    )";
+    auto ast = buildAST(code);
+    ASSERT_NE(ast, nullptr);
+    auto* stmt = findStatementInFunction(*ast, 0);
+    ASSERT_NE(stmt, nullptr);
+    auto* newExpr = extractNewExpression(stmt);
+    ASSERT_NE(newExpr, nullptr);
+    EXPECT_EQ(newExpr->getClassName(), "hoo.net.URL");
+    auto* qn = newExpr->getQualifiedClassName();
+    ASSERT_NE(qn, nullptr);
+    EXPECT_EQ(qn->getFullName(), "hoo.net.URL");
+    EXPECT_EQ(qn->getModulePath().size(), 2);
+    EXPECT_EQ(qn->getModulePath()[0], "hoo");
+    EXPECT_EQ(qn->getModulePath()[1], "net");
+    ASSERT_NE(newExpr->getArguments(), nullptr);
+    EXPECT_EQ(newExpr->getArguments()->getArguments().size(), 1);
+}
+
+TEST_F(NewExpressionParsingTest, AST_NewExpressionInExpressionStatement) {
+    std::string code = R"(
+        class Logger {
+            constructor() {}
+        }
+        func test() {
+            new Logger();
+        }
+    )";
+    auto ast = buildAST(code);
+    ASSERT_NE(ast, nullptr);
+    auto* stmt = findStatementInFunction(*ast, 1);
+    ASSERT_NE(stmt, nullptr);
+    // This is an ExpressionStatement (not a variable declaration)
+    auto* exprStmt = dynamic_cast<const ExpressionStatement*>(stmt);
+    ASSERT_NE(exprStmt, nullptr);
+    auto* newExpr = dynamic_cast<const NewObjectExpression*>(&exprStmt->getExpression());
+    ASSERT_NE(newExpr, nullptr);
+    EXPECT_EQ(newExpr->getClassName(), "Logger");
+}
+
 } // namespace tests
 } // namespace hooc

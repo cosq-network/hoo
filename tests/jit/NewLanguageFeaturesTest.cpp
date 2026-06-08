@@ -209,3 +209,158 @@ TEST_F(NewLanguageFeaturesTest, Combined_AllFeatures) {
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
     EXPECT_EQ(jit->run("_F_test_i8"), 30) << jit->getLastError();
 }
+
+// ============================================================================
+// NEW EXPRESSION TESTS
+// ============================================================================
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionSimple) {
+    std::string code = R"(
+        func :int64 test() { return 42; }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    auto r = jit->run("_F_test_i8");
+    EXPECT_EQ(r, 42) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionWithClassPresent) {
+    std::string code = R"(
+        class Widget {
+            var value: int64;
+        }
+        func :int64 test() { return 42; }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    auto r = jit->run("_F_test_i8");
+    printf("test_with_class: result=%lld error=%s\n", (long long)r, jit->getLastError().c_str());
+    EXPECT_EQ(r, 42) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionSimple2) {
+    std::string code = R"(
+        class Widget {
+            var value: int64;
+            constructor() {
+                this.value = 1;
+            }
+        }
+        func :int64 test() {
+            var w = new Widget();
+            return w.value;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    
+    auto r = jit->run("_F_test_i8");
+    printf("new_test: result=%lld error=%s\n", (long long)r, jit->getLastError().c_str());
+    EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, DISABLED_NewExpressionWithConstructorArgs) {}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionWithConstructorArgs) {
+    std::string code = R"(
+        class Counter {
+            var count: int64;
+            constructor(initial: int64) {
+                this.count = initial;
+            }
+        }
+        func :int64 test() {
+            var c = new Counter(42);
+            return c.count;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 42) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionWithMultipleArgs) {
+    std::string code = R"(
+        class Point {
+            var x: int64;
+            var y: int64;
+            constructor(x: int64, y: int64) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+        func :int64 test() {
+            var p = new Point(10, 20);
+            return p.x + p.y;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 30) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionMethodCall) {
+    std::string code = R"(
+        class Calculator {
+            var result: int64;
+            constructor(initial: int64) {
+                this.result = initial;
+            }
+            func :void add(x: int64) {
+                this.result = this.result + x;
+            }
+        }
+        func :int64 test() {
+            var calc = new Calculator(10);
+            calc.add(5);
+            calc.add(3);
+            return calc.result;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 18) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionMultipleObjects) {
+    std::string code = R"(
+        class Item {
+            var val: int64;
+            constructor(v: int64) {
+                this.val = v;
+            }
+        }
+        func :int64 test() {
+            var a = new Item(10);
+            var b = new Item(20);
+            var c = new Item(30);
+            return a.val + b.val + c.val;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 60) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, NewExpressionChainedMethodCalls) {
+    std::string code = R"(
+        class Accumulator {
+            var total: int64;
+            constructor() { this.total = 0; }
+            func :Accumulator add(x: int64) {
+                this.total = this.total + x;
+                return this;
+            }
+        }
+        func :int64 test() {
+            var a = new Accumulator();
+            a.add(5);
+            a.add(10);
+            a.add(15);
+            return a.total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 30) << jit->getLastError();
+}

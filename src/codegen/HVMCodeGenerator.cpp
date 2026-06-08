@@ -699,10 +699,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 elementRegs.push_back(visitExpression(*elem));
             }
             
-            // 1. Allocate: CALL hoo_alloc(size, typeId)
-            uint64_t totalSize = 32 + (elements.size() * 8); // 4-word header (32 bytes)
+            uint64_t totalSize = 32 + (elements.size() * 8);
             uint8_t sizeReg = emitConstant(static_cast<int64_t>(totalSize));
-            uint8_t typeReg = emitConstant(102); // Array Type ID
+            uint8_t typeReg = emitConstant(102);
             emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
             emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
@@ -752,9 +751,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             rodata->virtual_size = rodata->data.size();
             uint8_t addrReg = emitRoDataAddress(offset);
 
-            // 3. Call runtime allocator
             emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_hoo_String_from_cstr_p_p");
+            emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromCStr_static_p_p");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
 
@@ -772,10 +770,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     uint8_t nextRes = allocateRegister();
                     emit(Opcode::MOV, OperandsR{1, resReg, 0, 0});
                     emit(Opcode::MOV, OperandsR{2, partReg, 0, 0});
-                    emitCall(Opcode::CALL, "_F_hoo_String_concat_p_p_p");
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_String_concat_p_p");
                     emit(Opcode::MOV, OperandsR{nextRes, 1, 0, 0});
                     
-                    // Release old res and part
                     emit(Opcode::MOV, OperandsR{1, resReg, 0, 0});
                     emitCall(Opcode::CALL, "_F_hoo_release_v_p");
                     emit(Opcode::MOV, OperandsR{1, partReg, 0, 0});
@@ -804,7 +801,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 uint8_t addrReg = emitRoDataAddress(offset);
                 
                 emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
-                emitCall(Opcode::CALL, "_F_hoo_String_from_cstr_p_p");
+                emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromCStr_static_p_p");
                 uint8_t strReg = allocateRegister();
                 emit(Opcode::MOV, OperandsR{strReg, 1, 0, 0});
                 freeRegister(addrReg);
@@ -843,7 +840,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     uint8_t typeIdReg = emitConstant(typeId);
                     emit(Opcode::MOV, OperandsR{1, valReg, 0, 0});
                     emit(Opcode::MOV, OperandsR{2, typeIdReg, 0, 0});
-                    emitCall(Opcode::CALL, "_F_hoo_String_from_any_p_i8_i8");
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromAny_static_p_i8_i8");
                     
                     partReg = allocateRegister();
                     emit(Opcode::MOV, OperandsR{partReg, 1, 0, 0});
@@ -857,7 +854,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
 
             if (resReg == 0) {
-                emitCall(Opcode::CALL, "_F_hoo_String_new_p");
+                emitCall(Opcode::CALL, "_F_M_hoo_E_String_new_static_p");
                 resReg = allocateRegister();
                 emit(Opcode::MOV, OperandsR{resReg, 1, 0, 0});
             }
@@ -904,6 +901,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         
         // 2. Call constructor
         MangledFunctionParams mp;
+        mp.modulePath = modulePath_;
         mp.className = className;
         mp.isConstructor = true;
 
@@ -991,6 +989,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             std::string methodName = memberAccess->getMember();
             std::string owningClass;
             MangledFunctionParams mp;
+            mp.modulePath = modulePath_;
             {
                 auto it = methodNameToClass_.find(methodName);
                 if (it != methodNameToClass_.end()) {
@@ -1043,9 +1042,45 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 // Plain function mangling logic
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
+                mp.modulePath = modulePath_;
+
+                // Detect class-based standard library operations
+                struct {
+                    bool active = false;
+                    std::string className;
+                    std::string rawMethod;
+                    bool instanceMethod;
+                } classOp;
+
+                if (functionName.rfind("string_", 0) == 0) {
+                    classOp.active = true;
+                    classOp.className = "String";
+                    classOp.rawMethod = functionName.substr(7);
+                } else if (functionName.rfind("url_", 0) == 0) {
+                    classOp.active = true;
+                    classOp.className = "URL";
+                    classOp.rawMethod = functionName.substr(4);
+                } else if (functionName.rfind("http_response_", 0) == 0) {
+                    classOp.active = true;
+                    classOp.className = "HttpResponse";
+                    classOp.rawMethod = functionName.substr(15);
+                } else if (functionName.rfind("http_client_", 0) == 0) {
+                    classOp.active = true;
+                    classOp.className = "HttpClient";
+                    classOp.rawMethod = functionName.substr(13);
+                } else if (functionName.rfind("process_", 0) == 0) {
+                    classOp.active = true;
+                    classOp.className = "Process";
+                    classOp.rawMethod = functionName.substr(8);
+                } else if (functionName.rfind("console_", 0) == 0) {
+                    classOp.active = true;
+                    classOp.className = "Console";
+                    classOp.rawMethod = functionName.substr(8);
+                }
 
                 // Redirect built-ins and standard library to hoo namespace
-                if (functionName == "print" || functionName == "println" ||
+                if (!classOp.active && (
+                    functionName == "print" || functionName == "println" ||
                     functionName == "readline" || functionName == "readchar" ||
                     functionName.rfind("fs_", 0) == 0 ||
                     functionName.rfind("system_", 0) == 0 ||
@@ -1058,12 +1093,31 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     functionName.rfind("datetime_", 0) == 0 ||
                     functionName.rfind("path_", 0) == 0 ||
                     functionName.rfind("hashing_", 0) == 0 ||
-                    functionName.rfind("process_", 0) == 0 ||
                     functionName.rfind("compression_", 0) == 0 ||
                     functionName.rfind("args_", 0) == 0 ||
                     functionName.rfind("net_", 0) == 0 ||
-                    functionName.rfind("json_", 0) == 0) {
+                    functionName.rfind("json_", 0) == 0)) {
                     mp.modulePath = {"hoo"};
+                } else if (classOp.active) {
+                    mp.modulePath = {"hoo"};
+                    mp.className = classOp.className;
+                    mp.functionName = classOp.rawMethod;
+
+                    if (classOp.className == "String") {
+                        classOp.instanceMethod = !(classOp.rawMethod == "new" || classOp.rawMethod == "repeat" ||
+                                                   classOp.rawMethod == "join" || classOp.rawMethod == "from_cstr" ||
+                                                   classOp.rawMethod == "from_int64" || classOp.rawMethod == "from_double" ||
+                                                   classOp.rawMethod == "from_any" || classOp.rawMethod == "from_object");
+                    } else if (classOp.className == "URL") {
+                        classOp.instanceMethod = (classOp.rawMethod != "new");
+                    } else if (classOp.className == "HttpResponse") {
+                        classOp.instanceMethod = true;
+                    } else if (classOp.className == "HttpClient") {
+                        classOp.instanceMethod = (classOp.rawMethod != "new");
+                    } else {
+                        classOp.instanceMethod = false;
+                    }
+                    mp.isStatic = !classOp.instanceMethod;
                 }
 
                 if (funcCall->getArguments()) {
@@ -1078,11 +1132,43 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     }
                 }
                 
-                // Try to infer return and parameter types for better mangling
-                mp.returnType = "void"; 
-                if (funcCall->getArguments()) {
+                mp.returnType = "void";
+                if (classOp.active) {
+                    bool isInt64Ret = false;
+                    if (classOp.className == "String") {
+                        isInt64Ret = (classOp.rawMethod == "length" || classOp.rawMethod == "is_empty" ||
+                                      classOp.rawMethod == "equals" || classOp.rawMethod == "contains" ||
+                                      classOp.rawMethod == "starts_with" || classOp.rawMethod == "index_of");
+                    } else if (classOp.className == "URL") {
+                        isInt64Ret = (classOp.rawMethod == "port");
+                    } else if (classOp.className == "HttpResponse") {
+                        isInt64Ret = (classOp.rawMethod == "status_code" || classOp.rawMethod == "is_success");
+                    } else if (classOp.className == "HttpClient") {
+                        isInt64Ret = (classOp.rawMethod == "set_header");
+                    } else if (classOp.className == "Process") {
+                        isInt64Ret = (classOp.rawMethod == "self_pid" || classOp.rawMethod == "kill");
+                    } else if (classOp.className == "Console") {
+                        isInt64Ret = (classOp.rawMethod == "readchar");
+                    }
+                    if (isInt64Ret) {
+                        mp.returnType = "int64";
+                    } else if (classOp.rawMethod == "release" ||
+                               classOp.rawMethod == "set_timeout" ||
+                               classOp.rawMethod == "print" ||
+                               classOp.rawMethod == "println") {
+                        mp.returnType = "void";
+                    } else {
+                        mp.returnType = "ptr";
+                    }
+                    if (funcCall->getArguments()) {
+                        auto& args = funcCall->getArguments()->getArguments();
+                        for (size_t i = (classOp.instanceMethod ? 1 : 0); i < args.size(); ++i) {
+                            mp.parameterTypes.push_back("ptr");
+                        }
+                    }
+                } else if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
-                         mp.parameterTypes.push_back("ptr"); // Use ptr (p) to match runtime void*
+                         mp.parameterTypes.push_back("ptr");
                     }
                 }
                 
@@ -1680,3 +1766,4 @@ bool HVMCodeGenerator::canWriteField(const std::string& fieldName, const std::st
     return false;
 }
 } // namespace hooc
+

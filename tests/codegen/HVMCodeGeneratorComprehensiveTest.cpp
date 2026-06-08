@@ -1326,3 +1326,134 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleFromUnrelate
     EXPECT_EQ(module, nullptr);
     EXPECT_TRUE(compiler_->getLastError().find("Cannot access private method") != std::string::npos);
 }
+
+// ============================================================================
+// NEW EXPRESSION CODEGEN TESTS
+// ============================================================================
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionEmitsAllocCall) {
+    std::string code = R"(
+        class Widget {
+            var x: int64;
+            constructor() {
+                this.x = 1;
+            }
+        }
+        func : void test() {
+            var w = new Widget();
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundAlloc = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundAlloc = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundAlloc);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionWithParams) {
+    std::string code = R"(
+        class Point {
+            var x: int64;
+            var y: int64;
+            constructor(x: int64, y: int64) {
+                this.x = x;
+                this.y = y;
+            }
+        }
+        func : void test() {
+            var p = new Point(10, 20);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    int movCount = 0;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::MOV) {
+            movCount++;
+        }
+    }
+    EXPECT_GE(movCount, 2);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMultipleFields) {
+    std::string code = R"(
+        class Data {
+            var a: int64;
+            var b: int64;
+            var c: int64;
+            constructor(a: int64, b: int64, c: int64) {
+                this.a = a;
+                this.b = b;
+                this.c = c;
+            }
+        }
+        func : void test() {
+            var d = new Data(1, 2, 3);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    int stStoreCount = 0;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::ST_D) stStoreCount++;
+    }
+    EXPECT_GE(stStoreCount, 3);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionChainedSameType) {
+    std::string code = R"(
+        class Item {
+            var value: int64;
+            constructor(v: int64) {
+                this.value = v;
+            }
+        }
+        func : void test() {
+            var a = new Item(1);
+            var b = new Item(2);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    int callCount = 0;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) callCount++;
+    }
+    EXPECT_GE(callCount, 3);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMethodCall) {
+    std::string code = R"(
+        class Helper {
+            func:int64 getValue() { return 42; }
+        }
+        func : int64 test() {
+            var h = new Helper();
+            return h.getValue();
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto* sym = module->getSymbol("_F_M_test_E_test_i8");
+    if (!sym) sym = module->getSymbol("_F_test_i8");
+    ASSERT_NE(sym, nullptr);
+}
