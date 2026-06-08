@@ -21,7 +21,8 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Phase 4 (Bootstrap/Init)**: module post-load initialization, dependency-order init, vtable init ordering, and once-only guards implemented and covered by tests.
 - [x] **Phase 5 (Literals & Interpolation)**: unicode-aware character support, 64-bit floating point lowering, and full string interpolation with automatic conversion implemented.
 - [x] **Phase 6 (Hardening)**: refactored low-level array representation, implemented managed realloc/capacity tracking, and stabilized full test suite.
-- [x] **Verification**: full preset test run passing (`890+ tests`).
+- [x] **Phase 7 (System Services)**: expanded SYSCALL table from 11 to 23 entries, adding OS-level file I/O, threading, clock, and random services; reserved `r4` as thread pointer (`tp`).
+- [x] **Verification**: full preset test run passing (`1236+ tests`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 
@@ -66,7 +67,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (899+ tests in the current preset run).
+tests/        Exhaustive unit and integration test suites (1236+ tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
@@ -81,6 +82,7 @@ Current profile: **core-minimalest** (Physical Silicon Ready)
 | `docs/hvm/ho-file-format.md` | Binary container format for `.ho` modules. |
 | `docs/hvm/jit-implementation-guide.md` | Blueprint for LLVM-based high-performance execution. |
 | `docs/hvm/hvm-implementation-analysis.md`| Detailed assembly-level mapping of language features. |
+| `docs/runtime/jit-integration.md` | SYSCALL interface mapping and ARC optimization passes. |
 
 ## 6. Contributing
 

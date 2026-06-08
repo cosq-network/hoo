@@ -51,6 +51,10 @@ The library is integrated into the JIT via the **`StaticHOModule`** bridge. This
 hooModule->registerFunction("alloc", (void*)&hoo_alloc, "_F_hoo_alloc_p_i8_i8");
 ```
 
+### 4.1 SYSCALL Bridge
+
+Runtime services are also accessible via the `SYSCALL` instruction (opcode `0xC0`). SYSCALLs 1-11 map directly to `hoort` library functions (alloc, retain, release, exception handling, string data). SYSCALLs 12-23 extend this interface with OS-level services — file I/O, threading, clock, and random — implemented in `HVMJIT.cpp` following the same `extern "C"` ABI convention for direct LLVM IR invocation.
+
 ## 5. Contribution Guidelines
 
 When adding new features to `hoort`:
