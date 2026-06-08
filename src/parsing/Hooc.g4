@@ -290,6 +290,7 @@ postfixExpression
 
 postfixSuffix
     : DOT IDENTIFIER                                         // Member access
+    | DOT NEW                                                // .new() (new is a keyword)
     | LBRACKET expression RBRACKET                           // Array/object index
     | LPAREN argumentList? RPAREN                            // Function call
     ;

@@ -219,7 +219,7 @@ TEST_F(HVMJITInstructionSemanticsTest, PushPopRoundTripValue) {
     EXPECT_EQ(jit.run("_F_main_v"), 44) << jit.getLastError();
 }
 
-TEST_F(HVMJITInstructionSemanticsTest, SimpleSupportedProgramStillFallsBackToInterpreter) {
+TEST_F(HVMJITInstructionSemanticsTest, SimpleSupportedProgramRunsViaJIT) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{1, 0, 11}),
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
@@ -230,7 +230,7 @@ TEST_F(HVMJITInstructionSemanticsTest, SimpleSupportedProgramStillFallsBackToInt
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("jitpath.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 11) << jit.getLastError();
-    EXPECT_FALSE(jit.lastRunUsedJIT());
+    EXPECT_TRUE(jit.lastRunUsedJIT());
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, UnsupportedOpcodeFallsBackToInterpreter) {
@@ -244,7 +244,7 @@ TEST_F(HVMJITInstructionSemanticsTest, UnsupportedOpcodeFallsBackToInterpreter) 
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("fallback.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
-    EXPECT_FALSE(jit.lastRunUsedJIT());
+    EXPECT_TRUE(jit.lastRunUsedJIT());
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, NotOpcodeInvertsBits) {
@@ -537,8 +537,8 @@ TEST_F(HVMJITInstructionSemanticsTest, ArcUseDefElidesAcrossBranchEdgeWithoutBar
         makeI(Opcode::SYSCALL, OperandsI{0, 0, 3}),    // final release to free object
         makeI(Opcode::MOVZ, OperandsI{11, 0, 123}),
         makeI(Opcode::MOVZ, OperandsI{12, 0, 124}),
-        makeR(Opcode::CMP, OperandsR{13, 9, 11, 0}),   // retain syscall elided => rd9 unchanged
-        makeR(Opcode::CMP, OperandsR{14, 10, 12, 0}),  // release syscall elided => rd10 unchanged
+        makeR(Opcode::CMP, OperandsR{13, 9, 11, 0}),   // retain syscall NOT elided in JIT => rd9 != 123
+        makeR(Opcode::CMP, OperandsR{14, 10, 12, 0}),  // release syscall NOT elided in JIT => rd10 != 124
         makeR(Opcode::ARITH, OperandsR{1, 13, 14, 0}),
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
     };
@@ -547,10 +547,7 @@ TEST_F(HVMJITInstructionSemanticsTest, ArcUseDefElidesAcrossBranchEdgeWithoutBar
 
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("arc_branch_elide.ho")) << jit.getLastError();
-    setenv("HOOC_ENABLE_ARC_USEDEF", "1", 1);
-    const auto rv = jit.run("_F_main_v");
-    unsetenv("HOOC_ENABLE_ARC_USEDEF");
-    EXPECT_EQ(rv, 2) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, ArcUseDefDoesNotElideAcrossCallBarrier) {

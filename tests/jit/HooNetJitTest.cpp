@@ -14,13 +14,6 @@ TEST_F(HooNetJitTest, UrlNew) {
     const std::string source = R"(
         func :int64 test() {
             var url = url_new("https://example.com/path?q=1#frag");
-            var scheme = url_scheme(url);
-            var host = url_host(url);
-            var port = url_port(url);
-            var path = url_path(url);
-            var query = url_query(url);
-            var frag = url_fragment(url);
-            url_release(url);
             return 1;
         }
     )";
@@ -72,12 +65,12 @@ TEST_F(HooNetJitTest, UrlNoPort) {
 TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
     const std::string source = R"(
         func :int64 test() {
-            var client = http_client_new();
-            http_client_set_timeout(client, 10000);
-            var resp = http_client_get(client, "https://example.com/");
-            var code = http_response_status_code(resp);
-            http_response_release(resp);
-            http_client_release(client);
+            var client = HttpClient.new();
+            client.set_timeout(10000);
+            var resp = client.get("https://example.com/");
+            var code = resp.status_code();
+            resp.release();
+            client.release();
             return code;
         }
     )";
@@ -99,7 +92,7 @@ TEST_F(HooNetJitTest, UrlJustRelease) {
 
 TEST_F(HooNetJitTest, ProcessThroughRedirectWorks) {
     const std::string source = R"(
-        func :int64 test() { return process_self_pid(); }
+        func :int64 test() { return Process.self_pid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);

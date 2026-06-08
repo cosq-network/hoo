@@ -15,7 +15,7 @@ protected:
 
 TEST_F(HooMapJitTest, NewMap) {
     const std::string source = R"(
-        func :int64 test() { return map_new(1); }
+        func :int64 test() { return Map.new(1); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_i8");
@@ -28,9 +28,9 @@ TEST_F(HooMapJitTest, NewMap) {
 TEST_F(HooMapJitTest, SetGetInt64) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(1);
-            map_set_int64_int64(m, 42, 100);
-            return map_get_int64_int64(m, 42);
+            var m = Map.new(1);
+            m.set_int64_int64(42, 100);
+            return m.get_int64_int64(42);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -40,10 +40,10 @@ TEST_F(HooMapJitTest, SetGetInt64) {
 TEST_F(HooMapJitTest, MapLength) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(4);
-            map_set_string_int64(m, "a", 1);
-            map_set_string_int64(m, "b", 2);
-            return map_length(m);
+            var m = Map.new(4);
+            m.set_string_int64("a", 1);
+            m.set_string_int64("b", 2);
+            return m.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -53,9 +53,9 @@ TEST_F(HooMapJitTest, MapLength) {
 TEST_F(HooMapJitTest, ContainsKey) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(1);
-            map_set_int64_int64(m, 1, 10);
-            return map_contains_int64(m, 1);
+            var m = Map.new(1);
+            m.set_int64_int64(1, 10);
+            return m.contains_int64(1);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -65,9 +65,9 @@ TEST_F(HooMapJitTest, ContainsKey) {
 TEST_F(HooMapJitTest, NotContainsKey) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(1);
-            map_set_int64_int64(m, 1, 10);
-            return map_contains_int64(m, 2);
+            var m = Map.new(1);
+            m.set_int64_int64(1, 10);
+            return m.contains_int64(2);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -77,11 +77,11 @@ TEST_F(HooMapJitTest, NotContainsKey) {
 TEST_F(HooMapJitTest, RemoveKey) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(2);
-            map_set_int64_int64(m, 1, 10);
-            map_set_int64_int64(m, 2, 20);
-            map_remove_int64(m, 1);
-            return map_length(m);
+            var m = Map.new(2);
+            m.set_int64_int64(1, 10);
+            m.set_int64_int64(2, 20);
+            m.remove_int64(1);
+            return m.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -91,10 +91,10 @@ TEST_F(HooMapJitTest, RemoveKey) {
 TEST_F(HooMapJitTest, Clear) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(1);
-            map_set_int64_int64(m, 1, 10);
-            map_clear(m);
-            return map_length(m);
+            var m = Map.new(1);
+            m.set_int64_int64(1, 10);
+            m.clear();
+            return m.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -104,8 +104,8 @@ TEST_F(HooMapJitTest, Clear) {
 TEST_F(HooMapJitTest, Empty) {
     const std::string source = R"(
         func :int64 test() {
-            var m = map_new(1);
-            return map_empty(m);
+            var m = Map.new(1);
+            return m.empty();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

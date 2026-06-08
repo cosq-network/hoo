@@ -662,7 +662,11 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPostfixExpression(HoocParser:
 
     for (auto suffix : ctx->postfixSuffix()) {
         if (suffix->DOT()) {
-            result = std::make_unique<MemberAccess>(std::move(result), suffix->IDENTIFIER()->getText());
+            if (suffix->NEW()) {
+                result = std::make_unique<MemberAccess>(std::move(result), "new");
+            } else {
+                result = std::make_unique<MemberAccess>(std::move(result), suffix->IDENTIFIER()->getText());
+            }
         } else if (suffix->LBRACKET()) {
             auto index = buildExpression(suffix->expression());
             result = std::make_unique<ArrayAccess>(std::move(result), std::move(index));

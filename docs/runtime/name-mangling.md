@@ -155,9 +155,12 @@ above.
 
 **This is the most important convention for developers.**
 
-When the code generator detects a call to a runtime module function (identified
-by prefix matching at line 1048-1058 of `HVMCodeGenerator.cpp`), it **hardcodes**
-the mangling parameters (lines 1072-1077):
+In Hooc source code, runtime functions are called using class-based method syntax:
+`Math.abs(x)`, `s.length()`, `Thread.spawn()`. The code generator internally maps
+each class name to a module prefix via `classToPrefix()` (e.g. `Math` → `math_`,
+`Thread` → `thread_`, `String` → `string_`), then detects the resulting prefix
+at line 1048-1058 of `HVMCodeGenerator.cpp` and **hardcodes** the mangling
+parameters (lines 1072-1077):
 
 ```cpp
 mp.returnType = "void";  // → code "v"
@@ -172,16 +175,16 @@ if (funcCall->getArguments()) {
 
 | Arity | Pattern | Example |
 |-------|---------|---------|
-| 0 params | `_F_M_hoo_E_<name>_v` | `thread_self` → `_F_M_hoo_E_thread_self_v` |
-| 1 param | `_F_M_hoo_E_<name>_v_p` | `thread_join` → `_F_M_hoo_E_thread_join_v_p` |
-| 2 params | `_F_M_hoo_E_<name>_v_p_p` | `thread_spawn` → `_F_M_hoo_E_thread_spawn_v_p_p` |
-| 3 params | `_F_M_hoo_E_<name>_v_p_p_p` | `map_set_string_int64` → `_F_M_hoo_E_map_set_string_int64_v_p_p_p` |
+| 0 params | `_F_M_hoo_E_<name>_v` | `Thread.self()` → `_F_M_hoo_E_thread_self_v` |
+| 1 param | `_F_M_hoo_E_<name>_v_p` | `Thread.join(t)` → `_F_M_hoo_E_thread_join_v_p` |
+| 2 params | `_F_M_hoo_E_<name>_v_p_p` | `Thread.spawn(f,a)` → `_F_M_hoo_E_thread_spawn_v_p_p` |
+| 3 params | `_F_M_hoo_E_<name>_v_p_p_p` | `m.set(key,val)` → `_F_M_hoo_E_map_set_string_int64_v_p_p_p` |
 
 The `v` (void return) and `p` (ptr parameters) are **hardcoded irrespective of the
 actual C function signature**. The JIT wrappers handle the actual type conversions.
 
-**Prefix matching** in `HVMCodeGenerator.cpp` lines 1048-1058 determines which
-function names are redirected to the `hoo` module:
+**Class-to-prefix mapping** in `HVMCodeGenerator.cpp::classToPrefix()` determines
+which class names map to `hoo` module prefixes:
 
 ```cpp
 if (functionName == "print" || functionName == "println" ||
@@ -204,9 +207,9 @@ if (functionName == "print" || functionName == "println" ||
 | User function, no module | `func test() int64 {}` | `_F_test_i8` |
 | User function, module `test` | `func test() int64 {}` in module `test` | `_F_M_test_E_test_i8` |
 | User function, module `test`, two int64 params | `func test(a: int64, b: int64) int64 {}` | `_F_M_test_E_test_i8_i8_i8` |
-| Runtime, hoo module, 0 params | `thread_self()` | `_F_M_hoo_E_thread_self_v` |
-| Runtime, hoo module, 1 param | `thread_join(tid)` | `_F_M_hoo_E_thread_join_v_p` |
-| Runtime, hoo module, 2 params | `thread_spawn(f, a)` | `_F_M_hoo_E_thread_spawn_v_p_p` |
+| Runtime, hoo module, 0 params | `Thread.self()` | `_F_M_hoo_E_thread_self_v` |
+| Runtime, hoo module, 1 param | `Thread.join(tid)` | `_F_M_hoo_E_thread_join_v_p` |
+| Runtime, hoo module, 2 params | `Thread.spawn(f, a)` | `_F_M_hoo_E_thread_spawn_v_p_p` |
 | Built-in, hoo module | `print(x)` | `_F_M_hoo_E_print_v_p` |
 | Class method, no module | method `bar` in class `Foo` | `_F_Foo_bar_v` |
 | Class constructor, module `app` | constructor of class `Foo` | `_F_M_app_E_Foo_CT_v` |
@@ -334,13 +337,17 @@ the module namespace family uses the hardcoded `v`/`p` convention described in
 
 ### 7.1 Adding a New Runtime Module Function
 
-1. **Identify the function name** as it will appear in Hooc source, e.g. `thread_spawn`
-2. **Add the prefix** to the redirect block in `HVMCodeGenerator.cpp:1048-1058`
+1. **Identify the class name and method** as it will appear in Hooc source, e.g.
+   `Thread.spawn(func, arg)`. The codegen maps each module class to a prefix via
+   `classToPrefix()` (defined in `HVMCodeGenerator.cpp`).
+2. **Register the class name** in `HVMCodeGenerator.cpp:classToPrefix()` if it's a
+   new module class. This maps `Thread` → `thread_`, `Fs` → `fs_`, etc.
+3. **Add the prefix** to the redirect block in `HVMCodeGenerator.cpp:1048-1058`
    (one-time per module prefix)
-3. **Compute the mangled name** by the rule `_F_M_hoo_E_<name>_v_p*` where `_p`
+4. **Compute the mangled name** by the rule `_F_M_hoo_E_<name>_v_p*` where `_p`
    repeats for each parameter
-4. **Register the JIT wrapper** in `buildRuntimeSymbols()` using the mangled name
-5. **Test** by calling the function from Hooc source through `jit.run()`
+5. **Register the JIT wrapper** in `buildRuntimeSymbols()` using the mangled name
+6. **Test** by calling the function from Hooc source through `jit.run()`
 
 ### 7.2 Debugging Mismatches
 

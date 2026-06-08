@@ -28,6 +28,46 @@ static uint8_t argReg(uint8_t first, size_t i) {
     return reg;
 }
 
+// Built-in classes that support class.method mangling in JIT symbols.
+static bool isClassMethodJitClass(const std::string& className) {
+    static const std::unordered_set<std::string> cmClasses = {
+        "String", "URL", "HttpClient", "HttpResponse", "Process", "Console"
+    };
+    return cmClasses.count(className) > 0;
+}
+
+// Map built-in class names to their JIT symbol prefix for modules
+// that use the "prefix_methodname" convention.
+static std::string classToPrefix(const std::string& className) {
+    static const std::unordered_map<std::string, std::string> map = {
+        {"String", "string"},
+        {"DateTime", "datetime"},
+        {"Math", "math"},
+        {"Fs", "fs"},
+        {"System", "system"},
+        {"Regex", "regex"},
+        {"Json", "json"},
+        {"Net", "net"},
+        {"Path", "path"},
+        {"Hashing", "hashing"},
+        {"Encoding", "encoding"},
+        {"Uuid", "uuid"},
+        {"Compression", "compression"},
+        {"Process", "process"},
+        {"Args", "args"},
+        {"Csv", "csv"},
+        {"Console", "console"},
+        {"URL", "url"},
+        {"HttpClient", "http_client"},
+        {"HttpResponse", "http_response"},
+        {"Thread", "thread"},
+        {"Array", "array"},
+        {"Map", "map"},
+    };
+    auto it = map.find(className);
+    return it != map.end() ? it->second : "";
+}
+
 HVMCodeGenerator::HVMCodeGenerator() {
     for (int i = 0; i < 32; ++i) usedRegs_[i] = false;
     // Reserved registers
@@ -359,12 +399,14 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (decl) {
         mp.functionName = decl->getName();
-        if (decl->getReturnType()) {
+        if (isMethod) {
+            mp.returnType = "ptr";
+        } else if (decl->getReturnType()) {
             if (auto bt = dynamic_cast<const ast::BaseType*>(decl->getReturnType())) {
                 if (bt->isPrimitive()) {
                     mp.returnType = primitiveTypeToString(bt->getPrimitiveType()->getKind());
                 } else {
-                    mp.returnType = bt->getIdentifier();
+                    mp.returnType = "ptr";
                 }
             }
         } else {
@@ -374,15 +416,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     auto addParamTypes = [&](const auto& params) {
         for (const auto& param : params) {
-            if (auto bt = dynamic_cast<const ast::BaseType*>(&param->getType())) {
-                if (bt->isPrimitive()) {
-                    mp.parameterTypes.push_back(primitiveTypeToString(bt->getPrimitiveType()->getKind()));
-                } else {
-                    mp.parameterTypes.push_back(bt->getIdentifier());
-                }
-            } else {
-                mp.parameterTypes.push_back("object");
-            }
+            mp.parameterTypes.push_back("ptr");
         }
     };
 
@@ -916,8 +950,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         mp.isConstructor = true;
 
         for (const auto& param : newExpr->getArguments()->getArguments()) {
-            // Parameter types logic for constructor call needed here
-            mp.parameterTypes.push_back("object"); // Fallback
+            mp.parameterTypes.push_back("ptr");
         }
         std::string ctorName = SymbolMangler::mangleFunctionName(mp);
 
@@ -979,64 +1012,189 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
         }
 
-        if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(targetPtr)) {
-            uint8_t objReg = visitExpression(memberAccess->getObject());
-            emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
-            freeRegister(objReg);
-
-            if (funcCall->getArguments()) {
-                auto& args = funcCall->getArguments()->getArguments();
-                std::vector<uint8_t> argRegs;
-                for (size_t i = 0; i < args.size() && i < 6; ++i) {
-                    argRegs.push_back(visitExpression(*args[i]));
+        // Helper to extract a bare identifier name from a MemberAccess object expression.
+        // The parser wraps the object in PrimaryExpression(Identifier(...)).
+        auto resolveObjectName = [](const ast::MemberAccess& ma) -> std::string {
+            const ast::Expression& obj = ma.getObject();
+            if (auto primExpr = dynamic_cast<const ast::PrimaryExpression*>(&obj)) {
+                if (auto id = dynamic_cast<const ast::Identifier*>(&primExpr->getPrimary())) {
+                    return id->getName();
                 }
+            }
+            return {};
+        };
+
+        if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(targetPtr)) {
+            std::string methodName = memberAccess->getMember();
+            std::string resolvedClass;
+            bool isStaticCall = false;
+
+            // Detect static calls on built-in class names (DateTime.now())
+            std::string objName = resolveObjectName(*memberAccess);
+            if (!objName.empty() && isBuiltinClassName(objName) && getLocalTypeId(objName) == 0 && !classes_.count(objName)) {
+                resolvedClass = objName;
+                isStaticCall = true;
+            }
+
+            // Detect instance calls on user-defined classes
+            if (resolvedClass.empty()) {
+                auto it = methodNameToClass_.find(methodName);
+                if (it != methodNameToClass_.end()) {
+                    resolvedClass = it->second;
+                    // Private access check
+                    auto classIt = classes_.find(resolvedClass);
+                    if (classIt != classes_.end()) {
+                        auto privIt = classIt->second.privateMethods.find(methodName);
+                        if (privIt != classIt->second.privateMethods.end() && privIt->second) {
+                            bool canAccess = false;
+                            if (currentClass_ && currentClass_->name == resolvedClass) {
+                                canAccess = true;
+                            } else if (currentClass_ && isDerivedFrom(currentClass_->name, resolvedClass)) {
+                                canAccess = true;
+                            }
+                            if (!canAccess) {
+                                addError("Cannot access private method '" + methodName + "' of class '" + resolvedClass + "'");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Detect instance calls on built-in types by the object's typeId or literal type
+            if (resolvedClass.empty()) {
+                // Check if object is a local variable with known type
+                std::string objName2 = resolveObjectName(*memberAccess);
+                uint32_t typeId = 0;
+                if (!objName2.empty()) {
+                    typeId = getLocalTypeId(objName2);
+                } else {
+                    // Check for string literals
+                    auto* objExpr = &memberAccess->getObject();
+                    while (auto primExpr = dynamic_cast<const ast::PrimaryExpression*>(objExpr)) {
+                        auto& primary = primExpr->getPrimary();
+                        if (dynamic_cast<const ast::StringLiteral*>(&primary)) {
+                            typeId = 101;
+                        } else if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) {
+                            // Int64 has no recognized object methods by default
+                        }
+                        break;
+                    }
+                }
+                switch (typeId) {
+                    case 101: resolvedClass = "String"; break;
+                    case 102: resolvedClass = "Array"; break;
+                    case 103: resolvedClass = "Map"; break;
+                    case 109: resolvedClass = "Character"; break;
+                    default: break;
+                }
+            }
+
+            if (resolvedClass.empty()) {
+                addError("Cannot resolve method '" + methodName + "'");
+            }
+
+            if (isStaticCall) {
+                // Static call: no 'this' in r1, args start from r1
+                if (funcCall->getArguments()) {
+                    auto& args = funcCall->getArguments()->getArguments();
+                    std::vector<uint8_t> argRegs;
+                    for (size_t i = 0; i < args.size() && i < 7; ++i) {
+                        argRegs.push_back(visitExpression(*args[i]));
+                    }
+                    for (size_t i = 0; i < argRegs.size(); ++i) {
+                        emit(Opcode::MOV, OperandsR{argReg(1, i), argRegs[i], 0, 0});
+                        freeRegister(argRegs[i]);
+                    }
+                }
+            } else {
+                // Instance call: visit args first, then load 'this' into r1
+                // (visitExpression may clobber r1 for string literal construction)
+                std::vector<uint8_t> argRegs;
+                if (funcCall->getArguments()) {
+                    auto& args = funcCall->getArguments()->getArguments();
+                    for (size_t i = 0; i < args.size() && i < 6; ++i) {
+                        argRegs.push_back(visitExpression(*args[i]));
+                    }
+                }
+                uint8_t objReg = visitExpression(memberAccess->getObject());
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                freeRegister(objReg);
                 for (size_t i = 0; i < argRegs.size(); ++i) {
                     emit(Opcode::MOV, OperandsR{argReg(2, i), argRegs[i], 0, 0});
                     freeRegister(argRegs[i]);
                 }
             }
 
-            std::string methodName = memberAccess->getMember();
-            std::string owningClass;
             MangledFunctionParams mp;
-            mp.modulePath = modulePath_;
-            {
-                auto it = methodNameToClass_.find(methodName);
-                if (it != methodNameToClass_.end()) {
-                    mp.className = it->second;
-                    owningClass = it->second;
-                }
-            }
-            // Private access check
-            if (!owningClass.empty()) {
-                auto classIt = classes_.find(owningClass);
-                if (classIt != classes_.end()) {
-                    auto privIt = classIt->second.privateMethods.find(methodName);
-                    if (privIt != classIt->second.privateMethods.end() && privIt->second) {
-                        bool canAccess = false;
-                        if (currentClass_ && currentClass_->name == owningClass) {
-                            canAccess = true; // Same class
-                        } else if (currentClass_ && isDerivedFrom(currentClass_->name, owningClass)) {
-                            canAccess = true; // Derived class
+            mp.modulePath = (resolvedClass.empty() || !isBuiltinClassName(resolvedClass))
+                            ? modulePath_ : std::vector<std::string>{"hoo"};
+            mp.functionName = methodName;
+
+            if (!resolvedClass.empty() && isBuiltinClassName(resolvedClass)) {
+                if (isClassMethodJitClass(resolvedClass)) {
+                    mp.className = resolvedClass;
+                    mp.isStatic = isStaticCall;
+
+                    bool isInt64Ret = (methodName == "length" || methodName == "is_empty" ||
+                                       methodName == "is_success" || methodName == "equals" ||
+                                       methodName == "contains" || methodName == "starts_with" ||
+                                       methodName == "index_of" || methodName == "count" ||
+                                       methodName == "size" || methodName == "status_code" ||
+                                       methodName == "port" || methodName == "self_pid" ||
+                                       methodName == "kill" || methodName == "readchar" ||
+                                       methodName == "compare" || methodName == "key_type");
+                    bool isVoidRet = (methodName == "release" || methodName == "set_timeout" ||
+                                      methodName == "print" || methodName == "println" ||
+                                      methodName == "lock" || methodName == "unlock" ||
+                                      methodName == "destroy" || methodName == "close" ||
+                                      methodName == "delete" || methodName == "clear" ||
+                                      methodName == "pop" || methodName == "remove" ||
+                                      methodName == "push" || methodName == "push_int64" ||
+                                      methodName == "push_double" || methodName == "push_string" ||
+                                      methodName == "push_object" || methodName == "set" ||
+                                      methodName == "set_header" || methodName == "write_text" ||
+                                      methodName == "append_text" || methodName == "mkdir" ||
+                                      methodName == "mkdirs" || methodName == "rmdir" ||
+                                      methodName == "copy" || methodName == "rename" ||
+                                      methodName == "set_env" || methodName == "unset_env" ||
+                                      methodName == "set_current_dir");
+                    if (isInt64Ret) mp.returnType = "int64";
+                    else if (isVoidRet) mp.returnType = "void";
+                    else mp.returnType = "ptr";
+
+                    if (funcCall->getArguments()) {
+                        auto& args = funcCall->getArguments()->getArguments();
+                        for (size_t i = 0; i < args.size(); ++i) {
+                            mp.parameterTypes.push_back("ptr");
                         }
-                        if (!canAccess) {
-                            addError("Cannot access private method '" + methodName + "' of class '" + owningClass + "'");
+                    }
+                } else {
+                    std::string prefix = classToPrefix(resolvedClass);
+                    mp.functionName = prefix + "_" + methodName;
+                    mp.returnType = "void";
+                    if (funcCall->getArguments()) {
+                        auto& args = funcCall->getArguments()->getArguments();
+                        for (size_t i = 0; i < args.size(); ++i) {
+                            mp.parameterTypes.push_back("ptr");
                         }
                     }
                 }
-            }
-            mp.functionName = methodName;
-            mp.returnType = "void";
-            if (funcCall->getArguments()) {
-                for (size_t i = 0; i < funcCall->getArguments()->getArguments().size(); ++i) {
-                    mp.parameterTypes.push_back("ptr");
+            } else {
+                mp.className = resolvedClass;
+                mp.functionName = methodName;
+                mp.returnType = "ptr";
+                if (funcCall->getArguments()) {
+                    for (size_t i = 0; i < funcCall->getArguments()->getArguments().size(); ++i) {
+                        mp.parameterTypes.push_back("ptr");
+                    }
                 }
             }
+
             std::string mangledName = SymbolMangler::mangleFunctionName(mp);
-            emitCall(Opcode::CALL, mangledName); 
-            
+            emitCall(Opcode::CALL, mangledName);
+
             uint8_t dest = allocateRegister();
-            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0}); 
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
             return dest;
         } else {
             const ast::Identifier* id = nullptr;
@@ -1106,7 +1264,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     functionName.rfind("compression_", 0) == 0 ||
                     functionName.rfind("args_", 0) == 0 ||
                     functionName.rfind("net_", 0) == 0 ||
-                    functionName.rfind("json_", 0) == 0)) {
+                    functionName.rfind("json_", 0) == 0 ||
+                    functionName.rfind("array_", 0) == 0 ||
+                    functionName.rfind("map_", 0) == 0)) {
                     mp.modulePath = {"hoo"};
                 } else if (classOp.active) {
                     mp.modulePath = {"hoo"};
@@ -1509,6 +1669,25 @@ int32_t HVMCodeGenerator::getLocalOffset(const std::string& name) {
     return 0;
 }
 
+uint32_t HVMCodeGenerator::getLocalTypeId(const std::string& name) const {
+    for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
+        auto found = it->find(name);
+        if (found != it->end()) return found->second.typeId;
+    }
+    return 0;
+}
+
+bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
+    static const std::unordered_set<std::string> builtinClasses = {
+        "String", "Array", "Map", "Exception", "Character",
+        "DateTime", "Math", "Fs", "System", "Thread", "Regex",
+        "Json", "Net", "URL", "HttpClient", "HttpResponse",
+        "Path", "Hashing", "Encoding", "Uuid", "Compression",
+        "Process", "Args", "Csv", "Console", "StringBuilder"
+    };
+    return builtinClasses.count(name) > 0;
+}
+
 void HVMCodeGenerator::emit(Opcode op, const Operands& operands) {
     HVMInstruction inst(op, operands);
     instructions_.push_back(inst);
@@ -1657,6 +1836,20 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
                 if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
                 if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
+            }
+            // Inference from constructor calls like Map.new(), Array.new()
+            if (auto fc = dynamic_cast<const ast::FunctionCall*>(initializer)) {
+                if (auto ma = dynamic_cast<const ast::MemberAccess*>(&fc->getFunction())) {
+                    std::string clsName;
+                    const ast::Expression& obj = ma->getObject();
+                    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&obj)) {
+                        if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                            clsName = id->getName();
+                        }
+                    }
+                    if (clsName == "Array") return 102;
+                    if (clsName == "Map") return 103;
+                }
             }
         }
         return 100; // Default to Object

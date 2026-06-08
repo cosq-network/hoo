@@ -14,7 +14,7 @@ protected:
 
 TEST_F(HooCsvJitTest, EscapeComma) {
     const std::string source = R"(
-        func :int64 test() { return csv_escape(44); }
+        func :int64 test() { return Csv.escape(44); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -22,7 +22,7 @@ TEST_F(HooCsvJitTest, EscapeComma) {
 
 TEST_F(HooCsvJitTest, EscapeQuote) {
     const std::string source = R"(
-        func :int64 test() { return csv_escape(34); }
+        func :int64 test() { return Csv.escape(34); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -30,7 +30,7 @@ TEST_F(HooCsvJitTest, EscapeQuote) {
 
 TEST_F(HooCsvJitTest, EscapeNormal) {
     const std::string source = R"(
-        func :int64 test() { return csv_escape(97); }
+        func :int64 test() { return Csv.escape(97); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
@@ -47,7 +47,7 @@ TEST_F(HooCsvJitTest, ReadFile) {
 
     std::string source = std::string(R"(
         func :int64 test() {
-            return csv_read_file(")") + tmp_path + R"(");
+            return Csv.read_file(")") + tmp_path + R"(");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -58,7 +58,7 @@ TEST_F(HooCsvJitTest, ReadFile) {
 TEST_F(HooCsvJitTest, ReadFileNotFound) {
     const std::string source = R"(
         func :int64 test() {
-            return csv_read_file("/tmp/hoo_nonexistent_csv_file.csv");
+            return Csv.read_file("/tmp/hoo_nonexistent_csv_file.csv");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

@@ -13,7 +13,7 @@ protected:
 TEST_F(HooStandardLibraryJitTest, SystemHostname) {
     const std::string source = R"(
         func:int64 test() {
-            var name = system_hostname();
+            var name = System.hostname();
             return string_length(name);
         }
     )";
@@ -26,7 +26,7 @@ TEST_F(HooStandardLibraryJitTest, FsExists) {
     const std::string source = R"(
         func:int64 test() {
             // Check if current directory exists, should be true (1)
-            return fs_exists(".");
+            return Fs.exists(".");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -36,8 +36,8 @@ TEST_F(HooStandardLibraryJitTest, FsExists) {
 TEST_F(HooStandardLibraryJitTest, RegexCompile) {
     const std::string source = R"(
         func:int64 test() {
-            var re = regex_compile("[a-z]+");
-            var result = regex_match(re, "hello");
+            var re = Regex.compile("[a-z]+");
+            var result = Regex.match(re, "hello");
             return result;
         }
     )";
@@ -48,8 +48,8 @@ TEST_F(HooStandardLibraryJitTest, RegexCompile) {
 TEST_F(HooStandardLibraryJitTest, UuidV4) {
     const std::string source = R"(
         func:int64 test() {
-            var id = uuid_v4();
-            var str = uuid_to_string(id);
+            var id = Uuid.v4();
+            var str = Uuid.to_string(id);
             return string_length(str);
         }
     )";
@@ -61,9 +61,9 @@ TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
     const std::string source = R"(
         func:int64 test() {
             var str = "Hello";
-            var bytes = string_data(str);
-            var len = string_length(str);
-            var b64 = encoding_base64_encode(bytes, len);
+            var bytes = str.data();
+            var len = str.length();
+            var b64 = Encoding.base64_encode(bytes, len);
             return string_length(b64);
         }
     )";

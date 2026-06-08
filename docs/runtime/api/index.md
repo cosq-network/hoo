@@ -22,9 +22,13 @@ The hoo runtime provides a set of modules that bridge the high-level language wi
 
 ## Usage Convention
 
-In hoo source code, runtime functions are typically called using their module prefix. For example, to get the absolute value of an integer, you use `math_abs_int64(x)`.
+In hoo source code, runtime functions are called using class-based method syntax. For example:
 
-Standard I/O functions like `print` and `println` are available globally (without a prefix).
+- `Math.abs(x)` — static methods use the class name
+- `s.length()` — instance methods are called on the variable
+- `String.from_cstr(cstr)` / `Array.new()` — constructors use `.new()` / `.from_*()` syntax
+
+Standard I/O functions like `print` and `println` are available globally (without a prefix or class qualifier).
 
 ### Memory Management Note
 

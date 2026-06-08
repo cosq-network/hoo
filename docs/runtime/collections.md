@@ -2,7 +2,7 @@
 
 The runtime provides high-level `Array` and `Map` primitives that are natively implemented in C++ and exposed to the HVM via the opaque handle ABI.
 
-## 1. Arrays (`HooArray`)
+## 1. Arrays (`Array`)
 
 HVM arrays use a **hardware-ready, low-level representation** designed for direct ISA accessibility and zero-abstraction indexing.
 
@@ -18,24 +18,23 @@ An array is a contiguous memory block allocated via `hoo_alloc` with the `HOO_TY
 ```
 - **Length-Prefixed**: The first 64-bit slot in the data area stores the current element count.
 - **Fixed-Width Slots**: All elements occupy exactly 64 bits. Primitives (`int64`, `double`) are stored as bit patterns, and managed objects (`String`, `Character`, nested `Array`) are stored as pointers.
-- **ARC Integration**: The array itself is ARC-managed. Elements inside a low-level array are not automatically scanned for ARC; they must be managed via explicit `retain`/`release` if necessary (e.g., when popping an object). The `hoo_array_push_h` helper function provides handle-safe pushing that updates the caller's handle after potential reallocation.
+- **ARC Integration**: The array itself is ARC-managed. Elements inside a low-level array are not automatically scanned for ARC; they must be managed via explicit `retain`/`release` if necessary (e.g., when popping an object).
 
 ### Key Operations
-- **Creation**: `hoo_array_new()` allocates with initial capacity.
+- **Creation**: `Array.new()` allocates with initial capacity.
 - **Indexing**: Arrays support O(1) direct indexing. `val = arr[i]` maps to `LD.D dest, arr_base, (8 + i*8)`.
-- **Push** — All push functions return the (possibly new) `HooArray` handle, since reallocation may invalidate the original pointer. Returns NULL on failure.
-  - `hoo_array_push(arr, &val)` — Generic push of a 64-bit slot.
-  - `hoo_array_push_h(&arr, &val)` — Handle-safe push: automatically updates the handle in-place if reallocation occurs.
-  - `hoo_array_push_int64(arr, val)`, `hoo_array_push_double(arr, val)`, `hoo_array_push_string(arr, str_handle)`, `hoo_array_push_object(arr, obj_handle)`, etc.
+- **Push**:
+  - `arr.push(val)` — Generic push of a 64-bit slot.
+  - `arr.push_int64(val)`, `arr.push_double(val)`, `arr.push_string(str)`, `arr.push_object(obj)`, etc.
 - **Type-Specific Get**:
-  - `hoo_array_get_int64(arr, index, *dest)` (Returns 1 on success, 0 on out-of-bounds).
-- **Inspection**: `hoo_array_length(arr)`.
+  - `arr.get_int64(index)` (Returns a result or `none` on out-of-bounds).
+- **Inspection**: `arr.length()`.
 
 ---
 
-## 2. Maps (`HooMap`)
+## 2. Maps (`Map`)
 
-The `HooMap` is a type-safe dictionary. Because keys must be hashed efficiently, the internal implementation (`HooMapImpl`) utilizes disjoint `std::unordered_map` instances based on the key type.
+The `Map` is a type-safe dictionary. Because keys must be hashed efficiently, the internal implementation (`MapImpl`) utilizes disjoint `std::unordered_map` instances based on the key type.
 
 ### Internal Maps:
 ```cpp
@@ -46,11 +45,11 @@ std::unordered_map<std::string, std::any> data_string_;
 ```
 
 ### Key Operations
-- **Creation**: `hoo_map_new(int keyType)` initializes the map bound to a specific `HOO_MAP_KEY_*` identifier.
-- **Thread Safety**: Map and random state release operations now use a mutex to guard the refcount check, ensuring safe concurrent access.
-- **Insertion**: Utilizes the cross-product of key and value types.
-  - `hoo_map_set_string_int64(map, "key", 42)`
-  - `hoo_map_set_int64_object(map, 100, obj_handle)`
+- **Creation**: `Map.new(key_type)` initializes the map bound to a specific key type.
+- **Thread Safety**: Map operations use a mutex to guard the refcount check, ensuring safe concurrent access.
+- **Insertion**:
+  - `map.set("key", 42)`
+  - `map.set(100, obj)`
 - **Retrieval**: 
-  - `hoo_map_get_string_int64(map, "key", *dest)`
-- **Utility**: `hoo_map_length(map)`, `hoo_map_contains_string(map, "key")`, `hoo_map_remove_string(map, "key")`.
+  - `map.get("key")`
+- **Utility**: `map.length()`, `map.contains("key")`, `map.remove("key")`.

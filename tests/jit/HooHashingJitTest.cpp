@@ -16,9 +16,9 @@ TEST_F(HooHashingJitTest, Sha256) {
     const std::string source = R"(
         func :int64 test() {
             var data = "hello";
-            var bytes = string_data(data);
+            var bytes = data.data();
             var len = string_length(data);
-            var hash = hashing_sha256(bytes, len);
+            var hash = Hashing.sha256(bytes, len);
             return string_length(hash);
         }
     )";
@@ -31,9 +31,9 @@ TEST_F(HooHashingJitTest, Sha1) {
     const std::string source = R"(
         func :int64 test() {
             var data = "hello";
-            var bytes = string_data(data);
+            var bytes = data.data();
             var len = string_length(data);
-            var hash = hashing_sha1(bytes, len);
+            var hash = Hashing.sha1(bytes, len);
             return string_length(hash);
         }
     )";
@@ -46,9 +46,9 @@ TEST_F(HooHashingJitTest, Md5) {
     const std::string source = R"(
         func :int64 test() {
             var data = "hello";
-            var bytes = string_data(data);
+            var bytes = data.data();
             var len = string_length(data);
-            var hash = hashing_md5(bytes, len);
+            var hash = Hashing.md5(bytes, len);
             return string_length(hash);
         }
     )";
@@ -61,9 +61,9 @@ TEST_F(HooHashingJitTest, Crc32) {
     const std::string source = R"(
         func :int64 test() {
             var data = "hello";
-            var bytes = string_data(data);
+            var bytes = data.data();
             var len = string_length(data);
-            return hashing_crc32(bytes, len);
+            return Hashing.crc32(bytes, len);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -82,7 +82,7 @@ TEST_F(HooHashingJitTest, Sha256File) {
 
     std::string source = std::string(R"(
         func :int64 test() {
-            var hash = hashing_sha256_file(")") + tmp_path + R"(");
+            var hash = Hashing.sha256_file(")") + tmp_path + R"(");
             return string_length(hash);
         }
     )";

@@ -118,6 +118,16 @@ private:
      * Map an AST type to its runtime Type ID.
      */
     uint32_t getTypeId(const ast::Type* type, const ast::Expression* initializer = nullptr);
+
+    /**
+     * Look up the typeId of a local variable from scope.
+     */
+    uint32_t getLocalTypeId(const std::string& name) const;
+
+    /**
+     * Check if a name matches a known built-in class for static dispatch.
+     */
+    bool isBuiltinClassName(const std::string& name) const;
     
     /**
      * Emit a call instruction with a deferred symbol target.

@@ -4,58 +4,59 @@ The `hoo.path` module provides dirname, basename, extension, join, normalize, ab
 
 ## 1. Component Extraction
 
-- `hoo_path_dirname(path)` — Parent directory path. For `"a/b/c.txt"` returns `"a/b"`.
-- `hoo_path_basename(path)` — Last path component. For `"a/b/c.txt"` returns `"c.txt"`.
-- `hoo_path_extension(path)` — File extension including dot. For `"archive.tar.gz"` returns `".gz"`.
-- `hoo_path_stem(path)` — Filename without extension. For `"a/b/resume.pdf"` returns `"resume"`.
-- `hoo_path_root(path)` — Root component. On Unix, `"/"` for absolute paths, `""` for relative. On Windows, `"C:\"` or `"\\server\share\"`.
+- `p.dirname()` — Parent directory path. For `"a/b/c.txt"` returns `"a/b"`.
+- `p.basename()` — Last path component. For `"a/b/c.txt"` returns `"c.txt"`.
+- `p.extension()` — File extension including dot. For `"archive.tar.gz"` returns `".gz"`.
+- `p.stem()` — Filename without extension. For `"a/b/resume.pdf"` returns `"resume"`.
+- `p.root()` — Root component. On Unix, `"/"` for absolute paths, `""` for relative. On Windows, `"C:\"` or `"\\server\share\"`.
 
 ## 2. Construction
 
-- `hoo_path_join(a, b)` — Join two components with platform separator. Handles edge cases.
-- `hoo_path_join_multi(parts, count)` — Join multiple components.
+- `Path.join(a, b)` — Join two components with platform separator. Handles edge cases.
+- `Path.join_multi(parts, count)` — Join multiple components.
 
 ## 3. Normalization
 
-- `hoo_path_normalize(path)` — Resolve `.` and `..` components, collapse redundant separators. Does not resolve symlinks.
-- `hoo_path_absolute(path)` — Convert to absolute path relative to current working directory.
-- `hoo_path_relative(path, base)` — Compute relative path from `base` to `path`.
+- `p.normalize()` — Resolve `.` and `..` components, collapse redundant separators. Does not resolve symlinks.
+- `p.absolute()` — Convert to absolute path relative to current working directory.
+- `Path.relative(path, base)` — Compute relative path from `base` to `path`.
 
 ## 4. Properties
 
-- `hoo_path_is_absolute(path)` — Returns 1 if absolute.
-- `hoo_path_is_relative(path)` — Returns 1 if relative.
-- `hoo_path_has_extension(path)` — Returns 1 if path has an extension.
-- `hoo_path_has_root(path)` — Returns 1 if path has a root component.
+- `p.is_absolute()` — Returns 1 if absolute.
+- `p.is_relative()` — Returns 1 if relative.
+- `p.has_extension()` — Returns 1 if path has an extension.
+- `p.has_root()` — Returns 1 if path has a root component.
 
 ## 5. Split
 
-- `hoo_path_split(path, &out_count)` — Split path into individual components. Returns array of strings (free with `hoo_path_free_parts`).
-- `hoo_path_free_parts(parts, count)` — Free parts array.
+- `p.split()` — Split path into individual components. Returns array of strings (free with `Path.free_parts`).
+- `Path.free_parts(parts, count)` — Free parts array.
 
 ## 6. Platform-Specific
 
-- `hoo_path_separator()` — Returns `'/'` on Unix, `'\\'` on Windows.
-- `hoo_path_list_separator()` — Returns `':'` on Unix, `';'` on Windows.
+- `Path.separator()` — Returns `'/'` on Unix, `'\\'` on Windows.
+- `Path.list_separator()` — Returns `':'` on Unix, `';'` on Windows.
 
 ## Usage from Hoo Source
 
-All `path_` functions are available with the `path_` prefix:
+All `Path.*` functions are available on the `Path` class:
 
 ```hoo
 func :int64 demo() {
-    var dir = path_dirname("a/b/c.txt");            // "a/b"
-    var base = path_basename("a/b/c.txt");          // "c.txt"
-    var ext = path_extension("a/b/c.txt");          // ".txt"
-    var stem = path_stem("a/b/resume.pdf");         // "resume"
-    var joined = path_join("a", "b");               // "a/b"
-    var norm = path_normalize("a/b/../c");          // "a/c"
-    var abs = path_is_absolute("/usr/bin");         // 1
-    var sep = path_separator();                     // '/' on Unix
+    var p = Path.new("a/b/c.txt");
+    var dir = p.dirname();                          // "a/b"
+    var base = p.basename();                        // "c.txt"
+    var ext = p.extension();                        // ".txt"
+    var stem = p.stem();                            // "resume"
+    var joined = Path.join("a", "b");               // "a/b"
+    var norm = Path.new("a/b/../c").normalize();    // "a/c"
+    var abs = Path.new("/usr/bin").is_absolute();   // 1
+    var sep = Path.separator();                     // '/' on Unix
     return string_length(dir);
 }
 ```
 
 ## Memory Management
 
-Strings allocated by `hoo.path` functions must be freed with `hoo_path_free_string(str)`. Parts arrays must be freed with `hoo_path_free_parts(parts, count)`.
+Strings allocated by `Path` functions must be freed with `Path.free_string(str)`. Parts arrays must be freed with `Path.free_parts(parts, count)`.

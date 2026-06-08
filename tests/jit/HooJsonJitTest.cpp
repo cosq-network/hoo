@@ -13,9 +13,9 @@ protected:
 TEST_F(HooJsonJitTest, ParseAndStringify) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = json_parse("{\"key\":\"value\"}");
-            var type = json_type(obj);
-            json_release(obj);
+            var obj = Json.parse("{\"key\":\"value\"}");
+            var type = Json.type(obj);
+            Json.release(obj);
             return type;
         }
     )";
@@ -27,10 +27,10 @@ TEST_F(HooJsonJitTest, ParseAndStringify) {
 TEST_F(HooJsonJitTest, GetString) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = json_parse("{\"name\":\"Alice\"}");
-            var val = json_get_string(obj, "name");
+            var obj = Json.parse("{\"name\":\"Alice\"}");
+            var val = Json.get_string(obj, "name");
             var len = string_length(val);
-            json_release(obj);
+            Json.release(obj);
             return len;
         }
     )";
@@ -41,9 +41,9 @@ TEST_F(HooJsonJitTest, GetString) {
 TEST_F(HooJsonJitTest, GetInt) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = json_parse("{\"age\":30}");
-            var age = json_get_int(obj, "age");
-            json_release(obj);
+            var obj = Json.parse("{\"age\":30}");
+            var age = Json.get_int(obj, "age");
+            Json.release(obj);
             return age;
         }
     )";
@@ -54,9 +54,9 @@ TEST_F(HooJsonJitTest, GetInt) {
 TEST_F(HooJsonJitTest, ArrayAccess) {
     const std::string source = R"(
         func :int64 test() {
-            var arr = json_parse("[10, 20, 30]");
-            var len = json_array_length(arr);
-            json_release(arr);
+            var arr = Json.parse("[10, 20, 30]");
+            var len = Json.array_length(arr);
+            Json.release(arr);
             return len;
         }
     )";
@@ -67,16 +67,16 @@ TEST_F(HooJsonJitTest, ArrayAccess) {
 TEST_F(HooJsonJitTest, BuildObject) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = json_new_object();
-            var name = json_new_string("Bob");
-            json_set(obj, "name", name);
-            var age = json_new_int(25);
-            json_set(obj, "age", age);
-            var out = json_stringify(obj);
+            var obj = Json.new_object();
+            var name = Json.new_string("Bob");
+            Json.set(obj, "name", name);
+            var age = Json.new_int(25);
+            Json.set(obj, "age", age);
+            var out = Json.stringify(obj);
             var len = string_length(out);
-            json_release(obj);
-            json_release(name);
-            json_release(age);
+            Json.release(obj);
+            Json.release(name);
+            Json.release(age);
             return len;
         }
     )";
@@ -87,15 +87,15 @@ TEST_F(HooJsonJitTest, BuildObject) {
 TEST_F(HooJsonJitTest, BuildArray) {
     const std::string source = R"(
         func :int64 test() {
-            var arr = json_new_array();
-            var one = json_new_int(1);
-            var two = json_new_int(2);
-            json_array_push(arr, one);
-            json_array_push(arr, two);
-            var len = json_array_length(arr);
-            json_release(arr);
-            json_release(one);
-            json_release(two);
+            var arr = Json.new_array();
+            var one = Json.new_int(1);
+            var two = Json.new_int(2);
+            Json.array_push(arr, one);
+            Json.array_push(arr, two);
+            var len = Json.array_length(arr);
+            Json.release(arr);
+            Json.release(one);
+            Json.release(two);
             return len;
         }
     )";
@@ -106,15 +106,15 @@ TEST_F(HooJsonJitTest, BuildArray) {
 TEST_F(HooJsonJitTest, NullAndBool) {
     const std::string source = R"(
         func :int64 test() {
-            var n = json_new_null();
-            var t = json_new_bool(1);
-            var f = json_new_bool(0);
-            var nt = json_type(n);
-            var tt = json_type(t);
-            var ft = json_type(f);
-            json_release(n);
-            json_release(t);
-            json_release(f);
+            var n = Json.new_null();
+            var t = Json.new_bool(1);
+            var f = Json.new_bool(0);
+            var nt = Json.type(n);
+            var tt = Json.type(t);
+            var ft = Json.type(f);
+            Json.release(n);
+            Json.release(t);
+            Json.release(f);
             return nt;
         }
     )";
@@ -126,12 +126,12 @@ TEST_F(HooJsonJitTest, NullAndBool) {
 TEST_F(HooJsonJitTest, NestedObject) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = json_parse("{\"user\":{\"name\":\"Alice\",\"scores\":[95,87,92]}}");
-            var user = json_get(obj, "user");
-            var name = json_get_string(user, "name");
+            var obj = Json.parse("{\"user\":{\"name\":\"Alice\",\"scores\":[95,87,92]}}");
+            var user = Json.get(obj, "user");
+            var name = Json.get_string(user, "name");
             var len = string_length(name);
-            json_release(obj);
-            json_release(user);
+            Json.release(obj);
+            Json.release(user);
             return len;
         }
     )";

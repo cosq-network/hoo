@@ -1,8 +1,8 @@
-# Date & Time (`hoo.datetime`)
+# Date & Time (`DateTime`)
 
-The `hoo.datetime` module provides current time, decompose/compose fields, ISO 8601 formatting, and duration arithmetic via `<chrono>`.
+The `DateTime` class provides current time, decompose/compose fields, ISO 8601 formatting, and duration arithmetic via `<chrono>`.
 
-All timestamps are `int64_t` representing **milliseconds since Unix epoch** (1970-01-01 UTC). Functions returning `char*` allocate strings that the caller must free with `hoo_datetime_free_string`.
+All timestamps are `int64_t` representing **milliseconds since Unix epoch** (1970-01-01 UTC). Functions returning `String` are ARC-managed and do not require manual freeing.
 
 ## 1. DateTime Fields
 
@@ -22,54 +22,54 @@ typedef struct {
 
 ## 2. Current Time
 
-- `hoo_datetime_now()` — Current time as Unix epoch milliseconds.
-- `hoo_datetime_now_seconds()` — Current time as Unix epoch seconds.
-- `hoo_datetime_now_precise()` — Current time as `double` seconds since epoch.
+- `DateTime.now()` — Current time as Unix epoch milliseconds.
+- `DateTime.now_seconds()` — Current time as Unix epoch seconds.
+- `DateTime.now_precise()` — Current time as `double` seconds since epoch.
 
 ## 3. Decompose / Compose
 
-- `hoo_datetime_decompose(epoch_ms)` — Break timestamp into `HooDateTimeFields` (local time).
-- `hoo_datetime_compose(fields)` — Rebuild timestamp from fields (local time).
-- `hoo_datetime_compose_utc(fields)` — Rebuild timestamp from fields (UTC).
+- `DateTime.decompose(epoch_ms)` — Break timestamp into `DateTimeFields` (local time).
+- `DateTime.compose(fields)` — Rebuild timestamp from fields (local time).
+- `DateTime.compose_utc(fields)` — Rebuild timestamp from fields (UTC).
 
 ## 4. Formatting & Parsing
 
-- `hoo_datetime_format(epoch_ms, format)` — strftime-style format. Supported specifiers: `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, `%f` (milliseconds), `%w` (weekday), `%j` (yearday).
-- `hoo_datetime_parse(str, format)` — Parse string with strftime-style format, returns milliseconds or -1.
-- `hoo_datetime_iso8601(epoch_ms)` — Format as ISO 8601 (`"2024-01-15T10:30:00Z"`).
-- `hoo_datetime_from_iso8601(str)` — Parse ISO 8601 string, returns milliseconds or -1.
+- `ts.format(format)` — strftime-style format on a timestamp. Supported specifiers: `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, `%f` (milliseconds), `%w` (weekday), `%j` (yearday).
+- `DateTime.parse(str, format)` — Parse string with strftime-style format, returns milliseconds or -1.
+- `ts.iso8601()` — Format as ISO 8601 (`"2024-01-15T10:30:00Z"`).
+- `DateTime.from_iso8601(str)` — Parse ISO 8601 string, returns milliseconds or -1.
 
 ## 5. Duration Helpers
 
-- `hoo_datetime_add_days(epoch_ms, days)` — Add days (can be negative).
-- `hoo_datetime_add_hours(epoch_ms, hours)`
-- `hoo_datetime_add_minutes(epoch_ms, minutes)`
-- `hoo_datetime_add_seconds(epoch_ms, seconds)`
-- `hoo_datetime_add_milliseconds(epoch_ms, ms)`
-- `hoo_datetime_diff_days(from, to)` — Difference in days.
-- `hoo_datetime_diff_hours(from, to)` — Difference in hours.
-- `hoo_datetime_diff_seconds(from, to)` — Difference as `double` (fractional seconds).
+- `ts.add_days(days)` — Add days (can be negative).
+- `ts.add_hours(hours)`
+- `ts.add_minutes(minutes)`
+- `ts.add_seconds(seconds)`
+- `ts.add_milliseconds(ms)`
+- `from.diff_days(to)` — Difference in days.
+- `from.diff_hours(to)` — Difference in hours.
+- `from.diff_seconds(to)` — Difference as `double` (fractional seconds).
 
 ## 6. Comparison
 
-- `hoo_datetime_compare(a, b)` — Returns -1, 0, or 1.
+- `a.compare(b)` — Returns -1, 0, or 1.
 
 ## Usage from Hoo Source
 
-All `datetime_` functions are available with the `datetime_` prefix:
+All `DateTime` methods are accessed via the class or instance:
 
 ```hoo
 func :int64 demo() {
-    var now = datetime_now();                        // ms since Unix epoch
-    var iso = datetime_iso8601(now);                 // "2024-01-15T10:30:00.000Z"
-    var formatted = datetime_format(now, "%Y-%m-%d");
-    var parsed = datetime_from_iso8601("2024-01-15T10:30:00Z");
-    var later = datetime_add_days(now, 7);
-    var cmp = datetime_compare(now, later);           // -1, 0, or 1
-    return string_length(formatted);                  // 10 for "2024-01-15"
+    var now = DateTime.now();                        // ms since Unix epoch
+    var iso = now.iso8601();                         // "2024-01-15T10:30:00.000Z"
+    var formatted = now.format("%Y-%m-%d");
+    var parsed = DateTime.from_iso8601("2024-01-15T10:30:00Z");
+    var later = now.add_days(7);
+    var cmp = now.compare(later);                    // -1, 0, or 1
+    return formatted.length();                       // 10 for "2024-01-15"
 }
 ```
 
 ## Memory Management
 
-Allocated strings must be freed with `hoo_datetime_free_string(str)`.
+All `DateTime` methods return ARC-managed `String` objects that do not require manual freeing.

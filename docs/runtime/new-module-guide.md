@@ -1,21 +1,26 @@
 # Adding a New Runtime Module — Developer Guide
 
 This document describes how a runtime library function (e.g. `hoo_thread_spawn`) is
-wired through the three layers so that Hooc source code can call it. The pattern is
-the same for all modules: `math_`, `fs_`, `thread_`, `uuid_`, etc.
+wired through the three layers so that Hooc source code can call it via class-based
+method syntax (`Thread.spawn()`, `thread.join()`, etc.).
 
 ## Architecture Overview
 
 ```
 Hooc source               Codegen                     JIT                     Runtime (hoort)
 ────────────              ──────                     ───                     ──────────────
-thread_spawn(a,b)  ───►   _F_M_hoo_E_      ───►   jit_thread_spawn  ───►   hoo_thread_spawn()
-                          thread_spawn_v_p_p        (HVMState*)             (libc)
-                                                    │
-                                                    └── registered in
-                                                        buildRuntimeSymbols()
-                                                        & bootstrapRuntimeModules()
+Thread.spawn(a,b)  ───►   _F_M_hoo_E_      ───►   jit_thread_spawn  ───►   hoo_thread_spawn()
+                           thread_spawn_v_p_p        (HVMState*)             (libc)
+                                                     │
+                                                     └── registered in
+                                                         buildRuntimeSymbols()
+                                                         & bootstrapRuntimeModules()
 ```
+
+The Hooc-level syntax uses `ClassName.method(args)` or `object.method(args)`. The
+codegen internally maps each class name to its module prefix via `classToPrefix()` 
+(e.g. `Thread` → `thread_`, `Fs` → `fs_`, `Path` → `path_`) and generates the
+mangled symbol accordingly.
 
 Three touch points are required for every new runtime function:
 
@@ -202,7 +207,7 @@ protected:
 TEST_F(HooThreadJitTest, SelfId) {
     const std::string source = R"(
         func:int64 test() {
-            return thread_self();
+            return Thread.self();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -248,10 +253,12 @@ Example: adding a new module (e.g. `hoo.xml`).
 - [ ] **README** — add module entry to `docs/runtime/README.md`
 - [ ] **Build & verify** — `cmake --build build && ./build/hoo-tests`
 
-**Currently integrated modules** (all following this pattern):
-`fs`, `system`, `regex`, `uuid`, `encoding`, `math`, `thread`,
-`csv`, `datetime`, `path`, `hashing`, `process`, `compression`,
-`args`, `net`, `json`
+**Currently integrated modules** (class name → prefix):
+`Fs` → `fs_`, `System` → `system_`, `Regex` → `regex_`, `Uuid` → `uuid_`,
+`Encoding` → `encoding_`, `Math` → `math_`, `Thread` → `thread_`,
+`Csv` → `csv_`, `DateTime` → `datetime_`, `Path` → `path_`,
+`Hash` → `hashing_`, `Process` → `process_`, `Compression` → `compression_`,
+`Args` → `args_`, `Net` → `net_`, `Json` → `json_`
 
 ---
 

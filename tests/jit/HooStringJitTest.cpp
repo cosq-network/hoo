@@ -14,7 +14,7 @@ protected:
 
 TEST_F(HooStringJitTest, NewString) {
     const std::string source = R"(
-        func :string test() { return string_new(); }
+        func :string test() { return ""; }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_s");
@@ -39,7 +39,7 @@ TEST_F(HooStringJitTest, FromCStr) {
 
 TEST_F(HooStringJitTest, Length) {
     const std::string source = R"(
-        func :int64 test() { return string_length("hello"); }
+        func :int64 test() { return "hello".length(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
@@ -47,7 +47,7 @@ TEST_F(HooStringJitTest, Length) {
 
 TEST_F(HooStringJitTest, IsEmpty) {
     const std::string source = R"(
-        func :int64 test() { return string_is_empty(string_new()); }
+        func :int64 test() { return "".is_empty(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -55,7 +55,7 @@ TEST_F(HooStringJitTest, IsEmpty) {
 
 TEST_F(HooStringJitTest, IsNotEmpty) {
     const std::string source = R"(
-        func :int64 test() { return string_is_empty("hi"); }
+        func :int64 test() { return "hi".is_empty(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
@@ -63,7 +63,7 @@ TEST_F(HooStringJitTest, IsNotEmpty) {
 
 TEST_F(HooStringJitTest, Concat) {
     const std::string source = R"(
-        func :string test() { return string_concat("a", "b"); }
+        func :string test() { return "a".concat("b"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_s");
@@ -75,7 +75,7 @@ TEST_F(HooStringJitTest, Concat) {
 
 TEST_F(HooStringJitTest, ToLower) {
     const std::string source = R"(
-        func :string test() { return string_to_lower("HELLO"); }
+        func :string test() { return "HELLO".to_lower(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_s");
@@ -87,7 +87,7 @@ TEST_F(HooStringJitTest, ToLower) {
 
 TEST_F(HooStringJitTest, Equals) {
     const std::string source = R"(
-        func :int64 test() { return string_equals("abc", "abc"); }
+        func :int64 test() { return "abc".equals("abc"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -95,7 +95,7 @@ TEST_F(HooStringJitTest, Equals) {
 
 TEST_F(HooStringJitTest, NotEquals) {
     const std::string source = R"(
-        func :int64 test() { return string_equals("abc", "def"); }
+        func :int64 test() { return "abc".equals("def"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
@@ -103,7 +103,7 @@ TEST_F(HooStringJitTest, NotEquals) {
 
 TEST_F(HooStringJitTest, Contains) {
     const std::string source = R"(
-        func :int64 test() { return string_contains("hello world", "world"); }
+        func :int64 test() { return "hello world".contains("world"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -111,7 +111,7 @@ TEST_F(HooStringJitTest, Contains) {
 
 TEST_F(HooStringJitTest, ContainsNo) {
     const std::string source = R"(
-        func :int64 test() { return string_contains("hello world", "planet"); }
+        func :int64 test() { return "hello world".contains("planet"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
@@ -119,7 +119,7 @@ TEST_F(HooStringJitTest, ContainsNo) {
 
 TEST_F(HooStringJitTest, StartsWith) {
     const std::string source = R"(
-        func :int64 test() { return string_starts_with("hello", "he"); }
+        func :int64 test() { return "hello".starts_with("he"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -127,7 +127,7 @@ TEST_F(HooStringJitTest, StartsWith) {
 
 TEST_F(HooStringJitTest, Trim) {
     const std::string source = R"(
-        func :string test() { return string_trim("  hi  "); }
+        func :string test() { return "  hi  ".trim(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_s");
@@ -139,7 +139,7 @@ TEST_F(HooStringJitTest, Trim) {
 
 TEST_F(HooStringJitTest, Repeat) {
     const std::string source = R"(
-        func :string test() { return string_repeat(65, 3); }
+        func :string test() { return String.repeat(65, 3); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_s");
@@ -151,7 +151,7 @@ TEST_F(HooStringJitTest, Repeat) {
 
 TEST_F(HooStringJitTest, IndexOf) {
     const std::string source = R"(
-        func :int64 test() { return string_index_of("hello", "l"); }
+        func :int64 test() { return "hello".index_of("l"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);

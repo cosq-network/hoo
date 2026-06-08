@@ -12,7 +12,7 @@ protected:
 
 TEST_F(HooProcessJitTest, SelfPid) {
     const std::string source = R"(
-        func :int64 test() { return process_self_pid(); }
+        func :int64 test() { return Process.self_pid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
@@ -21,7 +21,7 @@ TEST_F(HooProcessJitTest, SelfPid) {
 TEST_F(HooProcessJitTest, Capture) {
     const std::string source = R"(
         func :int64 test() {
-            var out = process_capture("echo hello");
+            var out = Process.capture("echo hello");
             return string_length(out);
         }
     )";
@@ -34,8 +34,8 @@ TEST_F(HooProcessJitTest, KillSignalZero) {
     // Signal 0 checks if the process exists without actually sending a signal
     const std::string source = R"(
         func :int64 test() {
-            var pid = process_self_pid();
-            return process_kill(pid, 0);
+            var pid = Process.self_pid();
+            return Process.kill(pid, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

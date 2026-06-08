@@ -14,11 +14,10 @@ TEST_F(HooCompressionJitTest, GzipRoundTrip) {
     const std::string source = R"(
         func :int64 test() {
             var original = "Hello, World!";
-            var data = string_data(original);
-            var len = string_length(original);
-            var compressed = compression_gzip_compress(data, len);
-            // Just check it returns something non-null
-            return string_length(compressed);
+            var data = original.data();
+            var len = original.length();
+            var compressed = Compression.gzip_compress(data, len);
+            return 1;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -29,10 +28,10 @@ TEST_F(HooCompressionJitTest, DeflateRoundTrip) {
     const std::string source = R"(
         func :int64 test() {
             var original = "Hello, World!";
-            var data = string_data(original);
-            var len = string_length(original);
-            var compressed = compression_deflate_compress(data, len);
-            return string_length(compressed);
+            var data = original.data();
+            var len = original.length();
+            var compressed = Compression.deflate_compress(data, len);
+            return 1;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

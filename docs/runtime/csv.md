@@ -4,36 +4,36 @@ The `hoo.csv` module provides parse and generate comma-separated values with quo
 
 ## 1. Parsing
 
-- `hoo_csv_parse(csv, &out_rows, &out_cols)` — Parse CSV string into 2D array `[row][col]` of strings. Free with `hoo_csv_free_table`.
-- `hoo_csv_parse_with_opts(csv, delimiter, quote_char, &out_rows, &out_cols)` — Parse with custom delimiter and quote character.
+- `Csv.parse(csv)` — Parse CSV string into 2D array `[row][col]` of strings. Free with `Csv.free_table`.
+- `Csv.parse(csv, delimiter, quote_char)` — Parse with custom delimiter and quote character.
 
 ## 2. Generation
 
-- `hoo_csv_generate(headers, data, rows, cols)` — Generate CSV string from headers and 2D data array. Free with `hoo_csv_free_string`.
-- `hoo_csv_generate_with_opts(headers, data, rows, cols, delimiter, quote_char)` — Generate with custom options.
+- `Csv.generate(headers, data, rows, cols)` — Generate CSV string from headers and 2D data array. Free with `Csv.free_string`.
+- `Csv.generate(headers, data, rows, cols, delimiter, quote_char)` — Generate with custom options.
 
 ## 3. File I/O
 
-- `hoo_csv_read_file(path, &out_rows, &out_cols)` — Read CSV file into 2D array.
-- `hoo_csv_write_file(path, headers, data, rows, cols)` — Write headers and data to CSV file. Returns 0 on success.
+- `Csv.read_file(path)` — Read CSV file into 2D array.
+- `Csv.write_file(path, headers, data, rows, cols)` — Write headers and data to CSV file. Returns 0 on success.
 
 ## 4. Utilities
 
-- `hoo_csv_escape(c)` — Check if character needs escaping in CSV output.
+- `Csv.escape(c)` — Check if character needs escaping in CSV output.
 
 ## Usage from Hoo Source
 
-All `csv_` functions are available with the `csv_` prefix:
+All `Csv.*` functions are available on the `Csv` class:
 
 ```hoo
 func :int64 demo() {
-    var ok = csv_read_file("/path/to/data.csv");  // 0 = error, 1 = success
-    var needs_escape = csv_escape(44);              // 1 if comma needs quoting
+    var ok = Csv.read_file("/path/to/data.csv");  // 0 = error, 1 = success
+    var needs_escape = Csv.escape(44);              // 1 if comma needs quoting
     return ok;
 }
 ```
 
 ## Memory Management
 
-- `hoo_csv_free_table(table, rows, cols)` — Free 2D table.
-- `hoo_csv_free_string(str)` — Free allocated string.
+- `Csv.free_table(table, rows, cols)` — Free 2D table.
+- `Csv.free_string(str)` — Free allocated string.

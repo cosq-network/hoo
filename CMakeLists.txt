@@ -396,6 +396,7 @@ if(HOOC_BUILD_TESTS)
         tests/jit/HooHashingJitTest.cpp
         tests/jit/HooProcessJitTest.cpp
         tests/jit/HooCompressionJitTest.cpp
+        tests/jit/HooClassApiTest.cpp
         tests/jit/HooArgsJitTest.cpp
         tests/jit/HooNetJitTest.cpp
         tests/jit/HooJsonJitTest.cpp

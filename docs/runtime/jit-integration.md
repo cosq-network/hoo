@@ -50,7 +50,7 @@ The JIT employs `buildLookupCandidates()` to resolve symbols that may have been 
 
 1. **Direct match**: The exact symbol name is tried first.
 2. **Demangled reconstruction**: The symbol is demangled via `SymbolMangler::demangleSymbol()`, and both top-level function and class member forms are re-mangled with module path qualification.
-3. **Legacy prefix match**: For `_F_`-prefixed symbols from older test bytecode, the base function name is extracted and searched with a prefix pattern.
+3. **Legacy prefix match**: For `_F_`-prefixed symbols from interpreter bytecode, the base function name is extracted and searched with a prefix pattern.
 4. **Fuzzy fallback**: A substring containment check is used as a last resort.
 
 `lookupPlainRuntimeSymbolAddress()` provides a static map of common runtime symbols (`hoo_alloc`, `hoo_retain`, `hoo_release`, etc.) as a fast fallback in `getSymbolAddress()` when JIT and module lookups fail.
