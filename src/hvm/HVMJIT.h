@@ -101,6 +101,7 @@ public:
         int64_t regs[32]{};
         uint8_t* memory = nullptr;
         IOProvider* io = nullptr;
+        bool trapHit = false;
     };
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};

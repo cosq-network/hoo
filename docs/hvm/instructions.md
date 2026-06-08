@@ -36,6 +36,16 @@ Opcode-space note:
 - In `docs/hvm/hvm_instruction_set.csv`, `Opcode` is the logical opcode value and `Encoding` records whether the row is `base32` or `escape32`.
 - Tooling must use `Encoding` to derive the emitted bytes; do not infer the wire format from `Opcode` alone.
 
+Extended opcode wire format (always 8 bytes):
+```
+byte 0:      0xFE              (escape prefix)
+byte 1..:    ULEB128 opcode    (variable bytes until high bit clear)
+bytes..3:    0x00              (zero-padding to reach byte 4)
+bytes 4..7:  32-bit payload    (same encoding as the base format: R/I/RI/B/J)
+```
+The payload's opcode field (bits 31:25) is ignored; the opcode is taken from the ULEB128 value.
+Tooling must encode and decode instructions using this 8-byte layout for any opcode >= 0x80.
+
 ## 4. Core Instruction Set
 
 ### 4.1 Data movement
@@ -71,15 +81,19 @@ Opcode-space note:
 - `CALL` `TAILCALL` (J-format, 20-bit relative offset)
 
 ### 4.10 Hardware/System
-- `SYSCALL`: Trigger a system call to the OS/Runtime.
+- `SYSCALL`: Trigger a system call to the runtime.
 - `BREAK`: Trap to debugger.
+
+**SYSCALL calling convention**: The immediate field selects the service; arguments are
+passed in `r2` (and `r3` for two-argument calls). The result is written to `rd`.
+See `docs/hvm/hvm-spec.md` §7 for the full syscall number table.
 
 ## 5. Lowering Rules (Software Implemented)
 
 Operations removed from the ISA and now lowered to the above set:
 
-- **Objects**: `NEW` -> `CALL hoo_malloc`.
-- **Arrays**: `NEWA` -> `CALL hoo_malloc`.
+- **Objects**: `NEW` -> `CALL hoo_alloc`.
+- **Arrays**: `NEWA` -> `CALL hoo_alloc`.
 - **Field/Element Access**: `LDF`/`STF`/`LDELEM` -> Explicit pointer arithmetic + `LD.D`/`ST.D`.
 - **Exceptions**: `TRY`/`THROW` -> `CALL hoo_push_handler` + control flow.
 
@@ -87,5 +101,9 @@ Operations removed from the ISA and now lowered to the above set:
 
 The canonical machine-readable definition is `docs/hvm/hvm_instruction_set.csv`.
 That CSV is normative.
+
+**Redundancy notes**:
+- `JAL` (base32, 16-bit offset) and `CALL` (escape32, 20-bit offset) are semantically identical. `CALL` provides a larger reachable range; `JAL` saves code space when the offset fits in 16 bits.
+- `JMP` (base32, 16-bit offset) and `TAILCALL` (escape32, 20-bit offset) are semantically identical. `TAILCALL` provides a larger range; `JMP` saves code space when the offset fits.
 
 Keep this document synchronized with that CSV and `docs/hvm/hvm-spec.md`.

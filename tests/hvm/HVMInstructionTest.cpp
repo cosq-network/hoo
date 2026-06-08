@@ -314,3 +314,214 @@ TEST_F(HVMInstructionTest, RejectEscapedBaseOpcode) {
     auto decoded = HVMInstruction::decode(escaped);
     EXPECT_EQ(decoded, nullptr);
 }
+
+TEST_F(HVMInstructionTest, ExtendedOpcodeRoundTripAllEscape32) {
+    struct EscapeCase {
+        Opcode op;
+        InstructionFormat fmt;
+        Operands ops;
+        std::string expectedMnemonic;
+    };
+    std::vector<EscapeCase> cases = {
+        {Opcode::ENTER,    InstructionFormat::I, OperandsI{0, 0, 32},   "enter"},
+        {Opcode::LEAVE,    InstructionFormat::R, OperandsR{0, 0, 0, 0}, "leave"},
+        {Opcode::ADJSP,    InstructionFormat::I, OperandsI{0, 0, -16},  "adjsp"},
+        {Opcode::FRAME,    InstructionFormat::I, OperandsI{1, 0, -8},   "frame"},
+        {Opcode::CALL,     InstructionFormat::J, OperandsJ{29, 200},    "call"},
+        {Opcode::TAILCALL, InstructionFormat::J, OperandsJ{0, 200},     "tailcall"},
+        {Opcode::SYSCALL,  InstructionFormat::I, OperandsI{1, 0, 5},    "syscall"},
+        {Opcode::BREAK,    InstructionFormat::R, OperandsR{0, 0, 0, 0}, "break"},
+    };
+    for (const auto& c : cases) {
+        HVMInstruction orig(c.op, c.ops);
+        orig.setFormat(c.fmt);
+        EXPECT_EQ(orig.getMnemonic(), c.expectedMnemonic);
+
+        auto encoded = orig.encode();
+        ASSERT_EQ(encoded.size(), 8) << "Failed for " << c.expectedMnemonic;
+        EXPECT_EQ(encoded[0], 0xFE)  << "No escape byte for " << c.expectedMnemonic;
+
+        auto decoded = HVMInstruction::decode(encoded);
+        ASSERT_NE(decoded, nullptr) << "Decode failed for " << c.expectedMnemonic;
+        EXPECT_TRUE(decoded->isExtended());
+        EXPECT_EQ(decoded->getOpcode(), c.op);
+        EXPECT_EQ(decoded->getMnemonic(), c.expectedMnemonic);
+        EXPECT_EQ(decoded->getFormat(), c.fmt);
+        EXPECT_EQ(decoded->getSize(), 8);
+    }
+}
+
+TEST_F(HVMInstructionTest, ExtendedOpcodeRoundTripMultiple) {
+    // Encode a sequence of extended instructions and decode them in order
+    std::vector<uint8_t> bytes;
+    auto addIns = [&](Opcode op, InstructionFormat fmt, Operands ops) {
+        HVMInstruction ins(op, ops);
+        ins.setFormat(fmt);
+        auto enc = ins.encode();
+        bytes.insert(bytes.end(), enc.begin(), enc.end());
+    };
+    addIns(Opcode::ENTER,    InstructionFormat::I, OperandsI{0, 0, 32});
+    addIns(Opcode::CALL,     InstructionFormat::J, OperandsJ{29, 100});
+    addIns(Opcode::SYSCALL,  InstructionFormat::I, OperandsI{1, 0, 1});
+    addIns(Opcode::LEAVE,    InstructionFormat::R, OperandsR{0, 0, 0, 0});
+
+    size_t offset = 0;
+    for (int i = 0; i < 4; i++) {
+        std::vector<uint8_t> slice(bytes.begin() + static_cast<ptrdiff_t>(offset),
+                                   bytes.end());
+        size_t used = 0;
+        auto decoded = HVMInstruction::decode(slice, used);
+        ASSERT_NE(decoded, nullptr) << "Decode failed at instruction " << i;
+        EXPECT_EQ(used, 8);
+        EXPECT_TRUE(decoded->isExtended());
+        offset += used;
+    }
+    EXPECT_EQ(offset, bytes.size());
+}
+
+TEST_F(HVMInstructionTest, SYSCALLVariousIds) {
+    std::vector<int16_t> ids = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11};
+    for (auto id : ids) {
+        HVMInstruction orig(Opcode::SYSCALL, OperandsI{1, 0, id});
+        auto encoded = orig.encode();
+        ASSERT_EQ(encoded.size(), 8);
+        EXPECT_EQ(encoded[0], 0xFE);
+
+        auto decoded = HVMInstruction::decode(encoded);
+        ASSERT_NE(decoded, nullptr);
+        EXPECT_EQ(decoded->getOpcode(), Opcode::SYSCALL);
+        ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded->getOperands()));
+        const auto& ops = std::get<OperandsI>(decoded->getOperands());
+        EXPECT_EQ(ops.imm15, id);
+        EXPECT_EQ(ops.rd, 1);
+    }
+}
+
+TEST_F(HVMInstructionTest, SYSCALLNegativeId) {
+    HVMInstruction orig(Opcode::SYSCALL, OperandsI{1, 0, -1});
+    auto encoded = orig.encode();
+    ASSERT_EQ(encoded.size(), 8);
+
+    auto decoded = HVMInstruction::decode(encoded);
+    ASSERT_NE(decoded, nullptr);
+    ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded->getOperands()));
+    const auto& ops = std::get<OperandsI>(decoded->getOperands());
+    EXPECT_EQ(ops.imm15, -1);
+}
+
+TEST_F(HVMInstructionTest, PUSHRegisterFieldConsistency) {
+    // PUSH is R-format with operand in rd field (bits 24:20).
+    // Verify encode/decode round-trip for all valid register indices.
+    for (int rd = 0; rd <= 31; rd++) {
+        HVMInstruction orig(Opcode::PUSH, OperandsR{static_cast<uint8_t>(rd), 0, 0, 0});
+        auto encoded = orig.encode();
+        ASSERT_EQ(encoded.size(), 4);
+
+        auto decoded = HVMInstruction::decode(encoded);
+        ASSERT_NE(decoded, nullptr);
+        EXPECT_EQ(decoded->getOpcode(), Opcode::PUSH);
+        ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded->getOperands()));
+        const auto& ops = std::get<OperandsR>(decoded->getOperands());
+        // The implementation stores the source register in rd (bits 24:20)
+        EXPECT_EQ(ops.rd, rd) << "PUSH register mismatch for rd=" << rd;
+    }
+}
+
+TEST_F(HVMInstructionTest, POPRegisterFieldConsistency) {
+    for (int rd = 0; rd <= 31; rd++) {
+        HVMInstruction orig(Opcode::POP, OperandsR{static_cast<uint8_t>(rd), 0, 0, 0});
+        auto encoded = orig.encode();
+        ASSERT_EQ(encoded.size(), 4);
+
+        auto decoded = HVMInstruction::decode(encoded);
+        ASSERT_NE(decoded, nullptr);
+        EXPECT_EQ(decoded->getOpcode(), Opcode::POP);
+        ASSERT_TRUE(std::holds_alternative<OperandsR>(decoded->getOperands()));
+        const auto& ops = std::get<OperandsR>(decoded->getOperands());
+        EXPECT_EQ(ops.rd, rd) << "POP register mismatch for rd=" << rd;
+    }
+}
+
+TEST_F(HVMInstructionTest, CALLEncodeDecodeAllRegisters) {
+    // CALL is J-format with rd (typically r29) and offset
+    for (int rd = 0; rd <= 31; rd++) {
+        int32_t offset = 100 + rd * 10;
+        HVMInstruction orig(Opcode::CALL, OperandsJ{static_cast<uint8_t>(rd), offset});
+        auto encoded = orig.encode();
+        ASSERT_EQ(encoded.size(), 8);
+        EXPECT_EQ(encoded[0], 0xFE);
+
+        auto decoded = HVMInstruction::decode(encoded);
+        ASSERT_NE(decoded, nullptr);
+        EXPECT_EQ(decoded->getOpcode(), Opcode::CALL);
+        ASSERT_TRUE(std::holds_alternative<OperandsJ>(decoded->getOperands()));
+        const auto& ops = std::get<OperandsJ>(decoded->getOperands());
+        EXPECT_EQ(ops.rd, rd);
+        EXPECT_EQ(ops.offset, offset);
+    }
+}
+
+TEST_F(HVMInstructionTest, ToAssemblyJFormatEdgeCases) {
+    // TAILCALL should not show rd register (offset only)
+    HVMInstruction tailcall(Opcode::TAILCALL, OperandsJ{0, 200});
+    tailcall.setFormat(InstructionFormat::J);
+    auto asmTailcall = tailcall.toAssembly();
+    EXPECT_EQ(asmTailcall, "tailcall 200")
+        << "TAILCALL assembly should not include rd: got '" << asmTailcall << "'";
+
+    // CALL should show rd and offset
+    HVMInstruction call(Opcode::CALL, OperandsJ{29, 200});
+    call.setFormat(InstructionFormat::J);
+    auto asmCall = call.toAssembly();
+    EXPECT_EQ(asmCall, "call r29, 200")
+        << "CALL assembly should include rd: got '" << asmCall << "'";
+}
+
+TEST_F(HVMInstructionTest, ToAssemblySYSCALL) {
+    HVMInstruction syscall(Opcode::SYSCALL, OperandsI{1, 0, 5});
+    syscall.setFormat(InstructionFormat::I);
+    auto asmResult = syscall.toAssembly();
+    // SYSCALL should match its I-format assembly
+    EXPECT_EQ(asmResult, "syscall r1, r0, 5");
+}
+
+TEST_F(HVMInstructionTest, ToAssemblyRET) {
+    HVMInstruction ret(Opcode::RET, OperandsR{0, 0, 0, 0});
+    auto asmResult = ret.toAssembly();
+    EXPECT_EQ(asmResult, "ret r0, r0, r0");
+}
+
+TEST_F(HVMInstructionTest, ToAssemblyNOP) {
+    HVMInstruction nop(Opcode::NOP, OperandsR{0, 0, 0, 0});
+    auto asmResult = nop.toAssembly();
+    EXPECT_EQ(asmResult, "nop r0, r0, r0");
+}
+
+TEST_F(HVMInstructionTest, ToAssemblyBREAK) {
+    HVMInstruction breakIns(Opcode::BREAK, OperandsR{0, 0, 0, 0});
+    breakIns.setFormat(InstructionFormat::R);
+    auto asmResult = breakIns.toAssembly();
+    EXPECT_EQ(asmResult, "break r0, r0, r0");
+}
+
+TEST_F(HVMInstructionTest, ExtendedOpcodeRejectsMalformedEncoding) {
+    // Missing escape byte entirely
+    std::vector<uint8_t> noEscape = {0x00, 0x00, 0x00, 0x00};
+    auto decoded = HVMInstruction::decode(noEscape);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_FALSE(decoded->isExtended());
+
+    // Escape byte but truncated (only 5 bytes, need 8)
+    std::vector<uint8_t> truncated = {0xFE, 0xC0, 0x00, 0x00, 0x00};
+    size_t used = 999;
+    auto dec2 = HVMInstruction::decode(truncated, used);
+    EXPECT_EQ(dec2, nullptr);
+    EXPECT_EQ(used, 0);
+
+    // Escape byte with valid ULEB128 but missing payload (7 bytes, need 8)
+    std::vector<uint8_t> missingPayload = {0xFE, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00};
+    used = 999;
+    auto dec3 = HVMInstruction::decode(missingPayload, used);
+    EXPECT_EQ(dec3, nullptr);
+    EXPECT_EQ(used, 0);
+}

@@ -22,7 +22,8 @@ public:
 
     // Get simple name (last component) - "String" from "std.String"
     const std::string& getName() const {
-        return components_.empty() ? components_[0] : components_.back();
+        static const std::string empty;
+        return components_.empty() ? empty : components_.back();
     }
 
     // Get module path (all but last component) - ["std"] from "std.String"

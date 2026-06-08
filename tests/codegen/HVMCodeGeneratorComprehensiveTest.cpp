@@ -407,8 +407,8 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallMangledSymbol) {
     ASSERT_NE(module, nullptr);
 
     // The call site uses "ptr" (p) for arguments since type inference is not yet available.
-    // The symbol is registered as undefined; the mangled format includes className and methodName.
-    auto* sym = module->getSymbol("_F_Calculator_add_v_p");
+    // The symbol is registered as undefined; the mangled format includes modulePath, className and methodName.
+    auto* sym = module->getSymbol("_F_M_test_E_Calculator_add_v_p");
     ASSERT_NE(sym, nullptr);
     EXPECT_EQ(sym->type, Symbol::STT_FUNC);
 }

@@ -2,7 +2,7 @@ Mnemonic,Opcode,Encoding,Format,Operands,Operation,Description,Func,Example
 NOP,0x00,base32,R,"-, -, -, -",-,Performs no operation. Used for padding and timing.,-,nop
 MOV,0x01,base32,R,"rd, rs, -, -",rd = rs,Copies the contents of source register rs to destination register rd.,-,mov r1, r2
 MOVZ,0x03,base32,I,"rd, rs, imm15",rd = rs | zero_extend(imm15),Zero-extends a 15-bit immediate value and performs bitwise OR with rs; storing the result in rd.,-,movz r1, r0, 42
-LUI,0x04,base32,I,"rd, rs, imm15",rd = rs | (imm15 << 32),Loads a 15-bit immediate value into bits 32-46 of rd; effectively loading the upper half of a 64-bit register when used with rs.,-,lui r1, r0, 0x1234
+LUI,0x04,base32,I,"rd, rs, imm15",rd = rs | (imm15 << 49),Loads a 15-bit immediate value into bits 49-63 of rd; effectively loading the upper portion of a 64-bit register when used with rs.,-,lui r1, r0, 0x1234
 ADDI,0x05,base32,I,"rd, rs, imm15",rd = rs + sign_extend(imm15),Adds a sign-extended 15-bit immediate value to the contents of rs and stores the result in rd.,-,addi r1, r2, 10
 ADD,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 + rs2,Adds the contents of rs1 and rs2 and stores the 64-bit result in rd.,0,add r1, r2, r3
 SUB,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtracts the contents of rs2 from rs1 and stores the 64-bit result in rd.,1,sub r1, r2, r3
@@ -56,5 +56,5 @@ ADJSP,0x82,escape32,I,"-, -, imm15",sp += sign_extend(imm15),Adjusts the stack p
 FRAME,0x83,escape32,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Calculates the address [r30 + sign_extend(imm15)] and stores it in rd. Used for local variable access.,-,frame r1, -8
 CALL,0xB4,escape32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and saves return address in rd (r29). Used for direct calls.,-,call r29, 200
 TAILCALL,0xB6,escape32,J,offset,tail_call offset,Performs an unconditional tail-call jump to PC + sign_extend(offset) * 4 without saving return address.,-,tailcall 200
-SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Result is stored in rd.,-,syscall r1, r0, 10
+SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Arguments passed in r2 (and r3 for two-arg syscalls). Result stored in rd.,-,syscall r1, r0, 10
 BREAK,0xC1,escape32,R,"-, -, -, -",trap_to_debugger,Triggers a software breakpoint trap to the host environment or debugger.,-,break

@@ -415,7 +415,7 @@ std::string HVMInstruction::toAssembly() const {
         case InstructionFormat::J:
             if (std::holds_alternative<OperandsJ>(operands_)) {
                 const auto& ops = std::get<OperandsJ>(operands_);
-                if (mnemonic_ == "jmp") {
+                if (mnemonic_ == "jmp" || mnemonic_ == "tailcall") {
                     oss << ops.offset;
                 } else {
                     oss << "r" << static_cast<int>(ops.rd) << ", " << ops.offset;

@@ -3304,7 +3304,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             }
             case hvm::Opcode::LUI: {
                 auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                writeReg(o.rd, readReg(o.rs) | (static_cast<uint64_t>(static_cast<uint16_t>(o.imm15)) << 32U));
+                writeReg(o.rd, readReg(o.rs) | (static_cast<uint64_t>(static_cast<uint16_t>(o.imm15)) << 49U));
                 break;
             }
             case hvm::Opcode::ADDI: {
@@ -3837,6 +3837,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             }
             case hvm::Opcode::BREAK:
                 lastError_ = "BREAK trap encountered";
+                state.trapHit = true;
                 return -1;
             default:
                 lastError_ = "Unsupported opcode in interpreter: " + ins->getMnemonic();
@@ -4220,7 +4221,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty()});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -4512,7 +4513,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     writeReg(o.rd, builder.CreateOr(readReg(o.rs), builder.getInt64(static_cast<uint16_t>(o.imm15))));
                 } else if (op == hvm::Opcode::LUI) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                    auto hi = builder.CreateShl(builder.getInt64(static_cast<uint16_t>(o.imm15)), builder.getInt64(32));
+                    auto hi = builder.CreateShl(builder.getInt64(static_cast<uint16_t>(o.imm15)), builder.getInt64(49));
                     writeReg(o.rd, builder.CreateOr(readReg(o.rs), hi));
                 } else if (op == hvm::Opcode::ADDI) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
@@ -4943,6 +4944,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.CreateBr(syscallDone);
                     builder.SetInsertPoint(syscallDone);
                 } else if (op == hvm::Opcode::BREAK) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
                     builder.CreateRet(builder.getInt64(-1));
                     break;
                 } else {
@@ -5133,6 +5135,10 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
         gStateOwnerByPtr.erase(&state);
     }
     shadow_clear_state(&state);
+    if (state.trapHit) {
+        setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed, "BREAK trap encountered");
+        return -1;
+    }
     return rv;
 }
 

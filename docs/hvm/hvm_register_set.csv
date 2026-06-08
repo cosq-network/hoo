@@ -29,5 +29,5 @@ r26,saved11,64,Callee-saved register.
 r27,saved12,64,Callee-saved register.
 r28,saved13,64,Callee-saved register.
 r29,lr,64,Link register holding return address for `RET`.
-r30,fp,64,"Frame pointer. Optional, used for debugging."
+r30,fp,64,"Frame pointer. Required by ENTER/LEAVE/FRAME instructions."
 r31,sp,64,Stack pointer.

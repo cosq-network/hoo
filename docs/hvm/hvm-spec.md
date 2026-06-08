@@ -15,6 +15,10 @@ Anything not required by a pure RISC core (SIMD, threading, interrupts, speciali
 - downward-growing stack
 - flat physical memory model (paged/protected via MMU if present)
 - 32-bit base instruction words with escape-prefixed extended opcodes for ops >= 0x80
+- Extended (>= 0x80) opcodes use an 8-byte encoding: escape byte `0xFE`, ULEB128-encoded opcode,
+  zero-padding to offset 4, then the 32-bit base-format payload (R/I/RI/B/J). The payload
+  encoding is identical to base-format instructions but the opcode field in the payload is ignored
+  (the opcode is taken from the ULEB128 value).
 
 ## 3. Register Set
 
@@ -63,18 +67,41 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 ### 5.2 Explicitly Excluded from Core (Lowered to Software)
 
 The following are **NOT** in the ISA and must be lowered by the compiler:
-- `NEW`/`NEWA`: Lowered to `CALL hoo_malloc`.
+- `NEW`/`NEWA`: Lowered to `CALL hoo_alloc`.
 - `LDF`/`STF`: Lowered to `ADDI` + `LD.D`/`ST.D`.
 - `LDELEM`/`STELEM`: Lowered to pointer arithmetic + `LD.D`/`ST.D`.
 - `TRY`/`CATCH`/`THROW`: Lowered to control flow + `CALL hoo_push_handler`.
 
 ## 6. Mapping to Current Grammar
 
-- `newExpression` -> `CALL hoo_malloc` + `CALL` constructor.
+- `newExpression` -> `CALL hoo_alloc` + `CALL` constructor.
 - member/index access -> explicit pointer arithmetic + `LD.D`/`ST.D`.
 - `try/catch/finally` -> `CALL hoo_push_handler` + conditional control flow.
 
-## 7. Notes
+## 7. System Call (SYSCALL) Interface
+
+`SYSCALL` dispatches to internal runtime services via the immediate field `imm15`:
+
+| imm15 | Name           | Operation                              | Reads Register | Writes Register |
+|-------|----------------|----------------------------------------|----------------|-----------------|
+| 1     | `kSysAlloc`    | `rd = hoo_alloc(r2, r3)`              | r2 (size), r3 (typeId) | rd |
+| 2     | `kSysRetain`   | `rd = hoo_retain(r2)`                 | r2 (object)   | rd |
+| 3     | `kSysRelease`  | `rd = hoo_release(r2)`                | r2 (object)   | rd |
+| 4     | `kSysRefcount` | `rd = hoo_refcount(r2)`               | r2 (object)   | rd |
+| 5     | `kSysTypeId`   | `rd = hoo_typeid(r2)`                 | r2 (object)   | rd |
+| 6     | `kSysException`| `rd = hoo_exception_runtime(0)`       | —             | rd |
+| 7     | `kSysPushHandler`   | `rd = hoo_push_handler(r2)`      | r2 (handler PC) | rd |
+| 8     | `kSysPopHandler`    | `rd = hoo_pop_handler()`          | —             | rd |
+| 9     | `kSysThrowToHandler`| `rd = hoo_throw_handler(r2)`     | r2 (exception) | rd |
+| 10    | `kSysRethrowToHandler`| `rd = hoo_rethrow_handler()`   | —             | rd |
+| 11    | `kSysStringData`| `rd = hoo_string_data(r2)`            | r2 (string)   | rd |
+
+Arguments are passed in registers `r2` and `r3`; the result is written to `rd` (the `rd` field of the I-format instruction).
+
+## 8. Notes
 
 - This spec is a **pure hardware profile**, suitable for physical CPU design.
 - The HVM backend now performs aggressive lowering to maintain this purity.
+- **RET implementation note**: The architectural semantics of `RET` are `pc = r29` (branch to link register). In the interpreter and JIT backends, `RET` is implemented via native C++ function return (`return r1`); this is equivalent because `CALL` stores the return address (`pc+4`) in `r29` before transferring control via a C++ function call. A physical hardware implementation must execute `pc = r29` directly.
+- **JAL / CALL redundancy**: `JAL` (base32, 16-bit offset) and `CALL` (escape32, 20-bit offset) are semantically identical — both set `rd = pc+4; pc += offset`. `CALL` provides a larger reachable range; `JAL` saves code space when the offset fits in 16 bits.
+- **JMP / TAILCALL redundancy**: `JMP` (base32, 16-bit offset) and `TAILCALL` (escape32, 20-bit offset) are semantically identical — both perform `pc += offset` without saving a return address. `TAILCALL` provides a larger range; `JMP` saves code space when the offset fits.

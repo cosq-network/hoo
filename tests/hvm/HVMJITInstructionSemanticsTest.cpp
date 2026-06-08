@@ -754,6 +754,70 @@ TEST_F(HVMJITInstructionSemanticsTest, InvalidStoreAddressReportsError) {
     EXPECT_TRUE(invalid || unaligned);
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, NestedCallReturnsCorrectly) {
+    // Main calls helper which calls inner; both return correctly.
+    // Instruction layout (CALL=escape32 8B, RET=MOVZ=base32 4B):
+    //   PC 0:  CALL r29, 3      (8B) target =  0 + 3*4 = 12  -> helper
+    //   PC 8:  RET               (4B)
+    //   PC 12: CALL r29, 3      (8B) target = 12 + 3*4 = 24  -> inner
+    //   PC 20: RET               (4B)
+    //   PC 24: MOVZ r1,r0,42    (4B)
+    //   PC 28: RET               (4B)
+    std::vector<HVMInstruction> ins{
+        makeJ(Opcode::CALL, OperandsJ{29, 3}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeJ(Opcode::CALL, OperandsJ{29, 3}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 42}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    // Symbols point to the helper (PC 12) and inner (PC 24) entry points
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        funcSym("_F_helper_v", 12),
+        funcSym("_F_inner_v", 24),
+    };
+    io.binaryFiles["nested_call.ho"] = buildModuleBytes("nested_call", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("nested_call.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 42) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, CallRestoresReturnAddressAfterNestedCall) {
+    // main calls helper which calls inner; both return to the correct pc.
+    // Instruction layout (CALL=escape32 8B, ADDI=MOVZ=base32 4B, RET=base32 4B):
+    //   PC 0:  MOVZ r1,r0,0     (4B)  r1 = 0
+    //   PC 4:  CALL r29, 4      (8B)  target =  4 + 4*4 = 20  -> helper
+    //   PC 12: ADDI r1,r1,10    (4B)
+    //   PC 16: RET               (4B)
+    //   PC 20: CALL r29, 4      (8B)  target = 20 + 4*4 = 36  -> inner
+    //   PC 28: ADDI r1,r1,1     (4B)
+    //   PC 32: RET               (4B)
+    //   PC 36: MOVZ r1,r0,5     (4B)
+    //   PC 40: RET               (4B)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 0}),
+        makeJ(Opcode::CALL, OperandsJ{29, 4}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 10}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeJ(Opcode::CALL, OperandsJ{29, 4}),
+        makeI(Opcode::ADDI, OperandsI{1, 1, 1}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 5}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{
+        funcSym("_F_main_v", 0),
+        funcSym("_F_helper_v", 20),
+        funcSym("_F_inner_v", 36),
+    };
+    io.binaryFiles["retaddr_nested.ho"] = buildModuleBytes("retaddr_nested", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("retaddr_nested.ho")) << jit.getLastError();
+    // inner returns 5, helper adds 1 => 6, main adds 10 => 16
+    EXPECT_EQ(jit.run("_F_main_v"), 16) << jit.getLastError();
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, RunFailsWithNonexistentEntryPoint) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{1, 0, 42}),

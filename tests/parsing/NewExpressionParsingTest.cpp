@@ -565,7 +565,7 @@ TEST_F(NewExpressionParsingTest, AST_QualifiedNewExpression) {
     ASSERT_NE(stmt, nullptr);
     auto* newExpr = extractNewExpression(stmt);
     ASSERT_NE(newExpr, nullptr);
-    EXPECT_EQ(newExpr->getClassName(), "hoo.net.URL");
+    EXPECT_EQ(newExpr->getClassName(), "URL");
     auto* qn = newExpr->getQualifiedClassName();
     ASSERT_NE(qn, nullptr);
     EXPECT_EQ(qn->getFullName(), "hoo.net.URL");
