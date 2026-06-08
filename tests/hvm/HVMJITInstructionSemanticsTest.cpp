@@ -875,3 +875,175 @@ TEST(HooExceptionSetCurrentTest, SetCurrentSameObjectNoDoubleRelease) {
     hoo_exception_clear();
     EXPECT_EQ(hoo_exception_current(), nullptr);
 }
+
+// ---------------------------------------------------------------------------
+// SYSCALL 12-23 execution tests
+// ---------------------------------------------------------------------------
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallGetTid) {
+    // syscall 15 (GetTid): no args, returns thread ID (> 0)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 15}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 0}),
+        makeR(Opcode::CMP, OperandsR{1, 4, 5, 1}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_gettid.ho"] = buildModuleBytes("sys_gettid", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_gettid.ho")) << jit.getLastError();
+    int64_t result = jit.run("_F_main_v");
+    EXPECT_GT(result, 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallGetRandom) {
+    // syscall 23 (GetRandom): r2=buf, r3=len -> returns bytes written
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeR(Opcode::MOV, OperandsR{2, 30, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 8}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 23}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 8}),
+        makeR(Opcode::CMP, OperandsR{1, 4, 5, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_getrandom.ho"] = buildModuleBytes("sys_getrandom", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_getrandom.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallClockGetTime) {
+    // syscall 22 (ClockGetTime): r2=clk_id, r3=ts_ptr -> returns 0 on success
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeR(Opcode::MOV, OperandsR{3, 30, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 22}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 0}),
+        makeR(Opcode::CMP, OperandsR{1, 4, 5, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_clock.ho"] = buildModuleBytes("sys_clock", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_clock.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallFutexReturnsUnimplemented) {
+    // syscall 14 (Futex): stub returns -1 (ENOSYS)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{1, 0, 14}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_futex.ho"] = buildModuleBytes("sys_futex", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_futex.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallFileWriteToStdout) {
+    // syscall 18 (Write): r2=fd(1), r3=buf, r4=count -> returns bytes written
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 0x4849}),
+        makeI(Opcode::ST_H, OperandsI{5, 30, -8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),
+        makeI(Opcode::LDA, OperandsI{3, 30, -8}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 2}),
+        makeI(Opcode::SYSCALL, OperandsI{6, 0, 18}),
+        makeI(Opcode::MOVZ, OperandsI{7, 0, 2}),
+        makeR(Opcode::CMP, OperandsR{1, 6, 7, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_write.ho"] = buildModuleBytes("sys_write", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_write.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SyscallFileIOWithDiskFile) {
+    std::remove("t");
+
+    // Create "t", write "HI", close, re-open read-only, read 2 bytes, close.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 64}),
+
+        // Build path "t\0" at r30-24 using ST.H
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 116}),
+        makeI(Opcode::ST_H, OperandsI{5, 30, -24}),
+
+        // Open for writing: O_RDWR|O_CREAT|O_TRUNC = 0x602
+        makeI(Opcode::LDA, OperandsI{2, 30, -24}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1538}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 420}),
+        makeI(Opcode::SYSCALL, OperandsI{6, 0, 16}),
+        // Check open succeeded: fd should be > 0
+        makeI(Opcode::MOVZ, OperandsI{7, 0, 0}),
+        makeR(Opcode::CMP, OperandsR{8, 6, 7, 2}),   // r8 = (fd < 0) signed
+        makeI(Opcode::MOVZ, OperandsI{9, 0, 0}),
+        makeR(Opcode::CMP, OperandsR{9, 8, 9, 0}),   // r9 = (r8 == 0) = fd >= 0
+
+        // Write "HI" (0x4948) from r30-16
+        makeI(Opcode::MOVZ, OperandsI{10, 0, 0x4948}),
+        makeI(Opcode::ST_H, OperandsI{10, 30, -16}),
+        makeR(Opcode::MOV, OperandsR{2, 6, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{3, 30, -16}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 2}),
+        makeI(Opcode::SYSCALL, OperandsI{10, 0, 18}),  // write -> r10
+        makeI(Opcode::MOVZ, OperandsI{11, 0, 2}),
+        makeR(Opcode::CMP, OperandsR{11, 10, 11, 0}),  // r11 = (wrote == 2)
+
+        // Close
+        makeR(Opcode::MOV, OperandsR{2, 6, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{12, 0, 19}),
+
+        // Re-open read-only
+        makeI(Opcode::LDA, OperandsI{2, 30, -24}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{6, 0, 16}),
+
+        // Read 2 bytes into r30-32
+        makeR(Opcode::MOV, OperandsR{2, 6, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{3, 30, -32}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 2}),
+        makeI(Opcode::SYSCALL, OperandsI{13, 0, 17}),  // read -> r13
+        makeI(Opcode::MOVZ, OperandsI{14, 0, 2}),
+        makeR(Opcode::CMP, OperandsR{14, 13, 14, 0}),  // r14 = (read == 2)
+
+        // Close
+        makeR(Opcode::MOV, OperandsR{2, 6, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{15, 0, 19}),
+
+        // Combine: r1 = fd_ok + wrote2 + read2 (should be 3)
+        makeR(Opcode::ARITH, OperandsR{1, 9, 11, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 1, 14, 0}),
+
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sys_fileio.ho"] = buildModuleBytes("sys_fileio", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sys_fileio.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+    std::remove("t");
+}
+

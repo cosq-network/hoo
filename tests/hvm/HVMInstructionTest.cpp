@@ -330,6 +330,9 @@ TEST_F(HVMInstructionTest, ExtendedOpcodeRoundTripAllEscape32) {
         {Opcode::CALL,     InstructionFormat::J, OperandsJ{29, 200},    "call"},
         {Opcode::TAILCALL, InstructionFormat::J, OperandsJ{0, 200},     "tailcall"},
         {Opcode::SYSCALL,  InstructionFormat::I, OperandsI{1, 0, 5},    "syscall"},
+        {Opcode::SYSCALL,  InstructionFormat::I, OperandsI{2, 0, 12},   "syscall"},
+        {Opcode::SYSCALL,  InstructionFormat::I, OperandsI{4, 0, 15},   "syscall"},
+        {Opcode::SYSCALL,  InstructionFormat::I, OperandsI{6, 0, 23},   "syscall"},
         {Opcode::BREAK,    InstructionFormat::R, OperandsR{0, 0, 0, 0}, "break"},
     };
     for (const auto& c : cases) {

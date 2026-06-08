@@ -20,10 +20,19 @@ using namespace hvm;
 
 namespace hooc {
 
+// Map argument index to register number, skipping r4 (tp).
+// r4 is reserved as the thread pointer and not available for args.
+static uint8_t argReg(uint8_t first, size_t i) {
+    uint8_t reg = static_cast<uint8_t>(first + i);
+    if (reg >= 4) ++reg;
+    return reg;
+}
+
 HVMCodeGenerator::HVMCodeGenerator() {
     for (int i = 0; i < 32; ++i) usedRegs_[i] = false;
     // Reserved registers
     usedRegs_[0] = true; // r0 is hardwired zero
+    usedRegs_[4] = true; // r4 is tp (thread pointer)
     usedRegs_[29] = true; // lr
     usedRegs_[30] = true; // fp
     usedRegs_[31] = true; // sp
@@ -320,12 +329,13 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
 
     uint8_t firstArgReg = isMethod ? 2 : 1;
-    uint8_t maxArgRegs = isMethod ? 7 : 8;
+    // Available arg regs: r1,r2,r3,r5,r6,r7,r8 (plain, 7 max) or r2,r3,r5,r6,r7,r8 (method, 6 max)
+    uint8_t maxArgRegs = isMethod ? 6 : 7;
 
     auto mapParams = [&](const auto& params) {
         for (size_t i = 0; i < params.size() && i < maxArgRegs; ++i) {
             int32_t offset = reserveLocal(params[i]->getName(), getTypeId(&params[i]->getType(), nullptr));
-            emit(Opcode::ST_D, OperandsI{static_cast<uint8_t>(i + firstArgReg), 30, static_cast<int16_t>(offset)});
+            emit(Opcode::ST_D, OperandsI{argReg(firstArgReg, i), 30, static_cast<int16_t>(offset)});
         }
     };
 
@@ -917,11 +927,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (newExpr->getArguments()) {
             auto& args = newExpr->getArguments()->getArguments();
             std::vector<uint8_t> argRegs;
-            for (size_t i = 0; i < args.size() && i < 7; ++i) {
+            for (size_t i = 0; i < args.size() && i < 6; ++i) {
                 argRegs.push_back(visitExpression(*args[i]));
             }
             for (size_t i = 0; i < argRegs.size(); ++i) {
-                emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 2), argRegs[i], 0, 0});
+                emit(Opcode::MOV, OperandsR{argReg(2, i), argRegs[i], 0, 0});
                 freeRegister(argRegs[i]);
             }
         }
@@ -977,11 +987,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             if (funcCall->getArguments()) {
                 auto& args = funcCall->getArguments()->getArguments();
                 std::vector<uint8_t> argRegs;
-                for (size_t i = 0; i < args.size() && i < 7; ++i) {
+                for (size_t i = 0; i < args.size() && i < 6; ++i) {
                     argRegs.push_back(visitExpression(*args[i]));
                 }
                 for (size_t i = 0; i < argRegs.size(); ++i) {
-                    emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 2), argRegs[i], 0, 0});
+                    emit(Opcode::MOV, OperandsR{argReg(2, i), argRegs[i], 0, 0});
                     freeRegister(argRegs[i]);
                 }
             }
@@ -1123,11 +1133,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (funcCall->getArguments()) {
                     auto& args = funcCall->getArguments()->getArguments();
                     std::vector<uint8_t> argRegs;
-                    for (size_t i = 0; i < args.size() && i < 8; ++i) {
+                    for (size_t i = 0; i < args.size() && i < 7; ++i) {
                         argRegs.push_back(visitExpression(*args[i]));
                     }
                     for (size_t i = 0; i < argRegs.size(); ++i) {
-                        emit(Opcode::MOV, OperandsR{static_cast<uint8_t>(i + 1), argRegs[i], 0, 0});
+                        emit(Opcode::MOV, OperandsR{argReg(1, i), argRegs[i], 0, 0});
                         freeRegister(argRegs[i]);
                     }
                 }

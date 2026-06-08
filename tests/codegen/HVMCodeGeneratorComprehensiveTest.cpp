@@ -1457,3 +1457,141 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMethodCall) {
     if (!sym) sym = module->getSymbol("_F_test_i8");
     ASSERT_NE(sym, nullptr);
 }
+
+// ---------------------------------------------------------------------------
+// tp register (r4) reservation tests
+// ---------------------------------------------------------------------------
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, MethodWithMaxArgsSixCompiles) {
+    // Methods can take up to 6 real params (r2,r3,r5,r6,r7,r8, skipping r4= tp)
+    std::string code = R"(
+        class Helper {
+            func :int64 sum6(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64) {
+                return a + b + c + d + e + f;
+            }
+        }
+        func : int64 test() {
+            var h = new Helper();
+            return h.sum6(1, 2, 3, 4, 5, 6);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, MethodWithSevenArgsFails) {
+    // Methods cannot take 7 real params (only 6 arg regs after reserving r4)
+    std::string code = R"(
+        class Helper {
+            func :int64 sum7(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64, g: int64) {
+                return a + b + c + d + e + f + g;
+            }
+        }
+        func : int64 test() {
+            var h = new Helper();
+            return h.sum7(1, 2, 3, 4, 5, 6, 7);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PlainFunctionWithSevenArgsCompiles) {
+    // Plain functions can take 7 params (r1,r2,r3,r5,r6,r7,r8)
+    std::string code = R"(
+        func :int64 sum7(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64, g: int64) {
+            return a + b + c + d + e + f + g;
+        }
+        func : int64 test() {
+            return sum7(1, 2, 3, 4, 5, 6, 7);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, PlainFunctionWithEightArgsFails) {
+    // Plain functions cannot take 8 params (only 7 arg regs)
+    std::string code = R"(
+        func :int64 sum8(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64, g: int64, h: int64) {
+            return a + b + c + d + e + f + g + h;
+        }
+        func : int64 test() {
+            return sum8(1, 2, 3, 4, 5, 6, 7, 8);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ConstructorWithSixArgsCompiles) {
+    // Constructors (isMethod=true) can take up to 6 params after this (r2..r8 skipping r4)
+    std::string code = R"(
+        class Data {
+            var a: int64;
+            var b: int64;
+            var c: int64;
+            var d: int64;
+            var e: int64;
+            var f: int64;
+            constructor(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64) {
+                this.a = a; this.b = b; this.c = c;
+                this.d = d; this.e = e; this.f = f;
+            }
+        }
+        func :int64 test() {
+            var d = new Data(1, 2, 3, 4, 5, 6);
+            return d.a + d.b + d.c + d.d + d.e + d.f;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ArgR4ReservedTpNotUsed) {
+    // Verify that instructions in a method with 3+ args never reference r4
+    // as a source register in ST.D (which would indicate arg save via r4)
+    std::string code = R"(
+        class Math {
+            func :int64 add3(a: int64, b: int64, c: int64) {
+                return a + b + c;
+            }
+        }
+        func : int64 test() {
+            var m = new Math();
+            return m.add3(10, 20, 30);
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    // Find the method's instructions and verify no register 4 use
+    auto* text = module->getSection(".text");
+    ASSERT_NE(text, nullptr);
+    auto insts = module->decodeInstructions(text->data);
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::ST_D) {
+            const auto& ops = std::get<OperandsI>(inst.getOperands());
+            EXPECT_NE(ops.rd, 4) << "ST.D should not use r4 (tp) as source";
+        }
+    }
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, LocalVariableNamedR4DoesNotConflict) {
+    // A local named r4 should not conflict with tp register
+    std::string code = R"(
+        func :int64 test() {
+            var r4: int64 = 42;
+            return r4;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}

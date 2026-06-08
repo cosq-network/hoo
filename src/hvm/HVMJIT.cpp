@@ -35,6 +35,12 @@
 #include "runtime/lib/hoo_net.h"
 #include "runtime/lib/hoo_json.h"
 
+#include <fcntl.h>
+#include <pthread.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <unistd.h>
+
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
 #include "llvm/ExecutionEngine/Orc/LLJIT.h"
@@ -157,6 +163,18 @@ constexpr int16_t kSysPopHandler = 8;
 constexpr int16_t kSysThrowToHandler = 9;
 constexpr int16_t kSysRethrowToHandler = 10;
 constexpr int16_t kSysStringData = 11;
+constexpr int16_t kSysThreadCreate = 12;
+constexpr int16_t kSysThreadExit = 13;
+constexpr int16_t kSysFutex = 14;
+constexpr int16_t kSysGetTid = 15;
+constexpr int16_t kSysOpen = 16;
+constexpr int16_t kSysRead = 17;
+constexpr int16_t kSysWrite = 18;
+constexpr int16_t kSysClose = 19;
+constexpr int16_t kSysLseek = 20;
+constexpr int16_t kSysFstat = 21;
+constexpr int16_t kSysClockGetTime = 22;
+constexpr int16_t kSysGetRandom = 23;
 constexpr uint64_t kNoHandlerPc = ~uint64_t{0};
 constexpr size_t kMaxInboundTrampolineSlots = 8;
 constexpr bool kEnableEscapeAllocaPromotion = false;
@@ -1640,6 +1658,14 @@ extern "C" {
         return 0;
     }
 
+    // Base pointer for translating HVM memory offsets to real addresses.
+    // The HVM uses offset-addressed memory (std::vector<uint8_t> memory_),
+    // but POSIX syscalls need real virtual addresses.  This global lets the
+    // extern "C" helpers below compute real addresses at runtime.
+    static uint8_t* g_hvm_memory = nullptr;
+    void hvm_set_memory_base(uint8_t* base) { g_hvm_memory = base; }
+    uint8_t* hvm_get_memory_base() { return g_hvm_memory; }
+
     // HVM internal sys calls (for interpreter)
     extern "C" uint64_t hooc_hvm_sys_alloc(uint64_t size, uint64_t typeId) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_alloc(static_cast<size_t>(size), static_cast<int64_t>(typeId))));
@@ -1705,6 +1731,97 @@ extern "C" {
     }
     extern "C" uint64_t hooc_hvm_sys_should_stop_state(void* state_ptr) {
         return shadow_should_stop_state(state_ptr);
+    }
+
+    // ── Platform OS services (syscalls 12–23) ───────────────────────
+    extern "C" uint64_t hooc_hvm_sys_thread_create(uint64_t entry, uint64_t arg) {
+        pthread_t thread;
+        auto* p = new std::pair<uint64_t, uint64_t>(entry, arg);
+        auto* wrapper = +[](void* raw) -> void* {
+            auto* tp = static_cast<std::pair<uint64_t, uint64_t>*>(raw);
+            auto fn = reinterpret_cast<int64_t (*)(uint64_t)>(tp->first);
+            fn(tp->second);
+            delete tp;
+            return nullptr;
+        };
+        if (pthread_create(&thread, nullptr, wrapper, p) != 0) {
+            delete p;
+            return -1;
+        }
+        pthread_detach(thread);
+        return 0;
+    }
+    extern "C" uint64_t hooc_hvm_sys_thread_exit(uint64_t retval) {
+        pthread_exit(reinterpret_cast<void*>(retval));
+        return 0;
+    }
+    extern "C" uint64_t hooc_hvm_sys_futex(uint64_t uaddr, uint64_t op, uint64_t val) {
+        (void)uaddr; (void)op; (void)val;
+        return -1;
+    }
+    extern "C" uint64_t hooc_hvm_sys_get_tid() {
+#if defined(__APPLE__)
+        uint64_t tid = 0;
+        pthread_threadid_np(pthread_self(), &tid);
+        return tid;
+#else
+        return static_cast<uint64_t>(pthread_self());
+#endif
+    }
+    extern "C" uint64_t hooc_hvm_sys_open(uint64_t path, uint64_t flags, uint64_t mode) {
+        const char* realPath = g_hvm_memory
+            ? reinterpret_cast<const char*>(g_hvm_memory + path)
+            : reinterpret_cast<const char*>(path);
+        return static_cast<uint64_t>(::open(realPath,
+                                            static_cast<int>(flags),
+                                            static_cast<mode_t>(mode)));
+    }
+    extern "C" uint64_t hooc_hvm_sys_read(uint64_t fd, uint64_t buf, uint64_t count) {
+        void* realBuf = g_hvm_memory
+            ? g_hvm_memory + buf
+            : reinterpret_cast<void*>(buf);
+        return static_cast<uint64_t>(::read(static_cast<int>(fd),
+                                            realBuf,
+                                            static_cast<size_t>(count)));
+    }
+    extern "C" uint64_t hooc_hvm_sys_write(uint64_t fd, uint64_t buf, uint64_t count) {
+        const void* realBuf = g_hvm_memory
+            ? g_hvm_memory + buf
+            : reinterpret_cast<const void*>(buf);
+        return static_cast<uint64_t>(::write(static_cast<int>(fd),
+                                             realBuf,
+                                             static_cast<size_t>(count)));
+    }
+    extern "C" uint64_t hooc_hvm_sys_close(uint64_t fd) {
+        return static_cast<uint64_t>(::close(static_cast<int>(fd)));
+    }
+    extern "C" uint64_t hooc_hvm_sys_lseek(uint64_t fd, uint64_t offset, uint64_t whence) {
+        return static_cast<uint64_t>(::lseek(static_cast<int>(fd),
+                                             static_cast<off_t>(offset),
+                                             static_cast<int>(whence)));
+    }
+    extern "C" uint64_t hooc_hvm_sys_fstat(uint64_t fd, uint64_t buf) {
+        struct stat* realBuf = g_hvm_memory
+            ? reinterpret_cast<struct stat*>(g_hvm_memory + buf)
+            : reinterpret_cast<struct stat*>(buf);
+        return static_cast<uint64_t>(::fstat(static_cast<int>(fd), realBuf));
+    }
+    extern "C" uint64_t hooc_hvm_sys_clock_gettime(uint64_t clk_id, uint64_t ts_ptr) {
+        struct timespec* realTs = g_hvm_memory
+            ? reinterpret_cast<struct timespec*>(g_hvm_memory + ts_ptr)
+            : reinterpret_cast<struct timespec*>(ts_ptr);
+        return static_cast<uint64_t>(::clock_gettime(static_cast<clockid_t>(clk_id), realTs));
+    }
+    extern "C" uint64_t hooc_hvm_sys_getrandom(uint64_t buf, uint64_t len) {
+        void* realBuf = g_hvm_memory
+            ? g_hvm_memory + buf
+            : reinterpret_cast<void*>(buf);
+#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+        ::arc4random_buf(realBuf, static_cast<size_t>(len));
+        return len;
+#else
+        return static_cast<uint64_t>(::getrandom(realBuf, static_cast<size_t>(len), 0));
+#endif
     }
 
     void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
@@ -2059,6 +2176,7 @@ HVMJIT::HVMJIT(IOProvider& io)
     , sourceCompiler_(std::make_unique<HooCompiler>()) {
     memory_.resize(16 * 1024 * 1024, 0); // 16 MB initial virtual memory.
     memoryTop_ = 0x10000;                // keep low page unmapped-like.
+    hvm_set_memory_base(memory_.data()); // expose base to extern "C" helpers
 }
 
 HVMJIT::~HVMJIT() {
@@ -3829,6 +3947,55 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                         writeReg(o.rd, hooc_hvm_sys_string_data(readReg(2)));
                         break;
                     }
+                    case kSysThreadCreate: {
+                        writeReg(o.rd, hooc_hvm_sys_thread_create(readReg(2), readReg(3)));
+                        break;
+                    }
+                    case kSysThreadExit: {
+                        hooc_hvm_sys_thread_exit(readReg(2));
+                        writeReg(o.rd, 0);
+                        break;
+                    }
+                    case kSysFutex: {
+                        writeReg(o.rd, hooc_hvm_sys_futex(readReg(2), readReg(3), readReg(4)));
+                        break;
+                    }
+                    case kSysGetTid: {
+                        writeReg(o.rd, hooc_hvm_sys_get_tid());
+                        break;
+                    }
+                    case kSysOpen: {
+                        writeReg(o.rd, hooc_hvm_sys_open(readReg(2), readReg(3), readReg(4)));
+                        break;
+                    }
+                    case kSysRead: {
+                        writeReg(o.rd, hooc_hvm_sys_read(readReg(2), readReg(3), readReg(4)));
+                        break;
+                    }
+                    case kSysWrite: {
+                        writeReg(o.rd, hooc_hvm_sys_write(readReg(2), readReg(3), readReg(4)));
+                        break;
+                    }
+                    case kSysClose: {
+                        writeReg(o.rd, hooc_hvm_sys_close(readReg(2)));
+                        break;
+                    }
+                    case kSysLseek: {
+                        writeReg(o.rd, hooc_hvm_sys_lseek(readReg(2), readReg(3), readReg(4)));
+                        break;
+                    }
+                    case kSysFstat: {
+                        writeReg(o.rd, hooc_hvm_sys_fstat(readReg(2), readReg(3)));
+                        break;
+                    }
+                    case kSysClockGetTime: {
+                        writeReg(o.rd, hooc_hvm_sys_clock_gettime(readReg(2), readReg(3)));
+                        break;
+                    }
+                    case kSysGetRandom: {
+                        writeReg(o.rd, hooc_hvm_sys_getrandom(readReg(2), readReg(3)));
+                        break;
+                    }
                     default:
                         writeReg(o.rd, 0);
                         break;
@@ -4318,6 +4485,32 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             "hooc_hvm_sys_string_data", llvm::FunctionType::get(i64, {i64}, false));
         auto shouldStopStateCallee = module->getOrInsertFunction(
             "hooc_hvm_sys_should_stop_state", llvm::FunctionType::get(i64, {statePtrTy}, false));
+
+        // Platform OS services (syscalls 12–23)
+        auto threadCreateCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_thread_create", llvm::FunctionType::get(i64, {i64, i64}, false));
+        auto threadExitCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_thread_exit", llvm::FunctionType::get(i64, {i64}, false));
+        auto futexCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_futex", llvm::FunctionType::get(i64, {i64, i64, i64}, false));
+        auto getTidCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_get_tid", llvm::FunctionType::get(i64, false));
+        auto openCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_open", llvm::FunctionType::get(i64, {i64, i64, i64}, false));
+        auto readCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_read", llvm::FunctionType::get(i64, {i64, i64, i64}, false));
+        auto writeCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_write", llvm::FunctionType::get(i64, {i64, i64, i64}, false));
+        auto closeCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_close", llvm::FunctionType::get(i64, {i64}, false));
+        auto lseekCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_lseek", llvm::FunctionType::get(i64, {i64, i64, i64}, false));
+        auto fstatCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_fstat", llvm::FunctionType::get(i64, {i64, i64}, false));
+        auto clockGetTimeCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_clock_gettime", llvm::FunctionType::get(i64, {i64, i64}, false));
+        auto getRandomCallee = module->getOrInsertFunction(
+            "hooc_hvm_sys_getrandom", llvm::FunctionType::get(i64, {i64, i64}, false));
 
         uint64_t pc = sym.value;
         const uint64_t textSize = text->data.size();
@@ -4823,7 +5016,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
                     auto* syscallErr = llvm::BasicBlock::Create(*context, "sys_err", fn);
                     auto* syscallDone = llvm::BasicBlock::Create(*context, "sys_done", fn);
-                    auto* sw = builder.CreateSwitch(builder.getInt64(static_cast<int64_t>(o.imm15)), syscallErr, 11);
+                    auto* sw = builder.CreateSwitch(builder.getInt64(static_cast<int64_t>(o.imm15)), syscallErr, 23);
 
                     auto* allocBB = llvm::BasicBlock::Create(*context, "sys_alloc", fn);
                     sw->addCase(builder.getInt64(kSysAlloc), allocBB);
@@ -4937,6 +5130,91 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.SetInsertPoint(stringDataBB);
                     auto* strData = builder.CreateCall(stringDataCallee, {readReg(2)});
                     writeReg(o.rd, strData);
+                    builder.CreateBr(syscallDone);
+
+                    // ── Platform OS services (syscalls 12–23) ──────────────
+                    auto* threadCreateBB = llvm::BasicBlock::Create(*context, "sys_thread_create", fn);
+                    sw->addCase(builder.getInt64(kSysThreadCreate), threadCreateBB);
+                    builder.SetInsertPoint(threadCreateBB);
+                    auto* tcRet = builder.CreateCall(threadCreateCallee, {readReg(2), readReg(3)});
+                    writeReg(o.rd, tcRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* threadExitBB = llvm::BasicBlock::Create(*context, "sys_thread_exit", fn);
+                    sw->addCase(builder.getInt64(kSysThreadExit), threadExitBB);
+                    builder.SetInsertPoint(threadExitBB);
+                    auto* teRet = builder.CreateCall(threadExitCallee, {readReg(2)});
+                    writeReg(o.rd, teRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* futexBB = llvm::BasicBlock::Create(*context, "sys_futex", fn);
+                    sw->addCase(builder.getInt64(kSysFutex), futexBB);
+                    builder.SetInsertPoint(futexBB);
+                    auto* futexRet = builder.CreateCall(futexCallee, {readReg(2), readReg(3), readReg(4)});
+                    writeReg(o.rd, futexRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* getTidBB = llvm::BasicBlock::Create(*context, "sys_get_tid", fn);
+                    sw->addCase(builder.getInt64(kSysGetTid), getTidBB);
+                    builder.SetInsertPoint(getTidBB);
+                    auto* gtRet = builder.CreateCall(getTidCallee, {});
+                    writeReg(o.rd, gtRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* openBB = llvm::BasicBlock::Create(*context, "sys_open", fn);
+                    sw->addCase(builder.getInt64(kSysOpen), openBB);
+                    builder.SetInsertPoint(openBB);
+                    auto* openRet = builder.CreateCall(openCallee, {readReg(2), readReg(3), readReg(4)});
+                    writeReg(o.rd, openRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* readBB = llvm::BasicBlock::Create(*context, "sys_read", fn);
+                    sw->addCase(builder.getInt64(kSysRead), readBB);
+                    builder.SetInsertPoint(readBB);
+                    auto* readRet = builder.CreateCall(readCallee, {readReg(2), readReg(3), readReg(4)});
+                    writeReg(o.rd, readRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* writeBB = llvm::BasicBlock::Create(*context, "sys_write", fn);
+                    sw->addCase(builder.getInt64(kSysWrite), writeBB);
+                    builder.SetInsertPoint(writeBB);
+                    auto* writeRet = builder.CreateCall(writeCallee, {readReg(2), readReg(3), readReg(4)});
+                    writeReg(o.rd, writeRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* closeBB = llvm::BasicBlock::Create(*context, "sys_close", fn);
+                    sw->addCase(builder.getInt64(kSysClose), closeBB);
+                    builder.SetInsertPoint(closeBB);
+                    auto* closeRet = builder.CreateCall(closeCallee, {readReg(2)});
+                    writeReg(o.rd, closeRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* lseekBB = llvm::BasicBlock::Create(*context, "sys_lseek", fn);
+                    sw->addCase(builder.getInt64(kSysLseek), lseekBB);
+                    builder.SetInsertPoint(lseekBB);
+                    auto* lseekRet = builder.CreateCall(lseekCallee, {readReg(2), readReg(3), readReg(4)});
+                    writeReg(o.rd, lseekRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* fstatBB = llvm::BasicBlock::Create(*context, "sys_fstat", fn);
+                    sw->addCase(builder.getInt64(kSysFstat), fstatBB);
+                    builder.SetInsertPoint(fstatBB);
+                    auto* fstatRet = builder.CreateCall(fstatCallee, {readReg(2), readReg(3)});
+                    writeReg(o.rd, fstatRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* clockGetTimeBB = llvm::BasicBlock::Create(*context, "sys_clock_gettime", fn);
+                    sw->addCase(builder.getInt64(kSysClockGetTime), clockGetTimeBB);
+                    builder.SetInsertPoint(clockGetTimeBB);
+                    auto* cgtRet = builder.CreateCall(clockGetTimeCallee, {readReg(2), readReg(3)});
+                    writeReg(o.rd, cgtRet);
+                    builder.CreateBr(syscallDone);
+
+                    auto* getRandomBB = llvm::BasicBlock::Create(*context, "sys_getrandom", fn);
+                    sw->addCase(builder.getInt64(kSysGetRandom), getRandomBB);
+                    builder.SetInsertPoint(getRandomBB);
+                    auto* grRet = builder.CreateCall(getRandomCallee, {readReg(2), readReg(3)});
+                    writeReg(o.rd, grRet);
                     builder.CreateBr(syscallDone);
 
                     builder.SetInsertPoint(syscallErr);
