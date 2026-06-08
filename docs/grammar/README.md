@@ -21,7 +21,7 @@ This directory contains the normative documentation for the hoo language grammar
 
 ## Technical Foundation
 
-The hoo compiler uses **ANTLR4** for parsing. The grammar is designed to support an aggressive lowering pipeline that translates these high-level constructs into a pure 64-bit RISC ISA (`.ho` bytecode) for physical hardware compatibility. 
+The hoo compiler uses **ANTLR4** for parsing. The grammar defines postfix expressions with `DOT IDENTIFIER` for member access, `DOT NEW` for constructor invocation (`Map.new(1)`), bracket indexing, and parenthesized function calls — all lowered through the same aggressive pipeline to 64-bit RISC ISA (`.ho` bytecode) for physical hardware compatibility. 
 
 When executed, the `HVMJIT` dynamically translates this bytecode into host-native LLVM IR via LLVM ORC v2, providing zero-abstraction execution while bridging high-level operations via the `SYSCALL` interface.
 

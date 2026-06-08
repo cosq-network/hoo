@@ -35,7 +35,7 @@ The AST is not just a structural mirror of the code; it is an enriched semantic 
 | `Expression.h` | Nodes for all operations (Arith, Logic, Calls, Member Access). |
 | `Statement.h` | Control flow nodes (`if`, `while`, `for`) and Exception blocks. |
 | `Type.h` | Normative model for Hooc types (Primitive, Array, Map, Optional). |
-| `SimpleASTBuilder.cpp`| The primary engine for converting ANTLR artifacts into the Typed AST. |
+| `SimpleASTBuilder.cpp`| The primary engine for converting ANTLR artifacts into the Typed AST, including `DOT NEW` postfix support. |
 
 ## 5. Synchronizing with HVM v1.4
 
@@ -47,9 +47,9 @@ The AST must preserve metadata required for the **v1.4 "Hardware Ready"** profil
 ## 6. Development Checklist
 
 When extending the Hooc language:
-1. Update `src/parsing/Hooc.g4` with the new syntax.
+1. Update `src/parsing/Hooc.g4` with the new syntax (e.g., `DOT NEW` postfix suffix).
 2. Define the corresponding node in `src/ast/`.
 3. Update `SimpleASTBuilder` to populate the new node.
 4. Update `src/codegen/HVMCodeGenerator.cpp` to implement the lowering rule for the new node.
 5. Add comprehensive unit tests in `tests/ast/` and `tests/codegen/`.
- `tests/codegen/`.
+6. Register any JIT runtime symbols in `src/hvm/HVMJIT.cpp`'s `buildRuntimeSymbols()`.

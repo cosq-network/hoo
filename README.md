@@ -1,6 +1,6 @@
 # Hooc
 
-Last Updated: 2026-05-24
+Last Updated: 2026-06-08
 
 Hooc is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -22,7 +22,8 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Phase 5 (Literals & Interpolation)**: unicode-aware character support, 64-bit floating point lowering, and full string interpolation with automatic conversion implemented.
 - [x] **Phase 6 (Hardening)**: refactored low-level array representation, implemented managed realloc/capacity tracking, and stabilized full test suite.
 - [x] **Phase 7 (System Services)**: expanded SYSCALL table from 11 to 23 entries, adding OS-level file I/O, threading, clock, and random services; reserved `r4` as thread pointer (`tp`).
-- [x] **Verification**: full preset test run passing (`1236+ tests`).
+- [x] **Phase 8 (Class Method Dispatch)**: class-based method-call syntax (`Math.abs(x)`, `map.length()`) with full JIT support for all runtime modules; `DOT NEW` constructor syntax (`Map.new(1)`); consistent `"ptr"` mangling for all method parameters and return types.
+- [x] **Verification**: full preset test run passing (`1267+ tests`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 
@@ -67,7 +68,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (1236+ tests in the current preset run).
+tests/        Exhaustive unit and integration test suites (1267+ tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
