@@ -45,6 +45,21 @@ static bool isSingletonBuiltinClass(const std::string& className) {
     return singletons.count(className) > 0;
 }
 
+// Return type for singleton built-in class methods.
+static std::string singletonMethodReturnType(const std::string& className, const std::string& methodName) {
+    static const std::unordered_set<std::string> int64Methods = {
+        "abs", "min", "max", "sign", "gcd", "factorial", "fibonacci",
+        "is_even", "is_odd", "is_prime", "lcm",
+        "exists", "count", "has"
+    };
+    static const std::unordered_set<std::string> doubleMethods = {
+        "sqrt", "get_pi", "pow", "floor", "ceil", "sin"
+    };
+    if (int64Methods.count(methodName)) return "int64";
+    if (doubleMethods.count(methodName)) return "double";
+    return "ptr";
+}
+
 // Map built-in class names to their JIT symbol prefix for modules
 // that use the "prefix_methodname" convention.
 static std::string classToPrefix(const std::string& className) {
@@ -1181,7 +1196,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     mp.className = resolvedClass;
                     mp.classModifiers = {"SINGLETON"};
                     mp.functionName = methodName;
-                    mp.returnType = "void";
+                    mp.returnType = singletonMethodReturnType(resolvedClass, methodName);
                     if (funcCall->getArguments()) {
                         auto& args = funcCall->getArguments()->getArguments();
                         for (size_t i = 0; i < args.size(); ++i) {
@@ -1763,8 +1778,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new") return 103;
                         return 101; // Map.get_*, etc. return String
                     }
-                    // Most builtin class methods return strings
-                    return 101;
+                    if (isBuiltinClassName(clsName)) {
+                        // Most builtin class methods return strings
+                        return 101;
+                    }
                 }
             }
         }
