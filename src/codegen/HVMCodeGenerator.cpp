@@ -31,9 +31,18 @@ static uint8_t argReg(uint8_t first, size_t i) {
 // Built-in classes that support class.method mangling in JIT symbols.
 static bool isClassMethodJitClass(const std::string& className) {
     static const std::unordered_set<std::string> cmClasses = {
-        "String", "URL", "HttpClient", "HttpResponse", "Process", "Console"
+        "String"
     };
     return cmClasses.count(className) > 0;
+}
+
+// Built-in classes that behave as singletons (no instances, all static methods).
+static bool isSingletonBuiltinClass(const std::string& className) {
+    static const std::unordered_set<std::string> singletons = {
+        "Math", "Fs", "System", "Encoding", "Uuid",
+        "Compression", "Args", "Csv"
+    };
+    return singletons.count(className) > 0;
 }
 
 // Map built-in class names to their JIT symbol prefix for modules
@@ -57,9 +66,9 @@ static std::string classToPrefix(const std::string& className) {
         {"Args", "args"},
         {"Csv", "csv"},
         {"Console", "console"},
-        {"URL", "url"},
-        {"HttpClient", "http_client"},
-        {"HttpResponse", "http_response"},
+        {"URL", "net_url"},
+        {"HttpClient", "net_http_client"},
+        {"HttpResponse", "net_http_response"},
         {"Thread", "thread"},
         {"Array", "array"},
         {"Map", "map"},
@@ -1168,6 +1177,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                             mp.parameterTypes.push_back("ptr");
                         }
                     }
+                } else if (isSingletonBuiltinClass(resolvedClass)) {
+                    mp.className = resolvedClass;
+                    mp.classModifiers = {"SINGLETON"};
+                    mp.functionName = methodName;
+                    mp.returnType = "void";
+                    if (funcCall->getArguments()) {
+                        auto& args = funcCall->getArguments()->getArguments();
+                        for (size_t i = 0; i < args.size(); ++i) {
+                            mp.parameterTypes.push_back("ptr");
+                        }
+                    }
                 } else {
                     std::string prefix = classToPrefix(resolvedClass);
                     mp.functionName = prefix + "_" + methodName;
@@ -1207,88 +1227,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             if (id) {
                 std::string functionName = id->getName();
                 
-                // Plain function mangling logic
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
                 mp.modulePath = modulePath_;
-
-                // Detect class-based standard library operations
-                struct {
-                    bool active = false;
-                    std::string className;
-                    std::string rawMethod;
-                    bool instanceMethod;
-                } classOp;
-
-                if (functionName.rfind("string_", 0) == 0) {
-                    classOp.active = true;
-                    classOp.className = "String";
-                    classOp.rawMethod = functionName.substr(7);
-                } else if (functionName.rfind("url_", 0) == 0) {
-                    classOp.active = true;
-                    classOp.className = "URL";
-                    classOp.rawMethod = functionName.substr(4);
-                } else if (functionName.rfind("http_response_", 0) == 0) {
-                    classOp.active = true;
-                    classOp.className = "HttpResponse";
-                    classOp.rawMethod = functionName.substr(15);
-                } else if (functionName.rfind("http_client_", 0) == 0) {
-                    classOp.active = true;
-                    classOp.className = "HttpClient";
-                    classOp.rawMethod = functionName.substr(13);
-                } else if (functionName.rfind("process_", 0) == 0) {
-                    classOp.active = true;
-                    classOp.className = "Process";
-                    classOp.rawMethod = functionName.substr(8);
-                } else if (functionName.rfind("console_", 0) == 0) {
-                    classOp.active = true;
-                    classOp.className = "Console";
-                    classOp.rawMethod = functionName.substr(8);
-                }
-
-                // Redirect built-ins and standard library to hoo namespace
-                if (!classOp.active && (
-                    functionName == "print" || functionName == "println" ||
-                    functionName == "readline" || functionName == "readchar" ||
-                    functionName.rfind("fs_", 0) == 0 ||
-                    functionName.rfind("system_", 0) == 0 ||
-                    functionName.rfind("regex_", 0) == 0 ||
-                    functionName.rfind("uuid_", 0) == 0 ||
-                    functionName.rfind("encoding_", 0) == 0 ||
-                    functionName.rfind("math_", 0) == 0 ||
-                    functionName.rfind("thread_", 0) == 0 ||
-                    functionName.rfind("csv_", 0) == 0 ||
-                    functionName.rfind("datetime_", 0) == 0 ||
-                    functionName.rfind("path_", 0) == 0 ||
-                    functionName.rfind("hashing_", 0) == 0 ||
-                    functionName.rfind("compression_", 0) == 0 ||
-                    functionName.rfind("args_", 0) == 0 ||
-                    functionName.rfind("net_", 0) == 0 ||
-                    functionName.rfind("json_", 0) == 0 ||
-                    functionName.rfind("array_", 0) == 0 ||
-                    functionName.rfind("map_", 0) == 0)) {
-                    mp.modulePath = {"hoo"};
-                } else if (classOp.active) {
-                    mp.modulePath = {"hoo"};
-                    mp.className = classOp.className;
-                    mp.functionName = classOp.rawMethod;
-
-                    if (classOp.className == "String") {
-                        classOp.instanceMethod = !(classOp.rawMethod == "new" || classOp.rawMethod == "repeat" ||
-                                                   classOp.rawMethod == "join" || classOp.rawMethod == "from_cstr" ||
-                                                   classOp.rawMethod == "from_int64" || classOp.rawMethod == "from_double" ||
-                                                   classOp.rawMethod == "from_any" || classOp.rawMethod == "from_object");
-                    } else if (classOp.className == "URL") {
-                        classOp.instanceMethod = (classOp.rawMethod != "new");
-                    } else if (classOp.className == "HttpResponse") {
-                        classOp.instanceMethod = true;
-                    } else if (classOp.className == "HttpClient") {
-                        classOp.instanceMethod = (classOp.rawMethod != "new");
-                    } else {
-                        classOp.instanceMethod = false;
-                    }
-                    mp.isStatic = !classOp.instanceMethod;
-                }
 
                 if (funcCall->getArguments()) {
                     auto& args = funcCall->getArguments()->getArguments();
@@ -1303,40 +1244,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
                 
                 mp.returnType = "void";
-                if (classOp.active) {
-                    bool isInt64Ret = false;
-                    if (classOp.className == "String") {
-                        isInt64Ret = (classOp.rawMethod == "length" || classOp.rawMethod == "is_empty" ||
-                                      classOp.rawMethod == "equals" || classOp.rawMethod == "contains" ||
-                                      classOp.rawMethod == "starts_with" || classOp.rawMethod == "index_of");
-                    } else if (classOp.className == "URL") {
-                        isInt64Ret = (classOp.rawMethod == "port");
-                    } else if (classOp.className == "HttpResponse") {
-                        isInt64Ret = (classOp.rawMethod == "status_code" || classOp.rawMethod == "is_success");
-                    } else if (classOp.className == "HttpClient") {
-                        isInt64Ret = (classOp.rawMethod == "set_header");
-                    } else if (classOp.className == "Process") {
-                        isInt64Ret = (classOp.rawMethod == "self_pid" || classOp.rawMethod == "kill");
-                    } else if (classOp.className == "Console") {
-                        isInt64Ret = (classOp.rawMethod == "readchar");
-                    }
-                    if (isInt64Ret) {
-                        mp.returnType = "int64";
-                    } else if (classOp.rawMethod == "release" ||
-                               classOp.rawMethod == "set_timeout" ||
-                               classOp.rawMethod == "print" ||
-                               classOp.rawMethod == "println") {
-                        mp.returnType = "void";
-                    } else {
-                        mp.returnType = "ptr";
-                    }
-                    if (funcCall->getArguments()) {
-                        auto& args = funcCall->getArguments()->getArguments();
-                        for (size_t i = (classOp.instanceMethod ? 1 : 0); i < args.size(); ++i) {
-                            mp.parameterTypes.push_back("ptr");
-                        }
-                    }
-                } else if (funcCall->getArguments()) {
+                if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                          mp.parameterTypes.push_back("ptr");
                     }
@@ -1847,8 +1755,16 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             clsName = id->getName();
                         }
                     }
-                    if (clsName == "Array") return 102;
-                    if (clsName == "Map") return 103;
+                    if (clsName == "Array") {
+                        if (ma->getMember() == "new") return 102;
+                        return 101; // Array.get_string, etc. return String
+                    }
+                    if (clsName == "Map") {
+                        if (ma->getMember() == "new") return 103;
+                        return 101; // Map.get_*, etc. return String
+                    }
+                    // Most builtin class methods return strings
+                    return 101;
                 }
             }
         }

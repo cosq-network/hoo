@@ -14,7 +14,7 @@ TEST_F(HooStandardLibraryJitTest, SystemHostname) {
     const std::string source = R"(
         func:int64 test() {
             var name = System.hostname();
-            return string_length(name);
+            return name.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -50,7 +50,7 @@ TEST_F(HooStandardLibraryJitTest, UuidV4) {
         func:int64 test() {
             var id = Uuid.v4();
             var str = Uuid.to_string(id);
-            return string_length(str);
+            return str.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -64,7 +64,7 @@ TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
             var bytes = str.data();
             var len = str.length();
             var b64 = Encoding.base64_encode(bytes, len);
-            return string_length(b64);
+            return b64.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

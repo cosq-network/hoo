@@ -22,7 +22,7 @@ TEST_F(HooProcessJitTest, Capture) {
     const std::string source = R"(
         func :int64 test() {
             var out = Process.capture("echo hello");
-            return string_length(out);
+            return out.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

@@ -16,7 +16,7 @@ protected:
 
 TEST_F(HooArrayJitTest, NewArray) {
     const std::string source = R"(
-        func :int64 test() { return array_new(); }
+        func :int64 test() { return Array.new(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_i8");
@@ -29,9 +29,9 @@ TEST_F(HooArrayJitTest, NewArray) {
 TEST_F(HooArrayJitTest, PushGetDouble) {
     const std::string source = R"(
         func :double test() {
-            var a = array_new();
-            array_push_double(a, 3.14);
-            return array_get_double(a, 0);
+            var a = Array.new();
+            Array.push_double(a, 3.14);
+            return Array.get_double(a, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -44,9 +44,9 @@ TEST_F(HooArrayJitTest, PushGetDouble) {
 TEST_F(HooArrayJitTest, PushGetInt64) {
     const std::string source = R"(
         func :int64 test() {
-            var a = array_new();
-            array_push_int64(a, 42);
-            return array_get_int64(a, 0);
+            var a = Array.new();
+            Array.push_int64(a, 42);
+            return Array.get_int64(a, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -56,10 +56,10 @@ TEST_F(HooArrayJitTest, PushGetInt64) {
 TEST_F(HooArrayJitTest, ArrayLength) {
     const std::string source = R"(
         func :int64 test() {
-            var a = array_new();
-            array_push_int64(a, 10);
-            array_push_int64(a, 20);
-            return array_length(a);
+            var a = Array.new();
+            Array.push_int64(a, 10);
+            Array.push_int64(a, 20);
+return Array.length(a);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -69,10 +69,10 @@ TEST_F(HooArrayJitTest, ArrayLength) {
 TEST_F(HooArrayJitTest, ArrayClear) {
     const std::string source = R"(
         func :int64 test() {
-            var a = array_new();
-            array_push_int64(a, 10);
-            array_clear(a);
-            return array_length(a);
+            var a = Array.new();
+            Array.push_int64(a, 10);
+            Array.clear(a);
+            return Array.length(a);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -82,8 +82,8 @@ TEST_F(HooArrayJitTest, ArrayClear) {
 TEST_F(HooArrayJitTest, ArrayEmpty) {
     const std::string source = R"(
         func :int64 test() {
-            var a = array_new();
-            return array_empty(a);
+            var a = Array.new();
+            return Array.empty(a);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -93,10 +93,10 @@ TEST_F(HooArrayJitTest, ArrayEmpty) {
 TEST_F(HooArrayJitTest, PushGetString) {
     const std::string source = R"(
         func :int64 test() {
-            var a = array_new();
-            array_push_string(a, "hello");
-            var s = array_get_string(a, 0);
-            return string_length(s);
+            var a = Array.new();
+            Array.push_string(a, "hello");
+            var s = Array.get_string(a, 0);
+            return s.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -106,9 +106,9 @@ TEST_F(HooArrayJitTest, PushGetString) {
 TEST_F(HooArrayJitTest, PushGetBool) {
     const std::string source = R"(
         func :int64 test() {
-            var a = array_new();
-            array_push_bool(a, 1);
-            return array_get_bool(a, 0);
+            var a = Array.new();
+            Array.push_bool(a, 1);
+            return Array.get_bool(a, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

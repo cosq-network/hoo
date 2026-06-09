@@ -32,7 +32,7 @@ TEST_F(HooDatetimeJitTest, Iso8601) {
         func :int64 test() {
             var ts = DateTime.now();
             var str = DateTime.iso8601(ts);
-            return string_length(str);
+            return str.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -78,7 +78,7 @@ TEST_F(HooDatetimeJitTest, Format) {
         func :int64 test() {
             var ts = DateTime.from_iso8601("2024-01-15T10:30:00Z");
             var str = DateTime.format(ts, "%Y-%m-%d");
-            return string_length(str);
+            return str.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -104,7 +104,7 @@ TEST_F(HooDatetimeJitTest, FormatLiteral) {
         func :int64 test() {
             var ts = DateTime.from_iso8601("2024-01-15T10:30:00Z");
             var str = DateTime.format(ts, "Hello");
-            return string_length(str);
+            return str.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

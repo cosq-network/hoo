@@ -17,9 +17,9 @@ TEST_F(HooHashingJitTest, Sha256) {
         func :int64 test() {
             var data = "hello";
             var bytes = data.data();
-            var len = string_length(data);
+            var len = data.length();
             var hash = Hashing.sha256(bytes, len);
-            return string_length(hash);
+            return hash.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -32,9 +32,9 @@ TEST_F(HooHashingJitTest, Sha1) {
         func :int64 test() {
             var data = "hello";
             var bytes = data.data();
-            var len = string_length(data);
+            var len = data.length();
             var hash = Hashing.sha1(bytes, len);
-            return string_length(hash);
+            return hash.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -47,9 +47,9 @@ TEST_F(HooHashingJitTest, Md5) {
         func :int64 test() {
             var data = "hello";
             var bytes = data.data();
-            var len = string_length(data);
+            var len = data.length();
             var hash = Hashing.md5(bytes, len);
-            return string_length(hash);
+            return hash.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -62,7 +62,7 @@ TEST_F(HooHashingJitTest, Crc32) {
         func :int64 test() {
             var data = "hello";
             var bytes = data.data();
-            var len = string_length(data);
+            var len = data.length();
             return Hashing.crc32(bytes, len);
         }
     )";
@@ -83,7 +83,7 @@ TEST_F(HooHashingJitTest, Sha256File) {
     std::string source = std::string(R"(
         func :int64 test() {
             var hash = Hashing.sha256_file(")") + tmp_path + R"(");
-            return string_length(hash);
+            return hash.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

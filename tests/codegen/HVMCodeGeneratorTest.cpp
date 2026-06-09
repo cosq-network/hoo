@@ -260,26 +260,4 @@ TEST_F(HVMCodeGeneratorTest, InvalidBreak) {
     EXPECT_TRUE(compiler_->getLastError().find("break") != std::string::npos);
 }
 
-TEST_F(HVMCodeGeneratorTest, BuiltinModuleRedirection) {
-    std::string code = R"(
-        func:int64 test() {
-            var x = fs_read_text("test.txt");
-            var y = system_hostname();
-            return 0;
-        }
-    )";
 
-    auto module = compiler_->compile("test", code);
-    ASSERT_NE(module, nullptr);
-
-    // Look for the specific mangled calls
-    bool foundFs = false;
-    bool foundSystem = false;
-    for (const auto& sym : module->getSymbols()) {
-        if (sym.name.find("_M_hoo_E_fs_read_text") != std::string::npos) foundFs = true;
-        if (sym.name.find("_M_hoo_E_system_hostname") != std::string::npos) foundSystem = true;
-    }
-    
-    EXPECT_TRUE(foundFs);
-    EXPECT_TRUE(foundSystem);
-}

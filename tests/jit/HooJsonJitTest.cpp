@@ -29,7 +29,7 @@ TEST_F(HooJsonJitTest, GetString) {
         func :int64 test() {
             var obj = Json.parse("{\"name\":\"Alice\"}");
             var val = Json.get_string(obj, "name");
-            var len = string_length(val);
+            var len = val.length();
             Json.release(obj);
             return len;
         }
@@ -73,7 +73,7 @@ TEST_F(HooJsonJitTest, BuildObject) {
             var age = Json.new_int(25);
             Json.set(obj, "age", age);
             var out = Json.stringify(obj);
-            var len = string_length(out);
+            var len = out.length();
             Json.release(obj);
             Json.release(name);
             Json.release(age);
@@ -129,7 +129,7 @@ TEST_F(HooJsonJitTest, NestedObject) {
             var obj = Json.parse("{\"user\":{\"name\":\"Alice\",\"scores\":[95,87,92]}}");
             var user = Json.get(obj, "user");
             var name = Json.get_string(user, "name");
-            var len = string_length(name);
+            var len = name.length();
             Json.release(obj);
             Json.release(user);
             return len;

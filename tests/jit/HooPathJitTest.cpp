@@ -14,7 +14,7 @@ TEST_F(HooPathJitTest, Dirname) {
     const std::string source = R"(
         func :int64 test() {
             var d = Path.dirname("a/b/c.txt");
-            return string_length(d);
+            return d.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -25,7 +25,7 @@ TEST_F(HooPathJitTest, Basename) {
     const std::string source = R"(
         func :int64 test() {
             var b = Path.basename("a/b/c.txt");
-            return string_length(b);
+            return b.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -36,7 +36,7 @@ TEST_F(HooPathJitTest, Extension) {
     const std::string source = R"(
         func :int64 test() {
             var e = Path.extension("a/b/c.txt");
-            return string_length(e);
+            return e.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -47,7 +47,7 @@ TEST_F(HooPathJitTest, Stem) {
     const std::string source = R"(
         func :int64 test() {
             var s = Path.stem("a/b/c.txt");
-            return string_length(s);
+            return s.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -58,7 +58,7 @@ TEST_F(HooPathJitTest, Join) {
     const std::string source = R"(
         func :int64 test() {
             var p = Path.join("a", "b");
-            return string_length(p);
+            return p.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -93,7 +93,7 @@ TEST_F(HooPathJitTest, Normalize) {
     const std::string source = R"(
         func :int64 test() {
             var p = Path.normalize("a/b/../c");
-            return string_length(p);
+            return p.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -120,7 +120,7 @@ TEST_F(HooPathJitTest, Relative) {
     const std::string source = R"(
         func :int64 test() {
             var rel = Path.relative("/a/b/c/d", "/a/b");
-            return string_length(rel);
+            return rel.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -131,7 +131,7 @@ TEST_F(HooPathJitTest, Absolute) {
     const std::string source = R"(
         func :int64 test() {
             var abs = Path.absolute(".");
-            return string_length(abs);
+            return abs.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

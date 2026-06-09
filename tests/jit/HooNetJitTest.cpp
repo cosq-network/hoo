@@ -13,7 +13,7 @@ protected:
 TEST_F(HooNetJitTest, UrlNew) {
     const std::string source = R"(
         func :int64 test() {
-            var url = url_new("https://example.com/path?q=1#frag");
+            var url = URL.new("https://example.com/path?q=1#frag");
             return 1;
         }
     )";
@@ -24,10 +24,10 @@ TEST_F(HooNetJitTest, UrlNew) {
 TEST_F(HooNetJitTest, UrlScheme) {
     const std::string source = R"(
         func :int64 test() {
-            var url = url_new("https://example.com");
-            var s = url_scheme(url);
-            var len = string_length(s);
-            url_release(url);
+            var url = URL.new("https://example.com");
+            var s = URL.get_scheme(url);
+            var len = s.length();
+            URL.release(url);
             return len;
         }
     )";
@@ -38,9 +38,9 @@ TEST_F(HooNetJitTest, UrlScheme) {
 TEST_F(HooNetJitTest, UrlPort) {
     const std::string source = R"(
         func :int64 test() {
-            var url = url_new("https://example.com:8080/path");
-            var p = url_port(url);
-            url_release(url);
+            var url = URL.new("https://example.com:8080/path");
+            var p = URL.get_port(url);
+            URL.release(url);
             return p;
         }
     )";
@@ -51,9 +51,9 @@ TEST_F(HooNetJitTest, UrlPort) {
 TEST_F(HooNetJitTest, UrlNoPort) {
     const std::string source = R"(
         func :int64 test() {
-            var url = url_new("https://example.com/path");
-            var p = url_port(url);
-            url_release(url);
+            var url = URL.new("https://example.com/path");
+            var p = URL.get_port(url);
+            URL.release(url);
             return p;
         }
     )";
@@ -81,8 +81,8 @@ TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
 TEST_F(HooNetJitTest, UrlJustRelease) {
     const std::string source = R"(
         func :int64 test() {
-            var url = url_new("x");
-            url_release(url);
+            var url = URL.new("x");
+            URL.release(url);
             return 1;
         }
     )";
@@ -111,7 +111,7 @@ TEST_F(HooNetJitTest, UrlNoString) {
 TEST_F(HooNetJitTest, UrlNewWithString) {
     const std::string source = R"(
         func :int64 test() {
-            var url = url_new("x");
+            var url = URL.new("x");
             return 1;
         }
     )";
