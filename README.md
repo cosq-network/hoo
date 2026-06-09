@@ -23,7 +23,8 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Phase 6 (Hardening)**: refactored low-level array representation, implemented managed realloc/capacity tracking, and stabilized full test suite.
 - [x] **Phase 7 (System Services)**: expanded SYSCALL table from 11 to 23 entries, adding OS-level file I/O, threading, clock, and random services; reserved `r4` as thread pointer (`tp`).
 - [x] **Phase 8 (Class Method Dispatch)**: class-based method-call syntax (`Math.abs(x)`, `map.length()`) with full JIT support for all runtime modules; `DOT NEW` constructor syntax (`Map.new(1)`); consistent `"ptr"` mangling for all method parameters and return types.
-- [x] **Verification**: full preset test run passing (`1267+ tests`).
+- [x] **Phase 8.1 (Character Dispatch Fix)**: Added `Character` → `character` prefix mapping to `classToPrefix()`, registering JIT symbols for `_F_M_hoo_E_character_*` mangled names, enabling `Character.from_codepoint()`, `Character.length()`, `Character.codepoint()` etc. at the Hooc language level.
+- [x] **Verification**: full preset test run passing (`1269+ tests`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 
@@ -68,7 +69,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (1267+ tests in the current preset run).
+tests/        Exhaustive unit and integration test suites (1269+ tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 

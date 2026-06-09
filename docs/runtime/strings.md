@@ -38,8 +38,8 @@ Since strings are immutable, all manipulation functions allocate and return a *n
 - `s.contains(substring)`
 - `s.starts_with(prefix)` / `s.ends_with(suffix)`
 
-## 5. Character Support (`HooCharacter`)
-The `Character` type represents a single Unicode scalar value.
+## 5. Character Support (`Character`)
+The `Character` type represents a single Unicode scalar value. Character operations are accessed via class-based method-call syntax (`Character.from_codepoint(cp)`, `Character.length(ch)`) resolved by `classToPrefix()` mapping `Character` → `character_` in the codegen.
 
 ```cpp
 struct CharacterImpl {
@@ -48,10 +48,16 @@ struct CharacterImpl {
 };
 ```
 
-- `Character.from_codepoint(int64_t)`: Creates a character from a Unicode codepoint.
-- `Character.from_utf8(const char*, int64_t)`: Creates a character from a raw UTF-8 sequence.
-- `ch.codepoint()`: Retrieves the Unicode codepoint.
-- `ch.length()`: Returns the byte length (1-4).
+### 5.1 Factory Methods (Static)
+- `Character.from_codepoint(cp)`: Creates a character from a Unicode codepoint (int64).
+- `Character.from_utf8(data, len)`: Creates a character from a raw UTF-8 byte sequence.
+
+### 5.2 Query Methods (Static)
+- `Character.codepoint(ch)`: Retrieves the Unicode codepoint of character handle `ch`.
+- `Character.length(ch)`: Returns the byte length (1-4) of character handle `ch`.
+
+### 5.3 JIT Symbol Convention
+All Character functions follow the runtime module convention with mangled names in the form `_F_M_hoo_E_character_<method>_v_p*`, registered in `buildRuntimeSymbols()`.
 
 ## 6. Comparison
 - `a.compare(b)`: Lexicographic C-style comparison (-1, 0, 1). NULL-safe — NULL string sorts before non-NULL.

@@ -1911,6 +1911,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Character_length_i8_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
         {"_F_hoo_Character_data_p_p", reinterpret_cast<void*>(&jit_hoo_character_data)},
         {"_F_hoo_Character_codepoint_i8_p", reinterpret_cast<void*>(&jit_hoo_character_codepoint)},
+        // Character hoo-module-qualified symbols (codegen prefix-based dispatch)
+        {"_F_M_hoo_E_character_from_utf8_v_p_p", reinterpret_cast<void*>(&jit_hoo_character_from_utf8)},
+        {"_F_M_hoo_E_character_from_codepoint_v_p", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
+        {"_F_M_hoo_E_character_length_v_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
+        {"_F_M_hoo_E_character_data_v_p", reinterpret_cast<void*>(&jit_hoo_character_data)},
+        {"_F_M_hoo_E_character_codepoint_v_p", reinterpret_cast<void*>(&jit_hoo_character_codepoint)},
         {"_F_M_hoo_E_print_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
         {"_F_M_hoo_E_println_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
         {"_F_hoo_Array_new_p", reinterpret_cast<void*>(&jit_hoo_array_new)},

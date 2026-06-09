@@ -258,7 +258,7 @@ Example: adding a new module (e.g. `hoo.xml`).
 `Encoding` → `encoding_`, `Math` → `math_`, `Thread` → `thread_`,
 `Csv` → `csv_`, `DateTime` → `datetime_`, `Path` → `path_`,
 `Hash` → `hashing_`, `Process` → `process_`, `Compression` → `compression_`,
-`Args` → `args_`, `Net` → `net_`, `Json` → `json_`
+`Args` → `args_`, `Net` → `net_`, `Json` → `json_`, `Character` → `character_`
 
 ---
 

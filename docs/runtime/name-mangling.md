@@ -195,6 +195,7 @@ if (functionName == "print" || functionName == "println" ||
     functionName.rfind("uuid_", 0) == 0 ||
     functionName.rfind("encoding_", 0) == 0 ||
     functionName.rfind("math_", 0) == 0 ||
+    functionName.rfind("character_", 0) == 0 ||
     functionName.rfind("thread_", 0) == 0) {
     mp.modulePath = {"hoo"};
 }

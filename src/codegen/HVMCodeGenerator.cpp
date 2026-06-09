@@ -77,6 +77,7 @@ static std::string classToPrefix(const std::string& className) {
         {"Encoding", "encoding"},
         {"Uuid", "uuid"},
         {"Compression", "compression"},
+        {"Character", "character"},
         {"Process", "process"},
         {"Args", "args"},
         {"Csv", "csv"},

@@ -53,7 +53,7 @@ hooModule->registerFunction("alloc", (void*)&hoo_alloc, "_F_hoo_alloc_p_i8_i8");
 
 ### 4.1 Class-Based Dispatch
 
-Runtime modules are accessible via class-based method-call syntax in hoo source code (e.g., `Math.abs(x)`, `map.length()`, `Json.parse(s)`). The code generator in `HVMCodeGenerator.cpp` resolves class names to module prefixes via `classToPrefix()` and redirects the call to the `hoo` module path, where JIT wrapper functions registered in `buildRuntimeSymbols()` perform the actual C-ABI dispatch. Instance methods on `var` variables (e.g., `s.length()`, `arr.push(val)`) are resolved through type-ID inference and follow the same path.
+Runtime modules are accessible via class-based method-call syntax in hoo source code (e.g., `Math.abs(x)`, `map.length()`, `Json.parse(s)`, `Character.from_codepoint(65)`). The code generator in `HVMCodeGenerator.cpp` resolves class names to module prefixes via `classToPrefix()` and redirects the call to the `hoo` module path, where JIT wrapper functions registered in `buildRuntimeSymbols()` perform the actual C-ABI dispatch. Instance methods on `var` variables (e.g., `s.length()`, `arr.push(val)`) are resolved through type-ID inference and follow the same path. All built-in classes listed in `isBuiltinClassName()` are covered; see `classToPrefix()` for the full mapping (e.g., `Character` → `character`, `Array` → `array`, `Thread` → `thread`).
 
 ### 4.2 SYSCALL Bridge
 

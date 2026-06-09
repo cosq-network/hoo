@@ -403,6 +403,7 @@ if(HOOC_BUILD_TESTS)
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp
         tests/jit/CharacterLiteralTest.cpp
+        tests/jit/HooCharacterApiJitTest.cpp
         tests/jit/FloatingLiteralTest.cpp
         tests/jit/InterpolatedStringTest.cpp
         tests/jit/HVMJITLifecycleTest.cpp
