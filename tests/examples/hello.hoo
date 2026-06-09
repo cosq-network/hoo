@@ -1,0 +1,6 @@
+// Hooc hello world example
+// Run: hoo tests/examples/hello.hoo
+
+func :int64 main() {
+    return 42;
+}

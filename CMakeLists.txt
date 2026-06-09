@@ -409,6 +409,7 @@ if(HOOC_BUILD_TESTS)
         tests/jit/HVMJITLifecycleTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
+        tests/core/HooCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
@@ -426,6 +427,10 @@ if(HOOC_BUILD_TESTS)
         hoo-core
         GTest::gtest
         GTest::gtest_main
+    )
+
+    target_compile_definitions(hoo-tests PRIVATE
+        HOOC_EXECUTABLE="$<TARGET_FILE:hoo>"
     )
 
     target_include_directories(hoo-tests PUBLIC

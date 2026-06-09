@@ -91,7 +91,7 @@ TEST_F(HooCompilerTest, ModuleNotNullOnMultipleFunctions) {
     auto module = compiler->compile("test", code);
 
     ASSERT_NE(module, nullptr);
-    
+
     auto hasSymbol = [&](const std::string& base) {
         for (const auto& sym : module->getSymbols()) {
             if (sym.name.find(base) != std::string::npos) return true;
