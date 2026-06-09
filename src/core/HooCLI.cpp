@@ -156,7 +156,14 @@ int HooCLI::compileAndExecute(const Options& opts,
         }
         
         verboseLog(opts, "Executing main function...");
-        int64_t result = jit.run("_F_main_v");
+        std::string entryPoint = "_F_M_" + moduleName + "_E_main_i8";
+        int64_t result = jit.run(entryPoint);
+        if (jit.hasError()) {
+            // Fallback: try legacy bare name for interpreter path
+            verboseLog(opts, "JIT entry point '" + entryPoint + "' not found, trying legacy '_F_main_v'");
+            jit.clearError();
+            result = jit.run("_F_main_v");
+        }
         if (jit.hasError()) {
             ioProvider_->writeStderr("Execution failed: " + jit.getLastError() + "\n");
             return 1;
@@ -202,7 +209,14 @@ int HooCLI::compileAndExecute(const Options& opts,
     }
 
     verboseLog(opts, "Executing main function...");
-    int64_t result = jit.run("_F_main_v");
+    std::string entryPoint = "_F_M_" + moduleName + "_E_main_i8";
+    int64_t result = jit.run(entryPoint);
+    if (jit.hasError()) {
+        // Fallback: try legacy bare name for interpreter path
+        verboseLog(opts, "JIT entry point '" + entryPoint + "' not found, trying legacy '_F_main_v'");
+        jit.clearError();
+        result = jit.run("_F_main_v");
+    }
 
     if (jit.hasError()) {
         ioProvider_->writeStderr("Execution failed: " + jit.getLastError() + "\n");
