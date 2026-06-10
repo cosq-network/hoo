@@ -1906,6 +1906,18 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_String_starts_with_i8_p", reinterpret_cast<void*>(&jit_string_starts_with)},
         {"_F_M_hoo_E_String_index_of_i8_p", reinterpret_cast<void*>(&jit_string_index_of)},
         {"_F_M_hoo_E_String_to_characters_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_String_fromCstr_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_cstr)},
+        {"_F_M_hoo_E_String_fromInt64_static_p_i8", reinterpret_cast<void*>(&jit_hoo_string_from_int64)},
+        {"_F_M_hoo_E_String_fromDouble_static_p_d", reinterpret_cast<void*>(&jit_hoo_string_from_double)},
+        {"_F_M_hoo_E_String_fromAny_static_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_string_from_any)},
+        {"_F_M_hoo_E_String_fromObject_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_object)},
+        {"_F_M_hoo_E_String_isEmpty_i8", reinterpret_cast<void*>(&jit_string_is_empty)},
+        {"_F_M_hoo_E_String_toUpper_p", reinterpret_cast<void*>(&jit_hoo_string_to_upper)},
+        {"_F_M_hoo_E_String_toLower_p", reinterpret_cast<void*>(&jit_string_to_lower)},
+        {"_F_M_hoo_E_String_startsWith_i8_p", reinterpret_cast<void*>(&jit_string_starts_with)},
+        {"_F_M_hoo_E_String_indexOf_i8_p", reinterpret_cast<void*>(&jit_string_index_of)},
+        {"_F_M_hoo_E_String_toCharacters_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
         {"_F_hoo_Character_from_utf8_p_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_utf8)},
         {"_F_hoo_Character_from_codepoint_p_i8", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
         {"_F_hoo_Character_length_i8_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
@@ -1917,6 +1929,9 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_character_length_v_p", reinterpret_cast<void*>(&jit_hoo_character_length)},
         {"_F_M_hoo_E_character_data_v_p", reinterpret_cast<void*>(&jit_hoo_character_data)},
         {"_F_M_hoo_E_character_codepoint_v_p", reinterpret_cast<void*>(&jit_hoo_character_codepoint)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_character_fromUtf8_v_p_p", reinterpret_cast<void*>(&jit_hoo_character_from_utf8)},
+        {"_F_M_hoo_E_character_fromCodepoint_v_p", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
         {"_F_M_hoo_E_print_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
         {"_F_M_hoo_E_println_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
         {"_F_hoo_Array_new_p", reinterpret_cast<void*>(&jit_hoo_array_new)},
@@ -1980,6 +1995,15 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_get_string_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
         {"_F_M_hoo_E_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_M_hoo_E_array_get_bool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_array_pushDouble_v_p_p", reinterpret_cast<void*>(&jit_array_push_double)},
+        {"_F_M_hoo_E_array_getDouble_v_p_p", reinterpret_cast<void*>(&jit_array_get_double)},
+        {"_F_M_hoo_E_array_pushInt64_v_p_p", reinterpret_cast<void*>(&jit_array_push_int64_plain)},
+        {"_F_M_hoo_E_array_getInt64_v_p_p", reinterpret_cast<void*>(&jit_array_get_int64_plain)},
+        {"_F_M_hoo_E_array_pushString_v_p_p", reinterpret_cast<void*>(&jit_array_push_string)},
+        {"_F_M_hoo_E_array_getString_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
+        {"_F_M_hoo_E_array_pushBool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
+        {"_F_M_hoo_E_array_getBool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         // Map hoo-module-qualified symbols (codegen redirects map_* to hoo module)
         {"_F_M_hoo_E_map_new_v_p", reinterpret_cast<void*>(&jit_map_new_plain)},
         {"_F_M_hoo_E_map_set_int64_int64_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
@@ -1990,6 +2014,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_map_remove_int64_v_p", reinterpret_cast<void*>(&jit_map_remove_int64)},
         {"_F_M_hoo_E_map_clear_v", reinterpret_cast<void*>(&jit_map_clear)},
         {"_F_M_hoo_E_map_empty_v", reinterpret_cast<void*>(&jit_map_empty)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_map_setInt64Int64_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
+        {"_F_M_hoo_E_map_getInt64Int64_v_p", reinterpret_cast<void*>(&jit_map_get_int64_int64)},
+        {"_F_M_hoo_E_map_setStringInt64_v_p_p", reinterpret_cast<void*>(&jit_map_set_string_int64)},
+        {"_F_M_hoo_E_map_containsInt64_v_p", reinterpret_cast<void*>(&jit_map_contains_int64)},
+        {"_F_M_hoo_E_map_removeInt64_v_p", reinterpret_cast<void*>(&jit_map_remove_int64)},
         // Math functions (hoo module namespace, as codegen redirects them)
         // Math functions (simplified names for class-based Math.abs() syntax)
         {"_F_M_hoo_E_math_abs_v_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
@@ -2014,6 +2044,11 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_Math_N_floor_d_p", reinterpret_cast<void*>(&jit_math_floor)},
         {"_F_M_hoo_E_Math_N_ceil_d_p", reinterpret_cast<void*>(&jit_math_ceil)},
         {"_F_M_hoo_E_Math_N_sin_d_p", reinterpret_cast<void*>(&jit_math_sin)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_Math_N_isEven_i8_p", reinterpret_cast<void*>(&jit_math_is_even)},
+        {"_F_M_hoo_E_Math_N_isOdd_i8_p", reinterpret_cast<void*>(&jit_math_is_odd)},
+        {"_F_M_hoo_E_Math_N_isPrime_i8_p", reinterpret_cast<void*>(&jit_math_is_prime)},
+        {"_F_M_hoo_E_Math_N_getPi_d", reinterpret_cast<void*>(&jit_math_get_pi)},
         // Math functions (legacy type-suffixed names)
         {"_F_M_hoo_E_math_abs_int64_v_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
         {"_F_M_hoo_E_math_min_int64_v_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
@@ -2032,6 +2067,11 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_math_floor_v_p", reinterpret_cast<void*>(&jit_math_floor)},
         {"_F_M_hoo_E_math_ceil_v_p", reinterpret_cast<void*>(&jit_math_ceil)},
         {"_F_M_hoo_E_math_sin_v_p", reinterpret_cast<void*>(&jit_math_sin)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_math_isEven_v_p", reinterpret_cast<void*>(&jit_math_is_even)},
+        {"_F_M_hoo_E_math_isOdd_v_p", reinterpret_cast<void*>(&jit_math_is_odd)},
+        {"_F_M_hoo_E_math_isPrime_v_p", reinterpret_cast<void*>(&jit_math_is_prime)},
+        {"_F_M_hoo_E_math_getPi_v", reinterpret_cast<void*>(&jit_math_get_pi)},
         // Standard library (hoo module namespace, as codegen redirects them)
         {"_F_M_hoo_E_system_hostname_v", reinterpret_cast<void*>(&jit_system_hostname)},
         {"_F_M_hoo_E_System_N_hostname_p", reinterpret_cast<void*>(&jit_system_hostname)},
@@ -2039,6 +2079,9 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_fs_read_text_v_p", reinterpret_cast<void*>(&jit_fs_read_text)},
         {"_F_M_hoo_E_Fs_N_exists_i8_p", reinterpret_cast<void*>(&jit_fs_exists)},
         {"_F_M_hoo_E_Fs_N_read_text_p_p", reinterpret_cast<void*>(&jit_fs_read_text)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_fs_readText_v_p", reinterpret_cast<void*>(&jit_fs_read_text)},
+        {"_F_M_hoo_E_Fs_N_readText_p_p", reinterpret_cast<void*>(&jit_fs_read_text)},
         {"_F_M_hoo_E_regex_compile_v_p", reinterpret_cast<void*>(&jit_regex_compile)},
         {"_F_M_hoo_E_regex_match_v_p_p", reinterpret_cast<void*>(&jit_regex_match)},
         {"_F_M_hoo_E_uuid_v4_v", reinterpret_cast<void*>(&jit_uuid_v4)},
@@ -2046,6 +2089,8 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_Uuid_N_v4_p", reinterpret_cast<void*>(&jit_uuid_v4)},
         {"_F_M_hoo_E_Uuid_N_to_string_p_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
         {"_F_M_hoo_E_Encoding_N_base64_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_Encoding_N_base64Encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
         {"_F_M_hoo_E_thread_spawn_v_p_p", reinterpret_cast<void*>(&jit_thread_spawn)},
         {"_F_M_hoo_E_thread_join_v_p", reinterpret_cast<void*>(&jit_thread_join)},
         {"_F_M_hoo_E_thread_self_v", reinterpret_cast<void*>(&jit_thread_self)},
@@ -2053,11 +2098,19 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_thread_mutex_lock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
         {"_F_M_hoo_E_thread_mutex_unlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
         {"_F_M_hoo_E_thread_mutex_destroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_thread_mutexCreate_v", reinterpret_cast<void*>(&jit_thread_mutex_create)},
+        {"_F_M_hoo_E_thread_mutexLock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
+        {"_F_M_hoo_E_thread_mutexUnlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
+        {"_F_M_hoo_E_thread_mutexDestroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
         // CSV module
         {"_F_M_hoo_E_csv_escape_v_p", reinterpret_cast<void*>(&jit_csv_escape)},
         {"_F_M_hoo_E_csv_read_file_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
         {"_F_M_hoo_E_Csv_N_escape_p_p", reinterpret_cast<void*>(&jit_csv_escape)},
         {"_F_M_hoo_E_Csv_N_read_file_p_p", reinterpret_cast<void*>(&jit_csv_read_file)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_csv_readFile_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
+        {"_F_M_hoo_E_Csv_N_readFile_p_p", reinterpret_cast<void*>(&jit_csv_read_file)},
         // Datetime module
         {"_F_M_hoo_E_datetime_now_v", reinterpret_cast<void*>(&jit_datetime_now)},
         {"_F_M_hoo_E_datetime_now_seconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
@@ -2074,6 +2127,17 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_datetime_diff_hours_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
         {"_F_M_hoo_E_datetime_diff_seconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
         {"_F_M_hoo_E_datetime_compare_v_p_p", reinterpret_cast<void*>(&jit_datetime_compare)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_datetime_nowSeconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
+        {"_F_M_hoo_E_datetime_fromIso8601_v_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
+        {"_F_M_hoo_E_datetime_addDays_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
+        {"_F_M_hoo_E_datetime_addHours_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
+        {"_F_M_hoo_E_datetime_addMinutes_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
+        {"_F_M_hoo_E_datetime_addSeconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
+        {"_F_M_hoo_E_datetime_addMilliseconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
+        {"_F_M_hoo_E_datetime_diffDays_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
+        {"_F_M_hoo_E_datetime_diffHours_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
+        {"_F_M_hoo_E_datetime_diffSeconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
         // Path module
         {"_F_M_hoo_E_path_dirname_v_p", reinterpret_cast<void*>(&jit_path_dirname)},
         {"_F_M_hoo_E_path_basename_v_p", reinterpret_cast<void*>(&jit_path_basename)},
@@ -2088,6 +2152,11 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_path_has_extension_v_p", reinterpret_cast<void*>(&jit_path_has_extension)},
         {"_F_M_hoo_E_path_separator_v", reinterpret_cast<void*>(&jit_path_separator)},
         {"_F_M_hoo_E_path_list_separator_v", reinterpret_cast<void*>(&jit_path_list_separator)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_path_isAbsolute_v_p", reinterpret_cast<void*>(&jit_path_is_absolute)},
+        {"_F_M_hoo_E_path_isRelative_v_p", reinterpret_cast<void*>(&jit_path_is_relative)},
+        {"_F_M_hoo_E_path_hasExtension_v_p", reinterpret_cast<void*>(&jit_path_has_extension)},
+        {"_F_M_hoo_E_path_listSeparator_v", reinterpret_cast<void*>(&jit_path_list_separator)},
         // Hashing module
         {"_F_M_hoo_E_hashing_sha256_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha256)},
         {"_F_M_hoo_E_hashing_sha1_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha1)},
@@ -2095,19 +2164,34 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_hashing_sha256_file_v_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
         {"_F_M_hoo_E_hashing_crc32_v_p_p", reinterpret_cast<void*>(&jit_hashing_crc32)},
         {"_F_M_hoo_E_hashing_hmac_sha256_v_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_hashing_sha256File_v_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
+        {"_F_M_hoo_E_hashing_hmacSha256_v_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
         // Process module
         {"_F_M_hoo_E_process_kill_v_p_p", reinterpret_cast<void*>(&jit_process_kill)},
         {"_F_M_hoo_E_process_self_pid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
         {"_F_M_hoo_E_process_capture_v_p", reinterpret_cast<void*>(&jit_process_capture)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_process_selfPid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
         // Compression module
         {"_F_M_hoo_E_compression_gzip_compress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
         {"_F_M_hoo_E_compression_gzip_decompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
         {"_F_M_hoo_E_compression_deflate_compress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
         {"_F_M_hoo_E_compression_deflate_decompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
+        // Compression module (camelCase aliases)
+        {"_F_M_hoo_E_compression_gzipCompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
+        {"_F_M_hoo_E_compression_gzipDecompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
+        {"_F_M_hoo_E_compression_deflateCompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
+        {"_F_M_hoo_E_compression_deflateDecompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
         {"_F_M_hoo_E_Compression_N_gzip_compress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
         {"_F_M_hoo_E_Compression_N_gzip_decompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
         {"_F_M_hoo_E_Compression_N_deflate_compress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
         {"_F_M_hoo_E_Compression_N_deflate_decompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
+        // Compression singleton class (camelCase aliases)
+        {"_F_M_hoo_E_Compression_N_gzipCompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
+        {"_F_M_hoo_E_Compression_N_gzipDecompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
+        {"_F_M_hoo_E_Compression_N_deflateCompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
+        {"_F_M_hoo_E_Compression_N_deflateDecompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
         // Args module
         {"_F_M_hoo_E_args_count_v_p", reinterpret_cast<void*>(&jit_args_count)},
         {"_F_M_hoo_E_args_has_v_p_p", reinterpret_cast<void*>(&jit_args_has)},
@@ -2123,6 +2207,14 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_url_get_fragment_v_p", reinterpret_cast<void*>(&jit_net_url_get_fragment)},
         {"_F_M_hoo_E_net_url_to_string_v_p", reinterpret_cast<void*>(&jit_net_url_to_string)},
         {"_F_M_hoo_E_net_url_release_v_p", reinterpret_cast<void*>(&jit_net_url_release)},
+        // Net module (camelCase aliases)
+        {"_F_M_hoo_E_net_url_getScheme_v_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},
+        {"_F_M_hoo_E_net_url_getHost_v_p", reinterpret_cast<void*>(&jit_net_url_get_host)},
+        {"_F_M_hoo_E_net_url_getPort_v_p", reinterpret_cast<void*>(&jit_net_url_get_port)},
+        {"_F_M_hoo_E_net_url_getPath_v_p", reinterpret_cast<void*>(&jit_net_url_get_path)},
+        {"_F_M_hoo_E_net_url_getQuery_v_p", reinterpret_cast<void*>(&jit_net_url_get_query)},
+        {"_F_M_hoo_E_net_url_getFragment_v_p", reinterpret_cast<void*>(&jit_net_url_get_fragment)},
+        {"_F_M_hoo_E_net_url_toString_v_p", reinterpret_cast<void*>(&jit_net_url_to_string)},
         {"_F_M_hoo_E_net_http_client_new_v", reinterpret_cast<void*>(&jit_net_http_client_new)},
         {"_F_M_hoo_E_net_http_client_set_header_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
         {"_F_M_hoo_E_net_http_client_set_timeout_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
@@ -2130,11 +2222,19 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_http_client_post_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_post)},
         {"_F_M_hoo_E_net_http_client_put_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_put)},
         {"_F_M_hoo_E_net_http_client_delete_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_delete)},
+        // Net module (camelCase aliases)
+        {"_F_M_hoo_E_net_http_client_setHeader_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
+        {"_F_M_hoo_E_net_http_client_setTimeout_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
         {"_F_M_hoo_E_net_http_response_get_status_code_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
         {"_F_M_hoo_E_net_http_response_get_body_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
         {"_F_M_hoo_E_net_http_response_is_success_v_p", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
         {"_F_M_hoo_E_net_http_response_release_v_p", reinterpret_cast<void*>(&jit_net_http_response_release)},
         {"_F_M_hoo_E_net_http_client_release_v_p", reinterpret_cast<void*>(&jit_net_http_client_release)},
+        // Net module Http camelCase aliases
+        {"_F_M_hoo_E_net_http_response_statusCode_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
+        {"_F_M_hoo_E_net_http_response_getStatusCode_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
+        {"_F_M_hoo_E_net_http_response_getBody_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
+        {"_F_M_hoo_E_net_http_response_isSuccess_v_p", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
         // URL class methods
         {"_F_M_hoo_E_URL_new_static_p_p", reinterpret_cast<void*>(&jit_net_url_new)},
         {"_F_M_hoo_E_URL_scheme_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},
@@ -2162,6 +2262,8 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_HttpClient_release_v", reinterpret_cast<void*>(&jit_net_http_client_release)},
         // Process class methods
         {"_F_M_hoo_E_Process_self_pid_static_i8", reinterpret_cast<void*>(&jit_process_self_pid)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_Process_selfPid_static_i8", reinterpret_cast<void*>(&jit_process_self_pid)},
         {"_F_M_hoo_E_Process_capture_static_p_p", reinterpret_cast<void*>(&jit_process_capture)},
         {"_F_M_hoo_E_Process_kill_static_i8_p_p", reinterpret_cast<void*>(&jit_process_kill)},
         // Console class methods
@@ -2187,6 +2289,18 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_json_new_bool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
         {"_F_M_hoo_E_json_new_null_v", reinterpret_cast<void*>(&jit_json_new_null)},
         {"_F_M_hoo_E_json_release_v_p", reinterpret_cast<void*>(&jit_json_release)},
+        // JSON module (camelCase aliases)
+        {"_F_M_hoo_E_json_getInt_v_p_p", reinterpret_cast<void*>(&jit_json_get_int)},
+        {"_F_M_hoo_E_json_getString_v_p_p", reinterpret_cast<void*>(&jit_json_get_string)},
+        {"_F_M_hoo_E_json_arrayGet_v_p_p", reinterpret_cast<void*>(&jit_json_array_get)},
+        {"_F_M_hoo_E_json_arrayPush_v_p_p", reinterpret_cast<void*>(&jit_json_array_push)},
+        {"_F_M_hoo_E_json_arrayLength_v_p", reinterpret_cast<void*>(&jit_json_array_length)},
+        {"_F_M_hoo_E_json_newObject_v", reinterpret_cast<void*>(&jit_json_new_object)},
+        {"_F_M_hoo_E_json_newArray_v", reinterpret_cast<void*>(&jit_json_new_array)},
+        {"_F_M_hoo_E_json_newString_v_p", reinterpret_cast<void*>(&jit_json_new_string)},
+        {"_F_M_hoo_E_json_newInt_v_p", reinterpret_cast<void*>(&jit_json_new_int)},
+        {"_F_M_hoo_E_json_newBool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
+        {"_F_M_hoo_E_json_newNull_v", reinterpret_cast<void*>(&jit_json_new_null)},
     };
 }
 

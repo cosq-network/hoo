@@ -63,7 +63,7 @@ TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
             var str = "Hello";
             var bytes = str.data();
             var len = str.length();
-            var b64 = Encoding.base64_encode(bytes, len);
+            var b64 = Encoding.base64Encode(bytes, len);
             return b64.length();
         }
     )";

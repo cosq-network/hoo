@@ -11,8 +11,8 @@ The `hoo.process` module provides spawn (fork/exec), wait, kill, self-pid, and c
 
 ## 2. Command Capture
 
-- `Process.capture(command)` — Execute command and capture stdout into allocated string (free with `Process.free_string`).
-- `Process.capture_status(command)` — Execute command, capture both stdout and exit status.
+- `Process.capture(command)` — Execute command and capture stdout into allocated string (free with `Process.freeString`).
+- `Process.captureStatus(command)` — Execute command, capture both stdout and exit status.
 
 ## Usage from Hoo Source
 
@@ -29,4 +29,4 @@ func :int64 demo() {
 
 ## Memory Management
 
-Output strings must be freed with `Process.free_string(str)`.
+Output strings must be freed with `Process.freeString(str)`.

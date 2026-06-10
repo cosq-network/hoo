@@ -25,7 +25,7 @@ TEST_F(HooNetJitTest, UrlScheme) {
     const std::string source = R"(
         func :int64 test() {
             var url = URL.new("https://example.com");
-            var s = URL.get_scheme(url);
+            var s = URL.getScheme(url);
             var len = s.length();
             URL.release(url);
             return len;
@@ -39,7 +39,7 @@ TEST_F(HooNetJitTest, UrlPort) {
     const std::string source = R"(
         func :int64 test() {
             var url = URL.new("https://example.com:8080/path");
-            var p = URL.get_port(url);
+            var p = URL.getPort(url);
             URL.release(url);
             return p;
         }
@@ -52,7 +52,7 @@ TEST_F(HooNetJitTest, UrlNoPort) {
     const std::string source = R"(
         func :int64 test() {
             var url = URL.new("https://example.com/path");
-            var p = URL.get_port(url);
+            var p = URL.getPort(url);
             URL.release(url);
             return p;
         }
@@ -66,9 +66,9 @@ TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
     const std::string source = R"(
         func :int64 test() {
             var client = HttpClient.new();
-            client.set_timeout(10000);
+            client.setTimeout(10000);
             var resp = client.get("https://example.com/");
-            var code = resp.status_code();
+            var code = resp.statusCode();
             resp.release();
             client.release();
             return code;
@@ -92,7 +92,7 @@ TEST_F(HooNetJitTest, UrlJustRelease) {
 
 TEST_F(HooNetJitTest, ProcessThroughRedirectWorks) {
     const std::string source = R"(
-        func :int64 test() { return Process.self_pid(); }
+        func :int64 test() { return Process.selfPid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);

@@ -24,8 +24,8 @@ TEST_F(HooThreadJitTest, SelfId) {
 TEST_F(HooThreadJitTest, MutexCreateDestroy) {
     const std::string source = R"(
         func:int64 test() {
-            var m = Thread.mutex_create();
-            var ok = Thread.mutex_destroy(m);
+            var m = Thread.mutexCreate();
+            var ok = Thread.mutexDestroy(m);
             return ok;
         }
     )";
@@ -36,10 +36,10 @@ TEST_F(HooThreadJitTest, MutexCreateDestroy) {
 TEST_F(HooThreadJitTest, MutexLockUnlock) {
     const std::string source = R"(
         func:int64 test() {
-            var m = Thread.mutex_create();
-            var l = Thread.mutex_lock(m);
-            var u = Thread.mutex_unlock(m);
-            var d = Thread.mutex_destroy(m);
+            var m = Thread.mutexCreate();
+            var l = Thread.mutexLock(m);
+            var u = Thread.mutexUnlock(m);
+            var d = Thread.mutexDestroy(m);
             return l + u + d;
         }
     )";
@@ -50,7 +50,7 @@ TEST_F(HooThreadJitTest, MutexLockUnlock) {
 TEST_F(HooThreadJitTest, MutexNullLockUnlock) {
     const std::string source = R"(
         func:int64 test() {
-            return Thread.mutex_lock(null) + Thread.mutex_unlock(null) + Thread.mutex_destroy(null);
+            return Thread.mutexLock(null) + Thread.mutexUnlock(null) + Thread.mutexDestroy(null);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

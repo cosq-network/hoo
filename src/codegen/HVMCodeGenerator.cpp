@@ -49,11 +49,11 @@ static bool isSingletonBuiltinClass(const std::string& className) {
 static std::string singletonMethodReturnType(const std::string& className, const std::string& methodName) {
     static const std::unordered_set<std::string> int64Methods = {
         "abs", "min", "max", "sign", "gcd", "factorial", "fibonacci",
-        "is_even", "is_odd", "is_prime", "lcm",
+        "isEven", "isOdd", "isPrime", "lcm",
         "exists", "count", "has"
     };
     static const std::unordered_set<std::string> doubleMethods = {
-        "sqrt", "get_pi", "pow", "floor", "ceil", "sin"
+        "sqrt", "getPi", "pow", "floor", "ceil", "sin"
     };
     if (int64Methods.count(methodName)) return "int64";
     if (doubleMethods.count(methodName)) return "double";
@@ -1160,29 +1160,29 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     mp.className = resolvedClass;
                     mp.isStatic = isStaticCall;
 
-                    bool isInt64Ret = (methodName == "length" || methodName == "is_empty" ||
-                                       methodName == "is_success" || methodName == "equals" ||
-                                       methodName == "contains" || methodName == "starts_with" ||
-                                       methodName == "index_of" || methodName == "count" ||
-                                       methodName == "size" || methodName == "status_code" ||
-                                       methodName == "port" || methodName == "self_pid" ||
+                    bool isInt64Ret = (methodName == "length" || methodName == "isEmpty" ||
+                                       methodName == "isSuccess" || methodName == "equals" ||
+                                       methodName == "contains" || methodName == "startsWith" ||
+                                       methodName == "indexOf" || methodName == "count" ||
+                                       methodName == "size" || methodName == "statusCode" ||
+                                       methodName == "port" || methodName == "selfPid" ||
                                        methodName == "kill" || methodName == "readchar" ||
-                                       methodName == "compare" || methodName == "key_type");
-                    bool isVoidRet = (methodName == "release" || methodName == "set_timeout" ||
+                                       methodName == "compare" || methodName == "keyType");
+                    bool isVoidRet = (methodName == "release" || methodName == "setTimeout" ||
                                       methodName == "print" || methodName == "println" ||
                                       methodName == "lock" || methodName == "unlock" ||
                                       methodName == "destroy" || methodName == "close" ||
                                       methodName == "delete" || methodName == "clear" ||
                                       methodName == "pop" || methodName == "remove" ||
-                                      methodName == "push" || methodName == "push_int64" ||
-                                      methodName == "push_double" || methodName == "push_string" ||
-                                      methodName == "push_object" || methodName == "set" ||
-                                      methodName == "set_header" || methodName == "write_text" ||
-                                      methodName == "append_text" || methodName == "mkdir" ||
+                                      methodName == "push" || methodName == "pushInt64" ||
+                                      methodName == "pushDouble" || methodName == "pushString" ||
+                                      methodName == "pushObject" || methodName == "set" ||
+                                      methodName == "setHeader" || methodName == "writeText" ||
+                                      methodName == "appendText" || methodName == "mkdir" ||
                                       methodName == "mkdirs" || methodName == "rmdir" ||
                                       methodName == "copy" || methodName == "rename" ||
-                                      methodName == "set_env" || methodName == "unset_env" ||
-                                      methodName == "set_current_dir");
+                                      methodName == "setEnv" || methodName == "unsetEnv" ||
+                                      methodName == "setCurrentDir");
                     if (isInt64Ret) mp.returnType = "int64";
                     else if (isVoidRet) mp.returnType = "void";
                     else mp.returnType = "ptr";

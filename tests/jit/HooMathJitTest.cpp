@@ -86,7 +86,7 @@ TEST_F(HooMathJitTest, Fibonacci) {
 
 TEST_F(HooMathJitTest, IsEven) {
     const std::string source = R"(
-        func :int64 test() { return Math.is_even(4); }
+        func :int64 test() { return Math.isEven(4); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -94,7 +94,7 @@ TEST_F(HooMathJitTest, IsEven) {
 
 TEST_F(HooMathJitTest, IsOdd) {
     const std::string source = R"(
-        func :int64 test() { return Math.is_odd(5); }
+        func :int64 test() { return Math.isOdd(5); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -102,7 +102,7 @@ TEST_F(HooMathJitTest, IsOdd) {
 
 TEST_F(HooMathJitTest, IsPrime) {
     const std::string source = R"(
-        func :int64 test() { return Math.is_prime(7); }
+        func :int64 test() { return Math.isPrime(7); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -110,7 +110,7 @@ TEST_F(HooMathJitTest, IsPrime) {
 
 TEST_F(HooMathJitTest, IsNotPrime) {
     const std::string source = R"(
-        func :int64 test() { return Math.is_prime(8); }
+        func :int64 test() { return Math.isPrime(8); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
@@ -137,7 +137,7 @@ TEST_F(HooMathJitTest, Sqrt) {
 
 TEST_F(HooMathJitTest, Pi) {
     const std::string source = R"(
-        func :double test() { return Math.get_pi(); }
+        func :double test() { return Math.getPi(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     int64_t result = jit.run("_F_M_test_E_test_d");

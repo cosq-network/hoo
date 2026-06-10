@@ -24,11 +24,11 @@ Appends a managed string to the end of the array.
 ### `arr.push(val: ptr)`
 Appends a managed object or pointer to the end of the array.
 
-### `arr.get_int64(index: int64) -> int64`
+### `arr.getInt64(index: int64) -> int64`
 Retrieves the integer at the specified index.
 - **Note**: Ensure the index is within bounds (`0` to `length - 1`).
 
-### `arr.get_string(index: int64) -> string`
+### `arr.getString(index: int64) -> string`
 Retrieves the string at the specified index.
 
 ### `arr.pop()`
@@ -55,7 +55,7 @@ Returns the number of entries in the map.
 ### `m.set(key: string, val: int64)`
 Associates an integer value with a string key.
 
-### `m.get_int64(key: string) -> int64`
+### `m.getInt64(key: string) -> int64`
 Retrieves the integer value associated with a string key. Returns 0 if not found.
 
 ### `m.set(key: string, val: string)`
@@ -80,7 +80,7 @@ func :int64 main() {
     numbers.push(30);
     
     var len = numbers.length();
-    var first = numbers.get_int64(0); // 10
+    var first = numbers.getInt64(0); // 10
     
     // Map Example
     var config = Map.new(4); // 4 = string key type
@@ -88,8 +88,8 @@ func :int64 main() {
     config.set("timeout", 30);
     
     if (config.contains("port")) {
-        var p = config.get_int64("port");
-        println("Port: ".concat(p.to_string()));
+        var p = config.getInt64("port");
+        println("Port: ".concat(p.toString()));
     }
     
     return 0;

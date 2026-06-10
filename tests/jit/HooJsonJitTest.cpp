@@ -28,7 +28,7 @@ TEST_F(HooJsonJitTest, GetString) {
     const std::string source = R"(
         func :int64 test() {
             var obj = Json.parse("{\"name\":\"Alice\"}");
-            var val = Json.get_string(obj, "name");
+            var val = Json.getString(obj, "name");
             var len = val.length();
             Json.release(obj);
             return len;
@@ -42,7 +42,7 @@ TEST_F(HooJsonJitTest, GetInt) {
     const std::string source = R"(
         func :int64 test() {
             var obj = Json.parse("{\"age\":30}");
-            var age = Json.get_int(obj, "age");
+            var age = Json.getInt(obj, "age");
             Json.release(obj);
             return age;
         }
@@ -55,7 +55,7 @@ TEST_F(HooJsonJitTest, ArrayAccess) {
     const std::string source = R"(
         func :int64 test() {
             var arr = Json.parse("[10, 20, 30]");
-            var len = Json.array_length(arr);
+            var len = Json.arrayLength(arr);
             Json.release(arr);
             return len;
         }
@@ -67,10 +67,10 @@ TEST_F(HooJsonJitTest, ArrayAccess) {
 TEST_F(HooJsonJitTest, BuildObject) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = Json.new_object();
-            var name = Json.new_string("Bob");
+            var obj = Json.newObject();
+            var name = Json.newString("Bob");
             Json.set(obj, "name", name);
-            var age = Json.new_int(25);
+            var age = Json.newInt(25);
             Json.set(obj, "age", age);
             var out = Json.stringify(obj);
             var len = out.length();
@@ -87,12 +87,12 @@ TEST_F(HooJsonJitTest, BuildObject) {
 TEST_F(HooJsonJitTest, BuildArray) {
     const std::string source = R"(
         func :int64 test() {
-            var arr = Json.new_array();
-            var one = Json.new_int(1);
-            var two = Json.new_int(2);
-            Json.array_push(arr, one);
-            Json.array_push(arr, two);
-            var len = Json.array_length(arr);
+            var arr = Json.newArray();
+            var one = Json.newInt(1);
+            var two = Json.newInt(2);
+            Json.arrayPush(arr, one);
+            Json.arrayPush(arr, two);
+            var len = Json.arrayLength(arr);
             Json.release(arr);
             Json.release(one);
             Json.release(two);
@@ -106,9 +106,9 @@ TEST_F(HooJsonJitTest, BuildArray) {
 TEST_F(HooJsonJitTest, NullAndBool) {
     const std::string source = R"(
         func :int64 test() {
-            var n = Json.new_null();
-            var t = Json.new_bool(1);
-            var f = Json.new_bool(0);
+            var n = Json.newNull();
+            var t = Json.newBool(1);
+            var f = Json.newBool(0);
             var nt = Json.type(n);
             var tt = Json.type(t);
             var ft = Json.type(f);
@@ -128,7 +128,7 @@ TEST_F(HooJsonJitTest, NestedObject) {
         func :int64 test() {
             var obj = Json.parse("{\"user\":{\"name\":\"Alice\",\"scores\":[95,87,92]}}");
             var user = Json.get(obj, "user");
-            var name = Json.get_string(user, "name");
+            var name = Json.getString(user, "name");
             var len = name.length();
             Json.release(obj);
             Json.release(user);

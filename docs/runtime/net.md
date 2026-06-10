@@ -7,8 +7,8 @@ The `hoo.net` module provides URL parsing (scheme, host, port, path, query, frag
 URLs are parsed into an ARC-managed opaque handle (`HooURL`).
 
 - `Url.new(urlString)` — Parse URL string. Returns retained handle.
-- `url.scheme()` / `url.host()` / `url.port()` / `url.path()` / `url.query()` / `url.fragment()` — Component getters (return allocated strings, free with `Url.free_string`).
-- `url.to_string()` — Reconstruct URL string. Omits default ports (80 for HTTP, 443 for HTTPS).
+- `url.scheme()` / `url.host()` / `url.port()` / `url.path()` / `url.query()` / `url.fragment()` — Component getters (return allocated strings, free with `Url.freeString`).
+- `url.toString()` — Reconstruct URL string. Omits default ports (80 for HTTP, 443 for HTTPS).
 - `url.retain()` / `url.release()` — Reference counting.
 
 ## 2. HTTP Client (`HooHttpClient`)
@@ -16,8 +16,8 @@ URLs are parsed into an ARC-managed opaque handle (`HooURL`).
 A libcurl-based real HTTP client with per-instance header and timeout configuration.
 
 - `HttpClient.new()` — Create new client.
-- `client.set_header(key, value)` — Set a custom request header.
-- `client.set_timeout(ms)` — Set request timeout in milliseconds.
+- `client.setHeader(key, value)` — Set a custom request header.
+- `client.setTimeout(ms)` — Set request timeout in milliseconds.
 
 ### HTTP Verbs
 
@@ -30,11 +30,11 @@ A libcurl-based real HTTP client with per-instance header and timeout configurat
 
 Each verb call returns a retained `HooHttpResponse` handle:
 
-- `res.status_code()` — HTTP status code.
-- `res.status_text()` — Status text (e.g., "OK").
+- `res.statusCode()` — HTTP status code.
+- `res.statusText()` — Status text (e.g., "OK").
 - `res.body()` — Response body string.
 - `res.header(name)` — Get response header value.
-- `res.is_success()` — Returns 1 for 2xx status codes.
+- `res.isSuccess()` — Returns 1 for 2xx status codes.
 - `res.retain()` / `res.release()` — Reference counting.
 
 ### Mock Fallback
@@ -61,5 +61,5 @@ func :int64 demo() {
 
 ## 3. Memory Management
 
-- `Url.free_string(str)` — Free allocated string.
+- `Url.freeString(str)` — Free allocated string.
 - All handles use ARC via `retain`/`release` pairs.

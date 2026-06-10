@@ -4,20 +4,20 @@ The `hoo.encoding` module provides Base64, hex, and URL percent-encoding encode/
 
 ## 1. Base64
 
-- `Encoding.base64_encode(data, len)` — Encode bytes to Base64 string (free with `Encoding.free_string`).
-- `Encoding.base64_decode(encoded)` — Decode Base64 string to bytes (free with `Encoding.free_bytes`). Returns decoded length or -1 on error.
+- `Encoding.base64Encode(data, len)` — Encode bytes to Base64 string (free with `Encoding.freeString`).
+- `Encoding.base64Decode(encoded)` — Decode Base64 string to bytes (free with `Encoding.freeBytes`). Returns decoded length or -1 on error.
 
 ## 2. Hex
 
-- `Encoding.hex_encode(data, len)` — Encode bytes to lowercase hex string.
-- `Encoding.hex_decode(hex)` — Decode hex string to bytes. Returns decoded length or -1 on error.
+- `Encoding.hexEncode(data, len)` — Encode bytes to lowercase hex string.
+- `Encoding.hexDecode(hex)` — Decode hex string to bytes. Returns decoded length or -1 on error.
 
 ## 3. URL Encoding
 
-- `Encoding.url_encode(str)` — Percent-encode a string (free with `Encoding.free_string`).
-- `Encoding.url_decode(encoded)` — Decode percent-encoded string.
+- `Encoding.urlEncode(str)` — Percent-encode a string (free with `Encoding.freeString`).
+- `Encoding.urlDecode(encoded)` — Decode percent-encoded string.
 
 ## Memory Management
 
-- `Encoding.free_string(str)` — Free allocated string.
-- `Encoding.free_bytes(data)` — Free allocated byte buffer.
+- `Encoding.freeString(str)` — Free allocated string.
+- `Encoding.freeBytes(data)` — Free allocated byte buffer.

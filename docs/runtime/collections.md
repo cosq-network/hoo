@@ -25,9 +25,9 @@ An array is a contiguous memory block allocated via `hoo_alloc` with the `HOO_TY
 - **Indexing**: Arrays support O(1) direct indexing. `val = arr[i]` maps to `LD.D dest, arr_base, (8 + i*8)`.
 - **Push**:
   - `arr.push(val)` — Generic push of a 64-bit slot.
-  - `arr.push_int64(val)`, `arr.push_double(val)`, `arr.push_string(str)`, `arr.push_object(obj)`, etc.
+  - `arr.pushInt64(val)`, `arr.pushDouble(val)`, `arr.pushString(str)`, `arr.pushObject(obj)`, etc.
 - **Type-Specific Get**:
-  - `arr.get_int64(index)` (Returns a result or `none` on out-of-bounds).
+  - `arr.getInt64(index)` (Returns a result or `none` on out-of-bounds).
 - **Inspection**: `arr.length()`.
 
 ---

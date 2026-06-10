@@ -29,8 +29,8 @@ TEST_F(HooMapJitTest, SetGetInt64) {
     const std::string source = R"(
         func :int64 test() {
             var m = Map.new(1);
-            m.set_int64_int64(42, 100);
-            return m.get_int64_int64(42);
+            m.setInt64Int64(42, 100);
+            return m.getInt64Int64(42);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -41,8 +41,8 @@ TEST_F(HooMapJitTest, MapLength) {
     const std::string source = R"(
         func :int64 test() {
             var m = Map.new(4);
-            m.set_string_int64("a", 1);
-            m.set_string_int64("b", 2);
+            m.setStringInt64("a", 1);
+            m.setStringInt64("b", 2);
             return m.length();
         }
     )";
@@ -54,8 +54,8 @@ TEST_F(HooMapJitTest, ContainsKey) {
     const std::string source = R"(
         func :int64 test() {
             var m = Map.new(1);
-            m.set_int64_int64(1, 10);
-            return m.contains_int64(1);
+            m.setInt64Int64(1, 10);
+            return m.containsInt64(1);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -66,8 +66,8 @@ TEST_F(HooMapJitTest, NotContainsKey) {
     const std::string source = R"(
         func :int64 test() {
             var m = Map.new(1);
-            m.set_int64_int64(1, 10);
-            return m.contains_int64(2);
+            m.setInt64Int64(1, 10);
+            return m.containsInt64(2);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -78,9 +78,9 @@ TEST_F(HooMapJitTest, RemoveKey) {
     const std::string source = R"(
         func :int64 test() {
             var m = Map.new(2);
-            m.set_int64_int64(1, 10);
-            m.set_int64_int64(2, 20);
-            m.remove_int64(1);
+            m.setInt64Int64(1, 10);
+            m.setInt64Int64(2, 20);
+            m.removeInt64(1);
             return m.length();
         }
     )";
@@ -92,7 +92,7 @@ TEST_F(HooMapJitTest, Clear) {
     const std::string source = R"(
         func :int64 test() {
             var m = Map.new(1);
-            m.set_int64_int64(1, 10);
+            m.setInt64Int64(1, 10);
             m.clear();
             return m.length();
         }

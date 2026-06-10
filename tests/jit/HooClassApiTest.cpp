@@ -42,7 +42,7 @@ TEST_F(HooClassApiTest, StringIsEmptyMethod) {
     const std::string source = R"(
         func :int64 test() {
             var s = "";
-            return s.is_empty();
+            return s.isEmpty();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -74,7 +74,7 @@ TEST_F(HooClassApiTest, StaticMathAbs) {
 TEST_F(HooClassApiTest, StaticMathGetPi) {
     const std::string source = R"(
         func :int64 test() {
-            return Math.get_pi();
+            return Math.getPi();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -85,7 +85,7 @@ TEST_F(HooClassApiTest, StaticMathGetPi) {
 TEST_F(HooClassApiTest, StaticDateTimeNowSeconds) {
     const std::string source = R"(
         func :int64 test() {
-            return DateTime.now_seconds();
+            return DateTime.nowSeconds();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

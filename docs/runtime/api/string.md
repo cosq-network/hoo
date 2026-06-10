@@ -4,7 +4,7 @@ The `String` type provides robust support for immutable, UTF-8 encoded strings. 
 
 ## 1. Creation
 
-### `String.from_cstr(cstr: ptr) -> string`
+### `String.fromCstr(cstr: ptr) -> string`
 Creates a hoo string from a null-terminated host C string.
 - **Parameters**: `cstr` - A pointer to a null-terminated UTF-8 sequence.
 - **Returns**: A new hoo string.
@@ -28,10 +28,10 @@ Extracts a substring based on byte indices.
   - `start`: 0-based starting byte index.
   - `length`: Number of bytes to extract.
 
-### `s.to_upper() -> string`
+### `s.toUpper() -> string`
 Returns a new string with all ASCII characters converted to uppercase.
 
-### `s.to_lower() -> string`
+### `s.toLower() -> string`
 Returns a new string with all ASCII characters converted to lowercase.
 
 ### `s.trim() -> string`
@@ -49,16 +49,16 @@ Splits the string by the specified delimiter.
 ### `s.length() -> int64`
 Returns the length of the string in **bytes**.
 
-### `s.byte_at(index: int64) -> int64`
+### `s.byteAt(index: int64) -> int64`
 Retrieves the raw byte value (0-255) at the specified index.
 
-### `s.index_of(needle: string) -> int64`
+### `s.indexOf(needle: string) -> int64`
 Returns the byte index of the first occurrence of `needle`, or -1 if not found.
 
 ### `s.contains(needle: string) -> int64`
 Returns 1 if `needle` is present, 0 otherwise.
 
-### `s.starts_with(prefix: string) -> int64`
+### `s.startsWith(prefix: string) -> int64`
 Returns 1 if the string starts with the specified prefix.
 
 ## 4. Comparison
@@ -71,16 +71,16 @@ Returns 1 if the strings are identical, 0 otherwise.
 
 ## 5. Formatting & Conversion
 
-### `String.from_int64(val: int64) -> string`
+### `String.fromInt64(val: int64) -> string`
 Converts an integer to its string representation.
 
-### `String.from_double(val: double) -> string`
+### `String.fromDouble(val: double) -> string`
 Converts a double-precision float to its string representation.
 
-### `s.to_int64() -> int64`
+### `s.toInt64() -> int64`
 Parses the string as an integer.
 
-### `s.to_double() -> double`
+### `s.toDouble() -> double`
 Parses the string as a double-precision float.
 
 ---

@@ -14,7 +14,7 @@ protected:
 TEST_F(HooCharacterApiJitTest, FromCodepoint) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.from_codepoint(65);
+            var ch = Character.fromCodepoint(65);
             return Character.codepoint(ch);
         }
     )";
@@ -26,7 +26,7 @@ TEST_F(HooCharacterApiJitTest, FromCodepoint) {
 TEST_F(HooCharacterApiJitTest, CharacterLength) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.from_codepoint(8364);
+            var ch = Character.fromCodepoint(8364);
             return Character.length(ch);
         }
     )";

@@ -26,7 +26,7 @@ In hoo source code, runtime functions are called using class-based method syntax
 
 - `Math.abs(x)` — static methods use the class name
 - `s.length()` — instance methods are called on the variable
-- `String.from_cstr(cstr)` / `Array.new()` — constructors use `.new()` / `.from_*()` syntax
+- `String.fromCstr(cstr)` / `Array.new()` — constructors use `.new()` / `.from_*()` syntax
 
 Standard I/O functions like `print` and `println` are available globally (without a prefix or class qualifier).
 

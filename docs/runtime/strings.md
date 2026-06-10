@@ -15,8 +15,8 @@ struct StringImpl {
 Because it is null-terminated, the internal `data` pointer can be safely passed to C APIs (via `s.data()`).
 
 ## 2. Creation
-- `String.from_cstr(const char*)`: Creates a string from a null-terminated host string.
-- `String.from_bytes(const char*, int64_t)`: Creates a string from a specified byte buffer.
+- `String.fromCstr(const char*)`: Creates a string from a null-terminated host string.
+- `String.fromBytes(const char*, int64_t)`: Creates a string from a specified byte buffer.
 - `str.repeat(count)`: Creates a string by repeating the character in `str` (e.g. `"*".repeat(5)`).
 - `String.new()`: Returns an empty string.
 
@@ -24,22 +24,22 @@ Because it is null-terminated, the internal `data` pointer can be safely passed 
 Since strings are immutable, all manipulation functions allocate and return a *new* `String` handle with `refcount=1`.
 - `a.concat(b)`: NULL-safe — NULL inputs are treated as empty strings.
 - `s.substring(start, length)`
-- `s.to_upper()` / `s.to_lower()` (ASCII only)
+- `s.toUpper()` / `s.toLower()` (ASCII only)
 - `s.trim()`: Removes leading/trailing whitespace.
 - `s.replace(old, new)`
 - `s.split(delim)`: Returns an `Array` of `String`s.
 - `parts.join()`: Joins an `Array` of strings.
-- `s.to_characters()`: Returns an `Array` of `Character` objects.
+- `s.toCharacters()`: Returns an `Array` of `Character` objects.
 
 ## 4. Query & Inspection
 - `s.length()`: Returns the length in **bytes**.
-- `s.byte_at(index)`: Retrieves the raw byte (0-255) at the index.
-- `s.index_of(needle)`
+- `s.byteAt(index)`: Retrieves the raw byte (0-255) at the index.
+- `s.indexOf(needle)`
 - `s.contains(substring)`
-- `s.starts_with(prefix)` / `s.ends_with(suffix)`
+- `s.startsWith(prefix)` / `s.endsWith(suffix)`
 
 ## 5. Character Support (`Character`)
-The `Character` type represents a single Unicode scalar value. Character operations are accessed via class-based method-call syntax (`Character.from_codepoint(cp)`, `Character.length(ch)`) resolved by `classToPrefix()` mapping `Character` → `character_` in the codegen.
+The `Character` type represents a single Unicode scalar value. Character operations are accessed via class-based method-call syntax (`Character.fromCodepoint(cp)`, `Character.length(ch)`) resolved by `classToPrefix()` mapping `Character` → `character_` in the codegen.
 
 ```cpp
 struct CharacterImpl {
@@ -49,8 +49,8 @@ struct CharacterImpl {
 ```
 
 ### 5.1 Factory Methods (Static)
-- `Character.from_codepoint(cp)`: Creates a character from a Unicode codepoint (int64).
-- `Character.from_utf8(data, len)`: Creates a character from a raw UTF-8 byte sequence.
+- `Character.fromCodepoint(cp)`: Creates a character from a Unicode codepoint (int64).
+- `Character.fromUtf8(data, len)`: Creates a character from a raw UTF-8 byte sequence.
 
 ### 5.2 Query Methods (Static)
 - `Character.codepoint(ch)`: Retrieves the Unicode codepoint of character handle `ch`.
@@ -62,11 +62,11 @@ All Character functions follow the runtime module convention with mangled names 
 ## 6. Comparison
 - `a.compare(b)`: Lexicographic C-style comparison (-1, 0, 1). NULL-safe — NULL string sorts before non-NULL.
 - `a.equals(b)`
-- `a.equals_ignore_case(b)`
+- `a.equalsIgnoreCase(b)`
 
 ## 7. Formatting & Conversion
-- `String.from_int64(n)` / `String.from_double(d)`
-- `String.from_any(val, type_id)`: Generic intrinsic for converting any primitive or object to a string.
-- `String.from_object(obj)`: Converts a managed object to a string.
-- `s.to_int64()` / `s.to_double()`
+- `String.fromInt64(n)` / `String.fromDouble(d)`
+- `String.fromAny(val, type_id)`: Generic intrinsic for converting any primitive or object to a string.
+- `String.fromObject(obj)`: Converts a managed object to a string.
+- `s.toInt64()` / `s.toDouble()`
 - `String.format(fmt, ...)`: `printf`-style formatting into a managed string.

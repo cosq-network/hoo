@@ -30,8 +30,8 @@ TEST_F(HooArrayJitTest, PushGetDouble) {
     const std::string source = R"(
         func :double test() {
             var a = Array.new();
-            Array.push_double(a, 3.14);
-            return Array.get_double(a, 0);
+            Array.pushDouble(a, 3.14);
+            return Array.getDouble(a, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -45,8 +45,8 @@ TEST_F(HooArrayJitTest, PushGetInt64) {
     const std::string source = R"(
         func :int64 test() {
             var a = Array.new();
-            Array.push_int64(a, 42);
-            return Array.get_int64(a, 0);
+            Array.pushInt64(a, 42);
+            return Array.getInt64(a, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -57,8 +57,8 @@ TEST_F(HooArrayJitTest, ArrayLength) {
     const std::string source = R"(
         func :int64 test() {
             var a = Array.new();
-            Array.push_int64(a, 10);
-            Array.push_int64(a, 20);
+            Array.pushInt64(a, 10);
+            Array.pushInt64(a, 20);
 return Array.length(a);
         }
     )";
@@ -70,7 +70,7 @@ TEST_F(HooArrayJitTest, ArrayClear) {
     const std::string source = R"(
         func :int64 test() {
             var a = Array.new();
-            Array.push_int64(a, 10);
+            Array.pushInt64(a, 10);
             Array.clear(a);
             return Array.length(a);
         }
@@ -94,8 +94,8 @@ TEST_F(HooArrayJitTest, PushGetString) {
     const std::string source = R"(
         func :int64 test() {
             var a = Array.new();
-            Array.push_string(a, "hello");
-            var s = Array.get_string(a, 0);
+            Array.pushString(a, "hello");
+            var s = Array.getString(a, 0);
             return s.length();
         }
     )";
@@ -107,8 +107,8 @@ TEST_F(HooArrayJitTest, PushGetBool) {
     const std::string source = R"(
         func :int64 test() {
             var a = Array.new();
-            Array.push_bool(a, 1);
-            return Array.get_bool(a, 0);
+            Array.pushBool(a, 1);
+            return Array.getBool(a, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

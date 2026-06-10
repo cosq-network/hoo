@@ -16,7 +16,7 @@ TEST_F(HooCompressionJitTest, GzipRoundTrip) {
             var original = "Hello, World!";
             var data = original.data();
             var len = original.length();
-            var compressed = Compression.gzip_compress(data, len);
+            var compressed = Compression.gzipCompress(data, len);
             return 1;
         }
     )";
@@ -30,7 +30,7 @@ TEST_F(HooCompressionJitTest, DeflateRoundTrip) {
             var original = "Hello, World!";
             var data = original.data();
             var len = original.length();
-            var compressed = Compression.deflate_compress(data, len);
+            var compressed = Compression.deflateCompress(data, len);
             return 1;
         }
     )";

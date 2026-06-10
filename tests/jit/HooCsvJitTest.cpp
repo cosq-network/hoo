@@ -47,7 +47,7 @@ TEST_F(HooCsvJitTest, ReadFile) {
 
     std::string source = std::string(R"(
         func :int64 test() {
-            return Csv.read_file(")") + tmp_path + R"(");
+            return Csv.readFile(")") + tmp_path + R"(");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -58,7 +58,7 @@ TEST_F(HooCsvJitTest, ReadFile) {
 TEST_F(HooCsvJitTest, ReadFileNotFound) {
     const std::string source = R"(
         func :int64 test() {
-            return Csv.read_file("/tmp/hoo_nonexistent_csv_file.csv");
+            return Csv.readFile("/tmp/hoo_nonexistent_csv_file.csv");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

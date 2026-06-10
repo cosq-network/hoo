@@ -13,7 +13,7 @@ The `hoo.path` module provides dirname, basename, extension, join, normalize, ab
 ## 2. Construction
 
 - `Path.join(a, b)` — Join two components with platform separator. Handles edge cases.
-- `Path.join_multi(parts, count)` — Join multiple components.
+- `Path.joinMulti(parts, count)` — Join multiple components.
 
 ## 3. Normalization
 
@@ -23,20 +23,20 @@ The `hoo.path` module provides dirname, basename, extension, join, normalize, ab
 
 ## 4. Properties
 
-- `p.is_absolute()` — Returns 1 if absolute.
-- `p.is_relative()` — Returns 1 if relative.
-- `p.has_extension()` — Returns 1 if path has an extension.
-- `p.has_root()` — Returns 1 if path has a root component.
+- `p.isAbsolute()` — Returns 1 if absolute.
+- `p.isRelative()` — Returns 1 if relative.
+- `p.hasExtension()` — Returns 1 if path has an extension.
+- `p.hasRoot()` — Returns 1 if path has a root component.
 
 ## 5. Split
 
-- `p.split()` — Split path into individual components. Returns array of strings (free with `Path.free_parts`).
-- `Path.free_parts(parts, count)` — Free parts array.
+- `p.split()` — Split path into individual components. Returns array of strings (free with `Path.freeParts`).
+- `Path.freeParts(parts, count)` — Free parts array.
 
 ## 6. Platform-Specific
 
 - `Path.separator()` — Returns `'/'` on Unix, `'\\'` on Windows.
-- `Path.list_separator()` — Returns `':'` on Unix, `';'` on Windows.
+- `Path.listSeparator()` — Returns `':'` on Unix, `';'` on Windows.
 
 ## Usage from Hoo Source
 
@@ -51,7 +51,7 @@ func :int64 demo() {
     var stem = p.stem();                            // "resume"
     var joined = Path.join("a", "b");               // "a/b"
     var norm = Path.new("a/b/../c").normalize();    // "a/c"
-    var abs = Path.new("/usr/bin").is_absolute();   // 1
+    var abs = Path.new("/usr/bin").isAbsolute();   // 1
     var sep = Path.separator();                     // '/' on Unix
     return string_length(dir);
 }
@@ -59,4 +59,4 @@ func :int64 demo() {
 
 ## Memory Management
 
-Strings allocated by `Path` functions must be freed with `Path.free_string(str)`. Parts arrays must be freed with `Path.free_parts(parts, count)`.
+Strings allocated by `Path` functions must be freed with `Path.freeString(str)`. Parts arrays must be freed with `Path.freeParts(parts, count)`.

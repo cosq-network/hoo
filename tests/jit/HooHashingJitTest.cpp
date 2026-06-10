@@ -82,7 +82,7 @@ TEST_F(HooHashingJitTest, Sha256File) {
 
     std::string source = std::string(R"(
         func :int64 test() {
-            var hash = Hashing.sha256_file(")") + tmp_path + R"(");
+            var hash = Hashing.sha256File(")") + tmp_path + R"(");
             return hash.length();
         }
     )";

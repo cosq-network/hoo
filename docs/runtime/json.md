@@ -13,15 +13,15 @@ The `hoo.json` module provides parsing, stringifying, querying, and construction
 
 ## 3. Primitive Value Construction
 
-- `Json.new_null()` — Create a null value.
-- `Json.new_bool(val)` — Create a boolean value (0 or 1).
-- `Json.new_int(val)` — Create an integer value.
-- `Json.new_string(str)` — Create a string value.
+- `Json.newNull()` — Create a null value.
+- `Json.newBool(val)` — Create a boolean value (0 or 1).
+- `Json.newInt(val)` — Create an integer value.
+- `Json.newString(str)` — Create a string value.
 
 ## 4. Object/Array Construction
 
-- `Json.new_object()` — Create an empty object.
-- `Json.new_array()` — Create an empty array.
+- `Json.newObject()` — Create an empty object.
+- `Json.newArray()` — Create an empty array.
 - `obj.set(key, val)` — Set a field on an object.
 - `arr.push(val)` — Append a value to an array.
 - `arr.length()` — Return the number of elements in an array.
@@ -29,8 +29,8 @@ The `hoo.json` module provides parsing, stringifying, querying, and construction
 ## 5. Value Access
 
 - `obj.get(key)` — Get a field from an object; returns 0 if missing.
-- `obj.get_string(key)` — Get a field as a string; returns 0 if missing.
-- `obj.get_int(key)` — Get a field as an integer.
+- `obj.getString(key)` — Get a field as a string; returns 0 if missing.
+- `obj.getInt(key)` — Get a field as an integer.
 - `arr.get(index)` — Get element at index from an array.
 
 ## Usage from Hoo Source
@@ -41,16 +41,16 @@ All `Json.*` and value methods are available:
 func :int64 demo() {
     // Parse
     var obj = Json.parse("{\"name\":\"Alice\",\"age\":30,\"scores\":[95,87,92]}");
-    var name = obj.get_string("name");                 // "Alice"
-    var age = obj.get_int("age");                      // 30
+    var name = obj.getString("name");                 // "Alice"
+    var age = obj.getInt("age");                      // 30
 
     // Build
-    var user = Json.new_object();
-    var n = Json.new_string("Bob");
+    var user = Json.newObject();
+    var n = Json.newString("Bob");
     user.set("name", n);
-    user.set("age", Json.new_int(25));
-    var tags = Json.new_array();
-    tags.push(Json.new_string("admin"));
+    user.set("age", Json.newInt(25));
+    var tags = Json.newArray();
+    tags.push(Json.newString("admin"));
     user.set("tags", tags);
 
     // Stringify

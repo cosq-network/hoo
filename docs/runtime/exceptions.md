@@ -28,8 +28,8 @@ struct HooExceptionImpl {
 Because the JIT translates HVM bytecode to native execution, standard C++ `try-catch` blocks in the host environment cannot automatically route to Hooc `catch` blocks. The runtime provides a **Shadow Stack** to manage this routing.
 
 ### Workflow:
-1. **Try Block Entry**: The Hooc compiler emits `CALL Exception.push_handler(catchPc)`. The JIT intercepts this (`kSysPushHandler`) and saves the current virtual registers (`lr`, `fp`, `sp`) and the handler's PC into a thread-local shadow frame array.
-2. **Throwing**: The compiler emits `CALL throw(exc)`. On macOS/Linux, the runtime calls `Exception.throw(exc)`, which throws a native `HooStdException` (wrapping the handle). The JIT `SYSCALL` bridge catches this and triggers `hooc_hvm_sys_throw_to_handler_state`. On Windows, the JIT bridge directly sets the current exception via `Exception.set_current()` and transfers control through the shadow stack, bypassing C++ exception unwinding entirely.
+1. **Try Block Entry**: The Hooc compiler emits `CALL Exception.pushHandler(catchPc)`. The JIT intercepts this (`kSysPushHandler`) and saves the current virtual registers (`lr`, `fp`, `sp`) and the handler's PC into a thread-local shadow frame array.
+2. **Throwing**: The compiler emits `CALL throw(exc)`. On macOS/Linux, the runtime calls `Exception.throw(exc)`, which throws a native `HooStdException` (wrapping the handle). The JIT `SYSCALL` bridge catches this and triggers `hooc_hvm_sys_throw_to_handler_state`. On Windows, the JIT bridge directly sets the current exception via `Exception.setCurrent()` and transfers control through the shadow stack, bypassing C++ exception unwinding entirely.
 3. **Routing**: The JIT pops the latest shadow frame, restores the virtual `fp`/`sp`, places the exception handle into argument register `r1`, and modifies the virtual Program Counter (`PC`) to jump directly to the `catchPc` block.
 
 ### Platform-Specific Behavior
@@ -37,15 +37,15 @@ Because the JIT translates HVM bytecode to native execution, standard C++ `try-c
 | Platform | Throw Mechanism | C++ Exception Unwinding |
 | :--- | :--- | :--- |
 | macOS/Linux | `Exception.throw()` via `SYSCALL 9` | Yes — native `HooStdException` thrown and caught by JIT bridge |
-| Windows | `Exception.set_current()` via JIT bridge | No — exception is set directly; control flow handled by shadow stack |
+| Windows | `Exception.setCurrent()` via JIT bridge | No — exception is set directly; control flow handled by shadow stack |
 
-On Windows, the handler-related syscalls (`kSysPushHandler`, `kSysPopHandler`, `kSysThrowToHandler`, `kSysRethrowToHandler`) are not lowered to LLVM IR. Instead, they execute via the interpreter fallback path, which uses `Exception.set_current()` to manage exception state without relying on the host's C++ exception mechanism.
+On Windows, the handler-related syscalls (`kSysPushHandler`, `kSysPopHandler`, `kSysThrowToHandler`, `kSysRethrowToHandler`) are not lowered to LLVM IR. Instead, they execute via the interpreter fallback path, which uses `Exception.setCurrent()` to manage exception state without relying on the host's C++ exception mechanism.
 
 ## 3. Core API
 - `Exception.create(typeId, message)`
-- `Exception.create_with_cause(typeId, message, cause)`
+- `Exception.createWithCause(typeId, message, cause)`
 - `exc.message()`
 - `exc.stack_trace()`
-- `Exception.push_handler(handler_pc)` / `Exception.pop_handler()`
+- `Exception.pushHandler(handler_pc)` / `Exception.popHandler()`
 - `Exception.throw(exc)` / `Exception.rethrow()`
-- `Exception.set_current(exc)` — Set the current exception without native unwinding (used on Windows; also available on other platforms for direct state management)
+- `Exception.setCurrent(exc)` — Set the current exception without native unwinding (used on Windows; also available on other platforms for direct state management)

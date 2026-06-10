@@ -13,12 +13,12 @@ The `hoo.regex` module provides compile, match, search, find-all, replace, split
 - `re.match(str)` — Full string match. Returns 1 if match, 0 if not, -1 on error.
 - `re.search(str)` — Partial string search. Returns 1 if found, 0 if not, -1 on error.
 - `re.find(str)` — Find first match, returns allocated string or NULL.
-- `re.find_all(str)` — Find all matches. Returns array of strings (free with `Regex.free_matches`).
+- `re.findAll(str)` — Find all matches. Returns array of strings (free with `Regex.freeMatches`).
 
 ## 3. Replace & Split
 
 - `re.replace(str, replacement)` — Replace all matches with replacement string.
-- `re.split(str)` — Split string by regex matches. Returns array of strings (free with `Regex.free_matches`).
+- `re.split(str)` — Split string by regex matches. Returns array of strings (free with `Regex.freeMatches`).
 
 ## 4. Capture Groups
 
@@ -33,5 +33,5 @@ The regex handle is an opaque pointer with manual reference counting:
 
 ## Memory Management
 
-- `Regex.free_matches(matches, count)` — Free matches array.
-- `Regex.free_string(str)` — Free allocated string.
+- `Regex.freeMatches(matches, count)` — Free matches array.
+- `Regex.freeString(str)` — Free allocated string.

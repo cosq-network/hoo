@@ -264,7 +264,7 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     std::string code = R"(
         func:int64 test() {
             var x = System.hostname();
-            var y = Fs.read_text("test.txt");
+            var y = Fs.readText("test.txt");
             return 0;
         }
     )";
@@ -276,11 +276,11 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     bool foundFs = false;
     for (const auto& sym : module->getSymbols()) {
         if (sym.name.find("_M_hoo_E_System_N_hostname") != std::string::npos) foundSystem = true;
-        if (sym.name.find("_M_hoo_E_Fs_N_read_text") != std::string::npos) foundFs = true;
+        if (sym.name.find("_M_hoo_E_Fs_N_readText") != std::string::npos) foundFs = true;
     }
 
     EXPECT_TRUE(foundSystem) << "Expected System.hostname() to produce _M_hoo_E_System_N_hostname symbol";
-    EXPECT_TRUE(foundFs) << "Expected Fs.read_text() to produce _M_hoo_E_Fs_N_read_text symbol";
+    EXPECT_TRUE(foundFs) << "Expected Fs.read_text() to produce _M_hoo_E_Fs_N_readText symbol";
 }
 
 

@@ -67,7 +67,7 @@ TEST_F(HooPathJitTest, Join) {
 
 TEST_F(HooPathJitTest, IsAbsolute) {
     const std::string source = R"(
-        func :int64 test() { return Path.is_absolute("/usr/bin"); }
+        func :int64 test() { return Path.isAbsolute("/usr/bin"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -75,7 +75,7 @@ TEST_F(HooPathJitTest, IsAbsolute) {
 
 TEST_F(HooPathJitTest, IsRelative) {
     const std::string source = R"(
-        func :int64 test() { return Path.is_relative("foo/bar"); }
+        func :int64 test() { return Path.isRelative("foo/bar"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -83,7 +83,7 @@ TEST_F(HooPathJitTest, IsRelative) {
 
 TEST_F(HooPathJitTest, HasExtension) {
     const std::string source = R"(
-        func :int64 test() { return Path.has_extension("file.txt"); }
+        func :int64 test() { return Path.hasExtension("file.txt"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -110,7 +110,7 @@ TEST_F(HooPathJitTest, Separator) {
 
 TEST_F(HooPathJitTest, ListSeparator) {
     const std::string source = R"(
-        func :int64 test() { return Path.list_separator(); }
+        func :int64 test() { return Path.listSeparator(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), static_cast<int64_t>(':'));
