@@ -1,15 +1,15 @@
 # Collections API Reference
 
-The hoo collections module provides powerful, managed data structures for storing and organizing data: **Arrays** and **Maps**. Both are managed via Automatic Reference Counting (ARC).
+The hoo collections module provides managed data structures for storing and organizing data: **Arrays** and **Maps**.
 
 ## 1. Arrays (`Array`)
 
-Hoo arrays are dynamic, contiguous memory blocks capable of storing 64-bit values (integers, floats, or pointers to managed objects).
+Hoo arrays are dynamic, contiguous blocks capable of storing 64-bit values (integers, floats, or managed objects).
 
-### `Array.new() -> array`
+### `Array.new() :array`
 Creates a new, empty array with initial capacity.
 
-### `arr.length() -> int64`
+### `arr.length() :int64`
 Returns the number of elements currently stored in the array.
 
 ### `arr.push(val: int64)`
@@ -19,16 +19,13 @@ Appends an integer to the end of the array.
 Appends a double-precision float to the end of the array.
 
 ### `arr.push(val: string)`
-Appends a managed string to the end of the array.
+Appends a string to the end of the array.
 
-### `arr.push(val: ptr)`
-Appends a managed object or pointer to the end of the array.
-
-### `arr.getInt64(index: int64) -> int64`
+### `arr.getInt64(index: int64) :int64`
 Retrieves the integer at the specified index.
 - **Note**: Ensure the index is within bounds (`0` to `length - 1`).
 
-### `arr.getString(index: int64) -> string`
+### `arr.getString(index: int64) :string`
 Retrieves the string at the specified index.
 
 ### `arr.pop()`
@@ -43,25 +40,25 @@ Removes all elements from the array.
 
 Hoo maps are type-safe dictionaries that map keys to values. Keys are restricted to specific types (int64, string, etc.) for efficient hashing.
 
-### `Map.new(keyType: int) -> map`
+### `Map.new(keyType: int64) :map`
 Creates a new map bound to a specific key type.
 - **Key Types**:
   - `2`: `int64`
   - `4`: `string`
 
-### `m.length() -> int64`
+### `m.length() :int64`
 Returns the number of entries in the map.
 
 ### `m.set(key: string, val: int64)`
 Associates an integer value with a string key.
 
-### `m.getInt64(key: string) -> int64`
+### `m.getInt64(key: string) :int64`
 Retrieves the integer value associated with a string key. Returns 0 if not found.
 
 ### `m.set(key: string, val: string)`
 Associates a string value with a string key.
 
-### `m.contains(key: string) -> int64`
+### `m.contains(key: string) :int64`
 Returns 1 if the map contains the specified string key, 0 otherwise.
 
 ### `m.remove(key: string)`

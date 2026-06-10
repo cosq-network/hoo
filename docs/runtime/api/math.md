@@ -6,7 +6,7 @@ The `Math` class provides constants, basic functions, power/root operations, tri
 
 ## 1. Constants
 
-### `Math.getPi() -> double`
+### `Math.getPi() :double`
 
 Returns the value of π.
 
@@ -22,7 +22,7 @@ func :void example() {
 
 ---
 
-### `Math.getE() -> double`
+### `Math.getE() :double`
 
 Returns the value of e.
 
@@ -38,7 +38,7 @@ func :void example() {
 
 ---
 
-### `Math.getTau() -> double`
+### `Math.getTau() :double`
 
 Returns the value of τ (tau).
 
@@ -54,7 +54,7 @@ func :void example() {
 
 ---
 
-### `Math.getInf() -> double`
+### `Math.getInf() :double`
 
 Returns positive infinity.
 
@@ -70,7 +70,7 @@ func :void example() {
 
 ---
 
-### `Math.getNegInf() -> double`
+### `Math.getNegInf() :double`
 
 Returns negative infinity.
 
@@ -86,7 +86,7 @@ func :void example() {
 
 ---
 
-### `Math.getNan() -> double`
+### `Math.getNan() :double`
 
 Returns Not-a-Number (NaN).
 
@@ -104,7 +104,7 @@ func :void example() {
 
 ## 2. Basic Functions
 
-### `Math.abs(x: int64) -> int64`
+### `Math.abs(x: int64) :int64`
 
 Returns the absolute value of an integer.
 
@@ -120,7 +120,7 @@ func :int64 example() {
 
 ---
 
-### `Math.abs(x: double) -> double`
+### `Math.abs(x: double) :double`
 
 Returns the absolute value of a double.
 
@@ -136,7 +136,7 @@ func :double example() {
 
 ---
 
-### `Math.sign(x: int64) -> int64`
+### `Math.sign(x: int64) :int64`
 
 Returns the sign of an integer.
 
@@ -152,7 +152,7 @@ func :int64 example() {
 
 ---
 
-### `Math.sign(x: double) -> double`
+### `Math.sign(x: double) :double`
 
 Returns the sign of a double.
 
@@ -168,7 +168,7 @@ func :double example() {
 
 ---
 
-### `Math.min(a: int64, b: int64) -> int64`
+### `Math.min(a: int64, b: int64) :int64`
 
 Returns the smaller of two integers.
 
@@ -185,7 +185,7 @@ func :int64 example() {
 
 ---
 
-### `Math.min(a: double, b: double) -> double`
+### `Math.min(a: double, b: double) :double`
 
 Returns the smaller of two doubles.
 
@@ -202,7 +202,7 @@ func :double example() {
 
 ---
 
-### `Math.max(a: int64, b: int64) -> int64`
+### `Math.max(a: int64, b: int64) :int64`
 
 Returns the larger of two integers.
 
@@ -219,7 +219,7 @@ func :int64 example() {
 
 ---
 
-### `Math.max(a: double, b: double) -> double`
+### `Math.max(a: double, b: double) :double`
 
 Returns the larger of two doubles.
 
@@ -236,7 +236,7 @@ func :double example() {
 
 ---
 
-### `Math.clamp(val: double, min: double, max: double) -> double`
+### `Math.clamp(val: double, min: double, max: double) :double`
 
 Clamps a value within the inclusive range `[min, max]`.
 
@@ -256,7 +256,7 @@ func :double example() {
 
 ## 3. Power and Roots
 
-### `Math.pow(base: double, exp: double) -> double`
+### `Math.pow(base: double, exp: double) :double`
 
 Returns `base` raised to the power of `exp`.
 
@@ -273,7 +273,7 @@ func :double example() {
 
 ---
 
-### `Math.sqrt(x: double) -> double`
+### `Math.sqrt(x: double) :double`
 
 Returns the square root of `x`.
 
@@ -289,7 +289,7 @@ func :double example() {
 
 ---
 
-### `Math.cbrt(x: double) -> double`
+### `Math.cbrt(x: double) :double`
 
 Returns the cube root of `x`.
 
@@ -305,7 +305,7 @@ func :double example() {
 
 ---
 
-### `Math.hypot(x: double, y: double) -> double`
+### `Math.hypot(x: double, y: double) :double`
 
 Returns `sqrt(x * x + y * y)` without unnecessary overflow or underflow.
 
@@ -324,7 +324,7 @@ func :double example() {
 
 ## 4. Trigonometric Functions
 
-### `Math.sin(x: double) -> double`
+### `Math.sin(x: double) :double`
 
 Returns the sine of `x`.
 
@@ -340,7 +340,7 @@ func :double example() {
 
 ---
 
-### `Math.cos(x: double) -> double`
+### `Math.cos(x: double) :double`
 
 Returns the cosine of `x`.
 
@@ -356,7 +356,7 @@ func :double example() {
 
 ---
 
-### `Math.tan(x: double) -> double`
+### `Math.tan(x: double) :double`
 
 Returns the tangent of `x`.
 
@@ -372,7 +372,7 @@ func :double example() {
 
 ---
 
-### `Math.asin(x: double) -> double`
+### `Math.asin(x: double) :double`
 
 Returns the arc sine of `x` in radians.
 
@@ -388,7 +388,7 @@ func :double example() {
 
 ---
 
-### `Math.acos(x: double) -> double`
+### `Math.acos(x: double) :double`
 
 Returns the arc cosine of `x` in radians.
 
@@ -404,7 +404,7 @@ func :double example() {
 
 ---
 
-### `Math.atan(x: double) -> double`
+### `Math.atan(x: double) :double`
 
 Returns the arc tangent of `x` in radians.
 
@@ -420,7 +420,7 @@ func :double example() {
 
 ---
 
-### `Math.atan2(y: double, x: double) -> double`
+### `Math.atan2(y: double, x: double) :double`
 
 Returns the arc tangent of `y / x` using the signs of both to determine the quadrant.
 
@@ -437,7 +437,7 @@ func :double example() {
 
 ---
 
-### `Math.sinh(x: double) -> double`
+### `Math.sinh(x: double) :double`
 
 Returns the hyperbolic sine of `x`.
 
@@ -453,7 +453,7 @@ func :double example() {
 
 ---
 
-### `Math.cosh(x: double) -> double`
+### `Math.cosh(x: double) :double`
 
 Returns the hyperbolic cosine of `x`.
 
@@ -469,7 +469,7 @@ func :double example() {
 
 ---
 
-### `Math.tanh(x: double) -> double`
+### `Math.tanh(x: double) :double`
 
 Returns the hyperbolic tangent of `x`.
 
@@ -487,7 +487,7 @@ func :double example() {
 
 ## 5. Exponential and Logarithmic
 
-### `Math.exp(x: double) -> double`
+### `Math.exp(x: double) :double`
 
 Returns `e` raised to the power of `x`.
 
@@ -503,7 +503,7 @@ func :double example() {
 
 ---
 
-### `Math.exp2(x: double) -> double`
+### `Math.exp2(x: double) :double`
 
 Returns 2 raised to the power of `x`.
 
@@ -519,7 +519,7 @@ func :double example() {
 
 ---
 
-### `Math.expm1(x: double) -> double`
+### `Math.expm1(x: double) :double`
 
 Returns `e^x - 1` accurately even when `x` is near zero.
 
@@ -535,7 +535,7 @@ func :double example() {
 
 ---
 
-### `Math.log(x: double) -> double`
+### `Math.log(x: double) :double`
 
 Returns the natural logarithm of `x`.
 
@@ -551,7 +551,7 @@ func :double example() {
 
 ---
 
-### `Math.log10(x: double) -> double`
+### `Math.log10(x: double) :double`
 
 Returns the base-10 logarithm of `x`.
 
@@ -567,7 +567,7 @@ func :double example() {
 
 ---
 
-### `Math.log2(x: double) -> double`
+### `Math.log2(x: double) :double`
 
 Returns the base-2 logarithm of `x`.
 
@@ -583,7 +583,7 @@ func :double example() {
 
 ---
 
-### `Math.log1p(x: double) -> double`
+### `Math.log1p(x: double) :double`
 
 Returns the natural logarithm of `1 + x` accurately even when `x` is near zero.
 
@@ -601,7 +601,7 @@ func :double example() {
 
 ## 6. Rounding Functions
 
-### `Math.floor(x: double) -> double`
+### `Math.floor(x: double) :double`
 
 Returns the largest integer less than or equal to `x`.
 
@@ -617,7 +617,7 @@ func :double example() {
 
 ---
 
-### `Math.ceil(x: double) -> double`
+### `Math.ceil(x: double) :double`
 
 Returns the smallest integer greater than or equal to `x`.
 
@@ -633,7 +633,7 @@ func :double example() {
 
 ---
 
-### `Math.round(x: double) -> double`
+### `Math.round(x: double) :double`
 
 Returns the nearest integer to `x`, rounding half away from zero.
 
@@ -649,7 +649,7 @@ func :double example() {
 
 ---
 
-### `Math.trunc(x: double) -> double`
+### `Math.trunc(x: double) :double`
 
 Returns the integer part of `x`, discarding the fractional part (truncates toward zero).
 
@@ -665,7 +665,7 @@ func :double example() {
 
 ---
 
-### `Math.fract(x: double) -> double`
+### `Math.fract(x: double) :double`
 
 Returns the fractional part of `x`.
 
@@ -683,7 +683,7 @@ func :double example() {
 
 ## 7. Number Utilities
 
-### `Math.isEven(n: int64) -> int64`
+### `Math.isEven(n: int64) :int64`
 
 Returns 1 if `n` is even, 0 otherwise.
 
@@ -699,7 +699,7 @@ func :int64 example() {
 
 ---
 
-### `Math.isOdd(n: int64) -> int64`
+### `Math.isOdd(n: int64) :int64`
 
 Returns 1 if `n` is odd, 0 otherwise.
 
@@ -715,7 +715,7 @@ func :int64 example() {
 
 ---
 
-### `Math.isPrime(n: int64) -> int64`
+### `Math.isPrime(n: int64) :int64`
 
 Returns 1 if `n` is prime, 0 otherwise.
 
@@ -731,7 +731,7 @@ func :int64 example() {
 
 ---
 
-### `Math.gcd(a: int64, b: int64) -> int64`
+### `Math.gcd(a: int64, b: int64) :int64`
 
 Returns the greatest common divisor of `a` and `b`.
 
@@ -748,7 +748,7 @@ func :int64 example() {
 
 ---
 
-### `Math.lcm(a: int64, b: int64) -> int64`
+### `Math.lcm(a: int64, b: int64) :int64`
 
 Returns the least common multiple of `a` and `b`.
 
@@ -765,7 +765,7 @@ func :int64 example() {
 
 ---
 
-### `Math.factorial(n: int64) -> int64`
+### `Math.factorial(n: int64) :int64`
 
 Returns `n!` (n factorial), the product of all positive integers up to `n`.
 
@@ -781,7 +781,7 @@ func :int64 example() {
 
 ---
 
-### `Math.fibonacci(n: int64) -> int64`
+### `Math.fibonacci(n: int64) :int64`
 
 Returns the `n`-th Fibonacci number (`F(0) = 0`, `F(1) = 1`).
 
@@ -834,7 +834,7 @@ func :int64 example() {
 
 ---
 
-### `state.nextInt() -> int64`
+### `state.nextInt() :int64`
 
 Returns a random 64-bit integer from the full `int64` range.
 
@@ -850,7 +850,7 @@ func :int64 example() {
 
 ---
 
-### `state.nextIntMax(max: int64) -> int64`
+### `state.nextIntMax(max: int64) :int64`
 
 Returns a random integer uniformly distributed in `[0, max)`.
 
@@ -867,7 +867,7 @@ func :int64 example() {
 
 ---
 
-### `state.nextDouble() -> double`
+### `state.nextDouble() :double`
 
 Returns a random double uniformly distributed in `[0, 1)`.
 
@@ -883,7 +883,7 @@ func :double example() {
 
 ---
 
-### `state.nextBool() -> bool`
+### `state.nextBool() :bool`
 
 Returns `true` or `false` with equal probability.
 

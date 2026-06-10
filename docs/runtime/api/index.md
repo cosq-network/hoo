@@ -26,10 +26,10 @@ In hoo source code, runtime functions are called using class-based method syntax
 
 - `Math.abs(x)` — static methods use the class name
 - `s.length()` — instance methods are called on the variable
-- `String.fromCstr(cstr)` / `Array.new()` — constructors use `.new()` / `.from_*()` syntax
+- `Array.new()` — constructors use `.new()` syntax
 
 Standard I/O functions like `print` and `println` are available globally (without a prefix or class qualifier).
 
-### Memory Management Note
+### Memory Management
 
-All complex objects in hoo (Strings, Arrays, Maps, etc.) are automatically managed via **Automatic Reference Counting (ARC)**. As a developer, you generally don't need to manually free objects, as the runtime handles deallocation when an object is no longer reachable. However, when interfacing with raw pointers or certain low-level APIs, understanding the reference counting behavior can be beneficial.
+All complex objects in hoo (Strings, Arrays, Maps, etc.) are automatically managed. You generally don't need to manually free objects — the runtime handles deallocation when an object is no longer reachable.
