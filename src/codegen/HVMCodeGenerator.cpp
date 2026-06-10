@@ -40,7 +40,7 @@ static bool isClassMethodJitClass(const std::string& className) {
 static bool isSingletonBuiltinClass(const std::string& className) {
     static const std::unordered_set<std::string> singletons = {
         "Math", "Fs", "System", "Encoding", "Uuid",
-        "Compression", "Args", "Csv"
+        "Compression", "Csv"
     };
     return singletons.count(className) > 0;
 }
@@ -1110,6 +1110,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 102: resolvedClass = "Array"; break;
                     case 103: resolvedClass = "Map"; break;
                     case 109: resolvedClass = "Character"; break;
+                    case 110: resolvedClass = "Args"; break;
                     default: break;
                 }
             }
@@ -1773,15 +1774,33 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     }
                     if (clsName == "Array") {
                         if (ma->getMember() == "new") return 102;
-                        return 101; // Array.get_string, etc. return String
+                        return 101;
                     }
                     if (clsName == "Map") {
                         if (ma->getMember() == "new") return 103;
-                        return 101; // Map.get_*, etc. return String
+                        return 101;
+                    }
+                    if (clsName == "Args") {
+                        if (ma->getMember() == "new") return 110;
+                        return 101;
                     }
                     if (isBuiltinClassName(clsName)) {
-                        // Most builtin class methods return strings
                         return 101;
+                    }
+                    // Inference from instance method calls (e.g. args.get(0))
+                    if (!clsName.empty()) {
+                        uint32_t objTypeId = getLocalTypeId(clsName);
+                        if (objTypeId == 110) {
+                            const std::string& member = ma->getMember();
+                            if (member == "count" || member == "has" ||
+                                member == "parse" || member == "getInt" ||
+                                member == "getBool") return 1;
+                            if (member == "get" || member == "value" ||
+                                member == "programName" || member == "getString" ||
+                                member == "helpText") return 101;
+                            if (member == "getFloat") return 2;
+                            return 100;
+                        }
                     }
                 }
             }

@@ -1403,16 +1403,148 @@ extern "C" {
     }
 
     // ── Args module ─────────────────────────────────────────────────────────
+    uint64_t jit_args_new(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* args = hoo_args_new();
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(args));
+    }
     uint64_t jit_args_count(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        auto* result = reinterpret_cast<HooArgsResult*>(state->regs[1]);
-        return static_cast<uint64_t>(hoo_args_count(result));
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_args_count(handle));
+    }
+    uint64_t jit_args_get(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* val = hoo_args_get(handle, state->regs[2]);
+        if (!val) return 0;
+        void* str = hoo_string_from_cstr(val);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_args_has(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        auto* result = reinterpret_cast<HooArgsResult*>(state->regs[1]);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        return static_cast<uint64_t>(hoo_args_has(result, key));
+        return static_cast<uint64_t>(hoo_args_has(handle, key));
+    }
+    uint64_t jit_args_value(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* val = hoo_args_value(handle, key);
+        if (!val) return 0;
+        void* str = hoo_string_from_cstr(val);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_args_program_name(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_args_program_name(handle);
+        void* str = hoo_string_from_cstr(name);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+
+    // ── Args argparse-style API ─────────────────────────────────────────────
+    uint64_t jit_args_add_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        const char* default_val = hoo_string_data(reinterpret_cast<void*>(state->regs[7]));
+        hoo_args_add_string(handle, name, short_opt, long_opt, help, default_val);
+        return 0;
+    }
+    uint64_t jit_args_add_int(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        int64_t default_val = state->regs[7];
+        hoo_args_add_int(handle, name, short_opt, long_opt, help, default_val);
+        return 0;
+    }
+    uint64_t jit_args_add_flag(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        hoo_args_add_flag(handle, name, short_opt, long_opt, help);
+        return 0;
+    }
+    uint64_t jit_args_add_float(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        double default_val;
+        std::memcpy(&default_val, &state->regs[7], sizeof(double));
+        hoo_args_add_float(handle, name, short_opt, long_opt, help, default_val);
+        return 0;
+    }
+    uint64_t jit_args_add_positional(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        hoo_args_add_positional(handle, name, help);
+        return 0;
+    }
+    uint64_t jit_args_parse(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_args_parse(handle));
+    }
+    uint64_t jit_args_get_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* val = hoo_args_get_string(handle, name);
+        void* str = hoo_string_from_cstr(val);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_args_get_int(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_args_get_int(handle, name));
+    }
+    uint64_t jit_args_get_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_args_get_bool(handle, name));
+    }
+    uint64_t jit_args_get_float(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        double val = hoo_args_get_float(handle, name);
+        uint64_t bits;
+        std::memcpy(&bits, &val, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_args_help_text(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        char* help = hoo_args_help_text(handle);
+        if (!help) return 0;
+        void* str = hoo_string_from_cstr(help);
+        free(help);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_args_clear(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        hoo_args_clear(handle);
+        return 0;
     }
 
     // ── Net module ──────────────────────────────────────────────────────────
@@ -2192,11 +2324,26 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_Compression_N_gzipDecompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
         {"_F_M_hoo_E_Compression_N_deflateCompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
         {"_F_M_hoo_E_Compression_N_deflateDecompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
-        // Args module
-        {"_F_M_hoo_E_args_count_v_p", reinterpret_cast<void*>(&jit_args_count)},
-        {"_F_M_hoo_E_args_has_v_p_p", reinterpret_cast<void*>(&jit_args_has)},
-        {"_F_M_hoo_E_Args_N_count_i8_p", reinterpret_cast<void*>(&jit_args_count)},
-        {"_F_M_hoo_E_Args_N_has_i8_p_p", reinterpret_cast<void*>(&jit_args_has)},
+        // Args module (prefix-based instance methods)
+        {"_F_M_hoo_E_args_new_v", reinterpret_cast<void*>(&jit_args_new)},
+        {"_F_M_hoo_E_args_count_v", reinterpret_cast<void*>(&jit_args_count)},
+        {"_F_M_hoo_E_args_get_v_p", reinterpret_cast<void*>(&jit_args_get)},
+        {"_F_M_hoo_E_args_has_v_p", reinterpret_cast<void*>(&jit_args_has)},
+        {"_F_M_hoo_E_args_value_v_p", reinterpret_cast<void*>(&jit_args_value)},
+        {"_F_M_hoo_E_args_programName_v", reinterpret_cast<void*>(&jit_args_program_name)},
+        // Args argparse-style API
+        {"_F_M_hoo_E_args_addString_v_p_p_p_p_p", reinterpret_cast<void*>(&jit_args_add_string)},
+        {"_F_M_hoo_E_args_addInt_v_p_p_p_p_p", reinterpret_cast<void*>(&jit_args_add_int)},
+        {"_F_M_hoo_E_args_addFlag_v_p_p_p_p", reinterpret_cast<void*>(&jit_args_add_flag)},
+        {"_F_M_hoo_E_args_addFloat_v_p_p_p_p_p", reinterpret_cast<void*>(&jit_args_add_float)},
+        {"_F_M_hoo_E_args_addPositional_v_p_p", reinterpret_cast<void*>(&jit_args_add_positional)},
+        {"_F_M_hoo_E_args_parse_v", reinterpret_cast<void*>(&jit_args_parse)},
+        {"_F_M_hoo_E_args_getString_v_p", reinterpret_cast<void*>(&jit_args_get_string)},
+        {"_F_M_hoo_E_args_getInt_v_p", reinterpret_cast<void*>(&jit_args_get_int)},
+        {"_F_M_hoo_E_args_getBool_v_p", reinterpret_cast<void*>(&jit_args_get_bool)},
+        {"_F_M_hoo_E_args_getFloat_v_p", reinterpret_cast<void*>(&jit_args_get_float)},
+        {"_F_M_hoo_E_args_helpText_v", reinterpret_cast<void*>(&jit_args_help_text)},
+        {"_F_M_hoo_E_args_clear_v", reinterpret_cast<void*>(&jit_args_clear)},
         // Net module
         {"_F_M_hoo_E_net_url_new_v_p", reinterpret_cast<void*>(&jit_net_url_new)},
         {"_F_M_hoo_E_net_url_get_scheme_v_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},

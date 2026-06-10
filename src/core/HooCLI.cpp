@@ -2,6 +2,7 @@
 #include "core/HooCompiler.h"
 #include "hvm/HOModule.h"
 #include "hvm/HVMJIT.h"
+#include "runtime/lib/hoo_args.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -229,6 +230,8 @@ int HooCLI::compileAndExecute(const Options& opts,
 }
 
 int HooCLI::run(int argc, char* argv[]) {
+    hoo_args_init(argc, (const char* const*)argv);
+
     Options opts = parseArguments(argc, argv);
 
     if (opts.hasError) {
