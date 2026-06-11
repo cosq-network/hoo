@@ -70,7 +70,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (1269+ tests in the current preset run).
+tests/        Exhaustive unit and integration test suites (1370+ tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
