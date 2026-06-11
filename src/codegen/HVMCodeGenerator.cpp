@@ -517,6 +517,16 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         for (const auto& s : block->getStatements()) {
             visitStatement(*s);
         }
+        // Release managed objects (strings, arrays, maps, class instances) in this scope
+        if (!scopeStack_.empty()) {
+            auto& scope = scopeStack_.back();
+            for (const auto& [name, local] : scope) {
+                if (local.typeId >= 100) {
+                    emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
+                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                }
+            }
+        }
         scopeStack_.pop_back();
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
         if (ret->hasExpression()) {
@@ -645,16 +655,16 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
         
-        // Lowered: item = iter[i] -> addr = iter + 8 + i * 8
+        // Lowered: item = iter[i] -> addr = iter + 32 + i * 8 (ARRAY_HEADER_WORDS=4)
         uint8_t shiftReg = emitConstant(3);
         uint8_t scaledIdx = allocateRegister();
         emit(Opcode::SHIFT, OperandsR{scaledIdx, iReg, shiftReg, 0}); // SHL
         freeRegister(shiftReg);
 
-        uint8_t eightReg = emitConstant(8);
+        uint8_t headerSize = emitConstant(32);
         uint8_t offsetReg = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, eightReg, 0}); // ADD
-        freeRegister(eightReg);
+        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, headerSize, 0}); // ADD
+        freeRegister(headerSize);
         freeRegister(scaledIdx);
 
         uint8_t finalAddr = allocateRegister();
@@ -1586,27 +1596,48 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t arrReg = visitExpression(arrayAccess->getArray());
         uint8_t idxReg = visitExpression(arrayAccess->getIndex());
         
+        // Bounds check: compare idx against length at [arrReg + 0]
+        uint8_t lenReg = allocateRegister();
+        emit(Opcode::LD_D, OperandsI{lenReg, arrReg, 0});
+        uint8_t cmpReg = allocateRegister();
+        emit(Opcode::CMP, OperandsR{cmpReg, idxReg, lenReg, 1}); // 1 = BLT (idx < len)
+        freeRegister(lenReg);
+        
+        Label* trapLabel = createLabel();
+        Label* afterAccess = createLabel();
+        emitBranch(Opcode::BEQ, cmpReg, 0, trapLabel); // if idx >= len, trap
+        freeRegister(cmpReg);
+        
+        // Compute element address: arr + 32 + idx * 8 (ARRAY_HEADER_WORDS=4, offset=32)
         uint8_t shiftReg = emitConstant(3); 
         uint8_t scaledIdx = allocateRegister();
-        emit(Opcode::SHIFT, OperandsR{scaledIdx, idxReg, shiftReg, 0}); 
+        emit(Opcode::SHIFT, OperandsR{scaledIdx, idxReg, shiftReg, 0}); // idx * 8
         freeRegister(shiftReg);
         freeRegister(idxReg);
-
-        uint8_t eightReg = emitConstant(8);
+        
+        uint8_t headerSize = emitConstant(32);
         uint8_t offsetReg = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, eightReg, 0}); 
-        freeRegister(eightReg);
+        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, headerSize, 0}); // idx*8 + 32
+        freeRegister(headerSize);
         freeRegister(scaledIdx);
         
         uint8_t finalAddr = allocateRegister();
         emit(Opcode::ARITH, OperandsR{finalAddr, arrReg, offsetReg, 0});
         freeRegister(arrReg);
         freeRegister(offsetReg);
-
+        
         uint8_t dest = allocateRegister();
         emit(Opcode::LD_D, OperandsI{dest, finalAddr, 0});
         freeRegister(finalAddr);
         
+        emitJump(Opcode::JMP, 0, afterAccess);
+        
+        // Out-of-bounds trap
+        bindLabel(trapLabel);
+        emitCall(Opcode::CALL, "_F_hoo_exception_runtime_p");
+        emitCall(Opcode::CALL, "_F_hoo_throw_v_p");
+        
+        bindLabel(afterAccess);
         return dest;
     }
 
@@ -2008,6 +2039,16 @@ void HVMCodeGenerator::emitModuleInit() {
         emit(Opcode::LDA, OperandsI{addrReg, 1, static_cast<int16_t>(dataOffset)});
         emit(Opcode::ST_D, OperandsI{instanceReg, addrReg, 0});
         freeRegister(addrReg);
+
+        // Call the constructor to initialize the singleton instance
+        emit(Opcode::MOV, OperandsR{1, instanceReg, 0, 0}); // 'this' in r1
+        MangledFunctionParams mp;
+        mp.modulePath = modulePath_;
+        mp.className = className;
+        mp.isConstructor = true;
+        std::string ctorName = SymbolMangler::mangleFunctionName(mp);
+        emitCall(Opcode::CALL, ctorName);
+
         freeRegister(instanceReg);
     }
 

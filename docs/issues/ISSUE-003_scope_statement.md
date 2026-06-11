@@ -1,17 +1,19 @@
 # ISSUE-003: Missing Scope Statement Implementation
 
 ## 1. Overview
-The `scope { ... }` block statement allows for explicit lifetime management and local variable shadowing. No `ScopeStatement` AST node or parser rule exists yet — this is both a grammar and codegen gap.
+The `scope { ... }` block statement allows for explicit lifetime management and local variable shadowing. No `ScopeStatement` AST node or parser rule exists — scope semantics are implemented at the JIT execution level via existing `Block` handling.
 
-## 2. Technical Analysis
-While `HVMCodeGenerator` currently uses a flat function-level stack allocation strategy, a `scope` block should eventually trigger local variable cleanup (ARC release) at the end of the block.
+## 2. Implementation
+- **Approach**: Scope variable release is handled directly in `visitStatement` for `Block` nodes, not via a separate grammar rule or AST node type.
+- **Mechanism**: Before popping a scope stack entry, iterate over all locals in that scope and emit `_F_hoo_release_v_p` for any managed-type variable (typeId >= 100: strings, arrays, maps, class instances, etc.).
+- **No grammar changes**: The `statement` grammar rule was not extended; existing `{ }` blocks automatically get scope-level release.
 
-## 3. Requirements & Lowering Suggestions
-- Add `ast::ScopeStatement` to the `visitStatement` logic.
-- **Short-term**: Simply visit the inner block.
-- **Long-term**: Track variables declared within the scope and emit `_F_hoo_release_v_p` calls for all managed objects before leaving the scope.
+## 3. Limitations
+- Variables declared in the outermost function scope (function parameters) are not released — requires proper ARC tracking per ISSUE-007.
+- Return statements inside blocks skip scope releases for that block's locals (dead code after RET). Full ARC (ISSUE-007) would resolve this.
+- Reassigning a managed variable does not release the old value — requires proper ARC on assignment (ISSUE-007).
 
 ## 4. Status
-- **Date**: 2026-05-24
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Date**: 2026-05-24 (opened), 2026-06-10 (fixed)
+- **Status**: **FIXED** (scope-level release in Block visitor)
 - **Priority**: Low

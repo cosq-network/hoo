@@ -34,6 +34,7 @@ emit(Opcode::BEQ, OperandsB{tmpReg, 0, trapLabel}); // if not <, trap
 The trap label should invoke `_F_hoo_exception_throw_v_p` with a bounds-check error object, or set a trap flag in the HVM state.
 
 ## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Date**: 2026-06-08 (opened), 2026-06-10 (fixed)
+- **Status**: **FIXED**
 - **Priority**: **HIGH**
+- **Fix**: Array subscript (`arr[idx]`) now emits bounds check (CMP idx < len, BEQ to trap) before element access. Offset formula corrected from `base + 8 + idx*8` to `base + 32 + idx*8` (ARRAY_HEADER_WORDS=4). For-in loop offset fix applied identically. OOB trap creates runtime exception via `jit_hoo_exception_runtime` and throws via `hoo_throw`.

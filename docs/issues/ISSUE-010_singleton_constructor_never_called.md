@@ -36,6 +36,7 @@ emitCall(Opcode::CALL, ctorMangledName);
 The load path in the user code's `new` expression should still just load the pointer (the constructor was already called during module init).
 
 ## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Date**: 2026-06-08 (opened), 2026-06-10 (fixed)
+- **Status**: **FIXED**
 - **Priority**: **HIGH**
+- **Fix**: `emitModuleInit` now emits `MOV r1, instanceReg` + `CALL <mangled_ctor_name>` after allocating and storing the singleton instance. Uses the same `MangledFunctionParams` pattern as the regular `new` expression path. Singletons are validated to have 0 constructor parameters at class definition (lines 288-294).
