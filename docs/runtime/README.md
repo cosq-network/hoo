@@ -2,7 +2,7 @@
 
 This directory contains the normative documentation for the hoo Runtime Library (`hoort`). The runtime provides the high-level services and intrinsic functions necessary to execute hoo applications, acting as a bridge between the physical HVM RISC core and the host system.
 
-> **Note on syntax**: The runtime API uses class-based method-call syntax. Static functions are called on the class name (e.g., `Math.abs(x)`, `Array.new(16)`, `Json.parse(s)`), while instance methods are called on the variable (e.g., `s.length()`, `arr.push(val)`, `map.get(key)`). The `DOT NEW` syntax (`Map.new(1)`, `Url.new("https://...")`) is supported as a constructor convention. This syntax is resolved by the code generator to the appropriate C-ABI function under the hood.
+> **Note on syntax**: The runtime API uses class-based method-call syntax. Factory functions are called on the class name (e.g., `Character.new(cp)`, `Array.new(16)`, `Json.parse(s)`), while instance methods are called on the variable (e.g., `s.length()`, `ch.codepoint()`, `arr.push(val)`). The Hoo system has no static methods — all operations on instances use dot notation. The `DOT NEW` syntax (`Map.new(1)`, `Character.new(65)`) is supported as a constructor convention. This syntax is resolved by the code generator to the appropriate C-ABI function under the hood.
 
 ## Core Philosophy: The Opaque Handle Model
 

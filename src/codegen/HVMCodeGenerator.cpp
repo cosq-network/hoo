@@ -1784,6 +1784,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new") return 110;
                         return 101;
                     }
+                    if (clsName == "Character") {
+                        if (ma->getMember() == "new" || ma->getMember() == "fromUtf8") return 109;
+                        return 101;
+                    }
                     if (isBuiltinClassName(clsName)) {
                         return 101;
                     }
@@ -1799,6 +1803,12 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "programName" || member == "getString" ||
                                 member == "helpText") return 101;
                             if (member == "getFloat") return 2;
+                            return 100;
+                        }
+                        if (objTypeId == 109) {
+                            const std::string& member = ma->getMember();
+                            if (member == "codepoint" || member == "length") return 1;
+                            if (member == "data") return 101;
                             return 100;
                         }
                     }

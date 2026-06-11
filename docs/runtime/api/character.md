@@ -1,42 +1,44 @@
 # Character API Reference (`Character`)
 
-The `Character` class provides static methods for Unicode character operations.
+The `Character` class provides instance methods for Unicode character operations. Create a character via the `Character.new()` factory, then call methods on the instance.
 
-## Methods
+## Factory Methods
 
-`Character.fromCodepoint(codepoint: int64) :ptr`
+`Character.new(codepoint: int64) :ptr`
 Creates a character from its Unicode code point value. Returns a character handle.
 
-`Character.fromUtf8(bytes: string) :ptr`
-Creates a character from a UTF-8 encoded byte sequence. Returns a character handle.
+`Character.fromUtf8(string: string) :ptr`
+Creates a character from a UTF-8 encoded string. The string must contain exactly one Unicode scalar value.
 
-`Character.codepoint(ch: ptr) :int64`
+## Instance Methods
+
+`codepoint() :int64`
 Returns the Unicode code point of the character.
 
-`Character.length(ch: ptr) :int64`
+`length() :int64`
 Returns the number of bytes in the character's UTF-8 encoding (1-4).
 
-`Character.data(ch: ptr) :string`
+`data() :string`
 Returns the character's raw UTF-8 byte sequence as a string.
 
-`Character.print(ch: ptr)`
+`print()`
 Writes the character to standard output.
 
-`Character.release(ch: ptr)`
+`release()`
 Releases the character handle.
 
 ## Example
 
 ```hoo
-var ch = Character.fromCodepoint(65)
-var cp = Character.codepoint(ch)  // 65
-var len = Character.length(ch)     // 1
-Character.release(ch)
+var ch = Character.new(65)
+var cp = ch.codepoint()  // 65
+var len = ch.length()    // 1
+ch.release()
 
-ch = Character.fromCodepoint(0x1F600)
-len = Character.length(ch)  // 4
+ch = Character.new(0x1F600)
+len = ch.length()  // 4
 
-var fromCp = Character.fromCodepoint(0x1F431)
-Character.print(fromCp)  // 🐱
-Character.release(fromCp)
+var ch2 = Character.new(0x1F431)
+ch2.print()  // 🐱
+ch2.release()
 ```

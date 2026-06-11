@@ -11,11 +11,11 @@ protected:
     HVMJIT jit{io};
 };
 
-TEST_F(HooCharacterApiJitTest, FromCodepoint) {
+TEST_F(HooCharacterApiJitTest, New) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.fromCodepoint(65);
-            return Character.codepoint(ch);
+            var ch = Character.new(65);
+            return ch.codepoint();
         }
     )";
 
@@ -23,14 +23,54 @@ TEST_F(HooCharacterApiJitTest, FromCodepoint) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 65);
 }
 
-TEST_F(HooCharacterApiJitTest, CharacterLength) {
+TEST_F(HooCharacterApiJitTest, Length) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.fromCodepoint(8364);
-            return Character.length(ch);
+            var ch = Character.new(8364);
+            return ch.length();
         }
     )";
 
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
+}
+
+TEST_F(HooCharacterApiJitTest, Data) {
+    const std::string source = R"(
+        func :int64 test() {
+            var ch = Character.new(65);
+            var d = ch.data();
+            return d.length();
+        }
+    )";
+
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooCharacterApiJitTest, DataEquals) {
+    const std::string source = R"(
+        func :int64 test() {
+            var ch = Character.new(65);
+            var d = ch.data();
+            return d.equals("A");
+        }
+    )";
+
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooCharacterApiJitTest, CodepointAfterLength) {
+    const std::string source = R"(
+        func :int64 test() {
+            var ch = Character.new(128512);
+            var len = ch.length();
+            var cp = ch.codepoint();
+            return cp;
+        }
+    )";
+
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 128512);
 }
