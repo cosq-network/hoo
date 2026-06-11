@@ -457,6 +457,5 @@ If the goal is to distribute code safely across many hosts with a strong validat
 
 - `docs/hvm/hvm-spec.md`
 - `docs/hvm/ho-file-format.md`
-- `docs/hvm/hvm-implementation-analysis.md`
 - WebAssembly Specification: https://webassembly.github.io/spec/core/
 - WebAssembly specifications overview: https://webassembly.org/specs/

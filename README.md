@@ -84,8 +84,6 @@ Current profile: **core-minimalest** (Physical Silicon Ready)
 | `docs/hvm/hvm-spec.md` | Normative ISA specification and execution model. |
 | `docs/hvm/hvm_instruction_set.csv` | Machine-readable opcode/format table. |
 | `docs/hvm/ho-file-format.md` | Binary container format for `.ho` modules. |
-| `docs/hvm/jit-implementation-guide.md` | Blueprint for LLVM-based high-performance execution. |
-| `docs/hvm/hvm-implementation-analysis.md`| Detailed assembly-level mapping of language features. |
 | `docs/runtime/jit-integration.md` | SYSCALL interface mapping and ARC optimization passes. |
 
 ## 6. Contributing
