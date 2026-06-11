@@ -38,31 +38,86 @@ Removes all elements from the array.
 
 ## 2. Maps (`Map`)
 
-Hoo maps are type-safe dictionaries that map keys to values. Keys are restricted to specific types (int64, string, etc.) for efficient hashing.
+Hoo maps are type-safe dictionaries that map keys to values. Keys are restricted to specific types (int64, string, etc.) for efficient hashing, and value types can also be specified at creation.
+
+### `Map.new(keyType: int64, valueType: int64) :map`
+Creates a new map bound to a specific key type and value type.
+- **Key Types** (`HooMapKeyType`):
+  - `0`: `byte`
+  - `1`: `int8`
+  - `2`: `int64`
+  - `3`: `char` (runtime only — no Hoo-level wrappers; use C API)
+  - `4`: `string`
+- **Value Types** (`HooMapValueType`):
+  - `0`: `any` (no enforcement)
+  - `1`: `int64`
+  - `2`: `double`
+  - `3`: `bool`
+  - `4`: `string`
+  - `5`: `object`
 
 ### `Map.new(keyType: int64) :map`
-Creates a new map bound to a specific key type.
-- **Key Types**:
-  - `2`: `int64`
-  - `4`: `string`
+Creates a new map with the given key type and value type set to `any`. Provided for backward compatibility.
 
 ### `m.length() :int64`
 Returns the number of entries in the map.
 
-### `m.set(key: string, val: int64)`
-Associates an integer value with a string key.
+### `m.empty() :int64`
+Returns 1 if the map has no entries, 0 otherwise.
 
-### `m.getInt64(key: string) :int64`
-Retrieves the integer value associated with a string key. Returns 0 if not found.
+### `m.clear()`
+Removes all entries from the map.
 
-### `m.set(key: string, val: string)`
-Associates a string value with a string key.
+### `m.keyType() :int64`
+Returns the key type of the map (HooMapKeyType value).
 
-### `m.contains(key: string) :int64`
-Returns 1 if the map contains the specified string key, 0 otherwise.
+### `m.valueType() :int64`
+Returns the value type of the map (HooMapValueType value).
 
-### `m.remove(key: string)`
-Removes the entry associated with the string key.
+### Int64 Key Operations
+
+| Method | Signature |
+|--------|-----------|
+| `containsInt64` | `m.containsInt64(key: int64) :int64` |
+| `removeInt64` | `m.removeInt64(key: int64)` |
+| `setInt64Int64` | `m.setInt64Int64(key: int64, val: int64)` |
+| `getInt64Int64` | `m.getInt64Int64(key: int64) :int64` |
+| `setInt64Double` | `m.setInt64Double(key: int64, val: double)` |
+| `getInt64Double` | `m.getInt64Double(key: int64) :double` |
+| `setInt64String` | `m.setInt64String(key: int64, val: string)` |
+| `getInt64String` | `m.getInt64String(key: int64) :string` |
+| `setInt64Bool` | `m.setInt64Bool(key: int64, val: bool)` |
+| `getInt64Bool` | `m.getInt64Bool(key: int64) :bool` |
+
+### String Key Operations
+
+| Method | Signature |
+|--------|-----------|
+| `containsString` | `m.containsString(key: string) :int64` |
+| `removeString` | `m.removeString(key: string)` |
+| `setStringInt64` | `m.setStringInt64(key: string, val: int64)` |
+| `getStringInt64` | `m.getStringInt64(key: string) :int64` |
+| `setStringDouble` | `m.setStringDouble(key: string, val: double)` |
+| `getStringDouble` | `m.getStringDouble(key: string) :double` |
+| `setStringString` | `m.setStringString(key: string, val: string)` |
+| `getStringString` | `m.getStringString(key: string) :string` |
+| `setStringBool` | `m.setStringBool(key: string, val: bool)` |
+| `getStringBool` | `m.getStringBool(key: string) :bool` |
+
+### Int8 Key Operations
+
+| Method | Signature |
+|--------|-----------|
+| `containsInt8` | `m.containsInt8(key: int8) :int64` |
+| `removeInt8` | `m.removeInt8(key: int8)` |
+| `setInt8Int64` | `m.setInt8Int64(key: int8, val: int64)` |
+| `getInt8Int64` | `m.getInt8Int64(key: int8) :int64` |
+| `setInt8Double` | `m.setInt8Double(key: int8, val: double)` |
+| `getInt8Double` | `m.getInt8Double(key: int8) :double` |
+| `setInt8String` | `m.setInt8String(key: int8, val: string)` |
+| `getInt8String` | `m.getInt8String(key: int8) :string` |
+| `setInt8Bool` | `m.setInt8Bool(key: int8, val: bool)` |
+| `getInt8Bool` | `m.getInt8Bool(key: int8) :bool` |
 
 ---
 
@@ -75,20 +130,26 @@ func :int64 main() {
     numbers.push(10);
     numbers.push(20);
     numbers.push(30);
-    
+
     var len = numbers.length();
     var first = numbers.getInt64(0); // 10
-    
-    // Map Example
-    var config = Map.new(4); // 4 = string key type
-    config.set("port", 8080);
-    config.set("timeout", 30);
-    
-    if (config.contains("port")) {
-        var p = config.getInt64("port");
+
+    // Map Example (string key, int64 value)
+    var config = Map.new(4, 1); // 4 = string key, 1 = int64 value
+    config.setStringInt64("port", 8080);
+    config.setStringInt64("timeout", 30);
+
+    if (config.containsString("port")) {
+        var p = config.getStringInt64("port");
         println("Port: ".concat(p.toString()));
     }
-    
+
+    // Map Example (int64 key, string value)
+    var users = Map.new(2, 4); // 2 = int64 key, 4 = string value
+    users.setInt64String(1001, "Alice");
+    users.setInt64String(1002, "Bob");
+    var name = users.getInt64String(1001);
+
     return 0;
 }
 ```

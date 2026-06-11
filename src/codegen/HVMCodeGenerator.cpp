@@ -274,6 +274,11 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                     if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
                         methodNameToClass_[fn->getName()] = layout.name;
                         layout.privateMethods[fn->getName()] = fn->isPrivate();
+                        if (fn->getReturnType()) {
+                            layout.methodReturnTypes[fn->getName()] = typeIdFromDeclaredType(fn->getReturnType());
+                        } else {
+                            layout.methodReturnTypes[fn->getName()] = 4; // void
+                        }
                     }
                 }
             }
@@ -399,7 +404,9 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     auto mapParams = [&](const auto& params) {
         for (size_t i = 0; i < params.size() && i < maxArgRegs; ++i) {
-            int32_t offset = reserveLocal(params[i]->getName(), getTypeId(&params[i]->getType(), nullptr));
+            std::string paramClassName;
+            uint32_t paramTypeId = getTypeId(&params[i]->getType(), nullptr, &paramClassName);
+            int32_t offset = reserveLocal(params[i]->getName(), paramTypeId, paramClassName);
             emit(Opcode::ST_D, OperandsI{argReg(firstArgReg, i), 30, static_cast<int16_t>(offset)});
         }
     };
@@ -478,6 +485,16 @@ void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
 }
 
 void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
+    // Populate function return type inference info before processing body
+    if (decl.getReturnType()) {
+        std::string clsName;
+        functionReturnTypes_[decl.getName()] = typeIdFromDeclaredType(decl.getReturnType(), &clsName);
+        if (!clsName.empty()) {
+            functionReturnClass_[decl.getName()] = clsName;
+        }
+    } else {
+        functionReturnTypes_[decl.getName()] = 4; // void
+    }
     auto info = beginFunction(&decl, nullptr, false, false);
     endFunction(info);
 }
@@ -511,7 +528,28 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
         auto& decl = varDecl->getDeclaration();
-        int32_t offset = reserveLocal(decl.getName(), getTypeId(decl.getType(), decl.getInitializer()));
+        std::string varClassName;
+        uint32_t typeId = getTypeId(decl.getType(), decl.getInitializer(), &varClassName);
+        uint32_t elemTypeId = 0;
+        if (decl.getType()) {
+            if (auto arrType = dynamic_cast<const ast::ArrayType*>(decl.getType())) {
+                elemTypeId = typeIdFromDeclaredType(&arrType->getBaseType());
+            }
+        } else if (decl.getInitializer()) {
+            if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
+                auto& elements = arrLit->getElements()->getExpressions();
+                uint32_t commonType = 100;
+                for (const auto& elem : elements) {
+                    uint32_t t = getTypeId(nullptr, elem.get());
+                    if (t != 100) {
+                        if (commonType == 100) commonType = t;
+                        else if (commonType != t) { commonType = 100; break; }
+                    }
+                }
+                elemTypeId = commonType;
+            }
+        }
+        int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId);
         if (decl.getInitializer()) {
             uint8_t reg = visitExpression(*decl.getInitializer());
             emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
@@ -627,7 +665,14 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::LD_D, OperandsI{itemReg, finalAddr, 0});
         freeRegister(finalAddr);
         
-        int32_t itemOffset = reserveLocal(forIn->getVariable(), 100);
+        uint32_t forInElemTypeId = 100;
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                uint32_t et = getLocalElementTypeId(id->getName());
+                if (et != 0) forInElemTypeId = et;
+            }
+        }
+        int32_t itemOffset = reserveLocal(forIn->getVariable(), forInElemTypeId);
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
         controlFlowStack_.push({endLabel, stepLabel});
@@ -676,7 +721,9 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         for (const auto& clause : tryCatch->getCatchClauses()) {
             uint8_t excReg = allocateRegister();
             emit(Opcode::MOV, OperandsR{excReg, 1, 0, 0});
-            int32_t itemOffset = reserveLocal(clause.variable, getTypeId(clause.type.get(), nullptr));
+            std::string catchClassName;
+            uint32_t catchTypeId = getTypeId(clause.type.get(), nullptr, &catchClassName);
+            int32_t itemOffset = reserveLocal(clause.variable, catchTypeId, catchClassName);
             emit(Opcode::ST_D, OperandsI{excReg, 30, static_cast<int16_t>(itemOffset)});
             freeRegister(excReg);
             visitStatement(*clause.block);
@@ -763,6 +810,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         if (auto arrayLit = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
             auto& elements = arrayLit->getElements()->getExpressions();
+            
+            // Infer common element type from literal elements
+            uint32_t elemTypeId = 100;
+            for (const auto& elem : elements) {
+                uint32_t t = getTypeId(nullptr, elem.get());
+                if (t != 100 && t != 4) { // skip void
+                    if (elemTypeId == 100) elemTypeId = t;
+                    else if (elemTypeId != t) { elemTypeId = 100; break; }
+                }
+            }
+            
             std::vector<uint8_t> elementRegs;
             for (const auto& elem : elements) {
                 elementRegs.push_back(visitExpression(*elem));
@@ -787,8 +845,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             // capacity (offset 8)
             emit(Opcode::ST_D, OperandsI{lenReg, dest, 8}); 
             freeRegister(lenReg);
-            // element_type (offset 16) - default to Object (100)
-            uint8_t elemTypeReg = emitConstant(100);
+            // element_type (offset 16) - inferred from literal elements
+            uint8_t elemTypeReg = emitConstant(static_cast<int64_t>(elemTypeId));
             emit(Opcode::ST_D, OperandsI{elemTypeReg, dest, 16});
             freeRegister(elemTypeReg);
             // reserved/padding (offset 24)
@@ -1578,10 +1636,10 @@ void HVMCodeGenerator::freeRegister(uint8_t reg) {
 }
 
 
-int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId) {
+int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId, const std::string& className, uint32_t elementTypeId) {
     currentStackOffset_ -= 8;
     if (scopeStack_.empty()) scopeStack_.push_back({});
-    scopeStack_.back()[name] = {currentStackOffset_, typeId};
+    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId};
     return currentStackOffset_;
 }
 
@@ -1598,6 +1656,22 @@ uint32_t HVMCodeGenerator::getLocalTypeId(const std::string& name) const {
     for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
         auto found = it->find(name);
         if (found != it->end()) return found->second.typeId;
+    }
+    return 0;
+}
+
+std::string HVMCodeGenerator::getLocalClassName(const std::string& name) const {
+    for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
+        auto found = it->find(name);
+        if (found != it->end()) return found->second.className;
+    }
+    return "";
+}
+
+uint32_t HVMCodeGenerator::getLocalElementTypeId(const std::string& name) const {
+    for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
+        auto found = it->find(name);
+        if (found != it->end()) return found->second.elementTypeId;
     }
     return 0;
 }
@@ -1750,7 +1824,37 @@ void HVMCodeGenerator::emitBranch(Opcode op, uint8_t rs1, uint8_t rs2, Label* ta
 }
 
 
-uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expression* initializer) {
+uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName) const {
+    if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
+        if (bt->isPrimitive()) {
+            switch (bt->getPrimitiveType()->getKind()) {
+                case ast::PrimitiveTypeKind::INT64: return 1;
+                case ast::PrimitiveTypeKind::FLOAT:
+                case ast::PrimitiveTypeKind::DOUBLE:
+                case ast::PrimitiveTypeKind::F64:   return 2;
+                case ast::PrimitiveTypeKind::BOOL:    return 3;
+                case ast::PrimitiveTypeKind::VOID:    return 4;
+                case ast::PrimitiveTypeKind::INT8:    return 5;
+                case ast::PrimitiveTypeKind::BYTE:    return 6;
+                case ast::PrimitiveTypeKind::CHAR:    return 7;
+                case ast::PrimitiveTypeKind::STRING:  return 101;
+                default: return 1;
+            }
+        } else {
+            std::string name = bt->getIdentifier();
+            if (outClassName) *outClassName = name;
+            if (name == "String") return 101;
+            if (name == "Character") return 109;
+            return 100;
+        }
+    }
+    if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
+    if (dynamic_cast<const ast::MapType*>(type)) return 103;
+    if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
+    return 100;
+}
+
+uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expression* initializer, std::string* outClassName) {
     if (!type) {
         if (initializer) {
             // Basic inference from literal
@@ -1793,9 +1897,9 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     }
                     // Inference from instance method calls (e.g. args.get(0))
                     if (!clsName.empty()) {
+                        const std::string& member = ma->getMember();
                         uint32_t objTypeId = getLocalTypeId(clsName);
                         if (objTypeId == 110) {
-                            const std::string& member = ma->getMember();
                             if (member == "count" || member == "has" ||
                                 member == "parse" || member == "getInt" ||
                                 member == "getBool") return 1;
@@ -1806,45 +1910,74 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             return 100;
                         }
                         if (objTypeId == 109) {
-                            const std::string& member = ma->getMember();
                             if (member == "codepoint" || member == "length") return 1;
                             if (member == "data") return 101;
                             return 100;
                         }
+                        if (objTypeId == 103) {
+                            if (member == "length" || member == "empty" ||
+                                member == "keyType" || member == "valueType" ||
+                                member == "containsInt64" || member == "containsString" ||
+                                member == "containsInt8" ||
+                                member == "getInt64Int64" || member == "getInt64Bool" ||
+                                member == "getInt8Int64" || member == "getInt8Bool" ||
+                                member == "getStringInt64" || member == "getStringBool")
+                                return 1;
+                            if (member == "getInt64Double" ||
+                                member == "getStringDouble" || member == "getInt8Double")
+                                return 2;
+                            if (member == "getInt64String" ||
+                                member == "getStringString" || member == "getInt8String")
+                                return 101;
+                            return 100;
+                        }
+                        // Inference for user-defined class methods
+                        std::string objClassName = getLocalClassName(clsName);
+                        if (objClassName.empty()) {
+                            objClassName = clsName;
+                        }
+                        auto classIt = classes_.find(objClassName);
+                        if (classIt != classes_.end()) {
+                            auto retIt = classIt->second.methodReturnTypes.find(member);
+                            if (retIt != classIt->second.methodReturnTypes.end()) {
+                                return retIt->second;
+                            }
+                        }
                     }
+                }
+                // Direct function call: look up declared return type
+                if (auto id = dynamic_cast<const ast::Identifier*>(&fc->getFunction())) {
+                    const std::string& funcName = id->getName();
+                    auto retIt = functionReturnTypes_.find(funcName);
+                    if (retIt != functionReturnTypes_.end()) {
+                        if (outClassName) {
+                            auto clsIt = functionReturnClass_.find(funcName);
+                            if (clsIt != functionReturnClass_.end()) {
+                                *outClassName = clsIt->second;
+                            }
+                        }
+                        return retIt->second;
+                    }
+                }
+            }
+            // Inference from array subscript (arr[0])
+            if (auto aa = dynamic_cast<const ast::ArrayAccess*>(initializer)) {
+                std::string arrName;
+                if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&aa->getArray())) {
+                    if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                        arrName = id->getName();
+                    }
+                }
+                if (!arrName.empty()) {
+                    uint32_t elemTypeId = getLocalElementTypeId(arrName);
+                    if (elemTypeId != 0) return elemTypeId;
                 }
             }
         }
         return 100; // Default to Object
     }
     
-    if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
-        if (bt->isPrimitive()) {
-            switch (bt->getPrimitiveType()->getKind()) {
-                case ast::PrimitiveTypeKind::INT64: return 1;
-                case ast::PrimitiveTypeKind::FLOAT:
-                case ast::PrimitiveTypeKind::DOUBLE:
-                case ast::PrimitiveTypeKind::F64:   return 2;
-                case ast::PrimitiveTypeKind::BOOL:    return 3;
-                case ast::PrimitiveTypeKind::VOID:    return 4;
-                case ast::PrimitiveTypeKind::INT8:    return 5;
-                case ast::PrimitiveTypeKind::BYTE:    return 6;
-                case ast::PrimitiveTypeKind::CHAR:    return 7;
-                case ast::PrimitiveTypeKind::STRING:  return 101;
-                default: return 1;
-            }
-        } else {
-            std::string name = bt->getIdentifier();
-            if (name == "String") return 101;
-            if (name == "Character") return 109;
-            return 100;
-        }
-    }
-    if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
-    if (dynamic_cast<const ast::MapType*>(type)) return 103;
-    if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
-    
-    return 100;
+    return typeIdFromDeclaredType(type);
 }
 
 void HVMCodeGenerator::emitModuleInit() {

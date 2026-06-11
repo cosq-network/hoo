@@ -742,7 +742,7 @@ extern "C" {
     }
     uint64_t jit_hoo_map_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_map_new(state->regs[1])));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_map_new_with_keytype(static_cast<int>(state->regs[1]))));
     }
     uint64_t jit_hoo_exception_runtime(void* /*state_ptr*/) {
         HooException exc = hoo_exception_runtime("hvm runtime exception");
@@ -894,7 +894,11 @@ extern "C" {
     // ── Map aliases (match codegen-generated _F_map_*_v_p names) ─────────────
     uint64_t jit_map_new_plain(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_map_new(static_cast<int>(state->regs[1]))));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_map_new_with_keytype(static_cast<int>(state->regs[1]))));
+    }
+    uint64_t jit_map_new_types(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_map_new(static_cast<int>(state->regs[1]), static_cast<int>(state->regs[2]))));
     }
     uint64_t jit_map_set_int64_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -931,6 +935,103 @@ extern "C" {
     uint64_t jit_map_empty(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_map_empty(reinterpret_cast<void*>(state->regs[1])));
+    }
+    // ── Map extended typed operations ─────────────────────────────────────────
+    uint64_t jit_map_set_int64_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double val;
+        std::memcpy(&val, &state->regs[3], sizeof(double));
+        return static_cast<uint64_t>(hoo_map_set_int64_double(reinterpret_cast<void*>(state->regs[1]), state->regs[2], val));
+    }
+    uint64_t jit_map_get_int64_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double dest = 0.0;
+        hoo_map_get_int64_double(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
+        uint64_t bits;
+        std::memcpy(&bits, &dest, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_map_set_int64_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* val = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(hoo_map_set_int64_string(reinterpret_cast<void*>(state->regs[1]), state->regs[2], val));
+    }
+    uint64_t jit_map_get_int64_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* dest = nullptr;
+        hoo_map_get_int64_string(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
+        if (!dest) return 0;
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(dest)));
+    }
+    uint64_t jit_map_set_int64_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_map_set_int64_bool(reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3]));
+    }
+    uint64_t jit_map_get_int64_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        int64_t dest = 0;
+        hoo_map_get_int64_bool(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
+        return static_cast<uint64_t>(dest);
+    }
+    uint64_t jit_map_set_string_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        double val;
+        std::memcpy(&val, &state->regs[3], sizeof(double));
+        return static_cast<uint64_t>(hoo_map_set_string_double(reinterpret_cast<void*>(state->regs[1]), key, val));
+    }
+    uint64_t jit_map_get_string_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        double dest = 0.0;
+        hoo_map_get_string_double(reinterpret_cast<void*>(state->regs[1]), key, &dest);
+        uint64_t bits;
+        std::memcpy(&bits, &dest, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_map_set_string_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* val = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(hoo_map_set_string_string(reinterpret_cast<void*>(state->regs[1]), key, val));
+    }
+    uint64_t jit_map_get_string_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* dest = nullptr;
+        hoo_map_get_string_string(reinterpret_cast<void*>(state->regs[1]), key, &dest);
+        if (!dest) return 0;
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(dest)));
+    }
+    uint64_t jit_map_set_string_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_map_set_string_bool(reinterpret_cast<void*>(state->regs[1]), key, state->regs[3]));
+    }
+    uint64_t jit_map_get_string_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        int64_t dest = 0;
+        hoo_map_get_string_bool(reinterpret_cast<void*>(state->regs[1]), key, &dest);
+        return static_cast<uint64_t>(dest);
+    }
+    uint64_t jit_map_set_int8_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_map_set_int8_int64(reinterpret_cast<void*>(state->regs[1]), static_cast<int8_t>(state->regs[2]), state->regs[3]));
+    }
+    uint64_t jit_map_get_int8_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        int64_t dest = 0;
+        hoo_map_get_int8_int64(reinterpret_cast<void*>(state->regs[1]), static_cast<int8_t>(state->regs[2]), &dest);
+        return static_cast<uint64_t>(dest);
+    }
+    uint64_t jit_map_key_type(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_map_key_type(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_map_value_type(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_map_value_type(reinterpret_cast<void*>(state->regs[1])));
     }
     // ── Math functions ────────────────────────────────────────────────────────
     uint64_t jit_math_abs_int64(void* state_ptr) {
@@ -2124,12 +2225,27 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_map_new_v_p", reinterpret_cast<void*>(&jit_map_new_plain)},
         {"_F_map_set_int64_int64_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
         {"_F_map_get_int64_int64_v_p_p", reinterpret_cast<void*>(&jit_map_get_int64_int64)},
-        {"_F_map_length_v_p", reinterpret_cast<void*>(&jit_map_length)},
+        {"_F_map_set_int64_double_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_int64_double)},
+        {"_F_map_get_int64_double_v_p_p", reinterpret_cast<void*>(&jit_map_get_int64_double)},
+        {"_F_map_set_int64_string_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_int64_string)},
+        {"_F_map_get_int64_string_v_p_p", reinterpret_cast<void*>(&jit_map_get_int64_string)},
+        {"_F_map_set_int64_bool_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_int64_bool)},
+        {"_F_map_get_int64_bool_v_p_p", reinterpret_cast<void*>(&jit_map_get_int64_bool)},
         {"_F_map_set_string_int64_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_string_int64)},
+        {"_F_map_set_string_double_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_string_double)},
+        {"_F_map_get_string_double_v_p_p", reinterpret_cast<void*>(&jit_map_get_string_double)},
+        {"_F_map_set_string_string_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_string_string)},
+        {"_F_map_get_string_string_v_p_p", reinterpret_cast<void*>(&jit_map_get_string_string)},
+        {"_F_map_set_string_bool_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_string_bool)},
+        {"_F_map_get_string_bool_v_p_p", reinterpret_cast<void*>(&jit_map_get_string_bool)},
+        {"_F_map_set_int8_int64_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_int8_int64)},
+        {"_F_map_get_int8_int64_v_p_p", reinterpret_cast<void*>(&jit_map_get_int8_int64)},
         {"_F_map_contains_int64_v_p_p", reinterpret_cast<void*>(&jit_map_contains_int64)},
         {"_F_map_remove_int64_v_p_p", reinterpret_cast<void*>(&jit_map_remove_int64)},
         {"_F_map_clear_v_p", reinterpret_cast<void*>(&jit_map_clear)},
         {"_F_map_empty_v_p", reinterpret_cast<void*>(&jit_map_empty)},
+        {"_F_map_key_type_v_p", reinterpret_cast<void*>(&jit_map_key_type)},
+        {"_F_map_value_type_v_p", reinterpret_cast<void*>(&jit_map_value_type)},
         // Array hoo-module-qualified symbols (codegen redirects array_* to hoo module)
         {"_F_M_hoo_E_array_new_v", reinterpret_cast<void*>(&jit_hoo_array_new)},
         {"_F_M_hoo_E_array_push_double_v_p_p", reinterpret_cast<void*>(&jit_array_push_double)},
@@ -2154,6 +2270,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_getBool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         // Map hoo-module-qualified symbols (codegen redirects map_* to hoo module)
         {"_F_M_hoo_E_map_new_v_p", reinterpret_cast<void*>(&jit_map_new_plain)},
+        {"_F_M_hoo_E_map_new_v_p_p", reinterpret_cast<void*>(&jit_map_new_types)},
         {"_F_M_hoo_E_map_set_int64_int64_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
         {"_F_M_hoo_E_map_get_int64_int64_v_p", reinterpret_cast<void*>(&jit_map_get_int64_int64)},
         {"_F_M_hoo_E_map_length_v", reinterpret_cast<void*>(&jit_map_length)},
@@ -2162,12 +2279,31 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_map_remove_int64_v_p", reinterpret_cast<void*>(&jit_map_remove_int64)},
         {"_F_M_hoo_E_map_clear_v", reinterpret_cast<void*>(&jit_map_clear)},
         {"_F_M_hoo_E_map_empty_v", reinterpret_cast<void*>(&jit_map_empty)},
+        {"_F_M_hoo_E_map_key_type_v", reinterpret_cast<void*>(&jit_map_key_type)},
+        {"_F_M_hoo_E_map_value_type_v", reinterpret_cast<void*>(&jit_map_value_type)},
         // CamelCase aliases
+        {"_F_M_hoo_E_map_new_v_p_p", reinterpret_cast<void*>(&jit_map_new_types)},
         {"_F_M_hoo_E_map_setInt64Int64_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
         {"_F_M_hoo_E_map_getInt64Int64_v_p", reinterpret_cast<void*>(&jit_map_get_int64_int64)},
+        {"_F_M_hoo_E_map_setInt64Double_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_double)},
+        {"_F_M_hoo_E_map_getInt64Double_v_p", reinterpret_cast<void*>(&jit_map_get_int64_double)},
+        {"_F_M_hoo_E_map_setInt64String_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_string)},
+        {"_F_M_hoo_E_map_getInt64String_v_p", reinterpret_cast<void*>(&jit_map_get_int64_string)},
+        {"_F_M_hoo_E_map_setInt64Bool_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_bool)},
+        {"_F_M_hoo_E_map_getInt64Bool_v_p", reinterpret_cast<void*>(&jit_map_get_int64_bool)},
         {"_F_M_hoo_E_map_setStringInt64_v_p_p", reinterpret_cast<void*>(&jit_map_set_string_int64)},
+        {"_F_M_hoo_E_map_setStringDouble_v_p_p", reinterpret_cast<void*>(&jit_map_set_string_double)},
+        {"_F_M_hoo_E_map_getStringDouble_v_p", reinterpret_cast<void*>(&jit_map_get_string_double)},
+        {"_F_M_hoo_E_map_setStringString_v_p_p", reinterpret_cast<void*>(&jit_map_set_string_string)},
+        {"_F_M_hoo_E_map_getStringString_v_p", reinterpret_cast<void*>(&jit_map_get_string_string)},
+        {"_F_M_hoo_E_map_setStringBool_v_p_p", reinterpret_cast<void*>(&jit_map_set_string_bool)},
+        {"_F_M_hoo_E_map_getStringBool_v_p", reinterpret_cast<void*>(&jit_map_get_string_bool)},
+        {"_F_M_hoo_E_map_setInt8Int64_v_p_p", reinterpret_cast<void*>(&jit_map_set_int8_int64)},
+        {"_F_M_hoo_E_map_getInt8Int64_v_p", reinterpret_cast<void*>(&jit_map_get_int8_int64)},
         {"_F_M_hoo_E_map_containsInt64_v_p", reinterpret_cast<void*>(&jit_map_contains_int64)},
         {"_F_M_hoo_E_map_removeInt64_v_p", reinterpret_cast<void*>(&jit_map_remove_int64)},
+        {"_F_M_hoo_E_map_keyType_v", reinterpret_cast<void*>(&jit_map_key_type)},
+        {"_F_M_hoo_E_map_valueType_v", reinterpret_cast<void*>(&jit_map_value_type)},
         // Math functions (hoo module namespace, as codegen redirects them)
         // Math functions (simplified names for class-based Math.abs() syntax)
         {"_F_M_hoo_E_math_abs_v_p", reinterpret_cast<void*>(&jit_math_abs_int64)},

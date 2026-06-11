@@ -9,9 +9,10 @@ The CMake build configuration and test suite have several bugs and gaps that sil
 - **Location**: `CMakeLists.txt` lines 372 and 385
 - **Issue**: `tests/runtime/HooNetTest.cpp` is listed twice in the `hoo-tests` executable sources. This will cause duplicate-symbol linker errors.
 
-### 2.2 `tests/jit/HooCompilerTest.cpp` excluded from build
-- **Location**: `CMakeLists.txt` lines 339-422 (no entry for this file)
-- **Issue**: The file exists on disk with 19 tests but is not included in CMakeLists.txt. These tests are silently excluded from all builds.
+### 2.2 `tests/core/HooCompilerTest.cpp` previously excluded from build
+- **Location**: `CMakeLists.txt` line 410
+- **Issue**: The file previously existed on disk with 19 tests but was not included in CMakeLists.txt.
+- **Status**: **FIXED** — `tests/core/HooCompilerTest.cpp` is now listed at line 410 and built as part of the `hoo-tests` target.
 
 ### 2.3 Duplicate test name `NewExpressionWithConstructorArgs`
 - **Location**: `tests/jit/NewLanguageFeaturesTest.cpp` lines 262 and 264
@@ -54,5 +55,6 @@ The CMake build configuration and test suite have several bugs and gaps that sil
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY FIXED**
 - **Priority**: **HIGH**
+- **Update 2026-06-11**: Sub-issue 2.2 (`HooCompilerTest.cpp` excluded) is now **FIXED** — the file is included at CMakeLists.txt line 410 and all 19 tests run as part of the suite.

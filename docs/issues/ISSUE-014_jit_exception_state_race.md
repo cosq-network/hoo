@@ -5,27 +5,17 @@ The JIT exception handling subsystem uses multiple global data structures withou
 
 ## 2. Technical Analysis
 
-### 2.1 Unlocked global map
+### 2.1 Shared-mutex locking (no dedicated mutex)
 - **Location**: `src/hvm/HVMJIT.cpp` lines 404, 481-486, 511
-- **Issue**: `gCurrentExceptionByState` is a `std::unordered_map<void*, uint64_t>` accessed in `shadow_throw_to_handler` and `shadow_rethrow_to_handler` functions. These functions are called from JIT-compiled code which may execute on multiple threads.
+- **Issue**: `gCurrentExceptionByState` is a `std::unordered_map<void*, uint64_t>` accessed in `shadow_throw_to_handler` and `shadow_rethrow_to_handler` functions. All accesses are protected by `gShadowHandlersMu` (the same mutex that protects the shadow handler stack), but there is no dedicated mutex for exception state — it piggybacks on an unrelated lock.
 
 ```cpp
-// Line 404: No mutex declared for this map
+// Line 404: No dedicated mutex, relies on gShadowHandlersMu
 std::unordered_map<void*, uint64_t> gCurrentExceptionByState;
-
-// Line 481-486: shadow_throw_to_handler reads/writes without lock
-auto exIt = gCurrentExceptionByState.find(state);
-if (exIt != gCurrentExceptionByState.end()) {
-    // ... use existing exception ...
-}
-gCurrentExceptionByState[state] = exc;
-
-// Line 511: shadow_rethrow_to_handler erases without lock
-gCurrentExceptionByState.erase(state);
 ```
 
 ### 2.2 Contrast with protected globals
-The adjacent `gShadowHandlers` map (line 403) IS protected by `gShadowHandlersMu` (line 385), and `gStateOwnerByPtr` (line 406) is protected by `gStateOwnerMu` (line 405). The unprotected `gCurrentExceptionByState` is an inconsistency.
+`gShadowHandlers` (line 403) IS protected by `gShadowHandlersMu` (line 385) — that's its intended mutex. `gStateOwnerByPtr` (line 406) is protected by `gStateOwnerMu` (line 405). `gCurrentExceptionByState` borrows `gShadowHandlersMu` instead of having its own lock, making the locking relationship harder to reason about.
 
 ## 3. Impact
 - Data race when multiple JIT-compiled threads execute exception operations simultaneously.
@@ -54,5 +44,6 @@ std::unordered_map<void*, uint64_t> gCurrentExceptionByState;
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
-- **Priority**: **HIGH**
+- **Status**: **PARTIALLY FIXED**
+- **Priority**: **LOW**
+- **Note**: As of 2026-06-11, `gCurrentExceptionByState` IS protected by `gShadowHandlersMu` — it was never truly unlocked. The remaining concern is that no dedicated mutex exists, but there is no data race. Priority has been downgraded accordingly.

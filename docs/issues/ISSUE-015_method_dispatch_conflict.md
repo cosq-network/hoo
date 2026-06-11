@@ -41,5 +41,6 @@ When resolving, if a method name has multiple candidate classes, emit a runtime 
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY MITIGATED**
 - **Priority**: **HIGH**
+- **Update 2026-06-11**: Type inference improvements (see ISSUE-022) now resolve many `var` declarations to precise typeIds (int64, double, string, etc.) instead of falling back to 100 (Object). This reduces the impact of the `methodNameToClass_` conflict for variables with inferrable types. However, `var` variables that still resolve to typeId 100 (e.g., via complex expressions, function returns from other modules, or untyped collection access) remain vulnerable to wrong dispatch. The multi-class index fix in §4 is still the correct long-term solution.

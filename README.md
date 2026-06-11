@@ -1,6 +1,6 @@
 # Hooc
 
-Last Updated: 2026-06-08
+Last Updated: 2026-06-11
 
 Hooc is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -24,7 +24,8 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Phase 7 (System Services)**: expanded SYSCALL table from 11 to 23 entries, adding OS-level file I/O, threading, clock, and random services; reserved `r4` as thread pointer (`tp`).
 - [x] **Phase 8 (Class Method Dispatch)**: class-based method-call syntax (`Math.abs(x)`, `map.length()`) with full JIT support for all runtime modules; `DOT NEW` constructor syntax (`Map.new(1)`); consistent `"ptr"` mangling for all method parameters and return types.
 - [x] **Phase 8.1 (Character Dispatch Fix)**: Added `Character` → `character` prefix mapping to `classToPrefix()`, registering JIT symbols for `_F_M_hoo_E_character_*` mangled names, enabling factory constructors `Character.new()` and `Character.fromUtf8()`, and instance methods `codepoint()`, `length()`, `data()`, `print()`, `release()` at the Hooc language level (no static methods).
-- [x] **Verification**: full preset test run passing (`1269+ tests`).
+- [x] **Phase 8.2 (Type Inference)**: Extended `getTypeId()` to infer return types for function calls, user-defined class methods, and array subscript access. Array literal element types inferred from uniform elements. For-in loop variables infer type from iterable's element type. Char-keyed Map operations removed from Hoo language layer (runtime-only C API).
+- [x] **Verification**: full preset test run passing (`1370 tests`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 

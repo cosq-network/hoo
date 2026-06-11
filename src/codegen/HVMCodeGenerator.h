@@ -58,6 +58,8 @@ private:
     struct Local {
         int32_t offset; // Offset relative to FP (r30)
         uint32_t typeId;
+        std::string className; // Class name for user-defined types (empty for primitives)
+        uint32_t elementTypeId = 0; // Element type for Array variables (0 = unknown/Object)
     };
     std::vector<std::unordered_map<std::string, Local>> scopeStack_;
     int32_t currentStackOffset_ = 0;
@@ -70,6 +72,7 @@ private:
         std::unordered_map<std::string, int32_t> fieldOffsets;
         std::unordered_map<std::string, bool> privateMethods; // methodName -> isPrivate
         std::unordered_map<std::string, FieldAccess> fieldAccess; // fieldName -> access level
+        std::unordered_map<std::string, uint32_t> methodReturnTypes; // methodName -> typeId
         int32_t totalSize = 0;
         bool isSingleton = false;
         bool isFinal = false;
@@ -79,6 +82,8 @@ private:
     };
     std::unordered_map<std::string, ClassLayout> classes_;
     std::unordered_map<std::string, std::string> methodNameToClass_; // methodName -> className
+    std::unordered_map<std::string, uint32_t> functionReturnTypes_; // functionName -> typeId
+    std::unordered_map<std::string, std::string> functionReturnClass_; // functionName -> className (for user-defined types)
     ClassLayout* currentClass_ = nullptr;
     bool inConstructor_ = false;
     std::vector<std::pair<std::string, uint32_t>> pendingSingletons_; // className, .data offset
@@ -91,7 +96,7 @@ private:
     /**
      * Reserve space on stack for a local variable.
      */
-    int32_t reserveLocal(const std::string& name, uint32_t typeId);
+    int32_t reserveLocal(const std::string& name, uint32_t typeId, const std::string& className = "", uint32_t elementTypeId = 0);
     int32_t getLocalOffset(const std::string& name);
 
     // Label & Control Flow
@@ -116,13 +121,29 @@ private:
     
     /**
      * Map an AST type to its runtime Type ID.
+     * If outClassName is provided, it will be set to the class name for user-defined types.
      */
-    uint32_t getTypeId(const ast::Type* type, const ast::Expression* initializer = nullptr);
+    uint32_t getTypeId(const ast::Type* type, const ast::Expression* initializer = nullptr, std::string* outClassName = nullptr);
 
     /**
      * Look up the typeId of a local variable from scope.
      */
     uint32_t getLocalTypeId(const std::string& name) const;
+
+    /**
+     * Look up the className of a local variable from scope.
+     */
+    std::string getLocalClassName(const std::string& name) const;
+
+    /**
+     * Look up the elementTypeId of a local variable (for Array types) from scope.
+     */
+    uint32_t getLocalElementTypeId(const std::string& name) const;
+
+    /**
+     * Convert a declared AST type to a runtime typeId.
+     */
+    uint32_t typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName = nullptr) const;
 
     /**
      * Check if a name matches a known built-in class for static dispatch.

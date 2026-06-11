@@ -7,16 +7,12 @@ The grammar defines eight class modifiers (`singleton`, `immutable`, `factory`, 
 
 ### 2.1 Removed modifiers still in grammar
 - **Location**: `src/parsing/Hooc.g4`
-- **Issue**: The `classModifier` rule still includes `factory`, `observable`, `strategy`, `actor` even though they were removed from the language (per ISSUE-005 implementation notes, commit `360f682`).
-
-```
-classModifier
-    : SINGLETON | IMMUTABLE | FACTORY | OBSERVABLE
-    | SERVICE | STRATEGY | ACTOR | FINAL;
-```
-
-- `FACTORY`, `OBSERVABLE`, `STRATEGY`, `ACTOR` are still in the grammar `SINGLETON IMMUTABLE FACTORY OBSERVABLE SERVICE STRATEGY ACTOR FINAL` rule.
-- These keywords remain reserved but produce no codegen effect.
+- **Issue**: The `classModifier` rule previously included `factory`, `observable`, `strategy`, `actor` even though they were removed from the language (per ISSUE-005 implementation notes, commit `360f682`).
+- **Status**: **FIXED** — the grammar rule at line 158 now reads:
+  ```
+  classModifier: SINGLETON | IMMUTABLE | SERVICE | FINAL;
+  ```
+  The modifiers `FACTORY`, `OBSERVABLE`, `STRATEGY`, `ACTOR` have been removed from the grammar.
 
 ### 2.2 Dead `interpolatedString` grammar rule
 - **Location**: `src/parsing/Hooc.g4` line 325
@@ -43,5 +39,6 @@ classModifier
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY FIXED**
 - **Priority**: **LOW**
+- **Update 2026-06-11**: Sub-issue 2.1 (removed modifiers in grammar) is now **FIXED** — `FACTORY`, `OBSERVABLE`, `STRATEGY`, `ACTOR` have been removed from the `classModifier` rule. Sub-issues 2.2 (dead `interpolatedString` rule), 2.3 (unimplemented `getBinaryOperator`), and 2.4 (unused `getBoolValue`) remain open.
