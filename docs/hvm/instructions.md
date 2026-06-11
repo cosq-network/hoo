@@ -10,7 +10,7 @@ This reference defines a **pure hardware-ready ISA**. All high-level VM construc
 
 ## 1. Scope
 
-This reference defines the physical instructions supported by the HVM core. It is sufficient to support the Hooc language through aggressive compiler-level lowering.
+This reference defines the physical instructions supported by the HVM core. It is sufficient to support the Hoo language through aggressive compiler-level lowering.
 
 ## 2. Register Convention Summary
 

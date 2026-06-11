@@ -2,7 +2,7 @@
 
 This document lists optional HVM instruction families that are **not part of the current core profile** in `docs/hvm/hvm-spec.md`.
 
-Core profile is intentionally minimal and grammar-driven (`src/parsing/Hooc.g4`).
+Core profile is intentionally minimal and grammar-driven (`src/parsing/Hoo.g4`).
 Use these extensions only when language/runtime requirements justify them.
 
 ## 1. Policy
@@ -112,7 +112,7 @@ When to enable:
 ## 5. Migration Guidance
 
 If you later add grammar features that require these profiles:
-1. Update `src/parsing/Hooc.g4`.
+1. Update `src/parsing/Hoo.g4`.
 2. Update AST/builder/codegen lowering rules.
 3. Add required instructions back to `docs/hvm/hvm_instruction_set.csv` under profile labels.
 4. Expand `docs/hvm/hvm_register_set.csv` if profile requires new register classes.

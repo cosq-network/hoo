@@ -60,7 +60,7 @@ decoded via `SymbolMangler::demangleType()`.
 
 Defined in `getTypeCodeMap()` (SymbolMangler.cpp lines 55-72):
 
-| Hooc Type | Code |
+| Hoo Type | Code |
 |-----------|------|
 | `int8`, `byte` | `i1` |
 | `int64`, `int` | `i8` |
@@ -155,7 +155,7 @@ above.
 
 **This is the most important convention for developers.**
 
-In Hooc source code, runtime functions are called using class-based method syntax:
+In Hoo source code, runtime functions are called using class-based method syntax:
 `Math.abs(x)`, `s.length()`, `Thread.spawn()`. The code generator internally maps
 each class name to a module prefix via `classToPrefix()` (e.g. `Math` → `math_`,
 `Thread` → `thread_`, `String` → `string_`), then detects the resulting prefix
@@ -338,7 +338,7 @@ the module namespace family uses the hardcoded `v`/`p` convention described in
 
 ### 7.1 Adding a New Runtime Module Function
 
-1. **Identify the class name and method** as it will appear in Hooc source, e.g.
+1. **Identify the class name and method** as it will appear in Hoo source, e.g.
    `Thread.spawn(func, arg)`. The codegen maps each module class to a prefix via
    `classToPrefix()` (defined in `HVMCodeGenerator.cpp`).
 2. **Register the class name** in `HVMCodeGenerator.cpp:classToPrefix()` if it's a
@@ -348,7 +348,7 @@ the module namespace family uses the hardcoded `v`/`p` convention described in
 4. **Compute the mangled name** by the rule `_F_M_hoo_E_<name>_v_p*` where `_p`
    repeats for each parameter
 5. **Register the JIT wrapper** in `buildRuntimeSymbols()` using the mangled name
-6. **Test** by calling the function from Hooc source through `jit.run()`
+6. **Test** by calling the function from Hoo source through `jit.run()`
 
 ### 7.2 Debugging Mismatches
 
@@ -361,7 +361,7 @@ If `jit.run()` returns -1 or the JIT reports a missing symbol:
    block
 3. **Verify the symbol table entry** — the mangled name in `buildRuntimeSymbols()`
    must match exactly what the codegen produces (same case, same underscores)
-4. **Confirm parameter count** — each argument in the Hooc call adds one `_p`
+4. **Confirm parameter count** — each argument in the Hoo call adds one `_p`
    to the mangled name
 
 ### 7.3 Type Codes Quick Reference

@@ -1,7 +1,7 @@
 # ISSUE-006: Incomplete Access Qualifier Implementation (Public/Private)
 
 ## 1. Overview
-The Hooc language supports `public` and `private` access qualifiers for functions and methods. While these are correctly parsed into `ast::FunctionModifier` nodes, the `HVMCodeGenerator` does not enforce these boundaries or correctly lower them to the HVM symbol table.
+The Hoo language supports `public` and `private` access qualifiers for functions and methods. While these are correctly parsed into `ast::FunctionModifier` nodes, the `HVMCodeGenerator` does not enforce these boundaries or correctly lower them to the HVM symbol table.
 
 ## 2. Technical Analysis
 There are three critical failures in the current implementation:

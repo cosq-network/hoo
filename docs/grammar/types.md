@@ -1,6 +1,6 @@
 # Type System
 
-Hooc is a statically-typed language. Every expression and variable has a type known at compile-time.
+Hoo is a statically-typed language. Every expression and variable has a type known at compile-time.
 
 ## 1. Primitive Types
 

@@ -1,6 +1,6 @@
 # Functions & Methods
 
-Functions are the primary units of execution in Hooc. They can be declared at the top-level or as members of a class.
+Functions are the primary units of execution in Hoo. They can be declared at the top-level or as members of a class.
 
 ## 1. Function Declaration
 
@@ -8,7 +8,7 @@ The basic syntax for a function is:
 `func [: returnType] name(parameters) { body }`
 
 ### Top-level Function
-```hooc
+```hoo
 func: int64 add(a: int64, b: int64) {
     return a + b;
 }
@@ -16,7 +16,7 @@ func: int64 add(a: int64, b: int64) {
 
 ### Void Function
 If no return type is specified, it defaults to `void`.
-```hooc
+```hoo
 func sayHello() {
     print("Hello");
 }
@@ -35,7 +35,7 @@ Functions can be prefixed with modifiers to change their behavior or visibility:
 ## 4. Methods
 Methods are functions declared inside a `class`. They have access to the implicit `this` reference.
 
-```hooc
+```hoo
 class Calculator {
     func: int64 add(a: int64, b: int64) {
         return a + b;
@@ -46,7 +46,7 @@ class Calculator {
 ## 5. Constructors
 Constructors are special functions in a class used for instance initialization. They use the `constructor` keyword and do not have a return type.
 
-```hooc
+```hoo
 class User {
     var name: string;
     constructor(n: string) {

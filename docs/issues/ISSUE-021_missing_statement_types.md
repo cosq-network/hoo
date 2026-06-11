@@ -1,17 +1,17 @@
 # ISSUE-021: Missing Statement Types in Grammar and Codegen
 
 ## 1. Overview
-The Hooc language grammar and codegen are missing several common statement types and have incomplete implementations for others. These gaps limit expressiveness and cause compiler crashes for valid Hoo programs.
+The Hoo language grammar and codegen are missing several common statement types and have incomplete implementations for others. These gaps limit expressiveness and cause compiler crashes for valid Hoo programs.
 
 ## 2. Issues
 
 ### 2.1 No `do-while` loop
-- **Grammar**: `src/parsing/Hooc.g4`
+- **Grammar**: `src/parsing/Hoo.g4`
 - **Codegen**: `src/codegen/HVMCodeGenerator.cpp`
 - **Issue**: The language has `while` and `for` but no `do-while` loop. The grammar has no corresponding rule.
 
 ### 2.2 No `switch/case` statement
-- **Grammar**: `src/parsing/Hooc.g4`
+- **Grammar**: `src/parsing/Hoo.g4`
 - **Issue**: No `switch` expression or multi-branch conditional statement exists beyond `if/else`.
 
 ### 2.3 No `scope` block (documented)

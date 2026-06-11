@@ -7,7 +7,7 @@ It offers two tiers of API:
 1. **Low-level raw access** — direct access to parsed positional and named arguments.
 2. **Argparse-style API** — define expected arguments (typed, with defaults) and access parsed values with automatic type conversion.
 
-Before calling any `Args` methods from JIT-compiled Hooc code, you must call `hoo_args_init(argc, argv)` from C/C++ to provide the raw command-line arguments. The examples below are complete, self-contained Hooc programs with `func :int64 main()` as the entry point.
+Before calling any `Args` methods from JIT-compiled Hoo code, you must call `hoo_args_init(argc, argv)` from C/C++ to provide the raw command-line arguments. The examples below are complete, self-contained Hoo programs with `func :int64 main()` as the entry point.
 
 ## Low-Level Methods
 
@@ -33,10 +33,10 @@ Given the C++ setup code:
 ```cpp
 const char* argv[] = {"/usr/bin/hoo", "input.txt", "--output=result.txt", "--verbose"};
 hoo_args_init(4, argv);
-// ... compile and run the Hooc function below
+// ... compile and run the Hoo function below
 ```
 
-The following Hooc program counts positional args, prints each one, checks for named flags, and prints the program name:
+The following Hoo program counts positional args, prints each one, checks for named flags, and prints the program name:
 
 ```hoo
 func :int64 main() {

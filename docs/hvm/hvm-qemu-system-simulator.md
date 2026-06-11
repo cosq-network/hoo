@@ -1302,7 +1302,7 @@ Exit criteria:
 Goal:
 
 - compare simulator and JIT behavior under identical inputs
-- ensure the same Hooc program behaves the same way
+- ensure the same Hoo program behaves the same way
 
 Exit criteria:
 
@@ -1332,7 +1332,7 @@ The QEMU-based HVM simulator is considered ready when:
 | 3 | Traps and interrupts | Timer, syscall, breakpoint, watchpoints | Interrupts and trap return are stable |
 | 4 | MMU and maintenance | CSR, TLB, cache maintenance | Translation and invalidation work correctly |
 | 5 | Laptop/mobile board modeling | Storage, input, display, power | Firmware enumerates realistic board variants |
-| 6 | Parity validation | QEMU vs JIT comparison | Same Hooc programs behave identically |
+| 6 | Parity validation | QEMU vs JIT comparison | Same Hoo programs behave identically |
 
 ## 23. Task Checklist
 

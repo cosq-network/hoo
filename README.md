@@ -1,12 +1,12 @@
-# Hooc
+# Hoo
 
 Last Updated: 2026-06-11
 
-Hooc is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
+Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
 ## 1. Architectural Vision: Hardware Purity
 
-The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
+The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
 
 - **ISA Purity**: No "magic" opcodes for objects or exceptions. The instruction set is limited to fundamental arithmetic, memory, and control-flow primitives.
 - **Aggressive Lowering**: The compiler (`hoo`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
@@ -23,8 +23,9 @@ The Hooc ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificati
 - [x] **Phase 6 (Hardening)**: refactored low-level array representation, implemented managed realloc/capacity tracking, and stabilized full test suite.
 - [x] **Phase 7 (System Services)**: expanded SYSCALL table from 11 to 23 entries, adding OS-level file I/O, threading, clock, and random services; reserved `r4` as thread pointer (`tp`).
 - [x] **Phase 8 (Class Method Dispatch)**: class-based method-call syntax (`Math.abs(x)`, `map.length()`) with full JIT support for all runtime modules; `DOT NEW` constructor syntax (`Map.new(1)`); consistent `"ptr"` mangling for all method parameters and return types.
-- [x] **Phase 8.1 (Character Dispatch Fix)**: Added `Character` → `character` prefix mapping to `classToPrefix()`, registering JIT symbols for `_F_M_hoo_E_character_*` mangled names, enabling factory constructors `Character.new()` and `Character.fromUtf8()`, and instance methods `codepoint()`, `length()`, `data()`, `print()`, `release()` at the Hooc language level (no static methods).
+- [x] **Phase 8.1 (Character Dispatch Fix)**: Added `Character` → `character` prefix mapping to `classToPrefix()`, registering JIT symbols for `_F_M_hoo_E_character_*` mangled names, enabling factory constructors `Character.new()` and `Character.fromUtf8()`, and instance methods `codepoint()`, `length()`, `data()`, `print()`, `release()` at the Hoo language level (no static methods).
 - [x] **Phase 8.2 (Type Inference)**: Extended `getTypeId()` to infer return types for function calls, user-defined class methods, and array subscript access. Array literal element types inferred from uniform elements. For-in loop variables infer type from iterable's element type. Char-keyed Map operations removed from Hoo language layer (runtime-only C API).
+- [x] **Phase 9 (Output Optimization)**: Silenced LLVM IR and JIT debug outputs during execution to significantly improve unit test performance.
 - [x] **Verification**: full preset test run passing (`1370 tests`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
@@ -64,7 +65,7 @@ This preset expects dependencies in `vcpkg_installed/x64-windows/` and uses the 
 
 ```text
 src/
-  parsing/    Hooc.g4 grammar + ANTLR4 generated artifacts.
+  parsing/    Hoo.g4 grammar + ANTLR4 generated artifacts.
   ast/        Typed Abstract Syntax Tree with lowering metadata.
   codegen/    HVM and LLVM IR generation backends.
   hvm/        ISA definitions, module serialization, and physical state model.
@@ -89,8 +90,8 @@ Current profile: **core-minimalest** (Physical Silicon Ready)
 
 ## 6. Contributing
 
-The Hooc project follows a "Specs First" methodology. When adding features:
-1. Update the **Grammar** (`Hooc.g4`).
+The Hoo project follows a "Specs First" methodology. When adding features:
+1. Update the **Grammar** (`Hoo.g4`).
 2. Define the **Lowering Rule** in `HVM_IMPLEMENTATION_ANALYSIS.md`.
 3. Update the **HVM Backend** and **Runtime Intrinsics**.
 4. Synchronize all **Normative Documentation**.

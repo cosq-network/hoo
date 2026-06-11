@@ -6,7 +6,7 @@ The grammar defines eight class modifiers (`singleton`, `immutable`, `factory`, 
 ## 2. Technical Analysis
 
 ### 2.1 Removed modifiers still in grammar
-- **Location**: `src/parsing/Hooc.g4`
+- **Location**: `src/parsing/Hoo.g4`
 - **Issue**: The `classModifier` rule previously included `factory`, `observable`, `strategy`, `actor` even though they were removed from the language (per ISSUE-005 implementation notes, commit `360f682`).
 - **Status**: **FIXED** — the grammar rule at line 158 now reads:
   ```
@@ -15,7 +15,7 @@ The grammar defines eight class modifiers (`singleton`, `immutable`, `factory`, 
   The modifiers `FACTORY`, `OBSERVABLE`, `STRATEGY`, `ACTOR` have been removed from the grammar.
 
 ### 2.2 Dead `interpolatedString` grammar rule
-- **Location**: `src/parsing/Hooc.g4` line 325
+- **Location**: `src/parsing/Hoo.g4` line 325
 - **Issue**: The rule `interpolatedString: STRING_LITERAL;` is never referenced by any parser rule. String interpolation is handled entirely through textual scanning for `${` patterns in the AST builder.
 
 ### 2.3 `getBinaryOperator()` declared but never defined
@@ -33,7 +33,7 @@ The grammar defines eight class modifiers (`singleton`, `immutable`, `factory`, 
 
 ## 4. Suggested Fixes
 1. Remove `FACTORY`, `OBSERVABLE`, `STRATEGY`, `ACTOR` from the `classModifier` grammar rule.
-2. Remove the dead `interpolatedString` rule from `Hooc.g4`.
+2. Remove the dead `interpolatedString` rule from `Hoo.g4`.
 3. Either implement `getBinaryOperator()` or remove its declaration.
 4. Either use `getBoolValue()` in the AST builder or remove it.
 

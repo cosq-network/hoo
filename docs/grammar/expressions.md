@@ -3,7 +3,7 @@
 Expressions are combinations of literals, identifiers, and operators that evaluate to a single value.
 
 ## 1. Literals
-Hooc supports several types of literals:
+Hoo supports several types of literals:
 - **Numeric**: `42`, `3.14`.
 - **String**: `"Hello"`, `"""Multiline"""`.
 - **Interpolated String**: `"Value: ${x}"` (automatically converts primitives and joins parts).

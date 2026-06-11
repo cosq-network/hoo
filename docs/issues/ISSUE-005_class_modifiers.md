@@ -1,7 +1,7 @@
 # ISSUE-005: Unimplemented Class Modifiers
 
 ## 1. Overview
-The Hooc grammar (`src/parsing/Hooc.g4`) defines eight class modifiers:
+The Hoo grammar (`src/parsing/Hoo.g4`) defines eight class modifiers:
 - `singleton`
 - `immutable`
 - `factory`

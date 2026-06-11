@@ -30,7 +30,7 @@ It should provide:
 - a simple register file model
 - explicit integer, floating-point, branch, and memory units
 - a clean trap and syscall path
-- a predictable ABI for compiled Hooc code
+- a predictable ABI for compiled Hoo code
 
 ## 3. Programmer Model
 

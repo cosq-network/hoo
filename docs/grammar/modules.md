@@ -1,13 +1,13 @@
 # Module System
 
-Hooc uses a Python-style module system for code organization and namespace management.
+Hoo uses a Python-style module system for code organization and namespace management.
 
 ## 1. Compilation Units
 A compilation unit is a single source file (`.hoo`). It consists of optional import statements followed by declarations (functions, classes, variables, constants, or FFI).
 
 ## 2. Imports
 
-Hooc supports two main types of imports:
+Hoo supports two main types of imports:
 
 ### Basic Import
 Imports an entire module.

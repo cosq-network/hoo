@@ -17,8 +17,8 @@
 #include <unistd.h>
 #endif
 
-#ifndef HOOC_EXECUTABLE
-#error "HOOC_EXECUTABLE must be defined via CMake -D"
+#ifndef HOO_EXECUTABLE
+#error "HOO_EXECUTABLE must be defined via CMake -D"
 #endif
 
 class HooCLIIntegrationTest : public ::testing::Test {
@@ -28,7 +28,7 @@ protected:
 
     void SetUp() override {
         tempDir = testing::TempDir();
-        hooExe = HOOC_EXECUTABLE;
+        hooExe = HOO_EXECUTABLE;
     }
 
     std::string createTempFile(const std::string& content, const std::string& ext = ".hoo") {

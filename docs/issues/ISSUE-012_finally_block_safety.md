@@ -29,7 +29,7 @@ finally_start:
 ## 3. Impact
 - Resources expected to be released in `finally` (file handles, mutexes) are leaked when exceptions occur.
 - Shadow-stack corruption from unpopped handlers.
-- Non-compliance with the Hooc language specification.
+- Non-compliance with the Hoo language specification.
 
 ## 4. Suggested Fix
 Use a nested try-catch approach:

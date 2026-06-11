@@ -1,6 +1,6 @@
 # Memory Model & ARC
 
-The Hooc Runtime uses Automatic Reference Counting (ARC) combined with a Thread-Local Allocation Buffer (TLAB) to provide high-performance, deterministic memory management without the pause times of a tracing garbage collector.
+The Hoo Runtime uses Automatic Reference Counting (ARC) combined with a Thread-Local Allocation Buffer (TLAB) to provide high-performance, deterministic memory management without the pause times of a tracing garbage collector.
 
 ## 1. The 16-Byte Object Header
 Every object managed by the runtime (including Arrays, Strings, Maps, and User Objects) is prefixed with a hidden 16-byte header. When `hoo_alloc` returns a pointer, it points *past* this header to the user data payload.

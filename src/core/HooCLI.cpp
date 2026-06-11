@@ -169,6 +169,7 @@ int HooCLI::compileAndExecute(const Options& opts,
             ioProvider_->writeStderr("Execution failed: " + jit.getLastError() + "\n");
             return 1;
         }
+        ioProvider_->writeStdout(std::to_string(result) + "\n");
         verboseLog(opts, "Execution completed successfully (result: " + std::to_string(result) + ")");
         return 0;
     }
@@ -224,6 +225,7 @@ int HooCLI::compileAndExecute(const Options& opts,
         return 1;
     }
 
+    ioProvider_->writeStdout(std::to_string(result) + "\n");
     verboseLog(opts, "Execution completed successfully (result: " + std::to_string(result) + ")");
 
     return 0;

@@ -1,10 +1,10 @@
-# Hooc Virtual Machine (HVM) Specification
+# Hoo Virtual Machine (HVM) Specification
 
-This is the **minimal core HVM profile** required to implement the current Hooc grammar in `src/parsing/Hooc.g4`. This profile is designed for **physical hardware compatibility**, strictly using low-level RISC instructions.
+This is the **minimal core HVM profile** required to implement the current Hoo grammar in `src/parsing/Hoo.g4`. This profile is designed for **physical hardware compatibility**, strictly using low-level RISC instructions.
 
 ## 1. Scope
 
-This profile is limited to the physical ISA required to support Hooc. All high-level language constructs (objects, arrays, exceptions) are lowered to standard memory operations and function calls to a runtime library.
+This profile is limited to the physical ISA required to support Hoo. All high-level language constructs (objects, arrays, exceptions) are lowered to standard memory operations and function calls to a runtime library.
 
 Anything not required by a pure RISC core (SIMD, threading, interrupts, specialized VM opcodes) is excluded or handled via system calls.
 

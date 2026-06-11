@@ -1,6 +1,6 @@
 # HVM Implementation Analysis: Hardware-Ready Lowering
 
-This document provides a detailed technical analysis of the `HVMCodeGenerator` implementation as of Version 1.4 (Hardware Ready). It explores how high-level Hooc language elements are resolved into pure RISC instructions and identifies the current level of completion.
+This document provides a detailed technical analysis of the `HVMCodeGenerator` implementation as of Version 1.4 (Hardware Ready). It explores how high-level Hoo language elements are resolved into pure RISC instructions and identifies the current level of completion.
 
 ## 1. ISA Alignment (Version 1.4)
 
@@ -23,7 +23,7 @@ HVM is a 64-bit register machine. All integer types (`int8`, `byte`, `int64`) ar
 #### **2.1.1 Integer Arithmetic**
 Integer operations use the `ARITH` opcode family (0x10) with specific `func` sub-codes.
 
-| Operation | Hooc Syntax | HVM Assembly (Illustrative) | Description |
+| Operation | Hoo Syntax | HVM Assembly (Illustrative) | Description |
 | :--- | :--- | :--- | :--- |
 | **Addition** | `a + b` | `add rd, rs1, rs2` | `rd = rs1 + rs2` (func 0) |
 | **Subtraction** | `a - b` | `sub rd, rs1, rs2` | `rd = rs1 - rs2` (func 1) |
@@ -35,7 +35,7 @@ Integer operations use the `ARITH` opcode family (0x10) with specific `func` sub
 #### **2.1.2 Floating-Point Arithmetic**
 Floating-point operations (for `float`, `double`, `f64`) use the `FLOAT_ARITH` family (0x30).
 
-| Operation | Hooc Syntax | HVM Assembly (Illustrative) | Description |
+| Operation | Hoo Syntax | HVM Assembly (Illustrative) | Description |
 | :--- | :--- | :--- | :--- |
 | **FP Add** | `fa + fb` | `fadd rd, rs1, rs2` | `rd = rs1 + rs2` (f64, func 0) |
 | **FP Sub** | `fa - fb` | `fsub rd, rs1, rs2` | `rd = rs1 - rs2` (f64, func 1) |
@@ -45,7 +45,7 @@ Floating-point operations (for `float`, `double`, `f64`) use the `FLOAT_ARITH` f
 #### **2.1.3 Bitwise Operations**
 Bitwise operations use the `LOGIC` (0x20) and `SHIFT` (0x13) opcode families.
 
-| Operation | Hooc Syntax | HVM Assembly (Illustrative) | Description |
+| Operation | Hoo Syntax | HVM Assembly (Illustrative) | Description |
 | :--- | :--- | :--- | :--- |
 | **Bitwise AND** | `a & b` | `and rd, rs1, rs2` | `rd = rs1 & rs2` (func 0) |
 | **Bitwise OR** | `a \| b` | `or rd, rs1, rs2` | `rd = rs1 \| rs2` (func 1) |
@@ -58,7 +58,7 @@ Bitwise operations use the `LOGIC` (0x20) and `SHIFT` (0x13) opcode families.
 #### **2.1.4 Logical Operations**
 Logical operations operate on booleans (where `false=0`, `true=1`).
 
-| Operation | Hooc Syntax | HVM Assembly (Lowering) | Description |
+| Operation | Hoo Syntax | HVM Assembly (Lowering) | Description |
 | :--- | :--- | :--- | :--- |
 | **Logical NOT** | `!a` | `cmpeq rd, rs, r0` | `rd = (rs == 0)` (Lowered to zero-compare) |
 | **Logical AND** | `a && b` | `and rd, rs1, rs2` | `rd = rs1 & rs2` (Current HVM uses bitwise) |
@@ -86,7 +86,7 @@ Every function establishes a stack frame to save the return address (LR) and fra
 #### **2.2.2 Standard Call Sequence**
 A function call involves moving arguments to registers and using the `call` (J-format) instruction.
 
-**Hooc Syntax**: `result = myFunc(a, b)`
+**Hoo Syntax**: `result = myFunc(a, b)`
 
 **HVM Assembly**:
 ```assembly
@@ -104,7 +104,7 @@ mov r11, r1         # Move result from r1 to temporary r11
 #### **2.2.3 Method Call Sequence (Implicit `this`)**
 Methods are lowered to standard calls where the object pointer is passed as the first argument (`r1`).
 
-**Hooc Syntax**: `obj.method(x)`
+**Hoo Syntax**: `obj.method(x)`
 
 **HVM Assembly**:
 ```assembly
@@ -155,8 +155,8 @@ Control flow is implemented using conditional branches (`BEQ`, `BNE`, `BLT`, `BL
 #### **2.4.1 If-Else Statement**
 The condition is evaluated into a register, followed by a branch to the `else` block if the condition is false (zero).
 
-**Hooc Syntax**:
-```hooc
+**Hoo Syntax**:
+```hoo
 if (a > b) {
     do_thing();
 } else {
@@ -234,14 +234,14 @@ HVM supports various data widths for memory access. In the "Hardware Ready" prof
 | **Load Byte** | `ld.b rd, addr, imm` | `rd = sign_extend(mem[addr + imm]:8)` |
 | **Load Unsigned**| `ld.bu rd, addr, imm`| `rd = zero_extend(mem[addr + imm]:8)` |
 | **Load Word** | `ld.w rd, addr, imm` | `rd = sign_extend(mem[addr + imm]:32)` |
-| **Load Double** | `ld.d rd, addr, imm` | `rd = mem[addr + imm]:64` (Standard for Hooc) |
+| **Load Double** | `ld.d rd, addr, imm` | `rd = mem[addr + imm]:64` (Standard for Hoo) |
 | **Store Byte** | `st.b rs, addr, imm` | `mem[addr + imm]:8 = rs` |
-| **Store Double** | `st.d rs, addr, imm` | `mem[addr + imm]:64 = rs` (Standard for Hooc) |
+| **Store Double** | `st.d rs, addr, imm` | `mem[addr + imm]:64 = rs` (Standard for Hoo) |
 
 #### **2.5.2 Heap Allocation**
 Allocating an object or array is lowered to a standard library call to `hoo_malloc`.
 
-**Hooc Syntax**: `var p = new Point()`
+**Hoo Syntax**: `var p = new Point()`
 
 **HVM Assembly**:
 ```assembly
@@ -259,7 +259,7 @@ mov r10, r1         # Pointer to allocated block in r10
 #### **2.5.3 Object Member Access**
 Field access is performed via standard 64-bit load/store instructions using the base pointer of the object and a calculated immediate offset.
 
-**Hooc Syntax**: `p.y = 42` (where `y` is at offset 16)
+**Hoo Syntax**: `p.y = 42` (where `y` is at offset 16)
 
 **HVM Assembly**:
 ```assembly
@@ -321,7 +321,7 @@ ld.d r10, r9, 0     # r10 now contains the 64-bit constant
 ```
 
 #### **2.6.3 String Constants and Allocation**
-Strings in Hooc are objects. The HVM backend lowers literals via runtime wrapping.
+Strings in Hoo are objects. The HVM backend lowers literals via runtime wrapping.
 
 1.  **Standard Strings**: Raw data is stored in `.rodata` and wrapped via `hoo_string_from_cstr`.
 2.  **Interpolated Strings**: Lowered to recursive `hoo_string_concat` calls. Expressions within `${}` are converted to strings using `hoo_string_from_any` (which handles primitives like int64 and double automatically).
@@ -415,4 +415,4 @@ syscall r1, r0, 10      # Invoke syscall #10, result in r1
 
 ## 5. Conclusion
 
-The `HVMCodeGenerator` is a high-performance, physical-silicon-ready backend. By moving all complexity to the compiler and a thin C-runtime library, it achieves a level of simplicity comparable to industrial RISC processors. The immediate priority for the next phase is **Register Spilling** and **Inheritance Support** to handle production-grade Hooc applications.
+The `HVMCodeGenerator` is a high-performance, physical-silicon-ready backend. By moving all complexity to the compiler and a thin C-runtime library, it achieves a level of simplicity comparable to industrial RISC processors. The immediate priority for the next phase is **Register Spilling** and **Inheritance Support** to handle production-grade Hoo applications.

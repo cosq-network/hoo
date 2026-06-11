@@ -1,13 +1,13 @@
 # Adding a New Runtime Module — Developer Guide
 
 This document describes how a runtime library function (e.g. `hoo_thread_spawn`) is
-wired through the three layers so that Hooc source code can call it via class-based
+wired through the three layers so that Hoo source code can call it via class-based
 method syntax (`Thread.spawn()`, `thread.join()`, etc.).
 
 ## Architecture Overview
 
 ```
-Hooc source               Codegen                     JIT                     Runtime (hoort)
+Hoo source               Codegen                     JIT                     Runtime (hoort)
 ────────────              ──────                     ───                     ──────────────
 Thread.spawn(a,b)  ───►   _F_M_hoo_E_      ───►   jit_thread_spawn  ───►   hoo_thread_spawn()
                            thread_spawn_v_p_p        (HVMState*)             (libc)
@@ -17,7 +17,7 @@ Thread.spawn(a,b)  ───►   _F_M_hoo_E_      ───►   jit_thread_spa
                                                          & bootstrapRuntimeModules()
 ```
 
-The Hooc-level syntax uses `ClassName.method(args)` or `object.method(args)`. The
+The Hoo-level syntax uses `ClassName.method(args)` or `object.method(args)`. The
 codegen internally maps each class name to its module prefix via `classToPrefix()` 
 (e.g. `Thread` → `thread_`, `Fs` → `fs_`, `Path` → `path_`) and generates the
 mangled symbol accordingly.
@@ -41,8 +41,8 @@ Three touch points are required for every new runtime function:
 ### Header conventions
 - Functions must be declared `extern "C"` for stable ABI
 - All pointer types are `void*` (opaque handles)
-- Return type `int64_t` for integers (maps to int64 in Hooc)
-- Return type `void*` for objects (maps to opaque ptr in Hooc)
+- Return type `int64_t` for integers (maps to int64 in Hoo)
+- Return type `void*` for objects (maps to opaque ptr in Hoo)
 
 ```c
 // src/runtime/lib/hoo_thread.h
@@ -196,7 +196,7 @@ When this block fires, `mp.modulePath = {"hoo"}` causes the mangler to produce
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
 
-using namespace hooc;
+using namespace hoo;
 
 class HooThreadJitTest : public ::testing::Test {
 protected:
@@ -216,9 +216,9 @@ TEST_F(HooThreadJitTest, SelfId) {
 ```
 
 ### Key observations
-- The Hooc test function is always named `test` with return type `int64`
+- The Hoo test function is always named `test` with return type `int64`
 - The mangled entry point is always `_F_M_test_E_test_i8`
-- Use `R"(...)"` raw string literals for Hooc source
+- Use `R"(...)"` raw string literals for Hoo source
 - Always `ASSERT_TRUE(jit.loadSourceCode(...))` with the error message, so test
   failures show the compiler/JIT error
 
@@ -288,7 +288,7 @@ Example: adding a new module (e.g. `hoo.xml`).
    hoo_system_free_string(cstr);  // if applicable
    return reinterpret_cast<uint64_t>(str);
    ```
-   This converts the C string to a managed Hooc string object.
+   This converts the C string to a managed Hoo string object.
 
 6. **Null handling.** If a runtime function can return null/error, test it in
    both C-level and JIT tests. The JIT wrapper should handle null gracefully

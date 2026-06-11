@@ -1,6 +1,6 @@
 # HVM JIT Implementation Guide: LLVM-Based System Emulation
 
-This document serves as the normative guideline for implementing a high-performance Just-In-Time (JIT) compiler for the Hooc Virtual Machine (HVM) using the LLVM compiler infrastructure. This guide is specifically aligned with the **HVM v1.4 (Hardware Ready)** specification.
+This document serves as the normative guideline for implementing a high-performance Just-In-Time (JIT) compiler for the Hoo Virtual Machine (HVM) using the LLVM compiler infrastructure. This guide is specifically aligned with the **HVM v1.4 (Hardware Ready)** specification.
 
 ---
 
@@ -44,7 +44,7 @@ The JIT uses the **LLVM On-Request Compilation (ORC) version 2** library. ORC v2
 The JIT uses symbol names as the normative glue between the compiled machine code, the runtime library, and third-party FFI modules.
 
 ### **3.1 The Mangling Convention: Rationale & Structure**
-HVM symbols must be flat, valid strings for the host's linker. The `SymbolMangler` (see `src/core/SymbolMangler.cpp`) ensures that every unique Hooc entity—functions, methods, types, and module state—maps to a deterministic, collision-free identifier.
+HVM symbols must be flat, valid strings for the host's linker. The `SymbolMangler` (see `src/core/SymbolMangler.cpp`) ensures that every unique Hoo entity—functions, methods, types, and module state—maps to a deterministic, collision-free identifier.
 
 #### **A. Function & Method Mangling (`_F_`)**
 Format: `_F_ [ClassName] _ [BaseClassName] _ [Modifiers] _ [FunctionName] _ [ReturnType] _ [ParamTypes]`
@@ -92,7 +92,7 @@ Format: `_F_ [M_ ModuleParts E_]? [ClassName?] _ [BaseClassName?] _ [Modifiers?]
 3.  **Signature**: The return type and parameters are appended to support overloading.
 
 #### **B. Mangling Examples with Modules**
-| Hooc Source | Logical Path | Mangled Symbol |
+| Hoo Source | Logical Path | Mangled Symbol |
 | :--- | :--- | :--- |
 | `func: int add(a: int)` | `math.utils` | `_F_M_math_utils_E_add_i8_i8` |
 | `constructor()` | `app.User` | `_F_M_app_E_User_CT_v` |
@@ -184,16 +184,16 @@ The JIT must use `src/hvm/HOModule.cpp` to parse HVM binaries.
     - **.rodata**: Map constant spills into a readable memory segment.
 
 ### **4.2 Module Initialization (`__hoo_init`)**
-The `__hoo_init` reserved keyword (mangled as `_F_module_init_v` in HVM) is the critical bootstrap entry point for every Hooc module. Unlike the `main` function, which is the application entry point, `__hoo_init` is the **Module Entry Point**.
+The `__hoo_init` reserved keyword (mangled as `_F_module_init_v` in HVM) is the critical bootstrap entry point for every Hoo module. Unlike the `main` function, which is the application entry point, `__hoo_init` is the **Module Entry Point**.
 
 #### **A. Why is it required?**
-Because HVM v1.4 is a pure RISC machine, it cannot "automagically" set up complex state. Many Hooc constructs require dynamic execution at load-time:
+Because HVM v1.4 is a pure RISC machine, it cannot "automagically" set up complex state. Many Hoo constructs require dynamic execution at load-time:
 1.  **Dynamic Globals**: If a module defines `var x = Math.sqrt(2.0);`, the value of `x` cannot be statically baked into the `.data` section. It must be calculated at runtime.
 2.  **VTable Registration**: Classes must register their method addresses into a global lookup table so that virtual calls (`JALR`) can find the correct implementation.
 3.  **Library Handshakes**: FFI modules may need to initialize host-side handles or state.
 
-#### **B. Example: Hooc to HVM Transition**
-**Hooc Source:**
+#### **B. Example: Hoo to HVM Transition**
+**Hoo Source:**
 ```hoo
 // Module: math.core
 var global_id = generateUniqueId();
@@ -323,7 +323,7 @@ The JIT treats all code units as subclasses of **`HOModuleBase`** (`src/hvm/HOMo
 | **Dynamic Library**| `DynamicHOModule` | Wraps native OS binaries (`.so`, `.dll`) via `dlopen`. |
 
 #### **C. Grammar Context: The Import Statement**
-Consider the following Hooc source code:
+Consider the following Hoo source code:
 
 ```hoo
 // Module: app.core
@@ -363,7 +363,7 @@ func: void hello() {
 - **JIT Strategy**: The JIT prioritizes searching the **Runtime Dylib (`hoort`)** for any library starting with `hoo.` before searching the file system.
 
 ### **6.2 Third-Party & Foreign Function Invoke (FFI)**
-The HVM JIT implements the FFI rules defined in the grammar, allowing Hooc code to consume native host libraries.
+The HVM JIT implements the FFI rules defined in the grammar, allowing Hoo code to consume native host libraries.
 
 #### **A. Library Loading (`ffiImportDeclaration`)**
 Syntax: `library "libname.so" (as alias)?;`
@@ -386,7 +386,7 @@ Syntax: `extern native type identifier(ffiParams) -> type;`
     - **`FUNCTION(args) -> ret`**: Declares a native function pointer. The JIT generates a **Native-to-HVM Trampoline** if this function is passed back to a host library as a callback.
 
 #### **D. Callback Support**
-When a Hooc function is passed as a `FUNCTION` parameter to an `extern native` call:
+When a Hoo function is passed as a `FUNCTION` parameter to an `extern native` call:
 1.  The JIT generates a "C-wrapped" version of the function.
 2.  This wrapper sets up a temporary HVM register file on the stack.
 3.  It invokes the JIT-compiled function.
@@ -410,7 +410,7 @@ HVM code often imports symbols from the standard library (e.g., `import hoo.io`)
 #### **C. Linkage Mechanics for Runtime Classes**
 Based on the `src/runtime/lib` headers, the JIT must resolve specific symbol patterns to their native implementations:
 
-| Hooc Symbol Pattern | Native `hoort` Entry Point | Implementation File |
+| Hoo Symbol Pattern | Native `hoort` Entry Point | Implementation File |
 | :--- | :--- | :--- |
 | `_F_String_CT_...` | `hoo_string_from_cstr` | `hoo_string.cpp` |
 | `_F_Array_CT_...` | `hoo_array_new` | `hoo_generic_array.cpp` |
@@ -474,7 +474,7 @@ The JIT must wrap FFI calls in a "Native Guard":
 - **Signal Shield**: On Linux/macOS, the JIT may mask certain signals (like `SIGALRM`) during the native call to prevent host-level interruptions from corrupting the virtual machine state.
 
 ### **6.5 Mapping Import Nodes to JIT Operations**
-The JIT's **Module Loader** must directly translate `importStatement` nodes from the `Hooc.g4` grammar into symbol resolution strategies.
+The JIT's **Module Loader** must directly translate `importStatement` nodes from the `Hoo.g4` grammar into symbol resolution strategies.
 
 #### **A. Basic Imports (`IMPORT modulePath (AS alias)?`)**
 Example: `import math.advanced as adv;`
@@ -641,7 +641,7 @@ Parallel compilation/linking is desirable, but initialization and publish order 
 ---
 
 ## 7. Runtime Library Integration (`hoort`)
-The **Hooc Runtime Library (`hoort`)** is integrated as a core system component using a modular, object-oriented linkage model. The JIT leverages the **`HVMModuleBundle`** and **`HOModuleBase`** hierarchy to unify native code with HVM bytecode.
+The **Hoo Runtime Library (`hoort`)** is integrated as a core system component using a modular, object-oriented linkage model. The JIT leverages the **`HVMModuleBundle`** and **`HOModuleBase`** hierarchy to unify native code with HVM bytecode.
 
 ### **7.1 The Global Module Registry**
 The JIT maintains a static instance of **`HVMModuleBundle`** (see `src/hvm/HVMModuleBundle.cpp`) which serves as the "System Bus" for all executable code units.
@@ -734,7 +734,7 @@ The JIT maps HVM `CALL` sequences to specific `hoort` entry points, maintaining 
 #### **A. String Management (`hoo_string.h`)**
 Strings in HVM are ARC-managed UTF-8 pointers.
 
-| Hooc Operation | HVM Instruction | Native `hoort` Call | Note |
+| Hoo Operation | HVM Instruction | Native `hoort` Call | Note |
 | :--- | :--- | :--- | :--- |
 | `new String(s)` | `LDA`, `CALL` | `hoo_string_from_cstr(char*)` | Loads from `.rodata`. |
 | `s1 + s2` | `MOV`, `CALL` | `hoo_string_concat(ptr, ptr)` | Returns a new handle. |
@@ -744,7 +744,7 @@ Strings in HVM are ARC-managed UTF-8 pointers.
 #### **B. Generic Arrays (`hoo_generic_array.h`)**
 HVM arrays are type-agnostic and support automatic resizing.
 
-| Hooc Operation | HVM Instruction | Native `hoort` Call | Note |
+| Hoo Operation | HVM Instruction | Native `hoort` Call | Note |
 | :--- | :--- | :--- | :--- |
 | `new Array()` | `CALL` | `hoo_array_new()` | Initial refcount = 1. |
 | `arr.push(v)` | `MOV`, `CALL` | `hoo_array_push_int64(ptr, i64)` | Type-specialized bridge. |
@@ -753,7 +753,7 @@ HVM arrays are type-agnostic and support automatic resizing.
 #### **C. Map Module (`hoo_map.h`)**
 Maps provide type-safe key-value storage with optimized native lookups.
 
-| Hooc Operation | HVM Instruction | Native `hoort` Call | Note |
+| Hoo Operation | HVM Instruction | Native `hoort` Call | Note |
 | :--- | :--- | :--- | :--- |
 | `new Map(type)` | `MOV`, `CALL` | `hoo_map_new(i64)` | `type` is `HooMapKeyType`. |
 | `m.set(k, v)` | `MOV`, `CALL` | `hoo_map_set_string_object(ptr, char*, ptr)` | For string-to-object. |
@@ -1022,10 +1022,10 @@ When adding a new `hoort` component, follow this checklist:
 
 ## 8. Grammar-to-JIT Mapping: Handling High-Level Semantics
 
-The JIT must strictly implement the semantics defined in `src/parsing/Hooc.g4`. While the backend lowers these to RISC, the JIT can leverage high-level metadata to optimize execution.
+The JIT must strictly implement the semantics defined in `src/parsing/Hoo.g4`. While the backend lowers these to RISC, the JIT can leverage high-level metadata to optimize execution.
 
 ### **8.1 Class Modifiers & Lifecycle**
-Class modifiers in `Hooc.g4` provide the JIT with structural metadata to apply specialized execution patterns and optimizations beyond basic RISC lowering.
+Class modifiers in `Hoo.g4` provide the JIT with structural metadata to apply specialized execution patterns and optimizations beyond basic RISC lowering.
 
 #### **A. Life-Cycle Management (CT/DT)**
 - **Constructors (`CT_`)**: 
@@ -1037,7 +1037,7 @@ Class modifiers in `Hooc.g4` provide the JIT with structural metadata to apply s
 
 #### **B. Structural Modifiers: Runtime Implementation Plans**
 
-Class modifiers in `Hooc.g4` trigger specialized machine-code patterns and JIT-managed runtime structures.
+Class modifiers in `Hoo.g4` trigger specialized machine-code patterns and JIT-managed runtime structures.
 
 ---
 
@@ -1119,7 +1119,7 @@ Class modifiers in `Hooc.g4` trigger specialized machine-code patterns and JIT-m
 ---
 
 ### **8.2 Block Semantics & Deterministic Cleanup**
-The HVM JIT must ensure that lexical block boundaries defined in `Hooc.g4` are respected to maintain deterministic memory and resource management.
+The HVM JIT must ensure that lexical block boundaries defined in `Hoo.g4` are respected to maintain deterministic memory and resource management.
 
 #### **A. Lexical ARC Management**
 Every block `{ ... }` represents a lifecycle region.
@@ -1165,7 +1165,7 @@ Regardless of the class kind, the physical layout of an instance in memory (at o
 - **Bounds Checking**: For `IMMUTABLE` classes, the JIT can elide re-loading fields into registers within a loop if it can prove no external calls modify the memory.
 
 #### **B. Static Members (Class Variables)**
-Hooc treats static variables as module-level symbols owned by the class namespace.
+Hoo treats static variables as module-level symbols owned by the class namespace.
 - **Mangling**: `_H_ [ClassName] _ [VariableName]`
 - **JIT Behavior**: These are resolved as **Global Constants/Variables**. They are NOT part of the instance heap allocation. The JIT resolves these to absolute addresses in the `.data` segment.
 
@@ -1251,7 +1251,7 @@ For source-level debugging (stepping through `.hoo` files), the JIT must generat
 To show "Local Variables" in the debugger:
 1.  **Registers**: The JIT generates `DIVariable` entries for HVM registers `r1..r31`.
 2.  **Location Expressions**: Use `llvm::DIExpression` with `DW_OP_regX` (where `X` is the host register mapped to the HVM register) or `DW_OP_fbreg` (if the register is spilled to the stack).
-3.  **DILocation**: Every generated host instruction is tagged with a `DILocation` identifying the HVM byte-offset and original Hooc line/column.
+3.  **DILocation**: Every generated host instruction is tagged with a `DILocation` identifying the HVM byte-offset and original Hoo line/column.
 
 ---
 
@@ -1307,7 +1307,7 @@ The HVM JIT is architected to exceed the performance of traditional virtual mach
 
 ### **10.3 Aggressive AOT/JIT Hybrid Model**
 Unlike Python (interpreter-heavy) or Java (heavily dependent on warm-up), the HVM JIT uses an **AOT-First** approach:
-1.  **Static Lowering**: `hooc` performs heavy lifting (offset calculation, scaling) at compile-time.
+1.  **Static Lowering**: `hoo` performs heavy lifting (offset calculation, scaling) at compile-time.
 2.  **Binary Compatibility**: The `.ho` format is a pre-linked object file. The JIT's "warm-up" time is near zero because the IR generation is a simple 1-to-1 mapping of RISC primitives.
 
 ### **10.4 Instruction Elision & Inlining**

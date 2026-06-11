@@ -25,7 +25,7 @@ All fields are little-endian.
 
 | Offset | Size | Field | Description |
 |---|---:|---|---|
-| `0x00` | 4 | `magic` | `0x484F4F43` (`"HOOC"`) |
+| `0x00` | 4 | `magic` | `0x484F4F43` (`"HOO"`) |
 | `0x04` | 2 | `version_major` | format major (`1`) |
 | `0x06` | 2 | `version_minor` | format minor (`4`) |
 | `0x08` | 1 | `file_type` | executable/shared/object |

@@ -13,7 +13,7 @@
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "HOOC_BUILD_TESTS": "ON"
+        "HOO_BUILD_TESTS": "ON"
       }
     },
     {
@@ -23,7 +23,7 @@
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "HOOC_BUILD_TESTS": "OFF"
+        "HOO_BUILD_TESTS": "OFF"
       }
     },
     {
@@ -50,7 +50,7 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "HOOC_BUILD_TESTS": "ON"
+        "HOO_BUILD_TESTS": "ON"
       }
     },
     {
@@ -60,7 +60,7 @@
       "architecture": "x64",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "HOOC_BUILD_TESTS": "ON"
+        "HOO_BUILD_TESTS": "ON"
       }
     },
     {

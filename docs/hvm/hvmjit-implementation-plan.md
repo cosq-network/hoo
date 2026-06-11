@@ -47,9 +47,9 @@ Implemented:
 2. Runtime self-test probe at bootstrap (`alloc/retain/release/refcount`).
 3. ORC symbol exports for runtime intrinsics and selected runtime APIs.
 4. Managed-handle tracking wrappers used by HVM bridge:
-   - `hooc_hvm_sys_alloc/retain/release/refcount/typeid`
-   - `hooc_hvm_arc_retain_if_managed`
-   - `hooc_hvm_arc_release_if_managed`
+   - `hoo_hvm_sys_alloc/retain/release/refcount/typeid`
+   - `hoo_hvm_arc_retain_if_managed`
+   - `hoo_hvm_arc_release_if_managed`
 5. ARC-aware `ST.D` path (retain-new, store, release-old) guarded by managed-handle tracking.
 6. Runtime-exception object bridge syscall (`imm15=6`) via `hoo_exception_runtime`.
 

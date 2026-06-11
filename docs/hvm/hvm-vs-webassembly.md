@@ -248,7 +248,7 @@ Wasm modules feel like a self-contained portable artifact that can be validated 
 
 In this repository, HVM is used as the target of compiler lowering and JIT translation:
 
-- Hooc language features are lowered into HVM instructions
+- Hoo language features are lowered into HVM instructions
 - high-level runtime behavior is implemented by `hoort`
 - the JIT translates HVM to LLVM IR or native code
 
@@ -386,11 +386,11 @@ For Wasm, startup often benefits from compact binaries and a very standardized i
 | JIT performance profile | Strong steady-state potential; translation cost up front | Strong engine maturity; stack lowering handled by the runtime |
 | Best fit | RISC cores, JIT-to-native, low-level systems | Browsers, portable plugins, sandboxed runtimes |
 
-## 13. Practical Implications For Hooc
+## 13. Practical Implications For Hoo
 
-### 13.1 Why HVM Fits the Current Hooc Docs
+### 13.1 Why HVM Fits the Current Hoo Docs
 
-The current Hooc documentation is consistent with a compiler that wants:
+The current Hoo documentation is consistent with a compiler that wants:
 
 - direct control over layout and calling convention
 - deterministic lowering of language features
@@ -399,9 +399,9 @@ The current Hooc documentation is consistent with a compiler that wants:
 
 That makes HVM a good match for the current architecture because the compiler can lower high-level semantics into a predictable low-level substrate.
 
-### 13.2 What Would Change If Hooc Targeted WebAssembly
+### 13.2 What Would Change If Hoo Targeted WebAssembly
 
-If Hooc targeted Wasm as a primary backend, the compiler and runtime design would shift:
+If Hoo targeted Wasm as a primary backend, the compiler and runtime design would shift:
 
 - control flow would need to fit Wasm's structured blocks
 - register allocation would be replaced or hidden by stack-based lowering

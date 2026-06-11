@@ -1,6 +1,6 @@
-# Developing and Debugging Hooc
+# Developing and Debugging Hoo
 
-This guide covers setting up a development environment, building for debugging, and debugging the Hooc compiler across all supported platforms.
+This guide covers setting up a development environment, building for debugging, and debugging the Hoo compiler across all supported platforms.
 
 ---
 
@@ -90,7 +90,7 @@ C:\dev\vcpkg\bootstrap-vcpkg.bat
 [System.Environment]::SetEnvironmentVariable("PATH", "$env:PATH;C:\dev\vcpkg", "User")
 
 # Install dependencies
-cd C:\Projects\hooc
+cd C:\Projects\hoo
 vcpkg install --triplet x64-windows
 ```
 
@@ -105,7 +105,7 @@ vcpkg install --triplet x64-windows
 | `hoo` | The main compiler executable |
 | `hoo-core` | Core compiler + HVM + JIT library |
 | `hoo-parser` | ANTLR-generated parser library |
-| `hoort` | Hooc Runtime library (ARC, Strings, Maps, etc.) |
+| `hoort` | Hoo Runtime library (ARC, Strings, Maps, etc.) |
 | `hoo-tests` | Unit test executable |
 
 ### 2.2. Debug Build with Presets
@@ -131,7 +131,7 @@ cmake --build --preset windows-vs18-local
 ```bash
 cmake -S . -B build/debug -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \
-  -DHOOC_BUILD_TESTS=ON
+  -DHOO_BUILD_TESTS=ON
 cmake --build build/debug
 ```
 
@@ -142,7 +142,7 @@ cmake -S . -B build-asan -G Ninja \
   -DCMAKE_BUILD_TYPE=Debug \
   -DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer" \
   -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address" \
-  -DHOOC_BUILD_TESTS=ON
+  -DHOO_BUILD_TESTS=ON
 cmake --build build-asan
 ```
 
@@ -309,7 +309,7 @@ Visual Studio uses `launch.vs.json` for CMake projects. Create a `.vs/launch.vs.
 **Basic usage:**
 ```bash
 lldb -- ./build/debug/hoo tests/examples/hello.hoo
-(lldb) break set -n "hooc::HooCompiler::compile"
+(lldb) break set -n "hoo::HooCompiler::compile"
 (lldb) run
 (lldb) frame variable      # View locals
 (lldb) thread step-over    # Next line (n)
@@ -323,7 +323,7 @@ lldb -- ./build/debug/hoo tests/examples/hello.hoo
 (lldb) break set -f HVMJIT.cpp -l 42     # Break at file:line
 (lldb) break set -r ".*compile.*"         # Regex breakpoint
 (lldb) expr myVar                          # Evaluate expression
-(lldb) image lookup -vn "hooc::compile"    # Find symbol address
+(lldb) image lookup -vn "hoo::compile"    # Find symbol address
 (lldb) bt                                  # Backtrace
 (lldb) frame select 3                      # Switch to frame 3
 ```
@@ -332,7 +332,7 @@ lldb -- ./build/debug/hoo tests/examples/hello.hoo
 
 ```bash
 gdb --args ./build/debug/hoo tests/examples/hello.hoo
-(gdb) break hooc::HooCompiler::compile
+(gdb) break hoo::HooCompiler::compile
 (gdb) run
 (gdb) info locals
 (gdb) step
@@ -354,7 +354,7 @@ windbg hoo.exe ..\..\..\tests\examples\hello.hoo
 
 ## 6. Debugging the JIT
 
-Hooc uses LLVM ORC JIT to compile HVM bytecode to native machine code at runtime. Debugging JIT-compiled code requires special setup.
+Hoo uses LLVM ORC JIT to compile HVM bytecode to native machine code at runtime. Debugging JIT-compiled code requires special setup.
 
 ### 6.1. Enable Debug Symbols in JIT Code
 
@@ -439,7 +439,7 @@ cmake --build --preset macos-homebrew-ninja-tests
 ```bash
 # Launch the test binary under LLDB with a specific filter
 lldb -- ./build/debug/hoo-tests --gtest_filter="*NewLanguageFeatures*"
-(lldb) break set -n "hooc::HVMCodeGenerator::visitFunctionDefinition"
+(lldb) break set -n "hoo::HVMCodeGenerator::visitFunctionDefinition"
 (lldb) run
 ```
 
@@ -468,7 +468,7 @@ ctest --preset macos-homebrew-ninja -R "JIT" --output-on-failure
 
 ## 8. Understanding the HVM JIT Pipeline
 
-The Hooc compiler works in stages:
+The Hoo compiler works in stages:
 
 ```
 .hoo source file
@@ -505,10 +505,10 @@ The Hooc compiler works in stages:
 ```
 
 Key classes to set breakpoints on:
-- `hooc::HooCompiler::compile()` — Entry point
-- `hooc::HVMCodeGenerator::visitFunctionDefinition` — Function codegen
-- `hooc::HVMJIT::compileModule` — JIT compilation
-- `hooc::HVMJIT::lookup` — Symbol resolution
+- `hoo::HooCompiler::compile()` — Entry point
+- `hoo::HVMCodeGenerator::visitFunctionDefinition` — Function codegen
+- `hoo::HVMJIT::compileModule` — JIT compilation
+- `hoo::HVMJIT::lookup` — Symbol resolution
 
 ---
 

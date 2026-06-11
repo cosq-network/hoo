@@ -9,7 +9,7 @@ The goal is not to redesign HVM into a different ISA. The goal is to keep the cu
 - a real CPU core
 - a real SoC and board/platform stack
 - a deterministic compiler and JIT backend
-- the current Hooc runtime model
+- the current Hoo runtime model
 
 ## 1. Design Boundary
 
@@ -223,7 +223,7 @@ Rules:
 - if an instruction is listed here, it belongs in the shared hardware/JIT profile
 - if the JIT cannot simulate it, it should not be added to this profile yet
 - if hardware cannot implement it cleanly, it should be moved to a later extension document
-- the fallback behavior must preserve Hooc semantics even when the extension is absent
+- the fallback behavior must preserve Hoo semantics even when the extension is absent
 
 #### 3.9.1 Not in the Shared Profile Yet
 
@@ -232,7 +232,7 @@ These ideas may be useful later, but they are intentionally not part of the curr
 | Candidate extension | Why it is excluded for now | Suggested status |
 | --- | --- | --- |
 | SIMD/vector execution | Hardware support is useful, but JIT semantics and lowering strategy are not yet fixed | Future extension |
-| Wider floating-point formats | Not required by the current Hooc runtime contract | Future extension |
+| Wider floating-point formats | Not required by the current Hoo runtime contract | Future extension |
 | Bit-manipulation accelerators | Useful for optimization, but not necessary for compatibility | Future extension |
 | Cryptographic instructions | Platform-specific and not required for base compatibility | Future extension |
 | Prefetch hints | Performance-only, with no required semantic effect | Future extension |
@@ -403,7 +403,7 @@ That means:
 - the JIT and hardware must agree on trap behavior
 - the JIT and hardware must agree on ABI call boundaries
 - the JIT and hardware must agree on which instructions are mandatory, optional, or simulated
-- the JIT must be able to run the same Hooc program that the hardware runs without changing semantics
+- the JIT must be able to run the same Hoo program that the hardware runs without changing semantics
 
 ### 5.1 Runtime Objects Stay in Software
 
@@ -447,7 +447,7 @@ Minimum expectations:
 Fallback behavior:
 
 - if a feature is missing, the JIT must continue to use software fallback paths
-- the absence of an extension must not change Hooc language semantics
+- the absence of an extension must not change Hoo language semantics
 
 ### 5.4 Excluded From This Compatibility Set
 
@@ -490,7 +490,7 @@ Before adding a new hardware feature or JIT lowering rule, verify all of the fol
 - the instruction exists in the ISA document
 - the hardware can implement it with clear semantics
 - the JIT can simulate it or provide a software fallback
-- the feature does not alter Hooc language semantics
+- the feature does not alter Hoo language semantics
 - the feature does not break existing binaries or runtime hooks
 - the feature has a documented trap, failure, or fallback behavior
 

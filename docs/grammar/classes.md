@@ -1,12 +1,12 @@
 # Classes & Inheritance
 
-Hooc is an object-oriented language with support for single inheritance and advanced architectural modifiers.
+Hoo is an object-oriented language with support for single inheritance and advanced architectural modifiers.
 
 ## 1. Class Declaration
 A class is declared using the `class` keyword.
 `[modifiers] class Name [extends BaseClass] { body }`
 
-```hooc
+```hoo
 class Animal {
     var species: string;
     constructor(s: string) {
@@ -17,7 +17,7 @@ class Animal {
 
 ## 2. Inheritance
 A class can extend exactly one other class using the `extends` keyword.
-```hooc
+```hoo
 class Dog extends Animal {
     constructor() {
         this.species = "Canine";
@@ -27,7 +27,7 @@ class Dog extends Animal {
 **Implementation Note**: Inheritance is implemented via **Layout Prefixing** in the HVM backend, where the child class appends its fields to the end of the parent class's layout.
 
 ## 3. Class Modifiers
-Hooc supports several advanced modifiers to enforce architectural patterns:
+Hoo supports several advanced modifiers to enforce architectural patterns:
 
 | Modifier | Description |
 | :--- | :--- |

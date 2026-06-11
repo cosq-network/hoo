@@ -1,6 +1,6 @@
-# Building Hooc
+# Building Hoo
 
-This document describes how to configure, build, and test the Hooc compiler ecosystem on macOS, Linux, and Windows.
+This document describes how to configure, build, and test the Hoo compiler ecosystem on macOS, Linux, and Windows.
 
 ---
 
@@ -170,7 +170,7 @@ java -version             # Must be 17+
 
 5. **Install vcpkg dependencies** (from the repo root):
    ```powershell
-   cd C:\Projects\hooc
+   cd C:\Projects\hoo
    vcpkg install --triplet x64-windows
    ```
    This installs `antlr4`, `gtest`, and `llvm[target-x86]` into `vcpkg_installed/x64-windows/`.
@@ -189,7 +189,7 @@ java -version             # Must be 17+
 
 ## 2. Understanding Build Types
 
-Hooc supports three main CMake build types:
+Hoo supports three main CMake build types:
 
 | Type | Optimizations | Debug Symbols | Use Case |
 |------|:---:|:---:|----------|
@@ -278,8 +278,8 @@ The project is organized into these primary targets:
 - **`hoort`**: The Hoo Runtime library (ARC, Strings, Maps, JSON, Math, etc.) — static by default
 
 ### Utility Targets
-- **`hoo-tests`**: Unit test executable (built when `HOOC_BUILD_TESTS=ON`)
-- **`generate_parser`**: Regenerates C++ parser sources from `src/parsing/Hooc.g4` using the ANTLR jar
+- **`hoo-tests`**: Unit test executable (built when `HOO_BUILD_TESTS=ON`)
+- **`generate_parser`**: Regenerates C++ parser sources from `src/parsing/Hoo.g4` using the ANTLR jar
 - **`clean_generated`**: Deletes and recreates the generated parser directory
 
 ### Dependency Graph
@@ -308,13 +308,13 @@ If CMake presets don't work for your setup (e.g., older CMake, custom paths), co
 
 ### Basic Manual Build
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOOC_BUILD_TESTS=ON
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOO_BUILD_TESTS=ON
 cmake --build build
 ```
 
 With `make` instead of Ninja:
 ```bash
-cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOOC_BUILD_TESTS=ON
+cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOO_BUILD_TESTS=ON
 cmake --build build -j$(nproc)
 ```
 
@@ -326,12 +326,12 @@ cmake -S . -B build \
   -DANTLR4_INCLUDE_DIR=/path/to/antlr4/include/antlr4-runtime \
   -DANTLR4_LIBRARY=/path/to/libantlr4-runtime.a \
   -DCMAKE_BUILD_TYPE=Debug \
-  -DHOOC_BUILD_TESTS=ON
+  -DHOO_BUILD_TESTS=ON
 ```
 
 ### Building Without Tests (Release)
 ```bash
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHOOC_BUILD_TESTS=OFF
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DHOO_BUILD_TESTS=OFF
 cmake --build build
 ```
 
@@ -339,7 +339,7 @@ cmake --build build
 
 ## 6. Testing
 
-Tests require `HOOC_BUILD_TESTS=ON` (enabled by default in most presets).
+Tests require `HOO_BUILD_TESTS=ON` (enabled by default in most presets).
 
 ### Step 1: Build the Test Executable
 ```bash
@@ -382,10 +382,10 @@ Run the test binary directly (faster than ctest):
 
 ## 7. Working with the ANTLR Parser
 
-The parser sources are generated from `src/parsing/Hooc.g4` using the ANTLR jar at `tools/antlr-4.13.2-complete.jar`.
+The parser sources are generated from `src/parsing/Hoo.g4` using the ANTLR jar at `tools/antlr-4.13.2-complete.jar`.
 
 - **On first build**: The `generate_parser` target runs automatically
-- **If you modify `Hooc.g4`**: Re-run the generator:
+- **If you modify `Hoo.g4`**: Re-run the generator:
   ```bash
   cmake --build build/<preset> --target generate_parser
   ```

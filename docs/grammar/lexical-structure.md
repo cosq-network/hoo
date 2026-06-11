@@ -1,10 +1,10 @@
 # Lexical Structure
 
-This document describes the low-level lexical components of the Hooc language, including keywords, identifiers, literals, and delimiters.
+This document describes the low-level lexical components of the Hoo language, including keywords, identifiers, literals, and delimiters.
 
 ## 1. Keywords
 
-Hooc reserves the following keywords for language constructs:
+Hoo reserves the following keywords for language constructs:
 
 ### General Keywords
 | Keyword | Description |
@@ -31,7 +31,7 @@ Hooc reserves the following keywords for language constructs:
 | `__hoo_init` | Reserved module initialization marker. |
 
 ### Class Modifiers
-Hooc supports advanced class-level modifiers:
+Hoo supports advanced class-level modifiers:
 `singleton`, `immutable`, `factory`, `observable`, `service`, `strategy`, `actor`, `final`.
 
 ## 2. Literals

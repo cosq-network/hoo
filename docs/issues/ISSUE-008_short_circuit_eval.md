@@ -1,7 +1,7 @@
 # ISSUE-008: Missing Short-Circuit Evaluation for `&&` and `||`
 
 ## 1. Overview
-The logical AND (`&&`) and logical OR (`||`) operators are compiled to unconditional `LOGIC` instructions that evaluate both operands. The Hooc language requires short-circuit semantics: `a && b` must not evaluate `b` if `a` is false.
+The logical AND (`&&`) and logical OR (`||`) operators are compiled to unconditional `LOGIC` instructions that evaluate both operands. The Hoo language requires short-circuit semantics: `a && b` must not evaluate `b` if `a` is false.
 
 ## 2. Technical Analysis
 - **Location**: `src/codegen/HVMCodeGenerator.cpp` lines 1393-1410

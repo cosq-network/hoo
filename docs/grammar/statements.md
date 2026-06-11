@@ -1,6 +1,6 @@
 # Statements & Control Flow
 
-Statements are the building blocks of Hooc functions and blocks.
+Statements are the building blocks of Hoo functions and blocks.
 
 ## 1. Variables & Constants
 
@@ -14,7 +14,7 @@ Statements are the building blocks of Hooc functions and blocks.
 
 ### If Statement
 Standard if-else construct.
-```hooc
+```hoo
 if (x > 0) {
     print("Positive");
 } else {
@@ -26,7 +26,7 @@ if (x > 0) {
 
 ### While Loop
 Executes as long as the condition is true.
-```hooc
+```hoo
 while (i < 10) {
     i++;
 }
@@ -43,12 +43,12 @@ Supports iterating over ranges or collections.
 
 ## 4. Exception Handling
 
-Hooc provides a robust `try-catch-finally` model.
+Hoo provides a robust `try-catch-finally` model.
 
 **Implementation Note:** The exception model is implemented using an ARC-managed `HooException` object and a Shadow Stack for routing control flow across the native JIT boundary. For details, see [Runtime Exceptions & Shadow Stack](../runtime/exceptions.md).
 
 ### Try-Catch-Finally
-```hooc
+```hoo
 try {
     performAction();
 } catch (e: Exception) {

@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
-project(Hooc LANGUAGES C CXX)
+project(Hoo LANGUAGES C CXX)
 
-option(HOOC_BUILD_TESTS "Build Hooc unit tests" OFF)
-option(HOOC_BUILD_SHARED_RUNTIME "Build the Hooc runtime as a shared library" OFF)
+option(HOO_BUILD_TESTS "Build Hoo unit tests" OFF)
+option(HOO_BUILD_SHARED_RUNTIME "Build the Hoo runtime as a shared library" OFF)
 option(ANTLR4_USE_STATIC_RUNTIME "Define ANTLR4CPP_STATIC when linking a static ANTLR4 C++ runtime" OFF)
 
 set(ANTLR4_ROOT "" CACHE PATH "ANTLR4 C++ runtime installation prefix")
 set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE FILEPATH "Path to ANTLR4 JAR file")
-set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/parsing/Hooc.g4" CACHE FILEPATH "Path to the Hooc ANTLR4 grammar")
+set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/parsing/Hooc.g4" CACHE FILEPATH "Path to the Hoo ANTLR4 grammar")
 set(ANTLR4_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated/antlr4" CACHE PATH "Directory for generated ANTLR4 C++ files")
 
 set(CMAKE_CXX_STANDARD 17)
@@ -167,13 +167,13 @@ add_dependencies(hoo-parser generate_parser)
 # Runtime Library (hoort) - Standalone C/C++ runtime, no LLVM dependency
 # =============================================================================
 
-if(HOOC_BUILD_SHARED_RUNTIME)
-    set(HOOC_RUNTIME_LIBRARY_TYPE SHARED)
+if(HOO_BUILD_SHARED_RUNTIME)
+    set(HOO_RUNTIME_LIBRARY_TYPE SHARED)
 else()
-    set(HOOC_RUNTIME_LIBRARY_TYPE STATIC)
+    set(HOO_RUNTIME_LIBRARY_TYPE STATIC)
 endif()
 
-add_library(hoort ${HOOC_RUNTIME_LIBRARY_TYPE}
+add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_string.cpp
     src/runtime/lib/hoo_character.cpp
@@ -290,12 +290,12 @@ install(TARGETS hoo hoo-core hoo-parser hoort
 )
 
 install(DIRECTORY ${ANTLR4_GENERATED_DIR}/
-    DESTINATION include/hooc
+    DESTINATION include/hoo
     FILES_MATCHING PATTERN "*.h"
 )
 
 install(DIRECTORY src/
-    DESTINATION include/hooc
+    DESTINATION include/hoo
     FILES_MATCHING PATTERN "*.h"
 )
 
@@ -332,7 +332,7 @@ add_custom_target(clean_generated
 # Tests
 # =============================================================================
 
-if(HOOC_BUILD_TESTS)
+if(HOO_BUILD_TESTS)
     enable_testing()
     find_package(GTest REQUIRED)
 
@@ -430,7 +430,7 @@ if(HOOC_BUILD_TESTS)
     )
 
     target_compile_definitions(hoo-tests PRIVATE
-        HOOC_EXECUTABLE="$<TARGET_FILE:hoo>"
+        HOO_EXECUTABLE="$<TARGET_FILE:hoo>"
     )
 
     target_include_directories(hoo-tests PUBLIC
@@ -442,17 +442,17 @@ if(HOOC_BUILD_TESTS)
     )
 
     if(WIN32)
-        set(HOOC_WINDOWS_TEST_COMPAT_HEADER "${CMAKE_BINARY_DIR}/generated/hooc_windows_test_compat.h")
+        set(HOO_WINDOWS_TEST_COMPAT_HEADER "${CMAKE_BINARY_DIR}/generated/hoo_windows_test_compat.h")
         configure_file(
             "${CMAKE_SOURCE_DIR}/cmake/hooc_windows_test_compat.h.in"
-            "${HOOC_WINDOWS_TEST_COMPAT_HEADER}"
+            "${HOO_WINDOWS_TEST_COMPAT_HEADER}"
             COPYONLY
         )
-        target_compile_options(hoo-tests PRIVATE /FI"${HOOC_WINDOWS_TEST_COMPAT_HEADER}")
+        target_compile_options(hoo-tests PRIVATE /FI"${HOO_WINDOWS_TEST_COMPAT_HEADER}")
 
-        set(HOOC_WINDOWS_TEST_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        set(HOO_WINDOWS_TEST_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
         set_target_properties(hoo-tests PROPERTIES
-            VS_DEBUGGER_ENVIRONMENT "PATH=${HOOC_WINDOWS_TEST_PATH};%PATH%"
+            VS_DEBUGGER_ENVIRONMENT "PATH=${HOO_WINDOWS_TEST_PATH};%PATH%"
         )
     endif()
 
@@ -460,7 +460,7 @@ if(HOOC_BUILD_TESTS)
 
     if(WIN32)
         set_tests_properties(HooUnitTests PROPERTIES
-            ENVIRONMENT "PATH=${HOOC_WINDOWS_TEST_PATH};$ENV{PATH}"
+            ENVIRONMENT "PATH=${HOO_WINDOWS_TEST_PATH};$ENV{PATH}"
         )
     endif()
 
@@ -472,7 +472,7 @@ if(HOOC_BUILD_TESTS)
 
     message(STATUS "GoogleTest found - unit tests enabled")
 else()
-    message(STATUS "Unit tests disabled. Configure with -DHOOC_BUILD_TESTS=ON to enable them.")
+    message(STATUS "Unit tests disabled. Configure with -DHOO_BUILD_TESTS=ON to enable them.")
 endif()
 
 # =============================================================================
@@ -480,13 +480,13 @@ endif()
 # =============================================================================
 
 if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
-    set(HOOC_VCPKG_BIN_DIR "")
+    set(HOO_VCPKG_BIN_DIR "")
     if(DEFINED VCPKG_ROOT AND EXISTS "${VCPKG_ROOT}/installed/x64-windows/bin")
-        set(HOOC_VCPKG_BIN_DIR "${VCPKG_ROOT}/installed/x64-windows/bin")
+        set(HOO_VCPKG_BIN_DIR "${VCPKG_ROOT}/installed/x64-windows/bin")
     elseif(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
-        set(HOOC_VCPKG_BIN_DIR "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
+        set(HOO_VCPKG_BIN_DIR "$ENV{VCPKG_ROOT}/installed/x64-windows/bin")
     elseif(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
-        set(HOOC_VCPKG_BIN_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        set(HOO_VCPKG_BIN_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
     endif()
 
     configure_file(
@@ -497,10 +497,10 @@ if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
     install(SCRIPT "${CMAKE_BINARY_DIR}/cmake/install_windows_dlls.cmake")
 endif()
 
-set(CPACK_PACKAGE_NAME "Hooc")
+set(CPACK_PACKAGE_NAME "Hoo")
 set(CPACK_PACKAGE_VERSION "0.1.0")
-set(CPACK_PACKAGE_VENDOR "Hooc Project")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hooc Programming Language Compiler")
+set(CPACK_PACKAGE_VENDOR "Hoo Project")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hoo Programming Language Compiler")
 
 if(WIN32)
     set(CPACK_GENERATOR "ZIP")
@@ -509,7 +509,7 @@ if(WIN32)
         list(APPEND CPACK_GENERATOR "NSIS")
     endif()
     set(CPACK_PACKAGE_FILE_NAME "hoo-windows-x64")
-    set(CPACK_NSIS_DISPLAY_NAME "Hooc Compiler")
+    set(CPACK_NSIS_DISPLAY_NAME "Hoo Compiler")
     set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
     set(CPACK_NSIS_MODIFY_PATH ON)
 endif()

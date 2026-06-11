@@ -587,20 +587,16 @@ extern "C" {
 
     uint64_t jit_hoo_alloc(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        fprintf(stderr, "JIT_DEBUG: jit_hoo_alloc state=%p memory=%p regs[1]=%lld regs[2]=%lld\n",
-                (void*)state, (void*)state->memory,
-                (long long)state->regs[1], (long long)state->regs[2]);
+        
         // Allocate from HVM memory space (bump allocator), not from C heap.
         // The returned offset is used as an index into state->memory[] for ST.D/LD.D.
         size_t size = static_cast<size_t>(state->regs[1]);
         // Align to 8 bytes
         size = (size + 7) & ~7;
         uint64_t offset = gHvmBumpNext.fetch_add(size);
-        fprintf(stderr, "JIT_DEBUG: jit_hoo_alloc size=%zu offset=%llu heap_next=%llu\n",
-                size, (unsigned long long)offset, (unsigned long long)gHvmBumpNext.load());
+        
         if (offset + size > kHvmHeapLimit) {
-            fprintf(stderr, "JIT_DEBUG: HVM heap exhausted (%llu + %zu > %llu)\n",
-                    (unsigned long long)offset, size, (unsigned long long)kHvmHeapLimit);
+            
             return 0;
         }
         // Zero-initialize the allocation
@@ -5777,64 +5773,56 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
 }
 
 bool HVMJIT::materializeModulesToJIT() {
-    fprintf(stderr, "JIT_DEBUG: materializeModulesToJIT modulesMaterialized_=%d\n", modulesMaterialized_);
+    
     if (modulesMaterialized_) return true;
     for (const auto& [moduleName, module] : loadedModules_) {
         auto jdIt = moduleDylibs_.find(moduleName);
         if (jdIt == moduleDylibs_.end() || !jdIt->second) {
-            fprintf(stderr, "JIT_DEBUG:   skip module '%s' (no dylib)\n", moduleName.c_str());
+            
             continue;
         }
-        fprintf(stderr, "JIT_DEBUG:   processing module '%s'\n", moduleName.c_str());
+        
         if (!ensureJITFunctionTable(module)) {
-            fprintf(stderr, "JIT_DEBUG:   ensureJITFunctionTable FAILED for '%s'\n", moduleName.c_str());
+            
             setError(ErrorPhase::Initialize, ErrorCode::UnsupportedInstruction,
                      "Module contains instructions outside current JIT-lowering subset: " + moduleName,
                      moduleName);
             modulesMaterialized_ = false;
             return false;
         }
-        fprintf(stderr, "JIT_DEBUG:   ensureJITFunctionTable PASSED for '%s'\n", moduleName.c_str());
+        
         auto tsmOrErr = translateModule(*module);
         if (!tsmOrErr) {
-            fprintf(stderr, "JIT_DEBUG:   translateModule FAILED for '%s'\n", moduleName.c_str());
+            
             setError(ErrorPhase::Initialize, ErrorCode::ExecutionFailed,
                      "Failed to translate module to LLVM IR: " + moduleName, moduleName);
             return false;
         }
-        fprintf(stderr, "JIT_DEBUG:   translateModule PASSED for '%s'\n", moduleName.c_str());
-        // Dump LLVM IR for debugging
-        {
-            tsmOrErr->withModuleDo([](llvm::Module& mod) {
-                mod.print(llvm::errs(), nullptr);
-            });
-        }
+        
+
         if (auto err = jit_->addIRModule(*jdIt->second, std::move(*tsmOrErr))) {
             auto errStr = llvm::toString(std::move(err));
-            fprintf(stderr, "JIT_DEBUG:   addIRModule FAILED for '%s': %s\n", moduleName.c_str(), errStr.c_str());
+            
             setError(ErrorPhase::Initialize, ErrorCode::ExecutionFailed,
                      "Failed to add LLVM IR module to ORC: " + moduleName + " - " + errStr, moduleName);
             return false;
         }
-        fprintf(stderr, "JIT_DEBUG:   addIRModule PASSED for '%s'\n", moduleName.c_str());
+        
     }
     modulesMaterialized_ = true;
-    fprintf(stderr, "JIT_DEBUG: materializeModulesToJIT SUCCESS\n");
+    
     return true;
 }
 
 int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
-    fprintf(stderr, "JIT_DEBUG: runViaJIT entryPoint='%s' primaryModule='%s'\n",
-            entryPoint.c_str(), primaryModuleName_.c_str());
-    fprintf(stderr, "JIT_DEBUG: loadedModules_ has %zu entries, moduleDylibs_ has %zu entries\n",
-            loadedModules_.size(), moduleDylibs_.size());
+    
+    
     for (const auto& [name, _] : loadedModules_) {
         auto jdIt = moduleDylibs_.find(name);
-        fprintf(stderr, "JIT_DEBUG:   loadedModule='%s' hasDylib=%s\n",
-                name.c_str(), (jdIt != moduleDylibs_.end() && jdIt->second) ? "yes" : "no");
+        
     }
     if (!materializeModulesToJIT()) {
-        fprintf(stderr, "JIT_DEBUG: materializeModulesToJIT failed\n");
+        
         return -1;
     }
     // Reset the HVM heap allocator for this run
@@ -5844,14 +5832,13 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
     // Search the primary module's JITDylib (NOT the main dylib)
     auto primaryJdIt = moduleDylibs_.find(primaryModuleName_);
     auto candidates = buildLookupCandidates(entryPoint, primaryModuleName_);
-    fprintf(stderr, "JIT_DEBUG: lookup candidates (%zu):\n", candidates.size());
+    
     for (const auto& candidate : candidates) {
         // Try searching the primary module's dylib first
         if (primaryJdIt != moduleDylibs_.end() && primaryJdIt->second) {
             auto sym = jit_->lookup(*primaryJdIt->second, candidate);
             if (sym) {
-                fprintf(stderr, "JIT_DEBUG:   candidate='%s' -> FOUND in '%s' dylib addr=%lx\n",
-                        candidate.c_str(), primaryModuleName_.c_str(), (unsigned long)sym->getValue());
+                
                 resolvedAddress = static_cast<uintptr_t>(sym->getValue());
                 break;
             }
@@ -5860,14 +5847,12 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
         // Fallback: try the main JITDylib
         auto sym = jit_->lookup(candidate);
         if (sym) {
-            fprintf(stderr, "JIT_DEBUG:   candidate='%s' -> FOUND in main dylib addr=%lx\n",
-                    candidate.c_str(), (unsigned long)sym->getValue());
+            
             resolvedAddress = static_cast<uintptr_t>(sym->getValue());
             break;
         } else {
             auto err = llvm::toString(sym.takeError());
-            fprintf(stderr, "JIT_DEBUG:   candidate='%s' -> NOT FOUND (%s)\n",
-                    candidate.c_str(), err.c_str());
+            
         }
     }
     if (!resolvedAddress.has_value()) {
@@ -5923,9 +5908,7 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     }
     std::string jitError;
     int64_t jitResult = runViaJIT(entryPoint);
-    fprintf(stderr, "JIT_DEBUG: runViaJIT(\"%s\") = %lld, error='%s', code=%d\n",
-            entryPoint.c_str(), (long long)jitResult, lastError_.c_str(),
-            lastErrorInfo_ ? (int)lastErrorInfo_->code : -1);
+    
     if (jitResult != -1) {
         return jitResult;
     }
@@ -5937,12 +5920,11 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
         jitError = lastError_;
         auto errInfo = lastErrorInfo_;
         if (errInfo && errInfo->code != ErrorCode::MissingEntryPoint) {
-            fprintf(stderr, "JIT_DEBUG: Hard JIT error (%d), NOT falling back to interpreter\n",
-                    (int)errInfo->code);
+            
             return -1;
         }
     }
-    fprintf(stderr, "JIT_DEBUG: Falling back to interpreter\n");
+    
     clearError();
     lastRunUsedJIT_ = false;
     auto primary = loadedModules_[primaryModuleName_];
