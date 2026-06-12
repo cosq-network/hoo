@@ -1,0 +1,20 @@
+{
+  "name": "hooc-dev",
+  "dockerFile": "../Dockerfile",
+  "context": "..",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+  "workspaceFolder": "/workspace",
+  "remoteUser": "root",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      },
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-vscode.cmake-tools",
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  }
+}
