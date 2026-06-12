@@ -62,7 +62,43 @@ sudo dnf install -y cmake ninja-build clang lldb gdb llvm-devel \
   antlr4-cpp-runtime-devel gtest-devel java-latest-openjdk
 ```
 
-### 1.4. Windows (10 / 11)
+### 1.4. Dev Container (Docker)
+
+The repo includes a `Dockerfile` (multi-stage, builds LLVM from source) and `.devcontainer/devcontainer.json`.
+
+```bash
+# Requirements: Docker Desktop + VS Code Dev Containers extension
+# Open the repo → "Reopen in Container"
+# All dependencies (LLVM 22.1.4, ANTLR4 4.13.2, cmake, ninja) are pre-installed
+```
+
+After opening, verify:
+```bash
+clang++ --version          # LLVM 22.1.4 clang
+lldb --version             # LLDB 22.1.4
+llvm-config --version      # Should show 22.1.4
+java -version              # JDK 21+
+```
+
+### 1.5. GitHub Codespaces
+
+A lightweight `Dockerfile.codespaces` (uses pre-built LLVM binaries) is available at `.devcontainer/codespace/devcontainer.json`.
+
+```bash
+# Create a Codespace from the GitHub repo UI
+# Select the ".devcontainer/codespace/devcontainer.json" config
+# All dependencies are pre-installed
+```
+
+Verify after creation:
+```bash
+clang++ --version
+lldb --version
+llvm-config --version
+java -version
+```
+
+### 1.6. Windows (10 / 11)
 
 **Install Visual Studio** (2022 or 18/2026):
 - Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/)
@@ -115,11 +151,18 @@ vcpkg install --triplet x64-windows
 cmake --preset macos-homebrew-ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build --preset macos-homebrew-ninja
 
-# Ubuntu
+# Ubuntu (native)
 cmake --preset ubuntu-ninja -DCMAKE_BUILD_TYPE=Debug \
   -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime \
   -DANTLR4_LIBRARY=/tmp/antlr4-runtime/lib/libantlr4-runtime.a
 cmake --build --preset ubuntu-ninja
+
+# Dev Container / Codespaces
+cmake --preset container-ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build --preset container-ninja
+
+cmake --preset codespace-ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build --preset codespace-ninja
 
 # Windows (Visual Studio)
 cmake --preset windows-vs18-local -DCMAKE_BUILD_TYPE=Debug
@@ -173,7 +216,7 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug hoo (LLDB) — macOS/Linux",
+            "name": "Debug hoo (LLDB) — macOS/Linux/Container",
             "type": "lldb",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
@@ -182,6 +225,18 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
             "preLaunchTask": "CMake: build",
             "environment": [
                 { "name": "LLVM_SYMBOLIZER_PATH", "value": "/opt/homebrew/opt/llvm/bin/llvm-symbolizer" }
+            ]
+        },
+        {
+            "name": "Debug hoo (LLDB) — Dev Container / Codespaces",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${command:cmake.launchTargetPath}",
+            "args": ["${workspaceFolder}/tests/examples/hello.hoo"],
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "CMake: build",
+            "environment": [
+                { "name": "LLVM_SYMBOLIZER_PATH", "value": "/opt/llvm/bin/llvm-symbolizer" }
             ]
         },
         {
@@ -209,7 +264,7 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
             "cwd": "${workspaceFolder}"
         },
         {
-            "name": "Debug hoo-tests (LLDB) — macOS/Linux",
+            "name": "Debug hoo-tests (LLDB) — macOS/Linux/Container",
             "type": "lldb",
             "request": "launch",
             "program": "${command:cmake.launchTargetPath}",
@@ -221,6 +276,8 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
 }
 ```
 
+> **Note**: In the Dev Container / Codespaces, LLDB is already installed at `/opt/llvm/bin/lldb` and the `lldb` debug type works natively with the C/C++ extension. The LLVM symbolizer path should point to `/opt/llvm/bin/llvm-symbolizer` (not `/opt/homebrew/opt/llvm/...`).
+
 ### 3.3. Create `.vscode/settings.json`
 
 ```json
@@ -230,6 +287,9 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
 ```
+
+For Dev Container, use `"cmake.preset": "container-ninja"` instead.
+For Codespaces, use `"cmake.preset": "codespace-ninja"` instead.
 
 ### 3.4. Create `.vscode/tasks.json`
 
@@ -411,8 +471,12 @@ export LLVM_SYMBOLIZER_PATH=/opt/homebrew/opt/llvm/bin/llvm-symbolizer
 # Build just the test executable (faster than full build)
 cmake --build build/debug --target hoo-tests
 
-# Or using a build preset
+# Using a build preset (macOS)
 cmake --build --preset macos-homebrew-ninja-tests
+
+# Dev Container / Codespaces
+cmake --build --preset container-ninja-tests
+cmake --build --preset codespace-ninja-tests
 ```
 
 ### 7.2. Running Specific Test Suites
@@ -454,8 +518,12 @@ export ASAN_SYMBOLIZER_PATH=/opt/homebrew/opt/llvm/bin/llvm-symbolizer
 ### 7.5. Running Tests via CTest
 
 ```bash
-# Run all tests
+# macOS
 ctest --preset macos-homebrew-ninja --output-on-failure
+
+# Dev Container / Codespaces
+ctest --preset container-ninja --output-on-failure
+ctest --preset codespace-ninja --output-on-failure
 
 # Run tests in parallel (4 jobs)
 ctest --preset macos-homebrew-ninja -j4
@@ -560,4 +628,16 @@ export DYLD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib:$DYLD_LIBRARY_PATH
 The ANTLR4 include path is not configured. On macOS, the `macos-homebrew-ninja` preset handles this automatically. On Linux, pass the path manually:
 ```bash
 cmake --preset ubuntu-ninja -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime
+```
+
+### Dev Container / Codespaces first build is slow
+- The `Dockerfile` builds LLVM from source — **30–60 min on first run**. Subsequent rebuilds use Docker layer caching.
+- For Codespaces, use `Dockerfile.codespaces` (pre-built LLVM binaries, ~1 min). Select `.devcontainer/codespace/devcontainer.json` when creating the Codespace.
+- The ANTLR4 C++ runtime is always built from source (~1–2 min) in both configurations.
+
+### "lldb: command not found" in Dev Container
+LLDB is installed at `/opt/llvm/bin/lldb`, which is on the `PATH` via the container's `ENV` directive. Verify:
+```bash
+which lldb    # Should print /opt/llvm/bin/lldb
+lldb --version
 ```

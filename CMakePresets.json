@@ -82,6 +82,28 @@
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++"
       }
+    },
+    {
+      "name": "container-ninja",
+      "displayName": "Dev Container Ninja",
+      "inherits": "ninja-relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_PREFIX_PATH": "/opt/llvm;/opt/antlr",
+        "LLVM_DIR": "/opt/llvm/lib/cmake/llvm"
+      }
+    },
+    {
+      "name": "codespace-ninja",
+      "displayName": "GitHub Codespace Ninja",
+      "inherits": "ninja-relwithdebinfo",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "CMAKE_PREFIX_PATH": "/opt/llvm;/opt/antlr",
+        "LLVM_DIR": "/opt/llvm/lib/cmake/llvm"
+      }
     }
   ],
   "buildPresets": [
@@ -195,6 +217,34 @@
       "targets": [
         "hoo-tests"
       ]
+    },
+    {
+      "name": "container-ninja",
+      "configurePreset": "container-ninja",
+      "targets": [
+        "hoo"
+      ]
+    },
+    {
+      "name": "codespace-ninja",
+      "configurePreset": "codespace-ninja",
+      "targets": [
+        "hoo"
+      ]
+    },
+    {
+      "name": "container-ninja-tests",
+      "configurePreset": "container-ninja",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "codespace-ninja-tests",
+      "configurePreset": "codespace-ninja",
+      "targets": [
+        "hoo-tests"
+      ]
     }
   ],
   "testPresets": [
@@ -246,6 +296,20 @@
     {
       "name": "windows-ninja",
       "configurePreset": "windows-ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "container-ninja",
+      "configurePreset": "container-ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "codespace-ninja",
+      "configurePreset": "codespace-ninja",
       "output": {
         "outputOnFailure": true
       }
