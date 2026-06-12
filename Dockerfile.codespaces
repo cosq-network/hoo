@@ -78,6 +78,7 @@ RUN apt-get update \
         libedit-dev \
         libncurses-dev \
         libxml2-dev \
+        libzstd-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/llvm /opt/llvm
