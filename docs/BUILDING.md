@@ -125,38 +125,24 @@ java -version             # Must be 17+
      antlr4-cpp-runtime-devel gtest-devel java-latest-openjdk
    ```
 
-#### Dev Container (Docker)
+#### Dev Container (Docker) & GitHub Codespaces
 
-A multi-stage `Dockerfile` at the repo root provides a ready-to-use environment with LLVM 22.1.4 (built from source), ANTLR4 4.13.2 (JAR + C++ runtime), and all development tools. The `.devcontainer/devcontainer.json` configuration enables VS Code to auto-detect and open the project inside the container.
+A single multi-stage `Dockerfile` at the repo root provides a ready-to-use environment for both local Docker development and GitHub Codespaces. It downloads **pre-built LLVM 22.1.4 binaries** (seconds, not hours) and builds the ANTLR4 4.13.2 C++ runtime from source in a builder stage. The `.devcontainer/devcontainer.json` configuration enables VS Code to auto-detect and open the project inside the container.
 
-1. **Prerequisites**: Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and VS Code with the **Dev Containers** extension (`ms-vscode-remote.remote-containers`).
+**Local Docker:**
+1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and VS Code with the **Dev Containers** extension (`ms-vscode-remote.remote-containers`)
+2. Clone the repo and open it in VS Code
+3. Click **"Reopen in Container"**, or run `Cmd+Shift+P` → "Dev Containers: Reopen in Container"
 
-2. **Open in container**:
-   - Clone the repo and open it in VS Code
-   - When prompted, click **"Reopen in Container"**, or run `Cmd+Shift+P` → "Dev Containers: Reopen in Container"
-   - The initial build compiles LLVM from source (30–60 min on first run)
+**GitHub Codespaces:**
+1. Go to the GitHub repo → **Code** → **Codespaces** → **Create codespace on main**
+2. The same `.devcontainer/devcontainer.json` is auto-detected — no additional configuration needed
 
-3. **Build** using the `container-ninja` preset — all dependencies are pre-installed at `/opt/llvm` and `/opt/antlr`:
-   ```bash
-   cmake --preset container-ninja
-   cmake --build --preset container-ninja
-   ```
-
-#### GitHub Codespaces
-
-A lightweight `Dockerfile.codespaces` provides the same environment but downloads **pre-built LLVM binaries** (seconds instead of hours). The config is at `.devcontainer/codespace/devcontainer.json`.
-
-1. **Create a Codespace**:
-   - Go to the GitHub repo → **Code** → **Codespaces** → **Create codespace on main**
-   - Or select the **"... → New with options..."** menu and choose the `.devcontainer/codespace/devcontainer.json` configuration
-
-2. **Build** using the `codespace-ninja` preset:
-   ```bash
-   cmake --preset codespace-ninja
-   cmake --build --preset codespace-ninja
-   ```
-
-> **Note**: The first Codespace creation builds the ANTLR4 C++ runtime from source (1–2 min). All subsequent rebuilds reuse the cached Docker layers.
+**Build** using the `container-ninja` preset — all dependencies are pre-installed at `/opt/llvm` and `/opt/antlr`:
+```bash
+cmake --preset container-ninja
+cmake --build --preset container-ninja
+```
 
 #### Windows (10 / 11)
 
@@ -257,8 +243,7 @@ cmake --list-presets=test      # Test presets
 | `windows-ninja` | Windows with Clang + Ninja |
 | `ninja-relwithdebinfo` | Generic Ninja build (set LLVM/ANTLR4 paths manually) |
 | `ninja-release-no-tests` | Generic Ninja release build without tests |
-| `container-ninja` | Dev Container (Docker) with LLVM/ANTLR4 at `/opt/llvm` and `/opt/antlr` |
-| `codespace-ninja` | GitHub Codespaces (same paths as container) |
+| `container-ninja` | Dev Container / GitHub Codespaces with LLVM/ANTLR4 at `/opt/llvm` and `/opt/antlr` |
 
 ### Step 3: Configure and Build
 
@@ -278,19 +263,12 @@ cmake --build --preset ubuntu-ninja
 ```
 The binary will be at `build/ubuntu-ninja/hoo`.
 
-**Dev Container (Docker):**
+**Dev Container / GitHub Codespaces:**
 ```bash
 cmake --preset container-ninja
 cmake --build --preset container-ninja
 ```
 The binary will be at `build/container-ninja/hoo`.
-
-**GitHub Codespaces:**
-```bash
-cmake --preset codespace-ninja
-cmake --build --preset codespace-ninja
-```
-The binary will be at `build/codespace-ninja/hoo`.
 
 **Windows (Visual Studio 18 / 2026 with local deps):**
 ```powershell
@@ -397,7 +375,6 @@ cmake --build --preset macos-homebrew-ninja-tests
 
 # Dev Container / Codespaces
 cmake --build --preset container-ninja-tests
-cmake --build --preset codespace-ninja-tests
 
 # Or just build everything including tests
 cmake --build build/macos-homebrew-ninja --target hoo-tests
@@ -410,7 +387,6 @@ ctest --preset macos-homebrew-ninja --output-on-failure
 
 # Dev Container / Codespaces
 ctest --preset container-ninja --output-on-failure
-ctest --preset codespace-ninja --output-on-failure
 ```
 
 On Windows:
@@ -423,14 +399,12 @@ Run the test binary directly (faster than ctest):
 ```bash
 ./build/macos-homebrew-ninja/hoo-tests --gtest_brief=1
 ./build/container-ninja/hoo-tests --gtest_brief=1
-./build/codespace-ninja/hoo-tests --gtest_brief=1
 ```
 
 ### Running Individual Test Suites
 ```bash
 ./build/macos-homebrew-ninja/hoo-tests --gtest_filter="*NewLanguageFeatures*" --gtest_brief=1
 ./build/container-ninja/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
-./build/codespace-ninja/hoo-tests --gtest_filter="*Parser*" --gtest_brief=1
 ```
 
 ### Getting Verbose Output

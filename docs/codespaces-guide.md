@@ -10,10 +10,9 @@ This guide walks you through setting up and using GitHub Codespaces to develop t
 
 1. Navigate to the [Hoo repository](https://github.com/<org>/hooc) on GitHub
 2. Click the green **Code** button → **Codespaces** tab → **Create codespace on main**
-3. In the **"Dev container configuration"** dropdown, select **`codespace`** (`.devcontainer/codespace/devcontainer.json`)
-4. Click **Create codespace**
+3. Click **Create codespace**
 
-The Codespace will build the container image using `Dockerfile.codespaces`:
+The Codespace will build the container image using `.devcontainer/devcontainer.json` (which references `Dockerfile`):
 - Downloads pre-built LLVM 22.1.4 binaries (~30 s)
 - Builds ANTLR4 4.13.2 C++ runtime from source (~1–2 min)
 - Installs all development tools (`cmake`, `ninja`, `clang`, `lldb`, `jdk`, etc.)
@@ -37,29 +36,29 @@ echo $ANTLR4_ROOT         # /opt/antlr
 
 ```bash
 # Configure
-cmake --preset codespace-ninja
+cmake --preset container-ninja
 
 # Build the compiler
-cmake --build --preset codespace-ninja
+cmake --build --preset container-ninja
 
 # Run the compiler on a test file
-./build/codespace-ninja/hoo tests/examples/hello.hoo
+./build/container-ninja/hoo tests/examples/hello.hoo
 ```
 
 ### 1.4. Run Tests
 
 ```bash
 # Build the test executable
-cmake --build --preset codespace-ninja-tests
+cmake --build --preset container-ninja-tests
 
 # Run via CTest
-ctest --preset codespace-ninja --output-on-failure
+ctest --preset container-ninja --output-on-failure
 
 # Or run the binary directly
-./build/codespace-ninja/hoo-tests --gtest_brief=1
+./build/container-ninja/hoo-tests --gtest_brief=1
 
 # Run a specific test suite
-./build/codespace-ninja/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
+./build/container-ninja/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
 ```
 
 ---
@@ -76,15 +75,15 @@ ctest --preset codespace-ninja --output-on-failure
 | ANTLR4 JAR | `/opt/antlr/antlr-4.13.2-complete.jar` |
 | ANTLR4 C++ headers | `/opt/antlr/include/antlr4-runtime/` |
 | ANTLR4 C++ library | `/opt/antlr/lib/libantlr4-runtime.a` |
-| Build directory | `build/codespace-ninja/` |
+| Build directory | `build/container-ninja/` |
 
 ### 2.2. Preset Configuration
 
-The `codespace-ninja` CMake preset (defined in `CMakePresets.json`) sets:
+The `container-ninja` CMake preset (defined in `CMakePresets.json`) sets:
 
 ```json
 {
-  "name": "codespace-ninja",
+  "name": "container-ninja",
   "inherits": "ninja-relwithdebinfo",
   "cacheVariables": {
     "CMAKE_C_COMPILER": "clang",
@@ -108,8 +107,8 @@ The container includes: `build-essential`, `cmake`, `ninja-build`, `default-jdk`
 ### 3.1. Build for Debugging
 
 ```bash
-cmake --preset codespace-ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build --preset codespace-ninja
+cmake --preset container-ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build --preset container-ninja
 ```
 
 ### 3.2. Rebuild After Changing the Grammar
@@ -117,15 +116,15 @@ cmake --build --preset codespace-ninja
 If you modify `src/parsing/Hooc.g4`, regenerate the ANTLR parser:
 
 ```bash
-cmake --build build/codespace-ninja --target generate_parser
+cmake --build build/container-ninja --target generate_parser
 ```
 
 ### 3.3. Clean and Full Rebuild
 
 ```bash
-rm -rf build/codespace-ninja
-cmake --preset codespace-ninja
-cmake --build --preset codespace-ninja
+rm -rf build/container-ninja
+cmake --preset container-ninja
+cmake --build --preset container-ninja
 ```
 
 ### 3.4. Install Additional Packages
@@ -157,7 +156,7 @@ Then open a PR from the GitHub web UI.
 ### 4.1. Debug with LLDB
 
 ```bash
-lldb -- ./build/codespace-ninja/hoo tests/examples/hello.hoo
+lldb -- ./build/container-ninja/hoo tests/examples/hello.hoo
 (lldb) break set -n "hoo::HooCompiler::compile"
 (lldb) run
 (lldb) bt
@@ -166,14 +165,14 @@ lldb -- ./build/codespace-ninja/hoo tests/examples/hello.hoo
 ### 4.2. Debug a Test
 
 ```bash
-lldb -- ./build/codespace-ninja/hoo-tests --gtest_filter="*JIT*"
+lldb -- ./build/container-ninja/hoo-tests --gtest_filter="*JIT*"
 (lldb) break set -f HVMJIT.cpp -l 200
 (lldb) run
 ```
 
 ### 4.3. VS Code GUI Debugging
 
-The Dev Container configuration (`codespace` config) includes the **C/C++** and **CMake Tools** extensions. To debug with the VS Code GUI:
+The Dev Container configuration (`.devcontainer/devcontainer.json`) includes the **C/C++** and **CMake Tools** extensions. To debug with the VS Code GUI:
 
 1. Open the **Run and Debug** view (Ctrl+Shift+D)
 2. Select **"Debug hoo (LLDB) — Dev Container / Codespaces"** from the dropdown
@@ -211,7 +210,7 @@ export ASAN_SYMBOLIZER_PATH=/opt/llvm/bin/llvm-symbolizer
 
 ### 5.1. Speeding Up Iteration
 
-- Build only the target you need: `cmake --build --preset codespace-ninja-tests` (instead of `codespace-ninja`)
+- Build only the target you need: `cmake --build --preset container-ninja-tests` (instead of `container-ninja`)
 - Use `--gtest_filter` to run a single test suite instead of all tests
 - Keep the Codespace running between sessions to avoid rebuilds
 
@@ -219,7 +218,7 @@ export ASAN_SYMBOLIZER_PATH=/opt/llvm/bin/llvm-symbolizer
 
 ## 6. Troubleshooting
 
-### "cmake --preset codespace-ninja fails with LLVM not found"
+### "cmake --preset container-ninja fails with LLVM not found"
 
 Verify the environment variables are set:
 ```bash
@@ -267,7 +266,7 @@ If you run a server inside the Codespace, VS Code can forward ports for you. Cli
 
 ### 7.1. VS Code Extensions
 
-The default extensions are defined in `.devcontainer/codespace/devcontainer.json`:
+The default extensions are defined in `.devcontainer/devcontainer.json`:
 
 ```json
 "extensions": [
@@ -281,11 +280,11 @@ Add more extensions by editing that file.
 
 ### 7.2. VS Code Settings
 
-To set Codespace-specific VS Code settings, add to the `settings` block in `.devcontainer/codespace/devcontainer.json`:
+To set Codespace-specific VS Code settings, add to the `settings` block in `.devcontainer/devcontainer.json`:
 
 ```json
 "settings": {
-    "cmake.preset": "codespace-ninja",
+    "cmake.preset": "container-ninja",
     "editor.fontSize": 14,
     "files.autoSave": "onFocusChange"
 }

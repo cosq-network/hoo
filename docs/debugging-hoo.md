@@ -62,43 +62,25 @@ sudo dnf install -y cmake ninja-build clang lldb gdb llvm-devel \
   antlr4-cpp-runtime-devel gtest-devel java-latest-openjdk
 ```
 
-### 1.4. Dev Container (Docker)
+### 1.4. Dev Container & GitHub Codespaces
 
-The repo includes a `Dockerfile` (multi-stage, builds LLVM from source) and `.devcontainer/devcontainer.json`.
+A single `Dockerfile` (multi-stage, downloads pre-built LLVM 22.1.4 binary, builds ANTLR4 4.13.2 C++ runtime) serves both local Docker and Codespaces. The `.devcontainer/devcontainer.json` is auto-detected in both environments.
 
 ```bash
-# Requirements: Docker Desktop + VS Code Dev Containers extension
-# Open the repo → "Reopen in Container"
+# Local: Docker Desktop + VS Code Dev Containers extension → "Reopen in Container"
+# Codespaces: GitHub repo → Code → Codespaces → Create codespace on main
 # All dependencies (LLVM 22.1.4, ANTLR4 4.13.2, cmake, ninja) are pre-installed
 ```
 
-After opening, verify:
+Verify:
 ```bash
 clang++ --version          # LLVM 22.1.4 clang
 lldb --version             # LLDB 22.1.4
-llvm-config --version      # Should show 22.1.4
+llvm-config --version      # 22.1.4
 java -version              # JDK 21+
 ```
 
-### 1.5. GitHub Codespaces
-
-A lightweight `Dockerfile.codespaces` (uses pre-built LLVM binaries) is available at `.devcontainer/codespace/devcontainer.json`.
-
-```bash
-# Create a Codespace from the GitHub repo UI
-# Select the ".devcontainer/codespace/devcontainer.json" config
-# All dependencies are pre-installed
-```
-
-Verify after creation:
-```bash
-clang++ --version
-lldb --version
-llvm-config --version
-java -version
-```
-
-### 1.6. Windows (10 / 11)
+### 1.5. Windows (10 / 11)
 
 **Install Visual Studio** (2022 or 18/2026):
 - Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/)
@@ -160,9 +142,6 @@ cmake --build --preset ubuntu-ninja
 # Dev Container / Codespaces
 cmake --preset container-ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build --preset container-ninja
-
-cmake --preset codespace-ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build --preset codespace-ninja
 
 # Windows (Visual Studio)
 cmake --preset windows-vs18-local -DCMAKE_BUILD_TYPE=Debug
@@ -288,8 +267,7 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
 }
 ```
 
-For Dev Container, use `"cmake.preset": "container-ninja"` instead.
-For Codespaces, use `"cmake.preset": "codespace-ninja"` instead.
+For Dev Container / Codespaces, use `"cmake.preset": "container-ninja"` instead.
 
 ### 3.4. Create `.vscode/tasks.json`
 
@@ -476,7 +454,6 @@ cmake --build --preset macos-homebrew-ninja-tests
 
 # Dev Container / Codespaces
 cmake --build --preset container-ninja-tests
-cmake --build --preset codespace-ninja-tests
 ```
 
 ### 7.2. Running Specific Test Suites
@@ -523,7 +500,6 @@ ctest --preset macos-homebrew-ninja --output-on-failure
 
 # Dev Container / Codespaces
 ctest --preset container-ninja --output-on-failure
-ctest --preset codespace-ninja --output-on-failure
 
 # Run tests in parallel (4 jobs)
 ctest --preset macos-homebrew-ninja -j4
@@ -632,7 +608,7 @@ cmake --preset ubuntu-ninja -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/ant
 
 ### Dev Container / Codespaces first build is slow
 - The `Dockerfile` builds LLVM from source — **30–60 min on first run**. Subsequent rebuilds use Docker layer caching.
-- For Codespaces, use `Dockerfile.codespaces` (pre-built LLVM binaries, ~1 min). Select `.devcontainer/codespace/devcontainer.json` when creating the Codespace.
+- The first container build downloads pre-built LLVM binaries and builds ANTLR4 C++ runtime (~3 min total). Subsequent rebuilds use Docker layer caching.
 - The ANTLR4 C++ runtime is always built from source (~1–2 min) in both configurations.
 
 ### "lldb: command not found" in Dev Container

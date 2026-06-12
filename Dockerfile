@@ -1,5 +1,5 @@
 # ============================================================
-# Stage 1: Builder — build LLVM 22.1.4 and ANTLR4 4.13.2
+# Stage 1: Builder — download pre-built LLVM, build ANTLR4
 # ============================================================
 FROM ubuntu:24.04 AS builder
 
@@ -14,47 +14,21 @@ RUN apt-get update \
         ca-certificates \
         xz-utils \
         unzip \
-        libedit-dev \
-        libncurses-dev \
-        libxml2-dev \
-        libzstd-dev \
-        python3-dev \
-        swig \
     && rm -rf /var/lib/apt/lists/*
 
-# ------------------------------------------------------------------
-# LLVM 22.1.4 (llvm, clang, lld, lldb)
-# ------------------------------------------------------------------
-RUN curl -L -o llvm-project-22.1.4.src.tar.xz \
-        https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/llvm-project-22.1.4.src.tar.xz \
-    && tar -xf llvm-project-22.1.4.src.tar.xz \
-    && rm llvm-project-22.1.4.src.tar.xz
+# Pre-built LLVM 22.1.4 (includes clang, lld, lldb, cmake configs)
+RUN curl -L -o llvm.tar.xz \
+        https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/LLVM-22.1.4-Linux-X64.tar.xz \
+    && mkdir -p /opt/llvm \
+    && tar -xf llvm.tar.xz -C /opt/llvm --strip-components=1 \
+    && rm llvm.tar.xz
 
-RUN cmake -S llvm-project-22.1.4.src/llvm -B build-llvm \
-        -G Ninja \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX=/opt/llvm \
-        -DLLVM_ENABLE_PROJECTS="clang;lld;lldb" \
-        -DLLVM_TARGETS_TO_BUILD="X86" \
-        -DLLVM_INCLUDE_TESTS=OFF \
-        -DLLVM_INCLUDE_EXAMPLES=OFF \
-        -DLLVM_INCLUDE_DOCS=OFF \
-        -DLLVM_INCLUDE_BENCHMARKS=OFF \
-        -DCLANG_INCLUDE_TESTS=OFF \
-        -DCLANG_INCLUDE_DOCS=OFF \
-    && cmake --build build-llvm --target install -j"$(nproc)" \
-    && rm -rf llvm-project-22.1.4.src build-llvm
-
-# ------------------------------------------------------------------
-# ANTLR4 4.13.2 — complete JAR (for code generation)
-# ------------------------------------------------------------------
+# ANTLR4 4.13.2 complete JAR (parser generator)
 RUN mkdir -p /opt/antlr \
     && curl -L -o /opt/antlr/antlr-4.13.2-complete.jar \
         https://www.antlr.org/download/antlr-4.13.2-complete.jar
 
-# ------------------------------------------------------------------
-# ANTLR4 4.13.2 — C++ runtime (for linking generated parsers)
-# ------------------------------------------------------------------
+# ANTLR4 C++ runtime from source (must match JAR version)
 RUN curl -L -o antlr4-cpp-runtime-4.13.2-source.zip \
         https://www.antlr.org/download/antlr4-cpp-runtime-4.13.2-source.zip \
     && unzip -q antlr4-cpp-runtime-4.13.2-source.zip -d antlr4-cpp-runtime \
