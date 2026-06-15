@@ -126,6 +126,8 @@ Then set `VCPKG_ROOT=C:\dev\vcpkg` (adjust the path in [section 5](#5-set-enviro
 
 ## 7. Configure and Build
 
+> **IMPORTANT**: You **must** use **"x64 Native Tools Command Prompt for VS 18"**. The x86 command prompt will fail because LLVM 22.1.4 provides only **x64** libraries and cannot link against an x86 build.
+
 Open **"x64 Native Tools Command Prompt for VS 18"** (or any terminal, if you set the env vars globally) and navigate to the Hoo repo root:
 
 ```cmd
@@ -211,7 +213,50 @@ dir "%VCPKG_ROOT%\installed\x64-windows\lib\antlr4-runtime.lib"
 vcpkg toolchain not being picked up. Ensure `-DCMAKE_TOOLCHAIN_FILE` points to the correct vcpkg path.
 
 ### Linker errors (LNK2019 / LNK2001)
-Usually caused by mismatched CRT linkage. The build uses `/MD` by default (MultiThreadedDLL). Ensure vcpkg libraries were built with the same triplet (`x64-windows`, not `x64-windows-static`).
+Usually caused by mismatched CRT linkage or missing library dependencies.
+
+Ensure vcpkg libraries were built with the same triplet (`x64-windows`, not `x64-windows-static`).
+
+If errors reference `__imp_deflate`, `__imp_inflate`, etc., zlib is not linked to `hoort`. Run `cmake --preset windows-vs18-env --fresh` to regenerate — the `CMakeLists.txt` links `ZLIB::ZLIB` to `hoort`.
+
+If errors reference `__imp_curl_*` or `curl.lib` not found, the bare `curl` library name does not resolve to `libcurl.lib` on Windows. The `CMakeLists.txt` uses `find_package(CURL REQUIRED)` with the `CURL::libcurl` target instead.
+
+### LLVM library architecture mismatch (LNK4272)
+```
+LLVMOrcJIT.lib : warning LNK4272: library machine type 'x64' conflicts with target machine type 'x86'
+```
+You are building for **x86** but LLVM only provides **x64** libraries. You must use the **"x64 Native Tools Command Prompt for VS 18"** and clean the build directory:
+```cmd
+rmdir /S /Q build
+cmake --preset windows-vs18-env
+```
+
+### "fatal error C1083: Cannot open include file: 'pthread.h'"
+MSVC does not provide `<pthread.h>`. The codebase uses platform-specific implementations:
+- `hoo_thread.cpp` — uses Win32 `CreateThread` / `CRITICAL_SECTION` on Windows, pthread on macOS/Linux
+- `HVMJIT.cpp` — uses `std::thread` on Windows, pthread on macOS/Linux
+
+Run a clean build from the **x64 Native Tools Command Prompt**.
+
+### "fatal error C1083: Cannot open include file: 'unistd.h'"
+MSVC does not provide `<unistd.h>`. The codebase guards it with `#ifdef _WIN32` and uses `<io.h>` / `_open`, `_read`, `_write` etc. instead.
+
+### "fatal error C1083: Cannot open include file: 'stdint.h'"
+The MSVC standard library include paths are not being found. This usually means you are building outside a VS developer command prompt, or you are using the **x86** command prompt but the build is misconfigured. Use **"x64 Native Tools Command Prompt for VS 18"** and clean the build directory.
+
+### "error C2589: '(': illegal token on right side of '::'" in LLVM headers
+The Windows `min`/`max` macros conflict with `std::min`/`std::max` used in LLVM headers. The codebase defines `NOMINMAX` before including `<windows.h>`. Run a clean rebuild:
+```cmd
+rmdir /S /Q build
+cmake --preset windows-vs18-env
+cmake --build --preset windows-vs18-env
+```
+
+### "error C2039: 'clock_gettime': is not a member of 'global namespace'"
+MSVC does not provide `clock_gettime`. The codebase implements it with `GetSystemTimePreciseAsFileTime` on Windows.
+
+### "error C2039: 'getrandom': is not a member of 'global namespace'"
+MSVC does not provide `getrandom`. The codebase uses `CryptGenRandom` on Windows.
 
 ### "diaguids.lib is missing"
 The pre-built LLVM 22.1.4 Windows package has a hardcoded VS 2022 DIA SDK path in `LLVMExports.cmake`. Edit line 537 to remove the DIA library reference:

@@ -7,8 +7,6 @@
 #include <sstream>
 #include <fstream>
 
-extern "C" {
-
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -48,6 +46,8 @@ static void append_quoted(std::ostringstream& ss, const std::string& field, char
     }
     ss << quote_char;
 }
+
+extern "C" {
 
 // ============================================================================
 // Parsing

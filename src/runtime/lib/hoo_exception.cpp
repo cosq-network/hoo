@@ -297,11 +297,13 @@ void hoo_exception_throw(HooException exc) {
 
     currentException = exc;
 
-#ifdef __cplusplus
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4297)
+#endif
     throw HooStdException(exc);
-#else
-    std::fprintf(stderr, "ERROR: hoo_exception_throw requires C++ exception handling\n");
-    std::_Exit(1);
+#ifdef _MSC_VER
+#pragma warning(pop)
 #endif
 }
 

@@ -36,10 +36,19 @@
 #include "runtime/lib/hoo_json.h"
 
 #include <fcntl.h>
-#include <pthread.h>
 #include <sys/stat.h>
 #include <time.h>
+#ifdef _WIN32
+#define NOMINMAX
+#include <io.h>
+#include <process.h>
+#include <thread>
+#include <windows.h>
+#include <wincrypt.h>
+#else
 #include <unistd.h>
+#include <pthread.h>
+#endif
 
 #include "llvm/ExecutionEngine/Orc/Core.h"
 #include "llvm/ExecutionEngine/Orc/ExecutionUtils.h"
@@ -1980,6 +1989,12 @@ extern "C" {
 
     // ── Platform OS services (syscalls 12–23) ───────────────────────
     extern "C" uint64_t hooc_hvm_sys_thread_create(uint64_t entry, uint64_t arg) {
+#ifdef _WIN32
+        auto fn = reinterpret_cast<int64_t (*)(uint64_t)>(entry);
+        std::thread t([fn, arg]() { fn(arg); });
+        t.detach();
+        return 0;
+#else
         pthread_t thread;
         auto* p = new std::pair<uint64_t, uint64_t>(entry, arg);
         auto* wrapper = +[](void* raw) -> void* {
@@ -1995,9 +2010,15 @@ extern "C" {
         }
         pthread_detach(thread);
         return 0;
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_thread_exit(uint64_t retval) {
-        pthread_exit(reinterpret_cast<void*>(retval));
+        (void)retval;
+#ifdef _WIN32
+        _endthread();
+#else
+        pthread_exit(nullptr);
+#endif
         return 0;
     }
     extern "C" uint64_t hooc_hvm_sys_futex(uint64_t uaddr, uint64_t op, uint64_t val) {
@@ -2005,7 +2026,9 @@ extern "C" {
         return -1;
     }
     extern "C" uint64_t hooc_hvm_sys_get_tid() {
-#if defined(__APPLE__)
+#ifdef _WIN32
+        return static_cast<uint64_t>(GetCurrentThreadId());
+#elif defined(__APPLE__)
         uint64_t tid = 0;
         pthread_threadid_np(pthread_self(), &tid);
         return tid;
@@ -2017,51 +2040,108 @@ extern "C" {
         const char* realPath = g_hvm_memory
             ? reinterpret_cast<const char*>(g_hvm_memory + path)
             : reinterpret_cast<const char*>(path);
+#ifdef _WIN32
+        return static_cast<uint64_t>(_open(realPath,
+                                            static_cast<int>(flags),
+                                            static_cast<int>(mode)));
+#else
         return static_cast<uint64_t>(::open(realPath,
                                             static_cast<int>(flags),
                                             static_cast<mode_t>(mode)));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_read(uint64_t fd, uint64_t buf, uint64_t count) {
         void* realBuf = g_hvm_memory
             ? g_hvm_memory + buf
             : reinterpret_cast<void*>(buf);
+#ifdef _WIN32
+        return static_cast<uint64_t>(_read(static_cast<int>(fd),
+                                           realBuf,
+                                           static_cast<unsigned int>(count)));
+#else
         return static_cast<uint64_t>(::read(static_cast<int>(fd),
                                             realBuf,
                                             static_cast<size_t>(count)));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_write(uint64_t fd, uint64_t buf, uint64_t count) {
         const void* realBuf = g_hvm_memory
             ? g_hvm_memory + buf
             : reinterpret_cast<const void*>(buf);
+#ifdef _WIN32
+        return static_cast<uint64_t>(_write(static_cast<int>(fd),
+                                            realBuf,
+                                            static_cast<unsigned int>(count)));
+#else
         return static_cast<uint64_t>(::write(static_cast<int>(fd),
                                              realBuf,
                                              static_cast<size_t>(count)));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_close(uint64_t fd) {
+#ifdef _WIN32
+        return static_cast<uint64_t>(_close(static_cast<int>(fd)));
+#else
         return static_cast<uint64_t>(::close(static_cast<int>(fd)));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_lseek(uint64_t fd, uint64_t offset, uint64_t whence) {
+#ifdef _WIN32
+        return static_cast<uint64_t>(_lseek(static_cast<int>(fd),
+                                            static_cast<long>(offset),
+                                            static_cast<int>(whence)));
+#else
         return static_cast<uint64_t>(::lseek(static_cast<int>(fd),
                                              static_cast<off_t>(offset),
                                              static_cast<int>(whence)));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_fstat(uint64_t fd, uint64_t buf) {
+#ifdef _WIN32
+        struct _stat* realBuf = g_hvm_memory
+            ? reinterpret_cast<struct _stat*>(g_hvm_memory + buf)
+            : reinterpret_cast<struct _stat*>(buf);
+        return static_cast<uint64_t>(_fstat(static_cast<int>(fd), realBuf));
+#else
         struct stat* realBuf = g_hvm_memory
             ? reinterpret_cast<struct stat*>(g_hvm_memory + buf)
             : reinterpret_cast<struct stat*>(buf);
         return static_cast<uint64_t>(::fstat(static_cast<int>(fd), realBuf));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_clock_gettime(uint64_t clk_id, uint64_t ts_ptr) {
         struct timespec* realTs = g_hvm_memory
             ? reinterpret_cast<struct timespec*>(g_hvm_memory + ts_ptr)
             : reinterpret_cast<struct timespec*>(ts_ptr);
+#ifdef _WIN32
+        (void)clk_id;
+        FILETIME ft;
+        GetSystemTimePreciseAsFileTime(&ft);
+        ULARGE_INTEGER ui;
+        ui.LowPart = ft.dwLowDateTime;
+        ui.HighPart = ft.dwHighDateTime;
+        constexpr uint64_t EPOCH_DIFF = 116444736000000000ULL;
+        uint64_t ns100 = ui.QuadPart - EPOCH_DIFF;
+        realTs->tv_sec = static_cast<time_t>(ns100 / 10000000ULL);
+        realTs->tv_nsec = static_cast<long>((ns100 % 10000000ULL) * 100);
+        return 0;
+#else
         return static_cast<uint64_t>(::clock_gettime(static_cast<clockid_t>(clk_id), realTs));
+#endif
     }
     extern "C" uint64_t hooc_hvm_sys_getrandom(uint64_t buf, uint64_t len) {
         void* realBuf = g_hvm_memory
             ? g_hvm_memory + buf
             : reinterpret_cast<void*>(buf);
-#if defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
+#ifdef _WIN32
+        HCRYPTPROV hProv = 0;
+        if (CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+            CryptGenRandom(hProv, (DWORD)len, (BYTE*)realBuf);
+            CryptReleaseContext(hProv, 0);
+            return len;
+        }
+        return 0;
+#elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
         ::arc4random_buf(realBuf, static_cast<size_t>(len));
         return len;
 #else

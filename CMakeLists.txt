@@ -80,6 +80,8 @@ if(NOT APPLE)
     find_package(OpenSSL REQUIRED)
 endif()
 
+find_package(CURL REQUIRED)
+
 find_package(LLVM QUIET CONFIG)
 if(NOT LLVM_FOUND)
     if(WIN32 AND NOT "${LLVM_DIR}" STREQUAL "" AND EXISTS "${LLVM_DIR}" AND NOT EXISTS "${LLVM_DIR}/LLVMConfig.cmake" AND NOT EXISTS "${LLVM_DIR}/llvm-config.cmake")
@@ -216,6 +218,7 @@ target_compile_definitions(hoort PRIVATE
 if(NOT APPLE)
     target_link_libraries(hoort PUBLIC OpenSSL::Crypto)
 endif()
+target_link_libraries(hoort PUBLIC ZLIB::ZLIB)
 
 set_source_files_properties(
     src/runtime/lib/hoo_runtime.c
@@ -268,7 +271,7 @@ target_link_libraries(hoo-core PUBLIC
     hoort
     hoo-parser
     ${llvm_libs}
-    curl
+    CURL::libcurl
 )
 
 if(WIN32)
