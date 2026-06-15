@@ -23,6 +23,18 @@
       "cacheVariables": {
         "CMAKE_PREFIX_PATH": "/opt/homebrew/opt/llvm;/opt/homebrew"
       }
+    },
+    {
+      "name": "windows-vs18-env",
+      "displayName": "Windows VS 18 with environment variables",
+      "inherits": "ninja-relwithdebinfo",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl",
+        "LLVM_DIR": "$env{LLVM_DIR}",
+        "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+      }
     }
   ],
   "buildPresets": [
@@ -41,6 +53,13 @@
       ]
     },
     {
+      "name": "windows-vs18-env",
+      "configurePreset": "windows-vs18-env",
+      "targets": [
+        "hoo"
+      ]
+    },
+    {
       "name": "ninja-relwithdebinfo-tests",
       "configurePreset": "ninja-relwithdebinfo",
       "targets": [
@@ -50,6 +69,13 @@
     {
       "name": "macos-homebrew-ninja-tests",
       "configurePreset": "macos-homebrew-ninja",
+      "targets": [
+        "hoo-tests"
+      ]
+    },
+    {
+      "name": "windows-vs18-env-tests",
+      "configurePreset": "windows-vs18-env",
       "targets": [
         "hoo-tests"
       ]
@@ -66,6 +92,13 @@
     {
       "name": "macos-homebrew-ninja",
       "configurePreset": "macos-homebrew-ninja",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-vs18-env",
+      "configurePreset": "windows-vs18-env",
       "output": {
         "outputOnFailure": true
       }

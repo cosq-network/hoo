@@ -1,0 +1,244 @@
+# Building Hoo on Windows 11
+
+This guide walks through setting up a Windows 11 development environment for Hoo using **Visual Studio 18 (2026)**, **LLVM 22.1.4** downloaded directly from GitHub, and **vcpkg manifest mode** for all other dependencies (ANTLR4, GTest, ZLIB, OpenSSL, curl).
+
+---
+
+## 1. Prerequisites
+
+| Dependency | Required | Purpose |
+|------------|----------|---------|
+| Visual Studio 18 Community | Yes | MSVC toolchain (`cl.exe`) |
+| CMake 3.20+ | Yes | Build system (bundled with VS or standalone) |
+| LLVM 22.1.4 | Yes | LLVM core, ORC JIT, Target libraries |
+| Java 17+ | Yes | Runs the ANTLR generator JAR |
+| Ninja (optional) | No | Faster builds (recommended) |
+| vcpkg | Yes | Package manager for ANTLR4, GTest, ZLIB, OpenSSL, curl |
+
+---
+
+## 2. Install Visual Studio 18 Community
+
+1. Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/)
+2. Run the installer and select the **"Desktop development with C++"** workload
+3. Ensure these individual components are checked:
+   - **"C++ CMake tools for Windows"** (includes CMake)
+   - **"Windows 10/11 SDK"**
+4. After installation, open **"x64 Native Tools Command Prompt for VS 18"** from the Start Menu (this sets the environment for 64-bit builds).
+
+Verify the compiler:
+
+```cmd
+cl /?
+```
+
+---
+
+## 3. Download and Set Up LLVM 22.1.4
+
+Download the pre-built LLVM binary for Windows (MSVC):
+
+```cmd
+curl -L -o llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz
+```
+
+Extract it to a convenient location (e.g., `C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc`). You can use 7-Zip, WinRAR, or `tar` if you have it:
+
+```cmd
+tar -xf llvm.tar.xz
+```
+
+Add LLVM's `bin` directory to your PATH:
+
+```cmd
+set PATH=C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin;%PATH%
+```
+
+> To make this permanent, add it to your system environment variables via **System Properties → Advanced → Environment Variables**.
+
+Verify LLVM is usable:
+
+```cmd
+clang-cl --version
+dir C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm\LLVMConfig.cmake
+```
+
+> **Known issue**: The pre-built LLVM 22.1.4 Windows package was built on a VS 2022 machine and has a hardcoded DIA SDK path in `LLVMExports.cmake`. If you get an error about `diaguids.lib`, edit that file to remove the DIA SDK reference. See [troubleshooting](#thediaguidslib-is-missing).
+
+---
+
+## 4. Install Java
+
+Download **Eclipse Temurin 21** (or any JDK 17+):
+
+```cmd
+winget install EclipseAdoptium.Temurin.21.JDK
+```
+
+Or download manually from [adoptium.net](https://adoptium.net/).
+
+Verify:
+
+```cmd
+java -version
+```
+
+---
+
+## 5. Set Environment Variables
+
+Set these **system/user environment variables** once — the `windows-vs18-env` preset reads them automatically.
+
+| Variable | Value | Purpose |
+|----------|-------|---------|
+| `LLVM_DIR` | `C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm` | Tells CMake where to find `LLVMConfig.cmake` |
+| `VCPKG_ROOT` | `C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg` | Tells CMake where to find the vcpkg toolchain file |
+
+```cmd
+setx LLVM_DIR "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm"
+setx VCPKG_ROOT "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg"
+```
+
+Add LLVM's `bin` to your PATH (for DLLs at runtime):
+```cmd
+setx PATH "%PATH%;C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin"
+```
+
+> Restart your terminal after running `setx` for the changes to take effect.
+
+---
+
+## 6. Install Dependencies with vcpkg (Manifest Mode)
+
+The repo includes `vcpkg.json` at the root that lists all required dependencies (ANTLR4, GoogleTest, ZLIB, OpenSSL, curl). vcpkg manifest mode installs them automatically during CMake configuration.
+
+Visual Studio 18 bundles vcpkg at `C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe`, so no separate installation is needed. The `VCPKG_ROOT` environment variable (set in [section 5](#5-set-environment-variables)) already points to it.
+
+If you don't have VS 18's bundled vcpkg, clone and bootstrap it manually:
+```cmd
+git clone https://github.com/microsoft/vcpkg.git C:\dev\vcpkg
+cd C:\dev\vcpkg
+.\bootstrap-vcpkg.bat
+```
+Then set `VCPKG_ROOT=C:\dev\vcpkg` (adjust the path in [section 5](#5-set-environment-variables) accordingly). When you configure Hoo with the `windows-vs18-env` preset, CMake will automatically install all dependencies from `vcpkg.json` into `vcpkg_installed/`.
+
+---
+
+## 7. Configure and Build
+
+Open **"x64 Native Tools Command Prompt for VS 18"** (or any terminal, if you set the env vars globally) and navigate to the Hoo repo root:
+
+```cmd
+cd C:\Projects\hoo
+```
+
+Configure with CMake using the dedicated Windows preset:
+
+```cmd
+cmake --preset windows-vs18-env
+```
+
+> This preset reads `LLVM_DIR` and `VCPKG_ROOT` from your environment variables — no need for manual `-D` flags. See [section 5](#5-set-environment-variables).
+
+> If Ninja is not installed and you want to use MSBuild instead:
+> ```cmd
+> cmake --preset windows-vs18-env -DCMAKE_GENERATOR="Visual Studio 18 2026" -DCMAKE_GENERATOR_PLATFORM=x64
+> ```
+
+Build:
+
+```cmd
+cmake --build --preset windows-vs18-env
+```
+
+The binary will be at `build\hoo.exe`.
+
+---
+
+## 8. Testing
+
+Build the test executable:
+
+```cmd
+cmake --build --preset windows-vs18-env-tests
+```
+
+Run all tests via CTest:
+
+```cmd
+ctest --preset windows-vs18-env --output-on-failure
+```
+
+Run a specific test suite directly:
+
+```cmd
+build\hoo-tests --gtest_filter="*NewLanguageFeatures*" --gtest_brief=1
+```
+
+> If you get DLL load errors at runtime, ensure LLVM's `bin` is on your PATH (see [section 5](#5-set-environment-variables)).
+
+---
+
+## 9. Summary of Directory Layout
+
+```
+C:\
+├── clang+llvm-22.1.4-x86_64-pc-windows-msvc\  # Pre-built LLVM (extracted from GitHub release)
+│   ├── bin\                 #   clang-cl.exe, llvm-config.exe, etc.
+│   └── lib\cmake\llvm\      #   LLVMConfig.cmake
+└── Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\
+    └── scripts\buildsystems\vcpkg.cmake   # vcpkg toolchain (bundled with VS 18)
+```
+
+---
+
+## 10. Troubleshooting
+
+### "Could NOT find LLVM"
+Verify the path to `LLVMConfig.cmake`:
+```cmd
+dir C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm\LLVMConfig.cmake
+```
+
+### "Could NOT find ANTLR4"
+Ensure the vcpkg toolchain file is set correctly. The ANTLR4 headers and library are provided by vcpkg:
+```cmd
+dir "%VCPKG_ROOT%\installed\x64-windows\include\antlr4-runtime\antlr4-runtime.h"
+dir "%VCPKG_ROOT%\installed\x64-windows\lib\antlr4-runtime.lib"
+```
+
+### "fatal error C1083: Cannot open include file: 'zlib.h'"
+vcpkg toolchain not being picked up. Ensure `-DCMAKE_TOOLCHAIN_FILE` points to the correct vcpkg path.
+
+### Linker errors (LNK2019 / LNK2001)
+Usually caused by mismatched CRT linkage. The build uses `/MD` by default (MultiThreadedDLL). Ensure vcpkg libraries were built with the same triplet (`x64-windows`, not `x64-windows-static`).
+
+### "diaguids.lib is missing"
+The pre-built LLVM 22.1.4 Windows package has a hardcoded VS 2022 DIA SDK path in `LLVMExports.cmake`. Edit line 537 to remove the DIA library reference:
+```cmd
+powershell -Command "(Get-Content 'C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm\LLVMExports.cmake') -replace 'C:/Program Files/Microsoft Visual Studio/2022/Enterprise/DIA SDK/lib/amd64/diaguids.lib;', '' | Set-Content 'C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm\LLVMExports.cmake'"
+```
+Then clean and reconfigure: `rmdir /S /Q build && cmake --preset windows-vs18-env`.
+
+### "The code execution cannot proceed because LLVM-C.dll was not found"
+LLVM's `bin` directory is not on your PATH. Add it:
+```cmd
+set PATH=C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin;%PATH%
+```
+
+### Slow builds
+Install Ninja for parallel builds:
+```cmd
+winget install Ninja-build.Ninja
+```
+The `windows-vs18-env` preset uses Ninja by default.
+
+### Environment variables not picked up
+After running `setx`, restart your terminal or open a new **x64 Native Tools Command Prompt for VS 18**. CMake presets read env vars at process startup, not dynamically.
+
+### vcpkg installs x86 packages instead of x64
+You are using the **x86** Developer Command Prompt. Use **"x64 Native Tools Command Prompt for VS 18"** instead, then clean and reconfigure:
+```cmd
+rmdir /S /Q build
+cmake --preset windows-vs18-env
+```

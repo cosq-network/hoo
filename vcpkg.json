@@ -2,15 +2,11 @@
   "name": "hoo",
   "version-string": "0.1.0",
   "dependencies": [
-    "gtest",
     "antlr4",
-    {
-      "name": "llvm",
-      "default-features": false,
-      "features": [
-        "target-x86"
-      ]
-    }
+    "gtest",
+    "zlib",
+    "openssl",
+    "curl"
   ],
   "builtin-baseline": "aa40adda5352e87655b8583cfb2451d5e9e276fd"
 }

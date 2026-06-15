@@ -8,6 +8,19 @@
 #include <new>
 #include <mutex>
 
+#ifdef _WIN32
+#include <malloc.h>
+static char* strndup(const char* s, size_t n) {
+    size_t len = strnlen(s, n);
+    char* p = (char*)malloc(len + 1);
+    if (p) {
+        memcpy(p, s, len);
+        p[len] = '\0';
+    }
+    return p;
+}
+#endif
+
 // ============================================================================
 // Internal Structure (Hidden from hoo Code)
 // ============================================================================

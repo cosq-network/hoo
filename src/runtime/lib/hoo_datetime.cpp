@@ -7,6 +7,90 @@
 #include <string>
 #include <time.h>
 
+#ifdef _WIN32
+#include <malloc.h>
+static struct tm* win_gmtime_r(const time_t* t, struct tm* buf) {
+    if (gmtime_s(buf, t) != 0) return nullptr;
+    return buf;
+}
+static time_t win_timegm(struct tm* buf) {
+    return _mkgmtime(buf);
+}
+static char* win_strptime(const char* s, const char* fmt, struct tm* buf) {
+    if (!s || !fmt || !buf) return nullptr;
+    int val;
+    while (*fmt) {
+        if (*fmt == '%') {
+            fmt++;
+            if (*fmt == '\0') break;
+            switch (*fmt) {
+                case 'Y': {
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val = 0;
+                    for (int i = 0; i < 4; i++) {
+                        if (*s < '0' || *s > '9') return nullptr;
+                        val = val * 10 + (*s - '0');
+                        s++;
+                    }
+                    buf->tm_year = val - 1900;
+                    break;
+                }
+                case 'm': {
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val = (*s - '0') * 10; s++;
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val += (*s - '0'); s++;
+                    if (val < 1 || val > 12) return nullptr;
+                    buf->tm_mon = val - 1;
+                    break;
+                }
+                case 'd': {
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val = (*s - '0') * 10; s++;
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val += (*s - '0'); s++;
+                    buf->tm_mday = val;
+                    break;
+                }
+                case 'H': {
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val = (*s - '0') * 10; s++;
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val += (*s - '0'); s++;
+                    buf->tm_hour = val;
+                    break;
+                }
+                case 'M': {
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val = (*s - '0') * 10; s++;
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val += (*s - '0'); s++;
+                    buf->tm_min = val;
+                    break;
+                }
+                case 'S': {
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val = (*s - '0') * 10; s++;
+                    if (*s < '0' || *s > '9') return nullptr;
+                    val += (*s - '0'); s++;
+                    buf->tm_sec = val;
+                    break;
+                }
+                default: return nullptr;
+            }
+            fmt++;
+        } else {
+            if (*s != *fmt) return nullptr;
+            s++; fmt++;
+        }
+    }
+    return const_cast<char*>(s);
+}
+#define gmtime_r win_gmtime_r
+#define timegm win_timegm
+#define strptime win_strptime
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
