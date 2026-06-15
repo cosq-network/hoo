@@ -74,6 +74,12 @@ endif()
 message(STATUS "ANTLR4 Include Dir: ${ANTLR4_INCLUDE_DIR}")
 message(STATUS "ANTLR4 Library: ${ANTLR4_LIBRARY}")
 
+find_package(ZLIB REQUIRED)
+
+if(NOT APPLE)
+    find_package(OpenSSL REQUIRED)
+endif()
+
 find_package(LLVM QUIET CONFIG)
 if(NOT LLVM_FOUND)
     if(WIN32 AND NOT "${LLVM_DIR}" STREQUAL "" AND EXISTS "${LLVM_DIR}" AND NOT EXISTS "${LLVM_DIR}/LLVMConfig.cmake" AND NOT EXISTS "${LLVM_DIR}/llvm-config.cmake")
@@ -206,6 +212,10 @@ target_include_directories(hoort PUBLIC
 target_compile_definitions(hoort PRIVATE
     $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
 )
+
+if(NOT APPLE)
+    target_link_libraries(hoort PUBLIC OpenSSL::Crypto)
+endif()
 
 set_source_files_properties(
     src/runtime/lib/hoo_runtime.c

@@ -53,23 +53,20 @@ RUN apt-get update \
         build-essential \
         cmake \
         ninja-build \
-        default-jdk \
+        default-jre-headless \
         libgtest-dev \
         libcurl4-openssl-dev \
         uuid-dev \
         curl \
         git \
-        pkg-config \
-        wget \
-        zip \
         unzip \
-        zsh \
         ca-certificates \
-        python3 \
         libedit-dev \
         libncurses-dev \
         libxml2-dev \
         libzstd-dev \
+        libssl-dev \
+        zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/llvm /opt/llvm
