@@ -29,10 +29,6 @@ if(MSVC)
 endif()
 
 if(WIN32)
-    if(NOT ANTLR4_INCLUDE_DIR AND NOT ANTLR4_ROOT AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/include/antlr4-runtime/antlr4-runtime.h")
-        set(ANTLR4_ROOT "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows" CACHE PATH "ANTLR4 C++ runtime installation prefix" FORCE)
-    endif()
-
     if(NOT DEFINED LLVM_DIR AND EXISTS "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/share/llvm/LLVMConfig.cmake")
         set(LLVM_DIR "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/share/llvm" CACHE PATH "Path to LLVM CMake package directory" FORCE)
     elseif(NOT DEFINED LLVM_DIR AND EXISTS "C:/Program Files/LLVM/lib/cmake/llvm")
@@ -41,9 +37,19 @@ if(WIN32)
 endif()
 
 if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    foreach(_hoo_lang C CXX)
+        string(REGEX REPLACE "([/-])Ob1" "\\1Ob2"
+            CMAKE_${_hoo_lang}_FLAGS_RELWITHDEBINFO
+            "${CMAKE_${_hoo_lang}_FLAGS_RELWITHDEBINFO}")
+    endforeach()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
     add_compile_options(/wd4624)
+
+    function(hoo_use_static_msvc_runtime target_name)
+        set_property(TARGET ${target_name} PROPERTY
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endfunction()
 endif()
 
 # Dependencies
@@ -52,12 +58,14 @@ if(WIN32 AND NOT ANTLR4_ROOT)
     FetchContent_Declare(
         antlr4_runtime
         URL https://github.com/antlr/antlr4/archive/refs/tags/4.13.2.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         SOURCE_SUBDIR runtime/Cpp
     )
     set(ANTLR4_INCLUDE_DIR "${CMAKE_BINARY_DIR}/_deps/antlr4_runtime-src/runtime/Cpp/runtime/src" CACHE PATH "ANTLR4 include dir" FORCE)
     set(ANTLR4_LIBRARY antlr4_static)
     set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE)
     set(WITH_LIBCXX OFF CACHE INTERNAL "" FORCE)
+    set(WITH_STATIC_CRT ON CACHE BOOL "Build ANTLR4 with the static MSVC runtime" FORCE)
     set(ANTLR_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
     set(ANTLR_BUILD_STATIC ON CACHE INTERNAL "" FORCE)
     set(ANTLR_BUILD_CPP_TESTS OFF CACHE INTERNAL "" FORCE)
@@ -184,6 +192,9 @@ add_custom_command(
 add_custom_target(generate_parser DEPENDS ${ANTLR4_GENERATED_FILES})
 
 add_library(hoo-parser ${ANTLR4_GENERATED_FILES})
+if(MSVC)
+    hoo_use_static_msvc_runtime(hoo-parser)
+endif()
 target_include_directories(hoo-parser PUBLIC ${ANTLR4_GENERATED_DIR} ${ANTLR4_INCLUDE_DIR})
 target_link_libraries(hoo-parser PUBLIC ${ANTLR4_LIBRARY})
 
@@ -232,6 +243,9 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_thread.cpp
     src/runtime/lib/hoo_json.cpp
 )
+if(MSVC)
+    hoo_use_static_msvc_runtime(hoort)
+endif()
 
 target_include_directories(hoort PUBLIC
     ${CMAKE_SOURCE_DIR}/src/runtime/lib
@@ -285,6 +299,9 @@ add_library(hoo-core
     # Parsing (manual wrapper)
     src/parsing/HooParserWrapper.cpp
 )
+if(MSVC)
+    hoo_use_static_msvc_runtime(hoo-core)
+endif()
 
 target_include_directories(hoo-core PUBLIC
     ${CMAKE_SOURCE_DIR}/src
@@ -315,6 +332,9 @@ add_dependencies(hoo-core generate_parser)
 # =============================================================================
 
 add_executable(hoo src/core/main.cpp)
+if(MSVC)
+    hoo_use_static_msvc_runtime(hoo)
+endif()
 target_link_libraries(hoo hoo-core)
 target_include_directories(hoo PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
@@ -465,6 +485,9 @@ if(HOO_BUILD_TESTS)
         tests/ast/ASTExpressionTest.cpp
         tests/ast/ASTStatementTest.cpp
     )
+    if(MSVC)
+        hoo_use_static_msvc_runtime(hoo-tests)
+    endif()
 
     target_link_libraries(hoo-tests
         hoo-core

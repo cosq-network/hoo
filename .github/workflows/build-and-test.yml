@@ -126,10 +126,8 @@ jobs:
         id: cache-vcpkg
         uses: actions/cache@v4
         with:
-          path: |
-            C:\vcpkg\installed
-            ${{ github.workspace }}\vcpkg_installed
-          key: vcpkg-${{ hashFiles('vcpkg.json') }}
+          path: ${{ github.workspace }}\vcpkg_installed
+          key: vcpkg-windows-msvc-mt-${{ hashFiles('vcpkg.json', 'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/build-and-test.yml') }}
 
       - name: Configure CMake
         run: cmake --preset windows-vs18-env -DVCPKG_INSTALLED_DIR="${{ github.workspace }}\vcpkg_installed" -DCMAKE_BUILD_TYPE=Release
