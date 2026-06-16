@@ -13,8 +13,8 @@ The compiler build depends on several key components. Below is a summary of ever
 | Dependency | Required | Purpose |
 |------------|----------|---------|
 | CMake 3.20+ | Yes | Configures the build tree (3.16+ works for manual builds; 3.20+ needed for Presets) |
-| C++17 Compiler | Yes | Clang 15+ (recommended) or MSVC 2022 |
-| LLVM 15+ dev headers/libs | Yes | LLVM core libraries, ORC JIT, Target, etc. |
+| C++17 Compiler | Yes | Clang 15+ (recommended) or MSVC 2022+ |
+| LLVM 22.1+ dev headers/libs | Yes | LLVM core libraries, ORC JIT, Target, etc. |
 | ANTLR4 C++ Runtime | Yes | Runtime library for the generated parser |
 | Java 17+ | Yes | Runs the ANTLR generator jar |
 | Ninja or Make | Yes | Executes the generated build files |
@@ -34,7 +34,7 @@ clang++ --version         # macOS/Linux — must be 15+
 cl --version              # Windows — Visual Studio 2022+
 
 # LLVM (must have dev headers, not just the compiler)
-llvm-config --version     # macOS/Linux — must output 15+
+llvm-config --version     # macOS/Linux — must output 22.1+
 llvm-config --includedir  # Should print a valid include path
 
 # Java
@@ -127,7 +127,7 @@ java -version             # Must be 17+
 
 #### Dev Container (Docker) & GitHub Codespaces
 
-A single multi-stage `Dockerfile` at the repo root provides a ready-to-use environment for both local Docker development and GitHub Codespaces. It downloads **pre-built LLVM 22.1.4 binaries** (seconds, not hours) and builds the ANTLR4 4.13.2 C++ runtime from source in a builder stage. The `.devcontainer/devcontainer.json` configuration enables VS Code to auto-detect and open the project inside the container.
+A multi-stage `Dockerfile` at the repo root provides a ready-to-use environment for both local Docker development and GitHub Codespaces. It downloads **pre-built LLVM 22.1.4 binaries** and builds the ANTLR4 4.13.2 C++ runtime from source. The `.devcontainer/devcontainer.json` configuration enables VS Code to auto-detect and open the project inside the container.
 
 **Local Docker:**
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and VS Code with the **Dev Containers** extension (`ms-vscode-remote.remote-containers`)
@@ -138,71 +138,46 @@ A single multi-stage `Dockerfile` at the repo root provides a ready-to-use envir
 1. Go to the GitHub repo → **Code** → **Codespaces** → **Create codespace on main**
 2. The same `.devcontainer/devcontainer.json` is auto-detected — no additional configuration needed
 
-**Build** using the `container-ninja` preset — all dependencies are pre-installed at `/opt/llvm` and `/opt/antlr`:
+**Build** using the `ninja-relwithdebinfo` preset — pass LLVM and ANTLR4 paths if they differ from defaults. For the Docker container, use:
 ```bash
-cmake --preset container-ninja
-cmake --build --preset container-ninja
+cmake --preset ninja-relwithdebinfo
+cmake --build --preset ninja-relwithdebinfo
 ```
 
 #### Windows (10 / 11)
 
+See the dedicated [Windows build guide](building-windows.md) for detailed, step-by-step instructions. A summary is below.
+
 1. **Install Visual Studio 2022** (or Visual Studio 18 / 2026):
-   - Download from [visualstudio.microsoft.com](https://visualstudio.microsoft.com/downloads/)
-   - Run the installer and select **"Desktop development with C++"** workload
+   - Select **"Desktop development with C++"** workload
    - Ensure **"C++ CMake tools for Windows"** is checked
-   - For Visual Studio 2022, install **v17**; for the latest, install **v18 (2026)**
 
-2. **Install LLVM** (full dev package, not just the Visual Studio bundled Clang):
-   ```powershell
-   winget install LLVM -v 19.1.7
-   ```
-   Or download from: [LLVM 19.1.7 Windows installer](https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/LLVM-19.1.7-win64.exe)
-
-   After install, verify:
-   ```powershell
-   Test-Path "$env:ProgramFiles\LLVM\lib\cmake\llvm\LLVMConfig.cmake"
-   ```
-   Should output `True`.
-
-3. **Install Java** (Temurin 21 recommended):
+2. **Install Java 21+** (Temurin recommended):
    ```powershell
    winget install EclipseAdoptium.Temurin.21.JDK
    ```
-   Or download from [adoptium.net](https://adoptium.net/).
 
-4. **Install vcpkg** (dependency manager for ANTLR4, GoogleTest, LLVM on Windows):
-
-   If you have Visual Studio 18 (2025+), vcpkg is bundled at:
-   ```text
-   C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg
-   ```
-   Otherwise, install it manually:
+3. **Download LLVM 22.1.4 pre-built binaries** from GitHub:
    ```powershell
-   git clone https://github.com/microsoft/vcpkg.git C:\dev\vcpkg
-   C:\dev\vcpkg\bootstrap-vcpkg.bat
+   curl.exe -L -o llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz
+   tar -xf llvm.tar.xz -C C:\
    ```
 
-   Add vcpkg to your `PATH`:
+4. **Set environment variables**:
    ```powershell
-   [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";C:\dev\vcpkg", "User")
+   setx LLVM_DIR "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm"
+   setx VCPKG_ROOT "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg"
    ```
 
-5. **Install vcpkg dependencies** (from the repo root):
+5. **Configure and build** using the `windows-vs18-env` preset:
    ```powershell
-   cd C:\Projects\hoo
-   vcpkg install --triplet x64-windows
+   cmake --preset windows-vs18-env
+   cmake --build --preset windows-vs18-env
+   cmake --build --preset windows-vs18-env-tests
+   ctest --preset windows-vs18-env --output-on-failure
    ```
-   This installs `antlr4`, `gtest`, and `llvm[target-x86]` into `vcpkg_installed/x64-windows/`.
 
-   > **Important**: The repository `.gitignore` excludes `vcpkg_installed/`, so each developer must run `vcpkg install` themselves.
-
-6. **Verify**:
-   ```powershell
-   cmake --version
-   cl.exe                  # Should show MSVC compiler info
-   java -version
-   Test-Path "C:\Program Files\LLVM\lib\cmake\llvm\LLVMConfig.cmake"
-   ```
+> **Note**: On Windows, ANTLR4 and GoogleTest are built from source via `FetchContent` (not from vcpkg). The `vcpkg.json` manifest provides only `zlib`, `openssl`, and `curl` for the runtime library. All build artifacts use the **static MSVC runtime** (`/MT`) to match LLVM's pre-built binaries. JIT runtime symbols are exported automatically via linker flags — no manual `__declspec(dllexport)` needed.
 
 ---
 
@@ -235,15 +210,9 @@ cmake --list-presets=test      # Test presets
 
 | Preset | Platform / Purpose |
 |--------|--------------------|
-| `macos-homebrew-ninja` | macOS with LLVM from Homebrew |
-| `ubuntu-ninja` | Ubuntu with Clang + Ninja |
-| `windows-vs-relwithdebinfo` | Windows with Visual Studio 2022 |
-| `windows-vs18-relwithdebinfo` | Windows with Visual Studio 18 / 2026 |
-| `windows-vs18-local` | Windows VS 18 using repo-local deps from `vcpkg_installed/` |
-| `windows-ninja` | Windows with Clang + Ninja |
 | `ninja-relwithdebinfo` | Generic Ninja build (set LLVM/ANTLR4 paths manually) |
-| `ninja-release-no-tests` | Generic Ninja release build without tests |
-| `container-ninja` | Dev Container / GitHub Codespaces with LLVM/ANTLR4 at `/opt/llvm` and `/opt/antlr` |
+| `macos-homebrew-ninja` | macOS with LLVM from Homebrew |
+| `windows-vs18-env` | Windows VS 18 / 2026, reads `LLVM_DIR` and `VCPKG_ROOT` from environment |
 
 ### Step 3: Configure and Build
 
@@ -254,42 +223,20 @@ cmake --build --preset macos-homebrew-ninja
 ```
 The binary will be at `build/macos-homebrew-ninja/hoo`.
 
-**Ubuntu (Linux — native):**
+**Windows (VS 18 / 2026 with environment vars):**
+```powershell
+cmake --preset windows-vs18-env
+cmake --build --preset windows-vs18-env
+```
+The binary will be at `build\hoo.exe`. See the [Windows build guide](building-windows.md) for complete setup.
+
+**Manual build (any platform):**
 ```bash
-cmake --preset ubuntu-ninja \
-  -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime \
-  -DANTLR4_LIBRARY=/tmp/antlr4-runtime/lib/libantlr4-runtime.a
-cmake --build --preset ubuntu-ninja
-```
-The binary will be at `build/ubuntu-ninja/hoo`.
-
-**Dev Container / GitHub Codespaces:**
-```bash
-cmake --preset container-ninja
-cmake --build --preset container-ninja
-```
-The binary will be at `build/container-ninja/hoo`.
-
-**Windows (Visual Studio 18 / 2026 with local deps):**
-```powershell
-cmake --preset windows-vs18-local
-cmake --build --preset windows-vs18-local
-```
-The binary will be at `build/windows-vs18-local/RelWithDebInfo/hoo.exe`.
-
-**Windows (Visual Studio 2022):**
-```powershell
-cmake --preset windows-vs-relwithdebinfo `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake"
-cmake --build --preset windows-vs-relwithdebinfo --config RelWithDebInfo
-```
-
-**Windows (Clang + Ninja):**
-```powershell
-cmake --preset windows-ninja `
-  -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_ROOT\scripts\buildsystems\vcpkg.cmake" `
-  -DLLVM_DIR="$env:ProgramFiles\LLVM\lib\cmake\llvm"
-cmake --build --preset windows-ninja
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DHOO_BUILD_TESTS=ON \
+  -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm \
+  -DANTLR4_INCLUDE_DIR=/path/to/antlr4/include \
+  -DANTLR4_LIBRARY=/path/to/libantlr4-runtime.a
+cmake --build build
 ```
 
 ---
@@ -373,8 +320,8 @@ Tests require `HOO_BUILD_TESTS=ON` (enabled by default in most presets).
 # Using a build preset for tests (e.g., macos)
 cmake --build --preset macos-homebrew-ninja-tests
 
-# Dev Container / Codespaces
-cmake --build --preset container-ninja-tests
+# Windows
+cmake --build --preset windows-vs18-env-tests
 
 # Or just build everything including tests
 cmake --build build/macos-homebrew-ninja --target hoo-tests
@@ -385,26 +332,21 @@ cmake --build build/macos-homebrew-ninja --target hoo-tests
 # macOS
 ctest --preset macos-homebrew-ninja --output-on-failure
 
-# Dev Container / Codespaces
-ctest --preset container-ninja --output-on-failure
-```
-
-On Windows:
-```powershell
-ctest --preset windows-vs18-local --output-on-failure
+# Windows
+ctest --preset windows-vs18-env --output-on-failure
 ```
 
 ### Direct Test Execution
 Run the test binary directly (faster than ctest):
 ```bash
 ./build/macos-homebrew-ninja/hoo-tests --gtest_brief=1
-./build/container-ninja/hoo-tests --gtest_brief=1
+./build/hoo-tests --gtest_brief=1   # Windows
 ```
 
 ### Running Individual Test Suites
 ```bash
 ./build/macos-homebrew-ninja/hoo-tests --gtest_filter="*NewLanguageFeatures*" --gtest_brief=1
-./build/container-ninja/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
+./build/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
 ```
 
 ### Getting Verbose Output
@@ -479,12 +421,12 @@ cmake --preset macos-homebrew-ninja
 ### "Could NOT find LLVM" / "LLVMConfig.cmake missing"
 - **macOS**: Run `brew list llvm` to verify LLVM is installed. If it is, LLVM is keg-only; set `LLVM_DIR` manually or use the `macos-homebrew-ninja` preset.
 - **Linux**: Install `llvm-dev` (not just `llvm`). Verify `llvm-config --cmakedir` prints a valid path.
-- **Windows**: Visual Studio's bundled Clang does NOT include LLVM dev headers. Install the full LLVM package from `winget` or the LLVM releases page. Verify `C:\Program Files\LLVM\lib\cmake\llvm\LLVMConfig.cmake` exists.
+- **Windows**: Visual Studio's bundled Clang does NOT include LLVM dev headers. Download the pre-built LLVM 22.1.4 `clang+llvm-*-x86_64-pc-windows-msvc.tar.xz` from [LLVM releases](https://github.com/llvm/llvm-project/releases/tag/llvmorg-22.1.4) and extract it. Set `LLVM_DIR` to point to the `lib/cmake/llvm` directory inside.
 
 ### "Could NOT find ANTLR4"
 - **macOS**: `brew install antlr4-cpp-runtime`
 - **Linux**: Build from source (see [Ubuntu section above](#ubuntu-linux)). The system `libantlr4-runtime-dev` is often too old.
-- **Windows**: Run `vcpkg install --triplet x64-windows` from the repo root.
+- **Windows**: ANTLR4 is built from source via `FetchContent` automatically — no manual step needed. If the download fails, ensure your network can reach GitHub.
 
 ### "Java not found" / "ANTLR jar failed"
 - Install Java 17+ (Temurin recommended). Verify with `java -version`.
@@ -505,15 +447,19 @@ hoo --help
 ```
 
 ### Missing DLLs on Windows (at runtime)
-Ensure LLVM and ANTLR4 DLLs are in your PATH:
+Ensure LLVM DLLs are in your PATH:
 ```powershell
-$env:PATH = "C:\Program Files\LLVM\bin;$env:PATH"
-$env:PATH = "$PWD\vcpkg_installed\x64-windows\bin;$env:PATH"
+$env:PATH = "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin;$env:PATH"
 hoo.exe tests\examples\hello.hoo
 ```
 
+If vcpkg runtime DLLs (`libcurl.dll`, `libcrypto-3-x64.dll`, `z.dll`) are missing, add the vcpkg installed bin directory:
+```powershell
+$env:PATH = "$PWD\vcpkg_installed\x64-windows\bin;$env:PATH"
+```
+
 ### Test crashes / "unknown instruction"
-Ensure you have the right LLVM version (15+) and that the LLVM target backend for your architecture is enabled (X86 on x86_64, AArch64 on Apple Silicon).
+Ensure you have the right LLVM version (22.1+) and that the LLVM target backend for your architecture is enabled (X86 on x86_64, AArch64 on Apple Silicon).
 
 ### "IO Error: Cannot open file" when running hoo
 The input `.hoo` file path must be relative to your current working directory, or absolute. The compiler does not auto-resolve paths like a linker.

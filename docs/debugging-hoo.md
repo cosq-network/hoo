@@ -133,19 +133,20 @@ vcpkg install --triplet x64-windows
 cmake --preset macos-homebrew-ninja -DCMAKE_BUILD_TYPE=Debug
 cmake --build --preset macos-homebrew-ninja
 
-# Ubuntu (native)
-cmake --preset ubuntu-ninja -DCMAKE_BUILD_TYPE=Debug \
+# Ubuntu / Linux (native)
+cmake --preset ninja-relwithdebinfo -DCMAKE_BUILD_TYPE=Debug \
+  -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm \
   -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime \
   -DANTLR4_LIBRARY=/tmp/antlr4-runtime/lib/libantlr4-runtime.a
-cmake --build --preset ubuntu-ninja
+cmake --build --preset ninja-relwithdebinfo
 
-# Dev Container / Codespaces
-cmake --preset container-ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build --preset container-ninja
+# Dev Container / Codespaces (use ninja-relwithdebinfo and override LLVM/ANTLR4 paths)
+cmake --preset ninja-relwithdebinfo -DCMAKE_BUILD_TYPE=Debug
+cmake --build --preset ninja-relwithdebinfo
 
 # Windows (Visual Studio)
-cmake --preset windows-vs18-local -DCMAKE_BUILD_TYPE=Debug
-cmake --build --preset windows-vs18-local
+cmake --preset windows-vs18-env -DCMAKE_BUILD_TYPE=Debug
+cmake --build --preset windows-vs18-env
 ```
 
 ### 2.3. Debug Build (Manual)
@@ -267,7 +268,7 @@ Create the directory and file at `<repo-root>/.vscode/launch.json`:
 }
 ```
 
-For Dev Container / Codespaces, use `"cmake.preset": "container-ninja"` instead.
+For Dev Container / Codespaces, use `"cmake.preset": "ninja-relwithdebinfo"` instead.
 
 ### 3.4. Create `.vscode/tasks.json`
 
@@ -308,7 +309,7 @@ For Dev Container / Codespaces, use `"cmake.preset": "container-ninja"` instead.
 
 1. Open the repo root as a folder in Visual Studio
 2. Visual Studio auto-detects `CMakePresets.json`
-3. Select the preset (e.g., `windows-vs18-local`) from the configuration dropdown
+3. Select the preset (e.g., `windows-vs18-env`) from the configuration dropdown
 4. Set `hoo.exe` or `hoo-tests.exe` as the startup item
 5. Set breakpoints and press `F5`
 
@@ -381,10 +382,10 @@ gdb --args ./build/debug/hoo tests/examples/hello.hoo
 Use Visual Studio's debugger (`devenv.exe`) or WinDbg:
 ```powershell
 # Launch with VS debugger attached
-devenv /debugexe build\windows-vs18-local\Debug\hoo.exe tests\examples\hello.hoo
+devenv /debugexe build\Debug\hoo.exe tests\examples\hello.hoo
 
 # Or use the MSVC command-line debugger
-cd build\windows-vs18-local\Debug
+cd build\Debug
 windbg hoo.exe ..\..\..\tests\examples\hello.hoo
 ```
 
@@ -453,7 +454,7 @@ cmake --build build/debug --target hoo-tests
 cmake --build --preset macos-homebrew-ninja-tests
 
 # Dev Container / Codespaces
-cmake --build --preset container-ninja-tests
+cmake --build --preset ninja-relwithdebinfo-tests
 ```
 
 ### 7.2. Running Specific Test Suites
@@ -499,7 +500,7 @@ export ASAN_SYMBOLIZER_PATH=/opt/homebrew/opt/llvm/bin/llvm-symbolizer
 ctest --preset macos-homebrew-ninja --output-on-failure
 
 # Dev Container / Codespaces
-ctest --preset container-ninja --output-on-failure
+ctest --preset ninja-relwithdebinfo --output-on-failure
 
 # Run tests in parallel (4 jobs)
 ctest --preset macos-homebrew-ninja -j4
@@ -603,7 +604,7 @@ export DYLD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib:$DYLD_LIBRARY_PATH
 ### Build failed: "fatal error: 'antlr4-runtime.h' file not found"
 The ANTLR4 include path is not configured. On macOS, the `macos-homebrew-ninja` preset handles this automatically. On Linux, pass the path manually:
 ```bash
-cmake --preset ubuntu-ninja -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime
+cmake --preset ninja-relwithdebinfo -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime
 ```
 
 ### Dev Container / Codespaces first build is slow

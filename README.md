@@ -1,6 +1,6 @@
 # Hoo
 
-Last Updated: 2026-06-11
+Last Updated: 2026-06-16
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -37,7 +37,7 @@ For detailed instructions on dependencies, platform-specific guides, and trouble
 ### Prerequisites
 - CMake >= 3.20 for presets (`3.16+` only for manual configuration)
 - C++17 compliant toolchain (Clang 15+ recommended)
-- LLVM 15+ development headers
+- LLVM 22.1+ development headers
 - ANTLR4 runtime
 
 ### Standard Workflow
@@ -50,16 +50,16 @@ ctest --preset ninja-relwithdebinfo
 
 ### Windows Workflow
 
-On Windows, the checked-in Visual Studio 18 preset with repo-local dependencies is:
+On Windows, with LLVM 22.1.4 downloaded from GitHub releases and vcpkg in manifest mode:
 
 ```powershell
-cmake --preset windows-vs18-local
-cmake --build --preset windows-vs18-local
-cmake --build --preset windows-vs18-local-tests
-ctest --preset windows-vs18-local
+cmake --preset windows-vs18-env
+cmake --build --preset windows-vs18-env
+cmake --build --preset windows-vs18-env-tests
+ctest --preset windows-vs18-env --output-on-failure
 ```
 
-This preset expects dependencies in `vcpkg_installed/x64-windows/` and uses the repo-local LLVM CMake package at `vcpkg_installed/x64-windows/share/llvm` when present.
+This preset reads `LLVM_DIR` and `VCPKG_ROOT` from environment variables. See [docs/building-windows.md](docs/building-windows.md) for full setup instructions.
 
 ## 4. Project Layout
 

@@ -35,30 +35,30 @@ echo $ANTLR4_ROOT         # /opt/antlr
 ### 1.3. Build the Project
 
 ```bash
-# Configure
-cmake --preset container-ninja
+# Configure (LLVM_DIR is pre-set in the container environment)
+cmake --preset ninja-relwithdebinfo -DLLVM_DIR=/opt/llvm/lib/cmake/llvm
 
 # Build the compiler
-cmake --build --preset container-ninja
+cmake --build --preset ninja-relwithdebinfo
 
 # Run the compiler on a test file
-./build/container-ninja/hoo tests/examples/hello.hoo
+./build/ninja-relwithdebinfo/hoo tests/examples/hello.hoo
 ```
 
 ### 1.4. Run Tests
 
 ```bash
 # Build the test executable
-cmake --build --preset container-ninja-tests
+cmake --build --preset ninja-relwithdebinfo-tests
 
 # Run via CTest
-ctest --preset container-ninja --output-on-failure
+ctest --preset ninja-relwithdebinfo --output-on-failure
 
 # Or run the binary directly
-./build/container-ninja/hoo-tests --gtest_brief=1
+./build/ninja-relwithdebinfo/hoo-tests --gtest_brief=1
 
 # Run a specific test suite
-./build/container-ninja/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
+./build/ninja-relwithdebinfo/hoo-tests --gtest_filter="*JIT*" --gtest_brief=1
 ```
 
 ---
@@ -75,26 +75,17 @@ ctest --preset container-ninja --output-on-failure
 | ANTLR4 JAR | `/opt/antlr/antlr-4.13.2-complete.jar` |
 | ANTLR4 C++ headers | `/opt/antlr/include/antlr4-runtime/` |
 | ANTLR4 C++ library | `/opt/antlr/lib/libantlr4-runtime.a` |
-| Build directory | `build/container-ninja/` |
+| Build directory | `build/ninja-relwithdebinfo/` |
 
 ### 2.2. Preset Configuration
 
-The `container-ninja` CMake preset (defined in `CMakePresets.json`) sets:
+Use the `ninja-relwithdebinfo` CMake preset with `-DLLVM_DIR=/opt/llvm/lib/cmake/llvm`:
 
-```json
-{
-  "name": "container-ninja",
-  "inherits": "ninja-relwithdebinfo",
-  "cacheVariables": {
-    "CMAKE_C_COMPILER": "clang",
-    "CMAKE_CXX_COMPILER": "clang++",
-    "CMAKE_PREFIX_PATH": "/opt/llvm;/opt/antlr",
-    "LLVM_DIR": "/opt/llvm/lib/cmake/llvm"
-  }
-}
+```bash
+cmake --preset ninja-relwithdebinfo -DLLVM_DIR=/opt/llvm/lib/cmake/llvm
 ```
 
-Inherits from `ninja-relwithdebinfo`: Ninja generator, `RelWithDebInfo` build type, tests enabled.
+The `ninja-relwithdebinfo` preset sets: Ninja generator, `RelWithDebInfo` build type, tests enabled.
 
 ### 2.3. Pre-installed Packages
 
@@ -107,8 +98,8 @@ The container includes: `build-essential`, `cmake`, `ninja-build`, `default-jdk`
 ### 3.1. Build for Debugging
 
 ```bash
-cmake --preset container-ninja -DCMAKE_BUILD_TYPE=Debug
-cmake --build --preset container-ninja
+cmake --preset ninja-relwithdebinfo -DCMAKE_BUILD_TYPE=Debug -DLLVM_DIR=/opt/llvm/lib/cmake/llvm
+cmake --build --preset ninja-relwithdebinfo
 ```
 
 ### 3.2. Rebuild After Changing the Grammar
@@ -116,15 +107,15 @@ cmake --build --preset container-ninja
 If you modify `src/parsing/Hooc.g4`, regenerate the ANTLR parser:
 
 ```bash
-cmake --build build/container-ninja --target generate_parser
+cmake --build build/ninja-relwithdebinfo --target generate_parser
 ```
 
 ### 3.3. Clean and Full Rebuild
 
 ```bash
-rm -rf build/container-ninja
-cmake --preset container-ninja
-cmake --build --preset container-ninja
+rm -rf build/ninja-relwithdebinfo
+cmake --preset ninja-relwithdebinfo -DLLVM_DIR=/opt/llvm/lib/cmake/llvm
+cmake --build --preset ninja-relwithdebinfo
 ```
 
 ### 3.4. Install Additional Packages
@@ -156,16 +147,15 @@ Then open a PR from the GitHub web UI.
 ### 4.1. Debug with LLDB
 
 ```bash
-lldb -- ./build/container-ninja/hoo tests/examples/hello.hoo
+lldb -- ./build/ninja-relwithdebinfo/hoo tests/examples/hello.hoo
 (lldb) break set -n "hoo::HooCompiler::compile"
 (lldb) run
-(lldb) bt
 ```
 
 ### 4.2. Debug a Test
 
 ```bash
-lldb -- ./build/container-ninja/hoo-tests --gtest_filter="*JIT*"
+lldb -- ./build/ninja-relwithdebinfo/hoo-tests --gtest_filter="*JIT*"
 (lldb) break set -f HVMJIT.cpp -l 200
 (lldb) run
 ```
@@ -210,7 +200,7 @@ export ASAN_SYMBOLIZER_PATH=/opt/llvm/bin/llvm-symbolizer
 
 ### 5.1. Speeding Up Iteration
 
-- Build only the target you need: `cmake --build --preset container-ninja-tests` (instead of `container-ninja`)
+- Build only the target you need: `cmake --build --preset ninja-relwithdebinfo-tests` (instead of `ninja-relwithdebinfo`)
 - Use `--gtest_filter` to run a single test suite instead of all tests
 - Keep the Codespace running between sessions to avoid rebuilds
 
@@ -218,7 +208,7 @@ export ASAN_SYMBOLIZER_PATH=/opt/llvm/bin/llvm-symbolizer
 
 ## 6. Troubleshooting
 
-### "cmake --preset container-ninja fails with LLVM not found"
+### "cmake fails with LLVM not found"
 
 Verify the environment variables are set:
 ```bash
@@ -284,7 +274,7 @@ To set Codespace-specific VS Code settings, add to the `settings` block in `.dev
 
 ```json
 "settings": {
-    "cmake.preset": "container-ninja",
+    "cmake.preset": "ninja-relwithdebinfo",
     "editor.fontSize": 14,
     "files.autoSave": "onFocusChange"
 }

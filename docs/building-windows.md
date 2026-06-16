@@ -294,10 +294,14 @@ cmake --preset windows-vs18-env
 cmake --build --preset windows-vs18-env-tests
 ```
 
-### hoo-tests crashes at runtime (exit code 0xc0000374)
-The test executable is linked with GTest as a shared library (`-DGTEST_LINKED_AS_SHARED_LIBRARY=1`) but compiled with `/MT` (static CRT), causing heap corruption on the first test. This is a pre-existing CMake configuration issue. To work around it, switch to static GTest linking by editing `CMakeLists.txt`:
-- Remove `-DGTEST_LINKED_AS_SHARED_LIBRARY=1`
-- Link `GTest::gtest_main` instead of `GTest::gtest` + `GTest::gtest_main`
+### hoo-tests crashes at runtime (exit code 0xc0000374) [RESOLVED]
+This was caused by a CRT mismatch: vcpkg's GTest DLL was compiled with `/MD` (dynamic CRT) while the project uses `/MT` (static CRT). The fix builds GTest from source via `FetchContent` on Windows with matching `/MT` flags. Run a clean rebuild:
+```cmd
+rmdir /S /Q build
+cmake --preset windows-vs18-env
+cmake --build --preset windows-vs18-env-tests
+ctest --preset windows-vs18-env --output-on-failure
+```
 
 ### Test files with Windows-specific changes
 The following test files have `#ifdef _WIN32` guards for platform-specific behavior:
