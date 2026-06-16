@@ -11,16 +11,19 @@ struct HooMutexImpl {
 struct ThreadStart {
     int64_t (*func)(void*);
     void* arg;
+    int64_t* result;
+};
+struct ThreadEntry {
+    HANDLE handle;
+    int64_t* result;
 };
 static std::mutex gThreadMapMutex;
-static std::map<DWORD, HANDLE> gThreadHandles;
+static std::map<DWORD, ThreadEntry> gThreadMap;
 
 static DWORD WINAPI thread_wrapper(LPVOID lpParam) {
     auto* ts = static_cast<ThreadStart*>(lpParam);
-    auto* func = ts->func;
-    void* arg = ts->arg;
+    *ts->result = ts->func(ts->arg);
     delete ts;
-    func(arg);
     return 0;
 }
 #else
@@ -34,13 +37,14 @@ extern "C" {
 
 int64_t hoo_thread_spawn(int64_t (*func)(void*), void* arg) {
 #ifdef _WIN32
-    auto* ts = new ThreadStart{func, arg};
+    auto* result = new int64_t(0);
+    auto* ts = new ThreadStart{func, arg, result};
     DWORD threadId;
     HANDLE h = CreateThread(nullptr, 0, thread_wrapper, ts, 0, &threadId);
-    if (!h) { delete ts; return -1; }
+    if (!h) { delete ts; delete result; return -1; }
     {
         std::lock_guard<std::mutex> lock(gThreadMapMutex);
-        gThreadHandles[threadId] = h;
+        gThreadMap[threadId] = {h, result};
     }
     return static_cast<int64_t>(threadId);
 #else
@@ -55,17 +59,22 @@ int64_t hoo_thread_spawn(int64_t (*func)(void*), void* arg) {
 int64_t hoo_thread_join(int64_t thread_id) {
 #ifdef _WIN32
     DWORD tid = static_cast<DWORD>(thread_id);
+    int64_t* result = nullptr;
     HANDLE h = nullptr;
     {
         std::lock_guard<std::mutex> lock(gThreadMapMutex);
-        auto it = gThreadHandles.find(tid);
-        if (it == gThreadHandles.end()) return -1;
-        h = it->second;
-        gThreadHandles.erase(it);
+        auto it = gThreadMap.find(tid);
+        if (it == gThreadMap.end()) return -1;
+        h = it->second.handle;
+        result = it->second.result;
+        gThreadMap.erase(it);
     }
     DWORD ret = WaitForSingleObject(h, INFINITE);
     CloseHandle(h);
-    return (ret == WAIT_OBJECT_0) ? 0 : -1;
+    int64_t retval = *result;
+    delete result;
+    if (ret != WAIT_OBJECT_0) return -1;
+    return retval;
 #else
     pthread_t thread = static_cast<pthread_t>(thread_id);
     void* result = nullptr;

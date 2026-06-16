@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <cstring>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
@@ -80,9 +82,14 @@ TEST_F(HooHashingJitTest, Sha256File) {
     ASSERT_EQ(write(fd, content, strlen(content)), static_cast<ssize_t>(strlen(content)));
     close(fd);
 
+    std::string hooc_path(tmp_path);
+#ifdef _WIN32
+    // Forward slashes work with MSVC's fstream and prevent HOOC escape issues
+    std::replace(hooc_path.begin(), hooc_path.end(), '\\', '/');
+#endif
     std::string source = std::string(R"(
         func :int64 test() {
-            var hash = Hashing.sha256File(")") + tmp_path + R"(");
+            var hash = Hashing.sha256File(")") + hooc_path + R"(");
             return hash.length();
         }
     )";

@@ -69,7 +69,13 @@ int64_t hoo_process_wait(int64_t pid, int64_t* out_exit_code) {
 
 int64_t hoo_process_kill(int64_t pid, int64_t signal) {
 #ifdef _WIN32
-    (void)signal;
+    if (signal == 0) {
+        // POSIX semantics: signal 0 checks if process exists
+        HANDLE h = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, (DWORD)pid);
+        if (!h) return -1;
+        CloseHandle(h);
+        return 0;
+    }
     HANDLE h = OpenProcess(PROCESS_TERMINATE, FALSE, (DWORD)pid);
     if (!h) return -1;
     BOOL ok = TerminateProcess(h, 1);

@@ -38,7 +38,7 @@ char* hoo_system_get_env(const char* name) {
 int64_t hoo_system_set_env(const char* name, const char* value) {
     if (!name || !value) return -1;
 #ifdef _WIN32
-    return SetEnvironmentVariableA(name, value) ? 0 : -1;
+    return _putenv_s(name, value) == 0 ? 0 : -1;
 #else
     return setenv(name, value, 1) == 0 ? 0 : -1;
 #endif
@@ -47,7 +47,7 @@ int64_t hoo_system_set_env(const char* name, const char* value) {
 int64_t hoo_system_unset_env(const char* name) {
     if (!name) return -1;
 #ifdef _WIN32
-    return SetEnvironmentVariableA(name, nullptr) ? 0 : -1;
+    return _putenv_s(name, "") == 0 ? 0 : -1;
 #else
     return unsetenv(name) == 0 ? 0 : -1;
 #endif

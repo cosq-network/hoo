@@ -66,14 +66,22 @@ TEST_F(HooPathTest, Root) {
 
     result = hoo_path_root("C:\\foo");
     ASSERT_NE(result, nullptr);
+#ifdef _WIN32
+    EXPECT_STREQ(result, "C:\\");
+#else
     EXPECT_STREQ(result, "");
+#endif
     hoo_path_free_string(result);
 }
 
 TEST_F(HooPathTest, Join) {
     char* result = hoo_path_join("/foo", "bar");
     ASSERT_NE(result, nullptr);
+#ifdef _WIN32
+    EXPECT_STREQ(result, "/foo\\bar");
+#else
     EXPECT_STREQ(result, "/foo/bar");
+#endif
     hoo_path_free_string(result);
 }
 
@@ -81,19 +89,31 @@ TEST_F(HooPathTest, JoinMulti) {
     const char* parts[] = {"a", "b", "c"};
     char* result = hoo_path_join_multi(parts, 3);
     ASSERT_NE(result, nullptr);
+#ifdef _WIN32
+    EXPECT_STREQ(result, "a\\b\\c");
+#else
     EXPECT_STREQ(result, "a/b/c");
+#endif
     hoo_path_free_string(result);
 }
 
 TEST_F(HooPathTest, Normalize) {
     char* result = hoo_path_normalize("/foo/../bar/./baz");
     ASSERT_NE(result, nullptr);
+#ifdef _WIN32
+    EXPECT_STREQ(result, "\\bar\\baz");
+#else
     EXPECT_STREQ(result, "/bar/baz");
+#endif
     hoo_path_free_string(result);
 
     result = hoo_path_normalize("a//b///c");
     ASSERT_NE(result, nullptr);
+#ifdef _WIN32
+    EXPECT_STREQ(result, "a\\b\\c");
+#else
     EXPECT_STREQ(result, "a/b/c");
+#endif
     hoo_path_free_string(result);
 }
 
@@ -101,12 +121,20 @@ TEST_F(HooPathTest, Absolute) {
     char* result = hoo_path_absolute("relative/path");
     ASSERT_NE(result, nullptr);
     EXPECT_GT(strlen(result), strlen("relative/path"));
+#ifdef _WIN32
+    EXPECT_TRUE(isalpha((unsigned char)result[0]) && result[1] == ':');
+#else
     EXPECT_EQ(result[0], '/');
+#endif
     hoo_path_free_string(result);
 
     result = hoo_path_absolute("/already/absolute");
     ASSERT_NE(result, nullptr);
+#ifdef _WIN32
+    EXPECT_TRUE(isalpha((unsigned char)result[0]) && result[1] == ':');
+#else
     EXPECT_STREQ(result, "/already/absolute");
+#endif
     hoo_path_free_string(result);
 }
 
@@ -123,14 +151,22 @@ TEST_F(HooPathTest, Relative) {
 }
 
 TEST_F(HooPathTest, IsAbsolute) {
+#ifdef _WIN32
+    EXPECT_EQ(hoo_path_is_absolute("C:\\foo"), 1);
+#else
     EXPECT_EQ(hoo_path_is_absolute("/foo"), 1);
+#endif
     EXPECT_EQ(hoo_path_is_absolute("foo"), 0);
     EXPECT_EQ(hoo_path_is_absolute(""), 0);
 }
 
 TEST_F(HooPathTest, IsRelative) {
     EXPECT_EQ(hoo_path_is_relative("foo"), 1);
+#ifdef _WIN32
+    EXPECT_EQ(hoo_path_is_relative("C:\\foo"), 0);
+#else
     EXPECT_EQ(hoo_path_is_relative("/foo"), 0);
+#endif
     EXPECT_EQ(hoo_path_is_relative(""), 1);
 }
 
@@ -151,16 +187,29 @@ TEST_F(HooPathTest, Split) {
 }
 
 TEST_F(HooPathTest, Separator) {
+#ifdef _WIN32
+    EXPECT_EQ(hoo_path_separator(), '\\');
+#else
     EXPECT_EQ(hoo_path_separator(), '/');
+#endif
 }
 
 TEST_F(HooPathTest, ListSeparator) {
+#ifdef _WIN32
+    EXPECT_EQ(hoo_path_list_separator(), ';');
+#else
     EXPECT_EQ(hoo_path_list_separator(), ':');
+#endif
 }
 
 TEST_F(HooPathTest, HasRoot) {
+#ifdef _WIN32
+    EXPECT_EQ(hoo_path_has_root("C:\\foo"), 1);
+    EXPECT_EQ(hoo_path_has_root("\\foo"), 1);
+#else
     EXPECT_EQ(hoo_path_has_root("/foo"), 1);
     EXPECT_EQ(hoo_path_has_root("foo"), 0);
+#endif
 }
 
 TEST_F(HooPathTest, FreeString) {

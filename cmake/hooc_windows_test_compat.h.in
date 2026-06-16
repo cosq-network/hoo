@@ -2,6 +2,14 @@
 
 #ifdef _WIN32
 #include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <io.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <direct.h>
+#include <sys/stat.h>
+#include <share.h>
 
 static inline int hooc_win_setenv(const char* name, const char* value, int overwrite) {
     if (!overwrite) {
@@ -19,4 +27,49 @@ static inline int hooc_win_unsetenv(const char* name) {
 
 #define setenv hooc_win_setenv
 #define unsetenv hooc_win_unsetenv
+
+#ifndef write
+#define write _write
+#endif
+
+#ifndef close
+#define close _close
+#endif
+
+#ifndef unlink
+#define unlink _unlink
+#endif
+
+#ifndef ssize_t
+#if defined(_MSC_VER)
+#include <basetsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+#endif
+
+static inline int hooc_win_mkstemp(char* tmpl) {
+    char buf[512];
+    char* slash = strrchr(tmpl, '/');
+    if (slash) {
+        char prefix[512];
+        if (_getcwd(prefix, sizeof(prefix)) == NULL) {
+            return -1;
+        }
+        snprintf(buf, sizeof(buf), "%s\\%s", prefix, slash + 1);
+    } else {
+        snprintf(buf, sizeof(buf), "%s", tmpl);
+    }
+    if (_mktemp_s(buf, strlen(buf) + 1) != 0) {
+        return -1;
+    }
+    int fd;
+    errno_t err = _sopen_s(&fd, buf, _O_CREAT | _O_EXCL | _O_RDWR, _SH_DENYNO, _S_IREAD | _S_IWRITE);
+    if (err != 0) {
+        return -1;
+    }
+    memmove(tmpl, buf, strlen(buf) + 1);
+    return fd;
+}
+
+#define mkstemp hooc_win_mkstemp
 #endif

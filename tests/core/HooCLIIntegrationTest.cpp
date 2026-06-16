@@ -5,15 +5,17 @@
 #include <sstream>
 #include <cstdlib>
 #include <ctime>
-#include <sys/stat.h>
 
 #ifdef _WIN32
+#define NOMINMAX
 #include <windows.h>
 #define popen _popen
 #define pclose _pclose
 #define unlink _unlink
+#define stat _stat
 #else
 #include <sys/wait.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #endif
 
@@ -49,7 +51,11 @@ protected:
     };
 
     ExecResult runHoo(const std::string& args) {
+#ifdef _WIN32
         std::string cmd = "\"" + hooExe + "\" " + args + " 2>&1";
+#else
+        std::string cmd = "\"" + hooExe + "\" " + args + " 2>&1";
+#endif
         FILE* pipe = popen(cmd.c_str(), "r");
         ExecResult result;
         if (!pipe) {
@@ -111,7 +117,11 @@ TEST_F(HooCLIIntegrationTest, NoInputFile) {
 }
 
 TEST_F(HooCLIIntegrationTest, FileNotFound) {
+#ifdef _WIN32
+    auto r = runHoo("Z:\\nonexistent_hoo_file.hoo");
+#else
     auto r = runHoo("/tmp/nonexistent_hoo_file.hoo");
+#endif
     EXPECT_NE(r.exitCode, 0);
     EXPECT_NE(r.output.find("Cannot open file"), std::string::npos);
 }
@@ -148,8 +158,13 @@ TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecode) {
     auto r = runHoo("-o " + outPath + " " + src);
     EXPECT_EQ(r.exitCode, 0);
     EXPECT_NE(r.output.find("bytecode saved"), std::string::npos);
+#ifdef _WIN32
+    struct _stat st;
+    EXPECT_EQ(_stat(outPath.c_str(), &st), 0);
+#else
     struct stat st;
     EXPECT_EQ(stat(outPath.c_str(), &st), 0);
+#endif
     EXPECT_GT(st.st_size, 0);
 }
 

@@ -38,6 +38,12 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
+
+#ifdef _WIN32
+#define HVM_RUNTIME_EXPORT __declspec(dllexport)
+#else
+#define HVM_RUNTIME_EXPORT
+#endif
 #ifdef _WIN32
 #define NOMINMAX
 #include <io.h>
@@ -1983,7 +1989,7 @@ extern "C" {
         return static_cast<uint64_t>(
             reinterpret_cast<uintptr_t>(hoo_string_data(reinterpret_cast<void*>(strObj))));
     }
-    extern "C" uint64_t hooc_hvm_sys_should_stop_state(void* state_ptr) {
+    extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_should_stop_state(void* state_ptr) {
         return shadow_should_stop_state(state_ptr);
     }
 
@@ -2041,9 +2047,20 @@ extern "C" {
             ? reinterpret_cast<const char*>(g_hvm_memory + path)
             : reinterpret_cast<const char*>(path);
 #ifdef _WIN32
-        return static_cast<uint64_t>(_open(realPath,
-                                            static_cast<int>(flags),
-                                            static_cast<int>(mode)));
+        int osflags = _O_BINARY;
+        if ((flags & 3) == 0) osflags |= _O_RDONLY;
+        else if ((flags & 3) == 1) osflags |= _O_WRONLY;
+        else if ((flags & 3) == 2) osflags |= _O_RDWR;
+        if (flags & 0x0008) osflags |= _O_APPEND;
+        // Handle both Linux-style (0x40/0x80) and macOS-style (0x200/0x400/0x800) flags.
+        // 0x200 is O_CREAT on macOS but O_TRUNC on Linux — resolve by checking Linux O_CREAT (0x40).
+        bool hasLinuxCreate = (flags & 0x0040) != 0;
+        if (hasLinuxCreate)      osflags |= _O_CREAT;
+        if (flags & 0x0080)      osflags |= _O_EXCL;
+        if (flags & 0x0200)      osflags |= hasLinuxCreate ? _O_TRUNC : _O_CREAT;
+        if (flags & 0x0400)      osflags |= _O_TRUNC;
+        if (flags & 0x0800)      osflags |= _O_EXCL;
+        return static_cast<uint64_t>(_open(realPath, osflags, static_cast<int>(mode)));
 #else
         return static_cast<uint64_t>(::open(realPath,
                                             static_cast<int>(flags),
@@ -2149,10 +2166,10 @@ extern "C" {
 #endif
     }
 
-    void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
+    HVM_RUNTIME_EXPORT void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
         (void)tracked_retain(static_cast<uintptr_t>(obj));
     }
-    void hooc_hvm_arc_release_if_managed(uint64_t obj) {
+    HVM_RUNTIME_EXPORT void hooc_hvm_arc_release_if_managed(uint64_t obj) {
         tracked_release(static_cast<uintptr_t>(obj));
     }
 }
@@ -5832,16 +5849,7 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
             if (ins->getFormat() == hvm::InstructionFormat::R) {
                 func = std::get<hvm::OperandsR>(ins->getOperands()).func;
             }
-#ifdef _WIN32
-            if (ins->getOpcode() == hvm::Opcode::SYSCALL &&
-                std::holds_alternative<hvm::OperandsI>(ins->getOperands())) {
-                const auto syscallId = std::get<hvm::OperandsI>(ins->getOperands()).imm15;
-                if (syscallId == kSysPushHandler || syscallId == kSysPopHandler ||
-                    syscallId == kSysThrowToHandler || syscallId == kSysRethrowToHandler) {
-                    return false;
-                }
-            }
-#endif
+
             if (!isSupportedForIRLowering(ins->getOpcode(), func)) {
                 return false;
             }

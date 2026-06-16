@@ -287,3 +287,30 @@ You are using the **x86** Developer Command Prompt. Use **"x64 Native Tools Comm
 rmdir /S /Q build
 cmake --preset windows-vs18-env
 ```
+
+### hoo-tests build fails with "fatal error C1083: Cannot open include file: 'unistd.h'"
+`unistd.h` is a POSIX-only header. The forced-include header `build/generated/hoo_windows_test_compat.h` provides Windows replacements for the POSIX functions used in tests (`write`, `close`, `unlink`, `mkstemp`). The test files guard the include with `#ifndef _WIN32`. Build with:
+```cmd
+cmake --build --preset windows-vs18-env-tests
+```
+
+### hoo-tests crashes at runtime (exit code 0xc0000374)
+The test executable is linked with GTest as a shared library (`-DGTEST_LINKED_AS_SHARED_LIBRARY=1`) but compiled with `/MT` (static CRT), causing heap corruption on the first test. This is a pre-existing CMake configuration issue. To work around it, switch to static GTest linking by editing `CMakeLists.txt`:
+- Remove `-DGTEST_LINKED_AS_SHARED_LIBRARY=1`
+- Link `GTest::gtest_main` instead of `GTest::gtest` + `GTest::gtest_main`
+
+### Test files with Windows-specific changes
+The following test files have `#ifdef _WIN32` guards for platform-specific behavior:
+
+| File | Changes |
+|------|---------|
+| `tests/jit/HooCsvJitTest.cpp` | Guarded `#include <unistd.h>` with `#ifndef _WIN32`; compat header provides `write`/`close`/`unlink`/`mkstemp` shims |
+| `tests/jit/HooHashingJitTest.cpp` | Same as above |
+| `tests/core/HooCLIIntegrationTest.cpp` | Added `NOMINMAX` before `<windows.h>`, use `_stat` on Windows, use `Z:\` nonexistent path for FileNotFound test |
+| `tests/runtime/HooCsvTest.cpp` | `ReadWriteFile` uses `GetTempPathA` for temp directory on Windows |
+| `tests/runtime/HooHashingTest.cpp` | `Sha256File` creates a temp file instead of `/dev/null`; `Sha256FileNotFound` uses `Z:\` path |
+| `tests/runtime/HooSystemTest.cpp` | `UserHome` checks for drive letter prefix; `SetCurrentDir` uses drive root instead of `/tmp` |
+| `tests/runtime/HooPathTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix; `HasRoot` uses `C:\` prefix |
+| `tests/jit/HooPathJitTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix |
+| `tests/runtime/HooProcessTest.cpp` | `echo` → `cmd.exe /c echo`; `false` → `cmd.exe /c exit 1`; `sleep` → `cmd.exe /c timeout` |
+| `tests/jit/HooProcessJitTest.cpp` | `Capture` uses `cmd.exe /c echo` on Windows |

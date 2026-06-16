@@ -12,7 +12,11 @@ TEST_F(HooProcessTest, SelfPid) {
 }
 
 TEST_F(HooProcessTest, CaptureEcho) {
+#ifdef _WIN32
+    char* out = hoo_process_capture("cmd.exe /c echo hello");
+#else
     char* out = hoo_process_capture("echo hello");
+#endif
     ASSERT_NE(out, nullptr);
     std::string result(out);
     EXPECT_EQ(result, "hello\n");
@@ -22,7 +26,11 @@ TEST_F(HooProcessTest, CaptureEcho) {
 TEST_F(HooProcessTest, CaptureStatusSuccess) {
     char* output = nullptr;
     int64_t exit_code = -1;
+#ifdef _WIN32
+    int64_t ret = hoo_process_capture_status("cmd.exe /c echo success", &output, &exit_code);
+#else
     int64_t ret = hoo_process_capture_status("echo success", &output, &exit_code);
+#endif
     ASSERT_EQ(ret, 0);
     ASSERT_NE(output, nullptr);
     EXPECT_EQ(exit_code, 0);
@@ -33,16 +41,25 @@ TEST_F(HooProcessTest, CaptureStatusSuccess) {
 TEST_F(HooProcessTest, CaptureStatusFailure) {
     char* output = nullptr;
     int64_t exit_code = -1;
+#ifdef _WIN32
+    int64_t ret = hoo_process_capture_status("cmd.exe /c exit 1", &output, &exit_code);
+#else
     int64_t ret = hoo_process_capture_status("false", &output, &exit_code);
+#endif
     ASSERT_EQ(ret, 0);
     EXPECT_NE(exit_code, 0);
     hoo_process_free_string(output);
 }
 
 TEST_F(HooProcessTest, SpawnAndWait) {
-    const char* argv[] = {"echo", "hi", nullptr};
     int64_t pid = 0;
+#ifdef _WIN32
+    const char* argv[] = {"cmd.exe", "/c", "echo hi", nullptr};
+    int64_t ret = hoo_process_spawn("cmd.exe", argv, &pid);
+#else
+    const char* argv[] = {"echo", "hi", nullptr};
     int64_t ret = hoo_process_spawn("echo", argv, &pid);
+#endif
     ASSERT_EQ(ret, 0);
     EXPECT_GT(pid, 0);
     int64_t exit_code = -1;
@@ -52,9 +69,14 @@ TEST_F(HooProcessTest, SpawnAndWait) {
 }
 
 TEST_F(HooProcessTest, Kill) {
-    const char* argv[] = {"sleep", "10", nullptr};
     int64_t pid = 0;
+#ifdef _WIN32
+    const char* argv[] = {"cmd.exe", "/c", "timeout /t 10 /nobreak", nullptr};
+    int64_t ret = hoo_process_spawn("cmd.exe", argv, &pid);
+#else
+    const char* argv[] = {"sleep", "10", nullptr};
     int64_t ret = hoo_process_spawn("sleep", argv, &pid);
+#endif
     ASSERT_EQ(ret, 0);
     EXPECT_GT(pid, 0);
     ret = hoo_process_kill(pid, 9);

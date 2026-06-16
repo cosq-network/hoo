@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <cstring>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
@@ -45,9 +47,13 @@ TEST_F(HooCsvJitTest, ReadFile) {
     ASSERT_EQ(write(fd, csv, strlen(csv)), static_cast<ssize_t>(strlen(csv)));
     close(fd);
 
+    std::string hooc_path(tmp_path);
+#ifdef _WIN32
+    std::replace(hooc_path.begin(), hooc_path.end(), '\\', '/');
+#endif
     std::string source = std::string(R"(
         func :int64 test() {
-            return Csv.readFile(")") + tmp_path + R"(");
+            return Csv.readFile(")") + hooc_path + R"(");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

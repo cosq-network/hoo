@@ -19,12 +19,21 @@ TEST_F(HooProcessJitTest, SelfPid) {
 }
 
 TEST_F(HooProcessJitTest, Capture) {
+#ifdef _WIN32
+    const std::string source = R"(
+        func :int64 test() {
+            var out = Process.capture("cmd.exe /c echo hello");
+            return out.length();
+        }
+    )";
+#else
     const std::string source = R"(
         func :int64 test() {
             var out = Process.capture("echo hello");
             return out.length();
         }
     )";
+#endif
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     // "echo hello" prints "hello\n" which is 6 bytes
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 6);

@@ -2,6 +2,10 @@
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 #include "runtime/lib/hoo_csv.h"
 
 class HooCsvTest : public ::testing::Test {
@@ -80,7 +84,14 @@ TEST_F(HooCsvTest, GenerateWithQuotes) {
 }
 
 TEST_F(HooCsvTest, ReadWriteFile) {
+#ifdef _WIN32
+    char tmp_dir[MAX_PATH + 1] = {0};
+    GetTempPathA(MAX_PATH, tmp_dir);
+    char path[MAX_PATH + 1] = {0};
+    snprintf(path, MAX_PATH, "%s\\hoo_csv_test.tmp", tmp_dir);
+#else
     const char* path = "/tmp/hoo_csv_test.tmp";
+#endif
     const char* headers[] = {"X", "Y"};
     const char* row0[] = {"1", "2"};
     const char** data[] = {row0};

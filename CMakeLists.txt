@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(Hoo LANGUAGES C CXX)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 option(HOO_BUILD_TESTS "Build Hoo unit tests" OFF)
 option(HOO_BUILD_SHARED_RUNTIME "Build the Hoo runtime as a shared library" OFF)
@@ -35,40 +36,60 @@ if(WIN32)
 endif()
 
 if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
-    string(REPLACE "/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-    string(REPLACE "/MTd" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
     add_compile_options(/wd4624)
 endif()
 
 # Dependencies
-find_path(ANTLR4_INCLUDE_DIR
-    NAMES antlr4-runtime.h
-    HINTS
-        "${ANTLR4_ROOT}/include/antlr4-runtime"
-        "$ENV{ANTLR4_ROOT}/include/antlr4-runtime"
-    PATH_SUFFIXES
-        include/antlr4-runtime
-        antlr4-runtime
-)
-
-find_library(ANTLR4_LIBRARY
-    NAMES antlr4-runtime
-    HINTS
-        "${ANTLR4_ROOT}"
-        "$ENV{ANTLR4_ROOT}"
-    PATH_SUFFIXES
-        lib
-        lib64
-)
-
-if(NOT ANTLR4_INCLUDE_DIR OR NOT ANTLR4_LIBRARY)
-    message(FATAL_ERROR
-        "ANTLR4 C++ runtime not found. Install it with a package manager or pass "
-        "-DANTLR4_ROOT=/path/to/antlr4, or pass -DANTLR4_INCLUDE_DIR=... "
-        "and -DANTLR4_LIBRARY=..."
+if(WIN32 AND NOT ANTLR4_ROOT)
+    include(FetchContent)
+    FetchContent_Declare(
+        antlr4_runtime
+        URL https://github.com/antlr/antlr4/archive/refs/tags/4.13.2.tar.gz
+        SOURCE_SUBDIR runtime/Cpp
     )
+    set(ANTLR4_INCLUDE_DIR "${CMAKE_BINARY_DIR}/_deps/antlr4_runtime-src/runtime/Cpp/runtime/src" CACHE PATH "ANTLR4 include dir" FORCE)
+    set(ANTLR4_LIBRARY antlr4_static)
+    set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "" FORCE)
+    set(WITH_LIBCXX OFF CACHE INTERNAL "" FORCE)
+    set(ANTLR_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
+    set(ANTLR_BUILD_STATIC ON CACHE INTERNAL "" FORCE)
+    set(ANTLR4_USE_STATIC_RUNTIME ON)
+    FetchContent_MakeAvailable(antlr4_runtime)
+    if(MSVC AND TARGET antlr4_static)
+        target_compile_options(antlr4_static PRIVATE /FI${CMAKE_SOURCE_DIR}/cmake/antlr4_msvc_patch.hpp)
+    endif()
+    message(STATUS "ANTLR4 built from source (static)")
+else()
+    find_path(ANTLR4_INCLUDE_DIR
+        NAMES antlr4-runtime.h
+        HINTS
+            "${ANTLR4_ROOT}/include/antlr4-runtime"
+            "$ENV{ANTLR4_ROOT}/include/antlr4-runtime"
+        PATH_SUFFIXES
+            include/antlr4-runtime
+            antlr4-runtime
+    )
+
+    find_library(ANTLR4_LIBRARY
+        NAMES antlr4-runtime
+        HINTS
+            "${ANTLR4_ROOT}"
+            "$ENV{ANTLR4_ROOT}"
+        PATH_SUFFIXES
+            lib
+            lib64
+    )
+
+    if(NOT ANTLR4_INCLUDE_DIR OR NOT ANTLR4_LIBRARY)
+        message(FATAL_ERROR
+            "ANTLR4 C++ runtime not found. Install it with a package manager or pass "
+            "-DANTLR4_ROOT=/path/to/antlr4, or pass -DANTLR4_INCLUDE_DIR=... "
+            "and -DANTLR4_LIBRARY=..."
+        )
+    endif()
 endif()
 
 message(STATUS "ANTLR4 Include Dir: ${ANTLR4_INCLUDE_DIR}")
@@ -347,7 +368,20 @@ add_custom_target(clean_generated
 
 if(HOO_BUILD_TESTS)
     enable_testing()
-    find_package(GTest REQUIRED)
+    if(WIN32)
+        set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+        include(FetchContent)
+        FetchContent_Declare(
+            googletest
+            URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
+        )
+        set(gtest_force_shared_crt ON CACHE INTERNAL "" FORCE)
+        set(BUILD_GMOCK OFF CACHE INTERNAL "" FORCE)
+        set(INSTALL_GTEST OFF CACHE INTERNAL "" FORCE)
+        FetchContent_MakeAvailable(googletest)
+    else()
+        find_package(GTest REQUIRED)
+    endif()
 
     add_executable(hoo-tests
         tests/test_main.cpp
@@ -438,9 +472,40 @@ if(HOO_BUILD_TESTS)
 
     target_link_libraries(hoo-tests
         hoo-core
-        GTest::gtest
-        GTest::gtest_main
     )
+    if(WIN32)
+        target_link_libraries(hoo-tests gtest gtest_main)
+        target_link_options(hoo-tests PRIVATE
+            "/EXPORT:hooc_hvm_sys_alloc"
+            "/EXPORT:hooc_hvm_sys_retain"
+            "/EXPORT:hooc_hvm_sys_release"
+            "/EXPORT:hooc_hvm_sys_refcount"
+            "/EXPORT:hooc_hvm_sys_typeid"
+            "/EXPORT:hooc_hvm_sys_exception_runtime"
+            "/EXPORT:hooc_hvm_sys_push_handler_state"
+            "/EXPORT:hooc_hvm_sys_pop_handler_state"
+            "/EXPORT:hooc_hvm_sys_throw_to_handler_state"
+            "/EXPORT:hooc_hvm_sys_rethrow_to_handler_state"
+            "/EXPORT:hooc_hvm_sys_string_data"
+            "/EXPORT:hooc_hvm_sys_should_stop_state"
+            "/EXPORT:hooc_hvm_sys_thread_create"
+            "/EXPORT:hooc_hvm_sys_thread_exit"
+            "/EXPORT:hooc_hvm_sys_futex"
+            "/EXPORT:hooc_hvm_sys_get_tid"
+            "/EXPORT:hooc_hvm_sys_open"
+            "/EXPORT:hooc_hvm_sys_read"
+            "/EXPORT:hooc_hvm_sys_write"
+            "/EXPORT:hooc_hvm_sys_close"
+            "/EXPORT:hooc_hvm_sys_lseek"
+            "/EXPORT:hooc_hvm_sys_fstat"
+            "/EXPORT:hooc_hvm_sys_clock_gettime"
+            "/EXPORT:hooc_hvm_sys_getrandom"
+            "/EXPORT:hooc_hvm_arc_retain_if_managed"
+            "/EXPORT:hooc_hvm_arc_release_if_managed"
+        )
+    else()
+        target_link_libraries(hoo-tests GTest::gtest GTest::gtest_main)
+    endif()
 
     target_compile_definitions(hoo-tests PRIVATE
         HOO_EXECUTABLE="$<TARGET_FILE:hoo>"
@@ -453,6 +518,11 @@ if(HOO_BUILD_TESTS)
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_DIR}
     )
+    if(WIN32)
+        target_include_directories(hoo-tests BEFORE PUBLIC
+            ${gtest_SOURCE_DIR}/include
+        )
+    endif()
 
     if(WIN32)
         set(HOO_WINDOWS_TEST_COMPAT_HEADER "${CMAKE_BINARY_DIR}/generated/hoo_windows_test_compat.h")
@@ -461,7 +531,7 @@ if(HOO_BUILD_TESTS)
             "${HOO_WINDOWS_TEST_COMPAT_HEADER}"
             COPYONLY
         )
-        target_compile_options(hoo-tests PRIVATE /FI"${HOO_WINDOWS_TEST_COMPAT_HEADER}")
+        target_compile_options(hoo-tests PRIVATE /FI${HOO_WINDOWS_TEST_COMPAT_HEADER})
 
         set(HOO_WINDOWS_TEST_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
         set_target_properties(hoo-tests PROPERTIES

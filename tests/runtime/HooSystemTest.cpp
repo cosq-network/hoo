@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 #include <cstring>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 #include "runtime/lib/hoo_system.h"
 
 class HooSystemTest : public ::testing::Test {
@@ -62,7 +66,11 @@ TEST_F(HooSystemTest, UserHome) {
     char* home = hoo_system_user_home();
     ASSERT_NE(home, nullptr);
     EXPECT_GT(strlen(home), 0);
+#ifdef _WIN32
+    EXPECT_TRUE(isalpha((unsigned char)home[0]) && home[1] == ':');
+#else
     EXPECT_EQ(home[0], '/');
+#endif
     hoo_system_free_string(home);
 }
 
@@ -83,7 +91,14 @@ TEST_F(HooSystemTest, CurrentDir) {
 TEST_F(HooSystemTest, SetCurrentDir) {
     char* saved = hoo_system_current_dir();
     ASSERT_NE(saved, nullptr);
+#ifdef _WIN32
+    char tmp_dir[MAX_PATH + 1] = {0};
+    GetTempPathA(MAX_PATH, tmp_dir);
+    tmp_dir[strcspn(tmp_dir, "\\")] = '\0';
+    int64_t rc = hoo_system_set_current_dir(tmp_dir);
+#else
     int64_t rc = hoo_system_set_current_dir("/tmp");
+#endif
     EXPECT_EQ(rc, 0);
     char* updated = hoo_system_current_dir();
     ASSERT_NE(updated, nullptr);

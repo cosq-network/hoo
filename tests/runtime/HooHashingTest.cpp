@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
 #include "runtime/lib/hoo_hashing.h"
 
 class HooHashingTest : public ::testing::Test {
@@ -21,14 +25,33 @@ TEST_F(HooHashingTest, Sha256Empty) {
 }
 
 TEST_F(HooHashingTest, Sha256File) {
-    char* hash = hoo_hashing_sha256_file("/dev/null");
+#ifdef _WIN32
+    char tmp_dir[MAX_PATH + 1] = {0};
+    GetTempPathA(MAX_PATH, tmp_dir);
+    char path[MAX_PATH + 1] = {0};
+    snprintf(path, MAX_PATH, "%s\\hoo_hash_test.tmp", tmp_dir);
+    FILE* f = fopen(path, "w");
+    ASSERT_NE(f, nullptr);
+    fclose(f);
+#else
+    const char* path = "/dev/null";
+#endif
+    char* hash = hoo_hashing_sha256_file(path);
     ASSERT_NE(hash, nullptr);
     EXPECT_STREQ(hash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
     hoo_hashing_free_string(hash);
+#ifdef _WIN32
+    std::remove(path);
+#endif
 }
 
 TEST_F(HooHashingTest, Sha256FileNotFound) {
-    char* hash = hoo_hashing_sha256_file("/nonexistent/path");
+#ifdef _WIN32
+    const char* path = "Z:\\nonexistent\\path\\file";
+#else
+    const char* path = "/nonexistent/path";
+#endif
+    char* hash = hoo_hashing_sha256_file(path);
     EXPECT_EQ(hash, nullptr);
 }
 
