@@ -177,7 +177,7 @@ See the dedicated [Windows build guide](building-windows.md) for detailed, step-
    ctest --preset windows-vs18-env --output-on-failure
    ```
 
-> **Note**: On Windows, ANTLR4 and GoogleTest are built from source via `FetchContent` (not from vcpkg). The `vcpkg.json` manifest provides only `zlib`, `openssl`, and `curl` for the runtime library. All build artifacts use the **static MSVC runtime** (`/MT`) to match LLVM's pre-built binaries. JIT runtime symbols are exported automatically via linker flags — no manual `__declspec(dllexport)` needed.
+> **Note**: On Windows, vcpkg manifest mode provides GoogleTest, ZLIB, OpenSSL, and curl. ANTLR4 is normally built from source via `FetchContent` unless `ANTLR4_ROOT` points at an installed runtime. Windows builds use the **dynamic MSVC runtime** (`/MD`, `MultiThreadedDLL`) so project objects and vcpkg libraries use the same CRT. ANTLR's own C++ tests are disabled; only Hoo's `HooUnitTests` target is registered with CTest. JIT runtime symbols are exported automatically via linker flags — no manual `__declspec(dllexport)` needed.
 
 ---
 
@@ -455,8 +455,12 @@ hoo.exe tests\examples\hello.hoo
 
 If vcpkg runtime DLLs (`libcurl.dll`, `libcrypto-3-x64.dll`, `z.dll`) are missing, add the vcpkg installed bin directory:
 ```powershell
-$env:PATH = "$PWD\vcpkg_installed\x64-windows\bin;$env:PATH"
+$env:PATH = "$PWD\build\vcpkg_installed\x64-windows\bin;$env:PATH"
+# If you configured with -DVCPKG_INSTALLED_DIR="$PWD\vcpkg_installed", use:
+# $env:PATH = "$PWD\vcpkg_installed\x64-windows\bin;$env:PATH"
 ```
+
+When using the Windows preset, CTest sets this vcpkg runtime DLL path automatically from `VCPKG_INSTALLED_DIR` and `VCPKG_TARGET_TRIPLET`. If you override the vcpkg install location manually, re-run CMake so the generated CTest environment is refreshed.
 
 ### Test crashes / "unknown instruction"
 Ensure you have the right LLVM version (22.1+) and that the LLVM target backend for your architecture is enabled (X86 on x86_64, AArch64 on Apple Silicon).

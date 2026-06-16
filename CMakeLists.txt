@@ -1,4 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
+
+if(POLICY CMP0091)
+    cmake_policy(SET CMP0091 NEW)
+endif()
+
 project(Hoo LANGUAGES C CXX)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
@@ -36,8 +41,7 @@ if(WIN32)
 endif()
 
 if(MSVC)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-    string(REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
     add_compile_options(/wd4624)
 endif()
@@ -56,6 +60,7 @@ if(WIN32 AND NOT ANTLR4_ROOT)
     set(WITH_LIBCXX OFF CACHE INTERNAL "" FORCE)
     set(ANTLR_BUILD_SHARED OFF CACHE INTERNAL "" FORCE)
     set(ANTLR_BUILD_STATIC ON CACHE INTERNAL "" FORCE)
+    set(ANTLR_BUILD_CPP_TESTS OFF CACHE INTERNAL "" FORCE)
     set(ANTLR4_USE_STATIC_RUNTIME ON)
     FetchContent_MakeAvailable(antlr4_runtime)
     if(MSVC AND TARGET antlr4_static)
@@ -369,16 +374,7 @@ add_custom_target(clean_generated
 if(HOO_BUILD_TESTS)
     enable_testing()
     if(WIN32)
-        set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-        include(FetchContent)
-        FetchContent_Declare(
-            googletest
-            URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
-        )
-        set(gtest_force_shared_crt OFF CACHE INTERNAL "" FORCE)
-        set(BUILD_GMOCK OFF CACHE INTERNAL "" FORCE)
-        set(INSTALL_GTEST OFF CACHE INTERNAL "" FORCE)
-        FetchContent_MakeAvailable(googletest)
+        find_package(GTest CONFIG REQUIRED)
     else()
         find_package(GTest REQUIRED)
     endif()
@@ -474,7 +470,7 @@ if(HOO_BUILD_TESTS)
         hoo-core
     )
     if(WIN32)
-        target_link_libraries(hoo-tests gtest gtest_main)
+        target_link_libraries(hoo-tests GTest::gtest GTest::gtest_main)
         target_link_options(hoo-tests PRIVATE
             "/EXPORT:hooc_hvm_sys_alloc"
             "/EXPORT:hooc_hvm_sys_retain"
@@ -518,11 +514,6 @@ if(HOO_BUILD_TESTS)
         ${ANTLR4_INCLUDE_DIR}
         ${ANTLR4_GENERATED_DIR}
     )
-    if(WIN32)
-        target_include_directories(hoo-tests BEFORE PUBLIC
-            ${gtest_SOURCE_DIR}/include
-        )
-    endif()
 
     if(WIN32)
         set(HOO_WINDOWS_TEST_COMPAT_HEADER "${CMAKE_BINARY_DIR}/generated/hoo_windows_test_compat.h")
@@ -533,7 +524,13 @@ if(HOO_BUILD_TESTS)
         )
         target_compile_options(hoo-tests PRIVATE /FI${HOO_WINDOWS_TEST_COMPAT_HEADER})
 
-        set(HOO_WINDOWS_TEST_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        if(DEFINED VCPKG_INSTALLED_DIR AND DEFINED VCPKG_TARGET_TRIPLET)
+            set(HOO_WINDOWS_TEST_PATH "${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/bin")
+        elseif(EXISTS "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
+            set(HOO_WINDOWS_TEST_PATH "${CMAKE_BINARY_DIR}/vcpkg_installed/x64-windows/bin")
+        else()
+            set(HOO_WINDOWS_TEST_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-windows/bin")
+        endif()
         set_target_properties(hoo-tests PROPERTIES
             VS_DEBUGGER_ENVIRONMENT "PATH=${HOO_WINDOWS_TEST_PATH};%PATH%"
         )
@@ -542,8 +539,9 @@ if(HOO_BUILD_TESTS)
     add_test(NAME HooUnitTests COMMAND hoo-tests)
 
     if(WIN32)
+        string(REPLACE ";" "\\;" HOO_WINDOWS_TEST_ENV_PATH "${HOO_WINDOWS_TEST_PATH};$ENV{PATH}")
         set_tests_properties(HooUnitTests PROPERTIES
-            ENVIRONMENT "PATH=${HOO_WINDOWS_TEST_PATH};$ENV{PATH}"
+            ENVIRONMENT "PATH=${HOO_WINDOWS_TEST_ENV_PATH}"
         )
     endif()
 

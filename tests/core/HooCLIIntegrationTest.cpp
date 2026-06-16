@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <ctime>
+#include <filesystem>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -29,7 +30,7 @@ protected:
     std::string hooExe;
 
     void SetUp() override {
-        tempDir = testing::TempDir();
+        tempDir = std::filesystem::temp_directory_path().string();
         hooExe = HOO_EXECUTABLE;
     }
 
@@ -52,10 +53,27 @@ protected:
 
     ExecResult runHoo(const std::string& args) {
 #ifdef _WIN32
-        std::string cmd = "\"" + hooExe + "\" " + args + " 2>&1";
+        static int captureCounter = 0;
+        std::string capturePath = tempDir + "/hoo_cli_capture_"
+            + std::to_string(std::time(nullptr))
+            + "_" + std::to_string(++captureCounter)
+            + ".txt";
+        std::string cmd = "cmd.exe /S /C \"\"" + hooExe + "\" " + args
+            + " > \"" + capturePath + "\" 2>&1\"";
+        int status = std::system(cmd.c_str());
+
+        std::ifstream captured(capturePath, std::ios::binary);
+        std::ostringstream out;
+        out << captured.rdbuf();
+        captured.close();
+        std::remove(capturePath.c_str());
+
+        ExecResult result;
+        result.exitCode = status;
+        result.output = out.str();
+        return result;
 #else
         std::string cmd = "\"" + hooExe + "\" " + args + " 2>&1";
-#endif
         FILE* pipe = popen(cmd.c_str(), "r");
         ExecResult result;
         if (!pipe) {
@@ -69,13 +87,10 @@ protected:
             out << buf;
         }
         int status = pclose(pipe);
-#ifdef _WIN32
-        result.exitCode = status;
-#else
         result.exitCode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-#endif
         result.output = out.str();
         return result;
+#endif
     }
 };
 

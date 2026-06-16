@@ -1,6 +1,6 @@
 # Building Hoo on Windows 11
 
-This guide walks through setting up a Windows 11 development environment for Hoo using **Visual Studio 18 (2026)**, **LLVM 22.1.4** downloaded directly from GitHub, and **vcpkg manifest mode** for all other dependencies (ANTLR4, GTest, ZLIB, OpenSSL, curl).
+This guide walks through setting up a Windows 11 development environment for Hoo using **Visual Studio 18 (2026)**, **LLVM 22.1.4** downloaded directly from GitHub, and **vcpkg manifest mode** for third-party dependencies.
 
 ---
 
@@ -13,7 +13,7 @@ This guide walks through setting up a Windows 11 development environment for Hoo
 | LLVM 22.1.4 | Yes | LLVM core, ORC JIT, Target libraries |
 | Java 17+ | Yes | Runs the ANTLR generator JAR |
 | Ninja (optional) | No | Faster builds (recommended) |
-| vcpkg | Yes | Package manager for ANTLR4, GTest, ZLIB, OpenSSL, curl |
+| vcpkg | Yes | Package manager for GoogleTest, ZLIB, OpenSSL, curl, and optional ANTLR4 installs |
 
 ---
 
@@ -110,7 +110,9 @@ setx PATH "%PATH%;C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin"
 
 ## 6. Install Dependencies with vcpkg (Manifest Mode)
 
-The repo includes `vcpkg.json` at the root that lists all required dependencies (ANTLR4, GoogleTest, ZLIB, OpenSSL, curl). vcpkg manifest mode installs them automatically during CMake configuration.
+The repo includes `vcpkg.json` at the root. vcpkg manifest mode installs GoogleTest, ZLIB, OpenSSL, curl, and ANTLR4 package metadata during CMake configuration.
+
+The Windows preset normally builds the ANTLR4 C++ runtime from source via CMake `FetchContent` unless `ANTLR4_ROOT` points at an installed ANTLR4 runtime. GoogleTest is consumed from vcpkg through `GTest::gtest` and `GTest::gtest_main`, so the test headers and libraries use the same version.
 
 Visual Studio 18 bundles vcpkg at `C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg\vcpkg.exe`, so no separate installation is needed. The `VCPKG_ROOT` environment variable (set in [section 5](#5-set-environment-variables)) already points to it.
 
@@ -120,7 +122,7 @@ git clone https://github.com/microsoft/vcpkg.git C:\dev\vcpkg
 cd C:\dev\vcpkg
 .\bootstrap-vcpkg.bat
 ```
-Then set `VCPKG_ROOT=C:\dev\vcpkg` (adjust the path in [section 5](#5-set-environment-variables) accordingly). When you configure Hoo with the `windows-vs18-env` preset, CMake will automatically install all dependencies from `vcpkg.json` into `vcpkg_installed/`.
+Then set `VCPKG_ROOT=C:\dev\vcpkg` (adjust the path in [section 5](#5-set-environment-variables) accordingly). When you configure Hoo with the `windows-vs18-env` preset, CMake automatically installs manifest dependencies. By default vcpkg uses the build tree's `build\vcpkg_installed\` directory; GitHub Actions overrides this to `${{ github.workspace }}\vcpkg_installed`.
 
 ---
 
@@ -171,6 +173,8 @@ Run all tests via CTest:
 ctest --preset windows-vs18-env --output-on-failure
 ```
 
+The CTest preset registers only Hoo's `HooUnitTests` executable. The generated test environment prepends the active vcpkg `bin` directory, so DLLs such as curl, OpenSSL, zlib, and GoogleTest are resolved without manually editing `PATH`.
+
 Run a specific test suite directly:
 
 ```cmd
@@ -203,7 +207,7 @@ dir C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm\LLVMConfig.cmake
 ```
 
 ### "Could NOT find ANTLR4"
-Ensure the vcpkg toolchain file is set correctly. The ANTLR4 headers and library are provided by vcpkg:
+The Windows preset builds ANTLR4 from source automatically when `ANTLR4_ROOT` is not set. If you intentionally use a vcpkg or external ANTLR4 install, ensure the vcpkg toolchain file is set correctly and the headers/library exist:
 ```cmd
 dir "%VCPKG_ROOT%\installed\x64-windows\include\antlr4-runtime\antlr4-runtime.h"
 dir "%VCPKG_ROOT%\installed\x64-windows\lib\antlr4-runtime.lib"
@@ -215,7 +219,9 @@ vcpkg toolchain not being picked up. Ensure `-DCMAKE_TOOLCHAIN_FILE` points to t
 ### Linker errors (LNK2019 / LNK2001)
 Usually caused by mismatched CRT linkage or missing library dependencies.
 
-Ensure vcpkg libraries were built with the same triplet (`x64-windows`, not `x64-windows-static`).
+Ensure vcpkg libraries were built with the same triplet (`x64-windows`, not `x64-windows-static`). The project uses the dynamic MSVC runtime (`/MD`, CMake `MultiThreadedDLL`) to match the default `x64-windows` vcpkg triplet.
+
+If GoogleTest symbols such as `testing::internal::MakeAndRegisterTestInfo` fail to link, clean and reconfigure. That usually means old FetchContent GoogleTest build files or stale headers from a previous configuration are still in `build\`.
 
 If errors reference `__imp_deflate`, `__imp_inflate`, etc., zlib is not linked to `hoort`. Run `cmake --preset windows-vs18-env --fresh` to regenerate — the `CMakeLists.txt` links `ZLIB::ZLIB` to `hoort`.
 
@@ -271,6 +277,8 @@ LLVM's `bin` directory is not on your PATH. Add it:
 set PATH=C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin;%PATH%
 ```
 
+CTest adds the vcpkg runtime DLL directory automatically, but it does not add LLVM's `bin` directory. Keep LLVM's `bin` on `PATH` in your terminal or GitHub workflow.
+
 ### Slow builds
 Install Ninja for parallel builds:
 ```cmd
@@ -295,13 +303,16 @@ cmake --build --preset windows-vs18-env-tests
 ```
 
 ### hoo-tests crashes at runtime (exit code 0xc0000374) [RESOLVED]
-This was caused by a CRT mismatch: vcpkg's GTest DLL was compiled with `/MD` (dynamic CRT) while the project uses `/MT` (static CRT). The fix builds GTest from source via `FetchContent` on Windows with matching `/MT` flags. Run a clean rebuild:
+This was caused by inconsistent Windows test linkage and CTest environment setup. The current fix uses `/MD` consistently, consumes GoogleTest from vcpkg, disables ANTLR's own C++ test registration, and escapes the generated CTest `PATH` so Windows semicolon separators are preserved. Run a clean rebuild:
 ```cmd
 rmdir /S /Q build
 cmake --preset windows-vs18-env
+cmake --build --preset windows-vs18-env
 cmake --build --preset windows-vs18-env-tests
 ctest --preset windows-vs18-env --output-on-failure
 ```
+
+If `build\hoo-tests.exe --gtest_brief=1` passes but `ctest --preset windows-vs18-env` fails, re-run CMake to regenerate `build\CTestTestfile.cmake`. Stale generated CTest files may contain an old or malformed `PATH`.
 
 ### Test files with Windows-specific changes
 The following test files have `#ifdef _WIN32` guards for platform-specific behavior:
@@ -310,7 +321,7 @@ The following test files have `#ifdef _WIN32` guards for platform-specific behav
 |------|---------|
 | `tests/jit/HooCsvJitTest.cpp` | Guarded `#include <unistd.h>` with `#ifndef _WIN32`; compat header provides `write`/`close`/`unlink`/`mkstemp` shims |
 | `tests/jit/HooHashingJitTest.cpp` | Same as above |
-| `tests/core/HooCLIIntegrationTest.cpp` | Added `NOMINMAX` before `<windows.h>`, use `_stat` on Windows, use `Z:\` nonexistent path for FileNotFound test |
+| `tests/core/HooCLIIntegrationTest.cpp` | Added `NOMINMAX` before `<windows.h>`, uses `_stat` on Windows, uses `Z:\` nonexistent path for FileNotFound test, and captures CLI output through `cmd.exe /S /C` with redirected temp files instead of `_popen` |
 | `tests/runtime/HooCsvTest.cpp` | `ReadWriteFile` uses `GetTempPathA` for temp directory on Windows |
 | `tests/runtime/HooHashingTest.cpp` | `Sha256File` creates a temp file instead of `/dev/null`; `Sha256FileNotFound` uses `Z:\` path |
 | `tests/runtime/HooSystemTest.cpp` | `UserHome` checks for drive letter prefix; `SetCurrentDir` uses drive root instead of `/tmp` |

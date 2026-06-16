@@ -89,28 +89,24 @@ java -version              # JDK 21+
 
 **Install full LLVM** (not just bundled Clang):
 ```powershell
-winget install LLVM -v 19.1.7
+curl.exe -L -o llvm.tar.xz https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-pc-windows-msvc.tar.xz
+tar -xf llvm.tar.xz -C C:\
 ```
-Verify: `Test-Path "$env:ProgramFiles\LLVM\lib\cmake\llvm\LLVMConfig.cmake"` should be `True`.
+Verify: `Test-Path "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm\LLVMConfig.cmake"` should be `True`.
 
 **Install Java:**
 ```powershell
 winget install EclipseAdoptium.Temurin.21.JDK
 ```
 
-**Install vcpkg and dependencies:**
+**Configure vcpkg manifest mode:**
 ```powershell
-# If not bundled with VS, clone it
-git clone https://github.com/microsoft/vcpkg.git C:\dev\vcpkg
-C:\dev\vcpkg\bootstrap-vcpkg.bat
-
-# Add to PATH
-[System.Environment]::SetEnvironmentVariable("PATH", "$env:PATH;C:\dev\vcpkg", "User")
-
-# Install dependencies
-cd C:\Projects\hoo
-vcpkg install --triplet x64-windows
+setx LLVM_DIR "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm"
+setx VCPKG_ROOT "C:\Program Files\Microsoft Visual Studio\18\Community\VC\vcpkg"
+setx PATH "%PATH%;C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin"
 ```
+
+Visual Studio 18 includes vcpkg. If you use a separate vcpkg clone, point `VCPKG_ROOT` at that clone instead. Dependencies are installed automatically during `cmake --preset windows-vs18-env`; do not run a separate manual `vcpkg install` unless you are troubleshooting vcpkg itself.
 
 ---
 
@@ -502,6 +498,9 @@ ctest --preset macos-homebrew-ninja --output-on-failure
 # Dev Container / Codespaces
 ctest --preset ninja-relwithdebinfo --output-on-failure
 
+# Windows
+ctest --preset windows-vs18-env --output-on-failure
+
 # Run tests in parallel (4 jobs)
 ctest --preset macos-homebrew-ninja -j4
 
@@ -590,9 +589,11 @@ A runtime function (e.g., `hoo_string_new`) is not registered in the JIT symbol 
 
 ### Windows DLLs not found at runtime
 ```powershell
-$env:PATH = "C:\Program Files\LLVM\bin;$PWD\vcpkg_installed\x64-windows\bin;$env:PATH"
+$env:PATH = "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin;$PWD\build\vcpkg_installed\x64-windows\bin;$env:PATH"
 hoo.exe tests\examples\hello.hoo
 ```
+
+CTest prepends the active vcpkg `bin` directory automatically from the generated CMake files, but direct `hoo.exe` or `hoo-tests.exe` runs still need LLVM's `bin` on `PATH`.
 
 ### macOS: "Library not loaded: @rpath/libunwind.1.dylib"
 Set `DYLD_LIBRARY_PATH`:
