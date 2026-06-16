@@ -67,7 +67,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 20. **[Networking & HTTP](net.md)**
     * `hoo.net` — URL parsing (scheme, host, port, path, query, fragment), HTTP client (GET, POST, PUT, DELETE) via libcurl with custom headers, timeout, and redirect following.
 21. **[Threading](thread.md)**
-    * `hoo.thread` — thread spawn/join/self via pthreads, mutex create/lock/unlock/destroy for concurrent synchronization.
+    * `hoo.thread` — thread spawn/join/self via pthreads and Win32 threads, mutex create/lock/unlock/destroy for concurrent synchronization.
 
 ### JIT Bridge
 22. **[JIT Integration](jit-integration.md)**

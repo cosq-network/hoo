@@ -26,6 +26,7 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 - [x] **Phase 8.1 (Character Dispatch Fix)**: Added `Character` → `character` prefix mapping to `classToPrefix()`, registering JIT symbols for `_F_M_hoo_E_character_*` mangled names, enabling factory constructors `Character.new()` and `Character.fromUtf8()`, and instance methods `codepoint()`, `length()`, `data()`, `print()`, `release()` at the Hoo language level (no static methods).
 - [x] **Phase 8.2 (Type Inference)**: Extended `getTypeId()` to infer return types for function calls, user-defined class methods, and array subscript access. Array literal element types inferred from uniform elements. For-in loop variables infer type from iterable's element type. Char-keyed Map operations removed from Hoo language layer (runtime-only C API).
 - [x] **Phase 9 (Output Optimization)**: Silenced LLVM IR and JIT debug outputs during execution to significantly improve unit test performance.
+- [x] **Phase 9.1 (macOS Stabilization)**: Resolved cross-platform build errors in `hoo_thread` and `hoo_uuid` modules; project now verified stable on macOS (Apple Silicon/Intel).
 - [x] **Verification**: full preset test run passing (`1370 tests`).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
