@@ -375,7 +375,7 @@ if(HOO_BUILD_TESTS)
             googletest
             URL https://github.com/google/googletest/archive/refs/tags/v1.15.2.tar.gz
         )
-        set(gtest_force_shared_crt ON CACHE INTERNAL "" FORCE)
+        set(gtest_force_shared_crt OFF CACHE INTERNAL "" FORCE)
         set(BUILD_GMOCK OFF CACHE INTERNAL "" FORCE)
         set(INSTALL_GTEST OFF CACHE INTERNAL "" FORCE)
         FetchContent_MakeAvailable(googletest)
