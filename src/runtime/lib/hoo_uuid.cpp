@@ -127,7 +127,7 @@ char* hoo_uuid_to_string(HooUUID uuid) {
     UUIDData* data = to_data(uuid);
     char* result = (char*)std::malloc(37);
     if (!result) return NULL;
-    std::sprintf(result, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+    std::snprintf(result, 37, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
         (unsigned)(((uint32_t)data->bytes[0] << 24) | ((uint32_t)data->bytes[1] << 16) | ((uint32_t)data->bytes[2] << 8) | data->bytes[3]),
         (unsigned)(((uint32_t)data->bytes[4] << 8) | data->bytes[5]),
         (unsigned)(((uint32_t)data->bytes[6] << 8) | data->bytes[7]),

@@ -52,7 +52,11 @@ int64_t hoo_thread_spawn(int64_t (*func)(void*), void* arg) {
     int ret = pthread_create(&thread, nullptr,
         reinterpret_cast<void*(*)(void*)>(func), arg);
     if (ret != 0) return -1;
+#ifdef __APPLE__
+    return reinterpret_cast<int64_t>(thread);
+#else
     return static_cast<int64_t>(thread);
+#endif
 #endif
 }
 
@@ -76,7 +80,11 @@ int64_t hoo_thread_join(int64_t thread_id) {
     if (ret != WAIT_OBJECT_0) return -1;
     return retval;
 #else
+#ifdef __APPLE__
+    pthread_t thread = reinterpret_cast<pthread_t>(thread_id);
+#else
     pthread_t thread = static_cast<pthread_t>(thread_id);
+#endif
     void* result = nullptr;
     int ret = pthread_join(thread, &result);
     if (ret != 0) return -1;
@@ -88,7 +96,11 @@ int64_t hoo_thread_self(void) {
 #ifdef _WIN32
     return static_cast<int64_t>(GetCurrentThreadId());
 #else
+#ifdef __APPLE__
+    return reinterpret_cast<int64_t>(pthread_self());
+#else
     return static_cast<int64_t>(pthread_self());
+#endif
 #endif
 }
 
