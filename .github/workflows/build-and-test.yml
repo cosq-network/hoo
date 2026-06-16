@@ -132,10 +132,7 @@ jobs:
           key: vcpkg-${{ hashFiles('vcpkg.json') }}
 
       - name: Configure CMake
-        run: |
-          cmake --preset windows-vs18-env ^
-            -DVCPKG_INSTALLED_DIR="${{ github.workspace }}\vcpkg_installed" ^
-            -DCMAKE_BUILD_TYPE=Release
+        run: cmake --preset windows-vs18-env -DVCPKG_INSTALLED_DIR="${{ github.workspace }}\vcpkg_installed" -DCMAKE_BUILD_TYPE=Release
 
       - name: Build hoo
         run: cmake --build --preset windows-vs18-env
