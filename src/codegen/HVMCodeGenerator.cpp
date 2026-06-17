@@ -820,55 +820,43 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (auto arrayLit = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
             auto& elements = arrayLit->getElements()->getExpressions();
             
-            // Infer common element type from literal elements
-            uint32_t elemTypeId = 100;
+            emitCall(Opcode::CALL, "_F_hoo_Array_new_p");
+            uint8_t arrReg = allocateRegister();
+            emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
+            
             for (const auto& elem : elements) {
-                uint32_t t = getTypeId(nullptr, elem.get());
-                if (t != 100 && t != 4) { // skip void
-                    if (elemTypeId == 100) elemTypeId = t;
-                    else if (elemTypeId != t) { elemTypeId = 100; break; }
+                uint8_t elemReg = visitExpression(*elem);
+                uint32_t elemType = getTypeId(nullptr, elem.get());
+                
+                bool isNestedArray = false;
+                if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(elem.get())) {
+                    if (dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
+                        isNestedArray = true;
+                    }
                 }
+                
+                emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, elemReg, 0, 0});
+                
+                if (elemType == 1) {
+                    emitCall(Opcode::CALL, "_F_hoo_Array_pushInt64_p_i8");
+                } else if (elemType == 101) {
+                    emitCall(Opcode::CALL, "_F_hoo_Array_pushObject_p_p");
+                } else if (isNestedArray) {
+                    emitCall(Opcode::CALL, "_F_hoo_Array_pushArray_p_p");
+                } else if (elemType == 2) {
+                    emitCall(Opcode::CALL, "_F_hoo_Array_pushDouble_p_d");
+                } else if (elemType == 3) {
+                    emitCall(Opcode::CALL, "_F_hoo_Array_pushBool_p_i8");
+                } else {
+                    emitCall(Opcode::CALL, "_F_hoo_Array_pushObject_p_p");
+                }
+                
+                emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
+                freeRegister(elemReg);
             }
             
-            std::vector<uint8_t> elementRegs;
-            for (const auto& elem : elements) {
-                elementRegs.push_back(visitExpression(*elem));
-            }
-            
-            uint64_t totalSize = 32 + (elements.size() * 8);
-            uint8_t sizeReg = emitConstant(static_cast<int64_t>(totalSize));
-            uint8_t typeReg = emitConstant(102);
-            emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-            emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
-            
-            uint8_t dest = allocateRegister();
-            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-            freeRegister(sizeReg);
-            freeRegister(typeReg);
-
-            // 2. Store 4-word header
-            // length (offset 0)
-            uint8_t lenReg = emitConstant(static_cast<int64_t>(elements.size()));
-            emit(Opcode::ST_D, OperandsI{lenReg, dest, 0});
-            // capacity (offset 8)
-            emit(Opcode::ST_D, OperandsI{lenReg, dest, 8}); 
-            freeRegister(lenReg);
-            // element_type (offset 16) - inferred from literal elements
-            uint8_t elemTypeReg = emitConstant(static_cast<int64_t>(elemTypeId));
-            emit(Opcode::ST_D, OperandsI{elemTypeReg, dest, 16});
-            freeRegister(elemTypeReg);
-            // reserved/padding (offset 24)
-            uint8_t reservedReg = emitConstant(0);
-            emit(Opcode::ST_D, OperandsI{reservedReg, dest, 24});
-            freeRegister(reservedReg);
-
-            // 3. Store elements (offset 32+)
-            for (size_t i = 0; i < elementRegs.size(); ++i) {
-                emit(Opcode::ST_D, OperandsI{elementRegs[i], dest, static_cast<int16_t>(32 + (i * 8))});
-                freeRegister(elementRegs[i]);
-            }
-            return dest;
+            return arrReg;
         }
         if (auto strLit = dynamic_cast<const ast::StringLiteral*>(&primary)) {
             std::string val = strLit->getValue();
@@ -1896,6 +1884,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 if (dynamic_cast<const ast::FloatingLiteral*>(&node)) return 2;
                 if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
                 if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
+                if (dynamic_cast<const ast::ArrayLiteral*>(&node)) return 102;
                 if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
             }
             // Inference from constructor calls like Map.new(), Array.new()

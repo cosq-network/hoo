@@ -390,7 +390,7 @@ char* hoo_csv_generate(void* handle, void* data_arr)
         int64_t cols = 0;
         for (int64_t i = 0; i < rows; i++) {
             HooArray row = NULL;
-            if (hoo_array_get_array(data_arr, i, &row) == 0 && row) {
+            if (hoo_array_get_array(data_arr, i, &row) && row) {
                 int64_t rc = hoo_array_length(row);
                 if (rc > cols) cols = rc;
             }
@@ -410,12 +410,12 @@ char* hoo_csv_generate(void* handle, void* data_arr)
                 return NULL;
             }
             HooArray row = NULL;
-            if (hoo_array_get_array(data_arr, i, &row) == 0 && row) {
+            if (hoo_array_get_array(data_arr, i, &row) && row) {
                 for (int64_t j = 0; j < cols; j++) {
                     const char* s = NULL;
                     if (j < hoo_array_length(row)) {
                         HooString hoos = NULL;
-                        if (hoo_array_get_object(row, j, (void**)&hoos) == 0 && hoos)
+                        if (hoo_array_get_object(row, j, (void**)&hoos) && hoos)
                             s = hoo_string_data(hoos);
                     }
                     cdata[i][j] = s ? s : "";

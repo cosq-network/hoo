@@ -81,6 +81,20 @@ TEST_F(HooCsvJitTest, ParseCustomOpts) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
+TEST_F(HooCsvJitTest, GenerateBasic) {
+    const std::string source = R"(
+        func :int64 test() {
+            var csv = Csv.new();
+            var data = [["a", "b"], ["1", "2"]];
+            var result = csv.generate(data);
+            csv.release();
+            return result.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 7);
+}
+
 TEST_F(HooCsvJitTest, ReadFile) {
     char tmp_path[] = "/tmp/hoo_test_csv_XXXXXX";
     int fd = mkstemp(tmp_path);
@@ -118,4 +132,19 @@ TEST_F(HooCsvJitTest, ReadFileNotFound) {
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooCsvJitTest, WriteFile) {
+    const std::string source = R"(
+        func :int64 test() {
+            var csv = Csv.new();
+            var data = [["x", "y"], ["10", "20"]];
+            var ok = csv.writeFile("/tmp/hoo_csv_jit_write_test.csv", data);
+            csv.release();
+            return ok;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
+    std::remove("/tmp/hoo_csv_jit_write_test.csv");
 }

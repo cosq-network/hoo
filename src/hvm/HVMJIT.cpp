@@ -902,6 +902,18 @@ extern "C" {
         hoo_array_get_bool(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
         return static_cast<uint64_t>(dest);
     }
+    uint64_t jit_array_push_array(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_array_push_array(reinterpret_cast<void*>(state->regs[1]),
+                                reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_array_push_object(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_array_push_object(reinterpret_cast<void*>(state->regs[1]),
+                                 reinterpret_cast<void*>(state->regs[2]))));
+    }
     // ── Map aliases (match codegen-generated _F_map_*_v_p names) ─────────────
     uint64_t jit_map_new_plain(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2336,6 +2348,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_print_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
         {"_F_M_hoo_E_println_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
         {"_F_hoo_Array_new_p", reinterpret_cast<void*>(&jit_hoo_array_new)},
+        {"_F_hoo_Array_pushInt64_p_i8", reinterpret_cast<void*>(&jit_array_push_int64_plain)},
+        {"_F_hoo_Array_pushString_p_p", reinterpret_cast<void*>(&jit_array_push_string)},
+        {"_F_hoo_Array_pushBool_p_i8", reinterpret_cast<void*>(&jit_array_push_bool)},
+        {"_F_hoo_Array_pushDouble_p_d", reinterpret_cast<void*>(&jit_array_push_double)},
+        {"_F_hoo_Array_pushArray_p_p", reinterpret_cast<void*>(&jit_array_push_array)},
+        {"_F_hoo_Array_pushObject_p_p", reinterpret_cast<void*>(&jit_array_push_object)},
         {"_F_hoo_Array_push_i8_p_i8", reinterpret_cast<void*>(&jit_hoo_array_push_int64)},
         {"_F_hoo_Array_get_i8_p_i8_p", reinterpret_cast<void*>(&jit_hoo_array_get_int64)},
         {"_F_hoo_Map_new_p_i8", reinterpret_cast<void*>(&jit_hoo_map_new)},
