@@ -1,39 +1,44 @@
 # CSV (`hoo.csv`)
 
-The `hoo.csv` module provides parse and generate comma-separated values with quoting, escape handling, custom delimiters, and file I/O.
+The `hoo.csv` module provides CSV parsing, generation, and file I/O operations. Create an instance with `Csv.new()` and release it with `release()`.
 
-## 1. Parsing
+## 1. Constructor / Destructor
 
-- `Csv.parse(csv)` — Parse CSV string into 2D array `[row][col]` of strings. Free with `Csv.freeTable`.
-- `Csv.parse(csv, delimiter, quote_char)` — Parse with custom delimiter and quote character.
+- `Csv.new()` — Create with default options (`,`, `"`).
+- `Csv.newWithOpts(delimiter, quote)` — Create with custom delimiter and quote.
+- `csv.release()` — Release the instance.
 
-## 2. Generation
+## 2. Parsing
 
-- `Csv.generate(headers, data, rows, cols)` — Generate CSV string from headers and 2D data array. Free with `Csv.freeString`.
-- `Csv.generate(headers, data, rows, cols, delimiter, quote_char)` — Generate with custom options.
+- `csv.parse(input)` — Parse CSV string into 2D array of strings.
 
-## 3. File I/O
+## 3. Generation
 
-- `Csv.readFile(path)` — Read CSV file into 2D array.
-- `Csv.writeFile(path, headers, data, rows, cols)` — Write headers and data to CSV file. Returns 0 on success.
+- `csv.generate(data)` — Generate CSV string from 2D array.
 
-## 4. Utilities
+## 4. File I/O
 
-- `Csv.escape(c)` — Check if character needs escaping in CSV output.
+- `csv.readFile(path)` — Read CSV file into 2D array.
+- `csv.writeFile(path, data)` — Write 2D array to CSV file. Returns 0 on success.
+
+## 5. Utilities
+
+- `csv.escape(c)` — Check if character needs escaping in CSV output.
 
 ## Usage from Hoo Source
 
-All `Csv.*` functions are available on the `Csv` class:
-
 ```hoo
 func :int64 demo() {
-    var ok = Csv.readFile("/path/to/data.csv");  // 0 = error, 1 = success
-    var needs_escape = Csv.escape(44);              // 1 if comma needs quoting
-    return ok;
+    var csv = Csv.new()
+    var data = [["name", "age"], ["Alice", "30"]]
+    var ok = csv.writeFile("/path/to/data.csv", data)
+    var rows = csv.readFile("/path/to/data.csv")
+    var needs_escape = csv.escape(44)
+    csv.release()
+    return ok
 }
 ```
 
 ## Memory Management
 
-- `Csv.freeTable(table, rows, cols)` — Free 2D table.
-- `Csv.freeString(str)` — Free allocated string.
+All CSV operations return Hoo strings and arrays directly. No manual memory management is needed at the Hoo level.

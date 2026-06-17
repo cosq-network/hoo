@@ -39,8 +39,7 @@ static bool isClassMethodJitClass(const std::string& className) {
 // Built-in classes that behave as singletons (no instances, all static methods).
 static bool isSingletonBuiltinClass(const std::string& className) {
     static const std::unordered_set<std::string> singletons = {
-        "Math", "Fs", "System", "Encoding", "Uuid",
-        "Csv"
+        "Math", "Fs", "System", "Encoding", "Uuid"
     };
     return singletons.count(className) > 0;
 }
@@ -1180,6 +1179,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 109: resolvedClass = "Character"; break;
                     case 110: resolvedClass = "Args"; break;
                     case 111: resolvedClass = "Compression"; break;
+                    case 112: resolvedClass = "Csv"; break;
                     default: break;
                 }
             }
@@ -1924,6 +1924,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new") return 111;
                         return 101;
                     }
+                    if (clsName == "Csv") {
+                        if (ma->getMember() == "new" || ma->getMember() == "newWithOpts") return 112;
+                        return 101;
+                    }
                     if (clsName == "Character") {
                         if (ma->getMember() == "new" || ma->getMember() == "fromUtf8") return 109;
                         return 101;
@@ -1943,6 +1947,12 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "programName" || member == "getString" ||
                                 member == "helpText") return 101;
                             if (member == "getFloat") return 2;
+                            return 100;
+                        }
+                        if (objTypeId == 112) {
+                            if (member == "parse" || member == "readFile") return 102;
+                            if (member == "generate") return 101;
+                            if (member == "escape" || member == "writeFile") return 1;
                             return 100;
                         }
                         if (objTypeId == 111) {

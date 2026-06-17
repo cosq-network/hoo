@@ -1217,19 +1217,61 @@ extern "C" {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
 
-    // ── CSV module ─────────────────────────────────────────────────────────
-    uint64_t jit_csv_escape(void* state_ptr) {
+    // ── CSV module (instance-based, self in regs[1]) ──────────────────────
+    uint64_t jit_csv_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_csv_escape(static_cast<char>(state->regs[1])));
+        void* handle = hoo_csv_new();
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(handle));
+    }
+    uint64_t jit_csv_new_with_opts(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char delimiter = static_cast<char>(state->regs[1]);
+        char quote_char = static_cast<char>(state->regs[2]);
+        void* handle = hoo_csv_new_with_opts(delimiter, quote_char);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(handle));
+    }
+    uint64_t jit_csv_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        hoo_csv_release(handle);
+        return 0;
+    }
+    uint64_t jit_csv_parse(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* csv = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* result = hoo_csv_parse(handle, csv);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_generate(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data_arr = reinterpret_cast<void*>(state->regs[2]);
+        char* csv = hoo_csv_generate(handle, data_arr);
+        if (!csv) return 0;
+        void* str = hoo_string_from_cstr(csv);
+        hoo_csv_free_string(csv);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_csv_read_file(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        int64_t rows, cols;
-        char*** table = hoo_csv_read_file(path, &rows, &cols);
-        if (!table) return 0;
-        hoo_csv_free_table(table, rows, cols);
-        return 1;
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* result = hoo_csv_read_file(handle, path);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_write_file(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* data_arr = reinterpret_cast<void*>(state->regs[3]);
+        return static_cast<uint64_t>(hoo_csv_write_file(handle, path, data_arr));
+    }
+    uint64_t jit_csv_escape(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        char c = static_cast<char>(state->regs[2]);
+        return static_cast<uint64_t>(hoo_csv_escape(handle, c));
     }
 
     // ── Datetime module ─────────────────────────────────────────────────────
@@ -2497,14 +2539,15 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_thread_mutexLock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
         {"_F_M_hoo_E_thread_mutexUnlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
         {"_F_M_hoo_E_thread_mutexDestroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
-        // CSV module
-        {"_F_M_hoo_E_csv_escape_v_p", reinterpret_cast<void*>(&jit_csv_escape)},
-        {"_F_M_hoo_E_csv_read_file_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
-        {"_F_M_hoo_E_Csv_N_escape_p_p", reinterpret_cast<void*>(&jit_csv_escape)},
-        {"_F_M_hoo_E_Csv_N_read_file_p_p", reinterpret_cast<void*>(&jit_csv_read_file)},
-        // CamelCase aliases
+        // CSV module (instance-based, prefix-style)
+        {"_F_M_hoo_E_csv_new_v", reinterpret_cast<void*>(&jit_csv_new)},
+        {"_F_M_hoo_E_csv_newWithOpts_v_p_p", reinterpret_cast<void*>(&jit_csv_new_with_opts)},
+        {"_F_M_hoo_E_csv_release_v", reinterpret_cast<void*>(&jit_csv_release)},
+        {"_F_M_hoo_E_csv_parse_v_p", reinterpret_cast<void*>(&jit_csv_parse)},
+        {"_F_M_hoo_E_csv_generate_v_p", reinterpret_cast<void*>(&jit_csv_generate)},
         {"_F_M_hoo_E_csv_readFile_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
-        {"_F_M_hoo_E_Csv_N_readFile_p_p", reinterpret_cast<void*>(&jit_csv_read_file)},
+        {"_F_M_hoo_E_csv_writeFile_v_p_p", reinterpret_cast<void*>(&jit_csv_write_file)},
+        {"_F_M_hoo_E_csv_escape_v_p", reinterpret_cast<void*>(&jit_csv_escape)},
         // Datetime module
         {"_F_M_hoo_E_datetime_now_v", reinterpret_cast<void*>(&jit_datetime_now)},
         {"_F_M_hoo_E_datetime_now_seconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},

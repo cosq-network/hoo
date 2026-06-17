@@ -1,132 +1,119 @@
 # CSV API Reference (`Csv`)
 
-The `Csv` singleton class provides CSV parsing, generation, and file I/O operations.
+The `Csv` class provides CSV parsing, generation, and file I/O operations. Create an instance with `Csv.new()` or `Csv.newWithOpts()` and release it with `release()`.
 
-## 1. Parsing
+## 1. Constructor / Destructor
 
-### `Csv.parse(input: string) :array`
+### `Csv.new() :Csv`
+
+Creates a new Csv instance with default settings (delimiter=`,`, quote=`"`).
+
+### `Csv.newWithOpts(delimiter: int64, quote: int64) :Csv`
+
+Creates a new Csv instance with a custom delimiter and quote character.
+
+### `csv.release()`
+
+Releases the Csv instance and its resources.
+
+```hoo
+var csv = Csv.new()
+var csv2 = Csv.newWithOpts(59, 39)  // delimiter=';', quote='\''
+csv.release()
+csv2.release()
+```
+
+## 2. Parsing
+
+### `csv.parse(input: string) :array`
 
 Parses a CSV string and returns an array of rows, where each row is an array of field strings.
 
-- **Parameters:**
-  - `input: string` — the CSV content to parse.
 - **Returns:** `array` — a two-dimensional array (`array` of `array` of `string`).
 
 ```hoo
-func :void example() {
-    var csv = "name,age\nAlice,30\nBob,25";
-    var rows = Csv.parse(csv);
-    println(rows.length().toString()); // Output: 3 (header + 2 data rows)
-}
-```
-
----
-
-### `Csv.parseWithOpts(input: string, delimiter: char, quote: char, escape: char) :array`
-
-Parses a CSV string with custom formatting options.
-
-- **Parameters:**
-  - `input: string` — the CSV content to parse.
-  - `delimiter: char` — the field delimiter character.
-  - `quote: char` — the quote character.
-  - `escape: char` — the escape character.
-- **Returns:** `array` — a two-dimensional array of field strings.
-
-```hoo
-func :void example() {
-    var csv = "name|age\nAlice|30\nBob|25";
-    var rows = Csv.parseWithOpts(csv, '|', '"', '\\');
-    println(rows.length().toString()); // Output: 3
-}
-```
-
-## 2. File I/O
-
-### `Csv.readFile(path: string) :int64`
-
-Reads a CSV file from disk. Returns 1 on success, 0 on failure.
-
-- **Parameters:**
-  - `path: string` — the file path to read.
-- **Returns:** `int64` — 1 on success, 0 on failure.
-
-```hoo
-if Csv.readFile("data.csv") == 1 {
-    println("File read successfully")
-}
-```
-
----
-
-### `Csv.writeFile(path: string, data: array) :void`
-
-Writes a two-dimensional array of strings to a CSV file.
-
-- **Parameters:**
-  - `path: string` — the file path to write.
-  - `data: array` — the data to write (array of array of string).
-- **Returns:** `void`
-
-```hoo
-func :void example() {
-    var data = [["name", "age"], ["Alice", "30"], ["Bob", "25"]];
-    Csv.writeFile("output.csv", data);
-}
+var csv = Csv.new()
+var input = "name,age\nAlice,30\nBob,25"
+var rows = csv.parse(input)
+println(rows.length().toString())  // Output: 3
+csv.release()
 ```
 
 ## 3. Generation
 
-### `Csv.generate(data: array) :string`
+### `csv.generate(data: array) :string`
 
 Generates a CSV-formatted string from a two-dimensional array.
 
-- **Parameters:**
-  - `data: array` — the data to format (array of array of string).
 - **Returns:** `string` — the CSV-formatted string.
 
 ```hoo
-func :void example() {
-    var data = [["a", "b"], ["1", "2"]];
-    var csv = Csv.generate(data);
-    println(csv);
-    // Output:
-    // a,b
-    // 1,2
-}
+var csv = Csv.new()
+var data = [["a", "b"], ["1", "2"]]
+var output = csv.generate(data)
+println(output)
+csv.release()
 ```
 
-## 4. Utilities
+## 4. File I/O
 
-### `Csv.escape(c: int64) :int64`
+### `csv.readFile(path: string) :array`
 
-Checks if a character needs escaping in a CSV field (comma, double-quote, newline).
+Reads a CSV file from disk and returns the parsed data as a two-dimensional array.
 
-- **Parameters:**
-  - `c: int64` — the ASCII code point to check.
-- **Returns:** `int64` — 1 if the character needs escaping, 0 otherwise.
+- **Returns:** `array` — parsed data, or `0` on failure.
 
 ```hoo
-var needsEscape = Csv.escape(44)  // comma, returns 1
+var csv = Csv.new()
+var rows = csv.readFile("data.csv")
+if rows != 0 {
+    println(rows.length().toString())
+}
+csv.release()
+```
+
+### `csv.writeFile(path: string, data: array) :int64`
+
+Writes a two-dimensional array of strings to a CSV file.
+
+- **Returns:** `int64` — 0 on success, 1 on failure.
+
+```hoo
+var csv = Csv.new()
+var data = [["name", "age"], ["Alice", "30"], ["Bob", "25"]]
+var ok = csv.writeFile("output.csv", data)
+csv.release()
+```
+
+## 5. Utilities
+
+### `csv.escape(c: int64) :int64`
+
+Checks if a character (ASCII code point) needs escaping in a CSV field.
+
+- **Returns:** `int64` — 1 if the character needs escaping (comma, double-quote, newline), 0 otherwise.
+
+```hoo
+var csv = Csv.new()
+var r = csv.escape(44)  // comma, returns 1
+csv.release()
 ```
 
 ## Usage Example
 
 ```hoo
-func :int64 main() {
-    var csv = "id,value\n1,\"hello, world\"\n2,foo\n3,\"quoted \"\"string\"\"\"";
+var csv = Csv.new()
+var input = "id,value\n1,\"hello, world\"\n2,foo\n3,\"quoted \"\"string\"\"\""
+var rows = csv.parse(input)
 
-    var rows = Csv.parse(csv);
-    var i: int64 = 1;
-    while (i < rows.length()) {
-        var row = rows[i];
-        println("Row ".concat(i.toString()).concat(": ").concat(row[1]));
-        i = i + 1;
-    }
-
-    var output = Csv.generate([["x", "y"], ["10", "20"]]);
-    Csv.writeFile("result.csv", [["x", "y"], ["10", "20"]]);
-
-    return 0;
+var i: int64 = 1
+while i < rows.length() {
+    var row = rows[i]
+    println("Row ".concat(i.toString()).concat(": ").concat(row[1]))
+    i = i + 1
 }
+
+var data = [["x", "y"], ["10", "20"]]
+csv.writeFile("result.csv", data)
+csv.release()
 ```

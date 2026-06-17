@@ -13,7 +13,7 @@ class HooCsvTest : public ::testing::Test {
 
 TEST_F(HooCsvTest, ParseSimple) {
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_parse("a,b,c\n1,2,3", &rows, &cols);
+    char*** table = hoo_csv_parse_raw("a,b,c\n1,2,3", &rows, &cols);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(rows, 2);
     EXPECT_EQ(cols, 3);
@@ -28,7 +28,7 @@ TEST_F(HooCsvTest, ParseSimple) {
 
 TEST_F(HooCsvTest, ParseWithQuotes) {
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_parse("a,\"b,c\",d", &rows, &cols);
+    char*** table = hoo_csv_parse_raw("a,\"b,c\",d", &rows, &cols);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(rows, 1);
     EXPECT_EQ(cols, 3);
@@ -40,7 +40,7 @@ TEST_F(HooCsvTest, ParseWithQuotes) {
 
 TEST_F(HooCsvTest, ParseEmptyFields) {
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_parse("a,,c", &rows, &cols);
+    char*** table = hoo_csv_parse_raw("a,,c", &rows, &cols);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(rows, 1);
     EXPECT_EQ(cols, 3);
@@ -52,7 +52,7 @@ TEST_F(HooCsvTest, ParseEmptyFields) {
 
 TEST_F(HooCsvTest, ParseQuotedNewlines) {
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_parse("x,\"hello\nworld\",y", &rows, &cols);
+    char*** table = hoo_csv_parse_raw("x,\"hello\nworld\",y", &rows, &cols);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(rows, 1);
     EXPECT_EQ(cols, 3);
@@ -67,7 +67,7 @@ TEST_F(HooCsvTest, GenerateSimple) {
     const char* row0[] = {"Alice", "30"};
     const char* row1[] = {"Bob", "25"};
     const char** data[] = {row0, row1};
-    char* csv = hoo_csv_generate(headers, data, 2, 2);
+    char* csv = hoo_csv_generate_raw(headers, data, 2, 2);
     ASSERT_NE(csv, nullptr);
     EXPECT_STREQ(csv, "Name,Age\nAlice,30\nBob,25\n");
     hoo_csv_free_string(csv);
@@ -77,7 +77,7 @@ TEST_F(HooCsvTest, GenerateWithQuotes) {
     const char* headers[] = {"Name", "Comment"};
     const char* row0[] = {"Alice", "He said \"hello\""};
     const char** data[] = {row0};
-    char* csv = hoo_csv_generate(headers, data, 1, 2);
+    char* csv = hoo_csv_generate_raw(headers, data, 1, 2);
     ASSERT_NE(csv, nullptr);
     EXPECT_STREQ(csv, "Name,Comment\nAlice,\"He said \"\"hello\"\"\"\n");
     hoo_csv_free_string(csv);
@@ -95,11 +95,11 @@ TEST_F(HooCsvTest, ReadWriteFile) {
     const char* headers[] = {"X", "Y"};
     const char* row0[] = {"1", "2"};
     const char** data[] = {row0};
-    int64_t res = hoo_csv_write_file(path, headers, data, 1, 2);
+    int64_t res = hoo_csv_write_file_raw(path, headers, data, 1, 2);
     EXPECT_EQ(res, 0);
 
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_read_file(path, &rows, &cols);
+    char*** table = hoo_csv_read_file_raw(path, &rows, &cols);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(rows, 2);
     EXPECT_EQ(cols, 2);
@@ -114,7 +114,7 @@ TEST_F(HooCsvTest, ReadWriteFile) {
 
 TEST_F(HooCsvTest, ParseWithOpts) {
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_parse_with_opts("a;b;c", ';', '"', &rows, &cols);
+    char*** table = hoo_csv_parse_raw_with_opts("a;b;c", ';', '"', &rows, &cols);
     ASSERT_NE(table, nullptr);
     EXPECT_EQ(rows, 1);
     EXPECT_EQ(cols, 3);
