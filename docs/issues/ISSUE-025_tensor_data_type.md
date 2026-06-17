@@ -30,19 +30,69 @@ The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which r
 
 ### 3.1 Grammar Updates (`src/parsing/Hooc.g4`)
 - **Type Declaration**: Add `tensor`, `f8`, and `bit` as recognized types.
-- **Dimensionality Syntax**: Define syntax for shape declarations (e.g., `tensor<f8>[10, 10]`).
+- **Dimensionality Syntax**: Square bracket notation for shape: `tensor<type>[d1, d2, ...]`.
 - **Literal Syntax**: 
   - `0b` or `1b` for `bit` literals.
   - Floating point literals with an `f8` suffix (e.g., `0.5f8`).
-  - Tensor literals (e.g., `[[1, 0], [1, 1]]t` for bit-tensors).
-- **Matrix Operators**: Support matrix multiplication (`*`), element-wise multiplication (`.*`), and transposition (`^T`).
+  - Tensor literals using nested arrays with a `t` suffix (e.g., `[[1, 0], [1, 1]]t`).
+- **Matrix Operators**: Support for `*` (matrix multiply) and `.*` (element-wise multiply).
 
-### 3.2 AST Updates (`src/ast/`)
+### 3.2 Detailed Syntax Flavors
+
+#### 3.2.1 Multidimensional Declarations
+Tensors support fixed-size shapes of 1, 2, or 3 dimensions:
+```hoo
+var v: tensor<f64>[10];          // 1D Vector (rank 1)
+var m: tensor<f8>[3, 3];         // 2D Matrix (rank 2)
+var t: tensor<int8>[4, 4, 4];    // 3D Tensor (rank 3)
+```
+
+#### 3.2.2 Literal Notation
+Literals use nested square brackets followed by the `t` (tensor) marker. Types are inferred from elements:
+```hoo
+var v = [1.0, 2.0, 3.0]t;                    // tensor<f64>[3]
+var m = [[1, 0], [0, 1]]t;                   // tensor<int64>[2, 2]
+var b = [[0b, 1b], [1b, 1b]]t;               // tensor<bit>[2, 2]
+var f = [[0.5f8, -1.2f8], [0.0f8, 1.0f8]]t;  // tensor<f8>[2, 2]
+```
+
+#### 3.2.3 Algebraic and Matrix Operations
+Operators are overloaded for tensor operands. Broadly categorized into **Element-wise** and **Matrix-level**:
+
+| Operator | Name | Semantics |
+| :--- | :--- | :--- |
+| `a + b` | Addition | Element-wise `a[i] + b[i]` |
+| `a - b` | Subtraction | Element-wise `a[i] - b[i]` |
+| `a .* b` | E-wise Multiply | Element-wise `a[i] * b[i]` |
+| `a ./ b` | E-wise Divide | Element-wise `a[i] / b[i]` |
+| `a * b` | Matrix Multiply | Standard dot product / GEMM |
+| `a^T` | Transpose | Swap dimensions (e.g., `[i, j]` -> `[j, i]`) |
+
+#### 3.2.4 Comparison Operations (Element-wise)
+Comparison operators between two tensors return a `tensor<bit>` of the same shape:
+```hoo
+var a = [10, 20]t;
+var b = [15, 15]t;
+var res = a < b; // Result: [1b, 0b]t (tensor<bit>[2])
+```
+- Supported: `==`, `!=`, `<`, `>`, `<=`, `>=`
+
+#### 3.2.5 Boolean Logic (Element-wise)
+Logic operators on `tensor<bit>` allow for fast bitwise masking and gate simulations:
+```hoo
+var mask1 = [1b, 0b, 1b]t;
+var mask2 = [0b, 1b, 1b]t;
+var combined = mask1 && mask2; // Result: [0b, 0b, 1b]t
+var inverted = !mask1;         // Result: [0b, 1b, 0b]t
+```
+- Supported: `&&` (AND), `||` (OR), `!` (NOT)
+
+### 3.3 AST Updates (`src/ast/`)
 - **Type Nodes**: Update `PrimitiveTypeKind` to include `F8` and `BIT`. Create a `TensorType` node storing element type and shape.
 - **Expression Nodes**: Add `BitLiteral` and `TensorLiteral`.
 - **AST Builder**: Update `SimpleASTBuilder.cpp` to handle new literals and type declarations.
 
-### 3.3 Code Generation (`src/codegen/HVMCodeGenerator.cpp`)
+### 3.4 Code Generation (`src/codegen/HVMCodeGenerator.cpp`)
 - **Type IDs**: Assign unique IDs: `bit` (8), `f8` (9), `tensor` (104).
 - **Allocation**: Lower `tensor` declarations to `_F_hoo_tensor_alloc`. For `tensor<bit>`, calculate packed buffer size (`(dims + 7) / 8`).
 - **Operator Lowering**: 
@@ -52,13 +102,13 @@ The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which r
   - Standard types: `base + header + (i * stride_i + j * stride_j) * size`.
   - `bit` types: `base + header + (offset / 8)`, followed by bit-masking `(1 << (offset % 8))`.
 
-### 3.4 JIT Integration (`src/hvm/HVMJIT.cpp`)
+### 3.5 JIT Integration (`src/hvm/HVMJIT.cpp`)
 - **Wrappers**: Register JIT function wrappers for tensor math.
 - **Low-Precision Backend**: 
   - Use LLVM `half` or `float` as intermediates for `f8` if native `f8` is missing.
   - Use bitwise IR operations for `tensor<bit>` acceleration.
 
-### 3.5 Runtime Library (`src/runtime/lib/`)
+### 3.6 Runtime Library (`src/runtime/lib/`)
 - **`HooTensor`**: Extend struct to handle `bit` packing flags.
 - **Math Routines**: 
   - `f8` GEMM (General Matrix Multiplication) using optimized kernels.
@@ -86,7 +136,7 @@ The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which r
 2. Verification with 1D/2D/3D test cases.
 
 
-## 4. Status
+## 5. Status
 - **Date**: 2026-06-16
 - **Status**: **PROPOSED**
 - **Priority**: **HIGH** (for AI/ML target workloads)
