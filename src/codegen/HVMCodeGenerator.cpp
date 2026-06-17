@@ -410,6 +410,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         }
     };
 
+    if (isMethod) {
+        int32_t thisOffset = reserveLocal("this", 100, currentClass_ ? currentClass_->name : "");
+        emit(Opcode::ST_D, OperandsI{1, 30, static_cast<int16_t>(thisOffset)});
+    }
+
     if (decl) {
         mapParams(decl->getParameters());
         visitStatement(decl->getBody());
@@ -640,9 +645,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
     } else if (auto forIn = dynamic_cast<const ast::ForInStatement*>(&stmt)) {
         uint8_t iterReg = visitExpression(forIn->getIterable());
         
-        // Lowered: Get length from header (offset 0)
+        // Lowered: Get length via runtime call
         uint8_t lenReg = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{lenReg, iterReg, 0});
+        emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_array_length_v_p");
+        emit(Opcode::MOV, OperandsR{lenReg, 1, 0, 0});
         
         uint8_t iReg = emitConstant(0);
         Label* startLabel = createLabel();
@@ -654,25 +661,12 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
         
-        // Lowered: item = iter[i] -> addr = iter + 32 + i * 8 (ARRAY_HEADER_WORDS=4)
-        uint8_t shiftReg = emitConstant(3);
-        uint8_t scaledIdx = allocateRegister();
-        emit(Opcode::SHIFT, OperandsR{scaledIdx, iReg, shiftReg, 0}); // SHL
-        freeRegister(shiftReg);
-
-        uint8_t headerSize = emitConstant(32);
-        uint8_t offsetReg = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, headerSize, 0}); // ADD
-        freeRegister(headerSize);
-        freeRegister(scaledIdx);
-
-        uint8_t finalAddr = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{finalAddr, iterReg, offsetReg, 0});
-        freeRegister(offsetReg);
-        
+        // Lowered: item = iter[i] via runtime call
+        emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
+        emit(Opcode::MOV, OperandsR{2, iReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
         uint8_t itemReg = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{itemReg, finalAddr, 0});
-        freeRegister(finalAddr);
+        emit(Opcode::MOV, OperandsR{itemReg, 1, 0, 0});
         
         uint32_t forInElemTypeId = 100;
         if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
@@ -814,7 +808,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         if (auto thisLit = dynamic_cast<const ast::ThisLiteral*>(&primary)) {
             uint8_t reg = allocateRegister();
-            emit(Opcode::MOV, OperandsR{reg, 1, 0, 0});
+            int32_t thisOffset = getLocalOffset("this");
+            if (thisOffset != 0) {
+                emit(Opcode::LD_D, OperandsI{reg, 30, static_cast<int16_t>(thisOffset)});
+            } else {
+                emit(Opcode::MOV, OperandsR{reg, 1, 0, 0});
+            }
             return reg;
         }
         if (auto arrayLit = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
@@ -1022,6 +1021,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
         freeRegister(sizeReg);
         freeRegister(typeReg);
+
+        // Constructor calls share the same HVM temporary registers as the
+        // caller, so preserve the new instance through the call.
+        currentStackOffset_ -= 8;
+        int32_t instanceTempOffset = currentStackOffset_;
+        emit(Opcode::ST_D, OperandsI{dest, 30, static_cast<int16_t>(instanceTempOffset)});
         
         // 2. Call constructor
         MangledFunctionParams mp;
@@ -1050,6 +1055,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
 
         emitCall(Opcode::CALL, ctorName); 
+        emit(Opcode::LD_D, OperandsI{dest, 30, static_cast<int16_t>(instanceTempOffset)});
 
         return dest;
     }
@@ -1074,8 +1080,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             addError("Cannot access private field '" + memberAccess->getMember() + "' of class '" + foundClass + "'");
             return objReg;
         }
+        uint8_t offsetReg = emitConstant(static_cast<int64_t>(offset));
+        emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+        emit(Opcode::MOV, OperandsR{2, offsetReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_object_get_field_p_i8");
+        freeRegister(offsetReg);
         uint8_t dest = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{dest, objReg, static_cast<int16_t>(offset)});
+        emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
         freeRegister(objReg);
         return dest;
     }
@@ -1441,7 +1452,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
                 }
                 lhsReg = allocateRegister();
-                emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
+                uint8_t offsetReg = emitConstant(static_cast<int64_t>(offset));
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, offsetReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_object_get_field_p_i8");
+                freeRegister(offsetReg);
+                emit(Opcode::MOV, OperandsR{lhsReg, 1, 0, 0});
             } else {
                 addError("Undefined member: " + leftMember->getMember());
             }
@@ -1464,7 +1480,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emit(op, OperandsR{resultReg, lhsReg, rhsReg, func});
             
             if (isMember) {
-                emit(Opcode::ST_D, OperandsI{resultReg, objReg, static_cast<int16_t>(offset)});
+                uint8_t setOffsetReg = emitConstant(static_cast<int64_t>(offset));
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, setOffsetReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{3, resultReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_object_set_field_v_p_i8_p");
+                freeRegister(setOffsetReg);
                 freeRegister(objReg);
             } else {
                 emit(Opcode::ST_D, OperandsI{resultReg, 30, static_cast<int16_t>(offset)});
@@ -1511,7 +1532,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
                 }
                 lhsReg = allocateRegister();
-                emit(Opcode::LD_D, OperandsI{lhsReg, objReg, static_cast<int16_t>(offset)});
+                uint8_t offsetReg = emitConstant(static_cast<int64_t>(offset));
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, offsetReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_object_get_field_p_i8");
+                freeRegister(offsetReg);
+                emit(Opcode::MOV, OperandsR{lhsReg, 1, 0, 0});
             } else {
                 addError("Undefined member: " + leftMember->getMember());
             }
@@ -1524,7 +1550,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emit(Opcode::ARITH, OperandsR{resultReg, lhsReg, oneReg, func});
             
             if (isMember) {
-                emit(Opcode::ST_D, OperandsI{resultReg, objReg, static_cast<int16_t>(offset)});
+                uint8_t setOffsetReg = emitConstant(static_cast<int64_t>(offset));
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, setOffsetReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{3, resultReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_object_set_field_v_p_i8_p");
+                freeRegister(setOffsetReg);
                 freeRegister(objReg);
             } else {
                 emit(Opcode::ST_D, OperandsI{resultReg, 30, static_cast<int16_t>(offset)});
@@ -1570,7 +1601,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (!canWriteField(leftMember->getMember(), foundClass)) {
                     addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
                 }
-                emit(Opcode::ST_D, OperandsI{valueReg, objReg, static_cast<int16_t>(offset)});
+                uint8_t setOffsetReg = emitConstant(static_cast<int64_t>(offset));
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, setOffsetReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{3, valueReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_object_set_field_v_p_i8_p");
+                freeRegister(setOffsetReg);
             } else {
                 addError("Undefined member: " + leftMember->getMember());
             }
@@ -1585,9 +1621,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t arrReg = visitExpression(arrayAccess->getArray());
         uint8_t idxReg = visitExpression(arrayAccess->getIndex());
         
-        // Bounds check: compare idx against length at [arrReg + 0]
+        // Bounds check: compare idx against length via runtime call
         uint8_t lenReg = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{lenReg, arrReg, 0});
+        emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_array_length_v_p");
+        emit(Opcode::MOV, OperandsR{lenReg, 1, 0, 0});
         uint8_t cmpReg = allocateRegister();
         emit(Opcode::CMP, OperandsR{cmpReg, idxReg, lenReg, 1}); // 1 = BLT (idx < len)
         freeRegister(lenReg);
@@ -1597,27 +1635,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         emitBranch(Opcode::BEQ, cmpReg, 0, trapLabel); // if idx >= len, trap
         freeRegister(cmpReg);
         
-        // Compute element address: arr + 32 + idx * 8 (ARRAY_HEADER_WORDS=4, offset=32)
-        uint8_t shiftReg = emitConstant(3); 
-        uint8_t scaledIdx = allocateRegister();
-        emit(Opcode::SHIFT, OperandsR{scaledIdx, idxReg, shiftReg, 0}); // idx * 8
-        freeRegister(shiftReg);
-        freeRegister(idxReg);
-        
-        uint8_t headerSize = emitConstant(32);
-        uint8_t offsetReg = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{offsetReg, scaledIdx, headerSize, 0}); // idx*8 + 32
-        freeRegister(headerSize);
-        freeRegister(scaledIdx);
-        
-        uint8_t finalAddr = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{finalAddr, arrReg, offsetReg, 0});
+        // Access element via runtime call
+        emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+        emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
         freeRegister(arrReg);
-        freeRegister(offsetReg);
-        
+        freeRegister(idxReg);
         uint8_t dest = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{dest, finalAddr, 0});
-        freeRegister(finalAddr);
+        emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
         
         emitJump(Opcode::JMP, 0, afterAccess);
         
@@ -2116,4 +2141,3 @@ bool HVMCodeGenerator::canWriteField(const std::string& fieldName, const std::st
     return false;
 }
 } // namespace hooc
-

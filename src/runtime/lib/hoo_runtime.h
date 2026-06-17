@@ -96,6 +96,21 @@ int64_t hoo_get_refcount(void* obj);
 int64_t hoo_get_type_id(void* obj);
 
 /**
+ * Returns non-zero when obj is a live object allocated by hoo_alloc.
+ */
+int64_t hoo_is_managed_object(const void* obj);
+
+/**
+ * Write an int64/pointer value to an object field at the given byte offset.
+ */
+void hoo_object_set_field(void* obj, int64_t offset, int64_t value);
+
+/**
+ * Read an int64/pointer value from an object field at the given byte offset.
+ */
+int64_t hoo_object_get_field(void* obj, int64_t offset);
+
+/**
  * Get the current capacity of a managed object in bytes.
  */
 int64_t hoo_get_capacity(void* obj);

@@ -397,16 +397,7 @@ bool isSpecDevirtualizableName(const std::string& name) {
     return false;
 }
 
-std::mutex gManagedObjectsMu;
-std::unordered_set<uintptr_t> gManagedObjects;
 std::mutex gShadowHandlersMu;
-
-// Bump allocator for HVM memory space objects (used by JIT for `new` expressions)
-// Objects are allocated at offsets into the HVM memory array.
-// The stack grows down from the top, so we allocate from a reserved region upward.
-static constexpr uint64_t kHvmHeapStart = 1024 * 1024; // 1 MB for heap
-static constexpr uint64_t kHvmHeapLimit = 14 * 1024 * 1024; // 14 MB limit
-static std::atomic<uint64_t> gHvmBumpNext{kHvmHeapStart};
 
 struct ShadowHandlerFrame {
     uint64_t handlerPc = 0;
@@ -422,46 +413,6 @@ std::unordered_map<void*, HVMJIT*> gStateOwnerByPtr;
 std::mutex gInboundTrampolineOwnerMu;
 std::array<HVMJIT*, kMaxInboundTrampolineSlots> gInboundTrampolineOwnerBySlot{};
 size_t gInboundNextSlot = 0;
-
-void* tracked_alloc(size_t size, int64_t typeId) {
-    void* obj = hoo_alloc(size, typeId);
-    if (!obj) return nullptr;
-    std::lock_guard<std::mutex> lk(gManagedObjectsMu);
-    gManagedObjects.insert(reinterpret_cast<uintptr_t>(obj));
-    return obj;
-}
-
-bool is_tracked_ptr(uintptr_t p) {
-    if (p == 0) return false;
-    std::lock_guard<std::mutex> lk(gManagedObjectsMu);
-    return gManagedObjects.find(p) != gManagedObjects.end();
-}
-
-void* tracked_retain(uintptr_t p) {
-    if (!is_tracked_ptr(p)) return reinterpret_cast<void*>(p);
-    return hoo_retain(reinterpret_cast<void*>(p));
-}
-
-void tracked_release(uintptr_t p) {
-    if (!is_tracked_ptr(p)) return;
-    void* obj = reinterpret_cast<void*>(p);
-    int64_t rc = hoo_get_refcount(obj);
-    hoo_release(obj);
-    if (rc <= 1) {
-        std::lock_guard<std::mutex> lk(gManagedObjectsMu);
-        gManagedObjects.erase(p);
-    }
-}
-
-int64_t tracked_refcount(uintptr_t p) {
-    if (!is_tracked_ptr(p)) return 0;
-    return hoo_get_refcount(reinterpret_cast<void*>(p));
-}
-
-int64_t tracked_typeid(uintptr_t p) {
-    if (!is_tracked_ptr(p)) return 0;
-    return hoo_get_type_id(reinterpret_cast<void*>(p));
-}
 
 uint64_t shadow_push_handler(HVMJIT::HVMState* state, uint64_t handlerPc) {
     if (!state) return 0;
@@ -602,40 +553,29 @@ extern "C" {
 
     uint64_t jit_hoo_alloc(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        
-        // Allocate from HVM memory space (bump allocator), not from C heap.
-        // The returned offset is used as an index into state->memory[] for ST.D/LD.D.
+        // Unified allocation: use the runtime's C heap allocator (hoo_alloc).
+        // Returns a real C heap pointer instead of an HVM bump offset.
         size_t size = static_cast<size_t>(state->regs[1]);
-        // Align to 8 bytes
-        size = (size + 7) & ~7;
-        uint64_t offset = gHvmBumpNext.fetch_add(size);
-        
-        if (offset + size > kHvmHeapLimit) {
-            
-            return 0;
-        }
-        // Zero-initialize the allocation
-        if (state->memory) {
-            std::memset(state->memory + offset, 0, size);
-        }
-        return offset;
+        int64_t typeId = state->regs[2];
+        void* obj = hoo_alloc(size, typeId);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(obj));
     }
     uint64_t jit_hoo_retain(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_retain(static_cast<uintptr_t>(state->regs[1]))));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_retain(reinterpret_cast<void*>(state->regs[1]))));
     }
     uint64_t jit_hoo_release(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        tracked_release(static_cast<uintptr_t>(state->regs[1]));
+        hoo_release(reinterpret_cast<void*>(state->regs[1]));
         return 0;
     }
     uint64_t jit_hoo_get_refcount(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(tracked_refcount(static_cast<uintptr_t>(state->regs[1])));
+        return static_cast<uint64_t>(hoo_get_refcount(reinterpret_cast<void*>(state->regs[1])));
     }
     uint64_t jit_hoo_get_type_id(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(tracked_typeid(static_cast<uintptr_t>(state->regs[1])));
+        return static_cast<uint64_t>(hoo_get_type_id(reinterpret_cast<void*>(state->regs[1])));
     }
     uint64_t jit_hoo_string_from_cstr(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -748,8 +688,9 @@ extern "C" {
     }
     uint64_t jit_hoo_array_get_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        int64_t* dest = reinterpret_cast<int64_t*>(state->memory + state->regs[3]);
-        return static_cast<uint64_t>(hoo_array_get_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2], dest));
+        int64_t dest = 0;
+        hoo_array_get_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
+        return static_cast<uint64_t>(dest);
     }
     uint64_t jit_hoo_map_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -757,11 +698,6 @@ extern "C" {
     }
     uint64_t jit_hoo_exception_runtime(void* /*state_ptr*/) {
         HooException exc = hoo_exception_runtime("hvm runtime exception");
-        if (!exc) return 0;
-        {
-            std::lock_guard<std::mutex> lk(gManagedObjectsMu);
-            gManagedObjects.insert(reinterpret_cast<uintptr_t>(exc));
-        }
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
     }
     uint64_t jit_hoo_exception_clear(void* /*state_ptr*/) {
@@ -879,6 +815,20 @@ extern "C" {
     uint64_t jit_array_empty(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_array_empty(reinterpret_cast<void*>(state->regs[1])));
+    }
+    // ── Object field access helpers ──────────────────────────────────────
+    uint64_t jit_object_get_field(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_object_get_field(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_object_set_field(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_object_set_field(reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3]);
+        return 0;
+    }
+    uint64_t jit_array_set_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_array_set(reinterpret_cast<void*>(state->regs[1]), state->regs[2], reinterpret_cast<void*>(&state->regs[3])));
     }
     uint64_t jit_array_push_string(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -1999,28 +1949,23 @@ extern "C" {
 
     // HVM internal sys calls (for interpreter)
     extern "C" uint64_t hooc_hvm_sys_alloc(uint64_t size, uint64_t typeId) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_alloc(static_cast<size_t>(size), static_cast<int64_t>(typeId))));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_alloc(static_cast<size_t>(size), static_cast<int64_t>(typeId))));
     }
     extern "C" uint64_t hooc_hvm_sys_retain(uint64_t obj) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(tracked_retain(static_cast<uintptr_t>(obj))));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_retain(reinterpret_cast<void*>(obj))));
     }
     extern "C" uint64_t hooc_hvm_sys_release(uint64_t obj) {
-        tracked_release(static_cast<uintptr_t>(obj));
+        hoo_release(reinterpret_cast<void*>(obj));
         return 0;
     }
     extern "C" uint64_t hooc_hvm_sys_refcount(uint64_t obj) {
-        return static_cast<uint64_t>(tracked_refcount(static_cast<uintptr_t>(obj)));
+        return static_cast<uint64_t>(hoo_get_refcount(reinterpret_cast<void*>(obj)));
     }
     extern "C" uint64_t hooc_hvm_sys_typeid(uint64_t obj) {
-        return static_cast<uint64_t>(tracked_typeid(static_cast<uintptr_t>(obj)));
+        return static_cast<uint64_t>(hoo_get_type_id(reinterpret_cast<void*>(obj)));
     }
     extern "C" uint64_t hooc_hvm_sys_exception_runtime(uint64_t /*reserved*/) {
         HooException exc = hoo_exception_runtime("hvm runtime exception");
-        if (!exc) return 0;
-        {
-            std::lock_guard<std::mutex> lk(gManagedObjectsMu);
-            gManagedObjects.insert(reinterpret_cast<uintptr_t>(exc));
-        }
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
     }
     extern "C" uint64_t hooc_hvm_sys_push_handler_state(void* state_ptr, uint64_t handler_pc) {
@@ -2238,10 +2183,16 @@ extern "C" {
     }
 
     HVM_RUNTIME_EXPORT void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
-        (void)tracked_retain(static_cast<uintptr_t>(obj));
+        void* ptr = reinterpret_cast<void*>(obj);
+        if (hoo_is_managed_object(ptr)) {
+            hoo_retain(ptr);
+        }
     }
     HVM_RUNTIME_EXPORT void hooc_hvm_arc_release_if_managed(uint64_t obj) {
-        tracked_release(static_cast<uintptr_t>(obj));
+        void* ptr = reinterpret_cast<void*>(obj);
+        if (hoo_is_managed_object(ptr)) {
+            hoo_release(ptr);
+        }
     }
 }
 
@@ -2391,6 +2342,10 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_array_get_string_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
         {"_F_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_array_get_bool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
+        {"_F_array_set_v_p_i8_p", reinterpret_cast<void*>(&jit_array_set_int64)},
+        // Object field access helpers
+        {"_F_object_get_field_p_i8", reinterpret_cast<void*>(&jit_object_get_field)},
+        {"_F_object_set_field_v_p_i8_p", reinterpret_cast<void*>(&jit_object_set_field)},
         // Map aliases (codegen-generated plain names)
         {"_F_map_new_v_p", reinterpret_cast<void*>(&jit_map_new_plain)},
         {"_F_map_set_int64_int64_v_p_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
@@ -5980,8 +5935,6 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
         return -1;
     }
     // Reset the HVM heap allocator for this run
-    gHvmBumpNext.store(kHvmHeapStart);
-    
     std::optional<uintptr_t> resolvedAddress;
     // Search the primary module's JITDylib (NOT the main dylib)
     auto primaryJdIt = moduleDylibs_.find(primaryModuleName_);

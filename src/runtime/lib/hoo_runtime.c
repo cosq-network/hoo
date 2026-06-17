@@ -5,6 +5,7 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <pthread.h>
 
 /**
  * Object Header Layout (hidden from Hooc code):
@@ -63,6 +64,63 @@ typedef struct TLABObjNode {
 } TLABObjNode;
 
 static _Thread_local TLABObjNode* g_tlab_objects = NULL;
+
+typedef struct ManagedObjNode {
+    void* obj;
+    struct ManagedObjNode* next;
+} ManagedObjNode;
+
+static pthread_mutex_t g_managed_objects_mutex = PTHREAD_MUTEX_INITIALIZER;
+static ManagedObjNode* g_managed_objects = NULL;
+
+static void managed_register(void* obj) {
+    ManagedObjNode* node = (ManagedObjNode*)malloc(sizeof(ManagedObjNode));
+    if (!node) {
+        fprintf(stderr, "FATAL: Out of memory while tracking managed allocation\n");
+        exit(1);
+    }
+    node->obj = obj;
+    pthread_mutex_lock(&g_managed_objects_mutex);
+    node->next = g_managed_objects;
+    g_managed_objects = node;
+    pthread_mutex_unlock(&g_managed_objects_mutex);
+}
+
+static void managed_unregister(void* obj) {
+    pthread_mutex_lock(&g_managed_objects_mutex);
+    ManagedObjNode* prev = NULL;
+    ManagedObjNode* it = g_managed_objects;
+    while (it) {
+        if (it->obj == obj) {
+            if (prev) {
+                prev->next = it->next;
+            } else {
+                g_managed_objects = it->next;
+            }
+            pthread_mutex_unlock(&g_managed_objects_mutex);
+            free(it);
+            return;
+        }
+        prev = it;
+        it = it->next;
+    }
+    pthread_mutex_unlock(&g_managed_objects_mutex);
+}
+
+int64_t hoo_is_managed_object(const void* obj) {
+    if (!obj) return 0;
+    pthread_mutex_lock(&g_managed_objects_mutex);
+    ManagedObjNode* it = g_managed_objects;
+    while (it) {
+        if (it->obj == obj) {
+            pthread_mutex_unlock(&g_managed_objects_mutex);
+            return 1;
+        }
+        it = it->next;
+    }
+    pthread_mutex_unlock(&g_managed_objects_mutex);
+    return 0;
+}
 
 static size_t align_up(size_t value, size_t alignment) {
     return (value + (alignment - 1)) & ~(alignment - 1);
@@ -149,6 +207,7 @@ void* hoo_alloc(size_t size, int64_t type_id) {
         node->next = g_tlab_objects;
         g_tlab_objects = node;
     }
+    managed_register(obj);
 
 #ifdef HOO_DEBUG_MEMORY
     fprintf(stderr, "[ALLOC] obj=%p type=%lld size=%zu refcount=1\n",
@@ -227,6 +286,7 @@ void hoo_release(void* obj) {
 #endif
 
         atomic_thread_fence(memory_order_acquire);
+        managed_unregister(obj);
 
         memory_stats.total_deallocations++;
         memory_stats.current_live_objects--;
@@ -272,6 +332,16 @@ int64_t hoo_get_type_id(void* obj) {
 
     HooObjectHeader* header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
     return header->type_id;
+}
+
+void hoo_object_set_field(void* obj, int64_t offset, int64_t value) {
+    if (!obj) return;
+    *(int64_t*)((char*)obj + offset) = value;
+}
+
+int64_t hoo_object_get_field(void* obj, int64_t offset) {
+    if (!obj) return 0;
+    return *(int64_t*)((char*)obj + offset);
 }
 
 int64_t hoo_get_capacity(void* obj) {
@@ -331,6 +401,7 @@ void hoo_tlab_reset_thread_cache(void) {
     TLABObjNode* it = g_tlab_objects;
     while (it) {
         TLABObjNode* next = it->next;
+        managed_unregister(it->obj);
         free(it);
         it = next;
     }

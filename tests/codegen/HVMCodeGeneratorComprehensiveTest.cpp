@@ -228,18 +228,26 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Literals) {
     }
     EXPECT_GE(movzCount, 3);
     
-    // Check for MOV rX, r1 (this)
-    bool foundThis = false;
+    // `this` is preserved in the frame because runtime helper calls clobber r1.
+    bool foundThisStore = false;
+    bool foundThisLoad = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::MOV) {
+        if (inst.getOpcode() == Opcode::ST_D) {
             auto ops = inst.getOperands();
-            if (std::holds_alternative<OperandsR>(ops) && std::get<OperandsR>(ops).rs1 == 1) {
-                foundThis = true;
-                break;
+            if (std::holds_alternative<OperandsI>(ops)) {
+                auto i = std::get<OperandsI>(ops);
+                if (i.rd == 1 && i.rs == 30) foundThisStore = true;
+            }
+        } else if (inst.getOpcode() == Opcode::LD_D) {
+            auto ops = inst.getOperands();
+            if (std::holds_alternative<OperandsI>(ops)) {
+                auto i = std::get<OperandsI>(ops);
+                if (i.rs == 30) foundThisLoad = true;
             }
         }
     }
-    EXPECT_TRUE(foundThis);
+    EXPECT_TRUE(foundThisStore);
+    EXPECT_TRUE(foundThisLoad);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, UnaryNot) {
@@ -473,18 +481,22 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ClassWithMethodAndFieldAccess) {
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    // Method should have field access: LD_D for this.count, ARITH for +1, ST_D for store
-    bool foundLoad = false;
+    // Method should have field access via MOV+CALL instead of LD_D/ST_D.
+    // Check that ARITH (+1) is present and that the module references the
+    // field-access runtime functions in its symbol table.
     bool foundArith = false;
-    bool foundStore = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::LD_D) foundLoad = true;
         if (inst.getOpcode() == Opcode::ARITH) foundArith = true;
-        if (inst.getOpcode() == Opcode::ST_D) foundStore = true;
     }
-    EXPECT_TRUE(foundLoad);
+    bool foundGetField = false;
+    bool foundSetField = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_F_object_get_field_p_i8") != std::string::npos) foundGetField = true;
+        if (sym.name.find("_F_object_set_field_v_p_i8_p") != std::string::npos) foundSetField = true;
+    }
+    EXPECT_TRUE(foundGetField);
     EXPECT_TRUE(foundArith);
-    EXPECT_TRUE(foundStore);
+    EXPECT_TRUE(foundSetField);
 }
 
 // ============================================================================
