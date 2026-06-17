@@ -1,6 +1,6 @@
 # Hoo
 
-Last Updated: 2026-06-17
+Last Updated: 2026-06-18
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
