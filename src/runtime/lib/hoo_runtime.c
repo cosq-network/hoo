@@ -5,7 +5,20 @@
 #include <stdatomic.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+#ifdef _WIN32
+#include <windows.h>
+typedef SRWLOCK hoo_mutex_t;
+#define HOO_MUTEX_INIT SRWLOCK_INIT
+static void hoo_mutex_lock(hoo_mutex_t* m) { AcquireSRWLockExclusive(m); }
+static void hoo_mutex_unlock(hoo_mutex_t* m) { ReleaseSRWLockExclusive(m); }
+#else
 #include <pthread.h>
+typedef pthread_mutex_t hoo_mutex_t;
+#define HOO_MUTEX_INIT PTHREAD_MUTEX_INITIALIZER
+static void hoo_mutex_lock(hoo_mutex_t* m) { pthread_mutex_lock(m); }
+static void hoo_mutex_unlock(hoo_mutex_t* m) { pthread_mutex_unlock(m); }
+#endif
 
 /**
  * Object Header Layout (hidden from Hooc code):
@@ -70,7 +83,7 @@ typedef struct ManagedObjNode {
     struct ManagedObjNode* next;
 } ManagedObjNode;
 
-static pthread_mutex_t g_managed_objects_mutex = PTHREAD_MUTEX_INITIALIZER;
+static hoo_mutex_t g_managed_objects_mutex = HOO_MUTEX_INIT;
 static ManagedObjNode* g_managed_objects = NULL;
 
 static void managed_register(void* obj) {
@@ -80,14 +93,14 @@ static void managed_register(void* obj) {
         exit(1);
     }
     node->obj = obj;
-    pthread_mutex_lock(&g_managed_objects_mutex);
+    hoo_mutex_lock(&g_managed_objects_mutex);
     node->next = g_managed_objects;
     g_managed_objects = node;
-    pthread_mutex_unlock(&g_managed_objects_mutex);
+    hoo_mutex_unlock(&g_managed_objects_mutex);
 }
 
 static void managed_unregister(void* obj) {
-    pthread_mutex_lock(&g_managed_objects_mutex);
+    hoo_mutex_lock(&g_managed_objects_mutex);
     ManagedObjNode* prev = NULL;
     ManagedObjNode* it = g_managed_objects;
     while (it) {
@@ -97,28 +110,28 @@ static void managed_unregister(void* obj) {
             } else {
                 g_managed_objects = it->next;
             }
-            pthread_mutex_unlock(&g_managed_objects_mutex);
+            hoo_mutex_unlock(&g_managed_objects_mutex);
             free(it);
             return;
         }
         prev = it;
         it = it->next;
     }
-    pthread_mutex_unlock(&g_managed_objects_mutex);
+    hoo_mutex_unlock(&g_managed_objects_mutex);
 }
 
 int64_t hoo_is_managed_object(const void* obj) {
     if (!obj) return 0;
-    pthread_mutex_lock(&g_managed_objects_mutex);
+    hoo_mutex_lock(&g_managed_objects_mutex);
     ManagedObjNode* it = g_managed_objects;
     while (it) {
         if (it->obj == obj) {
-            pthread_mutex_unlock(&g_managed_objects_mutex);
+            hoo_mutex_unlock(&g_managed_objects_mutex);
             return 1;
         }
         it = it->next;
     }
-    pthread_mutex_unlock(&g_managed_objects_mutex);
+    hoo_mutex_unlock(&g_managed_objects_mutex);
     return 0;
 }
 
