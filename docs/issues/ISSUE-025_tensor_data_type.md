@@ -1,64 +1,90 @@
 # ISSUE-025: Implementation Plan for `tensor` Data Type
 
 ## 1. Overview
-This document outlines the detailed implementation plan to introduce a native `tensor` data type to the Hoo language. The `tensor` type will represent 1D, 2D, or 3D fixed-size arrays optimized for AI/ML matrix algebra. It will natively support numerical primitives: `int8`, `int64`, `f8` (8-bit floating point, to be implemented), and `f64`.
+This document outlines the detailed implementation plan to introduce a native `tensor` data type to the Hoo language. The `tensor` type will represent 1D, 2D, or 3D fixed-size arrays optimized for AI/ML matrix algebra. It will natively support numerical primitives: `bit`, `int8`, `int64`, `f8` (8-bit floating point), and `f64`.
 
 The implementation requires full-stack integration: from parser grammar and AST nodes, down through the code generator, to the LLVM-based JIT and the C++ runtime library.
 
-## 2. Technical Requirements
+## 2. Low-Precision Data Types Specification
 
-### 2.1 Grammar Updates (`src/parsing/Hooc.g4`)
-- **Type Declaration**: Add `tensor` as a recognized primitive/complex type.
-- **Dimensionality Syntax**: Define syntax for shape declarations (e.g., `tensor<f64>[10, 10]`).
-- **Literal Syntax**: Add syntax for tensor literals (e.g., `[[1.0, 2.0], [3.0, 4.0]]t` or similar matrix notation).
-- **Matrix Operators**: Ensure matrix multiplication (`*`), element-wise multiplication (`.*`), and transposition operators (`^T` or method calls) are supported by the grammar.
+### 2.1 `f8` (8-bit Floating Point)
+To support modern AI/ML quantization strategies (e.g., OCP FP8), Hoo will implement two variants of the `f8` type:
+- **`f8e4m3`**: 1 sign bit, 4 exponent bits, 3 mantissa bits. Optimized for higher precision during inference.
+- **`f8e5m2`**: 1 sign bit, 5 exponent bits, 2 mantissa bits. Optimized for wider dynamic range during training (similar to half-precision but smaller).
 
-### 2.2 AST Updates (`src/ast/`)
-- **Type Nodes**: Create a `TensorType` node extending `Type` that stores the underlying element type (`int8`, `int64`, `f8`, `f64`) and the dimensionality/shape.
-- **Expression Nodes**: Create a `TensorLiteral` expression node to capture multi-dimensional literal definitions.
-- **AST Builder**: Update `SimpleASTBuilder.cpp` to map the new grammar rules to the new AST nodes.
+**Implementation Details**:
+- **Storage**: Occupies 1 byte in memory.
+- **Arithmetic**: In the HVM core, `f8` values are promoted to `f64` for individual register-based arithmetic. Tensors will use specialized SIMD/Hardware intrinsics for batch `f8` operations.
+- **JIT**: Maps to LLVM's `f8e5m2` or `f8e4m3fn` types where available (e.g., for Hopper/H100 architectures).
 
-### 2.3 Code Generation (`src/codegen/HVMCodeGenerator.cpp`)
-- **Type ID**: Assign a unique type ID for tensors (e.g., `104` to follow Arrays `102` and Maps `103`). Update `getTypeId()` logic.
-- **Allocation**: Lower tensor declarations to a new runtime allocation intrinsic (`_F_hoo_tensor_alloc...`).
+### 2.2 `bit` (1-bit Numerical Type)
+The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which represents logical truth, `bit` is a numerical primitive intended for hardware-level bitmasking, logical gates, and Binary Neural Networks (BNNs).
+
+**Implementation Details**:
+- **Logic**: `0` or `1`. Arithmetic operations (add, mul) follow modular arithmetic or logical gate equivalents.
+- **Storage in Scalars**: Occupies 1 byte in a standard register for simplicity during local execution.
+- **Storage in Tensors**: **Packed Storage**. A `tensor<bit>` will pack 8 bits into a single byte, providing an 8x reduction in memory footprint compared to `int8` tensors.
+- **Conversions**: Explicitly castable to `int64` (0 or 1) and `bool` (0 -> false, 1 -> true).
+
+## 3. Technical Requirements
+
+### 3.1 Grammar Updates (`src/parsing/Hooc.g4`)
+- **Type Declaration**: Add `tensor`, `f8`, and `bit` as recognized types.
+- **Dimensionality Syntax**: Define syntax for shape declarations (e.g., `tensor<f8>[10, 10]`).
+- **Literal Syntax**: 
+  - `0b` or `1b` for `bit` literals.
+  - Floating point literals with an `f8` suffix (e.g., `0.5f8`).
+  - Tensor literals (e.g., `[[1, 0], [1, 1]]t` for bit-tensors).
+- **Matrix Operators**: Support matrix multiplication (`*`), element-wise multiplication (`.*`), and transposition (`^T`).
+
+### 3.2 AST Updates (`src/ast/`)
+- **Type Nodes**: Update `PrimitiveTypeKind` to include `F8` and `BIT`. Create a `TensorType` node storing element type and shape.
+- **Expression Nodes**: Add `BitLiteral` and `TensorLiteral`.
+- **AST Builder**: Update `SimpleASTBuilder.cpp` to handle new literals and type declarations.
+
+### 3.3 Code Generation (`src/codegen/HVMCodeGenerator.cpp`)
+- **Type IDs**: Assign unique IDs: `bit` (8), `f8` (9), `tensor` (104).
+- **Allocation**: Lower `tensor` declarations to `_F_hoo_tensor_alloc`. For `tensor<bit>`, calculate packed buffer size (`(dims + 7) / 8`).
 - **Operator Lowering**: 
-  - Overload binary operators (`+`, `-`, `*`) in `visitBinaryExpression`.
-  - When both operands are tensors, lower the operation to a JIT/Runtime intrinsic (e.g., `_F_hoo_tensor_matmul`) instead of standard `Opcode::ARITH`.
-- **Indexing**: Lower multi-dimensional subscript access (`t[i, j]`) into flat memory offset calculations with bounds checking.
+  - Overload `+`, `-`, `*` for tensors.
+  - Implement **Type Promotion Rules**: Tensors of different precision (e.g., `tensor<f8> * tensor<f64>`) should promote to the higher precision or follow explicit quantization rules.
+- **Indexing**: 
+  - Standard types: `base + header + (i * stride_i + j * stride_j) * size`.
+  - `bit` types: `base + header + (offset / 8)`, followed by bit-masking `(1 << (offset % 8))`.
 
-### 2.4 JIT Integration (`src/hvm/HVMJIT.cpp`)
-- **Wrappers**: Register JIT function wrappers for all tensor runtime functions.
-- **f8 Support**: The JIT must be updated to handle `f8` types via LLVM's `f8e5m2` or `f8e4m3fn` if hardware support is desired, or soft-float emulation if not.
-- **Optimizations**: Potentially map matrix operations to accelerated BLAS/LAPACK or specialized hardware intrinsics during the LLVM IR translation phase.
+### 3.4 JIT Integration (`src/hvm/HVMJIT.cpp`)
+- **Wrappers**: Register JIT function wrappers for tensor math.
+- **Low-Precision Backend**: 
+  - Use LLVM `half` or `float` as intermediates for `f8` if native `f8` is missing.
+  - Use bitwise IR operations for `tensor<bit>` acceleration.
 
-### 2.5 Runtime Library (`src/runtime/lib/`)
-- **Memory Model**: Create `hoo_tensor.h` and `hoo_tensor.cpp`. Define a `HooTensor` struct with an ARC-compliant 16-byte header, shape metadata (stride, dimensions), and a contiguous data buffer.
-- **Element Types**: Implement strict checks restricting elements to `int8`, `int64`, `f8`, and `f64`.
-- **Math Routines**: Implement high-performance C++ routines for:
-  - Element-wise operations (add, sub, mul, div, ReLU, Sigmoid).
-  - Matrix multiplication (Dot product, GEMM).
-  - Transposition and reshaping.
+### 3.5 Runtime Library (`src/runtime/lib/`)
+- **`HooTensor`**: Extend struct to handle `bit` packing flags.
+- **Math Routines**: 
+  - `f8` GEMM (General Matrix Multiplication) using optimized kernels.
+  - `bit` Popcount/XNOR-based convolution for BNN support.
+  - Element-wise ReLU/Sigmoid optimized for `f8`.
 
-## 3. Implementation Phases
+## 4. Implementation Phases
 
-### Phase 1: Foundation (f8 & Grammar)
-1. Add the `f8` primitive type to the compiler stack (Grammar, AST, Codegen).
-2. Update the Hoo grammar (`Hooc.g4`) to support the `tensor` keyword, shape declarations, and tensor literals.
-3. Generate the ANTLR C++ parser files.
+### Phase 1: Foundation (f8, bit & Grammar)
+1. Add `f8` and `bit` to the compiler stack (Grammar, AST, Codegen).
+2. Update `Hooc.g4` for `tensor` syntax and new literals.
+3. Regenerate ANTLR C++ parser.
 
-### Phase 2: Runtime Library (`hoort`)
-1. Define the `HooTensor` ARC-managed struct.
-2. Implement memory allocation, reference counting (`retain`/`release`), and bounds-checked read/write access.
-3. Implement basic matrix algebra C functions (addition, element-wise multiplication, dot product).
+### Phase 2: Runtime Tensor Storage
+1. Implement `HooTensor` with bit-packing support for `tensor<bit>`.
+2. Implement reference counting and bounds-checked multi-dimensional indexing.
 
-### Phase 3: Codegen & JIT Binding
-1. Update `HVMCodeGenerator` to construct `TensorType` and `TensorLiteral` AST nodes.
-2. Implement lowering rules to translate tensor operations into runtime function calls.
-3. Register the C functions in `HVMJIT.cpp` so they are resolvable by the bytecode.
+### Phase 3: Matrix Algebra & Codegen
+1. Implement `f8` and `bit` optimized math kernels in `hoort`.
+2. Update `HVMCodeGenerator` to lower tensor expressions to these kernels.
+3. Bind kernels in `HVMJIT.cpp`.
 
-### Phase 4: Verification & Optimization
-1. Add extensive unit tests in `tests/runtime/` and `tests/jit/` for memory safety, bounds checking, and math accuracy.
-2. Optimize the C++ runtime implementations (e.g., using SIMD intrinsics or linking a BLAS library).
+### Phase 4: AI/ML Specialized Operations
+1. Implement high-level tensor operations: `reshape`, `transpose`, `softmax`.
+2. Verification with 1D/2D/3D test cases.
+
 
 ## 4. Status
 - **Date**: 2026-06-16
