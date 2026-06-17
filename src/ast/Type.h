@@ -24,6 +24,8 @@ enum class PrimitiveTypeKind {
     FLOAT,
     DOUBLE,
     F64,
+    F8,
+    BIT,
     BOOL,
     CHAR,
     STRING,

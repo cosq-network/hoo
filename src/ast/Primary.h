@@ -53,6 +53,33 @@ private:
     double value_;
 };
 
+// f8 literal. Scalar execution stores the promoted f64 value bits; the distinct
+// node preserves the language-level type for type IDs and mangling.
+class F8Literal : public Primary {
+public:
+    F8Literal(double value) : value_(value) {}
+
+    std::string toString() const override;
+
+    double getValue() const { return value_; }
+
+private:
+    double value_;
+};
+
+// Bit literal (0b or 1b)
+class BitLiteral : public Primary {
+public:
+    BitLiteral(int64_t value) : value_(value ? 1 : 0) {}
+
+    std::string toString() const override;
+
+    int64_t getValue() const { return value_; }
+
+private:
+    int64_t value_;
+};
+
 // String literal
 class StringLiteral : public Primary {
 public:

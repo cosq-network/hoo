@@ -50,6 +50,8 @@ INT64: 'int64';
 FLOAT: 'float';
 DOUBLE: 'double';
 F64: 'f64';
+F8: 'f8';
+BIT: 'bit';
 BOOL: 'bool';
 CHAR: 'char';
 STRING: 'string';
@@ -103,6 +105,8 @@ STRING_LITERAL: '"' (~["\\\r\n] | '\\' .)* '"';
 CHAR_LITERAL: '\'' (~['\\\r\n] | '\\' .) '\'';
 
 // Number Literals
+BIT_LITERAL: [01] 'b';
+F8_LITERAL: [0-9]+ '.' [0-9]+ 'f8';
 INTEGER_LITERAL: [0-9]+;
 FLOATING_LITERAL: [0-9]+ '.' [0-9]+;
 
@@ -195,7 +199,7 @@ mapType: MAP LBRACKET mapKeyType COMMA type RBRACKET;
 
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 
-primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | BOOL | CHAR | STRING | VOID;
+primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BOOL | CHAR | STRING | VOID;
 
 
 // Statements
@@ -303,6 +307,8 @@ augmentedAssignment
 primary
     : IDENTIFIER                                             // Simple identifier or function call
     | THIS                                                   // Current object instance
+    | BIT_LITERAL
+    | F8_LITERAL
     | INTEGER_LITERAL
     | FLOATING_LITERAL
     | STRING_LITERAL

@@ -215,7 +215,9 @@ TEST_F(SymbolManglerTest, TypeMangling) {
     EXPECT_EQ(SymbolMangler::mangleType("string"), "s");
     EXPECT_EQ(SymbolMangler::mangleType("bool"), "b");
     EXPECT_EQ(SymbolMangler::mangleType("double"), "d");
+    EXPECT_EQ(SymbolMangler::mangleType("f8"), "e");
     EXPECT_EQ(SymbolMangler::mangleType("float"), "f");
+    EXPECT_EQ(SymbolMangler::mangleType("bit"), "x");
     EXPECT_EQ(SymbolMangler::mangleType("char"), "c");
     EXPECT_EQ(SymbolMangler::mangleType("void"), "v");
     EXPECT_EQ(SymbolMangler::mangleType("int8"), "i1");
@@ -228,11 +230,28 @@ TEST_F(SymbolManglerTest, TypeDemangling) {
     EXPECT_EQ(SymbolMangler::demangleType("s"), "string");
     EXPECT_EQ(SymbolMangler::demangleType("b"), "bool");
     EXPECT_EQ(SymbolMangler::demangleType("d"), "double");
+    EXPECT_EQ(SymbolMangler::demangleType("e"), "f8");
     EXPECT_EQ(SymbolMangler::demangleType("f"), "float");
+    EXPECT_EQ(SymbolMangler::demangleType("x"), "bit");
     EXPECT_EQ(SymbolMangler::demangleType("c"), "char");
     EXPECT_EQ(SymbolMangler::demangleType("v"), "void");
     EXPECT_EQ(SymbolMangler::demangleType("i1"), "int8");
     EXPECT_EQ(SymbolMangler::demangleType("p"), "ptr");
+}
+
+TEST_F(SymbolManglerTest, LowPrecisionFunctionMangling) {
+    auto f8Params = makeParams();
+    f8Params.functionName = "scale";
+    f8Params.returnType = "f8";
+    f8Params.parameterTypes = {"f8"};
+
+    auto bitParams = makeParams();
+    bitParams.functionName = "gate";
+    bitParams.returnType = "bit";
+    bitParams.parameterTypes = {"bit", "bit"};
+
+    EXPECT_EQ(SymbolMangler::mangleFunctionName(f8Params), "_F_scale_e_e");
+    EXPECT_EQ(SymbolMangler::mangleFunctionName(bitParams), "_F_gate_x_x_x");
 }
 
 TEST_F(SymbolManglerTest, DemanglingSimpleFunction) {

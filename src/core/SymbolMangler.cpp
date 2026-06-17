@@ -61,6 +61,8 @@ const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap() {
         {"float", "f"},
         {"double", "d"},
         {"f64", "d"},
+        {"f8", "e"},
+        {"bit", "x"},
         {"bool", "b"},
         {"char", "c"},
         {"string", "s"},
@@ -547,6 +549,14 @@ std::string SymbolMangler::demangleType(const std::string& mangledType) {
         if (mangledType[pos] == 'd') {
             pos++;
             return "double";
+        }
+        if (mangledType[pos] == 'e') {
+            pos++;
+            return "f8";
+        }
+        if (mangledType[pos] == 'x') {
+            pos++;
+            return "bit";
         }
         if (mangledType[pos] == 'b') {
             pos++;

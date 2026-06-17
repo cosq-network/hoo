@@ -19,6 +19,8 @@ TEST_F(ASTTypeTest, PrimitiveTypeAllKinds) {
     EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::INT64).getKind(), PrimitiveTypeKind::INT64);
     EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::FLOAT).getKind(), PrimitiveTypeKind::FLOAT);
     EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::DOUBLE).getKind(), PrimitiveTypeKind::DOUBLE);
+    EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::F8).getKind(), PrimitiveTypeKind::F8);
+    EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::BIT).getKind(), PrimitiveTypeKind::BIT);
     EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::BOOL).getKind(), PrimitiveTypeKind::BOOL);
     EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::CHAR).getKind(), PrimitiveTypeKind::CHAR);
     EXPECT_EQ(PrimitiveType(PrimitiveTypeKind::STRING).getKind(), PrimitiveTypeKind::STRING);
@@ -120,6 +122,20 @@ TEST_F(ASTTypeTest, FloatingLiteralAccessors) {
     FloatingLiteral lit(3.14);
     EXPECT_DOUBLE_EQ(lit.getValue(), 3.14);
     EXPECT_EQ(lit.toString(), "FloatingLiteral(3.140000)");
+}
+
+TEST_F(ASTTypeTest, F8LiteralAccessors) {
+    F8Literal lit(1.25);
+    EXPECT_DOUBLE_EQ(lit.getValue(), 1.25);
+    EXPECT_EQ(lit.toString(), "F8Literal");
+}
+
+TEST_F(ASTTypeTest, BitLiteralAccessors) {
+    BitLiteral one(7);
+    BitLiteral zero(0);
+    EXPECT_EQ(one.getValue(), 1);
+    EXPECT_EQ(zero.getValue(), 0);
+    EXPECT_EQ(one.toString(), "BitLiteral");
 }
 
 TEST_F(ASTTypeTest, StringLiteralAccessors) {

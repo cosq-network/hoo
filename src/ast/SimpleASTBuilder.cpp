@@ -747,6 +747,14 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
     } else if (ctx->THIS()) {
         auto thisLiteral = std::make_unique<ThisLiteral>();
         return std::make_unique<PrimaryExpression>(std::move(thisLiteral));
+    } else if (ctx->BIT_LITERAL()) {
+        int64_t value = getBitValue(ctx->BIT_LITERAL());
+        auto bitLiteral = std::make_unique<BitLiteral>(value);
+        return std::make_unique<PrimaryExpression>(std::move(bitLiteral));
+    } else if (ctx->F8_LITERAL()) {
+        double value = getF8Value(ctx->F8_LITERAL());
+        auto f8Literal = std::make_unique<F8Literal>(value);
+        return std::make_unique<PrimaryExpression>(std::move(f8Literal));
     } else if (ctx->INTEGER_LITERAL()) {
         int64_t value = getIntValue(ctx->INTEGER_LITERAL());
         auto intLiteral = std::make_unique<IntegerLiteral>(value);
@@ -984,6 +992,8 @@ PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& type
     if (typeName == "float") return PrimitiveTypeKind::FLOAT;
     if (typeName == "double") return PrimitiveTypeKind::DOUBLE;
     if (typeName == "f64") return PrimitiveTypeKind::F64;
+    if (typeName == "f8") return PrimitiveTypeKind::F8;
+    if (typeName == "bit") return PrimitiveTypeKind::BIT;
     if (typeName == "bool") return PrimitiveTypeKind::BOOL;
     if (typeName == "char") return PrimitiveTypeKind::CHAR;
     if (typeName == "string") return PrimitiveTypeKind::STRING;
@@ -1036,6 +1046,25 @@ double SimpleASTBuilder::getDoubleValue(antlr4::tree::TerminalNode* node) {
     } catch (const std::exception& e) {
         throw std::runtime_error("Failed to parse double: " + node->getText());
     }
+}
+
+double SimpleASTBuilder::getF8Value(antlr4::tree::TerminalNode* node) {
+    try {
+        std::string text = node->getText();
+        if (text.size() >= 2 && text.substr(text.size() - 2) == "f8") {
+            text.resize(text.size() - 2);
+        }
+        return std::stod(text);
+    } catch (const std::exception& e) {
+        throw std::runtime_error("Failed to parse f8: " + node->getText());
+    }
+}
+
+int64_t SimpleASTBuilder::getBitValue(antlr4::tree::TerminalNode* node) {
+    const std::string text = node->getText();
+    if (text == "0b") return 0;
+    if (text == "1b") return 1;
+    throw std::runtime_error("Invalid bit literal: " + text);
 }
 
 int64_t SimpleASTBuilder::getCharValue(antlr4::tree::TerminalNode* node) {

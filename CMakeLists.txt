@@ -404,6 +404,7 @@ if(HOO_BUILD_TESTS)
         tests/parsing/ArrayLiteralParsingTest.cpp
         tests/parsing/FunctionCallParsingTest.cpp
         tests/parsing/NullableTypeParsingTest.cpp
+        tests/parsing/LowPrecisionTypeParsingTest.cpp
         tests/parsing/VariableDeclarationParseTest.cpp
         tests/parsing/IfElseIfParsingTest.cpp
         tests/parsing/WhileLoopParsingTest.cpp
@@ -468,6 +469,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/CharacterLiteralTest.cpp
         tests/jit/HooCharacterApiJitTest.cpp
         tests/jit/FloatingLiteralTest.cpp
+        tests/jit/LowPrecisionTypesTest.cpp
         tests/jit/InterpolatedStringTest.cpp
         tests/jit/HVMJITLifecycleTest.cpp
         tests/core/HooCompilerTest.cpp

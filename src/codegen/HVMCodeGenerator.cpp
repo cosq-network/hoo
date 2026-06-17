@@ -145,6 +145,24 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     currentStackOffset_ = 0;
     allLabels_.clear();
     symbolFixups_.clear();
+    functionReturnTypes_.clear();
+    functionReturnClass_.clear();
+
+    // Register top-level function return types before emitting any body so
+    // direct calls can mangle f8/bit and other return types regardless of order.
+    for (const auto& decl : compilationUnit.getDeclarations()) {
+        if (auto funcDecl = dynamic_cast<const ast::FunctionDeclaration*>(decl.get())) {
+            if (funcDecl->getReturnType()) {
+                std::string clsName;
+                functionReturnTypes_[funcDecl->getName()] = typeIdFromDeclaredType(funcDecl->getReturnType(), &clsName);
+                if (!clsName.empty()) {
+                    functionReturnClass_[funcDecl->getName()] = clsName;
+                }
+            } else {
+                functionReturnTypes_[funcDecl->getName()] = 4;
+            }
+        }
+    }
 
     // 2. Process Imports (SHT_IMPORT)
     for (const auto& imp : compilationUnit.getImports()) {
@@ -791,6 +809,33 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             freeRegister(addrReg);
             return dest;
         }
+        if (auto f8Lit = dynamic_cast<const ast::F8Literal*>(&primary)) {
+            double val = f8Lit->getValue();
+            Section* rodata = module_->getSection(".rodata");
+            if (!rodata) {
+                Section s;
+                s.name = ".rodata";
+                s.type = SectionType::SHT_RODATA;
+                s.flags = SectionFlags::ALLOC;
+                module_->addSection(std::move(s));
+                rodata = module_->getSection(".rodata");
+            }
+            while (rodata->data.size() % 8 != 0) rodata->data.push_back(0);
+
+            uint32_t offset = static_cast<uint32_t>(rodata->data.size());
+            uint64_t bits;
+            std::memcpy(&bits, &val, sizeof(bits));
+            for (int i = 0; i < 8; ++i) {
+                rodata->data.push_back(static_cast<uint8_t>((bits >> (i * 8)) & 0xFF));
+            }
+            rodata->virtual_size = rodata->data.size();
+
+            uint8_t addrReg = emitRoDataAddress(offset);
+            uint8_t dest = allocateRegister();
+            emit(Opcode::LD_D, OperandsI{dest, addrReg, 0});
+            freeRegister(addrReg);
+            return dest;
+        }
         if (auto charLit = dynamic_cast<const ast::CharacterLiteral*>(&primary)) {
             uint8_t cpReg = emitConstant(static_cast<int64_t>(charLit->getValue()));
             emit(Opcode::MOV, OperandsR{1, cpReg, 0, 0});
@@ -802,6 +847,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         if (auto boolLit = dynamic_cast<const ast::BooleanLiteral*>(&primary)) {
             return emitConstant(boolLit->getValue() ? 1 : 0);
+        }
+        if (auto bitLit = dynamic_cast<const ast::BitLiteral*>(&primary)) {
+            return emitConstant(bitLit->getValue());
         }
         if (auto nullLit = dynamic_cast<const ast::NullLiteral*>(&primary)) {
             return emitConstant(0);
@@ -837,13 +885,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, elemReg, 0, 0});
                 
-                if (elemType == 1) {
+                if (elemType == 1 || elemType == 8) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushInt64_p_i8");
                 } else if (elemType == 101) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushObject_p_p");
                 } else if (isNestedArray) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushArray_p_p");
-                } else if (elemType == 2) {
+                } else if (elemType == 2 || elemType == 9) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushDouble_p_d");
                 } else if (elemType == 3) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushBool_p_i8");
@@ -1328,7 +1376,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     }
                 }
                 
-                mp.returnType = "void";
+                auto retIt = functionReturnTypes_.find(functionName);
+                mp.returnType = retIt != functionReturnTypes_.end()
+                                    ? typeIdToMangleType(retIt->second)
+                                    : "void";
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                          mp.parameterTypes.push_back("ptr");
@@ -1351,25 +1402,30 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t left = visitExpression(binary->getLeft());
         uint8_t right = visitExpression(binary->getRight());
         uint8_t dest = allocateRegister();
+        const uint32_t leftType = inferExpressionTypeId(binary->getLeft());
+        const uint32_t rightType = inferExpressionTypeId(binary->getRight());
+        const bool isFloatExpr = leftType == 2 || leftType == 9 || rightType == 2 || rightType == 9;
         Opcode op = Opcode::ARITH;
         uint16_t func = 0;
         switch (binary->getOperator()) {
-            case ast::BinaryOperator::PLUS:  func = 0; break;
-            case ast::BinaryOperator::MINUS: func = 1; break;
-            case ast::BinaryOperator::MULTIPLY: func = 2; break;
-            case ast::BinaryOperator::DIVIDE: func = 5; break;
+            case ast::BinaryOperator::PLUS:  op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 0; break;
+            case ast::BinaryOperator::MINUS: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 1; break;
+            case ast::BinaryOperator::MULTIPLY: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 2; break;
+            case ast::BinaryOperator::DIVIDE: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = isFloatExpr ? 3 : 5; break;
             case ast::BinaryOperator::MODULO: func = 7; break;
-            case ast::BinaryOperator::EQUALS: op = Opcode::CMP; func = 0; break;
+            case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = 0; break;
             case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
-            case ast::BinaryOperator::LESS: op = Opcode::CMP; func = 2; break;
-            case ast::BinaryOperator::LESS_EQUALS: op = Opcode::CMP; func = 3; break;
+            case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : 2; break;
+            case ast::BinaryOperator::LESS_EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 2 : 3; break;
             case ast::BinaryOperator::GREATER: {
-                op = Opcode::CMP; func = 2;
+                op = isFloatExpr ? Opcode::FCMP : Opcode::CMP;
+                func = isFloatExpr ? 1 : 2;
                 std::swap(left, right);
                 break;
             }
             case ast::BinaryOperator::GREATER_EQUALS: {
-                op = Opcode::CMP; func = 3;
+                op = isFloatExpr ? Opcode::FCMP : Opcode::CMP;
+                func = isFloatExpr ? 2 : 3;
                 std::swap(left, right);
                 break;
             }
@@ -1635,10 +1691,23 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         emitBranch(Opcode::BEQ, cmpReg, 0, trapLabel); // if idx >= len, trap
         freeRegister(cmpReg);
         
+        uint32_t elementTypeId = 0;
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&arrayAccess->getArray())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                elementTypeId = getLocalElementTypeId(id->getName());
+            }
+        }
+
         // Access element via runtime call
         emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
         emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
+        if (elementTypeId == 2 || elementTypeId == 9) {
+            emitCall(Opcode::CALL, "_F_array_get_double_v_p_p");
+        } else if (elementTypeId == 3 || elementTypeId == 8) {
+            emitCall(Opcode::CALL, "_F_array_get_bool_v_p_p");
+        } else {
+            emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
+        }
         freeRegister(arrReg);
         freeRegister(idxReg);
         uint8_t dest = allocateRegister();
@@ -1877,6 +1946,8 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
                 case ast::PrimitiveTypeKind::FLOAT:
                 case ast::PrimitiveTypeKind::DOUBLE:
                 case ast::PrimitiveTypeKind::F64:   return 2;
+                case ast::PrimitiveTypeKind::BIT:    return 8;
+                case ast::PrimitiveTypeKind::F8:     return 9;
                 case ast::PrimitiveTypeKind::BOOL:    return 3;
                 case ast::PrimitiveTypeKind::VOID:    return 4;
                 case ast::PrimitiveTypeKind::INT8:    return 5;
@@ -1899,6 +1970,100 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
     return 100;
 }
 
+std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
+    switch (typeId) {
+        case 1: return "int64";
+        case 2: return "double";
+        case 3: return "bool";
+        case 4: return "void";
+        case 5: return "int8";
+        case 6: return "byte";
+        case 7: return "char";
+        case 8: return "bit";
+        case 9: return "f8";
+        case 101: return "string";
+        default: return "ptr";
+    }
+}
+
+uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
+    if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
+        const ast::ASTNode& primary = primaryExpr->getPrimary();
+        if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) return 1;
+        if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) return 2;
+        if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) return 3;
+        if (dynamic_cast<const ast::BitLiteral*>(&primary)) return 8;
+        if (dynamic_cast<const ast::F8Literal*>(&primary)) return 9;
+        if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
+        if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
+        if (dynamic_cast<const ast::ArrayLiteral*>(&primary)) return 102;
+        if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
+            return getLocalTypeId(id->getName());
+        }
+        if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(&primary)) {
+            return inferExpressionTypeId(paren->getExpression());
+        }
+        return 100;
+    }
+
+    if (auto unaryMinus = dynamic_cast<const ast::UnaryMinus*>(&expr)) {
+        return inferExpressionTypeId(unaryMinus->getOperand());
+    }
+    if (dynamic_cast<const ast::LogicalNot*>(&expr)) {
+        return 3;
+    }
+    if (auto logicAnd = dynamic_cast<const ast::LogicalAnd*>(&expr)) {
+        uint32_t left = inferExpressionTypeId(logicAnd->getLeft());
+        uint32_t right = inferExpressionTypeId(logicAnd->getRight());
+        return left == 8 && right == 8 ? 8 : 3;
+    }
+    if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
+        uint32_t left = inferExpressionTypeId(logicOr->getLeft());
+        uint32_t right = inferExpressionTypeId(logicOr->getRight());
+        return left == 8 && right == 8 ? 8 : 3;
+    }
+    if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
+        uint32_t left = inferExpressionTypeId(binary->getLeft());
+        uint32_t right = inferExpressionTypeId(binary->getRight());
+        switch (binary->getOperator()) {
+            case ast::BinaryOperator::LESS:
+            case ast::BinaryOperator::LESS_EQUALS:
+            case ast::BinaryOperator::GREATER:
+            case ast::BinaryOperator::GREATER_EQUALS:
+            case ast::BinaryOperator::EQUALS:
+            case ast::BinaryOperator::NOT_EQUALS:
+                return 3;
+            case ast::BinaryOperator::AND:
+            case ast::BinaryOperator::OR:
+                return left == 8 && right == 8 ? 8 : 3;
+            default:
+                if (left == 9 || right == 9) return 9;
+                if (left == 2 || right == 2) return 2;
+                if (left == 8 && right == 8) return 8;
+                return left != 100 ? left : right;
+        }
+    }
+    if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
+        if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&arrayAccess->getArray())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
+                uint32_t elementTypeId = getLocalElementTypeId(id->getName());
+                if (elementTypeId != 100) return elementTypeId;
+            }
+        }
+        return 100;
+    }
+    if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
+        if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
+                auto it = functionReturnTypes_.find(id->getName());
+                if (it != functionReturnTypes_.end()) return it->second;
+            }
+        }
+    }
+
+    return 100;
+}
+
 uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expression* initializer, std::string* outClassName) {
     if (!type) {
         if (initializer) {
@@ -1907,6 +2072,8 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 const ast::ASTNode& node = pe->getPrimary();
                 if (dynamic_cast<const ast::IntegerLiteral*>(&node)) return 1;
                 if (dynamic_cast<const ast::FloatingLiteral*>(&node)) return 2;
+                if (dynamic_cast<const ast::BitLiteral*>(&node)) return 8;
+                if (dynamic_cast<const ast::F8Literal*>(&node)) return 9;
                 if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
                 if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
                 if (dynamic_cast<const ast::ArrayLiteral*>(&node)) return 102;

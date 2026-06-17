@@ -311,6 +311,14 @@ std::string ParenthesizedExpression::toString() const {
     return "ParenthesizedExpression";
 }
 
+std::string F8Literal::toString() const {
+    return "F8Literal";
+}
+
+std::string BitLiteral::toString() const {
+    return "BitLiteral";
+}
+
 // Utility function implementations
 std::string hooc::ast::classModifierToString(ClassModifier modifier) {
     switch (modifier) {
@@ -330,6 +338,8 @@ std::string hooc::ast::primitiveTypeToString(PrimitiveTypeKind kind) {
         case PrimitiveTypeKind::FLOAT: return "float";
         case PrimitiveTypeKind::DOUBLE: return "double";
         case PrimitiveTypeKind::F64: return "f64";
+        case PrimitiveTypeKind::F8: return "f8";
+        case PrimitiveTypeKind::BIT: return "bit";
         case PrimitiveTypeKind::BOOL: return "bool";
         case PrimitiveTypeKind::CHAR: return "char";
         case PrimitiveTypeKind::STRING: return "string";

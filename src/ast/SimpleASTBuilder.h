@@ -82,6 +82,16 @@ public:
     double getDoubleValue(antlr4::tree::TerminalNode* node);
 
     /**
+     * @brief Parses f8 literal token, returning its promoted f64 value.
+     */
+    double getF8Value(antlr4::tree::TerminalNode* node);
+
+    /**
+     * @brief Parses bit literal token.
+     */
+    int64_t getBitValue(antlr4::tree::TerminalNode* node);
+
+    /**
      * @brief Extracts codepoint from CHAR_LITERAL token.
      * @param node CHAR_LITERAL terminal node.
      * @return The Unicode codepoint value.

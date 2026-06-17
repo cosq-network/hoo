@@ -146,6 +146,16 @@ private:
     uint32_t typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName = nullptr) const;
 
     /**
+     * Infer the runtime typeId of an expression in the current scope.
+     */
+    uint32_t inferExpressionTypeId(const ast::Expression& expr);
+
+    /**
+     * Convert a runtime typeId to the return-type string used by the mangler.
+     */
+    std::string typeIdToMangleType(uint32_t typeId) const;
+
+    /**
      * Check if a name matches a known built-in class for static dispatch.
      */
     bool isBuiltinClassName(const std::string& name) const;
