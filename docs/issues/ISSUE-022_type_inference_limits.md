@@ -62,3 +62,11 @@ When a `var` variable has typeId 100 (Object), instance method calls on it use `
   - **Array literal element type inference**: When constructing `[1, 2, 3]`, the common element type is inferred from the literal elements and stored in the header (offset 16).
   - **For-in loop variable** (`for x in arr`): Now infers the element type from the iterable's `elementTypeId`.
   - **Changes**: Added `elementTypeId` to `Local` struct, `getLocalElementTypeId()` helper, and array literal element type inference in `visitExpression`.
+- **Update 2026-06-17 (d)**: Major expansion of `inferExpressionTypeId` to support low-precision and tensor types:
+  - **Scalars**: Explicit support for `F8Literal` (typeId 9) and `BitLiteral` (typeId 8).
+  - **Operators**: Logical NOT now correctly returns `bool` (3) or `tensor<bit>` (104). Logical AND/OR now correctly infer `bit` (8) when both operands are bits, otherwise `bool` (3).
+  - **Relational Ops**: Binary relational operators now correctly infer `bool` (3) or `tensor<bit>` (104) based on operand types.
+  - **Tensors**: Added `typeId 104` for tensors. Arithmetic operations on tensors now correctly propagate the tensor type.
+  - **Nesting**: Added recursive handling for `ParenthesizedExpression`.
+  - **Function Returns**: Inference now consults the `functionReturnTypes_` map for all function calls.
+- **Update 2026-06-17 (e)**: Remaining work on method chains is now tracked separately in ISSUE-031.

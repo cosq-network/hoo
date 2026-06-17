@@ -37,4 +37,5 @@ The trap label should invoke `_F_hoo_exception_throw_v_p` with a bounds-check er
 - **Date**: 2026-06-08 (opened), 2026-06-10 (fixed)
 - **Status**: **FIXED**
 - **Priority**: **HIGH**
-- **Fix**: Array subscript (`arr[idx]`) now emits bounds check (CMP idx < len, BEQ to trap) before element access. Offset formula corrected from `base + 8 + idx*8` to `base + 32 + idx*8` (ARRAY_HEADER_WORDS=4). For-in loop offset fix applied identically. OOB trap creates runtime exception via `jit_hoo_exception_runtime` and throws via `hoo_throw`.
+- **Update 2026-06-10**: Array subscript (`arr[idx]`) now emits bounds check (CMP idx < len, BEQ to trap) before element access. Offset formula corrected from `base + 8 + idx*8` to `base + 32 + idx*8` (ARRAY_HEADER_WORDS=4). For-in loop offset fix applied identically. OOB trap creates runtime exception via `jit_hoo_exception_runtime` and throws via `hoo_throw`.
+- **Update 2026-06-17**: Native bounds checking has been implemented in the `tensor` runtime (`src/runtime/lib/hoo_tensor.cpp`). All tensor indexing operations (`get_numeric`, `hoo_tensor_set_value`) validate indices against the tensor's rank and dimensions, returning `nullptr` or zero for out-of-bounds access. The compiler's tensor subscript lowering leverages these runtime safety checks.
