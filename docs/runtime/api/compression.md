@@ -1,82 +1,91 @@
 # Compression API Reference (`Compression`)
 
-The `Compression` class provides gzip and deflate compression and decompression utilities. All methods are static — call them directly on the class.
+The `Compression` class provides gzip and deflate compression and decompression utilities. Create an instance with `Compression.new()` and release it with `release()`.
 
-## 1. Gzip
+## 1. Constructor / Destructor
 
-### `Compression.gzipCompress(data: string, len: int64) :string`
+### `Compression.new() :Compression`
+
+Creates a new Compression instance.
+
+```hoo
+var c = Compression.new()
+```
+
+### `c.release()`
+
+Releases the Compression instance and its resources.
+
+```hoo
+c.release()
+```
+
+## 2. Gzip
+
+### `c.gzipCompress(data, len) :string`
 
 Compresses `len` bytes from `data` using gzip compression.
 
 - **Parameters:**
-  - `data: string` — the raw byte data to compress.
-  - `len: int64` — number of bytes to compress.
+  - `data` — the raw byte data to compress.
+  - `len` — number of bytes to compress.
 - **Returns:** `string` — the gzip-compressed data.
 
 ```hoo
+var c = Compression.new()
 var original = "Hello, Hoo!"
-var data = original.data()
-var len = original.length()
-var compressed = Compression.gzipCompress(data, len)
+var compressed = c.gzipCompress(original.data(), original.length())
 ```
 
 ---
 
-### `Compression.gzipDecompress(data: string) :string`
+### `c.gzipDecompress(data, len) :string`
 
-Decompresses a gzip-compressed string.
+Decompresses `len` bytes of gzip-compressed data.
 
 - **Parameters:**
-  - `data: string` — the gzip-compressed data.
+  - `data` — the gzip-compressed data.
+  - `len` — number of bytes to decompress.
 - **Returns:** `string` — the decompressed original data.
 
 ```hoo
+var c = Compression.new()
 var original = "Hello, Hoo!"
-var data = original.data()
-var len = original.length()
-var compressed = Compression.gzipCompress(data, len)
-var decompressed = Compression.gzipDecompress(compressed)
+var compressed = c.gzipCompress(original.data(), original.length())
+var decompressed = c.gzipDecompress(compressed.data(), compressed.length())
+c.release()
 ```
 
-## 2. Deflate
+## 3. Deflate
 
-### `Compression.deflateCompress(data: string, len: int64) :string`
+### `c.deflateCompress(data, len) :string`
 
 Compresses `len` bytes from `data` using the deflate algorithm.
 
-- **Parameters:**
-  - `data: string` — the raw byte data to compress.
-  - `len: int64` — number of bytes to compress.
-- **Returns:** `string` — the deflate-compressed data.
-
 ```hoo
+var c = Compression.new()
 var original = "Hello, Hoo!"
-var data = original.data()
-var len = original.length()
-var compressed = Compression.deflateCompress(data, len)
+var compressed = c.deflateCompress(original.data(), original.length())
 ```
 
 ---
 
-### `Compression.deflateDecompress(data: string) :string`
+### `c.deflateDecompress(data, len) :string`
 
-Decompresses a deflate-compressed string.
-
-- **Parameters:**
-  - `data: string` — the deflate-compressed data.
-- **Returns:** `string` — the decompressed original data.
+Decompresses `len` bytes of deflate-compressed data.
 
 ```hoo
+var c = Compression.new()
 var original = "Hello, Hoo!"
-var data = original.data()
-var len = original.length()
-var compressed = Compression.deflateCompress(data, len)
-var decompressed = Compression.deflateDecompress(compressed)
+var compressed = c.deflateCompress(original.data(), original.length())
+var decompressed = c.deflateDecompress(compressed.data(), compressed.length())
+c.release()
 ```
 
 ## Usage Example
 
 ```hoo
+var c = Compression.new()
 var text = "The quick brown fox jumps over the lazy dog. "
 var repeated = ""
 var i: int64 = 0
@@ -84,16 +93,15 @@ while i < 100 {
     repeated = repeated + text
     i = i + 1
 }
-var data = repeated.data()
-var len = repeated.length()
 
-var gzipped = Compression.gzipCompress(data, len)
-var deflated = Compression.deflateCompress(data, len)
+var gzipped = c.gzipCompress(repeated.data(), repeated.length())
+var deflated = c.deflateCompress(repeated.data(), repeated.length())
 
-println("Original: " + len)
+println("Original: " + repeated.length())
 println("Gzip: " + gzipped.length())
 println("Deflate: " + deflated.length())
 
-var restored = Compression.gzipDecompress(gzipped)
+var restored = c.gzipDecompress(gzipped.data(), gzipped.length())
 println("Restored: " + restored.length())
+c.release()
 ```

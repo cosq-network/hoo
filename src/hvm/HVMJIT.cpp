@@ -1480,11 +1480,22 @@ extern "C" {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
 
-    // ── Compression module ───────────────────────────────────────────────────
+    // ── Compression module (instance-based, self in regs[1]) ────────────────
+    uint64_t jit_compression_new(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* comp = hoo_compression_new();
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(comp));
+    }
+    uint64_t jit_compression_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* comp = reinterpret_cast<void*>(state->regs[1]);
+        hoo_compression_release(comp);
+        return 0;
+    }
     uint64_t jit_compression_gzip_compress(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
-        int64_t data_len = state->regs[2];
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[2]);
+        int64_t data_len = state->regs[3];
         uint8_t* out_data = nullptr;
         int64_t out_len = 0;
         int64_t ok = hoo_compression_gzip_compress(data, data_len, &out_data, &out_len);
@@ -1495,10 +1506,12 @@ extern "C" {
     }
     uint64_t jit_compression_gzip_decompress(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
-        int64_t data_len = state->regs[2];
         uint8_t* out_data = nullptr;
         int64_t out_len = 0;
+        void* self = reinterpret_cast<void*>(state->regs[1]);
+        (void)self;
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[2]);
+        int64_t data_len = state->regs[3];
         int64_t ok = hoo_compression_gzip_decompress(data, data_len, &out_data, &out_len);
         if (ok != 0 || !out_data) return 0;
         void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
@@ -1507,10 +1520,12 @@ extern "C" {
     }
     uint64_t jit_compression_deflate_compress(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
-        int64_t data_len = state->regs[2];
         uint8_t* out_data = nullptr;
         int64_t out_len = 0;
+        void* self = reinterpret_cast<void*>(state->regs[1]);
+        (void)self;
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[2]);
+        int64_t data_len = state->regs[3];
         int64_t ok = hoo_compression_deflate_compress(data, data_len, &out_data, &out_len);
         if (ok != 0 || !out_data) return 0;
         void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
@@ -1519,10 +1534,12 @@ extern "C" {
     }
     uint64_t jit_compression_deflate_decompress(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
-        int64_t data_len = state->regs[2];
         uint8_t* out_data = nullptr;
         int64_t out_len = 0;
+        void* self = reinterpret_cast<void*>(state->regs[1]);
+        (void)self;
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[2]);
+        int64_t data_len = state->regs[3];
         int64_t ok = hoo_compression_deflate_decompress(data, data_len, &out_data, &out_len);
         if (ok != 0 || !out_data) return 0;
         void* str = hoo_string_from_bytes(reinterpret_cast<const char*>(out_data), out_len);
@@ -2550,25 +2567,13 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_process_capture_v_p", reinterpret_cast<void*>(&jit_process_capture)},
         // CamelCase aliases
         {"_F_M_hoo_E_process_selfPid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
-        // Compression module
-        {"_F_M_hoo_E_compression_gzip_compress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
-        {"_F_M_hoo_E_compression_gzip_decompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
-        {"_F_M_hoo_E_compression_deflate_compress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
-        {"_F_M_hoo_E_compression_deflate_decompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
-        // Compression module (camelCase aliases)
+        // Compression module (instance-based, prefix-style)
+        {"_F_M_hoo_E_compression_new_v", reinterpret_cast<void*>(&jit_compression_new)},
+        {"_F_M_hoo_E_compression_release_v", reinterpret_cast<void*>(&jit_compression_release)},
         {"_F_M_hoo_E_compression_gzipCompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
         {"_F_M_hoo_E_compression_gzipDecompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
         {"_F_M_hoo_E_compression_deflateCompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
         {"_F_M_hoo_E_compression_deflateDecompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
-        {"_F_M_hoo_E_Compression_N_gzip_compress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
-        {"_F_M_hoo_E_Compression_N_gzip_decompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
-        {"_F_M_hoo_E_Compression_N_deflate_compress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
-        {"_F_M_hoo_E_Compression_N_deflate_decompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
-        // Compression singleton class (camelCase aliases)
-        {"_F_M_hoo_E_Compression_N_gzipCompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress)},
-        {"_F_M_hoo_E_Compression_N_gzipDecompress_p_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
-        {"_F_M_hoo_E_Compression_N_deflateCompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
-        {"_F_M_hoo_E_Compression_N_deflateDecompress_p_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
         // Args module (prefix-based instance methods)
         {"_F_M_hoo_E_args_new_v", reinterpret_cast<void*>(&jit_args_new)},
         {"_F_M_hoo_E_args_count_v", reinterpret_cast<void*>(&jit_args_count)},

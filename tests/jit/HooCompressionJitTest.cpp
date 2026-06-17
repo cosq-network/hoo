@@ -13,10 +13,11 @@ protected:
 TEST_F(HooCompressionJitTest, GzipRoundTrip) {
     const std::string source = R"(
         func :int64 test() {
+            var c = Compression.new();
             var original = "Hello, World!";
-            var data = original.data();
-            var len = original.length();
-            var compressed = Compression.gzipCompress(data, len);
+            var compressed = c.gzipCompress(original.data(), original.length());
+            var decompressed = c.gzipDecompress(compressed.data(), compressed.length());
+            c.release();
             return 1;
         }
     )";
@@ -27,10 +28,11 @@ TEST_F(HooCompressionJitTest, GzipRoundTrip) {
 TEST_F(HooCompressionJitTest, DeflateRoundTrip) {
     const std::string source = R"(
         func :int64 test() {
+            var c = Compression.new();
             var original = "Hello, World!";
-            var data = original.data();
-            var len = original.length();
-            var compressed = Compression.deflateCompress(data, len);
+            var compressed = c.deflateCompress(original.data(), original.length());
+            var decompressed = c.deflateDecompress(compressed.data(), compressed.length());
+            c.release();
             return 1;
         }
     )";

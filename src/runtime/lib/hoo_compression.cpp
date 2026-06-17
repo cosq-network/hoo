@@ -6,6 +6,17 @@
 
 extern "C" {
 
+struct CompressionHandle { int dummy; };
+
+void* hoo_compression_new(void) {
+    CompressionHandle* h = (CompressionHandle*)calloc(1, sizeof(CompressionHandle));
+    return h;
+}
+
+void hoo_compression_release(void* comp) {
+    std::free(comp);
+}
+
 int64_t hoo_compression_gzip_compress(const uint8_t* data, int64_t data_len,
                                        uint8_t** out_data, int64_t* out_len) {
     if (!data || data_len < 0 || !out_data || !out_len) return -1;

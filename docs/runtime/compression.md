@@ -1,31 +1,34 @@
 # Compression (`hoo.compression`)
 
-The `hoo.compression` module provides gzip and raw deflate compress/decompress using zlib. Result is a heap-allocated byte buffer.
+The `hoo.compression` module provides gzip and raw deflate compress/decompress using zlib. Create an instance with `Compression.new()` and release it with `release()`.
 
-## 1. Gzip
+## 1. Constructor / Destructor
 
-- `Compression.gzipCompress(data, data_len)` — Gzip compress. Returns compressed buffer (free with `Compression.freeBytes`).
-- `Compression.gzipDecompress(data, data_len)` — Gzip decompress.
+- `Compression.new()` — Create a new Compression instance.
+- `c.release()` — Release the instance.
 
-## 2. Raw Deflate
+## 2. Gzip
 
-- `Compression.deflateCompress(data, data_len)` — Raw deflate compress.
-- `Compression.deflateDecompress(data, data_len)` — Raw deflate decompress.
+- `c.gzipCompress(data, len)` — Gzip compress. Returns compressed string.
+- `c.gzipDecompress(data, len)` — Gzip decompress. Returns original string.
+
+## 3. Raw Deflate
+
+- `c.deflateCompress(data, len)` — Raw deflate compress. Returns compressed string.
+- `c.deflateDecompress(data, len)` — Raw deflate decompress. Returns original string.
 
 ## Usage from Hoo Source
 
-All `Compression.*` functions are available on the `Compression` class:
-
 ```hoo
 func :int64 demo() {
-    var data = string_data("Hello, World!");
-    var len = string_length("Hello, World!");
-    var gzipped = Compression.gzipCompress(data, len);
-    var deflated = Compression.deflateCompress(data, len);
-    return string_length(gzipped);
+    var c = Compression.new()
+    var original = "Hello, World!"
+    var compressed = c.gzipCompress(original.data(), original.length())
+    c.release()
+    return 1
 }
 ```
 
 ## Memory Management
 
-Output byte buffers must be freed with `Compression.freeBytes(data)`.
+Output byte buffers from compress/decompress are automatically wrapped into Hoo strings by the runtime. No manual freeing is needed.

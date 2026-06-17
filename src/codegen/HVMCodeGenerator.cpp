@@ -40,7 +40,7 @@ static bool isClassMethodJitClass(const std::string& className) {
 static bool isSingletonBuiltinClass(const std::string& className) {
     static const std::unordered_set<std::string> singletons = {
         "Math", "Fs", "System", "Encoding", "Uuid",
-        "Compression", "Csv"
+        "Csv"
     };
     return singletons.count(className) > 0;
 }
@@ -1179,6 +1179,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 103: resolvedClass = "Map"; break;
                     case 109: resolvedClass = "Character"; break;
                     case 110: resolvedClass = "Args"; break;
+                    case 111: resolvedClass = "Compression"; break;
                     default: break;
                 }
             }
@@ -1919,6 +1920,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new") return 110;
                         return 101;
                     }
+                    if (clsName == "Compression") {
+                        if (ma->getMember() == "new") return 111;
+                        return 101;
+                    }
                     if (clsName == "Character") {
                         if (ma->getMember() == "new" || ma->getMember() == "fromUtf8") return 109;
                         return 101;
@@ -1938,6 +1943,12 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "programName" || member == "getString" ||
                                 member == "helpText") return 101;
                             if (member == "getFloat") return 2;
+                            return 100;
+                        }
+                        if (objTypeId == 111) {
+                            if (member == "gzipCompress" || member == "gzipDecompress" ||
+                                member == "deflateCompress" || member == "deflateDecompress")
+                                return 101;
                             return 100;
                         }
                         if (objTypeId == 109) {
