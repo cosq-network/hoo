@@ -16,6 +16,7 @@
 #include "runtime/lib/hoo_character.h"
 #include "runtime/lib/hoo_io.h"
 #include "runtime/lib/hoo_generic_array.h"
+#include "runtime/lib/hoo_tensor.h"
 #include "runtime/lib/hoo_map.h"
 #include "runtime/lib/hoo_exception.h"
 #include "runtime/lib/hoo_math.h"
@@ -863,6 +864,63 @@ extern "C" {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
             hoo_array_push_object(reinterpret_cast<void*>(state->regs[1]),
                                  reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_tensor_new1(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_new1(state->regs[1], state->regs[2])));
+    }
+    uint64_t jit_tensor_new2(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_new2(state->regs[1], state->regs[2], state->regs[3])));
+    }
+    uint64_t jit_tensor_new3(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_new3(state->regs[1], state->regs[2], state->regs[3], state->regs[5])));
+    }
+    uint64_t jit_tensor_push_value(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_tensor_push_value(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_tensor_length(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_tensor_length(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_tensor_dim(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_tensor_dim(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_tensor_get_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_tensor_get_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_tensor_get_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double value = hoo_tensor_get_double(reinterpret_cast<void*>(state->regs[1]), state->regs[2]);
+        uint64_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(value));
+        return bits;
+    }
+    uint64_t jit_tensor_binary(void* state_ptr, HooTensor (*fn)(HooTensor, HooTensor)) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            fn(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_tensor_add(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_add); }
+    uint64_t jit_tensor_sub(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_sub); }
+    uint64_t jit_tensor_element_mul(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_element_mul); }
+    uint64_t jit_tensor_element_div(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_element_div); }
+    uint64_t jit_tensor_matmul(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_matmul); }
+    uint64_t jit_tensor_eq(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_eq); }
+    uint64_t jit_tensor_ne(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_ne); }
+    uint64_t jit_tensor_lt(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_lt); }
+    uint64_t jit_tensor_le(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_le); }
+    uint64_t jit_tensor_gt(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_gt); }
+    uint64_t jit_tensor_ge(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_ge); }
+    uint64_t jit_tensor_and(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_and); }
+    uint64_t jit_tensor_or(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_or); }
+    uint64_t jit_tensor_not(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_not(reinterpret_cast<void*>(state->regs[1]))));
     }
     // ── Map aliases (match codegen-generated _F_map_*_v_p names) ─────────────
     uint64_t jit_map_new_plain(void* state_ptr) {
@@ -2343,6 +2401,28 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_array_get_bool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         {"_F_array_set_v_p_i8_p", reinterpret_cast<void*>(&jit_array_set_int64)},
+        {"_F_hoo_Tensor_new1_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_new1)},
+        {"_F_hoo_Tensor_new2_p_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new2)},
+        {"_F_hoo_Tensor_new3_p_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new3)},
+        {"_F_hoo_Tensor_pushValue_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_push_value)},
+        {"_F_hoo_Tensor_length_i8_p", reinterpret_cast<void*>(&jit_tensor_length)},
+        {"_F_hoo_Tensor_dim_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_dim)},
+        {"_F_hoo_Tensor_getInt64_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_get_int64)},
+        {"_F_hoo_Tensor_getDouble_d_p_i8", reinterpret_cast<void*>(&jit_tensor_get_double)},
+        {"_F_hoo_Tensor_add_p_p_p", reinterpret_cast<void*>(&jit_tensor_add)},
+        {"_F_hoo_Tensor_sub_p_p_p", reinterpret_cast<void*>(&jit_tensor_sub)},
+        {"_F_hoo_Tensor_elementMul_p_p_p", reinterpret_cast<void*>(&jit_tensor_element_mul)},
+        {"_F_hoo_Tensor_elementDiv_p_p_p", reinterpret_cast<void*>(&jit_tensor_element_div)},
+        {"_F_hoo_Tensor_matmul_p_p_p", reinterpret_cast<void*>(&jit_tensor_matmul)},
+        {"_F_hoo_Tensor_eq_p_p_p", reinterpret_cast<void*>(&jit_tensor_eq)},
+        {"_F_hoo_Tensor_ne_p_p_p", reinterpret_cast<void*>(&jit_tensor_ne)},
+        {"_F_hoo_Tensor_lt_p_p_p", reinterpret_cast<void*>(&jit_tensor_lt)},
+        {"_F_hoo_Tensor_le_p_p_p", reinterpret_cast<void*>(&jit_tensor_le)},
+        {"_F_hoo_Tensor_gt_p_p_p", reinterpret_cast<void*>(&jit_tensor_gt)},
+        {"_F_hoo_Tensor_ge_p_p_p", reinterpret_cast<void*>(&jit_tensor_ge)},
+        {"_F_hoo_Tensor_and_p_p_p", reinterpret_cast<void*>(&jit_tensor_and)},
+        {"_F_hoo_Tensor_or_p_p_p", reinterpret_cast<void*>(&jit_tensor_or)},
+        {"_F_hoo_Tensor_not_p_p", reinterpret_cast<void*>(&jit_tensor_not)},
         // Object field access helpers
         {"_F_object_get_field_p_i8", reinterpret_cast<void*>(&jit_object_get_field)},
         {"_F_object_set_field_v_p_i8_p", reinterpret_cast<void*>(&jit_object_set_field)},

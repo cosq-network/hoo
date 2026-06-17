@@ -41,6 +41,7 @@ THROW: 'throw';
 RETHROW: 'rethrow';
 MAP: 'map';
 FUNCTION: 'function';
+TENSOR: 'tensor';
 
 
 // Primitive Types
@@ -60,6 +61,8 @@ VOID: 'void';
 // Operators
 PLUS: '+';
 MINUS: '-';
+ELEMENT_MULTIPLY: '.*';
+ELEMENT_DIVIDE: './';
 MULTIPLY: '*';
 DIVIDE: '/';
 MODULO: '%';
@@ -184,7 +187,7 @@ constantDeclaration
     ;
 
 // Types
-type: optionalType | mapType;
+type: tensorType | mapType | optionalType;
 
 optionalType: arrayType QUESTION?;
 
@@ -196,6 +199,7 @@ baseType
     ;
 
 mapType: MAP LBRACKET mapKeyType COMMA type RBRACKET;
+tensorType: TENSOR LESS baseType GREATER LBRACKET INTEGER_LITERAL (COMMA INTEGER_LITERAL)* RBRACKET;
 
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 
@@ -281,7 +285,7 @@ additiveExpression
     ;
 
 multiplicativeExpression
-    : unaryExpression ((MULTIPLY | DIVIDE | MODULO) unaryExpression)*
+    : unaryExpression ((ELEMENT_MULTIPLY | ELEMENT_DIVIDE | MULTIPLY | DIVIDE | MODULO) unaryExpression)*
     ;
 
 unaryExpression
@@ -317,7 +321,7 @@ primary
     | TRUE
     | FALSE
     | NULL
-    | LBRACKET expressionList? RBRACKET
+    | LBRACKET expressionList? RBRACKET IDENTIFIER?
     | LPAREN expression RPAREN
     | newExpression
     ;

@@ -151,6 +151,7 @@ private:
 // Binary expressions
 enum class BinaryOperator {
     MULTIPLY, DIVIDE, MODULO,           // Multiplicative
+    ELEMENT_MULTIPLY, ELEMENT_DIVIDE,   // Tensor element-wise multiplicative
     PLUS, MINUS,                        // Additive
     LESS, LESS_EQUALS, GREATER,         // Relational
     GREATER_EQUALS, EQUALS, NOT_EQUALS,
@@ -316,6 +317,19 @@ private:
 class ArrayLiteral : public Expression {
 public:
     ArrayLiteral(std::unique_ptr<ExpressionList> elements)
+        : elements_(std::move(elements)) {}
+
+    std::string toString() const override;
+
+    const ExpressionList* getElements() const { return elements_.get(); }
+
+private:
+    std::unique_ptr<ExpressionList> elements_;
+};
+
+class TensorLiteral : public Expression {
+public:
+    TensorLiteral(std::unique_ptr<ExpressionList> elements)
         : elements_(std::move(elements)) {}
 
     std::string toString() const override;

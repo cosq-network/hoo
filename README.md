@@ -1,6 +1,6 @@
 # Hoo
 
-Last Updated: 2026-06-16
+Last Updated: 2026-06-17
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -27,7 +27,8 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 - [x] **Phase 8.2 (Type Inference)**: Extended `getTypeId()` to infer return types for function calls, user-defined class methods, and array subscript access. Array literal element types inferred from uniform elements. For-in loop variables infer type from iterable's element type. Char-keyed Map operations removed from Hoo language layer (runtime-only C API).
 - [x] **Phase 9 (Output Optimization)**: Silenced LLVM IR and JIT debug outputs during execution to significantly improve unit test performance.
 - [x] **Phase 9.1 (macOS Stabilization)**: Resolved cross-platform build errors in `hoo_thread` and `hoo_uuid` modules; project now verified stable on macOS (Apple Silicon/Intel).
-- [x] **Verification**: full preset test run passing (`1370 tests`).
+- [x] **Phase 10 (Tensor Type Support)**: Added tensor type (`tensor<T>[N]`) to grammar, AST, codegen, and runtime with full 1D/2D/3D support. Includes element-wise arithmetic, comparison operators, logical operators, matrix multiplication, and both int64 and f64 element types. Runtime, parsing, and JIT test coverage across all dimensions.
+- [x] **Verification**: full preset test run passing (`1449 tests`, 0 failures, 2 pre-existing disabled).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 
@@ -72,7 +73,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (1370+ tests in the current preset run).
+tests/        Exhaustive unit and integration test suites (1449 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 

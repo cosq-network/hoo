@@ -253,6 +253,13 @@ private:
      */
     std::unique_ptr<ast::MapType> buildMapType(HoocParser::MapTypeContext* ctx);
 
+    /**
+     * @brief Builds a TensorType (tensor[T][d0, d1, d2]).
+     * @param ctx Tensor type context.
+     * @return Unique pointer to TensorType.
+     */
+    std::unique_ptr<ast::TensorType> buildTensorType(HoocParser::TensorTypeContext* ctx);
+
     // ===== Statement Building =====
 
     /**
@@ -435,6 +442,13 @@ private:
      * @return Unique pointer to ArrayLiteral.
      */
     std::unique_ptr<ast::ArrayLiteral> buildArrayLiteral(HoocParser::PrimaryContext* ctx);
+
+    /**
+     * @brief Builds a TensorLiteral from a primary context.
+     * @param ctx Primary context containing tensor literal.
+     * @return Unique pointer to TensorLiteral.
+     */
+    std::unique_ptr<ast::TensorLiteral> buildTensorLiteral(HoocParser::PrimaryContext* ctx);
 
     /**
      * @brief Builds an ExpressionList from its context.

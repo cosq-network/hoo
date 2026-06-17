@@ -456,13 +456,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         if (isMethod) {
             mp.returnType = "ptr";
         } else if (decl->getReturnType()) {
-            if (auto bt = dynamic_cast<const ast::BaseType*>(decl->getReturnType())) {
-                if (bt->isPrimitive()) {
-                    mp.returnType = primitiveTypeToString(bt->getPrimitiveType()->getKind());
-                } else {
-                    mp.returnType = "ptr";
-                }
-            }
+            mp.returnType = typeIdToMangleType(typeIdFromDeclaredType(decl->getReturnType()));
         } else {
             mp.returnType = "void";
         }
@@ -566,6 +560,8 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (decl.getType()) {
             if (auto arrType = dynamic_cast<const ast::ArrayType*>(decl.getType())) {
                 elemTypeId = typeIdFromDeclaredType(&arrType->getBaseType());
+            } else if (auto tensorType = dynamic_cast<const ast::TensorType*>(decl.getType())) {
+                elemTypeId = tensorElementTypeIdFromType(*tensorType);
             }
         } else if (decl.getInitializer()) {
             if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
@@ -579,11 +575,48 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                     }
                 }
                 elemTypeId = commonType;
+            } else if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(decl.getInitializer())) {
+                if (auto tensorLit = dynamic_cast<const ast::TensorLiteral*>(&pe->getPrimary())) {
+                    elemTypeId = tensorElementTypeIdFromLiteral(*tensorLit);
+                }
+            } else if (auto binExpr = dynamic_cast<const ast::BinaryExpression*>(decl.getInitializer())) {
+                auto inferTensorElemType = [&](const ast::Expression& operand) -> uint32_t {
+                    if (auto pe2 = dynamic_cast<const ast::PrimaryExpression*>(&operand)) {
+                        if (auto id2 = dynamic_cast<const ast::Identifier*>(&pe2->getPrimary())) {
+                            if (getLocalTypeId(id2->getName()) == 104) {
+                                return getLocalElementTypeId(id2->getName());
+                            }
+                        }
+                    }
+                    return 100;
+                };
+                uint32_t leftElem = inferTensorElemType(binExpr->getLeft());
+                uint32_t rightElem = inferTensorElemType(binExpr->getRight());
+                if (leftElem != 100) elemTypeId = leftElem;
+                else if (rightElem != 100) elemTypeId = rightElem;
             }
         }
         int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId);
         if (decl.getInitializer()) {
             uint8_t reg = visitExpression(*decl.getInitializer());
+            emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
+            freeRegister(reg);
+        } else if (auto tensorType = dynamic_cast<const ast::TensorType*>(decl.getType())) {
+            uint32_t elemType = tensorElementTypeIdFromType(*tensorType);
+            uint8_t elemReg = emitConstant(static_cast<int64_t>(elemType));
+            emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
+            freeRegister(elemReg);
+            const auto& dims = tensorType->getDimensions();
+            for (size_t i = 0; i < dims.size() && i < 3; ++i) {
+                uint8_t dimReg = visitExpression(*dims[i]);
+                emit(Opcode::MOV, OperandsR{argReg(2, i), dimReg, 0, 0});
+                freeRegister(dimReg);
+            }
+            if (dims.size() == 1) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
+            else if (dims.size() == 2) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
+            else emitCall(Opcode::CALL, "_F_hoo_Tensor_new3_p_i8_i8_i8_i8");
+            uint8_t reg = allocateRegister();
+            emit(Opcode::MOV, OperandsR{reg, 1, 0, 0});
             emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
             freeRegister(reg);
         }
@@ -904,6 +937,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
             
             return arrReg;
+        }
+        if (auto tensorLit = dynamic_cast<const ast::TensorLiteral*>(&primary)) {
+            return emitTensorLiteral(*tensorLit);
         }
         if (auto strLit = dynamic_cast<const ast::StringLiteral*>(&primary)) {
             std::string val = strLit->getValue();
@@ -1399,11 +1435,31 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
+        const uint32_t leftExprType = inferExpressionTypeId(binary->getLeft());
+        const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
+        if (leftExprType == 104 || rightExprType == 104) {
+            switch (binary->getOperator()) {
+                case ast::BinaryOperator::PLUS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_add_p_p_p");
+                case ast::BinaryOperator::MINUS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_sub_p_p_p");
+                case ast::BinaryOperator::MULTIPLY: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_matmul_p_p_p");
+                case ast::BinaryOperator::ELEMENT_MULTIPLY: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_elementMul_p_p_p");
+                case ast::BinaryOperator::ELEMENT_DIVIDE: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_elementDiv_p_p_p");
+                case ast::BinaryOperator::EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_eq_p_p_p");
+                case ast::BinaryOperator::NOT_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_ne_p_p_p");
+                case ast::BinaryOperator::LESS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_lt_p_p_p");
+                case ast::BinaryOperator::LESS_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_le_p_p_p");
+                case ast::BinaryOperator::GREATER: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_gt_p_p_p");
+                case ast::BinaryOperator::GREATER_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_ge_p_p_p");
+                default:
+                    addError("Unsupported tensor binary operator");
+                    return 0;
+            }
+        }
         uint8_t left = visitExpression(binary->getLeft());
         uint8_t right = visitExpression(binary->getRight());
         uint8_t dest = allocateRegister();
-        const uint32_t leftType = inferExpressionTypeId(binary->getLeft());
-        const uint32_t rightType = inferExpressionTypeId(binary->getRight());
+        const uint32_t leftType = leftExprType;
+        const uint32_t rightType = rightExprType;
         const bool isFloatExpr = leftType == 2 || leftType == 9 || rightType == 2 || rightType == 9;
         Opcode op = Opcode::ARITH;
         uint16_t func = 0;
@@ -1443,7 +1499,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t left = visitExpression(logicAnd->getLeft());
         uint8_t right = visitExpression(logicAnd->getRight());
         uint8_t dest = allocateRegister();
-        emit(Opcode::LOGIC, OperandsR{dest, left, right, 0});
+        if (inferExpressionTypeId(logicAnd->getLeft()) == 104 || inferExpressionTypeId(logicAnd->getRight()) == 104) {
+            emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+            emit(Opcode::MOV, OperandsR{2, right, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_Tensor_and_p_p_p");
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        } else {
+            emit(Opcode::LOGIC, OperandsR{dest, left, right, 0});
+        }
         freeRegister(left);
         freeRegister(right);
         return dest;
@@ -1452,7 +1515,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t left = visitExpression(logicOr->getLeft());
         uint8_t right = visitExpression(logicOr->getRight());
         uint8_t dest = allocateRegister();
-        emit(Opcode::LOGIC, OperandsR{dest, left, right, 1});
+        if (inferExpressionTypeId(logicOr->getLeft()) == 104 || inferExpressionTypeId(logicOr->getRight()) == 104) {
+            emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+            emit(Opcode::MOV, OperandsR{2, right, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_Tensor_or_p_p_p");
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        } else {
+            emit(Opcode::LOGIC, OperandsR{dest, left, right, 1});
+        }
         freeRegister(left);
         freeRegister(right);
         return dest;
@@ -1461,7 +1531,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
         uint8_t src = visitExpression(logicalNot->getOperand());
         uint8_t dest = allocateRegister();
-        emit(Opcode::CMP, OperandsR{dest, src, 0, 0});
+        if (inferExpressionTypeId(logicalNot->getOperand()) == 104) {
+            emit(Opcode::MOV, OperandsR{1, src, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_Tensor_not_p_p");
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        } else {
+            emit(Opcode::CMP, OperandsR{dest, src, 0, 0});
+        }
         freeRegister(src);
         return dest;
     }
@@ -1676,11 +1752,19 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
         uint8_t arrReg = visitExpression(arrayAccess->getArray());
         uint8_t idxReg = visitExpression(arrayAccess->getIndex());
+        uint32_t sourceTypeId = 0;
+        uint32_t elementTypeId = 0;
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&arrayAccess->getArray())) {
+            if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                sourceTypeId = getLocalTypeId(id->getName());
+                elementTypeId = getLocalElementTypeId(id->getName());
+            }
+        }
         
         // Bounds check: compare idx against length via runtime call
         uint8_t lenReg = allocateRegister();
         emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_array_length_v_p");
+        emitCall(Opcode::CALL, sourceTypeId == 104 ? "_F_hoo_Tensor_length_i8_p" : "_F_array_length_v_p");
         emit(Opcode::MOV, OperandsR{lenReg, 1, 0, 0});
         uint8_t cmpReg = allocateRegister();
         emit(Opcode::CMP, OperandsR{cmpReg, idxReg, lenReg, 1}); // 1 = BLT (idx < len)
@@ -1691,17 +1775,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         emitBranch(Opcode::BEQ, cmpReg, 0, trapLabel); // if idx >= len, trap
         freeRegister(cmpReg);
         
-        uint32_t elementTypeId = 0;
-        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&arrayAccess->getArray())) {
-            if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
-                elementTypeId = getLocalElementTypeId(id->getName());
-            }
-        }
-
         // Access element via runtime call
         emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
         emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
-        if (elementTypeId == 2 || elementTypeId == 9) {
+        if (sourceTypeId == 104 && (elementTypeId == 2 || elementTypeId == 9)) {
+            emitCall(Opcode::CALL, "_F_hoo_Tensor_getDouble_d_p_i8");
+        } else if (sourceTypeId == 104) {
+            emitCall(Opcode::CALL, "_F_hoo_Tensor_getInt64_i8_p_i8");
+        } else if (elementTypeId == 2 || elementTypeId == 9) {
             emitCall(Opcode::CALL, "_F_array_get_double_v_p_p");
         } else if (elementTypeId == 3 || elementTypeId == 8) {
             emitCall(Opcode::CALL, "_F_array_get_bool_v_p_p");
@@ -1966,6 +2047,7 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
     }
     if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
     if (dynamic_cast<const ast::MapType*>(type)) return 103;
+    if (dynamic_cast<const ast::TensorType*>(type)) return 104;
     if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
     return 100;
 }
@@ -1982,8 +2064,130 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 8: return "bit";
         case 9: return "f8";
         case 101: return "string";
+        case 104: return "tensor";
         default: return "ptr";
     }
+}
+
+uint32_t HVMCodeGenerator::tensorElementTypeIdFromType(const ast::TensorType& type) const {
+    return typeIdFromDeclaredType(&type.getElementType());
+}
+
+uint32_t HVMCodeGenerator::tensorElementTypeIdFromLiteral(const ast::TensorLiteral& literal) {
+    uint32_t commonType = 100;
+    if (!literal.getElements()) return commonType;
+    for (const auto& elem : literal.getElements()->getExpressions()) {
+        uint32_t type = 100;
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(elem.get())) {
+            if (auto nested = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
+                type = 100;
+                for (const auto& nestedElem : nested->getElements()->getExpressions()) {
+                    uint32_t nestedType = getTypeId(nullptr, nestedElem.get());
+                    if (nestedType != 100) {
+                        if (type == 100) type = nestedType;
+                        else if (type != nestedType) { type = 100; break; }
+                    }
+                }
+            } else {
+                type = getTypeId(nullptr, elem.get());
+            }
+        } else {
+            type = getTypeId(nullptr, elem.get());
+        }
+
+        if (type != 100) {
+            if (commonType == 100) commonType = type;
+            else if (commonType != type) {
+                if ((commonType == 2 || commonType == 9) && (type == 2 || type == 9)) commonType = 2;
+                else return 100;
+            }
+        }
+    }
+    return commonType == 100 ? 1 : commonType;
+}
+
+std::vector<int64_t> HVMCodeGenerator::tensorShapeFromLiteral(const ast::TensorLiteral& literal) {
+    std::vector<int64_t> shape;
+    auto* elements = literal.getElements();
+    int64_t firstDim = elements ? static_cast<int64_t>(elements->getExpressions().size()) : 0;
+    shape.push_back(firstDim);
+    if (firstDim == 0) return shape;
+
+    const ast::Expression* first = elements->getExpressions()[0].get();
+    const ast::ArrayLiteral* currentArray = nullptr;
+    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(first)) {
+        currentArray = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary());
+    }
+    while (currentArray && shape.size() < 3) {
+        auto* nestedElements = currentArray->getElements();
+        int64_t dim = nestedElements ? static_cast<int64_t>(nestedElements->getExpressions().size()) : 0;
+        shape.push_back(dim);
+        if (dim == 0) break;
+        currentArray = nullptr;
+        const ast::Expression* next = nestedElements->getExpressions()[0].get();
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(next)) {
+            currentArray = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary());
+        }
+    }
+    return shape;
+}
+
+void HVMCodeGenerator::emitFlattenTensorLiteralElements(const ast::Expression& expr, uint8_t tensorReg) {
+    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
+        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
+            for (const auto& elem : arr->getElements()->getExpressions()) {
+                emitFlattenTensorLiteralElements(*elem, tensorReg);
+            }
+            return;
+        }
+    }
+
+    uint8_t valueReg = visitExpression(expr);
+    emit(Opcode::MOV, OperandsR{1, tensorReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{2, valueReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_pushValue_i8_p_i8");
+    freeRegister(valueReg);
+}
+
+uint8_t HVMCodeGenerator::emitTensorLiteral(const ast::TensorLiteral& literal) {
+    uint32_t elemType = tensorElementTypeIdFromLiteral(literal);
+    std::vector<int64_t> shape = tensorShapeFromLiteral(literal);
+    if (shape.empty()) shape.push_back(0);
+
+    uint8_t elemReg = emitConstant(static_cast<int64_t>(elemType));
+    emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
+    freeRegister(elemReg);
+    for (size_t i = 0; i < shape.size() && i < 3; ++i) {
+        uint8_t dimReg = emitConstant(shape[i]);
+        emit(Opcode::MOV, OperandsR{argReg(2, i), dimReg, 0, 0});
+        freeRegister(dimReg);
+    }
+
+    if (shape.size() == 1) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
+    else if (shape.size() == 2) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
+    else emitCall(Opcode::CALL, "_F_hoo_Tensor_new3_p_i8_i8_i8_i8");
+
+    uint8_t tensorReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{tensorReg, 1, 0, 0});
+    if (literal.getElements()) {
+        for (const auto& elem : literal.getElements()->getExpressions()) {
+            emitFlattenTensorLiteralElements(*elem, tensorReg);
+        }
+    }
+    return tensorReg;
+}
+
+uint8_t HVMCodeGenerator::emitTensorBinaryCall(const ast::BinaryExpression& binary, const std::string& symbolName) {
+    uint8_t left = visitExpression(binary.getLeft());
+    uint8_t right = visitExpression(binary.getRight());
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    emit(Opcode::MOV, OperandsR{2, right, 0, 0});
+    emitCall(Opcode::CALL, symbolName);
+    uint8_t dest = allocateRegister();
+    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+    freeRegister(left);
+    freeRegister(right);
+    return dest;
 }
 
 uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
@@ -1997,6 +2201,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
         if (dynamic_cast<const ast::ArrayLiteral*>(&primary)) return 102;
+        if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
             return getLocalTypeId(id->getName());
         }
@@ -2009,22 +2214,25 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto unaryMinus = dynamic_cast<const ast::UnaryMinus*>(&expr)) {
         return inferExpressionTypeId(unaryMinus->getOperand());
     }
-    if (dynamic_cast<const ast::LogicalNot*>(&expr)) {
-        return 3;
+    if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
+        return inferExpressionTypeId(logicalNot->getOperand()) == 104 ? 104 : 3;
     }
     if (auto logicAnd = dynamic_cast<const ast::LogicalAnd*>(&expr)) {
         uint32_t left = inferExpressionTypeId(logicAnd->getLeft());
         uint32_t right = inferExpressionTypeId(logicAnd->getRight());
+        if (left == 104 || right == 104) return 104;
         return left == 8 && right == 8 ? 8 : 3;
     }
     if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
         uint32_t left = inferExpressionTypeId(logicOr->getLeft());
         uint32_t right = inferExpressionTypeId(logicOr->getRight());
+        if (left == 104 || right == 104) return 104;
         return left == 8 && right == 8 ? 8 : 3;
     }
     if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
         uint32_t left = inferExpressionTypeId(binary->getLeft());
         uint32_t right = inferExpressionTypeId(binary->getRight());
+        if (left == 104 || right == 104) return 104;
         switch (binary->getOperator()) {
             case ast::BinaryOperator::LESS:
             case ast::BinaryOperator::LESS_EQUALS:
@@ -2046,6 +2254,10 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&arrayAccess->getArray())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
+                if (getLocalTypeId(id->getName()) == 104) {
+                    uint32_t elementTypeId = getLocalElementTypeId(id->getName());
+                    if (elementTypeId != 100) return elementTypeId;
+                }
                 uint32_t elementTypeId = getLocalElementTypeId(id->getName());
                 if (elementTypeId != 100) return elementTypeId;
             }
@@ -2077,8 +2289,11 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
                 if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
                 if (dynamic_cast<const ast::ArrayLiteral*>(&node)) return 102;
+                if (dynamic_cast<const ast::TensorLiteral*>(&node)) return 104;
                 if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
             }
+            uint32_t inferredExprType = inferExpressionTypeId(*initializer);
+            if (inferredExprType != 100) return inferredExprType;
             // Inference from constructor calls like Map.new(), Array.new()
             if (auto fc = dynamic_cast<const ast::FunctionCall*>(initializer)) {
                 if (auto ma = dynamic_cast<const ast::MemberAccess*>(&fc->getFunction())) {

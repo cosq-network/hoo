@@ -129,6 +129,10 @@ std::string MapType::toString() const {
     return "MapType";
 }
 
+std::string TensorType::toString() const {
+    return "TensorType";
+}
+
 // Statement implementations
 std::string Block::toString() const {
     return "Block";
@@ -260,6 +264,10 @@ std::string ArrayLiteral::toString() const {
     return "ArrayLiteral";
 }
 
+std::string TensorLiteral::toString() const {
+    return "TensorLiteral";
+}
+
 // Primary implementations
 std::string Identifier::toString() const {
     return "Identifier(" + name_ + ")";
@@ -353,6 +361,8 @@ std::string hooc::ast::binaryOperatorToString(BinaryOperator op) {
         case BinaryOperator::MULTIPLY: return "*";
         case BinaryOperator::DIVIDE: return "/";
         case BinaryOperator::MODULO: return "%";
+        case BinaryOperator::ELEMENT_MULTIPLY: return ".*";
+        case BinaryOperator::ELEMENT_DIVIDE: return "./";
         case BinaryOperator::PLUS: return "+";
         case BinaryOperator::MINUS: return "-";
         case BinaryOperator::LESS: return "<";

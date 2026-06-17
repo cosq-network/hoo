@@ -155,6 +155,13 @@ private:
      */
     std::string typeIdToMangleType(uint32_t typeId) const;
 
+    uint32_t tensorElementTypeIdFromType(const ast::TensorType& type) const;
+    uint32_t tensorElementTypeIdFromLiteral(const ast::TensorLiteral& literal);
+    std::vector<int64_t> tensorShapeFromLiteral(const ast::TensorLiteral& literal);
+    void emitFlattenTensorLiteralElements(const ast::Expression& expr, uint8_t tensorReg);
+    uint8_t emitTensorLiteral(const ast::TensorLiteral& literal);
+    uint8_t emitTensorBinaryCall(const ast::BinaryExpression& binary, const std::string& symbolName);
+
     /**
      * Check if a name matches a known built-in class for static dispatch.
      */

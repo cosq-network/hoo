@@ -68,7 +68,8 @@ const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap() {
         {"string", "s"},
         {"void", "v"},
         {"ptr", "p"},
-        {"array", "a"}
+        {"array", "a"},
+        {"tensor", "t"}
     };
     return map;
 }
@@ -577,6 +578,10 @@ std::string SymbolMangler::demangleType(const std::string& mangledType) {
         if (mangledType[pos] == 'p') {
             pos++;
             return "ptr";
+        }
+        if (mangledType[pos] == 't') {
+            pos++;
+            return "tensor";
         }
 
         if (mangledType[pos] == 'O') {

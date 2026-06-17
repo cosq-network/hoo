@@ -223,6 +223,7 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_string.cpp
     src/runtime/lib/hoo_character.cpp
     src/runtime/lib/hoo_generic_array.cpp
+    src/runtime/lib/hoo_tensor.cpp
     src/runtime/lib/hoo_map.cpp
     src/runtime/lib/hoo_io.cpp
     src/runtime/lib/hoo_exception.cpp
@@ -405,6 +406,7 @@ if(HOO_BUILD_TESTS)
         tests/parsing/FunctionCallParsingTest.cpp
         tests/parsing/NullableTypeParsingTest.cpp
         tests/parsing/LowPrecisionTypeParsingTest.cpp
+        tests/parsing/TensorTypeParsingTest.cpp
         tests/parsing/VariableDeclarationParseTest.cpp
         tests/parsing/IfElseIfParsingTest.cpp
         tests/parsing/WhileLoopParsingTest.cpp
@@ -426,6 +428,7 @@ if(HOO_BUILD_TESTS)
         tests/codegen/HVMCodeGeneratorComprehensiveTest.cpp
         tests/codegen/HVMCodeGeneratorTest.cpp
         tests/runtime/HooArrayPhase7Test.cpp
+        tests/runtime/HooTensorTest.cpp
         tests/runtime/StringBasicsTest.cpp
         tests/runtime/HooCharacterTest.cpp
         tests/runtime/HooRuntimeTest.cpp
@@ -452,6 +455,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/HooStringJitTest.cpp
         tests/jit/HooMapJitTest.cpp
         tests/jit/HooArrayJitTest.cpp
+        tests/jit/HooTensorJitTest.cpp
         tests/jit/HooStandardLibraryJitTest.cpp
         tests/jit/HooThreadJitTest.cpp
         tests/jit/HooCsvJitTest.cpp

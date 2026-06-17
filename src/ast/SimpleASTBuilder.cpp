@@ -151,9 +151,13 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
         return buildMapType(ctx->mapType());
     }
 
+    if (ctx->tensorType()) {
+        return buildTensorType(ctx->tensorType());
+    }
+
     // Handle optionalType (array types and primitives)
     if (!ctx->optionalType()) {
-        throw std::runtime_error("Malformed Type: missing optionalType and mapType");
+        throw std::runtime_error("Malformed Type: missing optionalType, mapType, and tensorType");
     }
 
     auto optionalCtx = ctx->optionalType();
@@ -266,6 +270,25 @@ std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeConte
     }
 
     return std::make_unique<MapType>(keyType, std::move(valueType));
+}
+
+std::unique_ptr<TensorType> SimpleASTBuilder::buildTensorType(HoocParser::TensorTypeContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("TensorTypeContext is null");
+    }
+
+    auto elementType = buildBaseType(ctx->baseType());
+    std::vector<std::unique_ptr<Expression>> dimensions;
+    for (auto intNode : ctx->INTEGER_LITERAL()) {
+        dimensions.push_back(std::make_unique<PrimaryExpression>(
+            std::make_unique<IntegerLiteral>(getIntValue(intNode))));
+    }
+
+    if (dimensions.empty() || dimensions.size() > 3) {
+        throw std::runtime_error("tensor type requires 1, 2, or 3 dimensions");
+    }
+
+    return std::make_unique<TensorType>(std::move(elementType), std::move(dimensions));
 }
 
 std::unique_ptr<Block> SimpleASTBuilder::buildBlock(HoocParser::BlockContext* ctx) {
@@ -635,7 +658,9 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildMultiplicativeExpression(Hooc
         auto right = buildUnaryExpression(unaryExprs[i]);
 
         BinaryOperator op;
-        if (ctx->MULTIPLY(i-1)) op = BinaryOperator::MULTIPLY;
+        if (ctx->ELEMENT_MULTIPLY(i-1)) op = BinaryOperator::ELEMENT_MULTIPLY;
+        else if (ctx->ELEMENT_DIVIDE(i-1)) op = BinaryOperator::ELEMENT_DIVIDE;
+        else if (ctx->MULTIPLY(i-1)) op = BinaryOperator::MULTIPLY;
         else if (ctx->DIVIDE(i-1)) op = BinaryOperator::DIVIDE;
         else op = BinaryOperator::MODULO;
 
@@ -720,6 +745,18 @@ std::unique_ptr<ArrayLiteral> SimpleASTBuilder::buildArrayLiteral(HoocParser::Pr
     return std::make_unique<ArrayLiteral>(std::move(elements));
 }
 
+std::unique_ptr<TensorLiteral> SimpleASTBuilder::buildTensorLiteral(HoocParser::PrimaryContext* ctx) {
+    std::unique_ptr<ExpressionList> elements;
+
+    if (ctx->expressionList()) {
+        elements = buildExpressionList(ctx->expressionList());
+    } else {
+        elements = std::make_unique<ExpressionList>(std::vector<std::unique_ptr<Expression>>());
+    }
+
+    return std::make_unique<TensorLiteral>(std::move(elements));
+}
+
 std::unique_ptr<ExpressionList> SimpleASTBuilder::buildExpressionList(HoocParser::ExpressionListContext* ctx) {
     std::vector<std::unique_ptr<Expression>> expressions;
     if (ctx) {
@@ -739,6 +776,10 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         auto paren = std::make_unique<ParenthesizedExpression>(std::move(inner));
         return std::make_unique<PrimaryExpression>(std::move(paren));
     } else if (ctx->LBRACKET()) {
+        if (ctx->IDENTIFIER() && ctx->IDENTIFIER()->getText() == "t") {
+            auto tensorLiteral = buildTensorLiteral(ctx);
+            return std::make_unique<PrimaryExpression>(std::move(tensorLiteral));
+        }
         auto arrayLiteral = buildArrayLiteral(ctx);
         return std::make_unique<PrimaryExpression>(std::move(arrayLiteral)); // Wrap in PrimaryExpression
     } else if (ctx->IDENTIFIER()) {

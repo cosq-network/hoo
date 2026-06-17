@@ -223,6 +223,7 @@ TEST_F(SymbolManglerTest, TypeMangling) {
     EXPECT_EQ(SymbolMangler::mangleType("int8"), "i1");
     EXPECT_EQ(SymbolMangler::mangleType("byte"), "i1");
     EXPECT_EQ(SymbolMangler::mangleType("ptr"), "p");
+    EXPECT_EQ(SymbolMangler::mangleType("tensor"), "t");
 }
 
 TEST_F(SymbolManglerTest, TypeDemangling) {
@@ -237,6 +238,7 @@ TEST_F(SymbolManglerTest, TypeDemangling) {
     EXPECT_EQ(SymbolMangler::demangleType("v"), "void");
     EXPECT_EQ(SymbolMangler::demangleType("i1"), "int8");
     EXPECT_EQ(SymbolMangler::demangleType("p"), "ptr");
+    EXPECT_EQ(SymbolMangler::demangleType("t"), "tensor");
 }
 
 TEST_F(SymbolManglerTest, LowPrecisionFunctionMangling) {

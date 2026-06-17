@@ -149,5 +149,23 @@ private:
     std::unique_ptr<Type> valueType_;
 };
 
+// Fixed-rank tensor type: tensor<element>[d0, d1, d2]
+class TensorType : public Type {
+public:
+    TensorType(std::unique_ptr<BaseType> elementType,
+               std::vector<std::unique_ptr<Expression>> dimensions)
+        : elementType_(std::move(elementType)), dimensions_(std::move(dimensions)) {}
+
+    std::string toString() const override;
+
+    const BaseType& getElementType() const { return *elementType_; }
+    const std::vector<std::unique_ptr<Expression>>& getDimensions() const { return dimensions_; }
+    size_t getRank() const { return dimensions_.size(); }
+
+private:
+    std::unique_ptr<BaseType> elementType_;
+    std::vector<std::unique_ptr<Expression>> dimensions_;
+};
+
 } // namespace ast
 } // namespace hooc

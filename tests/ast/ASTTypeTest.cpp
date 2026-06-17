@@ -107,6 +107,18 @@ TEST_F(ASTTypeTest, MapTakeValueType) {
     EXPECT_NE(taken, nullptr);
 }
 
+TEST_F(ASTTypeTest, TensorTypeConstruction) {
+    auto elem = std::make_unique<BaseType>(std::make_unique<PrimitiveType>(PrimitiveTypeKind::F8));
+    std::vector<std::unique_ptr<Expression>> dims;
+    dims.push_back(std::make_unique<PrimaryExpression>(std::make_unique<IntegerLiteral>(2)));
+    dims.push_back(std::make_unique<PrimaryExpression>(std::make_unique<IntegerLiteral>(3)));
+    TensorType tt(std::move(elem), std::move(dims));
+    EXPECT_EQ(tt.toString(), "TensorType");
+    EXPECT_EQ(tt.getRank(), 2u);
+    EXPECT_TRUE(tt.getElementType().isPrimitive());
+    EXPECT_EQ(tt.getElementType().getPrimitiveType()->getKind(), PrimitiveTypeKind::F8);
+}
+
 TEST_F(ASTTypeTest, IntegerLiteralAccessors) {
     IntegerLiteral lit(42);
     EXPECT_EQ(lit.getValue(), 42);
