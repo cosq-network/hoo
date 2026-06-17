@@ -1,6 +1,6 @@
 # Hoo
 
-Last Updated: 2026-06-17
+Last Updated: 2026-06-18
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -16,7 +16,7 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 
 - [x] **Core ISA v1.4**: Finalized 64-bit RISC instruction set with bit-packed encoding.
 - [x] **Aggressive Backend**: Functionally complete HVM code generator with manual object/array lowering.
-- [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation and 16-byte headers.
+- [x] **Runtime Library (`hoort`)**: ARC-managed core types (String, Array, Map) with native C++ implementation and 16-byte headers; `hoo::fs` class-based API (File, Directory, Path) over `<filesystem>`.
 - [x] **JIT Translator (`HVMJIT`)**: High-performance LLVM ORC v2 dynamic binary translator with per-module `JITDylib` isolation.
 - [x] **Phase 4 (Bootstrap/Init)**: module post-load initialization, dependency-order init, vtable init ordering, and once-only guards implemented and covered by tests.
 - [x] **Phase 5 (Literals & Interpolation)**: unicode-aware character support, 64-bit floating point lowering, and full string interpolation with automatic conversion implemented.
@@ -28,7 +28,7 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 - [x] **Phase 9 (Output Optimization)**: Silenced LLVM IR and JIT debug outputs during execution to significantly improve unit test performance.
 - [x] **Phase 9.1 (macOS Stabilization)**: Resolved cross-platform build errors in `hoo_thread` and `hoo_uuid` modules; project now verified stable on macOS (Apple Silicon/Intel).
 - [x] **Phase 10 (Tensor Type Support)**: Added tensor type (`tensor<T>[N]`) to grammar, AST, codegen, and runtime with full 1D/2D/3D support. Includes element-wise arithmetic, comparison operators, logical operators, matrix multiplication, and both int64 and f64 element types. Runtime, parsing, and JIT test coverage across all dimensions.
-- [x] **Verification**: full preset test run passing (`1449 tests`, 0 failures, 2 pre-existing disabled).
+- [x] **Verification**: full preset test run passing (`1456 tests`, 0 failures, 2 pre-existing disabled).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 
@@ -73,7 +73,7 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/        Exhaustive unit and integration test suites (1449 tests in the current preset run).
+tests/        Exhaustive unit and integration test suites (1456 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 

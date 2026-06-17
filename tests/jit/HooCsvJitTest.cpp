@@ -135,16 +135,17 @@ TEST_F(HooCsvJitTest, ReadFileNotFound) {
 }
 
 TEST_F(HooCsvJitTest, WriteFile) {
-    const std::string source = R"(
+    const std::string hooc_path = "hoo_csv_jit_write_test.csv";
+    std::string source = std::string(R"(
         func :int64 test() {
             var csv = Csv.new();
             var data = [["x", "y"], ["10", "20"]];
-            var ok = csv.writeFile("/tmp/hoo_csv_jit_write_test.csv", data);
+            var ok = csv.writeFile(")") + hooc_path + R"(", data);
             csv.release();
             return ok;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
-    std::remove("/tmp/hoo_csv_jit_write_test.csv");
+    std::remove(hooc_path.c_str());
 }

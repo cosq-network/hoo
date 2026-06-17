@@ -2,40 +2,98 @@
 
 The `hoo.fs` module provides file I/O, directory traversal, temporary files, and file metadata queries, wrapping C++17 `<filesystem>`.
 
-## 1. File Operations
+The module exposes two API layers:
+- **C++ API** — object-oriented classes: `hoo::fs::File`, `hoo::fs::Directory`, `hoo::fs::Path`
+- **C-ABI bridge** — flat `hoo_fs_*` functions used by the JIT / FFI layer
 
-- `Fs.exists(path)` — Check if a path exists. Returns 1 if exists, 0 otherwise.
-- `Fs.isFile(path)` — Check if path is a regular file.
-- `Fs.isDir(path)` — Check if path is a directory.
-- `Fs.size(path)` — Get file size in bytes, or -1 on error.
-- `Fs.lastModified(path)` — Get last modification time as Unix timestamp (seconds since epoch), or -1 on error.
-- `Fs.delete(path)` — Delete a file. Returns 1 on success.
-- `Fs.rename(old_path, new_path)` — Rename/move a file or directory.
-- `Fs.copy(src, dst)` — Copy a file.
+All Hoo language calls (`Fs.exists`, `Fs.delete`, etc.) resolve through the JIT bridge to the C-ABI layer, which delegates to the C++ classes.
 
-## 2. Read/Write Text Files
+---
 
-- `Fs.readText(path)` — Read entire text file into an allocated string (free with `Fs.freeString`).
-- `Fs.writeText(path, content)` — Write string to file, overwriting. Returns 1 on success.
-- `Fs.appendText(path, content)` — Append string to file. Creates file if missing.
+## 1. `hoo::fs::File`
 
-## 3. Read/Write Binary Files
+Static methods on the `File` class:
 
-- `Fs.readBytes(path)` — Read entire binary file into allocated buffer.
-- `Fs.writeBytes(path, data, len)` — Write raw bytes to file, overwriting.
+| Method | Signature | Description |
+|---|---|---|
+| `exists` | `(path) -> bool` | Check if a path exists. |
+| `isFile` | `(path) -> bool` | Check if path is a regular file. |
+| `size` | `(path) -> i64` | File size in bytes; `-1` on error. |
+| `lastModified` | `(path) -> i64` | Unix timestamp (seconds since epoch); `-1` on error. |
+| `remove` | `(path) -> bool` | Delete a file or empty directory. |
+| `rename` | `(old, new) -> bool` | Rename / move a file or directory. |
+| `copy` | `(src, dst) -> bool` | Copy a file (overwrites destination). |
+| `readText` | `(path) -> string` | Read entire text file. Returns empty string on error. |
+| `writeText` | `(path, content) -> bool` | Write string to file, overwriting. |
+| `appendText` | `(path, content) -> bool` | Append string to file. Creates file if missing. |
+| `readBytes` | `(path, out vector<u8>) -> bool` | Read entire binary file into vector. |
+| `writeBytes` | `(path, vector<u8>) -> bool` | Write raw bytes to file, overwriting. |
 
-## 4. Directory Operations
+## 2. `hoo::fs::Directory`
 
-- `Fs.mkdir(path)` — Create a single directory (parent must exist).
-- `Fs.mkdirs(path)` — Create directory tree (mkdir -p).
-- `Fs.rmdir(path)` — Remove an empty directory.
-- `Fs.listDir(path)` — List directory contents into array of strings (free with `Fs.freeList`).
+Static methods on the `Directory` class:
 
-## 5. Temp Files
+| Method | Signature | Description |
+|---|---|---|
+| `isDirectory` | `(path) -> bool` | Check if path is a directory. |
+| `create` | `(path) -> bool` | Create a single directory (parent must exist). |
+| `createTree` | `(path) -> bool` | Create directory tree (mkdir -p). |
+| `remove` | `(path) -> bool` | Remove an empty directory. |
+| `list` | `(path) -> vector<string>` | List directory contents (filenames only, no paths). |
 
-- `Fs.tempDir()` — Get system temporary directory path.
-- `Fs.createTempFile(prefix)` — Create a temporary file with given prefix.
+## 3. `hoo::fs::Path`
+
+| Method | Signature | Description |
+|---|---|---|
+| `getTempDir` | `() -> string` | System temporary directory path. Returns empty on error. |
+| `createTempFile` | `(prefix) -> string` | Create a temporary file with the given prefix. Returns the full path. |
+
+---
+
+## C-ABI Bridge Functions (JIT / FFI)
+
+These functions are declared `extern "C"` and remain stable for JIT linkage.
+
+| Function | Description |
+|---|---|
+| `hoo_fs_exists(path)` | Returns 1 if exists, 0 otherwise. |
+| `hoo_fs_is_file(path)` | Returns 1 if regular file. |
+| `hoo_fs_is_dir(path)` | Returns 1 if directory. |
+| `hoo_fs_size(path)` | Returns size in bytes, or -1. |
+| `hoo_fs_last_modified(path)` | Returns Unix timestamp, or -1. |
+| `hoo_fs_delete(path)` | Deletes file, returns 1 on success. |
+| `hoo_fs_rename(old, new)` | Renames file/directory, returns 1 on success. |
+| `hoo_fs_copy(src, dst)` | Copies file, returns 1 on success. |
+| `hoo_fs_read_text(path)` | Returns malloc'd string (free with `hoo_fs_free_string`), or NULL. |
+| `hoo_fs_write_text(path, content)` | Writes string, returns 1 on success. |
+| `hoo_fs_append_text(path, content)` | Appends string, returns 1 on success. |
+| `hoo_fs_read_bytes(path, &out_data, &out_len)` | Reads binary into malloc'd buffer, returns 1 on success. |
+| `hoo_fs_write_bytes(path, data, len)` | Writes binary, returns 1 on success. |
+| `hoo_fs_mkdir(path)` | Creates single directory, returns 1 on success. |
+| `hoo_fs_mkdirs(path)` | Creates directory tree, returns 1 on success. |
+| `hoo_fs_rmdir(path)` | Removes empty directory, returns 1 on success. |
+| `hoo_fs_list_dir(path, &count)` | Lists directory into malloc'd array (free with `hoo_fs_free_list`). |
+| `hoo_fs_free_list(list, count)` | Frees array returned by `hoo_fs_list_dir`. |
+| `hoo_fs_temp_dir()` | Returns malloc'd temp directory path string. |
+| `hoo_fs_create_temp_file(prefix)` | Returns malloc'd temp file path string. |
+| `hoo_fs_free_string(str)` | Frees a string returned by any `hoo_fs_*` function. |
+
+## Hoo Language API
+
+Hoo code accesses FS operations through the `Fs` module class:
+
+```
+import hoo.fs
+
+val ok = Fs.exists("myfile.txt")
+val text = Fs.readText("myfile.txt")
+val size = Fs.size("myfile.txt")
+```
+
+These calls resolve via the JIT bridge to the C-ABI functions above.
 
 ## Memory Management
 
-Allocated strings from `Fs` functions must be freed with `Fs.freeString(str)`. Directory listings must be freed with `Fs.freeList(list, count)`. Binary buffers are freed via the generic `free_string`.
+- Strings returned from `hoo_fs_read_text`, `hoo_fs_temp_dir`, `hoo_fs_create_temp_file` must be freed with `hoo_fs_free_string`.
+- Directory listings from `hoo_fs_list_dir` must be freed with `hoo_fs_free_list(list, count)`.
+- The C++ API (`File::readText`, `Path::getTempDir`, etc.) returns `std::string` / `std::vector`, which manages its own memory.
