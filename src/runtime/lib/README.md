@@ -62,7 +62,7 @@ Runtime services are also accessible via the `SYSCALL` instruction (opcode `0xC0
 ## 5. Contribution Guidelines
 
 When adding new features to `hoort`:
-1. **C-ABI Linkage**: Use `extern "C"` for all public headers.
+1. **Public API**: Prefer C++ classes in the `hoo::` namespace (e.g., `hoo::fs::File`) as the primary interface. Provide `extern "C"` bridge functions alongside for JIT/FFI compatibility, delegating to the C++ class methods.
 2. **Mangled Tags**: Document the HVM mangled name for every function (e.g., `_F_...`) in the header comments.
 3. **ARC Compliance**: Ensure all methods taking or returning objects properly handle the refcount header.
 4. **Header Isolation**: Keep module-specific logic in isolated files (e.g., `hoo_crypto.cpp`).

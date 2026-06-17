@@ -1,23 +1,24 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
+#include <ctime>
 #include "runtime/lib/hoo_fs.h"
+
+using namespace hoo::fs;
 
 class HooFSTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        char* tmpdir = hoo_fs_temp_dir();
-        ASSERT_NE(tmpdir, nullptr);
-        tempDir = tmpdir;
-        hoo_fs_free_string(tmpdir);
+        tempDir = Path::getTempDir();
+        ASSERT_FALSE(tempDir.empty());
 
         testDir = tempDir + "/hoo_fs_test_" + std::to_string(time(nullptr));
-        int64_t ok = hoo_fs_mkdirs(testDir.c_str());
-        ASSERT_EQ(ok, 1);
+        bool ok = Directory::createTree(testDir);
+        ASSERT_TRUE(ok);
     }
 
     void TearDown() override {
-        hoo_fs_rmdir(testDir.c_str());
+        Directory::remove(testDir);
     }
 
     std::string mkpath(const std::string& name) const {
@@ -28,47 +29,238 @@ protected:
     std::string testDir;
 };
 
-TEST_F(HooFSTest, TempDir) {
+// ---------------------------------------------------------------------------
+// Path
+// ---------------------------------------------------------------------------
+
+TEST_F(HooFSTest, Path_GetTempDir) {
+    std::string tmp = Path::getTempDir();
+    EXPECT_FALSE(tmp.empty());
+}
+
+TEST_F(HooFSTest, Path_CreateTempFile) {
+    std::string tmpPath = Path::createTempFile("hoofstest");
+    EXPECT_FALSE(tmpPath.empty());
+    EXPECT_TRUE(File::exists(tmpPath));
+
+    File::remove(tmpPath);
+}
+
+// ---------------------------------------------------------------------------
+// File
+// ---------------------------------------------------------------------------
+
+TEST_F(HooFSTest, File_Exists) {
+    std::string path = mkpath("exists_test.txt");
+    EXPECT_FALSE(File::exists(path));
+
+    EXPECT_TRUE(File::writeText(path, "hello"));
+    EXPECT_TRUE(File::exists(path));
+
+    EXPECT_TRUE(File::remove(path));
+    EXPECT_FALSE(File::exists(path));
+}
+
+TEST_F(HooFSTest, File_IsFile) {
+    std::string filePath = mkpath("is_file_test.txt");
+    std::string dirPath = mkpath("is_file_dir");
+
+    EXPECT_TRUE(File::writeText(filePath, "data"));
+    EXPECT_TRUE(Directory::create(dirPath));
+
+    EXPECT_TRUE(File::isFile(filePath));
+    EXPECT_FALSE(File::isFile(dirPath));
+
+    File::remove(filePath);
+    Directory::remove(dirPath);
+}
+
+TEST_F(HooFSTest, File_ReadWriteText) {
+    std::string path = mkpath("readwrite.txt");
+    const std::string content = "Hello, HooFS!";
+
+    EXPECT_TRUE(File::writeText(path, content));
+
+    std::string readback = File::readText(path);
+    EXPECT_EQ(readback, content);
+
+    File::remove(path);
+}
+
+TEST_F(HooFSTest, File_AppendText) {
+    std::string path = mkpath("append.txt");
+
+    EXPECT_TRUE(File::writeText(path, "Hello"));
+    EXPECT_TRUE(File::appendText(path, " World"));
+
+    std::string readback = File::readText(path);
+    EXPECT_EQ(readback, "Hello World");
+
+    File::remove(path);
+}
+
+TEST_F(HooFSTest, File_Size) {
+    std::string path = mkpath("size_test.txt");
+    const std::string content = "1234567890";
+
+    EXPECT_TRUE(File::writeText(path, content));
+
+    int64_t sz = File::size(path);
+    EXPECT_EQ(sz, static_cast<int64_t>(content.size()));
+
+    File::remove(path);
+}
+
+TEST_F(HooFSTest, File_LastModified) {
+    std::string path = mkpath("modified_test.txt");
+
+    EXPECT_TRUE(File::writeText(path, "data"));
+
+    int64_t mtime = File::lastModified(path);
+    EXPECT_GE(mtime, 0);
+
+    File::remove(path);
+}
+
+TEST_F(HooFSTest, File_Remove) {
+    std::string path = mkpath("delete_test.txt");
+
+    EXPECT_TRUE(File::writeText(path, "to be deleted"));
+    EXPECT_TRUE(File::exists(path));
+
+    EXPECT_TRUE(File::remove(path));
+    EXPECT_FALSE(File::exists(path));
+}
+
+TEST_F(HooFSTest, File_Copy) {
+    std::string src = mkpath("copy_src.txt");
+    std::string dst = mkpath("copy_dst.txt");
+    const std::string content = "copy me";
+
+    EXPECT_TRUE(File::writeText(src, content));
+    EXPECT_TRUE(File::copy(src, dst));
+
+    std::string readback = File::readText(dst);
+    EXPECT_EQ(readback, content);
+
+    File::remove(src);
+    File::remove(dst);
+}
+
+TEST_F(HooFSTest, File_Rename) {
+    std::string oldPath = mkpath("rename_old.txt");
+    std::string newPath = mkpath("rename_new.txt");
+
+    EXPECT_TRUE(File::writeText(oldPath, "renamed content"));
+    EXPECT_TRUE(File::rename(oldPath, newPath));
+
+    EXPECT_FALSE(File::exists(oldPath));
+    EXPECT_TRUE(File::exists(newPath));
+
+    std::string readback = File::readText(newPath);
+    EXPECT_EQ(readback, "renamed content");
+
+    File::remove(newPath);
+}
+
+// ---------------------------------------------------------------------------
+// Directory
+// ---------------------------------------------------------------------------
+
+TEST_F(HooFSTest, Directory_IsDirectory) {
+    std::string filePath = mkpath("is_dir_file.txt");
+    std::string dirPath = mkpath("is_dir_dir");
+
+    EXPECT_TRUE(File::writeText(filePath, "data"));
+    EXPECT_TRUE(Directory::create(dirPath));
+
+    EXPECT_TRUE(Directory::isDirectory(dirPath));
+    EXPECT_FALSE(Directory::isDirectory(filePath));
+
+    File::remove(filePath);
+    Directory::remove(dirPath);
+}
+
+TEST_F(HooFSTest, Directory_CreateTree) {
+    std::string nested = testDir + "/a/b/c/d";
+
+    EXPECT_TRUE(Directory::createTree(nested));
+    EXPECT_TRUE(Directory::isDirectory(nested));
+
+    Directory::remove(nested);
+    Directory::remove(testDir + "/a/b/c");
+    Directory::remove(testDir + "/a/b");
+    Directory::remove(testDir + "/a");
+}
+
+TEST_F(HooFSTest, Directory_List) {
+    std::string file1 = mkpath("list_a.txt");
+    std::string file2 = mkpath("list_b.txt");
+
+    File::writeText(file1, "aaa");
+    File::writeText(file2, "bbb");
+
+    std::vector<std::string> entries = Directory::list(testDir);
+    ASSERT_GE(entries.size(), size_t{2});
+
+    bool foundA = false, foundB = false;
+    for (const auto& e : entries) {
+        if (e == "list_a.txt") foundA = true;
+        if (e == "list_b.txt") foundB = true;
+    }
+    EXPECT_TRUE(foundA);
+    EXPECT_TRUE(foundB);
+
+    File::remove(file1);
+    File::remove(file2);
+}
+
+// ---------------------------------------------------------------------------
+// Binary I/O
+// ---------------------------------------------------------------------------
+
+TEST_F(HooFSTest, File_BinaryRoundTrip) {
+    std::string path = mkpath("binary.bin");
+    std::vector<uint8_t> data = {0x00, 0xFF, 0xAB, 0xCD, 0x12, 0x34};
+
+    EXPECT_TRUE(File::writeBytes(path, data));
+
+    std::vector<uint8_t> readback;
+    EXPECT_TRUE(File::readBytes(path, readback));
+
+    ASSERT_EQ(readback.size(), data.size());
+    for (size_t i = 0; i < data.size(); i++) {
+        EXPECT_EQ(readback[i], data[i]) << "byte mismatch at index " << i;
+    }
+
+    File::remove(path);
+}
+
+// ---------------------------------------------------------------------------
+// C-ABI Bridge Compatibility (ensure JIT / FFI still works)
+// ---------------------------------------------------------------------------
+
+TEST_F(HooFSTest, CAbi_Bridge_Exists) {
+    std::string path = mkpath("cabi_exists.txt");
+    EXPECT_EQ(hoo_fs_exists(path.c_str()), 0);
+
+    EXPECT_TRUE(File::writeText(path, "hi"));
+    EXPECT_EQ(hoo_fs_exists(path.c_str()), 1);
+
+    File::remove(path);
+    EXPECT_EQ(hoo_fs_exists(path.c_str()), 0);
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_TempDir) {
     char* tmp = hoo_fs_temp_dir();
     ASSERT_NE(tmp, nullptr);
     EXPECT_GT(strlen(tmp), 0);
     hoo_fs_free_string(tmp);
 }
 
-TEST_F(HooFSTest, Exists) {
-    std::string path = mkpath("exists_test.txt");
-    EXPECT_EQ(hoo_fs_exists(path.c_str()), 0);
-
-    int64_t ok = hoo_fs_write_text(path.c_str(), "hello");
-    ASSERT_EQ(ok, 1);
-    EXPECT_EQ(hoo_fs_exists(path.c_str()), 1);
-
-    ok = hoo_fs_delete(path.c_str());
-    ASSERT_EQ(ok, 1);
-    EXPECT_EQ(hoo_fs_exists(path.c_str()), 0);
-}
-
-TEST_F(HooFSTest, IsFileIsDir) {
-    std::string filePath = mkpath("is_file_test.txt");
-    std::string dirPath = mkpath("is_dir_test");
-
-    int64_t ok = hoo_fs_write_text(filePath.c_str(), "data");
-    ASSERT_EQ(ok, 1);
-    ok = hoo_fs_mkdir(dirPath.c_str());
-    ASSERT_EQ(ok, 1);
-
-    EXPECT_EQ(hoo_fs_is_file(filePath.c_str()), 1);
-    EXPECT_EQ(hoo_fs_is_file(dirPath.c_str()), 0);
-    EXPECT_EQ(hoo_fs_is_dir(dirPath.c_str()), 1);
-    EXPECT_EQ(hoo_fs_is_dir(filePath.c_str()), 0);
-
-    hoo_fs_delete(filePath.c_str());
-    hoo_fs_rmdir(dirPath.c_str());
-}
-
-TEST_F(HooFSTest, ReadWriteText) {
-    std::string path = mkpath("readwrite.txt");
-    const char* content = "Hello, HooFS!";
+TEST_F(HooFSTest, CAbi_Bridge_ReadWriteText) {
+    std::string path = mkpath("cabi_rw.txt");
+    const char* content = "C-ABI bridge test";
 
     int64_t ok = hoo_fs_write_text(path.c_str(), content);
     ASSERT_EQ(ok, 1);
@@ -81,122 +273,12 @@ TEST_F(HooFSTest, ReadWriteText) {
     hoo_fs_delete(path.c_str());
 }
 
-TEST_F(HooFSTest, AppendText) {
-    std::string path = mkpath("append.txt");
+TEST_F(HooFSTest, CAbi_Bridge_ListDir) {
+    std::string file1 = mkpath("cabi_a.txt");
+    std::string file2 = mkpath("cabi_b.txt");
 
-    int64_t ok = hoo_fs_write_text(path.c_str(), "Hello");
-    ASSERT_EQ(ok, 1);
-
-    ok = hoo_fs_append_text(path.c_str(), " World");
-    ASSERT_EQ(ok, 1);
-
-    char* readback = hoo_fs_read_text(path.c_str());
-    ASSERT_NE(readback, nullptr);
-    EXPECT_STREQ(readback, "Hello World");
-    hoo_fs_free_string(readback);
-
-    hoo_fs_delete(path.c_str());
-}
-
-TEST_F(HooFSTest, FileSize) {
-    std::string path = mkpath("size_test.txt");
-    const char* content = "1234567890";
-
-    int64_t ok = hoo_fs_write_text(path.c_str(), content);
-    ASSERT_EQ(ok, 1);
-
-    int64_t size = hoo_fs_size(path.c_str());
-    EXPECT_EQ(size, static_cast<int64_t>(strlen(content)));
-
-    hoo_fs_delete(path.c_str());
-}
-
-TEST_F(HooFSTest, LastModified) {
-    std::string path = mkpath("modified_test.txt");
-
-    int64_t ok = hoo_fs_write_text(path.c_str(), "data");
-    ASSERT_EQ(ok, 1);
-
-    int64_t mtime = hoo_fs_last_modified(path.c_str());
-    EXPECT_GE(mtime, 0);
-
-    hoo_fs_delete(path.c_str());
-}
-
-TEST_F(HooFSTest, Delete) {
-    std::string path = mkpath("delete_test.txt");
-
-    int64_t ok = hoo_fs_write_text(path.c_str(), "to be deleted");
-    ASSERT_EQ(ok, 1);
-    EXPECT_EQ(hoo_fs_exists(path.c_str()), 1);
-
-    ok = hoo_fs_delete(path.c_str());
-    ASSERT_EQ(ok, 1);
-    EXPECT_EQ(hoo_fs_exists(path.c_str()), 0);
-}
-
-TEST_F(HooFSTest, Copy) {
-    std::string src = mkpath("copy_src.txt");
-    std::string dst = mkpath("copy_dst.txt");
-    const char* content = "copy me";
-
-    int64_t ok = hoo_fs_write_text(src.c_str(), content);
-    ASSERT_EQ(ok, 1);
-
-    ok = hoo_fs_copy(src.c_str(), dst.c_str());
-    ASSERT_EQ(ok, 1);
-
-    char* readback = hoo_fs_read_text(dst.c_str());
-    ASSERT_NE(readback, nullptr);
-    EXPECT_STREQ(readback, content);
-    hoo_fs_free_string(readback);
-
-    hoo_fs_delete(src.c_str());
-    hoo_fs_delete(dst.c_str());
-}
-
-TEST_F(HooFSTest, Rename) {
-    std::string oldPath = mkpath("rename_old.txt");
-    std::string newPath = mkpath("rename_new.txt");
-
-    int64_t ok = hoo_fs_write_text(oldPath.c_str(), "renamed content");
-    ASSERT_EQ(ok, 1);
-
-    ok = hoo_fs_rename(oldPath.c_str(), newPath.c_str());
-    ASSERT_EQ(ok, 1);
-
-    EXPECT_EQ(hoo_fs_exists(oldPath.c_str()), 0);
-    EXPECT_EQ(hoo_fs_exists(newPath.c_str()), 1);
-
-    char* readback = hoo_fs_read_text(newPath.c_str());
-    ASSERT_NE(readback, nullptr);
-    EXPECT_STREQ(readback, "renamed content");
-    hoo_fs_free_string(readback);
-
-    hoo_fs_delete(newPath.c_str());
-}
-
-TEST_F(HooFSTest, Mkdirs) {
-    std::string nested = testDir + "/a/b/c/d";
-
-    int64_t ok = hoo_fs_mkdirs(nested.c_str());
-    ASSERT_EQ(ok, 1);
-
-    EXPECT_EQ(hoo_fs_exists(nested.c_str()), 1);
-    EXPECT_EQ(hoo_fs_is_dir(nested.c_str()), 1);
-
-    hoo_fs_rmdir(nested.c_str());
-    hoo_fs_rmdir((testDir + "/a/b/c").c_str());
-    hoo_fs_rmdir((testDir + "/a/b").c_str());
-    hoo_fs_rmdir((testDir + "/a").c_str());
-}
-
-TEST_F(HooFSTest, ListDir) {
-    std::string file1 = mkpath("list_a.txt");
-    std::string file2 = mkpath("list_b.txt");
-
-    hoo_fs_write_text(file1.c_str(), "aaa");
-    hoo_fs_write_text(file2.c_str(), "bbb");
+    hoo_fs_write_text(file1.c_str(), "a");
+    hoo_fs_write_text(file2.c_str(), "b");
 
     int64_t count = 0;
     char** entries = hoo_fs_list_dir(testDir.c_str(), &count);
@@ -205,8 +287,8 @@ TEST_F(HooFSTest, ListDir) {
 
     bool foundA = false, foundB = false;
     for (int64_t i = 0; i < count; i++) {
-        if (strcmp(entries[i], "list_a.txt") == 0) foundA = true;
-        if (strcmp(entries[i], "list_b.txt") == 0) foundB = true;
+        if (strcmp(entries[i], "cabi_a.txt") == 0) foundA = true;
+        if (strcmp(entries[i], "cabi_b.txt") == 0) foundB = true;
     }
     EXPECT_TRUE(foundA);
     EXPECT_TRUE(foundB);
@@ -216,8 +298,8 @@ TEST_F(HooFSTest, ListDir) {
     hoo_fs_delete(file2.c_str());
 }
 
-TEST_F(HooFSTest, CreateTempFile) {
-    char* tmpPath = hoo_fs_create_temp_file("hoofstest");
+TEST_F(HooFSTest, CAbi_Bridge_CreateTempFile) {
+    char* tmpPath = hoo_fs_create_temp_file("cabitest");
     ASSERT_NE(tmpPath, nullptr);
     EXPECT_GT(strlen(tmpPath), 0);
     EXPECT_EQ(hoo_fs_exists(tmpPath), 1);
