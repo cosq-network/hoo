@@ -18,13 +18,15 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
    * Details the 16-byte object header, Reference Counting (ARC), and the Thread-Local Allocation Buffer (TLAB) system.
 2. **[Strings & Unicode](strings.md)**
    * `HooString` and `HooCharacter` implementations, immutable UTF-8 buffers, and Unicode scalar support.
-3. **[Collections](collections.md)**
+3. **[Buffer](buffer.md)**
+   * `HooBuffer` — managed mutable byte array with ARC, dynamic resizing, slice, append, and byte-level access. Handle points to `BufferImpl` (right after ARC header), same layout as `HooString`.
+4. **[Collections](collections.md)**
    * Hardware-ready low-level arrays (`HooArray`) and type-safe dictionaries (`HooMap`).
-4. **[Exceptions](exceptions.md)**
+5. **[Exceptions](exceptions.md)**
    * `HooException` type IDs, stack unwinding, and shadow stack management.
-5. **[Math](math.md)**
+6. **[Math](math.md)**
    * Mathematical constants, functions, and the random number generator state.
-6. **[Console I/O](io.md)**
+7. **[Console I/O](io.md)**
    * Console input/output (`print`, `readline`, `readchar`).
 
 ### System & Platform

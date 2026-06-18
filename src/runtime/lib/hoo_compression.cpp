@@ -1,4 +1,5 @@
 #include "hoo_compression.h"
+#include "hoo_buffer.h"
 #include <cstdlib>
 #include <cstring>
 #include <vector>
@@ -163,6 +164,46 @@ int64_t hoo_compression_deflate_decompress(const uint8_t* data, int64_t data_len
 
 void hoo_compression_free_bytes(uint8_t* data) {
     std::free(data);
+}
+
+HooBuffer hoo_compression_gzip_compress_buffer(HooBuffer buf) {
+    uint8_t* out_data = nullptr;
+    int64_t out_len = 0;
+    if (hoo_compression_gzip_compress(hoo_buffer_data(buf), hoo_buffer_length(buf), &out_data, &out_len) != 0)
+        return nullptr;
+    HooBuffer result = hoo_buffer_from_bytes(out_data, out_len);
+    std::free(out_data);
+    return result;
+}
+
+HooBuffer hoo_compression_gzip_decompress_buffer(HooBuffer buf) {
+    uint8_t* out_data = nullptr;
+    int64_t out_len = 0;
+    if (hoo_compression_gzip_decompress(hoo_buffer_data(buf), hoo_buffer_length(buf), &out_data, &out_len) != 0)
+        return nullptr;
+    HooBuffer result = hoo_buffer_from_bytes(out_data, out_len);
+    std::free(out_data);
+    return result;
+}
+
+HooBuffer hoo_compression_deflate_compress_buffer(HooBuffer buf) {
+    uint8_t* out_data = nullptr;
+    int64_t out_len = 0;
+    if (hoo_compression_deflate_compress(hoo_buffer_data(buf), hoo_buffer_length(buf), &out_data, &out_len) != 0)
+        return nullptr;
+    HooBuffer result = hoo_buffer_from_bytes(out_data, out_len);
+    std::free(out_data);
+    return result;
+}
+
+HooBuffer hoo_compression_deflate_decompress_buffer(HooBuffer buf) {
+    uint8_t* out_data = nullptr;
+    int64_t out_len = 0;
+    if (hoo_compression_deflate_decompress(hoo_buffer_data(buf), hoo_buffer_length(buf), &out_data, &out_len) != 0)
+        return nullptr;
+    HooBuffer result = hoo_buffer_from_bytes(out_data, out_len);
+    std::free(out_data);
+    return result;
 }
 
 } // extern "C"

@@ -48,6 +48,21 @@ let crc = Hashing.crc32("Hello", 5)
 // crc == 907060870
 ```
 
+### Buffer-Aware Overloads
+
+Each hashing function also accepts a `Buffer` handle:
+
+- `Hashing.sha256(buf: buffer) :string`
+- `Hashing.sha1(buf: buffer) :string`
+- `Hashing.md5(buf: buffer) :string`
+- `Hashing.crc32(buf: buffer) :int64`
+- `Hashing.hmacSha256(key: buffer, data: buffer) :string`
+
+```hoo
+let buf = Buffer.fromBytes("Hello, World!", 13)
+let hash = Hashing.sha256(buf)  // same result as string version
+```
+
 ### `Hashing.hmacSha256(key: string, keyLen: int64, data: string, dataLen: int64) :string`
 
 Returns the HMAC-SHA256 hex digest.

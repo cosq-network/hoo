@@ -1,4 +1,5 @@
 #include "hoo_uuid.h"
+#include "hoo_buffer.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -190,6 +191,18 @@ void hoo_uuid_release(HooUUID uuid) {
 
 void hoo_uuid_free_string(char* str) {
     std::free(str);
+}
+
+HooUUID hoo_uuid_from_bytes_buffer(HooBuffer buf) {
+    if (!buf) return NULL;
+    if (hoo_buffer_length(buf) != 16) return NULL;
+    return hoo_uuid_from_bytes(hoo_buffer_data(buf));
+}
+
+HooBuffer hoo_uuid_to_bytes_buffer(HooUUID uuid) {
+    uint8_t bytes[16];
+    if (!hoo_uuid_to_bytes(uuid, bytes)) return nullptr;
+    return hoo_buffer_from_bytes(bytes, 16);
 }
 
 #ifdef __cplusplus

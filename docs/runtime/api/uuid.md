@@ -28,6 +28,14 @@ Lexicographically compares two UUIDs. Returns -1 if a < b, 0 if a == b, 1 if a >
 `Uuid.release(uuid: ptr)`
 Releases a UUID handle.
 
+### Buffer-Aware Overloads
+
+`Uuid.fromBytes(buf: buffer) :ptr`
+Creates a UUID from a 16-byte Buffer. Returns NULL if the buffer is not exactly 16 bytes.
+
+`Uuid.toBytes(uuid: ptr) :buffer`
+Extracts the raw 16 bytes of a UUID into a new Buffer.
+
 ## Example
 
 ```hoo

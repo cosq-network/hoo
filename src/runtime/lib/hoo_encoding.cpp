@@ -1,4 +1,5 @@
 #include "hoo_encoding.h"
+#include "hoo_buffer.h"
 #include <cstring>
 #include <cstdlib>
 #include <string>
@@ -222,4 +223,30 @@ void hoo_encoding_free_string(char* str) {
 
 void hoo_encoding_free_bytes(uint8_t* data) {
     free(data);
+}
+
+char* hoo_encoding_base64_encode_buffer(HooBuffer buf) {
+    return hoo_encoding_base64_encode(hoo_buffer_data(buf), hoo_buffer_length(buf));
+}
+
+HooBuffer hoo_encoding_base64_decode_buffer(const char* encoded) {
+    uint8_t* data = nullptr;
+    int64_t len = hoo_encoding_base64_decode(encoded, &data);
+    if (len < 0 || !data) return nullptr;
+    HooBuffer buf = hoo_buffer_from_bytes(data, len);
+    free(data);
+    return buf;
+}
+
+char* hoo_encoding_hex_encode_buffer(HooBuffer buf) {
+    return hoo_encoding_hex_encode(hoo_buffer_data(buf), hoo_buffer_length(buf));
+}
+
+HooBuffer hoo_encoding_hex_decode_buffer(const char* hex) {
+    uint8_t* data = nullptr;
+    int64_t len = hoo_encoding_hex_decode(hex, &data);
+    if (len < 0 || !data) return nullptr;
+    HooBuffer buf = hoo_buffer_from_bytes(data, len);
+    free(data);
+    return buf;
 }

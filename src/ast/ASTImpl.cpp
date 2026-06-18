@@ -351,6 +351,7 @@ std::string hooc::ast::primitiveTypeToString(PrimitiveTypeKind kind) {
         case PrimitiveTypeKind::BOOL: return "bool";
         case PrimitiveTypeKind::CHAR: return "char";
         case PrimitiveTypeKind::STRING: return "string";
+        case PrimitiveTypeKind::BUFFER: return "buffer";
         case PrimitiveTypeKind::VOID: return "void";
         default: return "unknown";
     }

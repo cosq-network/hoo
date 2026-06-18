@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <string>
 #include <vector>
+#include "hoo_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +29,8 @@ int64_t hoo_fs_write_text(const char* path, const char* content);
 int64_t hoo_fs_append_text(const char* path, const char* content);
 int64_t hoo_fs_read_bytes(const char* path, uint8_t** out_data, int64_t* out_len);
 int64_t hoo_fs_write_bytes(const char* path, const uint8_t* data, int64_t len);
+int64_t hoo_fs_write_bytes_buffer(const char* path, HooBuffer buf);
+HooBuffer hoo_fs_read_bytes_buffer(const char* path);
 int64_t hoo_fs_mkdir(const char* path);
 int64_t hoo_fs_mkdirs(const char* path);
 int64_t hoo_fs_rmdir(const char* path);

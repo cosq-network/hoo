@@ -9,6 +9,7 @@ The hoo runtime provides a set of modules that bridge the high-level language wi
 | Module | Description |
 | :--- | :--- |
 | **[Strings](string.md)** | Comprehensive string manipulation, UTF-8 support, and formatting. |
+| **[Buffer](buffer.md)** | Managed mutable byte array for raw binary data with ARC. |
 | **[Collections](collections.md)** | Dynamic arrays and type-safe maps for data storage. |
 | **[Math](math.md)** | Mathematical constants, basic functions, and random number generation. |
 | **[I/O](io.md)** | Console input and output functions. |
@@ -62,4 +63,8 @@ Standard I/O functions like `print` and `println` are available globally (withou
 
 ### Memory Management
 
-All complex objects in hoo (Strings, Arrays, Maps, etc.) are automatically managed. You generally don't need to manually free objects — the runtime handles deallocation when an object is no longer reachable.
+All complex objects in hoo (Strings, Arrays, Maps, Buffers, etc.) are automatically managed. You generally don't need to manually free objects — the runtime handles deallocation when an object is no longer reachable.
+
+### Buffer-Aware Overloads
+
+Several modules offer overloaded methods that accept a `Buffer` handle instead of raw `(data, len)` pairs: **Fs** (`writeBytes`, `readBytes`), **Encoding** (`base64Encode`, `base64Decode`, `hexEncode`, `hexDecode`), **Uuid** (`fromBytes`, `toBytes`), **Hashing** (all hash functions), and **Compression** (gzip/deflate). See the [Buffer reference](buffer.md) for the full list.

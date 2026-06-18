@@ -1,4 +1,5 @@
 #include "hoo_fs.h"
+#include "hoo_buffer.h"
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -720,6 +721,22 @@ char hoo_path_list_separator(void)
 void hoo_path_free_string(char* str)
 {
     std::free(str);
+}
+
+// ── Buffer overloads ─────────────────────────────────────────────────────────
+
+int64_t hoo_fs_write_bytes_buffer(const char* path, HooBuffer buf) {
+    return hoo_fs_write_bytes(path, hoo_buffer_data(buf), hoo_buffer_length(buf));
+}
+
+HooBuffer hoo_fs_read_bytes_buffer(const char* path) {
+    uint8_t* data = nullptr;
+    int64_t len = 0;
+    int64_t result = hoo_fs_read_bytes(path, &data, &len);
+    if (result != 0 || !data) return nullptr;
+    HooBuffer buf = hoo_buffer_from_bytes(data, len);
+    free(data);
+    return buf;
 }
 
 } // extern "C"

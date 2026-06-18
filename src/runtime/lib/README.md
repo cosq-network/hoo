@@ -34,7 +34,16 @@ HVM strings are immutable UTF-8 buffers.
 - `hoo_string_from_cstr(char*)`: Essential for loading `.rodata` literals.
 - `hoo_string_concat(s1, s2)`: Dynamic concatenation with ARC management.
 
-### **C. Collections (`hoo_generic_array.h`, `hoo_map.h`)**
+### **C. Buffer (`hoo_buffer.h`)**
+Mutable byte array with ARC management and dynamic resizing. The handle points to `BufferImpl` (right after the 16-byte ARC header), using the same layout as `HooString`.
+- `hoo_buffer_new(capacity)`: Allocates a zero-length buffer with pre-allocated capacity.
+- `hoo_buffer_from_bytes(data, len)`: Creates a buffer initialized from raw bytes.
+- `hoo_buffer_copy(buf)`: ARC-managed deep copy.
+- `hoo_buffer_append(buf, data, len)`: Appends bytes, may reallocate via `hoo_realloc`.
+- `hoo_buffer_slice(buf, start, end)`: Returns a new buffer with a sub-range.
+- Type ID: `HOO_TYPE_BUFFER 113`.
+
+### **D. Collections (`hoo_generic_array.h`, `hoo_map.h`)**
 - **Arrays**: Managed dynamic buffers with a 64-bit length header at offset 0.
 - **Maps**: Type-safe key-value stores with optimized native hashing.
 

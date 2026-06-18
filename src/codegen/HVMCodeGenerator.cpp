@@ -87,6 +87,7 @@ static std::string classToPrefix(const std::string& className) {
         {"Thread", "thread"},
         {"Array", "array"},
         {"Map", "map"},
+        {"Buffer", "buffer"},
     };
     auto it = map.find(className);
     return it != map.end() ? it->second : "";
@@ -1263,6 +1264,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 110: resolvedClass = "Args"; break;
                     case 111: resolvedClass = "Compression"; break;
                     case 112: resolvedClass = "Csv"; break;
+                    case 113: resolvedClass = "Buffer"; break;
                     default: break;
                 }
             }
@@ -1877,7 +1879,8 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "DateTime", "Math", "Fs", "System", "Thread", "Regex",
         "Json", "Net", "URL", "HttpClient", "HttpResponse",
         "Path", "Hashing", "Encoding", "Uuid", "Compression",
-        "Process", "Args", "Csv", "Console", "StringBuilder"
+        "Process", "Args", "Csv", "Console", "StringBuilder",
+        "Buffer"
     };
     return builtinClasses.count(name) > 0;
 }
@@ -2035,6 +2038,7 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
                 case ast::PrimitiveTypeKind::BYTE:    return 6;
                 case ast::PrimitiveTypeKind::CHAR:    return 7;
                 case ast::PrimitiveTypeKind::STRING:  return 101;
+                case ast::PrimitiveTypeKind::BUFFER:  return 113;
                 default: return 1;
             }
         } else {
@@ -2042,6 +2046,7 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
             if (outClassName) *outClassName = name;
             if (name == "String") return 101;
             if (name == "Character") return 109;
+            if (name == "Buffer" || name == "buffer") return 113;
             return 100;
         }
     }
@@ -2328,6 +2333,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new" || ma->getMember() == "fromUtf8") return 109;
                         return 101;
                     }
+                    if (clsName == "Buffer") {
+                        if (ma->getMember() == "new" || ma->getMember() == "fromBytes") return 113;
+                        return 101;
+                    }
                     if (isBuiltinClassName(clsName)) {
                         return 101;
                     }
@@ -2360,6 +2369,13 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (objTypeId == 109) {
                             if (member == "codepoint" || member == "length") return 1;
                             if (member == "data") return 101;
+                            return 100;
+                        }
+                        if (objTypeId == 113) {
+                            if (member == "length" || member == "capacity" ||
+                                member == "byteAt" || member == "setByte" ||
+                                member == "clear") return 1;
+                            if (member == "copy" || member == "slice") return 113;
                             return 100;
                         }
                         if (objTypeId == 103) {

@@ -242,6 +242,7 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_args.cpp
     src/runtime/lib/hoo_thread.cpp
     src/runtime/lib/hoo_json.cpp
+    src/runtime/lib/hoo_buffer.cpp
 )
 if(MSVC)
     hoo_use_static_msvc_runtime(hoort)
@@ -448,6 +449,7 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooProcessTest.cpp
         tests/runtime/HooCompressionTest.cpp
         tests/runtime/HooArgsTest.cpp
+        tests/runtime/HooBufferTest.cpp
         tests/runtime/HooNetTest.cpp
         tests/runtime/HooThreadTest.cpp
         tests/jit/HooMathJitTest.cpp
@@ -466,6 +468,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/HooClassApiTest.cpp
         tests/jit/HooArgsJitTest.cpp
         tests/jit/HooNetJitTest.cpp
+        tests/jit/HooBufferJitTest.cpp
         tests/jit/HooJsonJitTest.cpp
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp

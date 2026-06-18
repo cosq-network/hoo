@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "hoo_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,6 +42,9 @@ HooUUID hoo_uuid_from_string(const char* str);
  * @return A new HooUUID (retained), or NULL on failure
  */
 HooUUID hoo_uuid_from_bytes(const uint8_t* bytes);
+
+HooUUID hoo_uuid_from_bytes_buffer(HooBuffer buf);
+HooBuffer hoo_uuid_to_bytes_buffer(HooUUID uuid);
 
 // ============================================================================
 // Conversion

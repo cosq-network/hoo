@@ -1038,6 +1038,7 @@ PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& type
     if (typeName == "bool") return PrimitiveTypeKind::BOOL;
     if (typeName == "char") return PrimitiveTypeKind::CHAR;
     if (typeName == "string") return PrimitiveTypeKind::STRING;
+    if (typeName == "buffer") return PrimitiveTypeKind::BUFFER;
     if (typeName == "int8") return PrimitiveTypeKind::INT8;
     if (typeName == "byte") return PrimitiveTypeKind::BYTE;
     if (typeName == "void") return PrimitiveTypeKind::VOID;

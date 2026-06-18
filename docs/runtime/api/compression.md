@@ -82,6 +82,23 @@ var decompressed = c.deflateDecompress(compressed.data(), compressed.length())
 c.release()
 ```
 
+### Buffer-Aware Overloads
+
+Each compression method also accepts a `Buffer` handle and returns a `Buffer`:
+
+- `c.gzipCompress(buf: buffer) :buffer` — gzip-compress a buffer.
+- `c.gzipDecompress(buf: buffer) :buffer` — gzip-decompress a buffer.
+- `c.deflateCompress(buf: buffer) :buffer` — deflate-compress a buffer.
+- `c.deflateDecompress(buf: buffer) :buffer` — deflate-decompress a buffer.
+
+```hoo
+var c = Compression.new()
+var input = Buffer.fromBytes("Hello, Hoo!", 12)
+var compressed = c.gzipCompress(input)
+var decompressed = c.gzipDecompress(compressed)
+c.release()
+```
+
 ## Usage Example
 
 ```hoo

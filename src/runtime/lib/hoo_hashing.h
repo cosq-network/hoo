@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "hoo_buffer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,6 +15,11 @@ char*    hoo_hashing_md5(const uint8_t* data, int64_t len);
 uint64_t hoo_hashing_crc32(const uint8_t* data, int64_t len);
 char*    hoo_hashing_hmac_sha256(const uint8_t* key, int64_t key_len,
                                  const uint8_t* data, int64_t data_len);
+char*    hoo_hashing_sha256_buffer(HooBuffer buf);
+char*    hoo_hashing_sha1_buffer(HooBuffer buf);
+char*    hoo_hashing_md5_buffer(HooBuffer buf);
+uint64_t hoo_hashing_crc32_buffer(HooBuffer buf);
+char*    hoo_hashing_hmac_sha256_buffer(HooBuffer key_buf, HooBuffer data_buf);
 void     hoo_hashing_free_string(char* str);
 
 #ifdef __cplusplus

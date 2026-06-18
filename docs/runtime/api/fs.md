@@ -46,6 +46,12 @@ Creates a directory and all missing parent directories (mkdir -p). Returns 1 on 
 `Fs.rmdir(path: string) :int64`
 Removes an empty directory. Returns 1 on success, 0 on failure.
 
+`Fs.writeBytes(path: string, buf: buffer) :int64`
+Writes the entire contents of a Buffer to a file, overwriting any existing content. Returns 1 on success, 0 on failure.
+
+`Fs.readBytes(path: string) :buffer`
+Reads the entire contents of a file into a new Buffer. Returns null on error.
+
 `Fs.listDir(path: string) :array`
 Returns an array of filenames in the given directory.
 

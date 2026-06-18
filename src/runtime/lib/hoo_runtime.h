@@ -34,6 +34,7 @@ extern "C" {
 #define HOO_TYPE_UUID         110  // HooUUID
 #define HOO_TYPE_REGEX        111
 #define HOO_TYPE_JSON         112  // HooRegex
+#define HOO_TYPE_BUFFER       113  // HooBuffer
 
 // Primitive Type IDs (for runtime conversion/reflection)
 #define HOO_TYPE_INT64        1

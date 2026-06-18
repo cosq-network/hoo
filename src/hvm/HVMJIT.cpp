@@ -32,6 +32,7 @@
 #include "runtime/lib/hoo_process.h"
 #include "runtime/lib/hoo_compression.h"
 #include "runtime/lib/hoo_args.h"
+#include "runtime/lib/hoo_buffer.h"
 #include "runtime/lib/hoo_net.h"
 #include "runtime/lib/hoo_json.h"
 
@@ -691,6 +692,57 @@ extern "C" {
         int64_t dest = 0;
         hoo_array_get_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
         return static_cast<uint64_t>(dest);
+    }
+    uint64_t jit_hoo_buffer_new(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_new(0)));
+    }
+    uint64_t jit_hoo_buffer_from_bytes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_buffer_from_bytes(reinterpret_cast<const uint8_t*>(state->regs[1]), state->regs[2])));
+    }
+    uint64_t jit_hoo_buffer_copy(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_copy(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_hoo_buffer_length(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_buffer_length(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_hoo_buffer_capacity(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_buffer_capacity(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_hoo_buffer_byte_at(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_buffer_byte_at(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_hoo_buffer_set_byte(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_buffer_set_byte(reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3]));
+    }
+    uint64_t jit_hoo_buffer_append(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_buffer_append(reinterpret_cast<void*>(state->regs[1]),
+                              reinterpret_cast<const uint8_t*>(state->regs[2]), state->regs[3])));
+    }
+    uint64_t jit_hoo_buffer_append_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_buffer_append_buffer(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_buffer_clear(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_buffer_clear(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_hoo_buffer_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_slice(reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3])));
+    }
+    uint64_t jit_hoo_buffer_data(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_data(reinterpret_cast<void*>(state->regs[1]))));
     }
     uint64_t jit_hoo_map_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2472,6 +2524,32 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_getString_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
         {"_F_M_hoo_E_array_pushBool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_M_hoo_E_array_getBool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
+        // Buffer hoo-module-qualified symbols (codegen redirects buffer_* to hoo module)
+        {"_F_M_hoo_E_buffer_new_v", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
+        {"_F_M_hoo_E_buffer_fromBytes_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
+        {"_F_M_hoo_E_buffer_copy_v", reinterpret_cast<void*>(&jit_hoo_buffer_copy)},
+        {"_F_M_hoo_E_buffer_length_v", reinterpret_cast<void*>(&jit_hoo_buffer_length)},
+        {"_F_M_hoo_E_buffer_capacity_v", reinterpret_cast<void*>(&jit_hoo_buffer_capacity)},
+        {"_F_M_hoo_E_buffer_byteAt_v_p", reinterpret_cast<void*>(&jit_hoo_buffer_byte_at)},
+        {"_F_M_hoo_E_buffer_setByte_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_set_byte)},
+        {"_F_M_hoo_E_buffer_append_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_append)},
+        {"_F_M_hoo_E_buffer_appendBuffer_v_p", reinterpret_cast<void*>(&jit_hoo_buffer_append_buffer)},
+        {"_F_M_hoo_E_buffer_clear_v", reinterpret_cast<void*>(&jit_hoo_buffer_clear)},
+        {"_F_M_hoo_E_buffer_slice_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_slice)},
+        {"_F_M_hoo_E_buffer_data_v", reinterpret_cast<void*>(&jit_hoo_buffer_data)},
+        // CamelCase aliases
+        {"_F_M_hoo_E_buffer_new_v", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
+        {"_F_M_hoo_E_buffer_fromBytes_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
+        {"_F_M_hoo_E_buffer_copy_v", reinterpret_cast<void*>(&jit_hoo_buffer_copy)},
+        {"_F_M_hoo_E_buffer_length_v", reinterpret_cast<void*>(&jit_hoo_buffer_length)},
+        {"_F_M_hoo_E_buffer_capacity_v", reinterpret_cast<void*>(&jit_hoo_buffer_capacity)},
+        {"_F_M_hoo_E_buffer_byteAt_v_p", reinterpret_cast<void*>(&jit_hoo_buffer_byte_at)},
+        {"_F_M_hoo_E_buffer_setByte_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_set_byte)},
+        {"_F_M_hoo_E_buffer_append_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_append)},
+        {"_F_M_hoo_E_buffer_appendBuffer_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_append_buffer)},
+        {"_F_M_hoo_E_buffer_clear_v", reinterpret_cast<void*>(&jit_hoo_buffer_clear)},
+        {"_F_M_hoo_E_buffer_slice_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_slice)},
+        {"_F_M_hoo_E_buffer_data_v", reinterpret_cast<void*>(&jit_hoo_buffer_data)},
         // Map hoo-module-qualified symbols (codegen redirects map_* to hoo module)
         {"_F_M_hoo_E_map_new_v_p", reinterpret_cast<void*>(&jit_map_new_plain)},
         {"_F_M_hoo_E_map_new_v_p_p", reinterpret_cast<void*>(&jit_map_new_types)},
@@ -2816,6 +2894,20 @@ void* lookupPlainRuntimeSymbolAddress(const std::string& name) {
         {"hoo_map_new", reinterpret_cast<void*>(&hoo_map_new)},
         {"hoo_map_set_string_int64", reinterpret_cast<void*>(&hoo_map_set_string_int64)},
         {"hoo_map_set_string_object", reinterpret_cast<void*>(&hoo_map_set_string_object)},
+        {"hoo_buffer_new", reinterpret_cast<void*>(&hoo_buffer_new)},
+        {"hoo_buffer_from_bytes", reinterpret_cast<void*>(&hoo_buffer_from_bytes)},
+        {"hoo_buffer_copy", reinterpret_cast<void*>(&hoo_buffer_copy)},
+        {"hoo_buffer_length", reinterpret_cast<void*>(&hoo_buffer_length)},
+        {"hoo_buffer_capacity", reinterpret_cast<void*>(&hoo_buffer_capacity)},
+        {"hoo_buffer_byte_at", reinterpret_cast<void*>(&hoo_buffer_byte_at)},
+        {"hoo_buffer_set_byte", reinterpret_cast<void*>(&hoo_buffer_set_byte)},
+        {"hoo_buffer_append", reinterpret_cast<void*>(&hoo_buffer_append)},
+        {"hoo_buffer_append_buffer", reinterpret_cast<void*>(&hoo_buffer_append_buffer)},
+        {"hoo_buffer_clear", reinterpret_cast<void*>(&hoo_buffer_clear)},
+        {"hoo_buffer_slice", reinterpret_cast<void*>(&hoo_buffer_slice)},
+        {"hoo_buffer_data", reinterpret_cast<void*>(&hoo_buffer_data)},
+        {"hoo_buffer_retain", reinterpret_cast<void*>(&hoo_buffer_retain)},
+        {"hoo_buffer_release", reinterpret_cast<void*>(&hoo_buffer_release)},
     };
     auto it = kPlainRuntimeSymbols.find(name);
     return it == kPlainRuntimeSymbols.end() ? nullptr : it->second;
@@ -3509,6 +3601,22 @@ bool HVMJIT::bootstrapRuntimeModules() {
     runtime->registerFunction("array_get_int64", reinterpret_cast<void*>(&hoo_array_get_int64),
                               "_F_hoo_Array_get_i8_p_i8_p");
     runtime->registerFunction("map_new", reinterpret_cast<void*>(&hoo_map_new), "_F_hoo_Map_new_p_i8");
+
+    runtime->registerFunction("buffer_new", reinterpret_cast<void*>(&hoo_buffer_new), "_F_hoo_Buffer_new_p");
+    runtime->registerFunction("buffer_from_bytes", reinterpret_cast<void*>(&hoo_buffer_from_bytes),
+                              "_F_hoo_Buffer_from_bytes_p_p_i8");
+    runtime->registerFunction("buffer_copy", reinterpret_cast<void*>(&hoo_buffer_copy), "_F_hoo_Buffer_copy_p_p");
+    runtime->registerFunction("buffer_length", reinterpret_cast<void*>(&hoo_buffer_length), "_F_hoo_Buffer_length_i8_p");
+    runtime->registerFunction("buffer_capacity", reinterpret_cast<void*>(&hoo_buffer_capacity), "_F_hoo_Buffer_capacity_i8_p");
+    runtime->registerFunction("buffer_byte_at", reinterpret_cast<void*>(&hoo_buffer_byte_at), "_F_hoo_Buffer_byte_at_i8_p_i8");
+    runtime->registerFunction("buffer_set_byte", reinterpret_cast<void*>(&hoo_buffer_set_byte), "_F_hoo_Buffer_set_byte_i8_p_i8_i8");
+    runtime->registerFunction("buffer_append", reinterpret_cast<void*>(&hoo_buffer_append), "_F_hoo_Buffer_append_p_p_p_i8");
+    runtime->registerFunction("buffer_append_buffer", reinterpret_cast<void*>(&hoo_buffer_append_buffer), "_F_hoo_Buffer_append_buffer_p_p_p");
+    runtime->registerFunction("buffer_clear", reinterpret_cast<void*>(&hoo_buffer_clear), "_F_hoo_Buffer_clear_i8_p");
+    runtime->registerFunction("buffer_slice", reinterpret_cast<void*>(&hoo_buffer_slice), "_F_hoo_Buffer_slice_p_p_i8_i8");
+    runtime->registerFunction("buffer_data", reinterpret_cast<void*>(&hoo_buffer_data), "_F_hoo_Buffer_data_p_p");
+    runtime->registerFunction("buffer_retain", reinterpret_cast<void*>(&hoo_buffer_retain), "_F_hoo_Buffer_retain_p_p");
+    runtime->registerFunction("buffer_release", reinterpret_cast<void*>(&hoo_buffer_release), "_F_hoo_Buffer_release_v_p");
 
     runtime->registerFunction("push_handler", reinterpret_cast<void*>(&hoo_push_handler), "_F_hoo_push_handler_v_p");
     runtime->registerFunction("pop_handler", reinterpret_cast<void*>(&hoo_pop_handler), "_F_hoo_pop_handler_v");
