@@ -78,6 +78,16 @@ typedef struct TLABObjNode {
 
 static _Thread_local TLABObjNode* g_tlab_objects = NULL;
 
+#define HOO_DESTRUCTOR_TABLE_SIZE 256
+
+static HooDestructor g_destructors[HOO_DESTRUCTOR_TABLE_SIZE] = {NULL};
+
+void hoo_register_destructor(int64_t type_id, HooDestructor dtor) {
+    if (type_id >= 0 && type_id < HOO_DESTRUCTOR_TABLE_SIZE) {
+        g_destructors[type_id] = dtor;
+    }
+}
+
 typedef struct ManagedObjNode {
     void* obj;
     struct ManagedObjNode* next;
@@ -299,6 +309,16 @@ void hoo_release(void* obj) {
 #endif
 
         atomic_thread_fence(memory_order_acquire);
+
+        // Call registered destructor before freeing
+        int64_t type_id = header->type_id;
+        if (type_id >= 0 && type_id < HOO_DESTRUCTOR_TABLE_SIZE) {
+            HooDestructor dtor = g_destructors[type_id];
+            if (dtor) {
+                dtor(obj);
+            }
+        }
+
         managed_unregister(obj);
 
         memory_stats.total_deallocations++;

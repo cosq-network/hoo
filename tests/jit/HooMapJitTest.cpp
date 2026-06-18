@@ -23,7 +23,7 @@ TEST_F(HooMapJitTest, NewMap) {
     auto r = jit.run("_F_M_test_E_test_i8");
     ASSERT_GT(r, 0) << jit.getLastError();
     HooMap m = (HooMap)r;
-    EXPECT_EQ(0, hoo_map_length(m));
+    EXPECT_EQ(0, hoo_map_count(m));
     EXPECT_EQ(HOO_MAP_KEY_INT64, hoo_map_key_type(m));
     EXPECT_EQ(HOO_MAP_VAL_INT64, hoo_map_value_type(m));
     hoo_map_release(m);

@@ -97,6 +97,23 @@ int64_t hoo_get_refcount(void* obj);
 int64_t hoo_get_type_id(void* obj);
 
 /**
+ * Destructor callback type for managed objects.
+ * Registered per type_id and called automatically by hoo_release
+ * when an object's reference count reaches zero (before freeing memory).
+ * @param obj Pointer to the object data (after ARC header).
+ */
+typedef void (*HooDestructor)(void* obj);
+
+/**
+ * Register a destructor callback for a given type_id.
+ * The callback is invoked by hoo_release when refcount reaches zero.
+ * Only one destructor per type_id; subsequent calls overwrite.
+ * @param type_id The type ID to register for (e.g. HOO_TYPE_MAP).
+ * @param dtor The destructor function, or NULL to unregister.
+ */
+void hoo_register_destructor(int64_t type_id, HooDestructor dtor);
+
+/**
  * Returns non-zero when obj is a live object allocated by hoo_alloc.
  */
 int64_t hoo_is_managed_object(const void* obj);

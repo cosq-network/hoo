@@ -45,7 +45,7 @@ Mutable byte array with ARC management and dynamic resizing. The handle points t
 
 ### **D. Collections (`hoo_generic_array.h`, `hoo_map.h`)**
 - **Arrays**: Managed dynamic buffers with a 64-bit length header at offset 0.
-- **Maps**: Type-safe key-value stores with optimized native hashing.
+- **Maps**: Type-safe key-value stores with a polymorphic ~15-function C-ABI (`hoo_map_new`, `hoo_map_set`, `hoo_map_try_get`, `hoo_map_contains_key`, `hoo_map_remove`, `hoo_map_clear`, `hoo_map_count`, `hoo_map_is_empty`, etc.). Keys/values are type-erased via `void*` with documented per-type conventions (numeric via pointer dereference, strings as `const char*`). Internal type dispatch uses template helpers over disjoint `std::unordered_map` instances per key type. Object values stored as raw `void*` (no ARC).
 
 ### **D. Exception Unwinding (`hoo_exception.h`)**
 - `hoo_push_handler(pc)`: Registers a recovery point on the shadow stack.

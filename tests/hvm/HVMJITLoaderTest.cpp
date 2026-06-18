@@ -1031,8 +1031,9 @@ TEST_F(HVMJITLoaderTest, RuntimeBridgeExportsExtendedHoortSymbols) {
     EXPECT_NE(jit.getSymbolAddress("hoo_array_push_int64"), nullptr);
     EXPECT_NE(jit.getSymbolAddress("hoo_array_get_int64"), nullptr);
     EXPECT_NE(jit.getSymbolAddress("hoo_map_new"), nullptr);
-    EXPECT_NE(jit.getSymbolAddress("hoo_map_set_string_int64"), nullptr);
-    EXPECT_NE(jit.getSymbolAddress("hoo_map_set_string_object"), nullptr);
+    EXPECT_NE(jit.getSymbolAddress("hoo_map_set"), nullptr);
+    EXPECT_NE(jit.getSymbolAddress("hoo_map_try_get"), nullptr);
+    EXPECT_NE(jit.getSymbolAddress("hoo_map_contains_key"), nullptr);
 }
 
 TEST_F(HVMJITLoaderTest, CreatesPerModuleJITDylibsAndLogicalSearchOrder) {
