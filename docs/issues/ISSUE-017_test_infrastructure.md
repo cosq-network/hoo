@@ -58,3 +58,10 @@ The CMake build configuration and test suite have several bugs and gaps that sil
 - **Status**: **PARTIALLY FIXED**
 - **Priority**: **HIGH**
 - **Update 2026-06-11**: Sub-issue 2.2 (`HooCompilerTest.cpp` excluded) is now **FIXED** — the file is included at CMakeLists.txt line 410 and all 19 tests run as part of the suite.
+- **Update 2026-06-17**: Added extensive new test suites addressing weak coverage for new features:
+  - `tests/parsing/LowPrecisionTypeParsingTest.cpp`
+  - `tests/jit/LowPrecisionTypesTest.cpp`
+  - `tests/parsing/TensorTypeParsingTest.cpp`
+  - `tests/jit/HooTensorJitTest.cpp`
+  - `tests/runtime/HooTensorTest.cpp`
+  These suites use precise assertions (e.g., `EXPECT_NEAR`, `EXPECT_DOUBLE_EQ`) and verify 1D/2D/3D shapes and negative values, significantly strengthening the project's verification layer.

@@ -14,5 +14,11 @@ The HVM backend currently treats all variables as opaque 64-bit values. It does 
 
 ## 4. Status
 - **Date**: 2026-05-24
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: Medium
+
+## 5. Updates
+- **Update 2026-06-17**: The type system has been significantly expanded to support `f8`, `bit`, and `tensor` data types. 
+- **Type Registration**: `HVMCodeGenerator::generateModule` now pre-registers top-level function return types and class names in `functionReturnTypes_` and `functionReturnClass_` maps, allowing for correct symbol mangling and type inference during cross-module and forward-referenced calls.
+- **Symbol Mangling**: `SymbolMangler` now correctly encodes/decodes `f8` (e), `bit` (x), and `tensor` (t) types, preserving high-level type metadata in the HVM symbol table.
+- **Remaining Gap**: The `SHT_TYPE` section and native sub-word memory protection (LD.B/ST.B for all scalar operations) are still pending (see ISSUE-027 and ISSUE-028).
