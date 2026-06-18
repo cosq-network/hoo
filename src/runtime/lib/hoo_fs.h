@@ -13,7 +13,7 @@ extern "C" {
 // C-ABI Bridge Functions (for JIT / FFI linkage)
 // ============================================================================
 // These remain stable so the JIT bridge in HVMJIT.cpp continues to link.
-// Each delegates to the corresponding hoo::fs class method.
+// Each delegates to the corresponding hoo::fs functions / methods.
 
 int64_t hoo_fs_exists(const char* path);
 int64_t hoo_fs_is_file(const char* path);
@@ -63,71 +63,85 @@ void    hoo_path_free_string(char* str);
 #endif
 
 // ============================================================================
-// C++ Object-Oriented API
+// C++ OOP API
 // ============================================================================
+// Classes have constructors and instance methods. Free functions are used for
+// operations that don't have a natural instance (join, separator, etc.).
 
 namespace hoo {
 namespace fs {
 
+// ── Free functions ──────────────────────────────────────────────────────────
+
+std::string join(const std::string& a, const std::string& b);
+std::string joinMulti(const std::vector<std::string>& parts);
+std::string relative(const std::string& path, const std::string& base);
+char separator();
+char listSeparator();
+std::string tempDir();
+std::string createTempFile(const std::string& prefix);
+bool copyFile(const std::string& src, const std::string& dst);
+
+// ── Path ────────────────────────────────────────────────────────────────────
+
 class Path {
+    std::string path_;
 public:
-    // Temporary files
-    static std::string getTempDir();
-    static std::string createTempFile(const std::string& prefix);
+    explicit Path(const std::string& path) : path_(path) {}
 
-    // Component extraction
-    static std::string dirname(const std::string& path);
-    static std::string basename(const std::string& path);
-    static std::string extension(const std::string& path);
-    static std::string stem(const std::string& path);
-    static std::string root(const std::string& path);
+    const std::string& str() const { return path_; }
 
-    // Construction
-    static std::string join(const std::string& a, const std::string& b);
-    static std::string joinMulti(const std::vector<std::string>& parts);
-
-    // Normalization & resolution
-    static std::string normalize(const std::string& path);
-    static std::string absolute(const std::string& path);
-    static std::string relative(const std::string& path, const std::string& base);
-
-    // Properties
-    static bool isAbsolute(const std::string& path);
-    static bool isRelative(const std::string& path);
-    static bool hasExtension(const std::string& path);
-    static bool hasRoot(const std::string& path);
-
-    // Split
-    static std::vector<std::string> split(const std::string& path);
-
-    // Platform-specific
-    static char separator();
-    static char listSeparator();
+    std::string dirname() const;
+    std::string basename() const;
+    std::string extension() const;
+    std::string stem() const;
+    std::string root() const;
+    Path normalized() const;
+    Path absolute() const;
+    bool isAbsolute() const;
+    bool isRelative() const;
+    bool hasExtension() const;
+    bool hasRoot() const;
+    std::vector<std::string> split() const;
 };
+
+// ── File ────────────────────────────────────────────────────────────────────
 
 class File {
+    std::string path_;
 public:
-    static bool exists(const std::string& path);
-    static bool isFile(const std::string& path);
-    static int64_t size(const std::string& path);
-    static int64_t lastModified(const std::string& path);
-    static bool remove(const std::string& path);
-    static bool rename(const std::string& oldPath, const std::string& newPath);
-    static bool copy(const std::string& src, const std::string& dst);
-    static std::string readText(const std::string& path);
-    static bool writeText(const std::string& path, const std::string& content);
-    static bool appendText(const std::string& path, const std::string& content);
-    static bool readBytes(const std::string& path, std::vector<uint8_t>& outData);
-    static bool writeBytes(const std::string& path, const std::vector<uint8_t>& data);
+    explicit File(const std::string& path) : path_(path) {}
+
+    const std::string& path() const { return path_; }
+
+    bool exists() const;
+    bool isFile() const;
+    int64_t size() const;
+    int64_t lastModified() const;
+    bool remove();
+    bool rename(const std::string& newPath);
+    std::string readText() const;
+    bool writeText(const std::string& content);
+    bool appendText(const std::string& content);
+    bool readBytes(std::vector<uint8_t>& outData) const;
+    bool writeBytes(const std::vector<uint8_t>& data);
 };
 
+// ── Directory ───────────────────────────────────────────────────────────────
+
 class Directory {
+    std::string path_;
 public:
-    static bool isDirectory(const std::string& path);
-    static bool create(const std::string& path);
-    static bool createTree(const std::string& path);
-    static bool remove(const std::string& path);
-    static std::vector<std::string> list(const std::string& path);
+    explicit Directory(const std::string& path) : path_(path) {}
+
+    const std::string& path() const { return path_; }
+
+    bool exists() const;
+    bool isDirectory() const;
+    bool create();
+    bool createTree();
+    bool remove();
+    std::vector<std::string> list() const;
 };
 
 } // namespace fs

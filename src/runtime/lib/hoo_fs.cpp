@@ -15,9 +15,7 @@ namespace fs = std::filesystem;
 #define hoo_strdup strdup
 #endif
 
-// -------------------------------------------------------------------
-// Internal helpers
-// -------------------------------------------------------------------
+// ── Internal helpers ────────────────────────────────────────────────────────
 namespace {
 
 int random_int() noexcept
@@ -28,8 +26,6 @@ int random_int() noexcept
     return dis(gen);
 }
 
-// Internal write helper used by both File::writeBytes and hoo_fs_write_bytes
-// to avoid a vector copy in the C-ABI bridge path.
 bool write_bytes_impl(const std::string& path, const uint8_t* data, std::streamsize len) noexcept
 {
     try {
@@ -46,12 +42,57 @@ bool write_bytes_impl(const std::string& path, const uint8_t* data, std::streams
 } // anonymous namespace
 
 // ============================================================================
-// hoo::fs::Path
+// Free functions
 // ============================================================================
 
 namespace hoo { namespace fs {
 
-std::string Path::getTempDir()
+std::string join(const std::string& a, const std::string& b)
+{
+    try {
+        return (::fs::path(a) / b).string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string joinMulti(const std::vector<std::string>& parts)
+{
+    try {
+        ::fs::path result;
+        for (const auto& part : parts) {
+            result /= part;
+        }
+        return result.string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string relative(const std::string& path, const std::string& base)
+{
+    try {
+        return ::fs::relative(path, base).string();
+    } catch (...) {
+        return {};
+    }
+}
+
+char separator()
+{
+    return ::fs::path::preferred_separator;
+}
+
+char listSeparator()
+{
+#ifdef _WIN32
+    return ';';
+#else
+    return ':';
+#endif
+}
+
+std::string tempDir()
 {
     try {
         return ::fs::temp_directory_path().string();
@@ -60,7 +101,7 @@ std::string Path::getTempDir()
     }
 }
 
-std::string Path::createTempFile(const std::string& prefix)
+std::string createTempFile(const std::string& prefix)
 {
     try {
         ::fs::path dir = ::fs::temp_directory_path();
@@ -83,10 +124,24 @@ std::string Path::createTempFile(const std::string& prefix)
     }
 }
 
-std::string Path::dirname(const std::string& path)
+bool copyFile(const std::string& src, const std::string& dst)
 {
     try {
-        ::fs::path p(path);
+        ::fs::copy(src, dst, ::fs::copy_options::overwrite_existing);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+// ============================================================================
+// Path
+// ============================================================================
+
+std::string Path::dirname() const
+{
+    try {
+        ::fs::path p(path_);
         ::fs::path parent = p.parent_path();
         if (parent.empty())
             return ".";
@@ -96,135 +151,111 @@ std::string Path::dirname(const std::string& path)
     }
 }
 
-std::string Path::basename(const std::string& path)
+std::string Path::basename() const
 {
     try {
-        std::string pstr = path;
-        while (pstr.size() > 1 && (pstr.back() == '/' || pstr.back() == '\\'))
+        std::string pstr = path_;
+        while (pstr.size() > 1) {
+            char c = pstr.back();
+#ifdef _WIN32
+            if (c != '/' && c != '\\') break;
+#else
+            if (c != '/') break;
+#endif
             pstr.pop_back();
+        }
         return ::fs::path(pstr).filename().string();
     } catch (...) {
         return {};
     }
 }
 
-std::string Path::extension(const std::string& path)
+std::string Path::extension() const
 {
     try {
-        return ::fs::path(path).extension().string();
+        return ::fs::path(path_).extension().string();
     } catch (...) {
         return {};
     }
 }
 
-std::string Path::stem(const std::string& path)
+std::string Path::stem() const
 {
     try {
-        return ::fs::path(path).stem().string();
+        return ::fs::path(path_).stem().string();
     } catch (...) {
         return {};
     }
 }
 
-std::string Path::root(const std::string& path)
+std::string Path::root() const
 {
     try {
-        return ::fs::path(path).root_path().string();
+        return ::fs::path(path_).root_path().string();
     } catch (...) {
         return {};
     }
 }
 
-std::string Path::join(const std::string& a, const std::string& b)
+Path Path::normalized() const
 {
     try {
-        return (::fs::path(a) / b).string();
+        return Path(::fs::path(path_).lexically_normal().string());
     } catch (...) {
-        return {};
+        return Path("");
     }
 }
 
-std::string Path::joinMulti(const std::vector<std::string>& parts)
+Path Path::absolute() const
 {
     try {
-        ::fs::path result;
-        for (const auto& part : parts) {
-            result /= part;
-        }
-        return result.string();
+        return Path(::fs::absolute(path_).string());
     } catch (...) {
-        return {};
+        return Path("");
     }
 }
 
-std::string Path::normalize(const std::string& path)
+bool Path::isAbsolute() const
 {
     try {
-        return ::fs::path(path).lexically_normal().string();
-    } catch (...) {
-        return {};
-    }
-}
-
-std::string Path::absolute(const std::string& path)
-{
-    try {
-        return ::fs::absolute(path).string();
-    } catch (...) {
-        return {};
-    }
-}
-
-std::string Path::relative(const std::string& path, const std::string& base)
-{
-    try {
-        return ::fs::relative(path, base).string();
-    } catch (...) {
-        return {};
-    }
-}
-
-bool Path::isAbsolute(const std::string& path)
-{
-    try {
-        return ::fs::path(path).is_absolute();
+        return ::fs::path(path_).is_absolute();
     } catch (...) {
         return false;
     }
 }
 
-bool Path::isRelative(const std::string& path)
+bool Path::isRelative() const
 {
     try {
-        return !::fs::path(path).is_absolute();
+        return !::fs::path(path_).is_absolute();
     } catch (...) {
         return false;
     }
 }
 
-bool Path::hasExtension(const std::string& path)
+bool Path::hasExtension() const
 {
     try {
-        return ::fs::path(path).has_extension();
+        return ::fs::path(path_).has_extension();
     } catch (...) {
         return false;
     }
 }
 
-bool Path::hasRoot(const std::string& path)
+bool Path::hasRoot() const
 {
     try {
-        return ::fs::path(path).has_root_path();
+        return ::fs::path(path_).has_root_path();
     } catch (...) {
         return false;
     }
 }
 
-std::vector<std::string> Path::split(const std::string& path)
+std::vector<std::string> Path::split() const
 {
     try {
         std::vector<std::string> components;
-        for (const auto& part : ::fs::path(path)) {
+        for (const auto& part : ::fs::path(path_)) {
             components.push_back(part.string());
         }
         return components;
@@ -233,43 +264,29 @@ std::vector<std::string> Path::split(const std::string& path)
     }
 }
 
-char Path::separator()
-{
-    return ::fs::path::preferred_separator;
-}
-
-char Path::listSeparator()
-{
-#ifdef _WIN32
-    return ';';
-#else
-    return ':';
-#endif
-}
-
 // ============================================================================
-// hoo::fs::File
+// File
 // ============================================================================
 
-bool File::exists(const std::string& path)
+bool File::exists() const
 {
-    try { return ::fs::exists(path); } catch (...) { return false; }
+    try { return ::fs::exists(path_); } catch (...) { return false; }
 }
 
-bool File::isFile(const std::string& path)
+bool File::isFile() const
 {
-    try { return ::fs::is_regular_file(path); } catch (...) { return false; }
+    try { return ::fs::is_regular_file(path_); } catch (...) { return false; }
 }
 
-int64_t File::size(const std::string& path)
+int64_t File::size() const
 {
-    try { return static_cast<int64_t>(::fs::file_size(path)); } catch (...) { return -1; }
+    try { return static_cast<int64_t>(::fs::file_size(path_)); } catch (...) { return -1; }
 }
 
-int64_t File::lastModified(const std::string& path)
+int64_t File::lastModified() const
 {
     try {
-        auto ft = ::fs::last_write_time(path);
+        auto ft = ::fs::last_write_time(path_);
         auto s = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
             ft - ::fs::file_time_type::clock::now() + std::chrono::system_clock::now());
         return static_cast<int64_t>(std::chrono::system_clock::to_time_t(s));
@@ -278,25 +295,26 @@ int64_t File::lastModified(const std::string& path)
     }
 }
 
-bool File::remove(const std::string& path)
+bool File::remove()
 {
-    try { return ::fs::remove(path); } catch (...) { return false; }
+    try { return ::fs::remove(path_); } catch (...) { return false; }
 }
 
-bool File::rename(const std::string& oldPath, const std::string& newPath)
-{
-    try { ::fs::rename(oldPath, newPath); return true; } catch (...) { return false; }
-}
-
-bool File::copy(const std::string& src, const std::string& dst)
-{
-    try { ::fs::copy(src, dst, ::fs::copy_options::overwrite_existing); return true; } catch (...) { return false; }
-}
-
-std::string File::readText(const std::string& path)
+bool File::rename(const std::string& newPath)
 {
     try {
-        std::ifstream file(path, std::ios::in);
+        ::fs::rename(path_, newPath);
+        path_ = newPath;
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+std::string File::readText() const
+{
+    try {
+        std::ifstream file(path_, std::ios::in);
         if (!file.is_open()) return {};
         std::ostringstream ss;
         ss << file.rdbuf();
@@ -306,10 +324,10 @@ std::string File::readText(const std::string& path)
     }
 }
 
-bool File::writeText(const std::string& path, const std::string& content)
+bool File::writeText(const std::string& content)
 {
     try {
-        std::ofstream file(path, std::ios::out | std::ios::trunc);
+        std::ofstream file(path_, std::ios::out | std::ios::trunc);
         if (!file.is_open()) return false;
         file.write(content.data(), static_cast<std::streamsize>(content.size()));
         file.close();
@@ -319,10 +337,10 @@ bool File::writeText(const std::string& path, const std::string& content)
     }
 }
 
-bool File::appendText(const std::string& path, const std::string& content)
+bool File::appendText(const std::string& content)
 {
     try {
-        std::ofstream file(path, std::ios::out | std::ios::app);
+        std::ofstream file(path_, std::ios::out | std::ios::app);
         if (!file.is_open()) return false;
         file.write(content.data(), static_cast<std::streamsize>(content.size()));
         file.close();
@@ -332,10 +350,10 @@ bool File::appendText(const std::string& path, const std::string& content)
     }
 }
 
-bool File::readBytes(const std::string& path, std::vector<uint8_t>& outData)
+bool File::readBytes(std::vector<uint8_t>& outData) const
 {
     try {
-        std::ifstream file(path, std::ios::in | std::ios::binary | std::ios::ate);
+        std::ifstream file(path_, std::ios::in | std::ios::binary | std::ios::ate);
         if (!file.is_open()) return false;
         std::streamsize size = file.tellg();
         file.seekg(0, std::ios::beg);
@@ -350,40 +368,45 @@ bool File::readBytes(const std::string& path, std::vector<uint8_t>& outData)
     }
 }
 
-bool File::writeBytes(const std::string& path, const std::vector<uint8_t>& data)
+bool File::writeBytes(const std::vector<uint8_t>& data)
 {
-    return write_bytes_impl(path, data.data(), static_cast<std::streamsize>(data.size()));
+    return write_bytes_impl(path_, data.data(), static_cast<std::streamsize>(data.size()));
 }
 
 // ============================================================================
-// hoo::fs::Directory
+// Directory
 // ============================================================================
 
-bool Directory::isDirectory(const std::string& path)
+bool Directory::exists() const
 {
-    try { return ::fs::is_directory(path); } catch (...) { return false; }
+    try { return ::fs::exists(path_); } catch (...) { return false; }
 }
 
-bool Directory::create(const std::string& path)
+bool Directory::isDirectory() const
 {
-    try { return ::fs::create_directory(path); } catch (...) { return false; }
+    try { return ::fs::is_directory(path_); } catch (...) { return false; }
 }
 
-bool Directory::createTree(const std::string& path)
+bool Directory::create()
 {
-    try { return ::fs::create_directories(path); } catch (...) { return false; }
+    try { return ::fs::create_directory(path_); } catch (...) { return false; }
 }
 
-bool Directory::remove(const std::string& path)
+bool Directory::createTree()
 {
-    try { return ::fs::remove(path); } catch (...) { return false; }
+    try { return ::fs::create_directories(path_); } catch (...) { return false; }
 }
 
-std::vector<std::string> Directory::list(const std::string& path)
+bool Directory::remove()
+{
+    try { return ::fs::remove(path_); } catch (...) { return false; }
+}
+
+std::vector<std::string> Directory::list() const
 {
     try {
         std::vector<std::string> entries;
-        for (const auto& entry : ::fs::directory_iterator(path)) {
+        for (const auto& entry : ::fs::directory_iterator(path_)) {
             entries.push_back(entry.path().filename().string());
         }
         return entries;
@@ -402,47 +425,56 @@ extern "C" {
 
 int64_t hoo_fs_exists(const char* path)
 {
-    return hoo::fs::File::exists(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::File(path).exists() ? 1 : 0;
 }
 
 int64_t hoo_fs_is_file(const char* path)
 {
-    return hoo::fs::File::isFile(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::File(path).isFile() ? 1 : 0;
 }
 
 int64_t hoo_fs_is_dir(const char* path)
 {
-    return hoo::fs::Directory::isDirectory(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::Directory(path).isDirectory() ? 1 : 0;
 }
 
 int64_t hoo_fs_size(const char* path)
 {
-    return hoo::fs::File::size(path ? path : "");
+    if (!path) return -1;
+    return hoo::fs::File(path).size();
 }
 
 int64_t hoo_fs_last_modified(const char* path)
 {
-    return hoo::fs::File::lastModified(path ? path : "");
+    if (!path) return -1;
+    return hoo::fs::File(path).lastModified();
 }
 
 int64_t hoo_fs_delete(const char* path)
 {
-    return hoo::fs::File::remove(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::File(path).remove() ? 1 : 0;
 }
 
 int64_t hoo_fs_rename(const char* old_path, const char* new_path)
 {
-    return hoo::fs::File::rename(old_path ? old_path : "", new_path ? new_path : "") ? 1 : 0;
+    if (!old_path || !new_path) return 0;
+    return hoo::fs::File(old_path).rename(new_path) ? 1 : 0;
 }
 
 int64_t hoo_fs_copy(const char* src, const char* dst)
 {
-    return hoo::fs::File::copy(src ? src : "", dst ? dst : "") ? 1 : 0;
+    if (!src || !dst) return 0;
+    return hoo::fs::copyFile(src, dst) ? 1 : 0;
 }
 
 char* hoo_fs_read_text(const char* path)
 {
-    std::string content = hoo::fs::File::readText(path ? path : "");
+    if (!path) return nullptr;
+    std::string content = hoo::fs::File(path).readText();
     if (content.empty()) return nullptr;
     char* result = static_cast<char*>(std::malloc(content.size() + 1));
     if (!result) return nullptr;
@@ -452,19 +484,21 @@ char* hoo_fs_read_text(const char* path)
 
 int64_t hoo_fs_write_text(const char* path, const char* content)
 {
-    return hoo::fs::File::writeText(path ? path : "", content ? content : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::File(path).writeText(content ? content : "") ? 1 : 0;
 }
 
 int64_t hoo_fs_append_text(const char* path, const char* content)
 {
-    return hoo::fs::File::appendText(path ? path : "", content ? content : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::File(path).appendText(content ? content : "") ? 1 : 0;
 }
 
 int64_t hoo_fs_read_bytes(const char* path, uint8_t** out_data, int64_t* out_len)
 {
     if (!path || !out_data || !out_len) return 0;
     std::vector<uint8_t> buf;
-    if (!hoo::fs::File::readBytes(path, buf)) return 0;
+    if (!hoo::fs::File(path).readBytes(buf)) return 0;
     if (buf.empty()) {
         *out_data = nullptr;
         *out_len = 0;
@@ -485,27 +519,27 @@ int64_t hoo_fs_write_bytes(const char* path, const uint8_t* data, int64_t len)
 
 int64_t hoo_fs_mkdir(const char* path)
 {
-    return hoo::fs::Directory::create(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::Directory(path).create() ? 1 : 0;
 }
 
 int64_t hoo_fs_mkdirs(const char* path)
 {
-    return hoo::fs::Directory::createTree(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::Directory(path).createTree() ? 1 : 0;
 }
 
 int64_t hoo_fs_rmdir(const char* path)
 {
-    return hoo::fs::Directory::remove(path ? path : "") ? 1 : 0;
+    if (!path) return 0;
+    return hoo::fs::Directory(path).remove() ? 1 : 0;
 }
 
 char** hoo_fs_list_dir(const char* path, int64_t* out_count)
 {
     if (!path || !out_count) return nullptr;
-    std::vector<std::string> entries = hoo::fs::Directory::list(path);
+    std::vector<std::string> entries = hoo::fs::Directory(path).list();
     if (entries.empty()) {
-        // Return an allocated sentinel so callers can distinguish
-        // "empty directory" (*out_count == 0, non-null) from
-        // "error / not found" (nullptr).
         *out_count = 0;
         return static_cast<char**>(std::malloc(1));
     }
@@ -529,14 +563,14 @@ void hoo_fs_free_list(char** list, int64_t count)
 
 char* hoo_fs_temp_dir(void)
 {
-    std::string tmp = hoo::fs::Path::getTempDir();
+    std::string tmp = hoo::fs::tempDir();
     if (tmp.empty()) return nullptr;
     return hoo_strdup(tmp.c_str());
 }
 
 char* hoo_fs_create_temp_file(const char* prefix)
 {
-    std::string tmp = hoo::fs::Path::createTempFile(prefix ? prefix : "hoo");
+    std::string tmp = hoo::fs::createTempFile(prefix ? prefix : "hoo");
     if (tmp.empty()) return nullptr;
     return hoo_strdup(tmp.c_str());
 }
@@ -546,48 +580,48 @@ void hoo_fs_free_string(char* str)
     std::free(str);
 }
 
-// ── hoo_path_* C-ABI bridges (delegate to hoo::fs::Path) ────────────────────
+// ── hoo_path_* C-ABI bridges (delegate to hoo::fs API) ─────────────────────
 
 char* hoo_path_dirname(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::dirname(path);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::Path(path).dirname();
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_basename(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::basename(path);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::Path(path).basename();
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_extension(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::extension(path);
+    std::string result = hoo::fs::Path(path).extension();
     return hoo_strdup(result.c_str());
 }
 
 char* hoo_path_stem(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::stem(path);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::Path(path).stem();
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_root(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::root(path);
+    std::string result = hoo::fs::Path(path).root();
     return hoo_strdup(result.c_str());
 }
 
 char* hoo_path_join(const char* a, const char* b)
 {
     if (!a || !b) return nullptr;
-    std::string result = hoo::fs::Path::join(a, b);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::join(a, b);
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_join_multi(const char** parts, int64_t count)
@@ -598,59 +632,59 @@ char* hoo_path_join_multi(const char** parts, int64_t count)
     for (int64_t i = 0; i < count; i++) {
         vec.push_back(parts[i] ? parts[i] : "");
     }
-    std::string result = hoo::fs::Path::joinMulti(vec);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::joinMulti(vec);
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_normalize(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::normalize(path);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::Path(path).normalized().str();
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_absolute(const char* path)
 {
     if (!path) return nullptr;
-    std::string result = hoo::fs::Path::absolute(path);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::Path(path).absolute().str();
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 char* hoo_path_relative(const char* path, const char* base)
 {
     if (!path || !base) return nullptr;
-    std::string result = hoo::fs::Path::relative(path, base);
-    return hoo_strdup(result.c_str());
+    std::string result = hoo::fs::relative(path, base);
+    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
 }
 
 int64_t hoo_path_is_absolute(const char* path)
 {
     if (!path) return 0;
-    return hoo::fs::Path::isAbsolute(path) ? 1 : 0;
+    return hoo::fs::Path(path).isAbsolute() ? 1 : 0;
 }
 
 int64_t hoo_path_is_relative(const char* path)
 {
     if (!path) return 0;
-    return hoo::fs::Path::isRelative(path) ? 1 : 0;
+    return hoo::fs::Path(path).isRelative() ? 1 : 0;
 }
 
 int64_t hoo_path_has_extension(const char* path)
 {
     if (!path) return 0;
-    return hoo::fs::Path::hasExtension(path) ? 1 : 0;
+    return hoo::fs::Path(path).hasExtension() ? 1 : 0;
 }
 
 int64_t hoo_path_has_root(const char* path)
 {
     if (!path) return 0;
-    return hoo::fs::Path::hasRoot(path) ? 1 : 0;
+    return hoo::fs::Path(path).hasRoot() ? 1 : 0;
 }
 
 char** hoo_path_split(const char* path, int64_t* out_count)
 {
     if (!path || !out_count) return nullptr;
-    std::vector<std::string> components = hoo::fs::Path::split(path);
+    std::vector<std::string> components = hoo::fs::Path(path).split();
     if (components.empty()) {
         *out_count = 0;
         return nullptr;
@@ -675,12 +709,12 @@ void hoo_path_free_parts(char** parts, int64_t count)
 
 char hoo_path_separator(void)
 {
-    return hoo::fs::Path::separator();
+    return hoo::fs::separator();
 }
 
 char hoo_path_list_separator(void)
 {
-    return hoo::fs::Path::listSeparator();
+    return hoo::fs::listSeparator();
 }
 
 void hoo_path_free_string(char* str)
