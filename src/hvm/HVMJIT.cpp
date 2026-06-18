@@ -2122,6 +2122,12 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_int(state->regs[1])));
     }
+    uint64_t jit_json_new_float(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double d;
+        memcpy(&d, &state->regs[1], sizeof(d));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_float(d)));
+    }
     uint64_t jit_json_new_bool(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_bool(state->regs[1])));
@@ -2133,6 +2139,26 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         hoo_json_release(reinterpret_cast<void*>(state->regs[1]));
         return 0;
+    }
+    uint64_t jit_json_parse_to_map(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* json = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_parse_to_map(json)));
+    }
+    uint64_t jit_json_serialize_map(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        auto* hoo_map = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_serialize_map(hoo_map)));
+    }
+    uint64_t jit_json_minify(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* json = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_minify(json)));
+    }
+    uint64_t jit_json_beautify(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* json = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_beautify(json)));
     }
 
     // Base pointer for translating HVM memory offsets to real addresses.
@@ -2952,6 +2978,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_json_new_array_v", reinterpret_cast<void*>(&jit_json_new_array)},
         {"_F_M_hoo_E_json_new_string_v_p", reinterpret_cast<void*>(&jit_json_new_string)},
         {"_F_M_hoo_E_json_new_int_v_p", reinterpret_cast<void*>(&jit_json_new_int)},
+        {"_F_M_hoo_E_json_new_float_v_p", reinterpret_cast<void*>(&jit_json_new_float)},
         {"_F_M_hoo_E_json_new_bool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
         {"_F_M_hoo_E_json_new_null_v", reinterpret_cast<void*>(&jit_json_new_null)},
         {"_F_M_hoo_E_json_release_v_p", reinterpret_cast<void*>(&jit_json_release)},
@@ -2965,8 +2992,14 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_json_newArray_v", reinterpret_cast<void*>(&jit_json_new_array)},
         {"_F_M_hoo_E_json_newString_v_p", reinterpret_cast<void*>(&jit_json_new_string)},
         {"_F_M_hoo_E_json_newInt_v_p", reinterpret_cast<void*>(&jit_json_new_int)},
+        {"_F_M_hoo_E_json_newFloat_v_p", reinterpret_cast<void*>(&jit_json_new_float)},
         {"_F_M_hoo_E_json_newBool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
         {"_F_M_hoo_E_json_newNull_v", reinterpret_cast<void*>(&jit_json_new_null)},
+        // JSON HooMap interop
+        {"_F_M_hoo_E_json_parseToMap_v_p", reinterpret_cast<void*>(&jit_json_parse_to_map)},
+        {"_F_M_hoo_E_json_serializeMap_v_p", reinterpret_cast<void*>(&jit_json_serialize_map)},
+        {"_F_M_hoo_E_json_minify_v_p", reinterpret_cast<void*>(&jit_json_minify)},
+        {"_F_M_hoo_E_json_beautify_v_p", reinterpret_cast<void*>(&jit_json_beautify)},
     };
 }
 

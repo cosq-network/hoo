@@ -2338,6 +2338,12 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new" || ma->getMember() == "fromBytes") return 113;
                         return 101;
                     }
+                    if (clsName == "Json") {
+                        if (ma->getMember() == "parseToMap") return 103;
+                        if (ma->getMember() == "serializeMap" || ma->getMember() == "minify" ||
+                            ma->getMember() == "beautify") return 101;
+                        return 100;
+                    }
                     if (isBuiltinClassName(clsName)) {
                         return 101;
                     }

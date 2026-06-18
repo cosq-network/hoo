@@ -443,6 +443,7 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooSystemTest.cpp
         tests/runtime/HooRegexTest.cpp
         tests/runtime/HooCsvTest.cpp
+        tests/runtime/HooJsonTest.cpp
         tests/runtime/HooUuidTest.cpp
         tests/runtime/HooPathTest.cpp
         tests/runtime/HooHashingTest.cpp
