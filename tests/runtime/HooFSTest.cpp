@@ -30,6 +30,28 @@ protected:
 };
 
 // ---------------------------------------------------------------------------
+// Getters
+// ---------------------------------------------------------------------------
+
+TEST_F(HooFSTest, Path_Str) {
+    Path p("foo/bar.txt");
+    EXPECT_EQ(p.str(), "foo/bar.txt");
+
+    Path empty("");
+    EXPECT_EQ(empty.str(), "");
+}
+
+TEST_F(HooFSTest, File_Path) {
+    File f("some/file.txt");
+    EXPECT_EQ(f.path(), "some/file.txt");
+}
+
+TEST_F(HooFSTest, Directory_Path) {
+    Directory d("some/dir");
+    EXPECT_EQ(d.path(), "some/dir");
+}
+
+// ---------------------------------------------------------------------------
 // Free functions
 // ---------------------------------------------------------------------------
 
@@ -164,6 +186,20 @@ TEST_F(HooFSTest, Path_Split) {
     EXPECT_EQ(parts[2], "baz");
 }
 
+TEST_F(HooFSTest, Path_Empty) {
+    Path empty("");
+    EXPECT_EQ(empty.str(), "");
+    EXPECT_EQ(empty.dirname(), ".");
+    EXPECT_EQ(empty.basename(), "");
+    EXPECT_EQ(empty.extension(), "");
+    EXPECT_EQ(empty.stem(), "");
+    EXPECT_FALSE(empty.hasExtension());
+    EXPECT_FALSE(empty.hasRoot());
+    EXPECT_TRUE(empty.split().empty());
+    EXPECT_FALSE(empty.isAbsolute());
+    EXPECT_TRUE(empty.isRelative());
+}
+
 TEST_F(HooFSTest, Path_Separator) {
     char sep = hoo::fs::separator();
 #ifdef _WIN32
@@ -284,6 +320,23 @@ TEST_F(HooFSTest, File_Rename) {
     File(newPath).remove();
 }
 
+TEST_F(HooFSTest, File_RenameUpdatesPath) {
+    std::string oldPath = mkpath("rename_path_old.txt");
+    std::string newPath = mkpath("rename_path_new.txt");
+
+    File f(oldPath);
+    EXPECT_TRUE(f.writeText("content"));
+    EXPECT_TRUE(f.rename(newPath));
+
+    // File object's internal path should be updated
+    EXPECT_EQ(f.path(), newPath);
+
+    EXPECT_TRUE(f.exists());
+    EXPECT_FALSE(File(oldPath).exists());
+
+    f.remove();
+}
+
 // ---------------------------------------------------------------------------
 // Directory
 // ---------------------------------------------------------------------------
@@ -312,6 +365,25 @@ TEST_F(HooFSTest, Directory_CreateTree) {
     Directory(testDir + "/a/b/c").remove();
     Directory(testDir + "/a/b").remove();
     Directory(testDir + "/a").remove();
+}
+
+TEST_F(HooFSTest, Directory_Exists) {
+    std::string dirPath = mkpath("exists_dir");
+    std::string otherDir = mkpath("exists_dir_other");
+
+    EXPECT_FALSE(Directory(dirPath).exists());
+
+    EXPECT_TRUE(Directory(dirPath).create());
+    EXPECT_TRUE(Directory(dirPath).exists());
+
+    EXPECT_TRUE(Directory(otherDir).createTree());
+    EXPECT_TRUE(Directory(otherDir).exists());
+
+    EXPECT_TRUE(Directory(dirPath).remove());
+    EXPECT_FALSE(Directory(dirPath).exists());
+
+    EXPECT_TRUE(Directory(otherDir).remove());
+    EXPECT_FALSE(Directory(otherDir).exists());
 }
 
 TEST_F(HooFSTest, Directory_List) {

@@ -12,94 +12,88 @@ All Hoo language calls (`Fs.exists`, `Fs.delete`, etc.) resolve through the JIT 
 
 ## 1. `hoo::fs::File`
 
-Static methods on the `File` class:
+Instance methods on the `File` class. Construct with `File(path)`.
 
 | Method | Signature | Description |
 |---|---|---|
-| `exists` | `(path) -> bool` | Check if a path exists. |
-| `isFile` | `(path) -> bool` | Check if path is a regular file. |
-| `size` | `(path) -> i64` | File size in bytes; `-1` on error. |
-| `lastModified` | `(path) -> i64` | Unix timestamp (seconds since epoch); `-1` on error. |
-| `remove` | `(path) -> bool` | Delete a file or empty directory. |
-| `rename` | `(old, new) -> bool` | Rename / move a file or directory. |
-| `copy` | `(src, dst) -> bool` | Copy a file (overwrites destination). |
-| `readText` | `(path) -> string` | Read entire text file. Returns empty string on error. |
-| `writeText` | `(path, content) -> bool` | Write string to file, overwriting. |
-| `appendText` | `(path, content) -> bool` | Append string to file. Creates file if missing. |
-| `readBytes` | `(path, out vector<u8>) -> bool` | Read entire binary file into vector. |
-| `writeBytes` | `(path, vector<u8>) -> bool` | Write raw bytes to file, overwriting. |
+| `path` | `() -> string` | The path this instance was constructed with. |
+| `exists` | `() -> bool` | Check if the path exists. |
+| `isFile` | `() -> bool` | Check if path is a regular file. |
+| `size` | `() -> i64` | File size in bytes; `-1` on error. |
+| `lastModified` | `() -> i64` | Unix timestamp (seconds since epoch); `-1` on error. |
+| `remove` | `() -> bool` | Delete the file or empty directory. |
+| `rename` | `(newPath) -> bool` | Rename / move. Updates the stored path on success. |
+| `readText` | `() -> string` | Read entire text file. Returns empty string on error. |
+| `writeText` | `(content) -> bool` | Write string to file, overwriting. |
+| `appendText` | `(content) -> bool` | Append string to file. Creates file if missing. |
+| `readBytes` | `(out vector<u8>) -> bool` | Read entire binary file into vector. |
+| `writeBytes` | `(vector<u8>) -> bool` | Write raw bytes to file, overwriting. |
 
 ## 2. `hoo::fs::Directory`
 
-Static methods on the `Directory` class:
+Instance methods on the `Directory` class. Construct with `Directory(path)`.
 
 | Method | Signature | Description |
 |---|---|---|
-| `isDirectory` | `(path) -> bool` | Check if path is a directory. |
-| `create` | `(path) -> bool` | Create a single directory (parent must exist). |
-| `createTree` | `(path) -> bool` | Create directory tree (mkdir -p). |
-| `remove` | `(path) -> bool` | Remove an empty directory. |
-| `list` | `(path) -> vector<string>` | List directory contents (filenames only, no paths). |
+| `path` | `() -> string` | The path this instance was constructed with. |
+| `exists` | `() -> bool` | Check if the path exists. |
+| `isDirectory` | `() -> bool` | Check if path is a directory. |
+| `create` | `() -> bool` | Create a single directory (parent must exist). |
+| `createTree` | `() -> bool` | Create directory tree (mkdir -p). |
+| `remove` | `() -> bool` | Remove an empty directory. |
+| `list` | `() -> vector<string>` | List directory contents (filenames only, no paths). |
 
 ## 3. `hoo::fs::Path`
 
-The `Path` class has been merged from the standalone `hoo.path` module. It now
-provides component extraction, construction, normalization, properties, and
-platform queries alongside the existing temporary-file utilities.
-
-### Temporary Files
-
-| Method | Signature | Description |
-|---|---|---|
-| `getTempDir` | `() -> string` | System temporary directory path. Returns empty on error. |
-| `createTempFile` | `(prefix) -> string` | Create a temporary file with the given prefix. Returns the full path. |
+Instance methods on the `Path` class. Construct with `Path(path)`.
 
 ### Component Extraction
 
 | Method | Signature | Description |
 |---|---|---|
-| `dirname` | `(path) -> string` | Parent directory. `"a/b/c.txt"` → `"a/b"`. Returns `"."` for bare filenames. |
-| `basename` | `(path) -> string` | Last path component. `"a/b/c.txt"` → `"c.txt"`. |
-| `extension` | `(path) -> string` | Extension including dot. `"archive.tar.gz"` → `".gz"`. |
-| `stem` | `(path) -> string` | Filename without extension. `"resume.pdf"` → `"resume"`. |
-| `root` | `(path) -> string` | Root component. `"/foo"` → `"/"`, `"C:\foo"` → `"C:\"`. |
-
-### Construction
-
-| Method | Signature | Description |
-|---|---|---|
-| `join` | `(a, b) -> string` | Join two components with platform separator. |
-| `joinMulti` | `(parts) -> string` | Join multiple components. |
+| `str` | `() -> string` | The original path string. |
+| `dirname` | `() -> string` | Parent directory. `Path("a/b/c.txt").dirname()` → `"a/b"`. Returns `"."` for bare filenames. |
+| `basename` | `() -> string` | Last path component. Returns `"c.txt"`. |
+| `extension` | `() -> string` | Extension including dot. `".gz"`. |
+| `stem` | `() -> string` | Filename without extension. `"resume"`. |
+| `root` | `() -> string` | Root component. `"/"` or `"C:\"`. |
 
 ### Normalization & Resolution
 
 | Method | Signature | Description |
 |---|---|---|
-| `normalize` | `(path) -> string` | Resolve `.`/`..`, collapse redundant separators. |
-| `absolute` | `(path) -> string` | Convert to absolute path relative to CWD. |
-| `relative` | `(path, base) -> string` | Compute relative path from `base` to `path`. |
+| `normalized` | `() -> Path` | Resolve `.`/`..`, collapse redundant separators. Returns new `Path`. |
+| `absolute` | `() -> Path` | Convert to absolute path relative to CWD. Returns new `Path`. |
 
 ### Properties
 
 | Method | Signature | Description |
 |---|---|---|
-| `isAbsolute` | `(path) -> bool` | Returns true if path is absolute. |
-| `isRelative` | `(path) -> bool` | Returns true if path is relative. |
-| `hasExtension` | `(path) -> bool` | Returns true if path has an extension. |
-| `hasRoot` | `(path) -> bool` | Returns true if path has a root component. |
+| `isAbsolute` | `() -> bool` | Returns true if path is absolute. |
+| `isRelative` | `() -> bool` | Returns true if path is relative. |
+| `hasExtension` | `() -> bool` | Returns true if path has an extension. |
+| `hasRoot` | `() -> bool` | Returns true if path has a root component. |
 
 ### Split
 
 | Method | Signature | Description |
 |---|---|---|
-| `split` | `(path) -> vector<string>` | Split path into individual components. |
+| `split` | `() -> vector<string>` | Split path into individual components. |
 
-### Platform-Specific
+## 4. Free Functions
 
-| Method | Signature | Description |
+Operations that don't naturally belong on a single instance:
+
+| Function | Signature | Description |
 |---|---|---|
+| `join` | `(a, b) -> string` | Join two components with platform separator. |
+| `joinMulti` | `(parts) -> string` | Join multiple components. |
+| `relative` | `(path, base) -> string` | Compute relative path from `base` to `path`. |
 | `separator` | `() -> char` | `'/'` on Unix, `'\\'` on Windows. |
 | `listSeparator` | `() -> char` | `':'` on Unix, `';'` on Windows. |
+| `tempDir` | `() -> string` | System temporary directory path. |
+| `createTempFile` | `(prefix) -> string` | Create a temporary file. Returns the full path. |
+| `copyFile` | `(src, dst) -> bool` | Copy a file (overwrites destination). |
 
 ---
 
@@ -176,4 +170,4 @@ These calls resolve via the JIT bridge to the C-ABI functions above.
 
 - Strings returned from `hoo_fs_read_text`, `hoo_fs_temp_dir`, `hoo_fs_create_temp_file` must be freed with `hoo_fs_free_string`.
 - Directory listings from `hoo_fs_list_dir` must be freed with `hoo_fs_free_list(list, count)`.
-- The C++ API (`File::readText`, `Path::getTempDir`, etc.) returns `std::string` / `std::vector`, which manages its own memory.
+- The C++ API (`File(path).readText()`, `tempDir()`, etc.) returns `std::string` / `std::vector`, which manage their own memory.
