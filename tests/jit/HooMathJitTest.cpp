@@ -189,3 +189,79 @@ TEST_F(HooMathJitTest, Sin) {
     std::memcpy(&val, &result, sizeof(double));
     EXPECT_NEAR(val, 0.0, 0.0001);
 }
+
+TEST_F(HooMathJitTest, DocumentedDoubleMathFunctions) {
+    const std::string source = R"(
+        func :double test() {
+            return Math.getE() + Math.cos(0.0) + Math.log(Math.getE()) + Math.round(3.5);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_d");
+    double val;
+    std::memcpy(&val, &result, sizeof(double));
+    EXPECT_NEAR(val, 2.718281828459045 + 1.0 + 1.0 + 4.0, 0.0001);
+}
+
+TEST_F(HooMathJitTest, DoubleOverloads) {
+    const std::string source = R"(
+        func :double test() {
+            return Math.abs(-3.5) + Math.min(8.0, 2.25) + Math.max(1.5, 4.0) + Math.sign(-2.0);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_d");
+    double val;
+    std::memcpy(&val, &result, sizeof(double));
+    EXPECT_NEAR(val, 3.5 + 2.25 + 4.0 - 1.0, 0.0001);
+}
+
+TEST_F(HooMathJitTest, RandomSeededConstructorAndNextIntMax) {
+    const std::string source = R"(
+        func :int64 test() {
+            var a = new Random(12345);
+            var b = new Random(12345);
+            var av = a.nextIntMax(1000000);
+            var bv = b.nextIntMax(1000000);
+            a.release();
+            b.release();
+            return av == bv;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooMathJitTest, RandomNextDouble) {
+    const std::string source = R"(
+        func :double test() {
+            var rng = new Random(42);
+            var value = rng.nextDouble();
+            rng.release();
+            return value;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_d");
+    double val;
+    std::memcpy(&val, &result, sizeof(double));
+    EXPECT_GE(val, 0.0);
+    EXPECT_LT(val, 1.0);
+}
+
+TEST_F(HooMathJitTest, RandomNextBoolCanDriveBranch) {
+    const std::string source = R"(
+        func :int64 test() {
+            var rng = new Random(42);
+            var flag = rng.nextBool();
+            rng.release();
+            if (flag) {
+                return 1;
+            }
+            return 0;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_i8");
+    EXPECT_TRUE(result == 0 || result == 1);
+}

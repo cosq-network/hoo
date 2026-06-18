@@ -169,7 +169,7 @@ TEST_F(NewLanguageFeaturesTest, Byte_Variable) {
     )";
 
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
-    EXPECT_EQ(static_cast<uint8_t>(jit->run("_F_test_i1")), 200) << jit->getLastError();
+    EXPECT_EQ(static_cast<uint8_t>(jit->run("_F_test_u1")), 200) << jit->getLastError();
 }
 
 TEST_F(NewLanguageFeaturesTest, Int8_Arithmetic) {
@@ -187,7 +187,7 @@ TEST_F(NewLanguageFeaturesTest, Byte_Arithmetic) {
     )";
 
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
-    EXPECT_EQ(static_cast<uint8_t>(jit->run("_F_test_i1")), 150) << jit->getLastError();
+    EXPECT_EQ(static_cast<uint8_t>(jit->run("_F_test_u1")), 150) << jit->getLastError();
 }
 
 // ============================================================================

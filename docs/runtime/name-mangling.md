@@ -62,7 +62,8 @@ Defined in `getTypeCodeMap()` (SymbolMangler.cpp lines 55-72):
 
 | Hoo Type | Code |
 |-----------|------|
-| `int8`, `byte` | `i1` |
+| `int8` | `i1` |
+| `byte` | `u1` |
 | `int64`, `int` | `i8` |
 | `float` | `f` |
 | `double`, `f64` | `d` |
@@ -368,7 +369,8 @@ If `jit.run()` returns -1 or the JIT reports a missing symbol:
 
 | Code | Type |
 |------|------|
-| `i1` | int8 / byte |
+| `i1` | int8 |
+| `u1` | byte |
 | `i8` | int64 / int |
 | `f` | float |
 | `d` | double / f64 |

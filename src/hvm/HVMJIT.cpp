@@ -1141,17 +1141,113 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_math_abs_int64(state->regs[1]));
     }
+    uint64_t jit_math_abs_int8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(static_cast<int64_t>(hoo_math_abs_int8(static_cast<int8_t>(state->regs[1]))));
+    }
+    uint64_t jit_math_abs_byte(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_abs_byte(static_cast<uint8_t>(state->regs[1])));
+    }
+    uint64_t jit_math_abs_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_abs_double(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_abs_f8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_abs_f8(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
     uint64_t jit_math_min_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_math_min_int64(state->regs[1], state->regs[2]));
+    }
+    uint64_t jit_math_min_int8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(static_cast<int64_t>(hoo_math_min_int8(static_cast<int8_t>(state->regs[1]), static_cast<int8_t>(state->regs[2]))));
+    }
+    uint64_t jit_math_min_byte(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_min_byte(static_cast<uint8_t>(state->regs[1]), static_cast<uint8_t>(state->regs[2])));
+    }
+    uint64_t jit_math_min_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double a, b;
+        std::memcpy(&a, &state->regs[1], sizeof(double));
+        std::memcpy(&b, &state->regs[2], sizeof(double));
+        double result = hoo_math_min_double(a, b);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_min_f8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double a, b;
+        std::memcpy(&a, &state->regs[1], sizeof(double));
+        std::memcpy(&b, &state->regs[2], sizeof(double));
+        double result = hoo_math_min_f8(a, b);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
     }
     uint64_t jit_math_max_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_math_max_int64(state->regs[1], state->regs[2]));
     }
+    uint64_t jit_math_max_int8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(static_cast<int64_t>(hoo_math_max_int8(static_cast<int8_t>(state->regs[1]), static_cast<int8_t>(state->regs[2]))));
+    }
+    uint64_t jit_math_max_byte(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_max_byte(static_cast<uint8_t>(state->regs[1]), static_cast<uint8_t>(state->regs[2])));
+    }
+    uint64_t jit_math_max_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double a, b;
+        std::memcpy(&a, &state->regs[1], sizeof(double));
+        std::memcpy(&b, &state->regs[2], sizeof(double));
+        double result = hoo_math_max_double(a, b);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_max_f8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double a, b;
+        std::memcpy(&a, &state->regs[1], sizeof(double));
+        std::memcpy(&b, &state->regs[2], sizeof(double));
+        double result = hoo_math_max_f8(a, b);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
     uint64_t jit_math_sign_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_math_sign_int64(state->regs[1]));
+    }
+    uint64_t jit_math_sign_int8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(static_cast<int64_t>(hoo_math_sign_int8(static_cast<int8_t>(state->regs[1]))));
+    }
+    uint64_t jit_math_sign_byte(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_sign_byte(static_cast<uint8_t>(state->regs[1])));
+    }
+    uint64_t jit_math_sign_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_sign_double(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_sign_f8(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_sign_f8(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
     }
     uint64_t jit_math_gcd(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -1193,6 +1289,31 @@ extern "C" {
         uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
         return bits;
     }
+    uint64_t jit_math_get_e(void* /*state_ptr*/) {
+        double result = hoo_math_get_e();
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_get_tau(void* /*state_ptr*/) {
+        double result = hoo_math_get_tau();
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_get_inf(void* /*state_ptr*/) {
+        double result = hoo_math_get_inf();
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_get_neg_inf(void* /*state_ptr*/) {
+        double result = hoo_math_get_neg_inf();
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_get_nan(void* /*state_ptr*/) {
+        double result = hoo_math_get_nan();
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
     uint64_t jit_math_pow(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         double base, exp;
@@ -1209,6 +1330,22 @@ extern "C" {
         uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
         return bits;
     }
+    uint64_t jit_math_cbrt(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_cbrt(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_hypot(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double x, y;
+        std::memcpy(&x, &state->regs[1], sizeof(double));
+        std::memcpy(&y, &state->regs[2], sizeof(double));
+        double result = hoo_math_hypot(x, y);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
     uint64_t jit_math_ceil(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
@@ -1222,6 +1359,178 @@ extern "C" {
         double result = hoo_math_sin(arg);
         uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
         return bits;
+    }
+    uint64_t jit_math_cos(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_cos(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_tan(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_tan(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_atan2(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double y, x;
+        std::memcpy(&y, &state->regs[1], sizeof(double));
+        std::memcpy(&x, &state->regs[2], sizeof(double));
+        double result = hoo_math_atan2(y, x);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_unary_asin(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_asin(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_unary_acos(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_acos(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_unary_atan(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_atan(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_sinh(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_sinh(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_cosh(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_cosh(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_tanh(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_tanh(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_exp(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_exp(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_exp2(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_exp2(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_expm1(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_expm1(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_log(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_log(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_log10(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_log10(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_log2(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_log2(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_log1p(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_log1p(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_round(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_round(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_trunc(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_trunc(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_fract(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
+        double result = hoo_math_fract(arg);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_random_new(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_math_random_new()));
+    }
+    uint64_t jit_random_new_with_seed(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_math_random_new_with_seed(state->regs[1])));
+    }
+    uint64_t jit_random_next_int(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_random_next_int(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_random_next_int_max(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_random_next_int_max(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_random_next_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double result = hoo_math_random_next_double(reinterpret_cast<void*>(state->regs[1]));
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_random_next_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_random_next_bool(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_random_next_bytes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_math_random_next_bytes(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2]),
+            state->regs[3]));
+    }
+    uint64_t jit_random_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_math_random_release(reinterpret_cast<void*>(state->regs[1]));
+        return 0;
     }
     // ── Standard library (hoo module namespace) ───────────────────────────────
     uint64_t jit_system_hostname(void* /*state_ptr*/) {
@@ -2713,9 +3022,25 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_math_sign_v_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
         // Math functions (singleton class mangled names)
         {"_F_M_hoo_E_Math_N_abs_i8_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
+        {"_F_M_hoo_E_Math_N_abs_i1_p", reinterpret_cast<void*>(&jit_math_abs_int8)},
+        {"_F_M_hoo_E_Math_N_abs_u1_p", reinterpret_cast<void*>(&jit_math_abs_byte)},
+        {"_F_M_hoo_E_Math_N_abs_d_p", reinterpret_cast<void*>(&jit_math_abs_double)},
+        {"_F_M_hoo_E_Math_N_abs_e_p", reinterpret_cast<void*>(&jit_math_abs_f8)},
         {"_F_M_hoo_E_Math_N_min_i8_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
+        {"_F_M_hoo_E_Math_N_min_i1_p_p", reinterpret_cast<void*>(&jit_math_min_int8)},
+        {"_F_M_hoo_E_Math_N_min_u1_p_p", reinterpret_cast<void*>(&jit_math_min_byte)},
+        {"_F_M_hoo_E_Math_N_min_d_p_p", reinterpret_cast<void*>(&jit_math_min_double)},
+        {"_F_M_hoo_E_Math_N_min_e_p_p", reinterpret_cast<void*>(&jit_math_min_f8)},
         {"_F_M_hoo_E_Math_N_max_i8_p_p", reinterpret_cast<void*>(&jit_math_max_int64)},
+        {"_F_M_hoo_E_Math_N_max_i1_p_p", reinterpret_cast<void*>(&jit_math_max_int8)},
+        {"_F_M_hoo_E_Math_N_max_u1_p_p", reinterpret_cast<void*>(&jit_math_max_byte)},
+        {"_F_M_hoo_E_Math_N_max_d_p_p", reinterpret_cast<void*>(&jit_math_max_double)},
+        {"_F_M_hoo_E_Math_N_max_e_p_p", reinterpret_cast<void*>(&jit_math_max_f8)},
         {"_F_M_hoo_E_Math_N_sign_i8_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
+        {"_F_M_hoo_E_Math_N_sign_i1_p", reinterpret_cast<void*>(&jit_math_sign_int8)},
+        {"_F_M_hoo_E_Math_N_sign_u1_p", reinterpret_cast<void*>(&jit_math_sign_byte)},
+        {"_F_M_hoo_E_Math_N_sign_d_p", reinterpret_cast<void*>(&jit_math_sign_double)},
+        {"_F_M_hoo_E_Math_N_sign_e_p", reinterpret_cast<void*>(&jit_math_sign_f8)},
         {"_F_M_hoo_E_Math_N_gcd_i8_p_p", reinterpret_cast<void*>(&jit_math_gcd)},
         {"_F_M_hoo_E_Math_N_factorial_i8_p", reinterpret_cast<void*>(&jit_math_factorial)},
         {"_F_M_hoo_E_Math_N_fibonacci_i8_p", reinterpret_cast<void*>(&jit_math_fibonacci)},
@@ -2725,15 +3050,46 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_Math_N_lcm_i8_p_p", reinterpret_cast<void*>(&jit_math_lcm)},
         {"_F_M_hoo_E_Math_N_sqrt_d_p", reinterpret_cast<void*>(&jit_math_sqrt)},
         {"_F_M_hoo_E_Math_N_get_pi_d", reinterpret_cast<void*>(&jit_math_get_pi)},
+        {"_F_M_hoo_E_Math_N_get_e_d", reinterpret_cast<void*>(&jit_math_get_e)},
+        {"_F_M_hoo_E_Math_N_get_tau_d", reinterpret_cast<void*>(&jit_math_get_tau)},
+        {"_F_M_hoo_E_Math_N_get_inf_d", reinterpret_cast<void*>(&jit_math_get_inf)},
+        {"_F_M_hoo_E_Math_N_get_neg_inf_d", reinterpret_cast<void*>(&jit_math_get_neg_inf)},
+        {"_F_M_hoo_E_Math_N_get_nan_d", reinterpret_cast<void*>(&jit_math_get_nan)},
         {"_F_M_hoo_E_Math_N_pow_d_p_p", reinterpret_cast<void*>(&jit_math_pow)},
+        {"_F_M_hoo_E_Math_N_cbrt_d_p", reinterpret_cast<void*>(&jit_math_cbrt)},
+        {"_F_M_hoo_E_Math_N_hypot_d_p_p", reinterpret_cast<void*>(&jit_math_hypot)},
         {"_F_M_hoo_E_Math_N_floor_d_p", reinterpret_cast<void*>(&jit_math_floor)},
         {"_F_M_hoo_E_Math_N_ceil_d_p", reinterpret_cast<void*>(&jit_math_ceil)},
+        {"_F_M_hoo_E_Math_N_round_d_p", reinterpret_cast<void*>(&jit_math_round)},
+        {"_F_M_hoo_E_Math_N_trunc_d_p", reinterpret_cast<void*>(&jit_math_trunc)},
+        {"_F_M_hoo_E_Math_N_fract_d_p", reinterpret_cast<void*>(&jit_math_fract)},
         {"_F_M_hoo_E_Math_N_sin_d_p", reinterpret_cast<void*>(&jit_math_sin)},
+        {"_F_M_hoo_E_Math_N_cos_d_p", reinterpret_cast<void*>(&jit_math_cos)},
+        {"_F_M_hoo_E_Math_N_tan_d_p", reinterpret_cast<void*>(&jit_math_tan)},
+        {"_F_M_hoo_E_Math_N_asin_d_p", reinterpret_cast<void*>(&jit_math_unary_asin)},
+        {"_F_M_hoo_E_Math_N_acos_d_p", reinterpret_cast<void*>(&jit_math_unary_acos)},
+        {"_F_M_hoo_E_Math_N_atan_d_p", reinterpret_cast<void*>(&jit_math_unary_atan)},
+        {"_F_M_hoo_E_Math_N_atan2_d_p_p", reinterpret_cast<void*>(&jit_math_atan2)},
+        {"_F_M_hoo_E_Math_N_sinh_d_p", reinterpret_cast<void*>(&jit_math_sinh)},
+        {"_F_M_hoo_E_Math_N_cosh_d_p", reinterpret_cast<void*>(&jit_math_cosh)},
+        {"_F_M_hoo_E_Math_N_tanh_d_p", reinterpret_cast<void*>(&jit_math_tanh)},
+        {"_F_M_hoo_E_Math_N_exp_d_p", reinterpret_cast<void*>(&jit_math_exp)},
+        {"_F_M_hoo_E_Math_N_exp2_d_p", reinterpret_cast<void*>(&jit_math_exp2)},
+        {"_F_M_hoo_E_Math_N_expm1_d_p", reinterpret_cast<void*>(&jit_math_expm1)},
+        {"_F_M_hoo_E_Math_N_log_d_p", reinterpret_cast<void*>(&jit_math_log)},
+        {"_F_M_hoo_E_Math_N_log10_d_p", reinterpret_cast<void*>(&jit_math_log10)},
+        {"_F_M_hoo_E_Math_N_log2_d_p", reinterpret_cast<void*>(&jit_math_log2)},
+        {"_F_M_hoo_E_Math_N_log1p_d_p", reinterpret_cast<void*>(&jit_math_log1p)},
         // CamelCase aliases
         {"_F_M_hoo_E_Math_N_isEven_i8_p", reinterpret_cast<void*>(&jit_math_is_even)},
         {"_F_M_hoo_E_Math_N_isOdd_i8_p", reinterpret_cast<void*>(&jit_math_is_odd)},
         {"_F_M_hoo_E_Math_N_isPrime_i8_p", reinterpret_cast<void*>(&jit_math_is_prime)},
         {"_F_M_hoo_E_Math_N_getPi_d", reinterpret_cast<void*>(&jit_math_get_pi)},
+        {"_F_M_hoo_E_Math_N_getE_d", reinterpret_cast<void*>(&jit_math_get_e)},
+        {"_F_M_hoo_E_Math_N_getTau_d", reinterpret_cast<void*>(&jit_math_get_tau)},
+        {"_F_M_hoo_E_Math_N_getInf_d", reinterpret_cast<void*>(&jit_math_get_inf)},
+        {"_F_M_hoo_E_Math_N_getNegInf_d", reinterpret_cast<void*>(&jit_math_get_neg_inf)},
+        {"_F_M_hoo_E_Math_N_getNan_d", reinterpret_cast<void*>(&jit_math_get_nan)},
         // Math functions (legacy type-suffixed names)
         {"_F_M_hoo_E_math_abs_int64_v_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
         {"_F_M_hoo_E_math_min_int64_v_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
@@ -2757,6 +3113,15 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_math_isOdd_v_p", reinterpret_cast<void*>(&jit_math_is_odd)},
         {"_F_M_hoo_E_math_isPrime_v_p", reinterpret_cast<void*>(&jit_math_is_prime)},
         {"_F_M_hoo_E_math_getPi_v", reinterpret_cast<void*>(&jit_math_get_pi)},
+        // Random module (instance-based, prefix-style)
+        {"_F_M_hoo_E_random_new_v", reinterpret_cast<void*>(&jit_random_new)},
+        {"_F_M_hoo_E_random_new_v_p", reinterpret_cast<void*>(&jit_random_new_with_seed)},
+        {"_F_M_hoo_E_random_nextInt_v", reinterpret_cast<void*>(&jit_random_next_int)},
+        {"_F_M_hoo_E_random_nextIntMax_v_p", reinterpret_cast<void*>(&jit_random_next_int_max)},
+        {"_F_M_hoo_E_random_nextDouble_v", reinterpret_cast<void*>(&jit_random_next_double)},
+        {"_F_M_hoo_E_random_nextBool_v", reinterpret_cast<void*>(&jit_random_next_bool)},
+        {"_F_M_hoo_E_random_nextBytes_v_p_p", reinterpret_cast<void*>(&jit_random_next_bytes)},
+        {"_F_M_hoo_E_random_release_v", reinterpret_cast<void*>(&jit_random_release)},
         // Standard library (hoo module namespace, as codegen redirects them)
         {"_F_M_hoo_E_system_hostname_v", reinterpret_cast<void*>(&jit_system_hostname)},
         {"_F_M_hoo_E_System_N_hostname_p", reinterpret_cast<void*>(&jit_system_hostname)},

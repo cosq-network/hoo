@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include "runtime/lib/hoo_math.h"
+#include "runtime/lib/hoo_buffer.h"
+#include <limits>
 
 class HooMathTest : public ::testing::Test {
 };
@@ -38,4 +40,23 @@ TEST_F(HooMathTest, Utilities) {
     EXPECT_EQ(hoo_math_gcd(12, 18), 6);
     EXPECT_EQ(hoo_math_factorial(5), 120);
     EXPECT_EQ(hoo_math_fibonacci(10), 55);
+}
+
+TEST_F(HooMathTest, LargeIntegerUtilitiesAvoidOverflow) {
+    EXPECT_EQ(hoo_math_is_prime(std::numeric_limits<int64_t>::max()), 0);
+    EXPECT_EQ(hoo_math_lcm(std::numeric_limits<int64_t>::max(), 2), std::numeric_limits<int64_t>::max());
+}
+
+TEST_F(HooMathTest, RandomNextBytesFillsBufferData) {
+    void* rng = hoo_math_random_new_with_seed(123);
+    HooBuffer buf = hoo_buffer_new(8);
+
+    EXPECT_EQ(hoo_math_random_next_bytes(rng, buf, 8), 8);
+    EXPECT_EQ(hoo_buffer_length(buf), 8);
+    EXPECT_GE(hoo_buffer_capacity(buf), 8);
+    EXPECT_NE(hoo_buffer_byte_at(buf, 0), -1);
+    EXPECT_NE(hoo_buffer_byte_at(buf, 7), -1);
+
+    hoo_buffer_release(buf);
+    hoo_math_random_release(rng);
 }

@@ -54,13 +54,13 @@ bool fromHex(const std::string& hex, std::string& out) {
 
 const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap() {
     static std::vector<std::pair<std::string, std::string>> map = {
-        {"int8", "i1"},
-        {"byte", "i1"},
         {"int64", "i8"},
-        {"int", "i8"},
-        {"float", "f"},
+        {"int8", "i1"},
+        {"byte", "u1"},
         {"double", "d"},
+        {"int", "i8"},
         {"f64", "d"},
+        {"float", "f"},
         {"f8", "e"},
         {"bit", "x"},
         {"bool", "b"},

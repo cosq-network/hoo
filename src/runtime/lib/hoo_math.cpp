@@ -1,12 +1,14 @@
 #include "hoo_math.h"
 #include "hoo_runtime.h"
+#include "hoo_buffer.h"
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
 #include <random>
 #include <atomic>
 #include <algorithm>
-#include <mutex>
+#include <limits>
+#include <vector>
 
 #ifdef __cplusplus
 extern "C" {
@@ -31,13 +33,25 @@ int64_t hoo_math_abs_int64(int64_t x) {
     if (x == INT64_MIN) return INT64_MAX;
     return x >= 0 ? x : -x;
 }
+int8_t hoo_math_abs_int8(int8_t x) {
+    if (x == INT8_MIN) return INT8_MAX;
+    return x >= 0 ? x : -x;
+}
+uint8_t hoo_math_abs_byte(uint8_t x) { return x; }
 double hoo_math_abs_double(double x) { return std::fabs(x); }
+double hoo_math_abs_f8(double x) { return std::fabs(x); }
 
 int64_t hoo_math_min_int64(int64_t a, int64_t b) { return a < b ? a : b; }
+int8_t hoo_math_min_int8(int8_t a, int8_t b) { return a < b ? a : b; }
+uint8_t hoo_math_min_byte(uint8_t a, uint8_t b) { return a < b ? a : b; }
 double hoo_math_min_double(double a, double b) { return std::fmin(a, b); }
+double hoo_math_min_f8(double a, double b) { return std::fmin(a, b); }
 
 int64_t hoo_math_max_int64(int64_t a, int64_t b) { return a > b ? a : b; }
+int8_t hoo_math_max_int8(int8_t a, int8_t b) { return a > b ? a : b; }
+uint8_t hoo_math_max_byte(uint8_t a, uint8_t b) { return a > b ? a : b; }
 double hoo_math_max_double(double a, double b) { return std::fmax(a, b); }
+double hoo_math_max_f8(double a, double b) { return std::fmax(a, b); }
 
 double hoo_math_clamp(double value, double min, double max) {
     if (value < min) return min;
@@ -51,7 +65,23 @@ int64_t hoo_math_sign_int64(int64_t x) {
     return 0;
 }
 
+int8_t hoo_math_sign_int8(int8_t x) {
+    if (x > 0) return 1;
+    if (x < 0) return -1;
+    return 0;
+}
+
+uint8_t hoo_math_sign_byte(uint8_t x) {
+    return x > 0 ? 1 : 0;
+}
+
 double hoo_math_sign_double(double x) {
+    if (x > 0) return 1.0;
+    if (x < 0) return -1.0;
+    return 0.0;
+}
+
+double hoo_math_sign_f8(double x) {
     if (x > 0) return 1.0;
     if (x < 0) return -1.0;
     return 0.0;
@@ -111,6 +141,30 @@ struct HooRandomImpl {
     std::mt19937_64 rng;
 };
 
+static bool registerRandomDestructor() {
+    hoo_register_destructor(HOO_TYPE_RANDOM, [](void* obj) {
+        auto* impl = static_cast<HooRandomImpl*>(obj);
+        impl->~HooRandomImpl();
+    });
+    return true;
+}
+
+static bool gRandomDtorRegistered = registerRandomDestructor();
+
+static bool multiplyWouldOverflow(int64_t a, int64_t b) {
+    if (a == 0 || b == 0) return false;
+    if (a == -1) return b == INT64_MIN;
+    if (b == -1) return a == INT64_MIN;
+
+    if (a > 0) {
+        if (b > 0) return a > INT64_MAX / b;
+        return b < INT64_MIN / a;
+    }
+
+    if (b > 0) return a < INT64_MIN / b;
+    return a < INT64_MAX / b;
+}
+
 void* hoo_math_random_new(void) {
     std::random_device rd;
     void* mem = hoo_alloc(sizeof(HooRandomImpl), HOO_TYPE_RANDOM);
@@ -153,12 +207,19 @@ int64_t hoo_math_random_next_bool(void* state) {
     return dist(impl->rng);
 }
 
-int64_t hoo_math_random_next_bytes(void* state, int8_t* buffer, int64_t count) {
+int64_t hoo_math_random_next_bytes(void* state, void* buffer, int64_t count) {
     if (!state || !buffer || count <= 0) return 0;
+    if (hoo_buffer_capacity(buffer) < count) return 0;
+
     HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
+    std::vector<uint8_t> bytes(static_cast<size_t>(count));
     for (int64_t i = 0; i < count; i++) {
-        buffer[i] = static_cast<int8_t>(impl->rng() & 0xFF);
+        bytes[static_cast<size_t>(i)] = static_cast<uint8_t>(impl->rng() & 0xFF);
     }
+
+    hoo_buffer_clear(buffer);
+    HooBuffer result = hoo_buffer_append(buffer, bytes.data(), count);
+    if (result != buffer) return 0;
     return count;
 }
 
@@ -166,24 +227,7 @@ void* hoo_math_random_retain(void* state) {
     return (void*)hoo_retain(state);
 }
 
-static std::mutex gRandomReleaseMu;
-
 void hoo_math_random_release(void* state) {
-    if (!state) return;
-
-    bool doCleanup = false;
-    {
-        std::lock_guard<std::mutex> lk(gRandomReleaseMu);
-        if (hoo_get_refcount(state) == 1) {
-            doCleanup = true;
-        }
-    }
-
-    if (doCleanup) {
-        HooRandomImpl* impl = static_cast<HooRandomImpl*>(state);
-        impl->~HooRandomImpl();
-    }
-
     hoo_release(state);
 }
 
@@ -198,7 +242,7 @@ int64_t hoo_math_is_prime(int64_t n) {
     if (n <= 1) return 0;
     if (n <= 3) return 1;
     if (n % 2 == 0 || n % 3 == 0) return 0;
-    for (int64_t i = 5; i * i <= n; i += 6) {
+    for (int64_t i = 5; i <= n / i; i += 6) {
         if (n % i == 0 || n % (i + 2) == 0) return 0;
     }
     return 1;
@@ -217,7 +261,11 @@ int64_t hoo_math_gcd(int64_t a, int64_t b) {
 
 int64_t hoo_math_lcm(int64_t a, int64_t b) {
     if (a == 0 || b == 0) return 0;
-    return hoo_math_abs_int64(a / hoo_math_gcd(a, b) * b);
+    int64_t g = hoo_math_gcd(a, b);
+    if (g == 0) return 0;
+    int64_t scaled = a / g;
+    if (multiplyWouldOverflow(scaled, b)) return INT64_MAX;
+    return hoo_math_abs_int64(scaled * b);
 }
 
 int64_t hoo_math_factorial(int64_t n) {

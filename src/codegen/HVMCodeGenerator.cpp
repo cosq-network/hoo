@@ -45,15 +45,27 @@ static bool isSingletonBuiltinClass(const std::string& className) {
 }
 
 // Return type for singleton built-in class methods.
-static std::string singletonMethodReturnType(const std::string& className, const std::string& methodName) {
+static std::string singletonMethodReturnType(const std::string& className, const std::string& methodName,
+                                             const std::vector<uint32_t>& argTypeIds = {}) {
     static const std::unordered_set<std::string> int64Methods = {
         "abs", "min", "max", "sign", "gcd", "factorial", "fibonacci",
         "isEven", "isOdd", "isPrime", "lcm",
         "exists", "count", "has"
     };
     static const std::unordered_set<std::string> doubleMethods = {
-        "sqrt", "getPi", "pow", "floor", "ceil", "sin"
+        "sqrt", "getPi", "getE", "getTau", "getInf", "getNegInf", "getNan",
+        "pow", "cbrt", "hypot", "sin", "cos", "tan", "asin", "acos", "atan",
+        "atan2", "sinh", "cosh", "tanh", "exp", "exp2", "expm1", "log",
+        "log10", "log2", "log1p", "floor", "ceil", "round", "trunc", "fract"
     };
+    if (className == "Math" && (methodName == "abs" || methodName == "min" ||
+                                methodName == "max" || methodName == "sign")) {
+        for (uint32_t typeId : argTypeIds) {
+            if (typeId == 2 || typeId == 9) return "double";
+            if (typeId == 5) return "int8";
+            if (typeId == 6) return "byte";
+        }
+    }
     if (int64Methods.count(methodName)) return "int64";
     if (doubleMethods.count(methodName)) return "double";
     return "ptr";
@@ -88,6 +100,7 @@ static std::string classToPrefix(const std::string& className) {
         {"Array", "array"},
         {"Map", "map"},
         {"Buffer", "buffer"},
+        {"Random", "random"},
     };
     auto it = map.find(className);
     return it != map.end() ? it->second : "";
@@ -106,6 +119,7 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"URL", 114},
         {"HttpClient", 115},
         {"HttpResponse", 116},
+        {"Random", 105},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -1321,6 +1335,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 114: resolvedClass = "URL"; break;
                     case 115: resolvedClass = "HttpClient"; break;
                     case 116: resolvedClass = "HttpResponse"; break;
+                    case 105: resolvedClass = "Random"; break;
                     default: break;
                 }
             }
@@ -1408,7 +1423,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     mp.className = resolvedClass;
                     mp.classModifiers = {"SINGLETON"};
                     mp.functionName = methodName;
-                    mp.returnType = singletonMethodReturnType(resolvedClass, methodName);
+                    std::vector<uint32_t> argTypeIds;
+                    if (funcCall->getArguments()) {
+                        auto& args = funcCall->getArguments()->getArguments();
+                        for (const auto& arg : args) {
+                            argTypeIds.push_back(inferExpressionTypeId(*arg));
+                        }
+                    }
+                    mp.returnType = singletonMethodReturnType(resolvedClass, methodName, argTypeIds);
                     if (funcCall->getArguments()) {
                         auto& args = funcCall->getArguments()->getArguments();
                         for (size_t i = 0; i < args.size(); ++i) {
@@ -1603,7 +1625,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto unaryMinus = dynamic_cast<const ast::UnaryMinus*>(&expr)) {
         uint8_t src = visitExpression(unaryMinus->getOperand());
         uint8_t dest = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{dest, 0, src, 1});
+        const uint32_t operandType = inferExpressionTypeId(unaryMinus->getOperand());
+        if (operandType == 2 || operandType == 9) {
+            uint8_t zero = emitConstant(0);
+            emit(Opcode::FLOAT_ARITH, OperandsR{dest, zero, src, 1});
+            freeRegister(zero);
+        } else {
+            emit(Opcode::ARITH, OperandsR{dest, 0, src, 1});
+        }
         freeRegister(src);
         return dest;
     }
@@ -1936,7 +1965,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "Json", "Net", "URL", "HttpClient", "HttpResponse",
         "Path", "Hashing", "Encoding", "Uuid", "Compression",
         "Process", "Args", "Csv", "Console", "StringBuilder",
-        "Buffer"
+        "Buffer", "Random"
     };
     return builtinClasses.count(name) > 0;
 }
@@ -2336,6 +2365,39 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                 if (it != functionReturnTypes_.end()) return it->second;
             }
         }
+        if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&funcCall->getFunction())) {
+            if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&memberAccess->getObject())) {
+                if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
+                    const std::string& className = id->getName();
+                    if (isSingletonBuiltinClass(className)) {
+                        std::vector<uint32_t> argTypeIds;
+                        if (funcCall->getArguments()) {
+                            for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                                argTypeIds.push_back(inferExpressionTypeId(*arg));
+                            }
+                        }
+
+                        const std::string returnType =
+                            singletonMethodReturnType(className, memberAccess->getMember(), argTypeIds);
+                        if (returnType == "int64") return 1;
+                        if (returnType == "double") return 2;
+                        if (returnType == "int8") return 5;
+                        if (returnType == "byte") return 6;
+                        if (returnType == "bool") return 3;
+                        if (returnType == "void") return 4;
+                    }
+
+                    const uint32_t objectTypeId = getLocalTypeId(className);
+                    const std::string& member = memberAccess->getMember();
+                    if (objectTypeId == 105) {
+                        if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return 1;
+                        if (member == "nextBool") return 3;
+                        if (member == "nextDouble") return 2;
+                        return 100;
+                    }
+                }
+            }
+        }
     }
 
     return 100;
@@ -2398,6 +2460,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new" || ma->getMember() == "fromBytes") return 113;
                         return 101;
                     }
+                    if (clsName == "Random") {
+                        if (ma->getMember() == "new") return 105;
+                        return 100;
+                    }
                     if (clsName == "Json") {
                         if (ma->getMember() == "parseToMap") return 103;
                         if (ma->getMember() == "serializeMap" || ma->getMember() == "minify" ||
@@ -2452,6 +2518,14 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "byteAt" || member == "setByte" ||
                                 member == "clear") return 1;
                             if (member == "copy" || member == "slice") return 113;
+                            return 100;
+                        }
+                        if (objTypeId == 105) {
+                            if (member == "nextInt" || member == "nextIntMax" ||
+                                member == "nextBytes")
+                                return 1;
+                            if (member == "nextBool") return 3;
+                            if (member == "nextDouble") return 2;
                             return 100;
                         }
                         if (objTypeId == 114) {

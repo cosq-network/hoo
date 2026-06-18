@@ -13,7 +13,12 @@ The `scope { ... }` block statement allows for explicit lifetime management and 
 - Return statements inside blocks skip scope releases for that block's locals (dead code after RET). Full ARC (ISSUE-007) would resolve this.
 - Reassigning a managed variable does not release the old value — requires proper ARC on assignment (ISSUE-007).
 
-## 4. Status
+## 4. Related HashMap/`any` Ownership Plan
+The native `HashMap` implementation plan is tracked separately in ISSUE-033. That plan already uses `any` as the value type for heterogeneous maps (`HashMap<K, any>`), with `any` represented as a tagged `(type_id, data)` value.
+
+Scope-level release from this issue applies to local variables whose declared/inferred type is managed (`typeId >= 100`), including local `HashMap` handles when that type is implemented. Ownership of values stored inside `HashMap<K, any>` is handled by the HashMap runtime plan itself: managed `any` values are retained on insertion and released on removal, overwrite, clear, or map release.
+
+## 5. Status
 - **Date**: 2026-05-24 (opened), 2026-06-10 (fixed)
 - **Status**: **FIXED** (scope-level release in Block visitor)
 - **Priority**: Low

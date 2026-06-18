@@ -72,7 +72,12 @@ if(WIN32 AND NOT ANTLR4_ROOT)
     set(ANTLR4_USE_STATIC_RUNTIME ON)
     FetchContent_MakeAvailable(antlr4_runtime)
     if(MSVC AND TARGET antlr4_static)
-        target_compile_options(antlr4_static PRIVATE /FI${CMAKE_SOURCE_DIR}/cmake/antlr4_msvc_patch.hpp)
+        target_compile_options(antlr4_static PRIVATE
+            /FI${CMAKE_SOURCE_DIR}/cmake/antlr4_msvc_patch.hpp
+            /wd4100
+            /wd4244
+            /wd4996
+        )
     endif()
     message(STATUS "ANTLR4 built from source (static)")
 else()

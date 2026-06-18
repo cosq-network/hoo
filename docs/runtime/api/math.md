@@ -1,6 +1,6 @@
 # Math API Reference (`Math`)
 
-The `Math` class provides constants, basic functions, power/root operations, trigonometry, exponentials, rounding, number utilities, and random number generation via the `Random` class. All `Math` methods are static — call them directly on the class.
+The `Math` class provides constants, basic functions, power/root operations, trigonometry, exponentials, rounding, number utilities, and random number generation via the `Random` class. `Math` is a singleton utility API, so call its methods directly on the class.
 
 ---
 
@@ -120,6 +120,26 @@ func :int64 example() {
 
 ---
 
+### `Math.abs(x: int8) :int8`
+
+Returns the absolute value of an 8-bit signed integer.
+
+- **Parameters:**
+  - `x: int8` — the input value.
+- **Returns:** `int8` — the absolute value of `x`.
+
+---
+
+### `Math.abs(x: byte) :byte`
+
+Returns the absolute value of an 8-bit unsigned byte.
+
+- **Parameters:**
+  - `x: byte` — the input value.
+- **Returns:** `byte` — the same value of `x`.
+
+---
+
 ### `Math.abs(x: double) :double`
 
 Returns the absolute value of a double.
@@ -133,6 +153,16 @@ func :double example() {
     return Math.abs(-3.14);
 }
 ```
+
+---
+
+### `Math.abs(x: f8) :double`
+
+Returns the absolute value of an f8 precision value (promoted to double).
+
+- **Parameters:**
+  - `x: f8` — the input value.
+- **Returns:** `double` — the absolute value of `x`.
 
 ---
 
@@ -152,6 +182,26 @@ func :int64 example() {
 
 ---
 
+### `Math.sign(x: int8) :int8`
+
+Returns the sign of an 8-bit signed integer.
+
+- **Parameters:**
+  - `x: int8` — the input value.
+- **Returns:** `int8` — `-1` if `x < 0`, `0` if `x == 0`, `1` if `x > 0`.
+
+---
+
+### `Math.sign(x: byte) :byte`
+
+Returns the sign of an 8-bit unsigned byte.
+
+- **Parameters:**
+  - `x: byte` — the input value.
+- **Returns:** `byte` — `0` if `x == 0`, `1` if `x > 0`.
+
+---
+
 ### `Math.sign(x: double) :double`
 
 Returns the sign of a double.
@@ -165,6 +215,16 @@ func :double example() {
     return Math.sign(-3.14);
 }
 ```
+
+---
+
+### `Math.sign(x: f8) :double`
+
+Returns the sign of an f8 precision value (promoted to double).
+
+- **Parameters:**
+  - `x: f8` — the input value.
+- **Returns:** `double` — `-1.0` if `x < 0`, `0.0` if `x == 0`, `1.0` if `x > 0`.
 
 ---
 
@@ -185,6 +245,18 @@ func :int64 example() {
 
 ---
 
+### `Math.min(a: int8, b: int8) :int8`
+
+Returns the smaller of two 8-bit signed integers.
+
+---
+
+### `Math.min(a: byte, b: byte) :byte`
+
+Returns the smaller of two 8-bit unsigned bytes.
+
+---
+
 ### `Math.min(a: double, b: double) :double`
 
 Returns the smaller of two doubles.
@@ -199,6 +271,12 @@ func :double example() {
     return Math.min(3.5, 2.8);
 }
 ```
+
+---
+
+### `Math.min(a: f8, b: f8) :double`
+
+Returns the smaller of two f8 values.
 
 ---
 
@@ -219,6 +297,18 @@ func :int64 example() {
 
 ---
 
+### `Math.max(a: int8, b: int8) :int8`
+
+Returns the larger of two 8-bit signed integers.
+
+---
+
+### `Math.max(a: byte, b: byte) :byte`
+
+Returns the larger of two 8-bit unsigned bytes.
+
+---
+
 ### `Math.max(a: double, b: double) :double`
 
 Returns the larger of two doubles.
@@ -233,6 +323,12 @@ func :double example() {
     return Math.max(3.5, 2.8);
 }
 ```
+
+---
+
+### `Math.max(a: f8, b: f8) :double`
+
+Returns the larger of two f8 values.
 
 ---
 
@@ -811,7 +907,9 @@ Creates a new, auto-seeded random number generator.
 ```hoo
 func :int64 example() {
     var rng = new Random();
-    return rng.nextInt();
+    var value = rng.nextInt();
+    rng.release();
+    return value;
 }
 ```
 
@@ -828,7 +926,9 @@ Creates a new random number generator seeded with `seed`. Two generators created
 ```hoo
 func :int64 example() {
     var rng = new Random(42);
-    return rng.nextIntMax(100);
+    var value = rng.nextIntMax(100);
+    rng.release();
+    return value;
 }
 ```
 
@@ -844,7 +944,9 @@ Returns a random 64-bit integer from the full `int64` range.
 ```hoo
 func :int64 example() {
     var rng = new Random();
-    return rng.nextInt();
+    var value = rng.nextInt();
+    rng.release();
+    return value;
 }
 ```
 
@@ -861,7 +963,9 @@ Returns a random integer uniformly distributed in `[0, max)`.
 ```hoo
 func :int64 example() {
     var rng = new Random();
-    return rng.nextIntMax(6) + 1;
+    var roll = rng.nextIntMax(6) + 1;
+    rng.release();
+    return roll;
 }
 ```
 
@@ -877,7 +981,9 @@ Returns a random double uniformly distributed in `[0, 1)`.
 ```hoo
 func :double example() {
     var rng = new Random();
-    return rng.nextDouble();
+    var value = rng.nextDouble();
+    rng.release();
+    return value;
 }
 ```
 
@@ -898,6 +1004,43 @@ func :void example() {
     } else {
         println("Tails");
     }
+    rng.release();
+}
+```
+
+---
+
+### `state.nextBytes(buffer: Buffer, count: int64) :int64`
+
+Fills the provided buffer with random bytes.
+
+- **Parameters:**
+  - `buffer: Buffer` — the destination buffer.
+  - `count: int64` — the number of bytes to write.
+- **Returns:** `int64` — the number of bytes successfully written.
+
+```hoo
+func :void example() {
+    var rng = new Random();
+    var buf = new Buffer(10);
+    rng.nextBytes(buf, 10);
+    rng.release();
+}
+```
+
+---
+
+### `state.release() :void`
+
+Releases a random generator handle.
+
+- **Parameters:** None
+- **Returns:** Nothing.
+
+```hoo
+func :void example() {
+    var rng = new Random(42);
+    rng.release();
 }
 ```
 
@@ -916,6 +1059,7 @@ func :int64 main() {
 
     var rng = new Random(12345);
     var roll = rng.nextIntMax(6) + 1;
+    rng.release();
     println("You rolled a ".concat(roll.toString()));
 
     return 0;

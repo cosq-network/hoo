@@ -212,16 +212,18 @@ TEST_F(SymbolManglerTest, ModuleSymbolMangling) {
 
 TEST_F(SymbolManglerTest, TypeMangling) {
     EXPECT_EQ(SymbolMangler::mangleType("int64"), "i8");
+    EXPECT_EQ(SymbolMangler::mangleType("int"), "i8");
     EXPECT_EQ(SymbolMangler::mangleType("string"), "s");
     EXPECT_EQ(SymbolMangler::mangleType("bool"), "b");
     EXPECT_EQ(SymbolMangler::mangleType("double"), "d");
+    EXPECT_EQ(SymbolMangler::mangleType("f64"), "d");
     EXPECT_EQ(SymbolMangler::mangleType("f8"), "e");
     EXPECT_EQ(SymbolMangler::mangleType("float"), "f");
     EXPECT_EQ(SymbolMangler::mangleType("bit"), "x");
     EXPECT_EQ(SymbolMangler::mangleType("char"), "c");
     EXPECT_EQ(SymbolMangler::mangleType("void"), "v");
     EXPECT_EQ(SymbolMangler::mangleType("int8"), "i1");
-    EXPECT_EQ(SymbolMangler::mangleType("byte"), "i1");
+    EXPECT_EQ(SymbolMangler::mangleType("byte"), "u1");
     EXPECT_EQ(SymbolMangler::mangleType("ptr"), "p");
     EXPECT_EQ(SymbolMangler::mangleType("tensor"), "t");
 }
@@ -237,6 +239,7 @@ TEST_F(SymbolManglerTest, TypeDemangling) {
     EXPECT_EQ(SymbolMangler::demangleType("c"), "char");
     EXPECT_EQ(SymbolMangler::demangleType("v"), "void");
     EXPECT_EQ(SymbolMangler::demangleType("i1"), "int8");
+    EXPECT_EQ(SymbolMangler::demangleType("u1"), "byte");
     EXPECT_EQ(SymbolMangler::demangleType("p"), "ptr");
     EXPECT_EQ(SymbolMangler::demangleType("t"), "tensor");
 }
@@ -341,8 +344,13 @@ TEST_F(SymbolManglerTest, AllPrimitiveTypes) {
     }
     
     EXPECT_EQ(SymbolMangler::mangleType("int8"), "i1");
-    EXPECT_EQ(SymbolMangler::mangleType("byte"), "i1");
+    EXPECT_EQ(SymbolMangler::mangleType("byte"), "u1");
+    EXPECT_EQ(SymbolMangler::mangleType("int"), "i8");
+    EXPECT_EQ(SymbolMangler::mangleType("f64"), "d");
     EXPECT_EQ(SymbolMangler::demangleType("i1"), "int8");
+    EXPECT_EQ(SymbolMangler::demangleType("u1"), "byte");
+    EXPECT_EQ(SymbolMangler::demangleType("i8"), "int64");
+    EXPECT_EQ(SymbolMangler::demangleType("d"), "double");
 }
 
 TEST_F(SymbolManglerTest, QualifiedReferenceTypeManglingRoundTrip) {

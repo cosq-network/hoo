@@ -7,11 +7,13 @@ Hoo is a statically-typed language. Every expression and variable has a type kno
 | Type | Description |
 | :--- | :--- |
 | `int8` | 8-bit signed integer. |
-| `byte` | 8-bit unsigned integer (alias for `int8` in current HVM). |
+| `byte` | 8-bit unsigned integer. |
 | `int64` | 64-bit signed integer (Standard integer). |
 | `float` | 32-bit floating point. |
 | `double` | 64-bit floating point. |
 | `f64` | Alias for `double`. |
+| `f8` | 8-bit floating point (used for AI/ML quantization). |
+| `bit` | 1-bit value / boolean literal backing. |
 | `bool` | Boolean (`true` or `false`). |
 | `char` | Single character. |
 | `string` | Managed UTF-8 string. (*See: [Runtime Strings](../runtime/strings.md)*) |
@@ -34,6 +36,10 @@ Maps are built-in dictionary types mapping keys to values.
 - **Valid Key Types**: `byte`, `int8`, `int64`, `char`, `string`.
 
 *See also: [Runtime Collections: Maps](../runtime/collections.md#2-maps-hoomap).*
+
+### Tensors
+Tensors are multi-dimensional, fixed-size numerical arrays optimized for AI/ML algebra.
+- `tensor<f8>[3, 3]` - A 3x3 2D matrix of 8-bit floating point values.
 
 ### Nullable (Optional) Types
 Types can be marked as nullable by appending a `?`.

@@ -73,11 +73,32 @@ double hoo_math_get_nan(void);
 int64_t hoo_math_abs_int64(int64_t x);
 
 /**
+ * Absolute value of int8
+ * @param x Input value
+ * @return Absolute value
+ */
+int8_t hoo_math_abs_int8(int8_t x);
+
+/**
+ * Absolute value of byte (uint8)
+ * @param x Input value
+ * @return Absolute value
+ */
+uint8_t hoo_math_abs_byte(uint8_t x);
+
+/**
  * Absolute value of double
  * @param x Input value
  * @return Absolute value
  */
 double hoo_math_abs_double(double x);
+
+/**
+ * Absolute value of f8 (promoted to double)
+ * @param x Input value
+ * @return Absolute value
+ */
+double hoo_math_abs_f8(double x);
 
 /**
  * Minimum of two int64 values
@@ -88,12 +109,36 @@ double hoo_math_abs_double(double x);
 int64_t hoo_math_min_int64(int64_t a, int64_t b);
 
 /**
+ * Minimum of two int8 values
+ * @param a First value
+ * @param b Second value
+ * @return Minimum value
+ */
+int8_t hoo_math_min_int8(int8_t a, int8_t b);
+
+/**
+ * Minimum of two byte (uint8) values
+ * @param a First value
+ * @param b Second value
+ * @return Minimum value
+ */
+uint8_t hoo_math_min_byte(uint8_t a, uint8_t b);
+
+/**
  * Minimum of two double values
  * @param a First value
  * @param b Second value
  * @return Minimum value
  */
 double hoo_math_min_double(double a, double b);
+
+/**
+ * Minimum of two f8 (promoted to double) values
+ * @param a First value
+ * @param b Second value
+ * @return Minimum value
+ */
+double hoo_math_min_f8(double a, double b);
 
 /**
  * Maximum of two int64 values
@@ -104,12 +149,36 @@ double hoo_math_min_double(double a, double b);
 int64_t hoo_math_max_int64(int64_t a, int64_t b);
 
 /**
+ * Maximum of two int8 values
+ * @param a First value
+ * @param b Second value
+ * @return Maximum value
+ */
+int8_t hoo_math_max_int8(int8_t a, int8_t b);
+
+/**
+ * Maximum of two byte (uint8) values
+ * @param a First value
+ * @param b Second value
+ * @return Maximum value
+ */
+uint8_t hoo_math_max_byte(uint8_t a, uint8_t b);
+
+/**
  * Maximum of two double values
  * @param a First value
  * @param b Second value
  * @return Maximum value
  */
 double hoo_math_max_double(double a, double b);
+
+/**
+ * Maximum of two f8 (promoted to double) values
+ * @param a First value
+ * @param b Second value
+ * @return Maximum value
+ */
+double hoo_math_max_f8(double a, double b);
 
 /**
  * Clamp value between min and max
@@ -128,11 +197,32 @@ double hoo_math_clamp(double value, double min, double max);
 int64_t hoo_math_sign_int64(int64_t x);
 
 /**
+ * Sign of int8 value
+ * @param x Input value
+ * @return -1 if negative, 0 if zero, 1 if positive
+ */
+int8_t hoo_math_sign_int8(int8_t x);
+
+/**
+ * Sign of byte (uint8) value
+ * @param x Input value
+ * @return 0 if zero, 1 if positive
+ */
+uint8_t hoo_math_sign_byte(uint8_t x);
+
+/**
  * Sign of double value
  * @param x Input value
  * @return -1.0 if negative, 0.0 if zero, 1.0 if positive
  */
 double hoo_math_sign_double(double x);
+
+/**
+ * Sign of f8 (promoted to double) value
+ * @param x Input value
+ * @return -1.0 if negative, 0.0 if zero, 1.0 if positive
+ */
+double hoo_math_sign_f8(double x);
 
 // ============================================================================
 // Power and Roots
@@ -384,11 +474,11 @@ int64_t hoo_math_random_next_bool(void* state);
 /**
  * Fill buffer with random bytes
  * @param state Random state
- * @param buffer Buffer to fill
+ * @param buffer HooBuffer handle to fill
  * @param count Number of bytes
  * @return Number of bytes written
  */
-int64_t hoo_math_random_next_bytes(void* state, int8_t* buffer, int64_t count);
+int64_t hoo_math_random_next_bytes(void* state, void* buffer, int64_t count);
 
 /**
  * Retain random state
