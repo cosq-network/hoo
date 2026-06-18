@@ -37,7 +37,7 @@ The hoo runtime provides a set of modules that bridge the high-level language wi
 | **[Encoding](encoding.md)** | Base64, hex, and URL encoding/decoding. |
 | **[Hashing](hashing.md)** | SHA-256, SHA-1, MD5, CRC32, and HMAC-SHA256 hashing. |
 | **[Compression](compression.md)** | Gzip and deflate compression/decompression. |
-| **[CSV](csv.md)** | CSV data parsing and generation. |
+| **[CSV](csv.md)** | CSV data parsing, generation, and map-based access with headers. |
 
 ## Concurrency
 

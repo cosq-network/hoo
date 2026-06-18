@@ -45,7 +45,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 12. **[Regular Expressions](regex.md)**
     * `hoo.regex` — compile, match, search, find-all, replace, split, and capture groups via C++ `<regex>` with opaque handles and reference counting.
 13. **[CSV](csv.md)**
-    * `hoo.csv` — parse and generate comma-separated values with quoting, escape handling, custom delimiters, and file I/O.
+    * `hoo.csv` — parse and generate comma-separated values with quoting, escape handling, custom delimiters, file I/O, and map-based row access with header keys.
 14. **[UUID](uuid.md)**
     * `hoo.uuid` — UUID v4 generation, nil UUID, parse/format, byte access, equality/ordering comparison, and ARC-managed opaque handles.
 
