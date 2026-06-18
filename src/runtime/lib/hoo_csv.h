@@ -14,6 +14,7 @@ extern "C" {
 typedef void* HooCsv;
 typedef void* HooArray;
 typedef void* HooString;
+typedef void* HooMap;
 
 // ── Instance-based OOP API ────────────────────────────────────────────────
 
@@ -28,6 +29,11 @@ HooString hoo_csv_generate(HooCsv csv, void* data_arr);          // Returns HooS
 HooArray  hoo_csv_read_file(HooCsv csv, const char* path);       // Returns HooArray<HooArray<HooString>>
 int64_t   hoo_csv_write_file(HooCsv csv, const char* path, void* data_arr);
 int64_t   hoo_csv_escape(HooCsv csv, int32_t c);
+
+// ── Map-based API (first row used as headers, returns HooArray<HooMap>) ─
+
+HooArray  hoo_csv_parse_as_maps(HooCsv csv, const char* csv_str);       // Returns HooArray<HooMap>
+HooArray  hoo_csv_read_file_as_maps(HooCsv csv, const char* path);      // Returns HooArray<HooMap>
 
 // ── Low-level C API (used internally, also available for direct use) ────
 

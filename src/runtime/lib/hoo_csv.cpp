@@ -2,13 +2,13 @@
 #include "hoo_runtime.h"
 #include "hoo_string.h"
 #include "hoo_generic_array.h"
+#include "hoo_fs.h"
+#include "hoo_map.h"
 #include <cstring>
 #include <cstdlib>
-#include <cstdio>
 #include <string>
 #include <vector>
 #include <sstream>
-#include <fstream>
 
 // ============================================================================
 // Helpers
@@ -298,16 +298,12 @@ char*** hoo_csv_read_file_raw(const char* path, int64_t* out_rows, int64_t* out_
     if (!path) return NULL;
 
     try {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open())
-            return NULL;
+        char* content = hoo_fs_read_text(path);
+        if (!content) return NULL;
 
-        std::ostringstream buffer;
-        buffer << file.rdbuf();
-        file.close();
-
-        std::string content = buffer.str();
-        return hoo_csv_parse_raw_with_opts(content.c_str(), ',', '"', out_rows, out_cols);
+        char*** table = hoo_csv_parse_raw_with_opts(content, ',', '"', out_rows, out_cols);
+        hoo_fs_free_string(content);
+        return table;
 
     } catch (...) {
         *out_rows = 0;
@@ -325,16 +321,9 @@ int64_t hoo_csv_write_file_raw(const char* path, const char** headers,
         char* csv = hoo_csv_generate_raw(headers, data, rows, cols);
         if (!csv) return 1;
 
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            std::free(csv);
-            return 1;
-        }
-
-        file.write(csv, (std::streamsize)std::strlen(csv));
-        file.close();
+        int64_t result = hoo_fs_write_text(path, csv);
         std::free(csv);
-        return 0;
+        return result ? 0 : 1;
 
     } catch (...) {
         return 1;
@@ -458,23 +447,13 @@ HooArray hoo_csv_read_file(HooCsv csv, const char* path)
     if (!csv || !path) return NULL;
     CsvHandle* h = get_handle(csv);
 
+    char* content = hoo_fs_read_text(path);
+    if (!content) return NULL;
+
     int64_t rows = 0, cols = 0;
-    char*** table = NULL;
-
-    try {
-        std::ifstream file(path, std::ios::binary);
-        if (!file.is_open()) return NULL;
-
-        std::ostringstream buffer;
-        buffer << file.rdbuf();
-        file.close();
-
-        std::string content = buffer.str();
-        table = hoo_csv_parse_raw_with_opts(content.c_str(), h->delimiter, h->quote_char,
-                                             &rows, &cols);
-    } catch (...) {
-        return NULL;
-    }
+    char*** table = hoo_csv_parse_raw_with_opts(content, h->delimiter, h->quote_char,
+                                                 &rows, &cols);
+    hoo_fs_free_string(content);
 
     if (!table) return NULL;
 
@@ -518,16 +497,9 @@ int64_t hoo_csv_write_file(HooCsv csv, const char* path, void* data_arr)
         const char* data = hoo_string_data(csv_str);
         if (!data) { hoo_string_release(csv_str); return 1; }
 
-        std::ofstream file(path, std::ios::binary);
-        if (!file.is_open()) {
-            hoo_string_release(csv_str);
-            return 1;
-        }
-
-        file.write(data, (std::streamsize)std::strlen(data));
-        file.close();
+        int64_t result = hoo_fs_write_text(path, data);
         hoo_string_release(csv_str);
-        return 0;
+        return result ? 0 : 1;
 
     } catch (...) {
         return 1;
@@ -538,6 +510,57 @@ int64_t hoo_csv_escape(HooCsv csv, int32_t c)
 {
     (void)csv;
     return hoo_csv_escape_raw((char)c);
+}
+
+// ============================================================================
+// Map-based API (first row used as headers, returns HooArray<HooMap>)
+// ============================================================================
+
+HooArray hoo_csv_parse_as_maps(HooCsv csv, const char* csv_str)
+{
+    if (!csv || !csv_str) return NULL;
+    CsvHandle* h = get_handle(csv);
+
+    int64_t rows = 0, cols = 0;
+    char*** table = hoo_csv_parse_raw_with_opts(csv_str, h->delimiter, h->quote_char,
+                                                 &rows, &cols);
+    if (!table || rows < 1) return NULL;
+
+    HooArray result = hoo_array_new();
+    if (!result) { hoo_csv_free_table(table, rows, cols); return NULL; }
+
+    for (int64_t i = 1; i < rows; i++) {
+        HooMap map = hoo_map_new(HOO_MAP_KEY_STRING, HOO_MAP_VAL_STRING);
+        if (!map) {
+            hoo_array_release(result);
+            hoo_csv_free_table(table, rows, cols);
+            return NULL;
+        }
+
+        for (int64_t j = 0; j < cols; j++) {
+            const char* key = table[0][j] ? table[0][j] : "";
+            const char* val = table[i][j] ? table[i][j] : "";
+            hoo_map_set(map, key, val);
+        }
+
+        hoo_array_push_object(result, map);
+        hoo_map_release(map);
+    }
+
+    hoo_csv_free_table(table, rows, cols);
+    return result;
+}
+
+HooArray hoo_csv_read_file_as_maps(HooCsv csv, const char* path)
+{
+    if (!csv || !path) return NULL;
+
+    char* content = hoo_fs_read_text(path);
+    if (!content) return NULL;
+
+    HooArray result = hoo_csv_parse_as_maps(csv, content);
+    hoo_fs_free_string(content);
+    return result;
 }
 
 // ============================================================================
