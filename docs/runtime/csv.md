@@ -29,6 +29,30 @@ The `hoo.csv` module provides CSV parsing, generation, and file I/O operations w
 
 - `csv.escape(c)` — Check if character needs escaping in CSV output.
 
+## 6. Aggregation (DataFrame-like)
+
+Methods that process `parseAsMaps` / `readFileAsMaps` output. All operate on `HooArray<HooMap<string,string>>` data by column name.
+
+- `csv.count(data, column)` — Count non-empty values in a column. Works on any data type.
+- `csv.sum(data, column)` — Sum numeric values; throws `InvalidCastException` on non-numeric values.
+- `csv.avg(data, column)` — Average numeric values; throws `InvalidCastException` on non-numeric values.
+- `csv.min(data, column)` — Minimum value (lexicographic string comparison).
+- `csv.max(data, column)` — Maximum value (lexicographic string comparison).
+
+## 7. Transformations
+
+- `csv.select(data, columns)` — Select a subset of columns, returning new array of maps with only those keys.
+- `csv.filter(data, column, op, value)` — Filter rows by comparing column values. Equality operators (`==`, `!=`) accept any type. Ordering operators (`>`, `>=`, `<`, `<=`) throw `InvalidCastException` on non-numeric values.
+- `csv.sort(data, column, ascending)` — Sort rows by column value (lexicographic string comparison). Pass `1` for ascending, `0` for descending.
+
+## 8. Statistics
+
+- `csv.describe(data, column)` — Compute summary statistics. Returns `Map<string,string>` with keys `count`, `sum`, `avg`, `min`, `max`. Throws `InvalidCastException` on non-numeric values for `sum`/`avg` computation.
+
+## Exception Handling
+
+Aggregation (`sum`, `avg`) and statistics (`describe`) functions and filter ordering operators validate that column values are parseable as numbers. The exception thrown is `InvalidCastException` with a message identifying the non-numeric value and column name. Equality-based filter and lexicographic operations (`min`, `max`, `count`, `select`, `sort`) do not perform type validation.
+
 ## Usage from Hoo Source
 
 ```hoo
@@ -38,6 +62,9 @@ func :int64 demo() {
     var ok = csv.writeFile("/path/to/data.csv", data)
     var rows = csv.readFile("/path/to/data.csv")
     var records = csv.parseAsMaps("name,age\nAlice,30\nBob,25")
+    var total = csv.sum(records, "age")       // DataFrame-like
+    var filtered = csv.filter(records, "age", ">", "20")
+    var stats = csv.describe(records, "age")
     var needs_escape = csv.escape(44)
     csv.release()
     return ok

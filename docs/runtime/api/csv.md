@@ -139,6 +139,161 @@ var r = csv.escape(44)  // comma, returns 1
 csv.release()
 ```
 
+## 6. Aggregation (DataFrame-like)
+
+These methods operate on `HooArray<HooMap<string,string>>` data (from `parseAsMaps` / `readFileAsMaps`) and process values by column name.
+
+### `csv.count(data: array, column: string) :int64`
+
+Counts non-empty values in a column. Accepts any data type.
+
+- **Returns:** `int64` — number of non-empty values.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("val\n10\n\n30")
+var n = csv.count(records, "val")  // 2
+csv.release()
+```
+
+### `csv.sum(data: array, column: string) :int64`
+
+Sums numeric values in a column.
+
+- **Returns:** `int64` — integer sum.
+- **Throws:** `InvalidCastException` if a non-numeric value is encountered.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("val\n10\n20\n30")
+var total = csv.sum(records, "val")  // 60
+csv.release()
+```
+
+### `csv.avg(data: array, column: string) :string`
+
+Averages numeric values in a column. Returns the average as a formatted string (trailing zeros stripped).
+
+- **Returns:** `string` — formatted average, or `0` if column is empty.
+- **Throws:** `InvalidCastException` if a non-numeric value is encountered.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("val\n10\n20\n30")
+var avg = csv.avg(records, "val")
+println(avg)  // "20"
+csv.release()
+```
+
+### `csv.min(data: array, column: string) :string`
+
+Returns the lexicographically smallest string value in a column. Empty values are skipped.
+
+- **Returns:** `string` — minimum value, or `0` if column is empty.
+
+### `csv.max(data: array, column: string) :string`
+
+Returns the lexicographically largest string value in a column. Empty values are skipped.
+
+- **Returns:** `string` — maximum value, or `0` if column is empty.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob")
+var first = csv.min(records, "name")  // "Alice"
+var last = csv.max(records, "name")   // "Charlie"
+csv.release()
+```
+
+## 7. Transformations
+
+### `csv.select(data: array, columns: array) :array`
+
+Selects a subset of columns from each row, returning a new array of maps containing only the specified keys.
+
+- **Returns:** `array` — new array of `Map<string, string>` objects, or `0` on invalid input.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("a,b,c\n1,2,3\n4,5,6")
+var cols = [string:"a", string:"c"]
+var subset = csv.select(records, cols)
+// subset[0] = {"a": "1", "c": "3"}
+csv.release()
+```
+
+### `csv.filter(data: array, column: string, op: string, value: string) :array`
+
+Filters rows by comparing column values using the given operator.
+
+- **Operators:** `"=="`, `"!="`, `">"`, `">="`, `"<"`, `"<="`
+- **Returns:** `array` — filtered array of maps, or `0` on invalid input.
+- **Throws:** `InvalidCastException` if an ordering operator is used and a non-numeric value is found (in either the column or the comparison value). Equality operators never throw.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("name,age\nAlice,30\nBob,25\nCharlie,30")
+var adults = csv.filter(records, "age", ">=", "30")
+// adults contains Alice and Charlie
+var named = csv.filter(records, "name", "==", "Bob")
+// named contains Bob
+csv.release()
+```
+
+### `csv.sort(data: array, column: string, ascending: int64) :array`
+
+Sorts rows by column value using lexicographic string comparison.
+
+- **`ascending`:** pass `1` for ascending order, `0` for descending.
+- **Returns:** `array` — sorted array of maps, or `0` on invalid input.
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob")
+var sorted = csv.sort(records, "name", 1)
+// sorted order: Alice, Bob, Charlie
+csv.release()
+```
+
+## 8. Statistics
+
+### `csv.describe(data: array, column: string) :map`
+
+Computes summary statistics for a column. Returns a `Map<string, string>` with the following keys:
+
+| Key     | Description                                |
+|---------|--------------------------------------------|
+| `count` | Number of non-empty values                 |
+| `sum`   | Sum of numeric values                      |
+| `avg`   | Average of numeric values (formatted)      |
+| `min`   | Lexicographic minimum value                |
+| `max`   | Lexicographic maximum value                |
+
+- **Returns:** `map` — statistics map, or a map with `"count": "0"` if column is empty.
+- **Throws:** `InvalidCastException` if a non-numeric value is encountered (for `sum`/`avg` computation).
+
+```hoo
+var csv = Csv.new()
+var records = csv.parseAsMaps("val\n10\n20\n30\n40")
+var stats = csv.describe(records, "val")
+println(stats["count"])  // "4"
+println(stats["sum"])    // "100"
+println(stats["avg"])    // "25"
+println(stats["min"])    // "10"
+println(stats["max"])    // "40"
+csv.release()
+```
+
+## Type Validation & Exceptions
+
+`sum`, `avg`, and `describe` expect all non-empty column values to be parseable as numbers. Filter ordering operators (`>`, `>=`, `<`, `<=`) also require numeric values. When a non-numeric value is encountered, an `InvalidCastException` is thrown with a descriptive message identifying the offending value and column name.
+
+Functions that work with any data type without validation:
+- `count`, `min`, `max` — string-based operations
+- `select` — pass-through column copy
+- `sort` — lexicographic comparison
+- `filter` with `==` / `!=` — equality comparison
+
 ## Usage Example
 
 ```hoo

@@ -2326,7 +2326,8 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         return 101;
                     }
                     if (clsName == "Csv") {
-                        if (ma->getMember() == "new" || ma->getMember() == "newWithOpts") return 112;
+                        if (ma->getMember() == "new" || ma->getMember() == "newWithOpts" ||
+                            ma->getMember() == "retain") return 112;
                         return 101;
                     }
                     if (clsName == "Character") {
@@ -2355,9 +2356,17 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             return 100;
                         }
                         if (objTypeId == 112) {
-                            if (member == "parse" || member == "readFile") return 102;
-                            if (member == "generate") return 101;
-                            if (member == "escape" || member == "writeFile") return 1;
+                            if (member == "parse" || member == "readFile" ||
+                                member == "parseAsMaps" || member == "readFileAsMaps" ||
+                                member == "select" || member == "filter" || member == "sort")
+                                return 102;
+                            if (member == "generate" || member == "avg" ||
+                                member == "min" || member == "max")
+                                return 101;
+                            if (member == "escape" || member == "writeFile" ||
+                                member == "count" || member == "sum")
+                                return 1;
+                            if (member == "describe") return 103;
                             return 100;
                         }
                         if (objTypeId == 111) {

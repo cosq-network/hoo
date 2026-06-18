@@ -4,11 +4,14 @@
 #include "hoo_generic_array.h"
 #include "hoo_fs.h"
 #include "hoo_map.h"
+#include "hoo_exception.h"
 #include <cstring>
 #include <cstdlib>
+#include <cstdio>
 #include <string>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 
 // ============================================================================
 // Helpers
@@ -543,6 +546,8 @@ HooArray hoo_csv_parse_as_maps(HooCsv csv, const char* csv_str)
             hoo_map_set(map, key, val);
         }
 
+        // Array stores raw pointer; retain so map survives
+        hoo_map_retain(map);
         hoo_array_push_object(result, map);
         hoo_map_release(map);
     }
@@ -560,6 +565,329 @@ HooArray hoo_csv_read_file_as_maps(HooCsv csv, const char* path)
 
     HooArray result = hoo_csv_parse_as_maps(csv, content);
     hoo_fs_free_string(content);
+    return result;
+}
+
+// ============================================================================
+// Aggregation — operate on HooArray<HooMap> data
+// ============================================================================
+
+static const char* get_column_value(void* data, int64_t index, const char* column)
+{
+    HooMap map = NULL;
+    if (!hoo_array_get_object(data, index, (void**)&map) || !map)
+        return NULL;
+    const char* val = NULL;
+    if (!hoo_map_try_get(map, column, &val))
+        return NULL;
+    return val;
+}
+
+static void require_numeric(const char* val, const char* column)
+{
+    if (!val || val[0] == '\0') return;
+    char* end = NULL;
+    std::strtod(val, &end);
+    if (end && *end != '\0') {
+        char msg[256];
+        if (column) {
+            snprintf(msg, sizeof(msg),
+                "Non-numeric value '%s' in column '%s'", val, column);
+        } else {
+            snprintf(msg, sizeof(msg),
+                "Non-numeric comparison value '%s'", val);
+        }
+        HooException exc = hoo_exception_invalid_cast(msg);
+        hoo_exception_throw(exc);
+    }
+}
+
+int64_t hoo_csv_count(HooCsv csv, void* data, const char* column)
+{
+    (void)csv;
+    if (!data || !column) return 0;
+    int64_t len = hoo_array_length(data);
+    int64_t count = 0;
+    for (int64_t i = 0; i < len; i++) {
+        const char* val = get_column_value(data, i, column);
+        if (val && val[0] != '\0') count++;
+    }
+    return count;
+}
+
+int64_t hoo_csv_sum(HooCsv csv, void* data, const char* column)
+{
+    (void)csv;
+    if (!data || !column) return 0;
+    int64_t len = hoo_array_length(data);
+    int64_t sum = 0;
+    for (int64_t i = 0; i < len; i++) {
+        const char* val = get_column_value(data, i, column);
+        if (val && val[0] != '\0') {
+            require_numeric(val, column);
+            sum += std::atoll(val);
+        }
+    }
+    return sum;
+}
+
+HooString hoo_csv_avg(HooCsv csv, void* data, const char* column)
+{
+    (void)csv;
+    if (!data || !column) return NULL;
+    int64_t len = hoo_array_length(data);
+    int64_t count = 0;
+    double sum = 0.0;
+    for (int64_t i = 0; i < len; i++) {
+        const char* val = get_column_value(data, i, column);
+        if (val && val[0] != '\0') {
+            require_numeric(val, column);
+            sum += std::strtod(val, NULL);
+            count++;
+        }
+    }
+    if (count == 0) return NULL;
+    return hoo_string_from_double(sum / (double)count);
+}
+
+HooString hoo_csv_min(HooCsv csv, void* data, const char* column)
+{
+    (void)csv;
+    if (!data || !column) return NULL;
+    int64_t len = hoo_array_length(data);
+    const char* best = NULL;
+    for (int64_t i = 0; i < len; i++) {
+        const char* val = get_column_value(data, i, column);
+        if (!val || val[0] == '\0') continue;
+        if (!best || std::strcmp(val, best) < 0)
+            best = val;
+    }
+    return best ? hoo_string_from_cstr(best) : NULL;
+}
+
+HooString hoo_csv_max(HooCsv csv, void* data, const char* column)
+{
+    (void)csv;
+    if (!data || !column) return NULL;
+    int64_t len = hoo_array_length(data);
+    const char* best = NULL;
+    for (int64_t i = 0; i < len; i++) {
+        const char* val = get_column_value(data, i, column);
+        if (!val || val[0] == '\0') continue;
+        if (!best || std::strcmp(val, best) > 0)
+            best = val;
+    }
+    return best ? hoo_string_from_cstr(best) : NULL;
+}
+
+// ============================================================================
+// Transformations — operate on HooArray<HooMap> data
+// ============================================================================
+
+HooArray hoo_csv_select(HooCsv csv, void* data, void* columns)
+{
+    (void)csv;
+    if (!data || !columns) return NULL;
+    int64_t num_cols = hoo_array_length(columns);
+    if (num_cols < 1) return NULL;
+    int64_t num_rows = hoo_array_length(data);
+    if (num_rows < 1) return NULL;
+
+    // Extract column names from HooArray<HooString> into temp array
+    std::vector<const char*> col_names((size_t)num_cols);
+    for (int64_t j = 0; j < num_cols; j++) {
+        HooString hs = NULL;
+        if (hoo_array_get_object(columns, j, (void**)&hs) && hs)
+            col_names[(size_t)j] = hoo_string_data(hs);
+        else
+            col_names[(size_t)j] = "";
+    }
+
+    HooArray result = hoo_array_new();
+    if (!result) return NULL;
+
+    for (int64_t i = 0; i < num_rows; i++) {
+        HooMap src = NULL;
+        if (!hoo_array_get_object(data, i, (void**)&src) || !src) continue;
+
+        HooMap dst = hoo_map_new(HOO_MAP_KEY_STRING, HOO_MAP_VAL_STRING);
+        if (!dst) { hoo_array_release(result); return NULL; }
+
+        for (int64_t j = 0; j < num_cols; j++) {
+            const char* val = NULL;
+            if (!hoo_map_try_get(src, col_names[(size_t)j], &val))
+                val = "";
+            hoo_map_set(dst, col_names[(size_t)j], val ? val : "");
+        }
+
+        // Array stores raw pointer; retain so map survives
+        hoo_map_retain(dst);
+        hoo_array_push_object(result, dst);
+        hoo_map_release(dst);
+    }
+
+    return result;
+}
+
+static bool compare_values(const std::string& lhs, const std::string& rhs, const char* op)
+{
+    if (strcmp(op, "==") == 0) return lhs == rhs;
+    if (strcmp(op, "!=") == 0) return lhs != rhs;
+
+    // Numeric comparison for ordering operators
+    char* lhs_end = NULL;
+    char* rhs_end = NULL;
+    double dlhs = std::strtod(lhs.c_str(), &lhs_end);
+    double drhs = std::strtod(rhs.c_str(), &rhs_end);
+    bool lhs_num = (lhs_end && *lhs_end == '\0' && !lhs.empty());
+    bool rhs_num = (rhs_end && *rhs_end == '\0' && !rhs.empty());
+
+    if (lhs_num && rhs_num) {
+        if (strcmp(op, ">") == 0) return dlhs > drhs;
+        if (strcmp(op, ">=") == 0) return dlhs >= drhs;
+        if (strcmp(op, "<") == 0) return dlhs < drhs;
+        if (strcmp(op, "<=") == 0) return dlhs <= drhs;
+    } else {
+        int cmp = lhs.compare(rhs);
+        if (strcmp(op, ">") == 0) return cmp > 0;
+        if (strcmp(op, ">=") == 0) return cmp >= 0;
+        if (strcmp(op, "<") == 0) return cmp < 0;
+        if (strcmp(op, "<=") == 0) return cmp <= 0;
+    }
+    return false;
+}
+
+HooArray hoo_csv_filter(HooCsv csv, void* data, const char* column,
+                          const char* op, const char* value)
+{
+    (void)csv;
+    if (!data || !column || !op || !value) return NULL;
+    int64_t len = hoo_array_length(data);
+    if (len < 1) return NULL;
+
+    bool is_ordering = (strcmp(op, ">") == 0 || strcmp(op, ">=") == 0 ||
+                        strcmp(op, "<") == 0 || strcmp(op, "<=") == 0);
+    if (is_ordering) {
+        require_numeric(value, NULL);
+    }
+
+    HooArray result = hoo_array_new();
+    if (!result) return NULL;
+
+    for (int64_t i = 0; i < len; i++) {
+        HooMap map = NULL;
+        if (!hoo_array_get_object(data, i, (void**)&map) || !map) continue;
+
+        const char* raw_val = NULL;
+        if (!hoo_map_try_get(map, column, &raw_val))
+            raw_val = "";
+
+        if (is_ordering && raw_val && raw_val[0] != '\0') {
+            require_numeric(raw_val, column);
+        }
+
+        if (compare_values(raw_val ? raw_val : "", value ? value : "", op)) {
+            hoo_array_push_object(result, map);
+        }
+    }
+
+    return result;
+}
+
+HooArray hoo_csv_sort(HooCsv csv, void* data, const char* column, int64_t ascending)
+{
+    (void)csv;
+    if (!data || !column) return NULL;
+    int64_t len = hoo_array_length(data);
+    if (len < 1) return NULL;
+
+    // Collect indices and values for sorting
+    std::vector<int64_t> indices((size_t)len);
+    std::vector<std::string> values((size_t)len);
+    for (int64_t i = 0; i < len; i++) {
+        indices[(size_t)i] = i;
+        const char* val = get_column_value(data, i, column);
+        values[(size_t)i] = val ? val : "";
+    }
+
+    std::sort(indices.begin(), indices.end(),
+        [&](int64_t a, int64_t b) {
+            if (ascending)
+                return values[(size_t)a] < values[(size_t)b];
+            else
+                return values[(size_t)a] > values[(size_t)b];
+        });
+
+    HooArray result = hoo_array_new();
+    if (!result) return NULL;
+
+    for (int64_t i = 0; i < len; i++) {
+        HooMap src = NULL;
+        if (hoo_array_get_object(data, indices[(size_t)i], (void**)&src) && src) {
+            hoo_array_push_object(result, src);
+        }
+    }
+
+    return result;
+}
+
+// ============================================================================
+// Statistics
+// ============================================================================
+
+HooMap hoo_csv_describe(HooCsv csv, void* data, const char* column)
+{
+    (void)csv;
+    if (!data || !column) return NULL;
+
+    HooMap result = hoo_map_new(HOO_MAP_KEY_STRING, HOO_MAP_VAL_STRING);
+    if (!result) return NULL;
+
+    int64_t len = hoo_array_length(data);
+    if (len < 1) {
+        hoo_map_set(result, "count", "0");
+        return result;
+    }
+
+    int64_t count = 0;
+    double sum = 0.0;
+    const char* min_val = NULL;
+    const char* max_val = NULL;
+
+    for (int64_t i = 0; i < len; i++) {
+        const char* val = get_column_value(data, i, column);
+        if (!val || val[0] == '\0') continue;
+        count++;
+        require_numeric(val, column);
+        sum += std::strtod(val, NULL);
+        if (!min_val || std::strcmp(val, min_val) < 0) min_val = val;
+        if (!max_val || std::strcmp(val, max_val) > 0) max_val = val;
+    }
+
+    // Format values as C strings and store in map
+    char count_buf[32];
+    snprintf(count_buf, sizeof(count_buf), "%lld", (long long)count);
+    hoo_map_set(result, "count", count_buf);
+
+    if (count > 0) {
+        char sum_buf[64];
+        snprintf(sum_buf, sizeof(sum_buf), "%lld", (long long)sum);
+        hoo_map_set(result, "sum", sum_buf);
+
+        double avg = sum / (double)count;
+        char avg_buf[64];
+        snprintf(avg_buf, sizeof(avg_buf), "%.6f", avg);
+        // Remove trailing zeros
+        char* p = avg_buf + strlen(avg_buf) - 1;
+        while (p > avg_buf && *p == '0') p--;
+        if (*p == '.') p--;
+        *(p + 1) = '\0';
+        hoo_map_set(result, "avg", avg_buf);
+
+        hoo_map_set(result, "min", min_val ? min_val : "");
+        hoo_map_set(result, "max", max_val ? max_val : "");
+    }
+
     return result;
 }
 

@@ -1358,6 +1358,79 @@ extern "C" {
         int32_t c = static_cast<int32_t>(state->regs[2]);
         return static_cast<uint64_t>(hoo_csv_escape(handle, c));
     }
+    uint64_t jit_csv_count(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(hoo_csv_count(handle, data, column));
+    }
+    uint64_t jit_csv_sum(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(hoo_csv_sum(handle, data, column));
+    }
+    uint64_t jit_csv_avg(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        void* result = hoo_csv_avg(handle, data, column);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_min(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        void* result = hoo_csv_min(handle, data, column);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_max(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        void* result = hoo_csv_max(handle, data, column);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_select(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        void* columns = reinterpret_cast<void*>(state->regs[3]);
+        void* result = hoo_csv_select(handle, data, columns);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_filter(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        const char* op = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
+        const char* value = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        void* result = hoo_csv_filter(handle, data, column, op, value);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_sort(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        int64_t ascending = state->regs[4];
+        void* result = hoo_csv_sort(handle, data, column, ascending);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_describe(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        void* data = reinterpret_cast<void*>(state->regs[2]);
+        const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        void* result = hoo_csv_describe(handle, data, column);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
 
     // ── Datetime module ─────────────────────────────────────────────────────
     uint64_t jit_datetime_now(void* /*state_ptr*/) {
@@ -2692,6 +2765,15 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_csv_readFile_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
         {"_F_M_hoo_E_csv_writeFile_v_p_p", reinterpret_cast<void*>(&jit_csv_write_file)},
         {"_F_M_hoo_E_csv_escape_v_p", reinterpret_cast<void*>(&jit_csv_escape)},
+        {"_F_M_hoo_E_csv_count_v_p_p", reinterpret_cast<void*>(&jit_csv_count)},
+        {"_F_M_hoo_E_csv_sum_v_p_p", reinterpret_cast<void*>(&jit_csv_sum)},
+        {"_F_M_hoo_E_csv_avg_v_p_p", reinterpret_cast<void*>(&jit_csv_avg)},
+        {"_F_M_hoo_E_csv_min_v_p_p", reinterpret_cast<void*>(&jit_csv_min)},
+        {"_F_M_hoo_E_csv_max_v_p_p", reinterpret_cast<void*>(&jit_csv_max)},
+        {"_F_M_hoo_E_csv_select_v_p_p", reinterpret_cast<void*>(&jit_csv_select)},
+        {"_F_M_hoo_E_csv_filter_v_p_p_p_p", reinterpret_cast<void*>(&jit_csv_filter)},
+        {"_F_M_hoo_E_csv_sort_v_p_p_p", reinterpret_cast<void*>(&jit_csv_sort)},
+        {"_F_M_hoo_E_csv_describe_v_p_p", reinterpret_cast<void*>(&jit_csv_describe)},
         // Datetime module
         {"_F_M_hoo_E_datetime_now_v", reinterpret_cast<void*>(&jit_datetime_now)},
         {"_F_M_hoo_E_datetime_now_seconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},

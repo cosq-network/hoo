@@ -35,6 +35,26 @@ int64_t   hoo_csv_escape(HooCsv csv, int32_t c);
 HooArray  hoo_csv_parse_as_maps(HooCsv csv, const char* csv_str);       // Returns HooArray<HooMap>
 HooArray  hoo_csv_read_file_as_maps(HooCsv csv, const char* path);      // Returns HooArray<HooMap>
 
+// ── Aggregation (all operate on HooArray<HooMap> data) ──────────────────
+
+int64_t   hoo_csv_count(HooCsv csv, void* data, const char* column);    // Non-null value count
+int64_t   hoo_csv_sum(HooCsv csv, void* data, const char* column);      // Numeric sum (int64)
+HooString hoo_csv_avg(HooCsv csv, void* data, const char* column);      // Numeric average (HooString)
+HooString hoo_csv_min(HooCsv csv, void* data, const char* column);      // Lexicographic minimum
+HooString hoo_csv_max(HooCsv csv, void* data, const char* column);      // Lexicographic maximum
+
+// ── Transformations (all operate on HooArray<HooMap> data) ─────────────
+
+HooArray  hoo_csv_select(HooCsv csv, void* data, void* columns);        // Select columns, returns HooArray<HooMap>
+HooArray  hoo_csv_filter(HooCsv csv, void* data, const char* column,    // Filter rows by condition
+                          const char* op, const char* value);
+HooArray  hoo_csv_sort(HooCsv csv, void* data, const char* column,      // Sort rows by column
+                        int64_t ascending);
+
+// ── Statistics ──────────────────────────────────────────────────────────
+
+HooMap    hoo_csv_describe(HooCsv csv, void* data, const char* column); // Returns HooMap with count,sum,avg,min,max
+
 // ── Low-level C API (used internally, also available for direct use) ────
 
 char*** hoo_csv_parse_raw(const char* csv, int64_t* out_rows, int64_t* out_cols);
