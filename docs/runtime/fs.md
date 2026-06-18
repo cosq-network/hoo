@@ -43,10 +43,63 @@ Static methods on the `Directory` class:
 
 ## 3. `hoo::fs::Path`
 
+The `Path` class has been merged from the standalone `hoo.path` module. It now
+provides component extraction, construction, normalization, properties, and
+platform queries alongside the existing temporary-file utilities.
+
+### Temporary Files
+
 | Method | Signature | Description |
 |---|---|---|
 | `getTempDir` | `() -> string` | System temporary directory path. Returns empty on error. |
 | `createTempFile` | `(prefix) -> string` | Create a temporary file with the given prefix. Returns the full path. |
+
+### Component Extraction
+
+| Method | Signature | Description |
+|---|---|---|
+| `dirname` | `(path) -> string` | Parent directory. `"a/b/c.txt"` → `"a/b"`. Returns `"."` for bare filenames. |
+| `basename` | `(path) -> string` | Last path component. `"a/b/c.txt"` → `"c.txt"`. |
+| `extension` | `(path) -> string` | Extension including dot. `"archive.tar.gz"` → `".gz"`. |
+| `stem` | `(path) -> string` | Filename without extension. `"resume.pdf"` → `"resume"`. |
+| `root` | `(path) -> string` | Root component. `"/foo"` → `"/"`, `"C:\foo"` → `"C:\"`. |
+
+### Construction
+
+| Method | Signature | Description |
+|---|---|---|
+| `join` | `(a, b) -> string` | Join two components with platform separator. |
+| `joinMulti` | `(parts) -> string` | Join multiple components. |
+
+### Normalization & Resolution
+
+| Method | Signature | Description |
+|---|---|---|
+| `normalize` | `(path) -> string` | Resolve `.`/`..`, collapse redundant separators. |
+| `absolute` | `(path) -> string` | Convert to absolute path relative to CWD. |
+| `relative` | `(path, base) -> string` | Compute relative path from `base` to `path`. |
+
+### Properties
+
+| Method | Signature | Description |
+|---|---|---|
+| `isAbsolute` | `(path) -> bool` | Returns true if path is absolute. |
+| `isRelative` | `(path) -> bool` | Returns true if path is relative. |
+| `hasExtension` | `(path) -> bool` | Returns true if path has an extension. |
+| `hasRoot` | `(path) -> bool` | Returns true if path has a root component. |
+
+### Split
+
+| Method | Signature | Description |
+|---|---|---|
+| `split` | `(path) -> vector<string>` | Split path into individual components. |
+
+### Platform-Specific
+
+| Method | Signature | Description |
+|---|---|---|
+| `separator` | `() -> char` | `'/'` on Unix, `'\\'` on Windows. |
+| `listSeparator` | `() -> char` | `':'` on Unix, `';'` on Windows. |
 
 ---
 
@@ -77,6 +130,33 @@ These functions are declared `extern "C"` and remain stable for JIT linkage.
 | `hoo_fs_temp_dir()` | Returns malloc'd temp directory path string. |
 | `hoo_fs_create_temp_file(prefix)` | Returns malloc'd temp file path string. |
 | `hoo_fs_free_string(str)` | Frees a string returned by any `hoo_fs_*` function. |
+
+### Path C-ABI Bridges
+
+These functions (originally from `hoo_path.h`) are now defined in `hoo_fs.cpp`
+and delegate to `hoo::fs::Path`. They remain stable for JIT/FFI linkage.
+
+| Function | Description |
+|---|---|
+| `hoo_path_dirname(path)` | Parent directory (malloc'd, free with `hoo_path_free_string`). |
+| `hoo_path_basename(path)` | Last component (malloc'd). |
+| `hoo_path_extension(path)` | Extension with dot (malloc'd). |
+| `hoo_path_stem(path)` | Filename without extension (malloc'd). |
+| `hoo_path_root(path)` | Root component (malloc'd). |
+| `hoo_path_join(a, b)` | Join two components (malloc'd). |
+| `hoo_path_join_multi(parts, count)` | Join multiple components (malloc'd). |
+| `hoo_path_normalize(path)` | Normalize path (malloc'd). |
+| `hoo_path_absolute(path)` | Absolute path (malloc'd). |
+| `hoo_path_relative(path, base)` | Relative path (malloc'd). |
+| `hoo_path_is_absolute(path)` | Returns 1 if absolute. |
+| `hoo_path_is_relative(path)` | Returns 1 if relative. |
+| `hoo_path_has_extension(path)` | Returns 1 if has extension. |
+| `hoo_path_has_root(path)` | Returns 1 if has root component. |
+| `hoo_path_split(path, &count)` | Split into malloc'd array (free with `hoo_path_free_parts`). |
+| `hoo_path_free_parts(parts, count)` | Free parts array. |
+| `hoo_path_separator()` | Returns platform path separator character. |
+| `hoo_path_list_separator()` | Returns platform list separator character. |
+| `hoo_path_free_string(str)` | Frees a string returned by any `hoo_path_*` function. |
 
 ## Hoo Language API
 

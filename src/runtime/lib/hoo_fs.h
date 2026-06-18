@@ -37,6 +37,27 @@ char*   hoo_fs_temp_dir(void);
 char*   hoo_fs_create_temp_file(const char* prefix);
 void    hoo_fs_free_string(char* str);
 
+// Path module C-ABI bridges (merged from hoo_path.h)
+char*   hoo_path_dirname(const char* path);
+char*   hoo_path_basename(const char* path);
+char*   hoo_path_extension(const char* path);
+char*   hoo_path_stem(const char* path);
+char*   hoo_path_root(const char* path);
+char*   hoo_path_join(const char* a, const char* b);
+char*   hoo_path_join_multi(const char** parts, int64_t count);
+char*   hoo_path_normalize(const char* path);
+char*   hoo_path_absolute(const char* path);
+char*   hoo_path_relative(const char* path, const char* base);
+int64_t hoo_path_is_absolute(const char* path);
+int64_t hoo_path_is_relative(const char* path);
+int64_t hoo_path_has_extension(const char* path);
+int64_t hoo_path_has_root(const char* path);
+char**  hoo_path_split(const char* path, int64_t* out_count);
+void    hoo_path_free_parts(char** parts, int64_t count);
+char    hoo_path_separator(void);
+char    hoo_path_list_separator(void);
+void    hoo_path_free_string(char* str);
+
 #ifdef __cplusplus
 }
 #endif
@@ -50,8 +71,38 @@ namespace fs {
 
 class Path {
 public:
+    // Temporary files
     static std::string getTempDir();
     static std::string createTempFile(const std::string& prefix);
+
+    // Component extraction
+    static std::string dirname(const std::string& path);
+    static std::string basename(const std::string& path);
+    static std::string extension(const std::string& path);
+    static std::string stem(const std::string& path);
+    static std::string root(const std::string& path);
+
+    // Construction
+    static std::string join(const std::string& a, const std::string& b);
+    static std::string joinMulti(const std::vector<std::string>& parts);
+
+    // Normalization & resolution
+    static std::string normalize(const std::string& path);
+    static std::string absolute(const std::string& path);
+    static std::string relative(const std::string& path, const std::string& base);
+
+    // Properties
+    static bool isAbsolute(const std::string& path);
+    static bool isRelative(const std::string& path);
+    static bool hasExtension(const std::string& path);
+    static bool hasRoot(const std::string& path);
+
+    // Split
+    static std::vector<std::string> split(const std::string& path);
+
+    // Platform-specific
+    static char separator();
+    static char listSeparator();
 };
 
 class File {

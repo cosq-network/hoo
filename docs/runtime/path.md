@@ -2,13 +2,15 @@
 
 The `hoo.path` module provides dirname, basename, extension, join, normalize, absolute/relative resolution, and split operations via `std::filesystem`.
 
+> **Implementation note**: The Path module has been merged into the File System module (`hoo.fs`). The C++ class `hoo::fs::Path` in `src/runtime/lib/hoo_fs.h` provides all methods, while the C-ABI bridge functions (`hoo_path_*`) are defined in `src/runtime/lib/hoo_fs.cpp`. The `hoo_path.h` header is retained as a thin compatibility shim that includes `hoo_fs.h`. This change is transparent to Hoo source code — all `Path.*` calls resolve identically.
+
 ## 1. Component Extraction
 
-- `p.dirname()` — Parent directory path. For `"a/b/c.txt"` returns `"a/b"`.
-- `p.basename()` — Last path component. For `"a/b/c.txt"` returns `"c.txt"`.
-- `p.extension()` — File extension including dot. For `"archive.tar.gz"` returns `".gz"`.
-- `p.stem()` — Filename without extension. For `"a/b/resume.pdf"` returns `"resume"`.
-- `p.root()` — Root component. On Unix, `"/"` for absolute paths, `""` for relative. On Windows, `"C:\"` or `"\\server\share\"`.
+- `Path.dirname(path)` — Parent directory path. For `"a/b/c.txt"` returns `"a/b"`.
+- `Path.basename(path)` — Last path component. For `"a/b/c.txt"` returns `"c.txt"`.
+- `Path.extension(path)` — File extension including dot. For `"archive.tar.gz"` returns `".gz"`.
+- `Path.stem(path)` — Filename without extension. For `"a/b/resume.pdf"` returns `"resume"`.
+- `Path.root(path)` — Root component. On Unix, `"/"` for absolute paths, `""` for relative. On Windows, `"C:\"` or `"\\server\share\"`.
 
 ## 2. Construction
 
@@ -17,21 +19,20 @@ The `hoo.path` module provides dirname, basename, extension, join, normalize, ab
 
 ## 3. Normalization
 
-- `p.normalize()` — Resolve `.` and `..` components, collapse redundant separators. Does not resolve symlinks.
-- `p.absolute()` — Convert to absolute path relative to current working directory.
+- `Path.normalize(path)` — Resolve `.` and `..` components, collapse redundant separators. Does not resolve symlinks.
+- `Path.absolute(path)` — Convert to absolute path relative to current working directory.
 - `Path.relative(path, base)` — Compute relative path from `base` to `path`.
 
 ## 4. Properties
 
-- `p.isAbsolute()` — Returns 1 if absolute.
-- `p.isRelative()` — Returns 1 if relative.
-- `p.hasExtension()` — Returns 1 if path has an extension.
-- `p.hasRoot()` — Returns 1 if path has a root component.
+- `Path.isAbsolute(path)` — Returns `true` if absolute.
+- `Path.isRelative(path)` — Returns `true` if relative.
+- `Path.hasExtension(path)` — Returns `true` if path has an extension.
+- `Path.hasRoot(path)` — Returns `true` if path has a root component.
 
 ## 5. Split
 
-- `p.split()` — Split path into individual components. Returns array of strings (free with `Path.freeParts`).
-- `Path.freeParts(parts, count)` — Free parts array.
+- `Path.split(path)` — Split path into individual components. Returns array of strings.
 
 ## 6. Platform-Specific
 
@@ -44,19 +45,13 @@ All `Path.*` functions are available on the `Path` class:
 
 ```hoo
 func :int64 demo() {
-    var p = Path.new("a/b/c.txt");
-    var dir = p.dirname();                          // "a/b"
-    var base = p.basename();                        // "c.txt"
-    var ext = p.extension();                        // ".txt"
-    var stem = p.stem();                            // "resume"
+    var dir = Path.dirname("a/b/c.txt");            // "a/b"
+    var base = Path.basename("a/b/c.txt");          // "c.txt"
+    var ext = Path.extension("file.txt");           // ".txt"
     var joined = Path.join("a", "b");               // "a/b"
-    var norm = Path.new("a/b/../c").normalize();    // "a/c"
-    var abs = Path.new("/usr/bin").isAbsolute();   // 1
+    var norm = Path.normalize("a/b/../c");          // "a/c"
+    var abs = Path.isAbsolute("/usr/bin");          // true
     var sep = Path.separator();                     // '/' on Unix
     return string_length(dir);
 }
 ```
-
-## Memory Management
-
-Strings allocated by `Path` functions must be freed with `Path.freeString(str)`. Parts arrays must be freed with `Path.freeParts(parts, count)`.

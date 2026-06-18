@@ -28,7 +28,6 @@
 #include "runtime/lib/hoo_thread.h"
 #include "runtime/lib/hoo_csv.h"
 #include "runtime/lib/hoo_datetime.h"
-#include "runtime/lib/hoo_path.h"
 #include "runtime/lib/hoo_hashing.h"
 #include "runtime/lib/hoo_process.h"
 #include "runtime/lib/hoo_compression.h"

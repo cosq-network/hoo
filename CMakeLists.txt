@@ -236,7 +236,6 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_regex.cpp
     src/runtime/lib/hoo_csv.cpp
     src/runtime/lib/hoo_uuid.cpp
-    src/runtime/lib/hoo_path.cpp
     src/runtime/lib/hoo_hashing.cpp
     src/runtime/lib/hoo_process.cpp
     src/runtime/lib/hoo_compression.cpp

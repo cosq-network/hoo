@@ -46,6 +46,123 @@ TEST_F(HooFSTest, Path_CreateTempFile) {
     File::remove(tmpPath);
 }
 
+TEST_F(HooFSTest, Path_Dirname) {
+    EXPECT_EQ(Path::dirname("/foo/bar/file.txt"), "/foo/bar");
+    EXPECT_EQ(Path::dirname("file.txt"), ".");
+}
+
+TEST_F(HooFSTest, Path_Basename) {
+    EXPECT_EQ(Path::basename("/foo/bar/file.txt"), "file.txt");
+    EXPECT_EQ(Path::basename("/foo/bar/"), "bar");
+}
+
+TEST_F(HooFSTest, Path_Extension) {
+    EXPECT_EQ(Path::extension("file.txt"), ".txt");
+    EXPECT_EQ(Path::extension("file"), "");
+    EXPECT_EQ(Path::extension(".hidden"), "");
+}
+
+TEST_F(HooFSTest, Path_Stem) {
+    EXPECT_EQ(Path::stem("file.txt"), "file");
+    EXPECT_EQ(Path::stem("archive.tar.gz"), "archive.tar");
+}
+
+TEST_F(HooFSTest, Path_Root) {
+    EXPECT_EQ(Path::root("/foo/bar"), "/");
+}
+
+TEST_F(HooFSTest, Path_Join) {
+    std::string joined = Path::join("a", "b");
+    EXPECT_FALSE(joined.empty());
+    EXPECT_GT(joined.size(), 1);
+}
+
+TEST_F(HooFSTest, Path_JoinMulti) {
+    std::vector<std::string> parts = {"a", "b", "c"};
+    std::string joined = Path::joinMulti(parts);
+    EXPECT_FALSE(joined.empty());
+    EXPECT_GT(joined.size(), 1);
+}
+
+TEST_F(HooFSTest, Path_Normalize) {
+    std::string norm = Path::normalize("/foo/../bar/./baz");
+    EXPECT_FALSE(norm.empty());
+    EXPECT_NE(norm.find("bar"), std::string::npos);
+    EXPECT_NE(norm.find("baz"), std::string::npos);
+}
+
+TEST_F(HooFSTest, Path_Absolute) {
+    std::string abs = Path::absolute("relative/path");
+    EXPECT_FALSE(abs.empty());
+    EXPECT_GT(abs.size(), strlen("relative/path"));
+}
+
+TEST_F(HooFSTest, Path_Relative) {
+    std::string rel = Path::relative("/foo/bar/baz", "/foo/bar");
+    EXPECT_EQ(rel, "baz");
+}
+
+TEST_F(HooFSTest, Path_IsAbsolute) {
+    EXPECT_FALSE(Path::isAbsolute("foo"));
+    EXPECT_FALSE(Path::isAbsolute(""));
+#ifdef _WIN32
+    EXPECT_TRUE(Path::isAbsolute("C:\\foo"));
+#else
+    EXPECT_TRUE(Path::isAbsolute("/foo"));
+#endif
+}
+
+TEST_F(HooFSTest, Path_IsRelative) {
+    EXPECT_TRUE(Path::isRelative("foo"));
+    EXPECT_TRUE(Path::isRelative(""));
+#ifdef _WIN32
+    EXPECT_FALSE(Path::isRelative("C:\\foo"));
+#else
+    EXPECT_FALSE(Path::isRelative("/foo"));
+#endif
+}
+
+TEST_F(HooFSTest, Path_HasExtension) {
+    EXPECT_TRUE(Path::hasExtension("file.txt"));
+    EXPECT_FALSE(Path::hasExtension("file"));
+}
+
+TEST_F(HooFSTest, Path_HasRoot) {
+    EXPECT_FALSE(Path::hasRoot("foo"));
+#ifdef _WIN32
+    EXPECT_TRUE(Path::hasRoot("C:\\foo"));
+    EXPECT_TRUE(Path::hasRoot("\\foo"));
+#else
+    EXPECT_TRUE(Path::hasRoot("/foo"));
+#endif
+}
+
+TEST_F(HooFSTest, Path_Split) {
+    auto parts = Path::split("foo/bar/baz");
+    ASSERT_EQ(parts.size(), size_t{3});
+    EXPECT_EQ(parts[0], "foo");
+    EXPECT_EQ(parts[1], "bar");
+    EXPECT_EQ(parts[2], "baz");
+}
+
+TEST_F(HooFSTest, Path_Separator) {
+    char sep = Path::separator();
+#ifdef _WIN32
+    EXPECT_EQ(sep, '\\');
+#else
+    EXPECT_EQ(sep, '/');
+#endif
+}
+
+TEST_F(HooFSTest, Path_ListSeparator) {
+    char sep = Path::listSeparator();
+#ifdef _WIN32
+    EXPECT_EQ(sep, ';');
+#else
+    EXPECT_EQ(sep, ':');
+#endif
+}
+
 // ---------------------------------------------------------------------------
 // File
 // ---------------------------------------------------------------------------

@@ -83,6 +83,170 @@ std::string Path::createTempFile(const std::string& prefix)
     }
 }
 
+std::string Path::dirname(const std::string& path)
+{
+    try {
+        ::fs::path p(path);
+        ::fs::path parent = p.parent_path();
+        if (parent.empty())
+            return ".";
+        return parent.string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::basename(const std::string& path)
+{
+    try {
+        std::string pstr = path;
+        while (pstr.size() > 1 && (pstr.back() == '/' || pstr.back() == '\\'))
+            pstr.pop_back();
+        return ::fs::path(pstr).filename().string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::extension(const std::string& path)
+{
+    try {
+        return ::fs::path(path).extension().string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::stem(const std::string& path)
+{
+    try {
+        return ::fs::path(path).stem().string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::root(const std::string& path)
+{
+    try {
+        return ::fs::path(path).root_path().string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::join(const std::string& a, const std::string& b)
+{
+    try {
+        return (::fs::path(a) / b).string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::joinMulti(const std::vector<std::string>& parts)
+{
+    try {
+        ::fs::path result;
+        for (const auto& part : parts) {
+            result /= part;
+        }
+        return result.string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::normalize(const std::string& path)
+{
+    try {
+        return ::fs::path(path).lexically_normal().string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::absolute(const std::string& path)
+{
+    try {
+        return ::fs::absolute(path).string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string Path::relative(const std::string& path, const std::string& base)
+{
+    try {
+        return ::fs::relative(path, base).string();
+    } catch (...) {
+        return {};
+    }
+}
+
+bool Path::isAbsolute(const std::string& path)
+{
+    try {
+        return ::fs::path(path).is_absolute();
+    } catch (...) {
+        return false;
+    }
+}
+
+bool Path::isRelative(const std::string& path)
+{
+    try {
+        return !::fs::path(path).is_absolute();
+    } catch (...) {
+        return false;
+    }
+}
+
+bool Path::hasExtension(const std::string& path)
+{
+    try {
+        return ::fs::path(path).has_extension();
+    } catch (...) {
+        return false;
+    }
+}
+
+bool Path::hasRoot(const std::string& path)
+{
+    try {
+        return ::fs::path(path).has_root_path();
+    } catch (...) {
+        return false;
+    }
+}
+
+std::vector<std::string> Path::split(const std::string& path)
+{
+    try {
+        std::vector<std::string> components;
+        for (const auto& part : ::fs::path(path)) {
+            components.push_back(part.string());
+        }
+        return components;
+    } catch (...) {
+        return {};
+    }
+}
+
+char Path::separator()
+{
+    return ::fs::path::preferred_separator;
+}
+
+char Path::listSeparator()
+{
+#ifdef _WIN32
+    return ';';
+#else
+    return ':';
+#endif
+}
+
 // ============================================================================
 // hoo::fs::File
 // ============================================================================
@@ -378,6 +542,148 @@ char* hoo_fs_create_temp_file(const char* prefix)
 }
 
 void hoo_fs_free_string(char* str)
+{
+    std::free(str);
+}
+
+// ── hoo_path_* C-ABI bridges (delegate to hoo::fs::Path) ────────────────────
+
+char* hoo_path_dirname(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::dirname(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_basename(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::basename(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_extension(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::extension(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_stem(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::stem(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_root(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::root(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_join(const char* a, const char* b)
+{
+    if (!a || !b) return nullptr;
+    std::string result = hoo::fs::Path::join(a, b);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_join_multi(const char** parts, int64_t count)
+{
+    if (!parts || count <= 0) return nullptr;
+    std::vector<std::string> vec;
+    vec.reserve(static_cast<size_t>(count));
+    for (int64_t i = 0; i < count; i++) {
+        vec.push_back(parts[i] ? parts[i] : "");
+    }
+    std::string result = hoo::fs::Path::joinMulti(vec);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_normalize(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::normalize(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_absolute(const char* path)
+{
+    if (!path) return nullptr;
+    std::string result = hoo::fs::Path::absolute(path);
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_relative(const char* path, const char* base)
+{
+    if (!path || !base) return nullptr;
+    std::string result = hoo::fs::Path::relative(path, base);
+    return hoo_strdup(result.c_str());
+}
+
+int64_t hoo_path_is_absolute(const char* path)
+{
+    if (!path) return 0;
+    return hoo::fs::Path::isAbsolute(path) ? 1 : 0;
+}
+
+int64_t hoo_path_is_relative(const char* path)
+{
+    if (!path) return 0;
+    return hoo::fs::Path::isRelative(path) ? 1 : 0;
+}
+
+int64_t hoo_path_has_extension(const char* path)
+{
+    if (!path) return 0;
+    return hoo::fs::Path::hasExtension(path) ? 1 : 0;
+}
+
+int64_t hoo_path_has_root(const char* path)
+{
+    if (!path) return 0;
+    return hoo::fs::Path::hasRoot(path) ? 1 : 0;
+}
+
+char** hoo_path_split(const char* path, int64_t* out_count)
+{
+    if (!path || !out_count) return nullptr;
+    std::vector<std::string> components = hoo::fs::Path::split(path);
+    if (components.empty()) {
+        *out_count = 0;
+        return nullptr;
+    }
+    char** result = static_cast<char**>(std::malloc(components.size() * sizeof(char*)));
+    if (!result) return nullptr;
+    for (size_t i = 0; i < components.size(); i++) {
+        result[i] = hoo_strdup(components[i].c_str());
+    }
+    *out_count = static_cast<int64_t>(components.size());
+    return result;
+}
+
+void hoo_path_free_parts(char** parts, int64_t count)
+{
+    if (!parts) return;
+    for (int64_t i = 0; i < count; i++) {
+        if (parts[i]) std::free(parts[i]);
+    }
+    std::free(parts);
+}
+
+char hoo_path_separator(void)
+{
+    return hoo::fs::Path::separator();
+}
+
+char hoo_path_list_separator(void)
+{
+    return hoo::fs::Path::listSeparator();
+}
+
+void hoo_path_free_string(char* str)
 {
     std::free(str);
 }

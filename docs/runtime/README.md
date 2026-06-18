@@ -35,7 +35,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 9. **[System Information](system.md)**
    * `hoo.system` — environment variables, OS name, hostname, CPU count, process ID, user info, current/working directory.
 10. **[Path Manipulation](path.md)**
-    * `hoo.path` — dirname, basename, extension, join, normalize, absolute/relative resolution, split on `std::filesystem`.
+    * `hoo.path` — dirname, basename, extension, join, normalize, absolute/relative resolution, split on `std::filesystem`. Implementation merged into `hoo::fs::Path` in the File System module; `hoo_path.h` retained as a compatibility shim.
 
 ### Data & Text Processing
 11. **[Encoding](encoding.md)**
