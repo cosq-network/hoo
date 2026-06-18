@@ -1,4 +1,5 @@
 #include "hoo_csv.h"
+#include "hoo_runtime.h"
 #include "hoo_string.h"
 #include "hoo_generic_array.h"
 #include <cstring>
@@ -60,34 +61,43 @@ struct CsvHandle {
 
 extern "C" {
 
-void* hoo_csv_new(void) {
-    CsvHandle* h = (CsvHandle*)calloc(1, sizeof(CsvHandle));
+HooCsv hoo_csv_new(void) {
+    CsvHandle* h = (CsvHandle*)hoo_alloc(sizeof(CsvHandle), HOO_TYPE_CSV);
     if (h) {
         h->delimiter = ',';
         h->quote_char = '"';
     }
-    return h;
+    return (HooCsv)h;
 }
 
-void* hoo_csv_new_with_opts(char delimiter, char quote_char) {
-    CsvHandle* h = (CsvHandle*)calloc(1, sizeof(CsvHandle));
+HooCsv hoo_csv_new_with_opts(int32_t delimiter, int32_t quote_char) {
+    CsvHandle* h = (CsvHandle*)hoo_alloc(sizeof(CsvHandle), HOO_TYPE_CSV);
     if (h) {
-        h->delimiter = delimiter;
-        h->quote_char = quote_char;
+        h->delimiter = (char)delimiter;
+        h->quote_char = (char)quote_char;
     }
-    return h;
+    return (HooCsv)h;
 }
 
-void hoo_csv_release(void* handle) {
-    free(handle);
+HooCsv hoo_csv_retain(HooCsv csv) {
+    return (HooCsv)hoo_retain(csv);
+}
+
+void hoo_csv_release(HooCsv csv) {
+    if (!csv) return;
+    hoo_release(csv);
+}
+
+int64_t hoo_csv_refcount(HooCsv csv) {
+    return hoo_get_refcount(csv);
 }
 
 // ============================================================================
 // Low-level parsing and generation (raw C API)
 // ============================================================================
 
-static CsvHandle* get_handle(void* handle) {
-    return handle ? (CsvHandle*)handle : NULL;
+static CsvHandle* get_handle(HooCsv csv) {
+    return csv ? (CsvHandle*)csv : NULL;
 }
 
 char*** hoo_csv_parse_raw(const char* csv, int64_t* out_rows, int64_t* out_cols)
@@ -340,13 +350,13 @@ int64_t hoo_csv_escape_raw(char c)
 // Instance-based OOP API
 // ============================================================================
 
-void* hoo_csv_parse(void* handle, const char* csv)
+HooArray hoo_csv_parse(HooCsv csv, const char* csv_str)
 {
-    if (!handle || !csv) return NULL;
-    CsvHandle* h = get_handle(handle);
+    if (!csv || !csv_str) return NULL;
+    CsvHandle* h = get_handle(csv);
 
     int64_t rows = 0, cols = 0;
-    char*** table = hoo_csv_parse_raw_with_opts(csv, h->delimiter, h->quote_char, &rows, &cols);
+    char*** table = hoo_csv_parse_raw_with_opts(csv_str, h->delimiter, h->quote_char, &rows, &cols);
     if (!table) return NULL;
 
     // Convert char*** to HooArray<HooArray<HooString>>
@@ -378,10 +388,10 @@ void* hoo_csv_parse(void* handle, const char* csv)
     return result;
 }
 
-char* hoo_csv_generate(void* handle, void* data_arr)
+HooString hoo_csv_generate(HooCsv csv, void* data_arr)
 {
-    if (!handle || !data_arr) return NULL;
-    CsvHandle* h = get_handle(handle);
+    if (!csv || !data_arr) return NULL;
+    CsvHandle* h = get_handle(csv);
 
     try {
         int64_t rows = hoo_array_length(data_arr);
@@ -396,7 +406,7 @@ char* hoo_csv_generate(void* handle, void* data_arr)
             }
         }
 
-        if (rows == 0 || cols == 0) return strdup("");
+        if (rows == 0 || cols == 0) return hoo_string_from_cstr("");
 
         // Convert HooArray to char***
         const char*** cdata = (const char***)malloc(sizeof(const char**) * (size_t)rows);
@@ -426,13 +436,16 @@ char* hoo_csv_generate(void* handle, void* data_arr)
             }
         }
 
-        char* result = hoo_csv_generate_raw_with_opts(NULL, cdata, rows, cols,
-                                                       h->delimiter, h->quote_char);
+        char* raw = hoo_csv_generate_raw_with_opts(NULL, cdata, rows, cols,
+                                                   h->delimiter, h->quote_char);
 
         for (int64_t i = 0; i < rows; i++)
             free((void*)cdata[i]);
         free((void*)cdata);
 
+        if (!raw) return NULL;
+        HooString result = hoo_string_from_cstr(raw);
+        free(raw);
         return result;
 
     } catch (...) {
@@ -440,10 +453,10 @@ char* hoo_csv_generate(void* handle, void* data_arr)
     }
 }
 
-void* hoo_csv_read_file(void* handle, const char* path)
+HooArray hoo_csv_read_file(HooCsv csv, const char* path)
 {
-    if (!handle || !path) return NULL;
-    CsvHandle* h = get_handle(handle);
+    if (!csv || !path) return NULL;
+    CsvHandle* h = get_handle(csv);
 
     int64_t rows = 0, cols = 0;
     char*** table = NULL;
@@ -494,24 +507,26 @@ void* hoo_csv_read_file(void* handle, const char* path)
     return result;
 }
 
-int64_t hoo_csv_write_file(void* handle, const char* path, void* data_arr)
+int64_t hoo_csv_write_file(HooCsv csv, const char* path, void* data_arr)
 {
-    if (!handle || !path || !data_arr) return 1;
-    CsvHandle* h = get_handle(handle);
+    if (!csv || !path || !data_arr) return 1;
 
     try {
-        char* csv = hoo_csv_generate(handle, data_arr);
-        if (!csv) return 1;
+        HooString csv_str = hoo_csv_generate(csv, data_arr);
+        if (!csv_str) return 1;
+
+        const char* data = hoo_string_data(csv_str);
+        if (!data) { hoo_string_release(csv_str); return 1; }
 
         std::ofstream file(path, std::ios::binary);
         if (!file.is_open()) {
-            std::free(csv);
+            hoo_string_release(csv_str);
             return 1;
         }
 
-        file.write(csv, (std::streamsize)std::strlen(csv));
+        file.write(data, (std::streamsize)std::strlen(data));
         file.close();
-        std::free(csv);
+        hoo_string_release(csv_str);
         return 0;
 
     } catch (...) {
@@ -519,10 +534,10 @@ int64_t hoo_csv_write_file(void* handle, const char* path, void* data_arr)
     }
 }
 
-int64_t hoo_csv_escape(void* handle, char c)
+int64_t hoo_csv_escape(HooCsv csv, int32_t c)
 {
-    (void)handle;
-    return hoo_csv_escape_raw(c);
+    (void)csv;
+    return hoo_csv_escape_raw((char)c);
 }
 
 // ============================================================================

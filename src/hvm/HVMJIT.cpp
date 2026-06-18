@@ -1313,8 +1313,8 @@ extern "C" {
     }
     uint64_t jit_csv_new_with_opts(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        char delimiter = static_cast<char>(state->regs[1]);
-        char quote_char = static_cast<char>(state->regs[2]);
+        int32_t delimiter = static_cast<int32_t>(state->regs[1]);
+        int32_t quote_char = static_cast<int32_t>(state->regs[2]);
         void* handle = hoo_csv_new_with_opts(delimiter, quote_char);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(handle));
     }
@@ -1335,10 +1335,7 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         void* data_arr = reinterpret_cast<void*>(state->regs[2]);
-        char* csv = hoo_csv_generate(handle, data_arr);
-        if (!csv) return 0;
-        void* str = hoo_string_from_cstr(csv);
-        hoo_csv_free_string(csv);
+        void* str = hoo_csv_generate(handle, data_arr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_csv_read_file(void* state_ptr) {
@@ -1358,7 +1355,7 @@ extern "C" {
     uint64_t jit_csv_escape(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* handle = reinterpret_cast<void*>(state->regs[1]);
-        char c = static_cast<char>(state->regs[2]);
+        int32_t c = static_cast<int32_t>(state->regs[2]);
         return static_cast<uint64_t>(hoo_csv_escape(handle, c));
     }
 

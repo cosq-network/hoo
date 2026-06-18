@@ -11,17 +11,23 @@ extern "C" {
 // HooCsv - CSV Parsing and Generation
 // ============================================================================
 
+typedef void* HooCsv;
+typedef void* HooArray;
+typedef void* HooString;
+
 // ── Instance-based OOP API ────────────────────────────────────────────────
 
-void*   hoo_csv_new(void);
-void*   hoo_csv_new_with_opts(char delimiter, char quote_char);
-void    hoo_csv_release(void* handle);
+HooCsv    hoo_csv_new(void);
+HooCsv    hoo_csv_new_with_opts(int32_t delimiter, int32_t quote_char);
+HooCsv    hoo_csv_retain(HooCsv csv);
+void      hoo_csv_release(HooCsv csv);
+int64_t   hoo_csv_refcount(HooCsv csv);
 
-void*   hoo_csv_parse(void* handle, const char* csv);            // Returns HooArray<HooArray<HooString>>
-char*   hoo_csv_generate(void* handle, void* data_arr);          // Returns CSV string (caller frees via hoo_csv_free_string)
-void*   hoo_csv_read_file(void* handle, const char* path);       // Returns HooArray<HooArray<HooString>>
-int64_t hoo_csv_write_file(void* handle, const char* path, void* data_arr);
-int64_t hoo_csv_escape(void* handle, char c);
+HooArray  hoo_csv_parse(HooCsv csv, const char* csv_str);        // Returns HooArray<HooArray<HooString>>
+HooString hoo_csv_generate(HooCsv csv, void* data_arr);          // Returns HooString
+HooArray  hoo_csv_read_file(HooCsv csv, const char* path);       // Returns HooArray<HooArray<HooString>>
+int64_t   hoo_csv_write_file(HooCsv csv, const char* path, void* data_arr);
+int64_t   hoo_csv_escape(HooCsv csv, int32_t c);
 
 // ── Low-level C API (used internally, also available for direct use) ────
 
