@@ -696,6 +696,10 @@ extern "C" {
     uint64_t jit_hoo_buffer_new(void* /*state_ptr*/) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_new(0)));
     }
+    uint64_t jit_hoo_buffer_new_with_capacity(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_new(static_cast<int64_t>(state->regs[1]))));
+    }
     uint64_t jit_hoo_buffer_from_bytes(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
@@ -2538,6 +2542,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_rethrow_v", reinterpret_cast<void*>(&jit_hoo_rethrow)},
         // String aliases (codegen-generated plain names)
         {"_F_string_new_v", reinterpret_cast<void*>(&jit_string_new)},
+        {"_F_M_hoo_E_string_new_v", reinterpret_cast<void*>(&jit_string_new)},
         {"_F_string_length_v_p", reinterpret_cast<void*>(&jit_hoo_string_length)},
         {"_F_string_is_empty_v_p", reinterpret_cast<void*>(&jit_string_is_empty)},
         {"_F_string_concat_v_p_p", reinterpret_cast<void*>(&jit_hoo_string_concat)},
@@ -2639,6 +2644,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_getBool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         // Buffer hoo-module-qualified symbols (codegen redirects buffer_* to hoo module)
         {"_F_M_hoo_E_buffer_new_v", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
+        {"_F_M_hoo_E_buffer_new_v_p", reinterpret_cast<void*>(&jit_hoo_buffer_new_with_capacity)},
         {"_F_M_hoo_E_buffer_fromBytes_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
         {"_F_M_hoo_E_buffer_copy_v", reinterpret_cast<void*>(&jit_hoo_buffer_copy)},
         {"_F_M_hoo_E_buffer_length_v", reinterpret_cast<void*>(&jit_hoo_buffer_length)},
@@ -2907,6 +2913,15 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_url_getQuery_v_p", reinterpret_cast<void*>(&jit_net_url_get_query)},
         {"_F_M_hoo_E_net_url_getFragment_v_p", reinterpret_cast<void*>(&jit_net_url_get_fragment)},
         {"_F_M_hoo_E_net_url_toString_v_p", reinterpret_cast<void*>(&jit_net_url_to_string)},
+        // Instance-call aliases where "this" is implicit and not part of the mangled parameter list.
+        {"_F_M_hoo_E_net_url_getScheme_v", reinterpret_cast<void*>(&jit_net_url_get_scheme)},
+        {"_F_M_hoo_E_net_url_getHost_v", reinterpret_cast<void*>(&jit_net_url_get_host)},
+        {"_F_M_hoo_E_net_url_getPort_v", reinterpret_cast<void*>(&jit_net_url_get_port)},
+        {"_F_M_hoo_E_net_url_getPath_v", reinterpret_cast<void*>(&jit_net_url_get_path)},
+        {"_F_M_hoo_E_net_url_getQuery_v", reinterpret_cast<void*>(&jit_net_url_get_query)},
+        {"_F_M_hoo_E_net_url_getFragment_v", reinterpret_cast<void*>(&jit_net_url_get_fragment)},
+        {"_F_M_hoo_E_net_url_toString_v", reinterpret_cast<void*>(&jit_net_url_to_string)},
+        {"_F_M_hoo_E_net_url_release_v", reinterpret_cast<void*>(&jit_net_url_release)},
         {"_F_M_hoo_E_net_http_client_new_v", reinterpret_cast<void*>(&jit_net_http_client_new)},
         {"_F_M_hoo_E_net_http_client_set_header_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
         {"_F_M_hoo_E_net_http_client_set_timeout_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
@@ -2917,6 +2932,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         // Net module (camelCase aliases)
         {"_F_M_hoo_E_net_http_client_setHeader_v_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
         {"_F_M_hoo_E_net_http_client_setTimeout_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
+        {"_F_M_hoo_E_net_http_client_setHeader_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_set_header)},
+        {"_F_M_hoo_E_net_http_client_setTimeout_v_p", reinterpret_cast<void*>(&jit_net_http_client_set_timeout)},
+        {"_F_M_hoo_E_net_http_client_get_v_p", reinterpret_cast<void*>(&jit_net_http_client_get)},
+        {"_F_M_hoo_E_net_http_client_post_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_post)},
+        {"_F_M_hoo_E_net_http_client_put_v_p_p", reinterpret_cast<void*>(&jit_net_http_client_put)},
+        {"_F_M_hoo_E_net_http_client_delete_v_p", reinterpret_cast<void*>(&jit_net_http_client_delete)},
         {"_F_M_hoo_E_net_http_response_get_status_code_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
         {"_F_M_hoo_E_net_http_response_get_body_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
         {"_F_M_hoo_E_net_http_response_is_success_v_p", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
@@ -2927,6 +2948,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_http_response_getStatusCode_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
         {"_F_M_hoo_E_net_http_response_getBody_v_p", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
         {"_F_M_hoo_E_net_http_response_isSuccess_v_p", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
+        {"_F_M_hoo_E_net_http_response_statusCode_v", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
+        {"_F_M_hoo_E_net_http_response_getStatusCode_v", reinterpret_cast<void*>(&jit_net_http_response_get_status_code)},
+        {"_F_M_hoo_E_net_http_response_getBody_v", reinterpret_cast<void*>(&jit_net_http_response_get_body)},
+        {"_F_M_hoo_E_net_http_response_isSuccess_v", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
+        {"_F_M_hoo_E_net_http_response_release_v", reinterpret_cast<void*>(&jit_net_http_response_release)},
+        {"_F_M_hoo_E_net_http_client_release_v", reinterpret_cast<void*>(&jit_net_http_client_release)},
         // URL class methods
         {"_F_M_hoo_E_URL_new_static_p_p", reinterpret_cast<void*>(&jit_net_url_new)},
         {"_F_M_hoo_E_URL_scheme_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},

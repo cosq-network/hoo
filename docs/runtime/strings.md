@@ -18,7 +18,7 @@ Because it is null-terminated, the internal `data` pointer can be safely passed 
 - `String.fromCstr(const char*)`: Creates a string from a null-terminated host string.
 - `String.fromBytes(const char*, int64_t)`: Creates a string from a specified byte buffer.
 - `str.repeat(count)`: Creates a string by repeating the character in `str` (e.g. `"*".repeat(5)`).
-- `String.new()`: Returns an empty string.
+- `new String()`: Returns an empty string.
 
 ## 3. Manipulation
 Since strings are immutable, all manipulation functions allocate and return a *new* `String` handle with `refcount=1`.

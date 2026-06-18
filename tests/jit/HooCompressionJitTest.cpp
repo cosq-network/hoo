@@ -13,7 +13,7 @@ protected:
 TEST_F(HooCompressionJitTest, GzipRoundTrip) {
     const std::string source = R"(
         func :int64 test() {
-            var c = Compression.new();
+            var c = new Compression();
             var original = "Hello, World!";
             var compressed = c.gzipCompress(original.data(), original.length());
             var decompressed = c.gzipDecompress(compressed.data(), compressed.length());
@@ -28,7 +28,7 @@ TEST_F(HooCompressionJitTest, GzipRoundTrip) {
 TEST_F(HooCompressionJitTest, DeflateRoundTrip) {
     const std::string source = R"(
         func :int64 test() {
-            var c = Compression.new();
+            var c = new Compression();
             var original = "Hello, World!";
             var compressed = c.deflateCompress(original.data(), original.length());
             var decompressed = c.deflateDecompress(compressed.data(), compressed.length());

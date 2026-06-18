@@ -1,11 +1,11 @@
 # CSV (`hoo.csv`)
 
-The `hoo.csv` module provides CSV parsing, generation, and file I/O operations with Automatic Reference Counting (ARC). Create an instance with `Csv.new()` and release it with `release()`.
+The `hoo.csv` module provides CSV parsing, generation, and file I/O operations with Automatic Reference Counting (ARC). Create an instance with `new Csv()` and release it with `release()`.
 
 ## 1. Constructor / Destructor
 
-- `Csv.new()` — Create with default options (`,`, `"`).
-- `Csv.newWithOpts(delimiter, quote)` — Create with custom delimiter and quote.
+- `new Csv()` — Create with default options (`,`, `"`).
+- `new Csv(delimiter, quote)` — Create with custom delimiter and quote.
 - `csv.retain()` — Increment reference count.
 - `csv.release()` — Decrement reference count; frees when zero.
 - `csv.refcount()` — Return current reference count (for debugging).
@@ -57,7 +57,7 @@ Aggregation (`sum`, `avg`) and statistics (`describe`) functions and filter orde
 
 ```hoo
 func :int64 demo() {
-    var csv = Csv.new()
+    var csv = new Csv()
     var data = [["name", "age"], ["Alice", "30"]]
     var ok = csv.writeFile("/path/to/data.csv", data)
     var rows = csv.readFile("/path/to/data.csv")

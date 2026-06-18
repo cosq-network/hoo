@@ -1,6 +1,6 @@
 # Args — Command-Line Arguments
 
-The `Args` class provides an instance-based interface for reading command-line arguments passed to the program. Obtain an instance via `Args.new()`.
+The `Args` class provides an instance-based interface for reading command-line arguments passed to the program. Obtain an instance via `new Args()`.
 
 It offers two tiers of API:
 
@@ -40,7 +40,7 @@ The following Hoo program counts positional args, prints each one, checks for na
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     var count = args.count()
     println("Positional args: " + count)
@@ -113,7 +113,7 @@ Given the argv `{"program", "data.csv", "--output=report.txt", "--verbose", "--c
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     args.addString("output", "-o", "--output", "Output file path", "out.txt")
     args.addFlag("verbose", "-v", "--verbose", "Enable verbose output")
@@ -147,7 +147,7 @@ Given the argv `{"program", "--verbose"}`:
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     args.addFlag("verbose", "-v", "--verbose", "Enable verbose mode")
     args.addFlag("quiet", "-q", "--quiet", "Suppress output")
@@ -183,7 +183,7 @@ Given the argv `{"program", "-o", "short.txt", "--name", "alice"}`:
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     args.addString("output", "-o", "", "Short-only option", "")
     args.addString("name", "", "--name", "Long-only option", "unknown")
@@ -205,7 +205,7 @@ Given the argv `{"program"}` (no additional arguments):
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     args.addString("host", "-h", "--host", "Server host", "localhost")
     args.addInt("port", "-p", "--port", "Server port", 8080)
@@ -235,7 +235,7 @@ Given the argv `{"program", "--output=file.txt"}`:
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     args.addString("output", "-o", "--output", "Output path", "")
     args.parse()
@@ -259,7 +259,7 @@ Given the argv `{"program", "--help"}`:
 
 ```hoo
 func :int64 main() {
-    var args = Args.new()
+    var args = new Args()
 
     args.addString("output", "-o", "--output", "Output file path", "out.txt")
     args.addFlag("verbose", "-v", "--verbose", "Enable verbose output")

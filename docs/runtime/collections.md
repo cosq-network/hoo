@@ -21,7 +21,7 @@ An array is a contiguous memory block allocated via `hoo_alloc` with the `HOO_TY
 - **ARC Integration**: The array itself is ARC-managed. Elements inside a low-level array are not automatically scanned for ARC; they must be managed via explicit `retain`/`release` if necessary (e.g., when popping an object).
 
 ### Key Operations
-- **Creation**: `Array.new()` allocates with initial capacity.
+- **Creation**: `new Array()` allocates with initial capacity.
 - **Indexing**: Arrays support O(1) direct indexing. `val = arr[i]` maps to `LD.D dest, arr_base, (8 + i*8)`.
 - **Push**:
   - `arr.push(val)` — Generic push of a 64-bit slot.
@@ -84,7 +84,7 @@ Numeric keys are always passed as pointers to the value (e.g., pass `&int64_key`
 
 ### Key Operations
 
-- **Creation**: `Map.new(keyType, valueType)` — two arguments (key type constant, value type constant). The old single-arg form is removed.
+- **Creation**: `new Map(keyType, valueType)` — two arguments (key type constant, value type constant). The old single-arg form is removed.
 - **Thread Safety**: Map release uses the runtime's per-type destructor callback mechanism, invoked atomically by `hoo_release` when refcount reaches zero. No separate mutex is needed.
 - **hooc method calls** resolve through JIT wrappers that extract typed registers and delegate to the polymorphic C-ABI:
   - `map.setInt64Int64(k, v)`, `map.setStringString(k, v)`, `map.setInt64String(k, v)`, etc.

@@ -1,13 +1,13 @@
 # ISSUE-022: Limited Type Inference for `var` Declarations
 
 ## 1. Overview
-The `var` keyword relies on compile-time type inference from the initializer expression, but the inference only handles a narrow set of cases: primitive literals, `Map.new()`, `Array.new()`, and a few constructor calls. All other cases fall back to the generic typeId 100 (Object), losing type information for method dispatch.
+The `var` keyword relies on compile-time type inference from the initializer expression, but the inference only handles a narrow set of cases: primitive literals, `new Map(...)`, `new Array(...)`, and built-in constructor calls. All other cases fall back to the generic typeId 100 (Object), losing type information for method dispatch.
 
 ## 2. Technical Analysis
 
 ### 2.1 Limited inference scope
 - **Location**: `src/codegen/HVMCodeGenerator.cpp` lines 1828-1885 (`getTypeId`)
-- **Issue**: The type inference switch checks `PrimaryExpression` sub-types (integer literal → typeId 1, float literal → typeId 2, string literal → typeId 101, etc.) and specific function-call patterns (`Map.new()` → 103, `Array.new()` → 102, `Character.new()` → 109) and instance method return types on known built-in types (Args, Character, Map).
+- **Issue**: The type inference switch checks `PrimaryExpression` sub-types (integer literal → typeId 1, float literal → typeId 2, string literal → typeId 101, etc.) and specific function-call patterns (`new Map(...)` -> 103, `new Array(...)` -> 102, `new Character(...)` -> 109) and instance method return types on known built-in types (Args, Character, Map).
 
 ```cpp
 // Extended but still incomplete:

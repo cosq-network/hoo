@@ -10,46 +10,46 @@ Parses and decomposes URLs.
 
 ### Constructor
 
-`URL.new(url: string) :ptr`
+`new URL(url: string) :ptr`
 Creates a new URL from a string. Returns a URL handle.
 
 ### Methods
 
-`URL.getScheme(url: ptr) :string`
+`url.getScheme() :string`
 Returns the scheme (protocol), e.g. `"https"`.
 
-`URL.getHost(url: ptr) :string`
+`url.getHost() :string`
 Returns the host, e.g. `"example.com"`.
 
-`URL.getPort(url: ptr) :int64`
+`url.getPort() :int64`
 Returns the port number, or -1 if not specified.
 
-`URL.getPath(url: ptr) :string`
+`url.getPath() :string`
 Returns the path component, e.g. `"/path"`.
 
-`URL.getQuery(url: ptr) :string`
+`url.getQuery() :string`
 Returns the query string, or empty string if none.
 
-`URL.getFragment(url: ptr) :string`
+`url.getFragment() :string`
 Returns the fragment, or empty string if none.
 
-`URL.toString(url: ptr) :string`
+`url.toString() :string`
 Returns the full URL string.
 
-`URL.release(url: ptr)`
+`url.release()`
 Releases the URL handle.
 
 ### Example
 
 ```hoo
-let url = URL.new("https://example.com:8080/path?q=1#section")
-println(URL.getScheme(url))    // "https"
-println(URL.getHost(url))      // "example.com"
-println(URL.getPort(url))      // 8080
-println(URL.getPath(url))      // "/path"
-println(URL.getQuery(url))     // "q=1"
-println(URL.getFragment(url))  // "section"
-URL.release(url)
+let url = new URL("https://example.com:8080/path?q=1#section")
+println(url.getScheme())    // "https"
+println(url.getHost())      // "example.com"
+println(url.getPort())      // 8080
+println(url.getPath())      // "/path"
+println(url.getQuery())     // "q=1"
+println(url.getFragment())  // "section"
+url.release()
 ```
 
 ---
@@ -60,7 +60,7 @@ Performs HTTP requests.
 
 ### Constructor
 
-`HttpClient.new() :HttpClient`
+`new HttpClient() :HttpClient`
 Creates a new HTTP client.
 
 ### Methods
@@ -89,13 +89,13 @@ Releases the HTTP client handle.
 ### Example
 
 ```hoo
-let client = HttpClient.new()
+let client = new HttpClient()
 client.setTimeout(5000)
 client.setHeader("Authorization", "Bearer token123")
 
 let resp = client.get("https://api.example.com/users")
 if resp.isSuccess() == 1 {
-    println(resp.body())
+    println(resp.getBody())
 }
 resp.release()
 client.release()
@@ -112,10 +112,7 @@ Represents an HTTP response.
 `resp.statusCode() :int64`
 Returns the HTTP status code (e.g. 200, 404).
 
-`resp.statusText() :string`
-Returns the HTTP status text (e.g. "OK", "Not Found").
-
-`resp.body() :string`
+`resp.getBody() :string`
 Returns the response body as a string.
 
 `resp.isSuccess() :int64`
@@ -127,13 +124,13 @@ Releases the HTTP response handle.
 ### Example
 
 ```hoo
-let client = HttpClient.new()
+let client = new HttpClient()
 let resp = client.post("https://api.example.com/data", "{\"key\":\"value\"}")
 
 if resp.isSuccess() == 1 {
-    println(resp.body())
+    println(resp.getBody())
 } else {
-    println("Error " + resp.statusCode() + ": " + resp.statusText())
+    println("Error " + resp.statusCode())
 }
 
 resp.release()

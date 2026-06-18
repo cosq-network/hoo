@@ -4,7 +4,7 @@ The `String` type provides robust support for immutable, UTF-8 encoded strings.
 
 ## 1. Creation
 
-### `String.new() :string`
+### `new String() :string`
 Creates a new, empty hoo string. You can also use `""` directly.
 
 ### `String.repeat(ch: char, count: int64) :string`

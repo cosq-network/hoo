@@ -93,6 +93,29 @@ static std::string classToPrefix(const std::string& className) {
     return it != map.end() ? it->second : "";
 }
 
+static uint32_t builtinConstructedTypeId(const std::string& className) {
+    static const std::unordered_map<std::string, uint32_t> typeIds = {
+        {"String", 101},
+        {"Array", 102},
+        {"Map", 103},
+        {"Character", 109},
+        {"Args", 110},
+        {"Compression", 111},
+        {"Csv", 112},
+        {"Buffer", 113},
+        {"URL", 114},
+        {"HttpClient", 115},
+        {"HttpResponse", 116},
+    };
+    auto it = typeIds.find(className);
+    return it != typeIds.end() ? it->second : 100;
+}
+
+static std::string builtinConstructorMethodName(const std::string& className, size_t argCount) {
+    if (className == "Csv" && argCount == 2) return "newWithOpts";
+    return "new";
+}
+
 HVMCodeGenerator::HVMCodeGenerator() {
     for (int i = 0; i < 32; ++i) usedRegs_[i] = false;
     // Reserved registers
@@ -1073,6 +1096,36 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
     if (auto newExpr = dynamic_cast<const ast::NewObjectExpression*>(&expr)) {
         std::string className = newExpr->getClassName();
+        if (isBuiltinClassName(className) && classes_.find(className) == classes_.end()) {
+            if (builtinConstructedTypeId(className) == 100) {
+                addError("Built-in class '" + className + "' does not have a constructor");
+                return 0;
+            }
+            const auto* argumentList = newExpr->getArguments();
+            const size_t argCount = argumentList ? argumentList->getArguments().size() : 0;
+            std::vector<uint8_t> argRegs;
+            for (size_t i = 0; argumentList && i < argCount && i < 7; ++i) {
+                argRegs.push_back(visitExpression(*argumentList->getArguments()[i]));
+            }
+            for (size_t i = 0; i < argRegs.size(); ++i) {
+                emit(Opcode::MOV, OperandsR{argReg(1, i), argRegs[i], 0, 0});
+                freeRegister(argRegs[i]);
+            }
+
+            MangledFunctionParams mp;
+            mp.modulePath = {"hoo"};
+            mp.functionName = classToPrefix(className) + "_" + builtinConstructorMethodName(className, argCount);
+            mp.returnType = "void";
+            for (size_t i = 0; i < argCount; ++i) {
+                mp.parameterTypes.push_back("ptr");
+            }
+
+            emitCall(Opcode::CALL, SymbolMangler::mangleFunctionName(mp));
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            return dest;
+        }
+
         auto it = classes_.find(className);
         if (it == classes_.end()) {
             addError("Unknown class: " + className);
@@ -1265,6 +1318,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 111: resolvedClass = "Compression"; break;
                     case 112: resolvedClass = "Csv"; break;
                     case 113: resolvedClass = "Buffer"; break;
+                    case 114: resolvedClass = "URL"; break;
+                    case 115: resolvedClass = "HttpClient"; break;
+                    case 116: resolvedClass = "HttpResponse"; break;
                     default: break;
                 }
             }
@@ -2269,6 +2325,10 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         }
         return 100;
     }
+    if (auto newExpr = dynamic_cast<const ast::NewObjectExpression*>(&expr)) {
+        uint32_t typeId = builtinConstructedTypeId(newExpr->getClassName());
+        return typeId != 100 ? typeId : 100;
+    }
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
@@ -2299,7 +2359,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
             }
             uint32_t inferredExprType = inferExpressionTypeId(*initializer);
             if (inferredExprType != 100) return inferredExprType;
-            // Inference from constructor calls like Map.new(), Array.new()
+            // Back-compat inference for older class-style factory calls.
             if (auto fc = dynamic_cast<const ast::FunctionCall*>(initializer)) {
                 if (auto ma = dynamic_cast<const ast::MemberAccess*>(&fc->getFunction())) {
                     std::string clsName;
@@ -2341,7 +2401,8 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     if (clsName == "Json") {
                         if (ma->getMember() == "parseToMap") return 103;
                         if (ma->getMember() == "serializeMap" || ma->getMember() == "minify" ||
-                            ma->getMember() == "beautify") return 101;
+                            ma->getMember() == "beautify" || ma->getMember() == "getString" ||
+                            ma->getMember() == "stringify") return 101;
                         return 100;
                     }
                     if (isBuiltinClassName(clsName)) {
@@ -2391,6 +2452,30 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "byteAt" || member == "setByte" ||
                                 member == "clear") return 1;
                             if (member == "copy" || member == "slice") return 113;
+                            return 100;
+                        }
+                        if (objTypeId == 114) {
+                            if (member == "getPort") return 1;
+                            if (member == "getScheme" || member == "getHost" ||
+                                member == "getPath" || member == "getQuery" ||
+                                member == "getFragment" || member == "toString")
+                                return 101;
+                            return 100;
+                        }
+                        if (objTypeId == 115) {
+                            if (member == "setHeader") return 1;
+                            if (member == "get" || member == "post" ||
+                                member == "put" || member == "delete")
+                                return 116;
+                            return 100;
+                        }
+                        if (objTypeId == 116) {
+                            if (member == "statusCode" || member == "getStatusCode" ||
+                                member == "isSuccess")
+                                return 1;
+                            if (member == "getBody" || member == "body" ||
+                                member == "statusText" || member == "getStatusText")
+                                return 101;
                             return 100;
                         }
                         if (objTypeId == 103) {

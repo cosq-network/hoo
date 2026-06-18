@@ -1,8 +1,7 @@
 #include <gtest/gtest.h>
-#ifndef _WIN32
-#include <unistd.h>
-#endif
-#include <cstring>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
 
@@ -12,12 +11,17 @@ class HooCsvJitTest : public ::testing::Test {
 protected:
     DefaultIOProvider io;
     HVMJIT jit{io};
+
+    static std::filesystem::path tempCsvPath(const std::string& prefix) {
+        auto stamp = std::chrono::steady_clock::now().time_since_epoch().count();
+        return std::filesystem::temp_directory_path() / (prefix + "_" + std::to_string(stamp) + ".csv");
+    }
 };
 
 TEST_F(HooCsvJitTest, EscapeComma) {
     const std::string source = R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var r = csv.escape(44);
             csv.release();
             return r;
@@ -30,7 +34,7 @@ TEST_F(HooCsvJitTest, EscapeComma) {
 TEST_F(HooCsvJitTest, EscapeQuote) {
     const std::string source = R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var r = csv.escape(34);
             csv.release();
             return r;
@@ -43,7 +47,7 @@ TEST_F(HooCsvJitTest, EscapeQuote) {
 TEST_F(HooCsvJitTest, EscapeNormal) {
     const std::string source = R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var r = csv.escape(97);
             csv.release();
             return r;
@@ -56,7 +60,7 @@ TEST_F(HooCsvJitTest, EscapeNormal) {
 TEST_F(HooCsvJitTest, ParseBasic) {
     const std::string source = R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var input = "a,b,c\n1,2,3";
             var rows = csv.parse(input);
             csv.release();
@@ -70,7 +74,7 @@ TEST_F(HooCsvJitTest, ParseBasic) {
 TEST_F(HooCsvJitTest, ParseCustomOpts) {
     const std::string source = R"(
         func :int64 test() {
-            var csv = Csv.newWithOpts(59, 39);
+            var csv = new Csv(59, 39);
             var input = "a;b;c";
             var rows = csv.parse(input);
             csv.release();
@@ -84,7 +88,7 @@ TEST_F(HooCsvJitTest, ParseCustomOpts) {
 TEST_F(HooCsvJitTest, GenerateBasic) {
     const std::string source = R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var data = [["a", "b"], ["1", "2"]];
             var result = csv.generate(data);
             csv.release();
@@ -96,20 +100,17 @@ TEST_F(HooCsvJitTest, GenerateBasic) {
 }
 
 TEST_F(HooCsvJitTest, ReadFile) {
-    char tmp_path[] = "/tmp/hoo_test_csv_XXXXXX";
-    int fd = mkstemp(tmp_path);
-    ASSERT_GT(fd, -1);
-    const char* csv = "name,age\nAlice,30\nBob,25\n";
-    ASSERT_EQ(write(fd, csv, strlen(csv)), static_cast<ssize_t>(strlen(csv)));
-    close(fd);
+    const auto tmp_path = tempCsvPath("hoo_test_csv_jit_read");
+    {
+        std::ofstream out(tmp_path, std::ios::binary);
+        ASSERT_TRUE(out.is_open());
+        out << "name,age\nAlice,30\nBob,25\n";
+    }
 
-    std::string hooc_path(tmp_path);
-#ifdef _WIN32
-    std::replace(hooc_path.begin(), hooc_path.end(), '\\', '/');
-#endif
+    std::string hooc_path = tmp_path.generic_string();
     std::string source = std::string(R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var rows = csv.readFile(")") + hooc_path + R"(");
             csv.release();
             return Array.length(rows);
@@ -117,14 +118,16 @@ TEST_F(HooCsvJitTest, ReadFile) {
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
-    unlink(tmp_path);
+    std::filesystem::remove(tmp_path);
 }
 
 TEST_F(HooCsvJitTest, ReadFileNotFound) {
-    const std::string source = R"(
+    const auto missing_path = tempCsvPath("hoo_nonexistent_csv_file");
+    std::filesystem::remove(missing_path);
+    const std::string source = std::string(R"(
         func :int64 test() {
-            var csv = Csv.new();
-            var rows = csv.readFile("/tmp/hoo_nonexistent_csv_file.csv");
+            var csv = new Csv();
+            var rows = csv.readFile(")") + missing_path.generic_string() + R"(");
             csv.release();
             if rows == 0 { return 1; }
             return 0;
@@ -135,10 +138,11 @@ TEST_F(HooCsvJitTest, ReadFileNotFound) {
 }
 
 TEST_F(HooCsvJitTest, WriteFile) {
-    const std::string hooc_path = "hoo_csv_jit_write_test.csv";
+    const auto tmp_path = tempCsvPath("hoo_csv_jit_write");
+    const std::string hooc_path = tmp_path.generic_string();
     std::string source = std::string(R"(
         func :int64 test() {
-            var csv = Csv.new();
+            var csv = new Csv();
             var data = [["x", "y"], ["10", "20"]];
             var ok = csv.writeFile(")") + hooc_path + R"(", data);
             csv.release();
@@ -147,5 +151,5 @@ TEST_F(HooCsvJitTest, WriteFile) {
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
-    std::remove(hooc_path.c_str());
+    std::filesystem::remove(tmp_path);
 }

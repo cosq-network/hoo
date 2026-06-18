@@ -1,10 +1,10 @@
 # Compression (`hoo.compression`)
 
-The `hoo.compression` module provides gzip and raw deflate compress/decompress using zlib. Create an instance with `Compression.new()` and release it with `release()`.
+The `hoo.compression` module provides gzip and raw deflate compress/decompress using zlib. Create an instance with `new Compression()` and release it with `release()`.
 
 ## 1. Constructor / Destructor
 
-- `Compression.new()` — Create a new Compression instance.
+- `new Compression()` — Create a new Compression instance.
 - `c.release()` — Release the instance.
 
 ## 2. Gzip
@@ -21,7 +21,7 @@ The `hoo.compression` module provides gzip and raw deflate compress/decompress u
 
 ```hoo
 func :int64 demo() {
-    var c = Compression.new()
+    var c = new Compression()
     var original = "Hello, World!"
     var compressed = c.gzipCompress(original.data(), original.length())
     c.release()

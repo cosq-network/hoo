@@ -6,7 +6,7 @@ The hoo collections module provides managed data structures for storing and orga
 
 Hoo arrays are dynamic, contiguous blocks capable of storing 64-bit values (integers, floats, or managed objects).
 
-### `Array.new() :array`
+### `new Array() :array`
 Creates a new, empty array with initial capacity.
 
 ### `arr.length() :int64`
@@ -40,7 +40,7 @@ Removes all elements from the array.
 
 Hoo maps are type-safe dictionaries that map keys to values. Keys are restricted to specific types (int64, string, etc.) for efficient hashing, and value types can also be specified at creation.
 
-### `Map.new(keyType: int64, valueType: int64) :map`
+### `new Map(keyType: int64, valueType: int64) :map`
 Creates a new map bound to a specific key type and value type.
 - **Key Types** (`HooMapKeyType`):
   - `0`: `byte`
@@ -56,7 +56,7 @@ Creates a new map bound to a specific key type and value type.
   - `4`: `string`
   - `5`: `object`
 
-### `Map.new(keyType: int64) :map`
+### `new Map(keyType: int64) :map`
 Creates a new map with the given key type and value type set to `any`. Provided for backward compatibility.
 
 ### `m.length() :int64`
@@ -126,7 +126,7 @@ Returns the value type of the map (HooMapValueType value).
 ```hoo
 func :int64 main() {
     // Array Example
-    var numbers = Array.new();
+    var numbers = new Array();
     numbers.push(10);
     numbers.push(20);
     numbers.push(30);
@@ -135,7 +135,7 @@ func :int64 main() {
     var first = numbers.getInt64(0); // 10
 
     // Map Example (string key, int64 value)
-    var config = Map.new(4, 1); // 4 = string key, 1 = int64 value
+    var config = new Map(4, 1); // 4 = string key, 1 = int64 value
     config.setStringInt64("port", 8080);
     config.setStringInt64("timeout", 30);
 
@@ -145,7 +145,7 @@ func :int64 main() {
     }
 
     // Map Example (int64 key, string value)
-    var users = Map.new(2, 4); // 2 = int64 key, 4 = string value
+    var users = new Map(2, 4); // 2 = int64 key, 4 = string value
     users.setInt64String(1001, "Alice");
     users.setInt64String(1002, "Bob");
     var name = users.getInt64String(1001);

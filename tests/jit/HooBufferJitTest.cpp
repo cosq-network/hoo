@@ -15,7 +15,7 @@ protected:
 
 TEST_F(HooBufferJitTest, NewBuffer) {
     const std::string source = R"(
-        func :int64 test() { return Buffer.new(); }
+        func :int64 test() { return new Buffer(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_i8");
@@ -28,7 +28,7 @@ TEST_F(HooBufferJitTest, NewBuffer) {
 TEST_F(HooBufferJitTest, BufferLength) {
     const std::string source = R"(
         func :int64 test() {
-            var b = Buffer.new();
+            var b = new Buffer();
             return b.length();
         }
     )";
@@ -40,7 +40,7 @@ TEST_F(HooBufferJitTest, BufferLength) {
 TEST_F(HooBufferJitTest, BufferCapacity) {
     const std::string source = R"(
         func :int64 test() {
-            var b = Buffer.new();
+            var b = new Buffer();
             return b.capacity();
         }
     )";
@@ -52,7 +52,7 @@ TEST_F(HooBufferJitTest, BufferCapacity) {
 TEST_F(HooBufferJitTest, BufferCopy) {
     const std::string source = R"(
         func :int64 test() {
-            var b = Buffer.new();
+            var b = new Buffer();
             return b.copy();
         }
     )";
@@ -67,7 +67,7 @@ TEST_F(HooBufferJitTest, BufferCopy) {
 TEST_F(HooBufferJitTest, BufferClear) {
     const std::string source = R"(
         func :int64 test() {
-            var b = Buffer.new();
+            var b = new Buffer();
             b.clear();
             return 1;
         }
@@ -79,7 +79,7 @@ TEST_F(HooBufferJitTest, BufferClear) {
 TEST_F(HooBufferJitTest, BufferByteAtIndex) {
     const std::string source = R"(
         func :int64 test() {
-            var b = Buffer.new();
+            var b = new Buffer();
             return b.byteAt(0);
         }
     )";
@@ -90,7 +90,7 @@ TEST_F(HooBufferJitTest, BufferByteAtIndex) {
 TEST_F(HooBufferJitTest, BufferSetByte) {
     const std::string source = R"(
         func :int64 test() {
-            var b = Buffer.new();
+            var b = new Buffer();
             return 1;
         }
     )";

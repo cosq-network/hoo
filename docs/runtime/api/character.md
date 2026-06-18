@@ -1,10 +1,10 @@
 # Character API Reference (`Character`)
 
-The `Character` class provides instance methods for Unicode character operations. Create a character via the `Character.new()` factory, then call methods on the instance.
+The `Character` class provides instance methods for Unicode character operations. Create a character with `new Character(codepoint)`, then call methods on the instance.
 
-## Factory Methods
+## Constructor
 
-`Character.new(codepoint: int64) :ptr`
+`new Character(codepoint: int64) :ptr`
 Creates a character from its Unicode code point value. Returns a character handle.
 
 `Character.fromUtf8(string: string) :ptr`
@@ -30,15 +30,15 @@ Releases the character handle.
 ## Example
 
 ```hoo
-var ch = Character.new(65)
+var ch = new Character(65)
 var cp = ch.codepoint()  // 65
 var len = ch.length()    // 1
 ch.release()
 
-ch = Character.new(0x1F600)
+ch = new Character(0x1F600)
 len = ch.length()  // 4
 
-var ch2 = Character.new(0x1F431)
+var ch2 = new Character(0x1F431)
 ch2.print()  // 🐱
 ch2.release()
 ```

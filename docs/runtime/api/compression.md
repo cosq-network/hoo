@@ -1,15 +1,15 @@
 # Compression API Reference (`Compression`)
 
-The `Compression` class provides gzip and deflate compression and decompression utilities. Create an instance with `Compression.new()` and release it with `release()`.
+The `Compression` class provides gzip and deflate compression and decompression utilities. Create an instance with `new Compression()` and release it with `release()`.
 
 ## 1. Constructor / Destructor
 
-### `Compression.new() :Compression`
+### `new Compression() :Compression`
 
 Creates a new Compression instance.
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 ```
 
 ### `c.release()`
@@ -32,7 +32,7 @@ Compresses `len` bytes from `data` using gzip compression.
 - **Returns:** `string` — the gzip-compressed data.
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 var original = "Hello, Hoo!"
 var compressed = c.gzipCompress(original.data(), original.length())
 ```
@@ -49,7 +49,7 @@ Decompresses `len` bytes of gzip-compressed data.
 - **Returns:** `string` — the decompressed original data.
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 var original = "Hello, Hoo!"
 var compressed = c.gzipCompress(original.data(), original.length())
 var decompressed = c.gzipDecompress(compressed.data(), compressed.length())
@@ -63,7 +63,7 @@ c.release()
 Compresses `len` bytes from `data` using the deflate algorithm.
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 var original = "Hello, Hoo!"
 var compressed = c.deflateCompress(original.data(), original.length())
 ```
@@ -75,7 +75,7 @@ var compressed = c.deflateCompress(original.data(), original.length())
 Decompresses `len` bytes of deflate-compressed data.
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 var original = "Hello, Hoo!"
 var compressed = c.deflateCompress(original.data(), original.length())
 var decompressed = c.deflateDecompress(compressed.data(), compressed.length())
@@ -92,7 +92,7 @@ Each compression method also accepts a `Buffer` handle and returns a `Buffer`:
 - `c.deflateDecompress(buf: buffer) :buffer` — deflate-decompress a buffer.
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 var input = Buffer.fromBytes("Hello, Hoo!", 12)
 var compressed = c.gzipCompress(input)
 var decompressed = c.gzipDecompress(compressed)
@@ -102,7 +102,7 @@ c.release()
 ## Usage Example
 
 ```hoo
-var c = Compression.new()
+var c = new Compression()
 var text = "The quick brown fox jumps over the lazy dog. "
 var repeated = ""
 var i: int64 = 0

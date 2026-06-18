@@ -4,12 +4,12 @@ The `Buffer` class provides a managed, mutable byte array for working with raw b
 
 ## Constructor
 
-### `Buffer.new(capacity: int64) :buffer`
+### `new Buffer(capacity: int64) :buffer`
 
 Creates a new empty Buffer with the given initial capacity.
 
 ```hoo
-let buf = Buffer.new(64)
+let buf = new Buffer(64)
 ```
 
 ### `Buffer.fromBytes(data: string, len: int64) :buffer`
@@ -89,4 +89,4 @@ Several modules accept Buffer handles instead of raw (data, len) pairs:
                                                          ^-- handle points here (right after ARC header)
 ```
 
-The handle returned by `Buffer.new()` and `Buffer.fromBytes()` points to the `BufferImpl` struct, which is located immediately after the 16-byte ARC header. This is the same layout used by `HooString`, ensuring `hoo_get_refcount()`, `hoo_get_type_id()`, `hoo_release()`, and `hoo_retain()` work transparently without offset correction.
+The handle returned by `new Buffer(...)` and `Buffer.fromBytes()` points to the `BufferImpl` struct, which is located immediately after the 16-byte ARC header. This is the same layout used by `HooString`, ensuring `hoo_get_refcount()`, `hoo_get_type_id()`, `hoo_release()`, and `hoo_retain()` work transparently without offset correction.

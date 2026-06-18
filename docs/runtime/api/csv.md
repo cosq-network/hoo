@@ -1,14 +1,14 @@
 # CSV API Reference (`Csv`)
 
-The `Csv` class provides CSV parsing, generation, and file I/O operations with Automatic Reference Counting (ARC). Create an instance with `Csv.new()` or `Csv.newWithOpts()` and release it with `release()`.
+The `Csv` class provides CSV parsing, generation, and file I/O operations with Automatic Reference Counting (ARC). Create an instance with `new Csv()` or `new Csv(delimiter, quote)` and release it with `release()`.
 
 ## 1. Constructor / Destructor & ARC
 
-### `Csv.new() :Csv`
+### `new Csv() :Csv`
 
 Creates a new Csv instance with default settings (delimiter=`,`, quote=`"`).
 
-### `Csv.newWithOpts(delimiter: int64, quote: int64) :Csv`
+### `new Csv(delimiter: int64, quote: int64) :Csv`
 
 Creates a new Csv instance with a custom delimiter and quote character. Both parameters are ASCII code points.
 
@@ -25,8 +25,8 @@ Decrements the reference count. The instance is freed when the count reaches zer
 Returns the current reference count (for debugging).
 
 ```hoo
-var csv = Csv.new()
-var csv2 = Csv.newWithOpts(59, 39)  // delimiter=';', quote='\''
+var csv = new Csv()
+var csv2 = new Csv(59, 39)  // delimiter=';', quote='\''
 csv.release()
 csv2.release()
 ```
@@ -40,7 +40,7 @@ Parses a CSV string and returns an array of rows, where each row is an array of 
 - **Returns:** `array` — a two-dimensional array (`array` of `array` of `string`).
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var input = "name,age\nAlice,30\nBob,25"
 var rows = csv.parse(input)
 println(rows.length().toString())  // Output: 3
@@ -54,7 +54,7 @@ Parses a CSV string and returns an array of maps, using the first row as string-
 - **Returns:** `array` — an array of `Map<string, string>` objects.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var input = "name,age\nAlice,30\nBob,25"
 var records = csv.parseAsMaps(input)
 println(records.length().toString())  // Output: 2
@@ -73,7 +73,7 @@ Generates a CSV-formatted string from a two-dimensional array.
 - **Returns:** `string` — the CSV-formatted string.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var data = [["a", "b"], ["1", "2"]]
 var output = csv.generate(data)
 println(output)
@@ -89,7 +89,7 @@ Reads a CSV file from disk and returns the parsed data as a two-dimensional arra
 - **Returns:** `array` — parsed data, or `0` on failure.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var rows = csv.readFile("data.csv")
 if rows != 0 {
     println(rows.length().toString())
@@ -104,7 +104,7 @@ Reads a CSV file from disk and returns the parsed data as an array of maps, usin
 - **Returns:** `array` — an array of `Map<string, string>` objects, or `0` on failure.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.readFileAsMaps("data.csv")
 if records != 0 {
     println(records.length().toString())
@@ -119,7 +119,7 @@ Writes a two-dimensional array of strings to a CSV file.
 - **Returns:** `int64` — 0 on success, 1 on failure.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var data = [["name", "age"], ["Alice", "30"], ["Bob", "25"]]
 var ok = csv.writeFile("output.csv", data)
 csv.release()
@@ -134,7 +134,7 @@ Checks if a character (ASCII code point) needs escaping in a CSV field.
 - **Returns:** `int64` — 1 if the character needs escaping (comma, double-quote, newline), 0 otherwise.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var r = csv.escape(44)  // comma, returns 1
 csv.release()
 ```
@@ -150,7 +150,7 @@ Counts non-empty values in a column. Accepts any data type.
 - **Returns:** `int64` — number of non-empty values.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("val\n10\n\n30")
 var n = csv.count(records, "val")  // 2
 csv.release()
@@ -164,7 +164,7 @@ Sums numeric values in a column.
 - **Throws:** `InvalidCastException` if a non-numeric value is encountered.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("val\n10\n20\n30")
 var total = csv.sum(records, "val")  // 60
 csv.release()
@@ -178,7 +178,7 @@ Averages numeric values in a column. Returns the average as a formatted string (
 - **Throws:** `InvalidCastException` if a non-numeric value is encountered.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("val\n10\n20\n30")
 var avg = csv.avg(records, "val")
 println(avg)  // "20"
@@ -198,7 +198,7 @@ Returns the lexicographically largest string value in a column. Empty values are
 - **Returns:** `string` — maximum value, or `0` if column is empty.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob")
 var first = csv.min(records, "name")  // "Alice"
 var last = csv.max(records, "name")   // "Charlie"
@@ -214,7 +214,7 @@ Selects a subset of columns from each row, returning a new array of maps contain
 - **Returns:** `array` — new array of `Map<string, string>` objects, or `0` on invalid input.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("a,b,c\n1,2,3\n4,5,6")
 var cols = [string:"a", string:"c"]
 var subset = csv.select(records, cols)
@@ -231,7 +231,7 @@ Filters rows by comparing column values using the given operator.
 - **Throws:** `InvalidCastException` if an ordering operator is used and a non-numeric value is found (in either the column or the comparison value). Equality operators never throw.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("name,age\nAlice,30\nBob,25\nCharlie,30")
 var adults = csv.filter(records, "age", ">=", "30")
 // adults contains Alice and Charlie
@@ -248,7 +248,7 @@ Sorts rows by column value using lexicographic string comparison.
 - **Returns:** `array` — sorted array of maps, or `0` on invalid input.
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob")
 var sorted = csv.sort(records, "name", 1)
 // sorted order: Alice, Bob, Charlie
@@ -273,7 +273,7 @@ Computes summary statistics for a column. Returns a `Map<string, string>` with t
 - **Throws:** `InvalidCastException` if a non-numeric value is encountered (for `sum`/`avg` computation).
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var records = csv.parseAsMaps("val\n10\n20\n30\n40")
 var stats = csv.describe(records, "val")
 println(stats["count"])  // "4"
@@ -297,7 +297,7 @@ Functions that work with any data type without validation:
 ## Usage Example
 
 ```hoo
-var csv = Csv.new()
+var csv = new Csv()
 var input = "id,value\n1,\"hello, world\"\n2,foo\n3,\"quoted \"\"string\"\"\""
 var rows = csv.parse(input)
 

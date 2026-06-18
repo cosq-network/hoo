@@ -14,7 +14,7 @@ protected:
 TEST_F(HooCharacterApiJitTest, New) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.new(65);
+            var ch = new Character(65);
             return ch.codepoint();
         }
     )";
@@ -26,7 +26,7 @@ TEST_F(HooCharacterApiJitTest, New) {
 TEST_F(HooCharacterApiJitTest, Length) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.new(8364);
+            var ch = new Character(8364);
             return ch.length();
         }
     )";
@@ -38,7 +38,7 @@ TEST_F(HooCharacterApiJitTest, Length) {
 TEST_F(HooCharacterApiJitTest, Data) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.new(65);
+            var ch = new Character(65);
             var d = ch.data();
             return d.length();
         }
@@ -51,7 +51,7 @@ TEST_F(HooCharacterApiJitTest, Data) {
 TEST_F(HooCharacterApiJitTest, DataEquals) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.new(65);
+            var ch = new Character(65);
             var d = ch.data();
             return d.equals("A");
         }
@@ -64,7 +64,7 @@ TEST_F(HooCharacterApiJitTest, DataEquals) {
 TEST_F(HooCharacterApiJitTest, CodepointAfterLength) {
     const std::string source = R"(
         func :int64 test() {
-            var ch = Character.new(128512);
+            var ch = new Character(128512);
             var len = ch.length();
             var cp = ch.codepoint();
             return cp;
