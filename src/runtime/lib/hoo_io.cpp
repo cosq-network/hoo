@@ -12,32 +12,27 @@
 // I/O Implementation
 // ============================================================================
 
-void hoo_print(void* str) {
-    if (str == nullptr) {
-        std::printf("null");
-    } else {
-        const char* data = hoo_string_data(str);
-        if (data) {
-            std::printf("%s", data);
-        } else {
-            std::printf("(null)");
-        }
-    }
+namespace {
+
+const char* resolve_print_data(void* str) {
+    if (str == nullptr) return "null";
+    const char* data = hoo_string_data(str);
+    return data ? data : "null";
+}
+
+void print_impl(void* str, const char* suffix) {
+    std::printf("%s%s", resolve_print_data(str), suffix);
     std::fflush(stdout);
 }
 
+} // anonymous namespace
+
+void hoo_print(void* str) {
+    print_impl(str, "");
+}
+
 void hoo_println(void* str) {
-    if (str == nullptr) {
-        std::printf("null\n");
-    } else {
-        const char* data = hoo_string_data(str);
-        if (data) {
-            std::printf("%s\n", data);
-        } else {
-            std::printf("(null)\n");
-        }
-    }
-    std::fflush(stdout);
+    print_impl(str, "\n");
 }
 
 void* hoo_readline(void) {

@@ -24,7 +24,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
    * `HooException` type IDs, stack unwinding, and shadow stack management.
 5. **[Math](math.md)**
    * Mathematical constants, functions, and the random number generator state.
-6. **[Console I/O](io-net.md)**
+6. **[Console I/O](io.md)**
    * Console input/output (`print`, `readline`, `readchar`).
 
 ### System & Platform
