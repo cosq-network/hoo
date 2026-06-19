@@ -49,46 +49,85 @@ The `hoorepl` library does not re-implement the compiler frontend or the executi
 We will implement the REPL integration across five distinct phases:
 
 ### Phase 1: REPL Static Library Target (`hoorepl`)
-- Create the target files:
-  - `src/repl/REPLSession.h` — Declares the `REPLSession` API.
-  - `src/repl/REPLSession.cpp` — Handles compilation, wrapper generation, and interactive execution.
-- Update `CMakeLists.txt` to define the `hoorepl` static library:
-  ```cmake
-  add_library(hoorepl STATIC
-      src/repl/REPLSession.cpp
-      src/repl/REPLSession.h
-  )
-  target_link_libraries(hoorepl PRIVATE hoo-core)
+- **Directory Layout**: Create a new subdirectory `src/repl` for housing the library source files.
+- **REPLSession Interface Design**: Define the primary `REPLSession` class in `src/repl/REPLSession.h`:
+  ```cpp
+  #pragma once
+  #include <string>
+  #include <vector>
+  #include <memory>
+  #include "core/HooCompiler.h"
+  #include "hvm/HVMJIT.h"
+  #include "core/DefaultIOProvider.h"
+
+  namespace hooc {
+  namespace repl {
+
+  class REPLSession {
+  public:
+      REPLSession();
+      ~REPLSession() = default;
+
+      void run(); // Main interactive loop
+      bool eval(const std::string& input, std::string& outResult, std::string& outError);
+
+  private:
+      DefaultIOProvider io_;
+      std::unique_ptr<HVMJIT> jit_;
+      std::unique_ptr<HooCompiler> compiler_;
+      std::string accumulatedDeclarations_;
+      uint64_t lineCounter_ = 0;
+
+      bool isDeclaration(const std::string& line) const;
+      std::string buildWrapperFunction(const std::string& statement);
+  };
+
+  } // namespace repl
+  } // namespace hooc
   ```
+- **Build System Setup**: Add the static library target in the main [CMakeLists.txt](file:///Users/benoybose/Projects/hoo/CMakeLists.txt) and link it privately with `hoo-core` to provide access to `HooCompiler`, `HVMCodeGenerator`, and `HVMJIT`.
 
 ### Phase 2: CLI Integration in the Driver
-- Update the main `hoo` executable driver (`src/main.cpp` or equivalent):
-  - Add command-line parsing logic to check for the `--repl` flag.
-  - Link the `hoo` executable target with `hoorepl`:
+- **Command Line Parsing**: Modify `src/main.cpp` (or the `hoo` driver binary source) to check `argv` for the `--repl` flag.
+- **Execution Flow Redirection**:
+  - If `--repl` is found, instantiate `hooc::repl::REPLSession` and delegate execution entirely to `session.run()`, ignoring other compilation target arguments.
+  - Link the main executable target `hoo` with the new static library:
     ```cmake
     target_link_libraries(hoo PRIVATE hoorepl)
     ```
-  - When `--repl` is active, instantiate `REPLSession` and trigger `session.run()`.
 
 ### Phase 3: Shell Console Loop & Built-in Command Parser
-- Implement the interactive console loop:
-  - Prompt user with `>>> ` (or `... ` for multi-line inputs if a block is unclosed).
-  - Parse shell commands starting with `/`:
-    - `/quit` or `/exit` — Gracefully terminates the loop.
-    - `/help` — Lists available commands.
-    - `/reset` — Clears compilation history and variables.
-  - Gracefully catch compilation errors and runtime exceptions without terminating the REPL loop.
+- **Interactive Input Handling**: 
+  - Standard input `std::cin` will be read line-by-line using `std::getline`.
+  - Multi-line block detection: If a line ends with an unclosed brace `{` or has unmatched parenthesis, the prompt shifts from `>>> ` to `... ` and accumulates subsequent lines until the scope braces are balanced.
+- **Command Dispatcher**:
+  - Intercept commands starting with a `/` character:
+    - `/quit` or `/exit`: Break the console loop and terminate the session.
+    - `/help`: Print usage instructions.
+    - `/reset`: Clear `accumulatedDeclarations_` and instantiate a fresh `HVMJIT` context.
+- **Error Propagation**: Catch any compilation or AST generation errors from `HooCompiler::getLastError()` and output them to `std::cerr` without terminating the process loop.
 
 ### Phase 4: Incremental Code Generation & Execution
-- Manage the compilation state:
-  - Keep a growing `std::string` of accumulated global definitions (functions, classes).
-  - Wrap expressions inside an execution wrapper (`__repl_line_N`).
-  - Call `HVMJIT::loadSourceCode` to compile the session module.
-  - Execute the wrapper symbol and print the return value.
+- **Dynamic Wrapper Generator**:
+  - For declarations (`func` or `class` definitions), append them directly to `accumulatedDeclarations_` and compile them to verify syntax. If compilation succeeds, the declaration remains in the session.
+  - For expressions or statements (like `1 + 2;` or `var x = Fs.exists(".");`), wrap them inside a transient wrapper function:
+    ```hoo
+    func :any __repl_line_N() {
+        return <user_statement>;
+    }
+    ```
+  - Prepend the current `accumulatedDeclarations_` to the wrapper function to build the full transient module code string.
+- **Module JIT Load & Execution**:
+  - Call `HooCompiler::compile` on the generated transient source.
+  - Load the resulting module bytes into the persistent `HVMJIT` context.
+  - Invoke the compiled wrapper function `_F_M_test_E___repl_line_N` using `HVMJIT::run`.
+  - Format and output the return register `r1` value (or print nothing if the statement is void).
 
-### Phase 5: Test Infrastructure
-- Create a test file `tests/repl/HooReplTest.cpp` linked against the `hoorepl` library.
-- Add test cases covering:
-  - Shell command processing.
-  - State persistence of variable values across evaluations.
-  - Graceful rejection of invalid code with proper error compilation messages.
+### Phase 5: Test Infrastructure & CI Verification
+- **Unit Test Target Setup**:
+  - Add `tests/repl/HooReplTest.cpp` to `CMakeLists.txt` inside the `hoo-tests` build target.
+- **Verification Tests**:
+  - `ReplExitCommands`: Simulates inputting `/exit` or `/quit` and asserts that the REPL session ends cleanly.
+  - `ReplIncrementalDeclarations`: Inputs a function declaration `func :int64 doubleVal(int64 x) { return x * 2; }` followed by an execution call `doubleVal(21)`, asserting that it returns `42` across the session.
+  - `ReplCompileErrorRecovery`: Asserts that an invalid statement (e.g. `Math.invalid()`) correctly fails JIT compilation and sets an error description, but leaves the session alive so that a subsequent valid input (e.g. `Math.abs(-5)`) still compiles and executes successfully.
+
