@@ -6,7 +6,13 @@ The module exposes two API layers:
 - **C++ API** — object-oriented classes: `hoo::fs::File`, `hoo::fs::Directory`, `hoo::fs::Path`
 - **C-ABI bridge** — flat `hoo_fs_*` functions used by the JIT / FFI layer
 
-All Hoo language calls (`Fs.exists`, `Fs.delete`, etc.) resolve through the JIT bridge to the C-ABI layer, which delegates to the C++ classes.
+All Hoo language calls (`fs_exists`, `fs_readText`, etc.) resolve through the JIT bridge to the C-ABI layer, which delegates to the C++ classes. The `fs_methodName(...)` syntax is a namespace-prefixed free-function dispatch resolved at compile time via the codegen's `Fs` → `fs_` mapping — there is no `Fs` instance, constructor, or static class methods.
+
+For detailed structured API documentation with parameter descriptions, return types,
+error handling, and complete examples for every function, see the
+[Fs API Reference](api/fs.md).
+
+Each C++ class (`File`, `Directory`, `Path`) has a single explicit constructor — no overloads, no optional parameters, and no static methods. Utility operations are free functions in the `hoo::fs` namespace.
 
 ---
 
@@ -123,6 +129,8 @@ These functions are declared `extern "C"` and remain stable for JIT linkage.
 | `hoo_fs_free_list(list, count)` | Frees array returned by `hoo_fs_list_dir`. |
 | `hoo_fs_temp_dir()` | Returns malloc'd temp directory path string. |
 | `hoo_fs_create_temp_file(prefix)` | Returns malloc'd temp file path string. |
+| `hoo_fs_read_bytes_buffer(path)` | Reads file into a Buffer, returns null on error. |
+| `hoo_fs_write_bytes_buffer(path, buf)` | Writes Buffer contents to file, returns 1 on success. |
 | `hoo_fs_free_string(str)` | Frees a string returned by any `hoo_fs_*` function. |
 
 ### Path C-ABI Bridges
@@ -154,14 +162,79 @@ and delegate to `hoo::fs::Path`. They remain stable for JIT/FFI linkage.
 
 ## Hoo Language API
 
-Hoo code accesses FS operations through the `Fs` module class:
+Hoo code accesses FS operations through the `Fs` module class. All calls are
+free-function dispatch resolved via the codegen's `Fs` → `fs_` prefix mapping —
+there is no `Fs` instance, constructor, or static methods.
 
-```
-import hoo.fs
+### Inspection
 
-val ok = Fs.exists("myfile.txt")
-val text = Fs.readText("myfile.txt")
-val size = Fs.size("myfile.txt")
+| Function | Return | Description |
+|---|---|---|
+| `fs_exists(path)` | `int64` | 1 if path exists, 0 otherwise |
+| `fs_isFile(path)` | `int64` | 1 if path is a regular file |
+| `fs_isDir(path)` | `int64` | 1 if path is a directory |
+| `fs_size(path)` | `int64` | File size in bytes, -1 on error |
+| `fs_lastModified(path)` | `int64` | Unix timestamp, -1 on error |
+
+### Text I/O
+
+| Function | Return | Description |
+|---|---|---|
+| `fs_readText(path)` | `string` | File contents, 0 on error/empty |
+| `fs_writeText(path, content)` | `int64` | 1 on success, 0 on failure |
+| `fs_appendText(path, content)` | `int64` | 1 on success, 0 on failure |
+
+### Binary I/O
+
+| Function | Return | Description |
+|---|---|---|
+| `fs_readBytes(path)` | `buffer` | File bytes as Buffer, 0 on error/empty |
+| `fs_writeBytes(path, buf)` | `int64` | 1 on success, 0 on failure |
+
+### File Operations
+
+| Function | Return | Description |
+|---|---|---|
+| `fs_delete(path)` | `int64` | 1 on success, 0 on failure |
+| `fs_rename(oldPath, newPath)` | `int64` | 1 on success, 0 on failure |
+| `fs_copy(src, dst)` | `int64` | 1 on success, 0 on failure |
+
+### Directory Operations
+
+| Function | Return | Description |
+|---|---|---|
+| `fs_mkdir(path)` | `int64` | Create single directory (parent must exist) |
+| `fs_mkdirs(path)` | `int64` | Create directory tree (mkdir -p) |
+| `fs_rmdir(path)` | `int64` | Remove empty directory |
+| `fs_listDir(path)` | `array` | Array of filenames, 0 on error/empty |
+
+### System Paths
+
+| Function | Return | Description |
+|---|---|---|
+| `fs_tempDir()` | `string` | System temp directory path |
+| `fs_createTempFile(prefix)` | `string` | Create temp file, returns path |
+
+### Usage Example
+
+```hoo
+func :int64 main() {
+    if fs_exists("/tmp/data.txt") == 1 {
+        var content = fs_readText("/tmp/data.txt");
+        println(content);
+    }
+
+    if fs_mkdirs("/tmp/a/b/c") == 1 {
+        var files = fs_listDir("/tmp/a/b/c");
+        println("created dir with " + files.length() + " entries");
+    }
+
+    var tmp = fs_createTempFile("hoo_");
+    fs_writeText(tmp, "hello world");
+    println(fs_size(tmp));
+    fs_delete(tmp);
+    return 0;
+}
 ```
 
 These calls resolve via the JIT bridge to the C-ABI functions above.

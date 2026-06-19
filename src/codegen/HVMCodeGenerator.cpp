@@ -41,7 +41,7 @@ static bool isClassMethodJitClass(const std::string& className) {
 // Built-in classes that behave as singletons (no instances, all static methods).
 static bool isSingletonBuiltinClass(const std::string& className) {
     static const std::unordered_set<std::string> singletons = {
-        "Math", "Fs", "System", "Encoding", "Uuid"
+        "Math", "System", "Encoding", "Uuid"
     };
     return singletons.count(className) > 0;
 }
@@ -160,14 +160,66 @@ static bool isCsvFreeFunction(const std::string& functionName) {
     return functionName == "csv_fromOpts";
 }
 
+static bool isFsFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        // Primary documented names
+        "fs_exists",
+        "fs_readText",
+        "fs_readBytes",
+        "fs_writeText",
+        "fs_writeBytes",
+        "fs_appendText",
+        "fs_copy",
+        "fs_move",
+        "fs_remove",
+        "fs_createDir",
+        "fs_removeDir",
+        "fs_listDir",
+        "fs_isDir",
+        "fs_isFile",
+        "fs_size",
+        "fs_lastModified",
+        "fs_createTempDir",
+        "fs_createTempFile",
+        "fs_currentDir",
+        "fs_currentExeDir",
+        // snake_case aliases
+        "fs_read_text",
+        "fs_is_file",
+        "fs_is_dir",
+        "fs_last_modified",
+        "fs_create_temp_file",
+        "fs_write_bytes",
+        "fs_append_text",
+        "fs_create_dir",
+        "fs_remove_dir",
+        "fs_list_dir",
+        "fs_current_dir",
+        "fs_current_exe_dir",
+        "fs_create_temp_dir",
+    };
+    return names.count(functionName) > 0;
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
-    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) || isCsvFreeFunction(functionName);
+    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) || isCsvFreeFunction(functionName) || isFsFreeFunction(functionName);
+}
+
+static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "fs_exists" || functionName == "fs_isDir" ||
+        functionName == "fs_isFile" || functionName == "fs_size") return 1;
+    if (functionName == "fs_readBytes" || functionName == "fs_readBytes_default") return 113;
+    if (functionName == "fs_readText" || functionName == "fs_readText_default") return 101;
+    if (functionName == "fs_listDir") return 102;
+    if (functionName == "fs_lastModified") return 101;
+    return 100;
 }
 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName) {
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) return 113;
     if (isCsvFreeFunction(functionName)) return 112;
+    if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 

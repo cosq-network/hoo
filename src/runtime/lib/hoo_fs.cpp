@@ -21,9 +21,9 @@ namespace {
 
 int random_int() noexcept
 {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<> dis(0, 35);
+    thread_local std::random_device rd;
+    thread_local std::mt19937 gen(rd());
+    thread_local std::uniform_int_distribution<> dis(0, 35);
     return dis(gen);
 }
 
@@ -108,7 +108,7 @@ std::string createTempFile(const std::string& prefix)
         ::fs::path dir = ::fs::temp_directory_path();
         const std::string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
         for (int attempt = 0; attempt < 256; attempt++) {
-            std::string name = prefix + "_XXXXXX";
+            std::string name = prefix;
             for (int i = 0; i < 6; i++) {
                 name += chars[random_int()];
             }
@@ -542,7 +542,7 @@ char** hoo_fs_list_dir(const char* path, int64_t* out_count)
     std::vector<std::string> entries = hoo::fs::Directory(path).list();
     if (entries.empty()) {
         *out_count = 0;
-        return static_cast<char**>(std::malloc(1));
+        return nullptr;
     }
     char** list = static_cast<char**>(std::malloc(entries.size() * sizeof(char*)));
     if (!list) return nullptr;
@@ -733,7 +733,7 @@ HooBuffer hoo_fs_read_bytes_buffer(const char* path) {
     uint8_t* data = nullptr;
     int64_t len = 0;
     int64_t result = hoo_fs_read_bytes(path, &data, &len);
-    if (result != 0 || !data) return nullptr;
+    if (result == 0 || !data) return nullptr;
     HooBuffer buf = hoo_buffer_from_bytes(data, len);
     free(data);
     return buf;

@@ -441,8 +441,8 @@ Several modules accept or return `Buffer` handles:
 
 | Module | Function | Signature |
 |--------|----------|-----------|
-| Fs | `writeBytes` | `Fs.writeBytes(path: string, buf: Buffer) :int64` |
-| Fs | `readBytes` | `Fs.readBytes(path: string) :Buffer` |
+| Fs | `writeBytes` | `fs_writeBytes(path: string, buf: Buffer) :int64` |
+| Fs | `readBytes` | `fs_readBytes(path: string) :Buffer` |
 | Encoding | `base64Encode` | `Encoding.base64Encode(buf: Buffer) :string` |
 | Encoding | `base64Decode` | `Encoding.base64Decode(encoded: string) :Buffer` |
 | Encoding | `hexEncode` | `Encoding.hexEncode(buf: Buffer) :string` |
