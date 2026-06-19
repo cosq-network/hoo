@@ -1,5 +1,10 @@
 # Math API Reference (`Math`)
 
+**Import Requirement:**
+```hoo
+import hoo.math;
+```
+
 The `Math` class provides constants, basic functions, power/root operations, trigonometry, exponentials, rounding, number utilities, and random number generation via the `Random` class. `Math` is a singleton utility API, so call its methods directly on the class.
 
 ---
@@ -14,6 +19,8 @@ Returns the value of π.
 - **Returns:** `double` — approximate value 3.14159.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var pi = Math.getPi();
     println(pi.toString());
@@ -30,6 +37,8 @@ Returns the value of e.
 - **Returns:** `double` — approximate value 2.71828.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var e = Math.getE();
     println(e.toString());
@@ -46,6 +55,8 @@ Returns the value of τ (tau).
 - **Returns:** `double` — approximate value 6.28318.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var tau = Math.getTau();
     println(tau.toString());
@@ -62,6 +73,8 @@ Returns positive infinity.
 - **Returns:** `double` — positive infinity.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var inf = Math.getInf();
     println(inf.toString());
@@ -78,6 +91,8 @@ Returns negative infinity.
 - **Returns:** `double` — negative infinity.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var neg_inf = Math.getNegInf();
     println(neg_inf.toString());
@@ -94,6 +109,8 @@ Returns Not-a-Number (NaN).
 - **Returns:** `double` — NaN.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var nan = Math.getNan();
     println(nan.toString());
@@ -113,6 +130,8 @@ Returns the absolute value of an integer.
 - **Returns:** `int64` — the absolute value of `x`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.abs(-42);
 }
@@ -149,6 +168,8 @@ Returns the absolute value of a double.
 - **Returns:** `double` — the absolute value of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.abs(-3.14);
 }
@@ -175,6 +196,8 @@ Returns the sign of an integer.
 - **Returns:** `int64` — `-1` if `x < 0`, `0` if `x == 0`, `1` if `x > 0`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.sign(-7);
 }
@@ -211,6 +234,8 @@ Returns the sign of a double.
 - **Returns:** `double` — `-1.0` if `x < 0`, `0.0` if `x == 0`, `1.0` if `x > 0`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.sign(-3.14);
 }
@@ -238,6 +263,8 @@ Returns the smaller of two integers.
 - **Returns:** `int64` — the minimum of `a` and `b`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.min(10, 20);
 }
@@ -267,6 +294,8 @@ Returns the smaller of two doubles.
 - **Returns:** `double` — the minimum of `a` and `b`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.min(3.5, 2.8);
 }
@@ -290,6 +319,8 @@ Returns the larger of two integers.
 - **Returns:** `int64` — the maximum of `a` and `b`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.max(10, 20);
 }
@@ -319,6 +350,8 @@ Returns the larger of two doubles.
 - **Returns:** `double` — the maximum of `a` and `b`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.max(3.5, 2.8);
 }
@@ -343,6 +376,8 @@ Clamps a value within the inclusive range `[min, max]`.
 - **Returns:** `double` — `val` if within range, `min` if `val < min`, `max` if `val > max`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.clamp(15.0, 0.0, 10.0);
 }
@@ -362,6 +397,8 @@ Returns `base` raised to the power of `exp`.
 - **Returns:** `double` — `base` raised to `exp`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.pow(2.0, 3.0);
 }
@@ -378,6 +415,8 @@ Returns the square root of `x`.
 - **Returns:** `double` — the square root of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.sqrt(9.0);
 }
@@ -394,6 +433,8 @@ Returns the cube root of `x`.
 - **Returns:** `double` — the cube root of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.cbrt(27.0);
 }
@@ -411,6 +452,8 @@ Returns `sqrt(x * x + y * y)` without unnecessary overflow or underflow.
 - **Returns:** `double` — the length of the hypotenuse.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.hypot(3.0, 4.0);
 }
@@ -429,6 +472,8 @@ Returns the sine of `x`.
 - **Returns:** `double` — the sine of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.sin(0.0);
 }
@@ -445,6 +490,8 @@ Returns the cosine of `x`.
 - **Returns:** `double` — the cosine of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.cos(0.0);
 }
@@ -461,6 +508,8 @@ Returns the tangent of `x`.
 - **Returns:** `double` — the tangent of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.tan(0.0);
 }
@@ -477,6 +526,8 @@ Returns the arc sine of `x` in radians.
 - **Returns:** `double` — the arc sine in `[-π/2, π/2]`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.asin(1.0);
 }
@@ -493,6 +544,8 @@ Returns the arc cosine of `x` in radians.
 - **Returns:** `double` — the arc cosine in `[0, π]`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.acos(0.0);
 }
@@ -509,6 +562,8 @@ Returns the arc tangent of `x` in radians.
 - **Returns:** `double` — the arc tangent in `[-π/2, π/2]`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.atan(1.0);
 }
@@ -526,6 +581,8 @@ Returns the arc tangent of `y / x` using the signs of both to determine the quad
 - **Returns:** `double` — the angle in `[-π, π]`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.atan2(1.0, 0.0);
 }
@@ -542,6 +599,8 @@ Returns the hyperbolic sine of `x`.
 - **Returns:** `double` — the hyperbolic sine of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.sinh(0.0);
 }
@@ -558,6 +617,8 @@ Returns the hyperbolic cosine of `x`.
 - **Returns:** `double` — the hyperbolic cosine of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.cosh(0.0);
 }
@@ -574,6 +635,8 @@ Returns the hyperbolic tangent of `x`.
 - **Returns:** `double` — the hyperbolic tangent of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.tanh(0.5);
 }
@@ -592,6 +655,8 @@ Returns `e` raised to the power of `x`.
 - **Returns:** `double` — `e^x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.exp(1.0);
 }
@@ -608,6 +673,8 @@ Returns 2 raised to the power of `x`.
 - **Returns:** `double` — `2^x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.exp2(3.0);
 }
@@ -624,6 +691,8 @@ Returns `e^x - 1` accurately even when `x` is near zero.
 - **Returns:** `double` — `e^x - 1`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.expm1(0.001);
 }
@@ -640,6 +709,8 @@ Returns the natural logarithm of `x`.
 - **Returns:** `double` — the natural logarithm of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.log(2.71828);
 }
@@ -656,6 +727,8 @@ Returns the base-10 logarithm of `x`.
 - **Returns:** `double` — the base-10 logarithm of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.log10(100.0);
 }
@@ -672,6 +745,8 @@ Returns the base-2 logarithm of `x`.
 - **Returns:** `double` — the base-2 logarithm of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.log2(8.0);
 }
@@ -688,6 +763,8 @@ Returns the natural logarithm of `1 + x` accurately even when `x` is near zero.
 - **Returns:** `double` — `ln(1 + x)`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.log1p(0.001);
 }
@@ -706,6 +783,8 @@ Returns the largest integer less than or equal to `x`.
 - **Returns:** `double` — the floor of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.floor(3.7);
 }
@@ -722,6 +801,8 @@ Returns the smallest integer greater than or equal to `x`.
 - **Returns:** `double` — the ceiling of `x`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.ceil(3.2);
 }
@@ -738,6 +819,8 @@ Returns the nearest integer to `x`, rounding half away from zero.
 - **Returns:** `double` — the rounded value.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.round(3.5);
 }
@@ -754,6 +837,8 @@ Returns the integer part of `x`, discarding the fractional part (truncates towar
 - **Returns:** `double` — the truncated value.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.trunc(3.7);
 }
@@ -770,6 +855,8 @@ Returns the fractional part of `x`.
 - **Returns:** `double` — the fractional part of `x` (same sign as `x`).
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     return Math.fract(3.7);
 }
@@ -788,6 +875,8 @@ Returns 1 if `n` is even, 0 otherwise.
 - **Returns:** `int64` — `1` if even, `0` if odd.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.isEven(42);
 }
@@ -804,6 +893,8 @@ Returns 1 if `n` is odd, 0 otherwise.
 - **Returns:** `int64` — `1` if odd, `0` if even.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.isOdd(43);
 }
@@ -820,6 +911,8 @@ Returns 1 if `n` is prime, 0 otherwise.
 - **Returns:** `int64` — `1` if prime, `0` otherwise.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.isPrime(17);
 }
@@ -837,6 +930,8 @@ Returns the greatest common divisor of `a` and `b`.
 - **Returns:** `int64` — the GCD of `a` and `b`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.gcd(12, 18);
 }
@@ -854,6 +949,8 @@ Returns the least common multiple of `a` and `b`.
 - **Returns:** `int64` — the LCM of `a` and `b`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.lcm(4, 6);
 }
@@ -870,6 +967,8 @@ Returns `n!` (n factorial), the product of all positive integers up to `n`.
 - **Returns:** `int64` — the factorial of `n`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.factorial(5);
 }
@@ -886,6 +985,8 @@ Returns the `n`-th Fibonacci number (`F(0) = 0`, `F(1) = 1`).
 - **Returns:** `int64` — the `n`-th Fibonacci number.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     return Math.fibonacci(10);
 }
@@ -905,6 +1006,8 @@ Creates a new, auto-seeded random number generator.
 - **Returns:** a `Random` instance with a random seed.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     var rng = new Random();
     var value = rng.nextInt();
@@ -924,6 +1027,8 @@ Creates a new random number generator seeded with `seed`. Two generators created
 - **Returns:** a `Random` instance with the given seed.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     var rng = new Random(42);
     var value = rng.nextIntMax(100);
@@ -942,6 +1047,8 @@ Returns a random 64-bit integer from the full `int64` range.
 - **Returns:** `int64` — a uniformly distributed random integer.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     var rng = new Random();
     var value = rng.nextInt();
@@ -961,6 +1068,8 @@ Returns a random integer uniformly distributed in `[0, max)`.
 - **Returns:** `int64` — a random integer in `[0, max)`.
 
 ```hoo
+import hoo.math;
+
 func :int64 example() {
     var rng = new Random();
     var roll = rng.nextIntMax(6) + 1;
@@ -979,6 +1088,8 @@ Returns a random double uniformly distributed in `[0, 1)`.
 - **Returns:** `double` — a random value in `[0, 1)`.
 
 ```hoo
+import hoo.math;
+
 func :double example() {
     var rng = new Random();
     var value = rng.nextDouble();
@@ -997,6 +1108,8 @@ Returns `true` or `false` with equal probability.
 - **Returns:** `bool` — random boolean value.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var rng = new Random();
     if (rng.nextBool()) {
@@ -1020,6 +1133,8 @@ Fills the provided buffer with random bytes.
 - **Returns:** `int64` — the number of bytes successfully written.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var rng = new Random();
     var buf = new Buffer();
@@ -1038,6 +1153,8 @@ Releases a random generator handle.
 - **Returns:** Nothing.
 
 ```hoo
+import hoo.math;
+
 func :void example() {
     var rng = new Random(42);
     rng.release();
@@ -1049,6 +1166,8 @@ func :void example() {
 ## Usage Example
 
 ```hoo
+import hoo.math;
+
 func :int64 main() {
     var radius = 5.0;
     var area = Math.getPi() * Math.pow(radius, 2.0);

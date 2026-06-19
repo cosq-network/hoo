@@ -17,6 +17,7 @@ protected:
 
 TEST_F(CharacterLiteralTest, LowerCharacterLiteral) {
     const std::string source = R"(
+        import hoo.character;
         func :Character getChar() {
             return 'A';
         }
@@ -44,6 +45,7 @@ TEST_F(CharacterLiteralTest, LowerCharacterLiteral) {
 
 TEST_F(CharacterLiteralTest, LowerMultiByteCharacterLiteral) {
     const std::string source = R"(
+        import hoo.character;
         func :Character getEuro() {
             return '€';
         }

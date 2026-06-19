@@ -20,6 +20,7 @@ protected:
 
 TEST_F(HooCsvJitTest, EscapeComma) {
     const std::string source = R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var r = csv.escape(44);
@@ -33,6 +34,7 @@ TEST_F(HooCsvJitTest, EscapeComma) {
 
 TEST_F(HooCsvJitTest, EscapeQuote) {
     const std::string source = R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var r = csv.escape(34);
@@ -46,6 +48,7 @@ TEST_F(HooCsvJitTest, EscapeQuote) {
 
 TEST_F(HooCsvJitTest, EscapeNormal) {
     const std::string source = R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var r = csv.escape(97);
@@ -59,6 +62,7 @@ TEST_F(HooCsvJitTest, EscapeNormal) {
 
 TEST_F(HooCsvJitTest, ParseBasic) {
     const std::string source = R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var input = "a,b,c\n1,2,3";
@@ -73,6 +77,7 @@ TEST_F(HooCsvJitTest, ParseBasic) {
 
 TEST_F(HooCsvJitTest, ParseCustomOpts) {
     const std::string source = R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = csv_fromOpts(59, 39);
             var input = "a;b;c";
@@ -87,6 +92,7 @@ TEST_F(HooCsvJitTest, ParseCustomOpts) {
 
 TEST_F(HooCsvJitTest, GenerateBasic) {
     const std::string source = R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var data = [["a", "b"], ["1", "2"]];
@@ -109,6 +115,7 @@ TEST_F(HooCsvJitTest, ReadFile) {
 
     std::string hooc_path = tmp_path.generic_string();
     std::string source = std::string(R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var rows = csv.readFile(")") + hooc_path + R"(");
@@ -125,6 +132,7 @@ TEST_F(HooCsvJitTest, ReadFileNotFound) {
     const auto missing_path = tempCsvPath("hoo_nonexistent_csv_file");
     std::filesystem::remove(missing_path);
     const std::string source = std::string(R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var rows = csv.readFile(")") + missing_path.generic_string() + R"(");
@@ -141,6 +149,7 @@ TEST_F(HooCsvJitTest, WriteFile) {
     const auto tmp_path = tempCsvPath("hoo_csv_jit_write");
     const std::string hooc_path = tmp_path.generic_string();
     std::string source = std::string(R"(
+        import hoo.csv;
         func :int64 test() {
             var csv = new Csv();
             var data = [["x", "y"], ["10", "20"]];

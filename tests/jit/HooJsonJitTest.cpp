@@ -13,6 +13,8 @@ protected:
 
 TEST_F(HooJsonJitTest, SerializeHashMapFreeFunction) {
     const std::string source = R"(
+        import hoo.collections;
+        import hoo.json;
         func :int64 test() {
             var m: HashMap<int64, int64> = new HashMap<int64, int64>();
             m[1] = 42;
@@ -26,6 +28,8 @@ TEST_F(HooJsonJitTest, SerializeHashMapFreeFunction) {
 
 TEST_F(HooJsonJitTest, SerializeAnyArrayFreeFunction) {
     const std::string source = R"(
+        import hoo.collections;
+        import hoo.json;
         func :int64 test() {
             var values = [1, 2, 3]any;
             var json = json_serialize_anyarray(values);
@@ -38,6 +42,7 @@ TEST_F(HooJsonJitTest, SerializeAnyArrayFreeFunction) {
 
 TEST_F(HooJsonJitTest, MinifyFreeFunction) {
     const std::string source = R"(
+        import hoo.json;
         func :int64 test() {
             var json = json_minify("{ \"a\" : [ 1, true ] }");
             return json.equals("{\"a\":[1,true]}");
@@ -49,6 +54,8 @@ TEST_F(HooJsonJitTest, MinifyFreeFunction) {
 
 TEST_F(HooJsonJitTest, DeserializeHashMapFreeFunction) {
     const std::string source = R"(
+        import hoo.collections;
+        import hoo.json;
         func :int64 test() {
             var m = json_deserialize_hashmap("{\"1\":42,\"2\":[7]}");
             return m.count();
@@ -60,6 +67,8 @@ TEST_F(HooJsonJitTest, DeserializeHashMapFreeFunction) {
 
 TEST_F(HooJsonJitTest, DeserializeAnyArrayFreeFunction) {
     const std::string source = R"(
+        import hoo.collections;
+        import hoo.json;
         func :int64 test() {
             var values = json_deserialize_anyarray("[1,\"two\",true]");
             return values.length();
@@ -71,6 +80,7 @@ TEST_F(HooJsonJitTest, DeserializeAnyArrayFreeFunction) {
 
 TEST_F(HooJsonJitTest, BeautifyFreeFunction) {
     const std::string source = R"(
+        import hoo.json;
         func :int64 test() {
             var json = json_beautify("{\"a\":1}");
             return json.contains("\n  \"a\": 1");
@@ -82,6 +92,7 @@ TEST_F(HooJsonJitTest, BeautifyFreeFunction) {
 
 TEST_F(HooJsonJitTest, ClassStyleJsonApiIsNotSupported) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var obj = Json.parse("{\"key\":\"value\"}");
             return 0;

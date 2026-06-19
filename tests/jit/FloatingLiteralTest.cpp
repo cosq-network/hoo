@@ -16,6 +16,7 @@ protected:
 
 TEST_F(FloatingLiteralTest, LowerFloatingLiteral) {
     const std::string source = R"(
+        import hoo;
         func :double getPi() {
             return 3.14159;
         }
@@ -34,6 +35,7 @@ TEST_F(FloatingLiteralTest, LowerFloatingLiteral) {
 
 TEST_F(FloatingLiteralTest, FloatingArith) {
     const std::string source = R"(
+        import hoo;
         func :double add(a: double, b: double) {
             return a + b;
         }

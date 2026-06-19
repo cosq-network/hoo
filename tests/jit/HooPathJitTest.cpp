@@ -12,6 +12,7 @@ protected:
 
 TEST_F(HooPathJitTest, Dirname) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var d = Path.dirname("a/b/c.txt");
             return d.length();
@@ -23,6 +24,7 @@ TEST_F(HooPathJitTest, Dirname) {
 
 TEST_F(HooPathJitTest, Basename) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var b = Path.basename("a/b/c.txt");
             return b.length();
@@ -34,6 +36,7 @@ TEST_F(HooPathJitTest, Basename) {
 
 TEST_F(HooPathJitTest, Extension) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var e = Path.extension("a/b/c.txt");
             return e.length();
@@ -45,6 +48,7 @@ TEST_F(HooPathJitTest, Extension) {
 
 TEST_F(HooPathJitTest, Stem) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var s = Path.stem("a/b/c.txt");
             return s.length();
@@ -56,6 +60,7 @@ TEST_F(HooPathJitTest, Stem) {
 
 TEST_F(HooPathJitTest, Join) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var p = Path.join("a", "b");
             return p.length();
@@ -68,10 +73,12 @@ TEST_F(HooPathJitTest, Join) {
 TEST_F(HooPathJitTest, IsAbsolute) {
 #ifdef _WIN32
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() { return Path.isAbsolute("C:\\usr\\bin"); }
     )";
 #else
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() { return Path.isAbsolute("/usr/bin"); }
     )";
 #endif
@@ -81,6 +88,7 @@ TEST_F(HooPathJitTest, IsAbsolute) {
 
 TEST_F(HooPathJitTest, IsRelative) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() { return Path.isRelative("foo/bar"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -89,6 +97,7 @@ TEST_F(HooPathJitTest, IsRelative) {
 
 TEST_F(HooPathJitTest, HasExtension) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() { return Path.hasExtension("file.txt"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -97,6 +106,7 @@ TEST_F(HooPathJitTest, HasExtension) {
 
 TEST_F(HooPathJitTest, Normalize) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var p = Path.normalize("a/b/../c");
             return p.length();
@@ -108,6 +118,7 @@ TEST_F(HooPathJitTest, Normalize) {
 
 TEST_F(HooPathJitTest, Separator) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() { return Path.separator(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -120,6 +131,7 @@ TEST_F(HooPathJitTest, Separator) {
 
 TEST_F(HooPathJitTest, ListSeparator) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() { return Path.listSeparator(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -132,6 +144,7 @@ TEST_F(HooPathJitTest, ListSeparator) {
 
 TEST_F(HooPathJitTest, Relative) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var rel = Path.relative("/a/b/c/d", "/a/b");
             return rel.length();
@@ -143,6 +156,7 @@ TEST_F(HooPathJitTest, Relative) {
 
 TEST_F(HooPathJitTest, Absolute) {
     const std::string source = R"(
+        import hoo.path;
         func :int64 test() {
             var abs = Path.absolute(".");
             return abs.length();

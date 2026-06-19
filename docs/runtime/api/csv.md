@@ -1,5 +1,10 @@
 # CSV API Developer Reference (`Csv`)
 
+**Import Requirement:**
+```hoo
+import hoo.csv;
+```
+
 The `Csv` class provides CSV parsing, generation, and file I/O operations with
 Automatic Reference Counting (ARC). The class supports only one constructor
 (`new Csv()`). To create an instance with custom options, use the free function
@@ -33,6 +38,8 @@ Returns a null handle only if allocation fails.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var input = "name,age\nAlice,30\nBob,25";
@@ -76,6 +83,8 @@ Returns a null handle only if allocation fails.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = csv_fromOpts(59, 39);
     var input = "a;b;c";
@@ -114,6 +123,8 @@ Returns null if `csv` is null.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var csv2 = csv.retain();
@@ -151,6 +162,8 @@ Does nothing (no-op) if `csv` is null.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     csv.release();
@@ -187,6 +200,8 @@ Returns `0` if `csv` is null.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     println(csv.refcount()); // 1
@@ -234,6 +249,8 @@ input.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var input = "name,age\nAlice,30\nBob,25";
@@ -276,6 +293,8 @@ Returns `0` if `input` is nil or the CSV has fewer than two rows.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var input = "name,age\nAlice,30\nBob,25";
@@ -324,6 +343,8 @@ No throw path; returns an empty string on invalid input.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var data = [["a", "b"], ["1", "2"]];
@@ -367,6 +388,8 @@ Returns `0` if the file does not exist, cannot be read, or contains no data.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var rows = csv.readFile("data.csv");
@@ -411,6 +434,8 @@ two rows.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.readFileAsMaps("data.csv");
@@ -455,6 +480,8 @@ Returns `1` if `path` or `data` is nil, or the file cannot be written.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var data = [["name", "age"], ["Alice", "30"], ["Bob", "25"]];
@@ -497,6 +524,8 @@ No throw path.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var r1 = csv.escape(44);  // comma
@@ -543,6 +572,8 @@ Returns `0` if `data` or `column` is nil.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("val\n10\n\n30");
@@ -586,6 +617,8 @@ Throws `InvalidCastException` if a non-numeric value is encountered.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("val\n10\n20\n30");
@@ -630,6 +663,8 @@ Throws `InvalidCastException` if a non-numeric value is encountered.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("val\n10\n20\n30");
@@ -673,6 +708,8 @@ No throw path.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob");
@@ -716,6 +753,8 @@ No throw path.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob");
@@ -763,6 +802,8 @@ Returns `0` if `data` or `columns` is nil, or if `columns` is empty.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("a,b,c\n1,2,3\n4,5,6");
@@ -820,6 +861,8 @@ never throw.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("name,age\nAlice,30\nBob,25\nCharlie,30");
@@ -870,6 +913,8 @@ Returns `0` if `data` or `column` is nil, or if `data` is empty.
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("name\nCharlie\nAlice\nBob");
@@ -929,6 +974,8 @@ Throws `InvalidCastException` if a non-numeric value is encountered (for
 ### Complete Example
 
 ```hoo
+import hoo.csv;
+
 func :int64 main() {
     var csv = new Csv();
     var records = csv.parseAsMaps("val\n10\n20\n30\n40");

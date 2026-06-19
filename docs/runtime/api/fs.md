@@ -1,5 +1,10 @@
 # Fs — Filesystem Operations API Reference
 
+**Import Requirement:**
+```hoo
+import hoo.io;
+```
+
 The `Fs` module provides filesystem inspection, text/binary I/O, directory
 management, and system path operations. All calls use namespace-prefixed
 free-function dispatch resolved at compile time via the codegen's `Fs` → `fs_`
@@ -37,6 +42,8 @@ Returns `0` if `path` is nil.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_exists("/tmp");
     println(ok); // 1
@@ -75,6 +82,8 @@ Returns `0` if `path` is nil.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_isFile("/tmp/data.txt");
     println(ok);
@@ -113,6 +122,8 @@ Returns `0` if `path` is nil.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_isDir("/tmp");
     println(ok); // 1
@@ -152,6 +163,8 @@ Returns `-1` if `path` is nil or the file cannot be accessed.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var sz = fs_size("/tmp/data.txt");
     if sz >= 0 {
@@ -193,6 +206,8 @@ Returns `-1` if `path` is nil or the path cannot be accessed.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ts = fs_lastModified("/tmp");
     if ts >= 0 {
@@ -235,6 +250,8 @@ contains no data.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var content = fs_readText("/tmp/hello.txt");
     if content != 0 {
@@ -279,6 +296,8 @@ Returns `0` if `path` is nil or the file cannot be written.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_writeText("/tmp/hello.txt", "Hello, world!");
     println(ok); // 1
@@ -321,6 +340,8 @@ Returns `0` if `path` is nil or the file cannot be written.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_appendText("/tmp/log.txt", "new entry\n");
     println(ok); // 1
@@ -361,6 +382,8 @@ contains no data.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var buf = fs_readBytes("/tmp/data.bin");
     if buf != 0 {
@@ -405,6 +428,8 @@ Returns `0` if `path` is nil or the file cannot be written.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var buf = new Buffer();
     buf.append("binary data");
@@ -446,6 +471,8 @@ Returns `0` if `path` is nil or the file cannot be deleted.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_delete("/tmp/temp.txt");
     println(ok);
@@ -487,6 +514,8 @@ Returns `0` if either path is nil or the operation fails.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_rename("/tmp/old.txt", "/tmp/new.txt");
     println(ok);
@@ -529,6 +558,8 @@ Returns `0` if either path is nil or the copy fails.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_copy("/tmp/source.txt", "/tmp/dest.txt");
     println(ok);
@@ -568,6 +599,8 @@ cannot be created.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_mkdir("/tmp/newdir");
     println(ok); // 1
@@ -607,6 +640,8 @@ Returns `0` if `path` is nil or the directory tree cannot be created.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_mkdirs("/tmp/a/b/c");
     println(ok); // 1
@@ -646,6 +681,8 @@ cannot be removed.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var ok = fs_rmdir("/tmp/emptydir");
     println(ok);
@@ -687,6 +724,8 @@ cannot be read.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var entries = fs_listDir("/tmp");
     if entries != 0 {
@@ -726,6 +765,8 @@ Returns `0` if the temporary directory cannot be determined.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var tmp = fs_tempDir();
     if tmp != 0 {
@@ -767,6 +808,8 @@ Returns `0` if `prefix` is nil or the file cannot be created.
 ### Complete Example
 
 ```hoo
+import hoo.io;
+
 func :int64 main() {
     var tmp = fs_createTempFile("hoo_");
     if tmp != 0 {

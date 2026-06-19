@@ -12,6 +12,7 @@ protected:
 
 TEST_F(HooProcessJitTest, SelfPid) {
     const std::string source = R"(
+        import hoo.process;
         func :int64 test() { return Process.selfPid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -21,6 +22,7 @@ TEST_F(HooProcessJitTest, SelfPid) {
 TEST_F(HooProcessJitTest, Capture) {
 #ifdef _WIN32
     const std::string source = R"(
+        import hoo.process;
         func :int64 test() {
             var out = Process.capture("cmd.exe /c echo hello");
             return out.length();
@@ -28,6 +30,7 @@ TEST_F(HooProcessJitTest, Capture) {
     )";
 #else
     const std::string source = R"(
+        import hoo.process;
         func :int64 test() {
             var out = Process.capture("echo hello");
             return out.length();
@@ -42,6 +45,7 @@ TEST_F(HooProcessJitTest, Capture) {
 TEST_F(HooProcessJitTest, KillSignalZero) {
     // Signal 0 checks if the process exists without actually sending a signal
     const std::string source = R"(
+        import hoo.process;
         func :int64 test() {
             var pid = Process.selfPid();
             return Process.kill(pid, 0);

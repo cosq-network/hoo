@@ -15,6 +15,7 @@ protected:
 
 TEST_F(HooBufferJitTest, NewBuffer) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() { return new Buffer(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -27,6 +28,7 @@ TEST_F(HooBufferJitTest, NewBuffer) {
 
 TEST_F(HooBufferJitTest, BufferLength) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             return b.length();
@@ -39,6 +41,7 @@ TEST_F(HooBufferJitTest, BufferLength) {
 
 TEST_F(HooBufferJitTest, BufferCapacity) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             return b.capacity();
@@ -51,6 +54,7 @@ TEST_F(HooBufferJitTest, BufferCapacity) {
 
 TEST_F(HooBufferJitTest, BufferFromBytesFreeFunction) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = buffer_fromBytes("Hello", 5);
             if (b.length() != 5) { return 0; }
@@ -63,6 +67,7 @@ TEST_F(HooBufferJitTest, BufferFromBytesFreeFunction) {
 
 TEST_F(HooBufferJitTest, BufferCopy) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = buffer_fromBytes("abc", 3);
             return b.copy();
@@ -78,6 +83,7 @@ TEST_F(HooBufferJitTest, BufferCopy) {
 
 TEST_F(HooBufferJitTest, BufferClear) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             b.clear();
@@ -90,6 +96,7 @@ TEST_F(HooBufferJitTest, BufferClear) {
 
 TEST_F(HooBufferJitTest, BufferByteAtIndex) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             return b.byteAt(0);
@@ -101,6 +108,7 @@ TEST_F(HooBufferJitTest, BufferByteAtIndex) {
 
 TEST_F(HooBufferJitTest, BufferSetByte) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = buffer_fromBytes("abc", 3);
             var old = b.setByte(0, 65);
@@ -114,6 +122,7 @@ TEST_F(HooBufferJitTest, BufferSetByte) {
 
 TEST_F(HooBufferJitTest, ConstructorWithCapacityIsNotSupported) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer(64);
             return b.length();
@@ -124,6 +133,7 @@ TEST_F(HooBufferJitTest, ConstructorWithCapacityIsNotSupported) {
 
 TEST_F(HooBufferJitTest, StaticFromBytesIsNotSupported) {
     const std::string source = R"(
+        import hoo.buffer;
         func :int64 test() {
             var b = Buffer.fromBytes("abc", 3);
             return b.length();

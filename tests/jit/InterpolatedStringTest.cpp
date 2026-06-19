@@ -16,6 +16,7 @@ protected:
 
 TEST_F(InterpolatedStringTest, IntInterpolation) {
     const std::string source = R"(
+        import hoo;
         func :string test() {
             return "Value: ${42}";
         }
@@ -34,6 +35,7 @@ TEST_F(InterpolatedStringTest, IntInterpolation) {
 
 TEST_F(InterpolatedStringTest, SimpleInterpolation) {
     const std::string source = R"(
+        import hoo;
         func :string test() {
             var name = "World";
             return "Hello, ${name}!";
@@ -53,6 +55,7 @@ TEST_F(InterpolatedStringTest, SimpleInterpolation) {
 
 TEST_F(InterpolatedStringTest, MultipleInterpolation) {
     const std::string source = R"(
+        import hoo;
         func :string test() {
             var a = "One";
             var b = "Two";
@@ -73,6 +76,7 @@ TEST_F(InterpolatedStringTest, MultipleInterpolation) {
 
 TEST_F(InterpolatedStringTest, CharInterpolation) {
     const std::string source = R"(
+        import hoo;
         func :string test() {
             var c = 'X';
             return "Char: ${c}";
@@ -92,6 +96,7 @@ TEST_F(InterpolatedStringTest, CharInterpolation) {
 
 TEST_F(InterpolatedStringTest, VariableInterpolation) {
     const std::string source = R"(
+        import hoo;
         func :string test() {
             var x = 123;
             return "Value: ${x}";

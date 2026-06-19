@@ -1,5 +1,10 @@
 # Thread — Concurrency
 
+**Import Requirement:**
+```hoo
+import hoo.thread;
+```
+
 The `Thread` class provides static methods for thread management and mutex synchronization.
 
 ## Thread Methods
@@ -22,6 +27,8 @@ Destroys the mutex and frees its resources. Returns 0 on success, -1 on error.
 ## Example
 
 ```hoo
+import hoo.thread;
+
 let mtx = Thread.mutexCreate()
 
 func increment(counter: ptr) :int64 {

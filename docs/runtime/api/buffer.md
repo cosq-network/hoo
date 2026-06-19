@@ -1,5 +1,10 @@
 # Buffer API Developer Reference
 
+**Import Requirement:**
+```hoo
+import hoo.buffer;
+```
+
 The `Buffer` runtime API provides a managed, mutable byte array for raw binary
 data. Buffers are ARC-managed runtime objects with type ID `113` and dynamic
 capacity growth.
@@ -41,6 +46,8 @@ Returns a null handle only if allocation fails.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = new Buffer();
     println("length: " + buf.length());
@@ -83,6 +90,8 @@ Negative lengths or oversized lengths return null.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = buffer_fromBytes("Hello", 5);
     println(buf.length()); // 5
@@ -118,6 +127,8 @@ Returns `0` for a null buffer handle.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = buffer_fromBytes("abc", 3);
     return buf.length();
@@ -152,6 +163,8 @@ Returns `0` for a null buffer handle.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = new Buffer();
     return buf.capacity();
@@ -186,6 +199,8 @@ Returns null if the source buffer is null or allocation fails.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var original = buffer_fromBytes("abc", 3);
     var copy = original.copy();
@@ -224,6 +239,8 @@ Does not throw for out-of-bounds indexes.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = buffer_fromBytes("ABC", 3);
     return buf.byteAt(1); // 66
@@ -263,6 +280,8 @@ Does not throw for out-of-bounds indexes.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = buffer_fromBytes("abc", 3);
     buf.setByte(0, 65); // 'A'
@@ -306,6 +325,8 @@ the requested length is too large, or allocation fails. Returns null only when
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = new Buffer();
     buf = buf.append("ab", 2);
@@ -347,6 +368,8 @@ null only when `buf` is null.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var left = buffer_fromBytes("Hello", 5);
     var right = buffer_fromBytes("!", 1);
@@ -384,6 +407,8 @@ Does not throw.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = buffer_fromBytes("data", 4);
     buf.clear();
@@ -426,6 +451,8 @@ fails.
 ### Complete Example
 
 ```hoo
+import hoo.buffer;
+
 func :int64 main() {
     var buf = buffer_fromBytes("abcdef", 6);
     var mid = buf.slice(2, 5);

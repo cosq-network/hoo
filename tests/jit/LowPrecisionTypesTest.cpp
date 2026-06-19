@@ -27,6 +27,7 @@ protected:
 
 TEST_F(LowPrecisionTypesTest, BitLiteralVariableAndLogicalOperations) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a: bit = 1b;
             var b: bit = 0b;
@@ -43,6 +44,7 @@ TEST_F(LowPrecisionTypesTest, BitLiteralVariableAndLogicalOperations) {
 
 TEST_F(LowPrecisionTypesTest, BitParameterReturnAndArrayAccess) {
     const std::string code = R"(
+        import hoo;
         func :bit id(x: bit) {
             return x;
         }
@@ -59,6 +61,7 @@ TEST_F(LowPrecisionTypesTest, BitParameterReturnAndArrayAccess) {
 
 TEST_F(LowPrecisionTypesTest, BitReturnSymbolAndInferredLocals) {
     const std::string code = R"(
+        import hoo;
         func :bit one() {
             var inferred = 1b;
             return inferred;
@@ -77,6 +80,7 @@ TEST_F(LowPrecisionTypesTest, BitReturnSymbolAndInferredLocals) {
 
 TEST_F(LowPrecisionTypesTest, BitEqualityAndInequality) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var one: bit = 1b;
             var zero: bit = 0b;
@@ -93,6 +97,7 @@ TEST_F(LowPrecisionTypesTest, BitEqualityAndInequality) {
 
 TEST_F(LowPrecisionTypesTest, F8LiteralReturnUsesPromotedDoubleRegisterValue) {
     const std::string code = R"(
+        import hoo;
         func :f8 test() {
             return 1.5f8;
         }
@@ -104,6 +109,7 @@ TEST_F(LowPrecisionTypesTest, F8LiteralReturnUsesPromotedDoubleRegisterValue) {
 
 TEST_F(LowPrecisionTypesTest, F8ArithmeticAndComparison) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a: f8 = 1.5f8;
             var b: f8 = 2.25f8;
@@ -121,6 +127,7 @@ TEST_F(LowPrecisionTypesTest, F8ArithmeticAndComparison) {
 
 TEST_F(LowPrecisionTypesTest, F8DivisionAndLessEqualsComparison) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var dividend: f8 = 7.5f8;
             var divisor: f8 = 2.5f8;
@@ -138,6 +145,7 @@ TEST_F(LowPrecisionTypesTest, F8DivisionAndLessEqualsComparison) {
 
 TEST_F(LowPrecisionTypesTest, F8PromotesInMixedDoubleExpression) {
     const std::string code = R"(
+        import hoo;
         func :double test() {
             var small: f8 = 1.25f8;
             var wide: double = 2.5;
@@ -151,6 +159,7 @@ TEST_F(LowPrecisionTypesTest, F8PromotesInMixedDoubleExpression) {
 
 TEST_F(LowPrecisionTypesTest, F8ParameterReturnAndArrayAccess) {
     const std::string code = R"(
+        import hoo;
         func :f8 id(x: f8) {
             return x;
         }

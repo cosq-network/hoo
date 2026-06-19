@@ -1,5 +1,10 @@
 # String API Reference (`String`)
 
+**Import Requirement:**
+```hoo
+import hoo;
+```
+
 The `String` type provides robust support for immutable, UTF-8 encoded strings.
 
 ## 1. Creation
@@ -83,6 +88,8 @@ Parses the string as a double-precision float. Returns 0.0 on invalid input or n
 ## Usage Example
 
 ```hoo
+import hoo;
+
 func :int64 main() {
     var greeting = "Hello, ";
     var name = "Hoo Developer";

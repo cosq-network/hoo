@@ -1,5 +1,10 @@
 # DateTime API Reference (`DateTime`)
 
+**Import Requirement:**
+```hoo
+import hoo.datetime;
+```
+
 The `DateTime` class (type ID 119) wraps a Unix epoch timestamp (milliseconds) as
 an ARC-managed heap object. Instances carry a single `timestamp: int64` field,
 making them directly compatible with the `serializable` modifier.
@@ -32,6 +37,8 @@ var dt = datetime_now();
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_now();
     println(dt.iso8601());
@@ -57,6 +64,8 @@ var secs = datetime_nowSeconds();
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var secs = datetime_nowSeconds();
     println("Epoch seconds: ".concat(secs.toString()));
@@ -83,6 +92,8 @@ var precise = datetime_nowPrecise();
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var precise = datetime_nowPrecise();
     println(precise.toString());
@@ -109,6 +120,8 @@ var dt = datetime_new(1704067200000);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var epoch = datetime_new(0);
     println(epoch.iso8601()); // "1970-01-01T00:00:00.000Z"
@@ -151,6 +164,8 @@ string cannot be parsed.
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_parse("2024-06-15 14:30:00", "%Y-%m-%d %H:%M:%S");
     if (dt) {
@@ -188,6 +203,8 @@ parse failure.
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_fromIso8601("2024-12-25T00:00:00Z");
     if (dt) {
@@ -219,6 +236,8 @@ var ts = dt.getTimestamp();
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_now();
     var ts = dt.getTimestamp();
@@ -250,6 +269,8 @@ var str = datetime_format(dt, "%Y-%m-%d");
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_now();
     var formatted = dt.format("%Y-%m-%d %H:%M:%S");
@@ -278,6 +299,8 @@ e.g. `"2024-01-15T10:30:00.000Z"`.
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_now();
     var iso = dt.iso8601();
@@ -311,6 +334,8 @@ var result = datetime_addDays(dt, 7);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_parse("2024-01-01", "%Y-%m-%d");
     var later = dt.addDays(7);
@@ -339,6 +364,8 @@ var result = datetime_addHours(dt, 48);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_parse("2024-01-01", "%Y-%m-%d");
     var later = dt.addHours(48);
@@ -367,6 +394,8 @@ var result = datetime_addMinutes(dt, 90);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_parse("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%Sz");
     var later = dt.addMinutes(90);
@@ -395,6 +424,8 @@ var result = datetime_addSeconds(dt, 3600);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_parse("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%Sz");
     var later = dt.addSeconds(3600);
@@ -423,6 +454,8 @@ var result = datetime_addMilliseconds(dt, 5000);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var dt = datetime_parse("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%Sz");
     var later = dt.addMilliseconds(5000);
@@ -454,6 +487,8 @@ is positive if `a > b`, negative if `a < b`, zero if equal.
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var start = datetime_parse("2024-01-01", "%Y-%m-%d");
     var end = datetime_parse("2024-01-10", "%Y-%m-%d");
@@ -483,6 +518,8 @@ var hours = datetime_diffHours(a, b);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var start = datetime_parse("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
     var end = datetime_parse("2024-01-02 12:00:00", "%Y-%m-%d %H:%M:%S");
@@ -513,6 +550,8 @@ the two instances. Positive if `a > b`, negative if `a < b`.
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var start = datetime_parse("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
     var end = datetime_parse("2024-01-01 00:01:30", "%Y-%m-%d %H:%M:%S");
@@ -544,6 +583,8 @@ var cmp = datetime_compare(a, b);
 
 **Example:**
 ```hoo
+import hoo.datetime;
+
 func :void example() {
     var early = datetime_parse("2024-01-01", "%Y-%m-%d");
     var late = datetime_parse("2024-06-15", "%Y-%m-%d");
@@ -560,6 +601,8 @@ func :void example() {
 ## 7. Complete Example Program
 
 ```hoo
+import hoo.datetime;
+
 func :void main() {
     // Current time
     var now = datetime_now();

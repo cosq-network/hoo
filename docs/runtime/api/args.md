@@ -1,5 +1,10 @@
 # Args API Developer Reference
 
+**Import Requirement:**
+```hoo
+import hoo.args;
+```
+
 The `Args` runtime API provides an instance-based interface for command-line
 arguments. Create an instance with `new Args()`.
 
@@ -45,6 +50,8 @@ Returns a null handle if the runtime has no command-line argument data.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     return args.count();
@@ -80,6 +87,8 @@ Does not throw. Returns `0` when no argument data is available.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     var count = args.count();
@@ -118,6 +127,8 @@ when the result will be used as a string.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     if args.count() == 0 {
@@ -160,6 +171,8 @@ Does not throw for missing names or unavailable argument data.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     if args.has("verbose") == 1 {
@@ -203,6 +216,8 @@ Does not throw for missing names.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     var output = args.value("output");
@@ -239,6 +254,8 @@ Does not throw. Returns an empty string when no program name is available.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     var name = args.programName();
@@ -287,6 +304,8 @@ Does not throw. Invalid or nil strings are treated as empty strings.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addString("output", "-o", "--output", "Output file", "out.txt");
@@ -338,6 +357,8 @@ Does not throw on parse conversion failure; the default value is used.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addInt("count", "-c", "--count", "Iteration count", 1);
@@ -386,6 +407,8 @@ Does not throw.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addFlag("verbose", "-v", "--verbose", "Enable verbose logging");
@@ -440,6 +463,8 @@ Does not throw on parse conversion failure; the default value is used.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addFloat("threshold", "-t", "--threshold", "Threshold", 0.5);
@@ -484,6 +509,8 @@ Does not throw. When the positional argument is missing at the command line,
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addPositional("input", "Input file path");
@@ -525,6 +552,8 @@ Does not throw for missing or malformed user input.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addString("output", "-o", "--output", "Output file", "out.txt");
@@ -568,6 +597,8 @@ Does not throw for unknown names.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addString("name", "-n", "--name", "Display name", "world");
@@ -609,6 +640,8 @@ Does not throw for unknown names or failed integer conversion.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addInt("port", "-p", "--port", "Server port", 8080);
@@ -649,6 +682,8 @@ Does not throw for unknown names.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addFlag("dryRun", "-n", "--dry-run", "Do not write changes");
@@ -688,6 +723,8 @@ Does not throw for unknown names or failed floating-point conversion.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addFloat("timeout", "", "--timeout", "Timeout seconds", 30.0);
@@ -728,6 +765,8 @@ Does not throw. Returns help text for the definitions currently attached to the
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addString("output", "-o", "--output", "Output file", "out.txt");
@@ -767,6 +806,8 @@ Does not throw.
 ### Complete Example
 
 ```hoo
+import hoo.args;
+
 func :int64 main() {
     var args = new Args();
     args.addString("output", "-o", "--output", "Output file", "out.txt");

@@ -27,6 +27,7 @@ protected:
 
 TEST_F(HooTensorJitTest, TensorLiteralIndexing) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var values = [10, 20, 30]t;
             return values[0] + values[2];
@@ -39,6 +40,7 @@ TEST_F(HooTensorJitTest, TensorLiteralIndexing) {
 
 TEST_F(HooTensorJitTest, DeclaredTensorAllocatesZeroFilledStorage) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var values: tensor<int64>[3];
             return values[2];
@@ -51,6 +53,7 @@ TEST_F(HooTensorJitTest, DeclaredTensorAllocatesZeroFilledStorage) {
 
 TEST_F(HooTensorJitTest, TensorF64LiteralAndIndexing) {
     const std::string code = R"(
+        import hoo;
         func :double test() {
             var values: tensor<f64>[2] = [1.25, 2.5]t;
             return values[0] + values[1];
@@ -63,6 +66,7 @@ TEST_F(HooTensorJitTest, TensorF64LiteralAndIndexing) {
 
 TEST_F(HooTensorJitTest, TensorParameterAndReturn) {
     const std::string code = R"(
+        import hoo;
         func :tensor<int64>[2] id(x: tensor<int64>[2]) {
             return x;
         }
@@ -80,6 +84,7 @@ TEST_F(HooTensorJitTest, TensorParameterAndReturn) {
 
 TEST_F(HooTensorJitTest, TensorElementwiseAddAndMultiply) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [1, 2, 3]t;
             var b = [4, 5, 6]t;
@@ -95,6 +100,7 @@ TEST_F(HooTensorJitTest, TensorElementwiseAddAndMultiply) {
 
 TEST_F(HooTensorJitTest, TensorElementwiseSubAndDiv) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [10, 20, 30]t;
             var b = [1, 4, 6]t;
@@ -110,6 +116,7 @@ TEST_F(HooTensorJitTest, TensorElementwiseSubAndDiv) {
 
 TEST_F(HooTensorJitTest, TensorComparisonAndBitLogic) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [1, 5, 3]t;
             var b = [2, 4, 3]t;
@@ -127,6 +134,7 @@ TEST_F(HooTensorJitTest, TensorComparisonAndBitLogic) {
 
 TEST_F(HooTensorJitTest, TensorMatrixMultiply) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [[1, 2], [3, 4]]t;
             var b = [[5, 6], [7, 8]]t;
@@ -141,6 +149,7 @@ TEST_F(HooTensorJitTest, TensorMatrixMultiply) {
 
 TEST_F(HooTensorJitTest, TensorMatMulNonSquare) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [[1, 2, 3], [4, 5, 6]]t;
             var b = [[7, 8], [9, 10], [11, 12]]t;
@@ -157,6 +166,7 @@ TEST_F(HooTensorJitTest, TensorMatMulNonSquare) {
 
 TEST_F(HooTensorJitTest, TensorAllComparisonOps) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [1, 2, 3]t;
             var b = [1, 3, 2]t;
@@ -183,6 +193,7 @@ TEST_F(HooTensorJitTest, TensorAllComparisonOps) {
 
 TEST_F(HooTensorJitTest, TensorBitLiteralAndAnd) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [1, 0, 1]t;
             var b = [1, 1, 0]t;
@@ -197,6 +208,7 @@ TEST_F(HooTensorJitTest, TensorBitLiteralAndAnd) {
 
 TEST_F(HooTensorJitTest, TensorOrAndNot) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [1, 0]t;
             var b = [0, 0]t;
@@ -214,6 +226,7 @@ TEST_F(HooTensorJitTest, TensorOrAndNot) {
 
 TEST_F(HooTensorJitTest, Tensor2DLinearIndexing) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var m = [[1, 2], [3, 4]]t;
             return m[0] + m[3];
@@ -226,6 +239,7 @@ TEST_F(HooTensorJitTest, Tensor2DLinearIndexing) {
 
 TEST_F(HooTensorJitTest, TensorDeclaredWithBitElement) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var mask: tensor<bit>[4] = [1, 0, 1, 0]t;
             return mask[0] + mask[1] + mask[2] + mask[3];
@@ -238,6 +252,7 @@ TEST_F(HooTensorJitTest, TensorDeclaredWithBitElement) {
 
 TEST_F(HooTensorJitTest, TensorF64ElementwiseArithmetic) {
     const std::string code = R"(
+        import hoo;
         func :double test() {
             var a: tensor<f64>[3] = [1.5, 3.0, 4.0]t;
             var b: tensor<f64>[3] = [0.5, 1.5, 2.0]t;
@@ -254,6 +269,7 @@ TEST_F(HooTensorJitTest, TensorF64ElementwiseArithmetic) {
 
 TEST_F(HooTensorJitTest, TensorF64Matmul) {
     const std::string code = R"(
+        import hoo;
         func :double test() {
             var a: tensor<f64>[2, 2] = [[1.0, 2.0], [3.0, 4.0]]t;
             var b: tensor<f64>[2, 2] = [[5.0, 6.0], [7.0, 8.0]]t;
@@ -269,6 +285,7 @@ TEST_F(HooTensorJitTest, TensorF64Matmul) {
 
 TEST_F(HooTensorJitTest, MultipleTensorOperationsChained) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [2, 4, 6]t;
             var b = [1, 2, 3]t;
@@ -288,6 +305,7 @@ TEST_F(HooTensorJitTest, MultipleTensorOperationsChained) {
 
 TEST_F(HooTensorJitTest, TensorWithNegativeValues) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var a = [-5, 3, -2]t;
             var b = [2, -1, 4]t;
@@ -303,6 +321,7 @@ TEST_F(HooTensorJitTest, TensorWithNegativeValues) {
 
 TEST_F(HooTensorJitTest, TensorReturnTypePassThrough) {
     const std::string code = R"(
+        import hoo;
         func :tensor<int64>[3] doubleIt(x: tensor<int64>[3]) {
             return x + x;
         }
@@ -320,6 +339,7 @@ TEST_F(HooTensorJitTest, TensorReturnTypePassThrough) {
 
 TEST_F(HooTensorJitTest, Tensor3DLiteralAndLinearIndexing) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var t3 = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]t;
             return t3[0] + t3[7];
@@ -332,6 +352,7 @@ TEST_F(HooTensorJitTest, Tensor3DLiteralAndLinearIndexing) {
 
 TEST_F(HooTensorJitTest, Tensor3DDeclaredType) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var t3: tensor<int64>[2, 2, 2] = [[[1, 2], [3, 4]], [[5, 6], [7, 8]]]t;
             return t3[3] + t3[5];
@@ -344,6 +365,7 @@ TEST_F(HooTensorJitTest, Tensor3DDeclaredType) {
 
 TEST_F(HooTensorJitTest, Tensor3DZeroFilled) {
     const std::string code = R"(
+        import hoo;
         func :int64 test() {
             var t3: tensor<int64>[2, 3, 4];
             return t3[0] + t3[11] + t3[23];

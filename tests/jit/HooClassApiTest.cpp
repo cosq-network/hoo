@@ -13,6 +13,7 @@ protected:
 
 TEST_F(HooClassApiTest, StringLengthMethod) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var s = "hello";
             return s.length();
@@ -24,6 +25,7 @@ TEST_F(HooClassApiTest, StringLengthMethod) {
 
 TEST_F(HooClassApiTest, StringConcatMethod) {
     const std::string source = R"(
+        import hoo;
         func :string test() {
             var a = "hello ";
             var b = "world";
@@ -40,6 +42,7 @@ TEST_F(HooClassApiTest, StringConcatMethod) {
 
 TEST_F(HooClassApiTest, StringIsEmptyMethod) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var s = "";
             return s.isEmpty();
@@ -51,6 +54,7 @@ TEST_F(HooClassApiTest, StringIsEmptyMethod) {
 
 TEST_F(HooClassApiTest, FreeFuncDateTimeNow) {
     const std::string source = R"(
+        import hoo.datetime;
         func :int64 test() {
             var dt = datetime_now();
             return dt.getTimestamp();
@@ -64,6 +68,7 @@ TEST_F(HooClassApiTest, FreeFuncDateTimeNow) {
 
 TEST_F(HooClassApiTest, StaticMathAbs) {
     const std::string source = R"(
+        import hoo.math;
         func :int64 test() {
             return Math.abs(-42);
         }
@@ -74,6 +79,7 @@ TEST_F(HooClassApiTest, StaticMathAbs) {
 
 TEST_F(HooClassApiTest, StaticMathGetPi) {
     const std::string source = R"(
+        import hoo.math;
         func :int64 test() {
             return Math.getPi();
         }
@@ -85,6 +91,7 @@ TEST_F(HooClassApiTest, StaticMathGetPi) {
 
 TEST_F(HooClassApiTest, FreeFuncDateTimeNowSeconds) {
     const std::string source = R"(
+        import hoo.datetime;
         func :int64 test() {
             return datetime_nowSeconds();
         }
@@ -96,6 +103,7 @@ TEST_F(HooClassApiTest, FreeFuncDateTimeNowSeconds) {
 
 TEST_F(HooClassApiTest, StaticSystemHostname) {
     const std::string source = R"(
+        import hoo.system;
         func :string test() {
             return System.hostname();
         }
@@ -110,6 +118,7 @@ TEST_F(HooClassApiTest, StaticSystemHostname) {
 
 TEST_F(HooClassApiTest, StaticFsExists) {
     const std::string source = R"(
+        import hoo.io;
         func :int64 test() {
             return Fs.exists(".");
         }
@@ -120,6 +129,7 @@ TEST_F(HooClassApiTest, StaticFsExists) {
 
 TEST_F(HooClassApiTest, StaticRegexCompile) {
     const std::string source = R"(
+        import hoo.regex;
         func :int64 test() {
             return Regex.compile("[a-z]+");
         }

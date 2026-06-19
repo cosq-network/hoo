@@ -321,6 +321,8 @@ TEST_F(HVMCodeGeneratorTest, SerializableClassSymbolsHaveCorrectAttributes) {
 
 TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     std::string code = R"(
+        import hoo.io;
+        import hoo.system;
         func:int64 test() {
             var x = System.hostname();
             var y = Fs.readText("test.txt");

@@ -12,6 +12,7 @@ protected:
 
 TEST_F(HooNetJitTest, UrlNew) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var url = new URL("https://example.com/path?q=1#frag");
             return 1;
@@ -23,6 +24,7 @@ TEST_F(HooNetJitTest, UrlNew) {
 
 TEST_F(HooNetJitTest, UrlScheme) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var url = new URL("https://example.com");
             var s = url.getScheme();
@@ -37,6 +39,7 @@ TEST_F(HooNetJitTest, UrlScheme) {
 
 TEST_F(HooNetJitTest, UrlPort) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var url = new URL("https://example.com:8080/path");
             var p = url.getPort();
@@ -50,6 +53,7 @@ TEST_F(HooNetJitTest, UrlPort) {
 
 TEST_F(HooNetJitTest, UrlNoPort) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var url = new URL("https://example.com/path");
             var p = url.getPort();
@@ -64,6 +68,7 @@ TEST_F(HooNetJitTest, UrlNoPort) {
 
 TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var client = new HttpClient();
             client.setTimeout(10000);
@@ -80,6 +85,7 @@ TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
 
 TEST_F(HooNetJitTest, UrlJustRelease) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var url = new URL("x");
             url.release();
@@ -92,6 +98,7 @@ TEST_F(HooNetJitTest, UrlJustRelease) {
 
 TEST_F(HooNetJitTest, ProcessThroughRedirectWorks) {
     const std::string source = R"(
+        import hoo.process;
         func :int64 test() { return Process.selfPid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -100,6 +107,7 @@ TEST_F(HooNetJitTest, ProcessThroughRedirectWorks) {
 
 TEST_F(HooNetJitTest, UrlNoString) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             return 42;
         }
@@ -110,6 +118,7 @@ TEST_F(HooNetJitTest, UrlNoString) {
 
 TEST_F(HooNetJitTest, UrlNewWithString) {
     const std::string source = R"(
+        import hoo.net;
         func :int64 test() {
             var url = new URL("x");
             return 1;

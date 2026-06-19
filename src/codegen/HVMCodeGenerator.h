@@ -11,6 +11,7 @@
 #include "hvm/HOModule.h"
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <stack>
 #include <string>
 
@@ -47,6 +48,12 @@ private:
     std::vector<hvm::HVMInstruction> instructions_;
     uint32_t currentByteOffset_ = 0;
     std::vector<std::string> errors_;
+    std::unordered_set<std::string> importedModules_;
+    std::unordered_map<std::string, std::string> importedSymbols_;
+
+    bool isModuleImported(const std::string& moduleName) const;
+    bool isSymbolImported(const std::string& name, const std::string& requiredModule) const;
+    std::string getRequiredModule(const std::string& name) const;
 
     // Register Management (r9-r20 available for temps)
     bool usedRegs_[32];

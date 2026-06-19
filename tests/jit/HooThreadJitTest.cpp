@@ -13,6 +13,7 @@ protected:
 
 TEST_F(HooThreadJitTest, SelfId) {
     const std::string source = R"(
+        import hoo.thread;
         func:int64 test() {
             return Thread.self();
         }
@@ -23,6 +24,7 @@ TEST_F(HooThreadJitTest, SelfId) {
 
 TEST_F(HooThreadJitTest, MutexCreateDestroy) {
     const std::string source = R"(
+        import hoo.thread;
         func:int64 test() {
             var m = Thread.mutexCreate();
             var ok = Thread.mutexDestroy(m);
@@ -35,6 +37,7 @@ TEST_F(HooThreadJitTest, MutexCreateDestroy) {
 
 TEST_F(HooThreadJitTest, MutexLockUnlock) {
     const std::string source = R"(
+        import hoo.thread;
         func:int64 test() {
             var m = Thread.mutexCreate();
             var l = Thread.mutexLock(m);
@@ -49,6 +52,7 @@ TEST_F(HooThreadJitTest, MutexLockUnlock) {
 
 TEST_F(HooThreadJitTest, MutexNullLockUnlock) {
     const std::string source = R"(
+        import hoo.thread;
         func:int64 test() {
             return Thread.mutexLock(null) + Thread.mutexUnlock(null) + Thread.mutexDestroy(null);
         }

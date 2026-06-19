@@ -8,6 +8,13 @@ The hoo runtime provides modules that bridge the high-level language with the
 host system, offering efficient implementations of common data structures,
 mathematical operations, network communication, and system interactions.
 
+## Import Requirements
+
+To prevent namespace pollution and avoid symbol ambiguity, hoo enforces compile-time verification of import statements when using standard library APIs:
+
+- **Core Module**: Elements belonging to the core namespace (such as `String`, `Array`, `Map`, `Exception`, `Console`) do not require submodule imports. Only `import hoo;` is sufficient (and primitive types are exempt entirely).
+- **Submodules**: Elements belonging to standard submodules (such as `Math`, `DateTime`, `Fs`, `Thread`, etc.) must be imported explicitly by their submodule path (e.g., `import hoo.math;`, `import hoo.datetime;`, `import hoo.io;`, `import hoo.thread;`). A generic `import hoo;` is NOT sufficient for submodules.
+
 ## Usage Patterns
 
 hoo runtime APIs follow one of four patterns:

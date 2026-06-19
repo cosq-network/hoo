@@ -17,6 +17,7 @@ protected:
 
 TEST_F(HooMapJitTest, NewMap) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() { return new Map(2, 1); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -31,6 +32,7 @@ TEST_F(HooMapJitTest, NewMap) {
 
 TEST_F(HooMapJitTest, SetGetInt64Int64) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             m.setInt64Int64(42, 100);
@@ -43,6 +45,7 @@ TEST_F(HooMapJitTest, SetGetInt64Int64) {
 
 TEST_F(HooMapJitTest, MapLength) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(4, 1);
             m.setStringInt64("a", 1);
@@ -56,6 +59,7 @@ TEST_F(HooMapJitTest, MapLength) {
 
 TEST_F(HooMapJitTest, ContainsKey) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             m.setInt64Int64(1, 10);
@@ -68,6 +72,7 @@ TEST_F(HooMapJitTest, ContainsKey) {
 
 TEST_F(HooMapJitTest, NotContainsKey) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             m.setInt64Int64(1, 10);
@@ -80,6 +85,7 @@ TEST_F(HooMapJitTest, NotContainsKey) {
 
 TEST_F(HooMapJitTest, RemoveKey) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             m.setInt64Int64(1, 10);
@@ -94,6 +100,7 @@ TEST_F(HooMapJitTest, RemoveKey) {
 
 TEST_F(HooMapJitTest, Clear) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             m.setInt64Int64(1, 10);
@@ -107,6 +114,7 @@ TEST_F(HooMapJitTest, Clear) {
 
 TEST_F(HooMapJitTest, Empty) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             return m.empty();
@@ -120,6 +128,7 @@ TEST_F(HooMapJitTest, Empty) {
 
 TEST_F(HooMapJitTest, SetGetInt64Double) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 2);
             m.setInt64Double(10, 3.14);
@@ -132,6 +141,7 @@ TEST_F(HooMapJitTest, SetGetInt64Double) {
 
 TEST_F(HooMapJitTest, GetInt64DoubleValue) {
     const std::string source = R"(
+        import hoo;
         func :double test() {
             var m = new Map(2, 2);
             m.setInt64Double(10, 3.14);
@@ -149,6 +159,7 @@ TEST_F(HooMapJitTest, GetInt64DoubleValue) {
 
 TEST_F(HooMapJitTest, SetGetInt64String) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 4);
             m.setInt64String(1, "hello");
@@ -162,6 +173,7 @@ TEST_F(HooMapJitTest, SetGetInt64String) {
 
 TEST_F(HooMapJitTest, GetInt64StringContent) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 4);
             m.setInt64String(1, "world");
@@ -177,6 +189,7 @@ TEST_F(HooMapJitTest, GetInt64StringContent) {
 
 TEST_F(HooMapJitTest, SetGetInt64Bool) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 3);
             m.setInt64Bool(1, 1);
@@ -189,6 +202,7 @@ TEST_F(HooMapJitTest, SetGetInt64Bool) {
 
 TEST_F(HooMapJitTest, GetInt64BoolFalse) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 3);
             m.setInt64Bool(1, 0);
@@ -203,6 +217,7 @@ TEST_F(HooMapJitTest, GetInt64BoolFalse) {
 
 TEST_F(HooMapJitTest, SetGetStringDouble) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(4, 2);
             m.setStringDouble("pi", 3.14159);
@@ -217,6 +232,7 @@ TEST_F(HooMapJitTest, SetGetStringDouble) {
 
 TEST_F(HooMapJitTest, SetGetStringString) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(4, 4);
             m.setStringString("greeting", "hello");
@@ -232,6 +248,7 @@ TEST_F(HooMapJitTest, SetGetStringString) {
 
 TEST_F(HooMapJitTest, SetGetStringBool) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(4, 3);
             m.setStringBool("flag", 1);
@@ -246,6 +263,7 @@ TEST_F(HooMapJitTest, SetGetStringBool) {
 
 TEST_F(HooMapJitTest, SetGetInt8Int64) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(1, 1);
             m.setInt8Int64(7, 77);
@@ -260,6 +278,7 @@ TEST_F(HooMapJitTest, SetGetInt8Int64) {
 
 TEST_F(HooMapJitTest, KeyTypeQuery) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2, 1);
             return m.keyType();
@@ -271,6 +290,7 @@ TEST_F(HooMapJitTest, KeyTypeQuery) {
 
 TEST_F(HooMapJitTest, ValueTypeQuery) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(4, 4);
             return m.valueType();
@@ -282,6 +302,7 @@ TEST_F(HooMapJitTest, ValueTypeQuery) {
 
 TEST_F(HooMapJitTest, ValueTypeDefault) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var m = new Map(2);
             return m.valueType();

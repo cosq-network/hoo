@@ -1,5 +1,10 @@
 # JSON API Developer Reference
 
+**Import Requirement:**
+```hoo
+import hoo.json;
+```
+
 The JSON runtime API is intentionally small and free-function based. There is
 no `Json` class, no instance API, and no opaque JSON document handle. Hoo code
 works with JSON through existing collection abstractions:
@@ -54,6 +59,8 @@ finite.
 ### Complete Example
 
 ```hoo
+import hoo.json;
+
 func :int64 main() {
     var user: HashMap<int64, string> = new HashMap<int64, string>();
     user[1] = "Alice";
@@ -99,6 +106,8 @@ if a nested value is invalid, or if a floating-point value is not finite.
 ### Complete Example
 
 ```hoo
+import hoo.json;
+
 func :int64 main() {
     var values = [1, "two", true]any;
 
@@ -157,6 +166,8 @@ runtime ranges, or cannot allocate the returned values.
 ### Complete Example
 
 ```hoo
+import hoo.json;
+
 func :int64 main() {
     var user = json_deserialize_hashmap("{\"1\":42,\"2\":\"Alice\",\"3\":[7,true]}");
 
@@ -202,6 +213,8 @@ supported runtime ranges, or cannot allocate the returned values.
 ### Complete Example
 
 ```hoo
+import hoo.json;
+
 func :int64 main() {
     var values = json_deserialize_anyarray("[1,\"two\",false,{\"7\":8}]");
 
@@ -243,6 +256,8 @@ Throws `RuntimeException` if `json` is nil or malformed.
 ### Complete Example
 
 ```hoo
+import hoo.json;
+
 func :int64 main() {
     var compact = json_minify("{ \"items\" : [ 1, true, null ], \"name\" : \"A B\" }");
 
@@ -282,6 +297,8 @@ Throws `RuntimeException` if `json` is nil or malformed.
 ### Complete Example
 
 ```hoo
+import hoo.json;
+
 func :int64 main() {
     var pretty = json_beautify("{\"name\":\"Alice\",\"roles\":[\"admin\",\"user\"]}");
 

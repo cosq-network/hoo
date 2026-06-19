@@ -305,6 +305,95 @@ HVMCodeGenerator::HVMCodeGenerator() {
     classes_["DateTime"] = dtLayout;
     classes_["hoo.DateTime"] = dtLayout;
 }
+bool HVMCodeGenerator::isModuleImported(const std::string& moduleName) const {
+    if (moduleName.empty()) return true;
+    
+    // Core module "hoo" is satisfied by "import hoo;"
+    if (moduleName == "hoo") {
+        return importedModules_.count("hoo") > 0;
+    }
+    
+    // Submodules (e.g. "hoo.math") require importing the submodule itself or a prefix longer than "hoo"
+    if (importedModules_.count(moduleName) > 0) return true;
+    
+    std::string prefix = "";
+    std::stringstream ss(moduleName);
+    std::string part;
+    while (std::getline(ss, part, '.')) {
+        if (!prefix.empty()) prefix += ".";
+        prefix += part;
+        if (prefix != "hoo" && importedModules_.count(prefix) > 0) return true;
+    }
+    return false;
+}
+
+bool HVMCodeGenerator::isSymbolImported(const std::string& name, const std::string& requiredModule) const {
+    if (requiredModule.empty()) return true;
+    if (isModuleImported(requiredModule)) return true;
+    
+    auto it = importedSymbols_.find(name);
+    if (it != importedSymbols_.end()) {
+        const std::string& importedFrom = it->second;
+        if (importedFrom != "hoo" && (requiredModule == importedFrom || requiredModule.rfind(importedFrom + ".", 0) == 0)) {
+            return true;
+        }
+        if (requiredModule == "hoo" && importedFrom == "hoo") {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
+    // Intrinsic data types exempt from imports
+    if (name == "String" || name == "Array" || name == "Map" || name == "Exception") {
+        return "";
+    }
+
+    // Built-in standard library classes
+    if (name == "DateTime") return "hoo.datetime";
+    if (name == "Math" || name == "Random") return "hoo.math";
+    if (name == "Fs") return "hoo.io";
+    if (name == "System") return "hoo.system";
+    if (name == "Regex") return "hoo.regex";
+    if (name == "Net" || name == "URL" || name == "HttpClient" || name == "HttpResponse") return "hoo.net";
+    if (name == "Path") return "hoo.path";
+    if (name == "Hashing") return "hoo.hashing";
+    if (name == "Encoding") return "hoo.encoding";
+    if (name == "Uuid") return "hoo.uuid";
+    if (name == "Compression") return "hoo.compression";
+    if (name == "Process") return "hoo.process";
+    if (name == "Args") return "hoo.args";
+    if (name == "Csv") return "hoo.csv";
+    if (name == "Console") return "hoo";
+    if (name == "Thread") return "hoo.thread";
+    if (name == "Character") return "hoo.character";
+    if (name == "Buffer") return "hoo.buffer";
+    if (name == "HashMap" || name == "AnyArray") return "hoo.collections";
+    if (name == "StringBuilder") return "hoo.string";
+
+    // Free functions or other symbols with prefixes
+    if (name.rfind("datetime_", 0) == 0) return "hoo.datetime";
+    if (name.rfind("fs_", 0) == 0) return "hoo.io";
+    if (name.rfind("json_", 0) == 0) return "hoo.json";
+    if (name.rfind("buffer_", 0) == 0) return "hoo.buffer";
+    if (name.rfind("csv_", 0) == 0) return "hoo.csv";
+    if (name.rfind("math_", 0) == 0) return "hoo.math";
+    if (name.rfind("net_", 0) == 0) return "hoo.net";
+    if (name.rfind("path_", 0) == 0) return "hoo.path";
+    if (name.rfind("hashing_", 0) == 0) return "hoo.hashing";
+    if (name.rfind("encoding_", 0) == 0) return "hoo.encoding";
+    if (name.rfind("uuid_", 0) == 0) return "hoo.uuid";
+    if (name.rfind("compression_", 0) == 0) return "hoo.compression";
+    if (name.rfind("process_", 0) == 0) return "hoo.process";
+    if (name.rfind("args_", 0) == 0) return "hoo.args";
+    if (name.rfind("thread_", 0) == 0) return "hoo.thread";
+    if (name.rfind("character_", 0) == 0) return "hoo.character";
+    if (name.rfind("system_", 0) == 0) return "hoo.system";
+    if (name.rfind("regex_", 0) == 0) return "hoo.regex";
+
+    return "";
+}
 
 void HVMCodeGenerator::setModuleContext(const std::string& moduleName) {
     pendingModuleName_ = moduleName;
@@ -339,6 +428,37 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     symbolFixups_.clear();
     functionReturnTypes_.clear();
     functionReturnClass_.clear();
+
+    importedModules_.clear();
+    importedSymbols_.clear();
+    for (const auto& imp : compilationUnit.getImports()) {
+        if (auto basicImport = dynamic_cast<const ast::BasicImport*>(imp.get())) {
+            const ast::ModulePath* modulePath = basicImport->getModule();
+            if (modulePath) {
+                std::string fullModuleName = "";
+                for (const auto& comp : modulePath->getComponents()) {
+                    if (!fullModuleName.empty()) fullModuleName += ".";
+                    fullModuleName += comp;
+                }
+                importedModules_.insert(fullModuleName);
+            }
+        } else if (auto fromImport = dynamic_cast<const ast::FromImport*>(imp.get())) {
+            const ast::ModulePath* modulePath = fromImport->getModule();
+            if (modulePath) {
+                std::string fullModuleName = "";
+                for (const auto& comp : modulePath->getComponents()) {
+                    if (!fullModuleName.empty()) fullModuleName += ".";
+                    fullModuleName += comp;
+                }
+                importedModules_.insert(fullModuleName);
+                for (const auto& item : fromImport->getItems()) {
+                    if (item) {
+                        importedSymbols_[item->getName()] = fullModuleName;
+                    }
+                }
+            }
+        }
+    }
 
     // Register top-level function return types before emitting any body so
     // direct calls can mangle f8/bit and other return types regardless of order.
@@ -1616,6 +1736,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
+        std::string requiredModule = getRequiredModule("HashMap");
+        if (!isSymbolImported("HashMap", requiredModule)) {
+            addError("Use of 'HashMap' requires 'import " + requiredModule + ";'");
+            return 0;
+        }
         const auto& type = newHash->getHashMapType();
         uint8_t keyTypeReg = emitConstant(static_cast<int64_t>(hashMapKeyTypeId(type)));
         uint8_t valueTypeReg = emitConstant(static_cast<int64_t>(typeIdFromDeclaredType(&type.getValueType())));
@@ -1631,6 +1756,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
     if (auto newExpr = dynamic_cast<const ast::NewObjectExpression*>(&expr)) {
         std::string className = newExpr->getClassName();
+        std::string requiredModule = getRequiredModule(className);
+        if (!isSymbolImported(className, requiredModule)) {
+            addError("Use of '" + className + "' requires 'import " + requiredModule + ";'");
+            return 0;
+        }
         if (isBuiltinClassName(className) && classes_.find(className) == classes_.end()) {
             if (builtinConstructedTypeId(className) == 100) {
                 addError("Built-in class '" + className + "' does not have a constructor");
@@ -1890,6 +2020,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (resolvedClass.empty()) {
                 addError("Cannot resolve method '" + methodName + "'");
+            } else if (isBuiltinClassName(resolvedClass)) {
+                std::string requiredModule = getRequiredModule(resolvedClass);
+                if (!isSymbolImported(resolvedClass, requiredModule)) {
+                    addError("Use of '" + resolvedClass + "' requires 'import " + requiredModule + ";'");
+                    return 0;
+                }
             }
 
             if (isStaticCall && resolvedClass == "Buffer" && methodName == "fromBytes") {
@@ -2125,6 +2261,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (id) {
                 std::string functionName = id->getName();
+                std::string requiredModule = getRequiredModule(functionName);
+                if (!requiredModule.empty() && !isSymbolImported(functionName, requiredModule)) {
+                    addError("Use of '" + functionName + "' requires 'import " + requiredModule + ";'");
+                    return 0;
+                }
                 
                 MangledFunctionParams mp;
                 mp.functionName = functionName;

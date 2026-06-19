@@ -13,6 +13,7 @@ protected:
 
 TEST_F(HooCharacterApiJitTest, New) {
     const std::string source = R"(
+        import hoo.character;
         func :int64 test() {
             var ch = new Character(65);
             return ch.codepoint();
@@ -25,6 +26,7 @@ TEST_F(HooCharacterApiJitTest, New) {
 
 TEST_F(HooCharacterApiJitTest, Length) {
     const std::string source = R"(
+        import hoo.character;
         func :int64 test() {
             var ch = new Character(8364);
             return ch.length();
@@ -37,6 +39,7 @@ TEST_F(HooCharacterApiJitTest, Length) {
 
 TEST_F(HooCharacterApiJitTest, Data) {
     const std::string source = R"(
+        import hoo.character;
         func :int64 test() {
             var ch = new Character(65);
             var d = ch.data();
@@ -50,6 +53,7 @@ TEST_F(HooCharacterApiJitTest, Data) {
 
 TEST_F(HooCharacterApiJitTest, DataEquals) {
     const std::string source = R"(
+        import hoo.character;
         func :int64 test() {
             var ch = new Character(65);
             var d = ch.data();
@@ -63,6 +67,7 @@ TEST_F(HooCharacterApiJitTest, DataEquals) {
 
 TEST_F(HooCharacterApiJitTest, CodepointAfterLength) {
     const std::string source = R"(
+        import hoo.character;
         func :int64 test() {
             var ch = new Character(128512);
             var len = ch.length();

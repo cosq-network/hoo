@@ -1,5 +1,10 @@
 # Collections API Reference
 
+**Import Requirement:**
+```hoo
+import hoo.collections;
+```
+
 The hoo collections module provides managed data structures for storing and organizing data: **Arrays** and **Maps**.
 
 ## 1. Arrays (`Array`)
@@ -181,6 +186,8 @@ Clears all entries and releases managed `any` payloads.
 ## Usage Example
 
 ```hoo
+import hoo.collections;
+
 func :int64 main() {
     // Array Example
     var numbers = new Array();

@@ -23,6 +23,7 @@ protected:
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_PlusEquals) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x += 3; return x; }
     )";
 
@@ -32,6 +33,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_PlusEquals) {
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_MinusEquals) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 10; x -= 3; return x; }
     )";
 
@@ -41,6 +43,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_MinusEquals) {
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_MultiplyEquals) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x *= 3; return x; }
     )";
 
@@ -50,6 +53,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_MultiplyEquals) {
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_DivideEquals) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 20; x /= 4; return x; }
     )";
 
@@ -59,6 +63,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_DivideEquals) {
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_ModuloEquals) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 17; x %= 5; return x; }
     )";
 
@@ -68,6 +73,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_ModuloEquals) {
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_Multiple) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x += 1; x -= 2; x *= 3; return x; }
     )";
 
@@ -77,6 +83,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_Multiple) {
 
 TEST_F(NewLanguageFeaturesTest, CompoundAssignment_Chained) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { 
             var x: int64 = 10;
             x += 5;
@@ -95,6 +102,7 @@ TEST_F(NewLanguageFeaturesTest, CompoundAssignment_Chained) {
 
 TEST_F(NewLanguageFeaturesTest, PostfixIncrement) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x++; return x; }
     )";
 
@@ -104,6 +112,7 @@ TEST_F(NewLanguageFeaturesTest, PostfixIncrement) {
 
 TEST_F(NewLanguageFeaturesTest, PostfixDecrement) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x--; return x; }
     )";
 
@@ -113,6 +122,7 @@ TEST_F(NewLanguageFeaturesTest, PostfixDecrement) {
 
 TEST_F(NewLanguageFeaturesTest, PostfixIncrement_Multiple) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x++; x++; x++; return x; }
     )";
 
@@ -122,6 +132,7 @@ TEST_F(NewLanguageFeaturesTest, PostfixIncrement_Multiple) {
 
 TEST_F(NewLanguageFeaturesTest, PostfixDecrement_Multiple) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 10; x--; x--; x--; return x; }
     )";
 
@@ -131,6 +142,7 @@ TEST_F(NewLanguageFeaturesTest, PostfixDecrement_Multiple) {
 
 TEST_F(NewLanguageFeaturesTest, PostfixIncrement_CombinedWithCompound) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { var x: int64 = 5; x++; x += 2; x--; return x; }
     )";
 
@@ -144,6 +156,7 @@ TEST_F(NewLanguageFeaturesTest, PostfixIncrement_CombinedWithCompound) {
 
 TEST_F(NewLanguageFeaturesTest, MultilineString_VerifyParsing) {
     std::string code = R"(
+        import hoo;
         func :string test() { var x = "hello"; return x; }
     )";
 
@@ -156,6 +169,7 @@ TEST_F(NewLanguageFeaturesTest, MultilineString_VerifyParsing) {
 
 TEST_F(NewLanguageFeaturesTest, Int8_Variable) {
     std::string code = R"(
+        import hoo;
         func :int8 test() { var x: int8 = 50; return x; }
     )";
 
@@ -165,6 +179,7 @@ TEST_F(NewLanguageFeaturesTest, Int8_Variable) {
 
 TEST_F(NewLanguageFeaturesTest, Byte_Variable) {
     std::string code = R"(
+        import hoo;
         func :byte test() { var x: byte = 200; return x; }
     )";
 
@@ -174,6 +189,7 @@ TEST_F(NewLanguageFeaturesTest, Byte_Variable) {
 
 TEST_F(NewLanguageFeaturesTest, Int8_Arithmetic) {
     std::string code = R"(
+        import hoo;
         func :int8 test() { var a: int8 = 10; var b: int8 = 20; return a + b; }
     )";
 
@@ -183,6 +199,7 @@ TEST_F(NewLanguageFeaturesTest, Int8_Arithmetic) {
 
 TEST_F(NewLanguageFeaturesTest, Byte_Arithmetic) {
     std::string code = R"(
+        import hoo;
         func :byte test() { var a: byte = 100; var b: byte = 50; return a + b; }
     )";
 
@@ -196,6 +213,7 @@ TEST_F(NewLanguageFeaturesTest, Byte_Arithmetic) {
 
 TEST_F(NewLanguageFeaturesTest, Combined_AllFeatures) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { 
             var x: int64 = 10;
             x += 5;
@@ -216,6 +234,7 @@ TEST_F(NewLanguageFeaturesTest, Combined_AllFeatures) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionSimple) {
     std::string code = R"(
+        import hoo;
         func :int64 test() { return 42; }
     )";
 
@@ -226,6 +245,7 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionSimple) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionWithClassPresent) {
     std::string code = R"(
+        import hoo;
         class Widget {
             var value: int64;
         }
@@ -240,6 +260,7 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionWithClassPresent) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionSimple2) {
     std::string code = R"(
+        import hoo;
         class Widget {
             var value: int64;
             constructor() {
@@ -263,6 +284,7 @@ TEST_F(NewLanguageFeaturesTest, DISABLED_NewExpressionWithConstructorArgs) {}
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionWithConstructorArgs) {
     std::string code = R"(
+        import hoo;
         class Counter {
             var count: int64;
             constructor(initial: int64) {
@@ -281,6 +303,7 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionWithConstructorArgs) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionWithMultipleArgs) {
     std::string code = R"(
+        import hoo;
         class Point {
             var x: int64;
             var y: int64;
@@ -301,6 +324,7 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionWithMultipleArgs) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionMethodCall) {
     std::string code = R"(
+        import hoo;
         class Calculator {
             var result: int64;
             constructor(initial: int64) {
@@ -324,6 +348,7 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionMethodCall) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionMultipleObjects) {
     std::string code = R"(
+        import hoo;
         class Item {
             var val: int64;
             constructor(v: int64) {
@@ -344,6 +369,7 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionMultipleObjects) {
 
 TEST_F(NewLanguageFeaturesTest, NewExpressionChainedMethodCalls) {
     std::string code = R"(
+        import hoo;
         class Accumulator {
             var total: int64;
             constructor() { this.total = 0; }

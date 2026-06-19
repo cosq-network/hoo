@@ -16,6 +16,7 @@ protected:
 
 TEST_F(HooArrayJitTest, NewArray) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() { return new Array(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -28,6 +29,7 @@ TEST_F(HooArrayJitTest, NewArray) {
 
 TEST_F(HooArrayJitTest, PushGetDouble) {
     const std::string source = R"(
+        import hoo;
         func :double test() {
             var a = new Array();
             Array.pushDouble(a, 3.14);
@@ -43,6 +45,7 @@ TEST_F(HooArrayJitTest, PushGetDouble) {
 
 TEST_F(HooArrayJitTest, PushGetInt64) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var a = new Array();
             Array.pushInt64(a, 42);
@@ -55,6 +58,7 @@ TEST_F(HooArrayJitTest, PushGetInt64) {
 
 TEST_F(HooArrayJitTest, ArrayLength) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var a = new Array();
             Array.pushInt64(a, 10);
@@ -68,6 +72,7 @@ return Array.length(a);
 
 TEST_F(HooArrayJitTest, ArrayClear) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var a = new Array();
             Array.pushInt64(a, 10);
@@ -81,6 +86,7 @@ TEST_F(HooArrayJitTest, ArrayClear) {
 
 TEST_F(HooArrayJitTest, ArrayEmpty) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var a = new Array();
             return Array.empty(a);
@@ -92,6 +98,7 @@ TEST_F(HooArrayJitTest, ArrayEmpty) {
 
 TEST_F(HooArrayJitTest, PushGetString) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var a = new Array();
             Array.pushString(a, "hello");
@@ -105,6 +112,7 @@ TEST_F(HooArrayJitTest, PushGetString) {
 
 TEST_F(HooArrayJitTest, PushGetBool) {
     const std::string source = R"(
+        import hoo;
         func :int64 test() {
             var a = new Array();
             Array.pushBool(a, 1);

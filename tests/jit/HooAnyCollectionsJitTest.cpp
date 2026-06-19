@@ -13,6 +13,7 @@ protected:
 
 TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralLength) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = [10, 20, 30]any;
             return values.length();
@@ -24,6 +25,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralLength) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyArrayPushSetAndLength) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = new AnyArray();
             values.push(5);
@@ -38,6 +40,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayPushSetAndLength) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyArrayCapacityConstructorAndLength) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = new AnyArray(8);
             values.push(31);
@@ -50,6 +53,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayCapacityConstructorAndLength) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapFixedSubscriptSetGet) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, int64> = new HashMap<int64, int64>();
             m[10] = 42;
@@ -63,6 +67,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapFixedSubscriptSetGet) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapAnySubscriptSetAndCount) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<byte, any> = new HashMap<byte, any>();
             m[1] = 100;
@@ -76,6 +81,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapAnySubscriptSetAndCount) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapRemove) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, int64> = new HashMap<int64, int64>();
             m[10] = 42;
@@ -90,6 +96,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapRemove) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapClear) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, int64> = new HashMap<int64, int64>();
             m[10] = 42;
@@ -104,6 +111,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapClear) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapFixedValuesReadBack) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, int64> = new HashMap<int64, int64>();
             m[10] = 42;
@@ -117,6 +125,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapFixedValuesReadBack) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringSetGet) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, string> = new HashMap<int64, string>();
             m[1] = "hello";
@@ -131,6 +140,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringSetGet) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringCount) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, string> = new HashMap<int64, string>();
             m[1] = "hello";
@@ -144,6 +154,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringCount) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapAnyMixedTypes) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, any> = new HashMap<int64, any>();
             m[1] = 42;
@@ -158,6 +169,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapAnyMixedTypes) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapAnyOverwriteValue) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int64, any> = new HashMap<int64, any>();
             m[1] = 42;
@@ -171,6 +183,7 @@ TEST_F(HooAnyCollectionsJitTest, HashMapAnyOverwriteValue) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyArraySetAndGet) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = new AnyArray();
             values.push(10);
@@ -185,6 +198,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArraySetAndGet) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyArrayPopAndLength) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = new AnyArray();
             values.push(10);
@@ -199,6 +213,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayPopAndLength) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedTypes) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = new AnyArray();
             values.push(42);
@@ -213,6 +228,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedTypes) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralIndexRead) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = [10, 20, 30]any;
             return values[1];
@@ -224,6 +240,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralIndexRead) {
 
 TEST_F(HooAnyCollectionsJitTest, AnyFunctionReturnAndUse) {
     const std::string source = R"(
+        import hoo;
         func:any getValue() {
             return 42;
         }
@@ -239,6 +256,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyFunctionReturnAndUse) {
 TEST_F(HooAnyCollectionsJitTest, AnyFunctionReturnAndCall) {
     // Calling a func:any and using the return value directly should work
     const std::string source = R"(
+        import hoo;
         func:any getValue() {
             return 42;
         }
@@ -252,6 +270,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyFunctionReturnAndCall) {
 
 TEST_F(HooAnyCollectionsJitTest, HashMapInt8KeyAnyValue) {
     const std::string source = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<int8, any> = new HashMap<int8, any>();
             m[1] = 42;

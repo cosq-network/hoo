@@ -24,6 +24,7 @@ protected:
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, LargeConstants) {
     std::string code = R"(
+        import hoo;
         func : int64 getLarge() {
             return 123456789012345;
         }
@@ -58,6 +59,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, LargeConstants) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ForRangeWithStep) {
     std::string code = R"(
+        import hoo;
         func : int64 testForStep() {
             var sum = 0;
             for i in 0 .. 10 by 2 {
@@ -85,6 +87,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ForRangeWithStep) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, TryCatchFinally) {
     std::string code = R"(
+        import hoo;
         func : void testTryFinally() {
             try {
                 var x = 1;
@@ -112,6 +115,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, TryCatchFinally) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleCatchClauses) {
     std::string code = R"(
+        import hoo;
         func : void testMultiCatch() {
             try {
                 throw new Exception("oops");
@@ -139,6 +143,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleCatchClauses) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
     std::string code = R"(
+        import hoo;
         func : void testRethrow() {
             try {
                 var x = 1;
@@ -164,6 +169,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ComparisonOperators) {
     std::string code = R"(
+        import hoo;
         func : bool testComparisons(a: int64, b: int64) {
             var r1 = a < b;
             var r2 = a <= b;
@@ -188,6 +194,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ComparisonOperators) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DivisionOperator) {
     std::string code = R"(
+        import hoo;
         func : int64 testDiv(a: int64, b: int64) {
             return a / b;
         }
@@ -212,6 +219,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DivisionOperator) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, Literals) {
     std::string code = R"(
+        import hoo;
         class Dummy {
             func : Dummy getThis() { return this; }
         }
@@ -259,6 +267,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Literals) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, UnaryNot) {
     std::string code = R"(
+        import hoo;
         func : bool testNot(b: bool) {
             return !b;
         }
@@ -269,6 +278,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, UnaryNot) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, RegisterPressure) {
     std::string code = R"(
+        import hoo;
         func : int64 pressure(a: int64) {
             return (a + 1) + (a + 2) + (a + 3) + (a + 4) + (a + 5) + (a + 6) + (a + 7) + (a + 8) + (a + 9);
         }
@@ -282,6 +292,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, RegisterPressure) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallImplicitThis) {
     std::string code = R"(
+        import hoo;
         class Calculator {
             var value: int64;
             func : void add(x: int64) {
@@ -309,6 +320,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallImplicitThis) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, QualifiedNew) {
     std::string code = R"(
+        import hoo;
         class MyClass { var x: int64; }
         func : void test() {
             var o = new MyClass();
@@ -321,6 +333,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, QualifiedNew) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ConstructorWithParameters) {
     std::string code = R"(
+        import hoo;
         class Point {
             var x: int64;
             var y: int64;
@@ -347,6 +360,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ConstructorWithParameters) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ForRangeWithBody) {
     std::string code = R"(
+        import hoo;
         func : int64 sumTo(n: int64) {
             var sum = 0;
             for i in 1 .. n {
@@ -382,6 +396,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ForRangeWithBody) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ManyLocalVariablesSucceed) {
     std::string code = R"(
+        import hoo;
         func : int64 sumMany() {
             var a1 = 1;  var a2 = 2;  var a3 = 3;
             var a4 = 4;  var a5 = 5;  var a6 = 6;
@@ -406,6 +421,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ManyLocalVariablesSucceed) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallMangledSymbol) {
     std::string code = R"(
+        import hoo;
         class Calculator {
             var value: int64;
             func : void add(x: int64) {
@@ -430,6 +446,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MethodCallMangledSymbol) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeNesting) {
     std::string code = R"(
+        import hoo;
         func : int64 test() {
             var x = 1;
             if (true) {
@@ -461,6 +478,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeNesting) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeIsolationError) {
     std::string code = R"(
+        import hoo;
         func : int64 test() {
             if (true) {
                 var x = 42;
@@ -476,6 +494,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ScopeIsolationError) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ClassWithMethodAndFieldAccess) {
     std::string code = R"(
+        import hoo;
         class Counter {
             var count: int64;
             func : void increment() {
@@ -512,6 +531,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ClassWithMethodAndFieldAccess) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonNoConstructor) {
     std::string code = R"(
+        import hoo;
         singleton class AppConfig {
         }
     )";
@@ -525,6 +545,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonNoConstructor) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonWithNoArgConstructor) {
     std::string code = R"(
+        import hoo;
         singleton class AppConfig {
             var value: int64;
             constructor() {
@@ -539,6 +560,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonWithNoArgConstructor) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonConstructorWithArgs) {
     std::string code = R"(
+        import hoo;
         singleton class AppConfig {
             var value: int64;
             constructor(name: int64) {
@@ -553,6 +575,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonConstructorWithArgs) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonNewExpressionReturnsInstance) {
     std::string code = R"(
+        import hoo;
         singleton class App {
             var x: int64;
             constructor() {
@@ -570,6 +593,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonNewExpressionReturnsInstance)
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonWithMethods) {
     std::string code = R"(
+        import hoo;
         singleton class Logger {
             var level: int64;
             constructor() {
@@ -591,6 +615,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SingletonWithMethods) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleSingletons) {
     std::string code = R"(
+        import hoo;
         singleton class A {
             var x: int64;
             constructor() { this.x = 1; }
@@ -610,6 +635,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleSingletons) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableAssignmentInConstructor) {
     std::string code = R"(
+        import hoo;
         immutable class Point {
             var x: int64;
             constructor(x: int64) {
@@ -623,6 +649,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableAssignmentInConstructor) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableAssignmentOutsideConstructor) {
     std::string code = R"(
+        import hoo;
         immutable class Point {
             var x: int64;
             constructor(x: int64) {
@@ -640,6 +667,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableAssignmentOutsideConstructor)
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableCompoundAssignmentOutsideConstructor) {
     std::string code = R"(
+        import hoo;
         immutable class Counter {
             var count: int64;
             constructor() {
@@ -657,6 +685,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableCompoundAssignmentOutsideCons
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableIncrementOutsideConstructor) {
     std::string code = R"(
+        import hoo;
         immutable class Counter {
             var count: int64;
             constructor() {
@@ -674,6 +703,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableIncrementOutsideConstructor) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableDecrementOutsideConstructor) {
     std::string code = R"(
+        import hoo;
         immutable class Counter {
             var count: int64;
             constructor() {
@@ -691,6 +721,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableDecrementOutsideConstructor) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableReadInMethod) {
     std::string code = R"(
+        import hoo;
         immutable class Point {
             var x: int64;
             constructor(x: int64) {
@@ -707,6 +738,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ImmutableReadInMethod) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MutableClassFieldAssignmentWorks) {
     std::string code = R"(
+        import hoo;
         class Point {
             var x: int64;
             constructor(x: int64) {
@@ -723,6 +755,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MutableClassFieldAssignmentWorks) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, FinalClassExtension) {
     std::string code = R"(
+        import hoo;
         final class Base {}
         class Derived extends Base {}
     )";
@@ -733,6 +766,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, FinalClassExtension) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NonFinalClassExtension) {
     std::string code = R"(
+        import hoo;
         class Base {}
         class Derived extends Base {}
     )";
@@ -742,6 +776,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NonFinalClassExtension) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, FinalIndirectExtension) {
     std::string code = R"(
+        import hoo;
         final class Base {}
         class Middle extends Base {}
         class Derived extends Middle {}
@@ -753,6 +788,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, FinalIndirectExtension) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceModifierAccepted) {
     std::string code = R"(
+        import hoo;
         service class MyService {
             func : void doSomething() {}
         }
@@ -763,6 +799,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceModifierAccepted) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, AllRemainingModifiersCombined) {
     std::string code = R"(
+        import hoo;
         singleton immutable final class App {
             var x: int64;
             constructor() {
@@ -781,6 +818,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, AllRemainingModifiersCombined) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNoConstructor) {
     std::string code = R"(
+        import hoo;
         service class Logger {
         }
     )";
@@ -790,6 +828,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNoConstructor) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNoArgConstructor) {
     std::string code = R"(
+        import hoo;
         service class Logger {
             constructor() {
             }
@@ -801,6 +840,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNoArgConstructor) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithServiceParam) {
     std::string code = R"(
+        import hoo;
         service class Config {
             constructor() {}
         }
@@ -815,6 +855,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithServiceParam) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithMultipleServiceParams) {
     std::string code = R"(
+        import hoo;
         service class Config {
             constructor() {}
         }
@@ -832,6 +873,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithMultipleServiceParams)
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithServiceParamNoArg) {
     std::string code = R"(
+        import hoo;
         service class Config {}
         service class Logger {
             constructor(cfg: Config) {
@@ -844,6 +886,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassWithServiceParamNoArg) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithSingleton) {
     std::string code = R"(
+        import hoo;
         service singleton class Bad {}
     )";
     auto module = compiler_->compile("test", code);
@@ -853,6 +896,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithSingleton) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithImmutable) {
     std::string code = R"(
+        import hoo;
         service immutable class Bad {}
     )";
     auto module = compiler_->compile("test", code);
@@ -862,6 +906,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithImmutable) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithFinal) {
     std::string code = R"(
+        import hoo;
         service final class Bad {}
     )";
     auto module = compiler_->compile("test", code);
@@ -871,6 +916,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithFinal) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithAllConflicting) {
     std::string code = R"(
+        import hoo;
         service singleton immutable final class Bad {}
     )";
     auto module = compiler_->compile("test", code);
@@ -880,6 +926,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceCombinedWithAllConflicting) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNewKeyword) {
     std::string code = R"(
+        import hoo;
         service class Logger {
             constructor() {}
         }
@@ -894,6 +941,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassNewKeyword) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorPrimitiveParam) {
     std::string code = R"(
+        import hoo;
         service class Logger {
             constructor(name: int64) {
             }
@@ -906,6 +954,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorPrimitiveParam) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorStringParam) {
     std::string code = R"(
+        import hoo;
         service class Logger {
             constructor(name: string) {
             }
@@ -918,6 +967,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorStringParam) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorNonServiceClassParam) {
     std::string code = R"(
+        import hoo;
         class Config {}
         service class Logger {
             constructor(cfg: Config) {
@@ -931,6 +981,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorNonServiceClassParam
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorNonServiceClassParamForward) {
     std::string code = R"(
+        import hoo;
         service class Logger {
             constructor(cfg: Config) {
             }
@@ -943,6 +994,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorNonServiceClassParam
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorMixedParams) {
     std::string code = R"(
+        import hoo;
         service class Config {
             constructor() {}
         }
@@ -959,6 +1011,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceConstructorMixedParams) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassMethodsNoRestriction) {
     std::string code = R"(
+        import hoo;
         service class Calculator {
             constructor() {}
             func : int64 add(a: int64, b: int64) {
@@ -978,6 +1031,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ServiceClassMethodsNoRestriction) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PublicFieldReadOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             public var value: int64;
             constructor() { this.value = 42; }
@@ -993,6 +1047,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PublicFieldReadOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PublicFieldWriteOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             public var value: int64;
         }
@@ -1007,6 +1062,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PublicFieldWriteOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             private var secret: int64;
         }
@@ -1022,6 +1078,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             private var secret: int64;
         }
@@ -1037,6 +1094,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldReadOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             var value: int64;
         }
@@ -1051,6 +1109,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldReadOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldWriteOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             var value: int64;
         }
@@ -1066,6 +1125,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldWriteOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadFromSameClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             private var secret: int64;
             constructor() { this.secret = 42; }
@@ -1084,6 +1144,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadFromSameClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteFromSameClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             private var secret: int64;
             public func : void setSecret(v: int64) {
@@ -1101,6 +1162,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteFromSameClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldReadFromDerivedClass) {
     std::string code = R"(
+        import hoo;
         class Base {
             var value: int64;
         }
@@ -1120,6 +1182,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldReadFromDerivedClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldWriteFromDerivedClass) {
     std::string code = R"(
+        import hoo;
         class Base {
             var value: int64;
         }
@@ -1139,6 +1202,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldWriteFromDerivedClass) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadFromDerivedClass) {
     std::string code = R"(
+        import hoo;
         class Base {
             private var secret: int64;
             constructor() { this.secret = 42; }
@@ -1159,6 +1223,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldReadFromDerivedClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteFromDerivedClass) {
     std::string code = R"(
+        import hoo;
         class Base {
             private var secret: int64;
         }
@@ -1178,6 +1243,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldWriteFromDerivedClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldCompoundAssignOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             private var count: int64;
         }
@@ -1193,6 +1259,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateFieldCompoundAssignOutsideClass
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldIncrementOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             var count: int64;
         }
@@ -1208,6 +1275,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldIncrementOutsideClass) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldDecrementOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Data {
             var count: int64;
         }
@@ -1229,6 +1297,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultVarFieldDecrementOutsideClass) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PublicMethodAccessibleOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Helper {
             public func : void doSomething() {}
         }
@@ -1243,6 +1312,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PublicMethodAccessibleOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Helper {
             private func : void helper() {}
         }
@@ -1258,6 +1328,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleOutsideClass
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultMethodAccessibleOutsideClass) {
     std::string code = R"(
+        import hoo;
         class Helper {
             func : void doSomething() {}
         }
@@ -1272,6 +1343,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, DefaultMethodAccessibleOutsideClass) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodAccessibleFromSameClass) {
     std::string code = R"(
+        import hoo;
         class Helper {
             private func : void helper() {}
             public func : void callHelper() {
@@ -1289,6 +1361,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodAccessibleFromSameClass) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodAccessibleFromDerivedClass) {
     std::string code = R"(
+        import hoo;
         class Base {
             private func : void helper() {}
         }
@@ -1308,6 +1381,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodAccessibleFromDerivedClas
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PublicMethodAccessibleFromDerivedClass) {
     std::string code = R"(
+        import hoo;
         class Base {
             public func : void helper() {}
         }
@@ -1327,6 +1401,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PublicMethodAccessibleFromDerivedClass
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleFromUnrelatedClass) {
     std::string code = R"(
+        import hoo;
         class Helper {
             private func : void helper() {}
         }
@@ -1352,6 +1427,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PrivateMethodNotAccessibleFromUnrelate
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionEmitsAllocCall) {
     std::string code = R"(
+        import hoo;
         class Widget {
             var x: int64;
             constructor() {
@@ -1379,6 +1455,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionEmitsAllocCall) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionWithParams) {
     std::string code = R"(
+        import hoo;
         class Point {
             var x: int64;
             var y: int64;
@@ -1407,6 +1484,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionWithParams) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMultipleFields) {
     std::string code = R"(
+        import hoo;
         class Data {
             var a: int64;
             var b: int64;
@@ -1435,6 +1513,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMultipleFields) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionChainedSameType) {
     std::string code = R"(
+        import hoo;
         class Item {
             var value: int64;
             constructor(v: int64) {
@@ -1460,6 +1539,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionChainedSameType) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMethodCall) {
     std::string code = R"(
+        import hoo;
         class Helper {
             func:int64 getValue() { return 42; }
         }
@@ -1484,6 +1564,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewExpressionMethodCall) {
 TEST_F(HVMCodeGeneratorComprehensiveTest, MethodWithMaxArgsSixCompiles) {
     // Methods can take up to 6 real params (r2,r3,r5,r6,r7,r8, skipping r4= tp)
     std::string code = R"(
+        import hoo;
         class Helper {
             func :int64 sum6(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64) {
                 return a + b + c + d + e + f;
@@ -1502,6 +1583,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MethodWithMaxArgsSixCompiles) {
 TEST_F(HVMCodeGeneratorComprehensiveTest, MethodWithSevenArgsFails) {
     // Methods cannot take 7 real params (only 6 arg regs after reserving r4)
     std::string code = R"(
+        import hoo;
         class Helper {
             func :int64 sum7(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64, g: int64) {
                 return a + b + c + d + e + f + g;
@@ -1520,6 +1602,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MethodWithSevenArgsFails) {
 TEST_F(HVMCodeGeneratorComprehensiveTest, PlainFunctionWithSevenArgsCompiles) {
     // Plain functions can take 7 params (r1,r2,r3,r5,r6,r7,r8)
     std::string code = R"(
+        import hoo;
         func :int64 sum7(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64, g: int64) {
             return a + b + c + d + e + f + g;
         }
@@ -1535,6 +1618,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PlainFunctionWithSevenArgsCompiles) {
 TEST_F(HVMCodeGeneratorComprehensiveTest, PlainFunctionWithEightArgsFails) {
     // Plain functions cannot take 8 params (only 7 arg regs)
     std::string code = R"(
+        import hoo;
         func :int64 sum8(a: int64, b: int64, c: int64, d: int64, e: int64, f: int64, g: int64, h: int64) {
             return a + b + c + d + e + f + g + h;
         }
@@ -1550,6 +1634,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, PlainFunctionWithEightArgsFails) {
 TEST_F(HVMCodeGeneratorComprehensiveTest, ConstructorWithSixArgsCompiles) {
     // Constructors (isMethod=true) can take up to 6 params after this (r2..r8 skipping r4)
     std::string code = R"(
+        import hoo;
         class Data {
             var a: int64;
             var b: int64;
@@ -1576,6 +1661,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ArgR4ReservedTpNotUsed) {
     // Verify that instructions in a method with 3+ args never reference r4
     // as a source register in ST.D (which would indicate arg save via r4)
     std::string code = R"(
+        import hoo.math;
         class Math {
             func :int64 add3(a: int64, b: int64, c: int64) {
                 return a + b + c;
@@ -1604,6 +1690,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ArgR4ReservedTpNotUsed) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64AnyModuleLevelVariable) {
     std::string code = R"(
+        import hoo.collections;
         var m: HashMap<int64, any>;
         func :int64 test() { return 0; }
     )";
@@ -1619,6 +1706,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64AnyModuleLevelVariable) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64Int64ModuleLevelVariable) {
     std::string code = R"(
+        import hoo.collections;
         var m: HashMap<int64, int64>;
         func :int64 test() { return 0; }
     )";
@@ -1634,6 +1722,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64Int64ModuleLevelVariable) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapExpressionInFunction) {
     std::string code = R"(
+        import hoo.collections;
         func :int64 test() {
             var m = new HashMap<int64, int64>();
             return 0;
@@ -1658,6 +1747,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapExpressionInFunction) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithAnyValueType) {
     std::string code = R"(
+        import hoo.collections;
         func :int64 test() {
             var m = new HashMap<int64, any>();
             return 0;
@@ -1681,6 +1771,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithAnyValueType) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayModuleLevelVariable) {
     std::string code = R"(
+        import hoo.collections;
         var values: AnyArray;
         func :int64 test() { return 0; }
     )";
@@ -1696,6 +1787,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayModuleLevelVariable) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayLiteralCodegen) {
     std::string code = R"(
+        import hoo.collections;
         func :int64 test() {
             var values = [1, 2, 3]any;
             return values.length();
@@ -1712,6 +1804,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayLiteralCodegen) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, AnyFunctionReturnType) {
     std::string code = R"(
+        import hoo;
         func:any getValue() {
             return 42;
         }
@@ -1730,6 +1823,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, AnyFunctionReturnType) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, MapTypeModuleLevelVariable) {
     std::string code = R"(
+        import hoo;
         var m: map<string, int64>;
         func :int64 test() { return 0; }
     )";
@@ -1744,6 +1838,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MapTypeModuleLevelVariable) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithStringValue) {
     std::string code = R"(
+        import hoo.collections;
         func :int64 test() {
             var m = new HashMap<int8, string>();
             return 0;
@@ -1758,6 +1853,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithStringValue) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapByteKeyAnyValue) {
     std::string code = R"(
+        import hoo.collections;
         func :int64 test() {
             var m: HashMap<byte, any> = new HashMap<byte, any>();
             return 0;
@@ -1773,6 +1869,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapByteKeyAnyValue) {
 TEST_F(HVMCodeGeneratorComprehensiveTest, LocalVariableNamedR4DoesNotConflict) {
     // A local named r4 should not conflict with tp register
     std::string code = R"(
+        import hoo;
         func :int64 test() {
             var r4: int64 = 42;
             return r4;
@@ -1791,6 +1888,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, LocalVariableNamedR4DoesNotConflict) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassGeneratesSerializeSymbol) {
     std::string code = R"(
+        import hoo;
         serializable class Person {
             public var name: string;
             public var age: int64;
@@ -1815,6 +1913,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassGeneratesSerializeSym
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassGeneratesDeserializeSymbol) {
     std::string code = R"(
+        import hoo;
         serializable class Person {
             public var name: string;
             public var age: int64;
@@ -1836,6 +1935,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassGeneratesDeserializeS
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassConstructorSymbolRemainsResolvable) {
     std::string code = R"(
+        import hoo;
         serializable class Person {
             public var name: string;
             constructor() {}
@@ -1850,6 +1950,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassConstructorSymbolRema
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithMultiplePublicFields) {
     std::string code = R"(
+        import hoo;
         serializable class Profile {
             public var name: string;
             public var age: int64;
@@ -1873,6 +1974,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithMultiplePublicFie
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithHashMapField) {
     std::string code = R"(
+        import hoo.collections;
         serializable class Config {
             public var labels: HashMap<int64, string>;
             public var version: int64;
@@ -1894,6 +1996,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithHashMapField) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithAnyArrayField) {
     std::string code = R"(
+        import hoo.collections;
         serializable class Container {
             public var items: AnyArray;
             constructor() {}
@@ -1914,6 +2017,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithAnyArrayField) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithTensorField) {
     std::string code = R"(
+        import hoo;
         serializable class TensorHolder {
             public var mat: tensor<double>[2, 3];
             constructor() {}
@@ -1934,6 +2038,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithTensorField) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassAcyclicDagSucceeds) {
     std::string code = R"(
+        import hoo;
         serializable class Point {
             public var x: double;
             public var y: double;
@@ -1960,6 +2065,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassAcyclicDagSucceeds) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableSingletonSucceeds) {
     std::string code = R"(
+        import hoo;
         serializable singleton class Config {
             public var version: int64;
             constructor() {}
@@ -1980,6 +2086,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableSingletonSucceeds) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableImmutableSucceeds) {
     std::string code = R"(
+        import hoo;
         serializable immutable class Config {
             public var version: int64;
             public var name: string;
@@ -2001,6 +2108,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableImmutableSucceeds) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, NonSerializableClassNoAutoMethods) {
     std::string code = R"(
+        import hoo;
         class Plain {
             public var x: int64;
         }
@@ -2020,6 +2128,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NonSerializableClassNoAutoMethods) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNoPublicFields) {
     std::string code = R"(
+        import hoo;
         serializable class Empty {
             private var x: int64;
             constructor() {}
@@ -2032,6 +2141,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNoPublicFiel
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNoConstructor) {
     std::string code = R"(
+        import hoo;
         serializable class NoCtor {
             public var x: int64;
         }
@@ -2044,6 +2154,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNoConstructo
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithMultipleConstructors) {
     // The AST builder itself rejects multiple constructors before serializable validation
     std::string code = R"(
+        import hoo;
         serializable class MultiCtor {
             public var x: int64;
             constructor() {}
@@ -2058,6 +2169,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithMultipleCons
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithParamCtor) {
     std::string code = R"(
+        import hoo;
         serializable class ParamCtor {
             public var x: int64;
             constructor(x: int64) { this.x = x; }
@@ -2070,6 +2182,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithParamCtor) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatField) {
     std::string code = R"(
+        import hoo;
         serializable class Bad {
             public var x: float;
             constructor() {}
@@ -2082,6 +2195,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatField) 
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharField) {
     std::string code = R"(
+        import hoo;
         serializable class Bad {
             public var ch: char;
             constructor() {}
@@ -2094,6 +2208,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharField) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNonSerializableRef) {
     std::string code = R"(
+        import hoo;
         class NonSerial {}
 
         serializable class Bad {
@@ -2108,6 +2223,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNonSerializa
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatHashMapValue) {
     std::string code = R"(
+        import hoo.collections;
         serializable class Bad {
             public var values: HashMap<int64, float>;
             constructor() {}
@@ -2120,6 +2236,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatHashMap
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharHashMapValue) {
     std::string code = R"(
+        import hoo.collections;
         serializable class Bad {
             public var values: HashMap<int64, char>;
             constructor() {}
@@ -2134,6 +2251,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharHashMapV
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithSelfCycle) {
     std::string code = R"(
+        import hoo;
         serializable class Node {
             public var next: Node;
             constructor() {}
@@ -2151,6 +2269,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithSelfCycle) {
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithMutualCycle) {
     std::string code = R"(
+        import hoo;
         serializable class A {
             public var b: B;
             constructor() {}
@@ -2169,6 +2288,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithMutualCycle)
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableFailsWithServiceModifier) {
     std::string code = R"(
+        import hoo;
         serializable service class Bad {}
     )";
     auto module = compiler_->compile("test", code);

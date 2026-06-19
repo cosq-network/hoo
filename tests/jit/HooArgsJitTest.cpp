@@ -30,6 +30,7 @@ protected:
 
 TEST_F(HooArgsJitTest, Count) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             return args.count();
@@ -41,6 +42,7 @@ TEST_F(HooArgsJitTest, Count) {
 
 TEST_F(HooArgsJitTest, Get) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             var a0 = args.get(0);
@@ -54,6 +56,7 @@ TEST_F(HooArgsJitTest, Get) {
 
 TEST_F(HooArgsJitTest, Has) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             return args.has("output");
@@ -65,6 +68,7 @@ TEST_F(HooArgsJitTest, Has) {
 
 TEST_F(HooArgsJitTest, HasNotFound) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             return args.has("nonexistent");
@@ -76,6 +80,7 @@ TEST_F(HooArgsJitTest, HasNotFound) {
 
 TEST_F(HooArgsJitTest, Value) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             var val = args.value("output");
@@ -90,6 +95,7 @@ TEST_F(HooArgsJitTest, Value) {
 
 TEST_F(HooArgsJitTest, ParseReturnsOne) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addFlag("verbose", "-v", "--verbose", "");
@@ -102,6 +108,7 @@ TEST_F(HooArgsJitTest, ParseReturnsOne) {
 
 TEST_F(HooArgsJitTest, GetBoolFlagPresent) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addFlag("verbose", "-v", "--verbose", "");
@@ -115,6 +122,7 @@ TEST_F(HooArgsJitTest, GetBoolFlagPresent) {
 
 TEST_F(HooArgsJitTest, GetBoolFlagAbsent) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addFlag("debug", "-d", "--debug", "");
@@ -128,6 +136,7 @@ TEST_F(HooArgsJitTest, GetBoolFlagAbsent) {
 
 TEST_F(HooArgsJitTest, GetStringUsesDefault) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("file", "-f", "--file", "", "default.txt");
@@ -142,6 +151,7 @@ TEST_F(HooArgsJitTest, GetStringUsesDefault) {
 
 TEST_F(HooArgsJitTest, GetStringFromArg) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("output", "-o", "--output", "", "");
@@ -159,6 +169,7 @@ TEST_F(HooArgsJitTest, GetStringFromShortOpt) {
     const char* argv[] = {"program", "-o", "shortval"};
     hoo_args_init(3, argv);
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("opt", "-o", "", "", "");
@@ -173,6 +184,7 @@ TEST_F(HooArgsJitTest, GetStringFromShortOpt) {
 
 TEST_F(HooArgsJitTest, GetIntWithDefault) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addInt("count", "-c", "--count", "", 42);
@@ -186,6 +198,7 @@ TEST_F(HooArgsJitTest, GetIntWithDefault) {
 
 TEST_F(HooArgsJitTest, GetIntFromArg) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addInt("count", "-c", "--count", "", 0);
@@ -200,6 +213,7 @@ TEST_F(HooArgsJitTest, GetIntFromArg) {
 
 TEST_F(HooArgsJitTest, ParseBeforeAddReturnsDefaultInt) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addInt("count", "-c", "--count", "", 99);
@@ -213,6 +227,7 @@ TEST_F(HooArgsJitTest, ParseBeforeAddReturnsDefaultInt) {
 
 TEST_F(HooArgsJitTest, AddPositionalAndGet) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addPositional("input", "Input file");
@@ -227,6 +242,7 @@ TEST_F(HooArgsJitTest, AddPositionalAndGet) {
 
 TEST_F(HooArgsJitTest, MultiplePositionalArgs) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addPositional("first", "First");
@@ -245,6 +261,7 @@ TEST_F(HooArgsJitTest, MultiplePositionalArgs) {
 
 TEST_F(HooArgsJitTest, HelpTextNonEmpty) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("output", "-o", "--output", "Output file", "out.txt");
@@ -260,6 +277,7 @@ TEST_F(HooArgsJitTest, HelpTextNonEmpty) {
 
 TEST_F(HooArgsJitTest, GetStringAfterParseWithPositionalDefault) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addPositional("input", "Input file");
@@ -274,6 +292,7 @@ TEST_F(HooArgsJitTest, GetStringAfterParseWithPositionalDefault) {
 
 TEST_F(HooArgsJitTest, ClearAndReuse) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("output", "-o", "--output", "", "first.txt");
@@ -294,6 +313,7 @@ TEST_F(HooArgsJitTest, ClearAndReuse) {
 
 TEST_F(HooArgsJitTest, FlagPresentReturnsOne) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addFlag("debug", "-d", "--debug", "");
@@ -307,6 +327,7 @@ TEST_F(HooArgsJitTest, FlagPresentReturnsOne) {
 
 TEST_F(HooArgsJitTest, AddStringThenGetBoolFlag) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("name", "-n", "--name", "", "nobody");
@@ -326,6 +347,7 @@ TEST_F(HooArgsJitTest, AddStringThenGetBoolFlag) {
 
 TEST_F(HooArgsJitTest, GetBoolNotPresentAfterClear) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addFlag("verbose", "-v", "--verbose", "");
@@ -341,6 +363,7 @@ TEST_F(HooArgsJitTest, GetBoolNotPresentAfterClear) {
 
 TEST_F(HooArgsJitTest, AddFloatWithDefault) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addFloat("threshold", "-t", "--threshold", "", 0.5);
@@ -354,6 +377,7 @@ TEST_F(HooArgsJitTest, AddFloatWithDefault) {
 
 TEST_F(HooArgsJitTest, MultipleOptionalArgsAllDefaults) {
     const std::string source = R"(
+        import hoo.args;
         func :int64 test() {
             var args = new Args();
             args.addString("file", "-f", "--file", "", "out.txt");
