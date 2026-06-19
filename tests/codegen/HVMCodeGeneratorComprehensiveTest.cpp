@@ -12,6 +12,13 @@ protected:
         compiler_ = std::make_unique<HooCompiler>();
     }
 
+    const Symbol* findSymbol(const HOModule& mod, const std::string& baseName) {
+        for (const auto& sym : mod.getSymbols()) {
+            if (sym.name.find(baseName) != std::string::npos) return &sym;
+        }
+        return nullptr;
+    }
+
     std::unique_ptr<HooCompiler> compiler_;
 };
 
@@ -1593,6 +1600,174 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ArgR4ReservedTpNotUsed) {
             EXPECT_NE(ops.rd, 4) << "ST.D should not use r4 (tp) as source";
         }
     }
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64AnyModuleLevelVariable) {
+    std::string code = R"(
+        var m: HashMap<int64, any>;
+        func :int64 test() { return 0; }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto* sym = findSymbol(*module, "m");
+    ASSERT_NE(sym, nullptr);
+    EXPECT_EQ(sym->type, Symbol::STT_OBJECT);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64Int64ModuleLevelVariable) {
+    std::string code = R"(
+        var m: HashMap<int64, int64>;
+        func :int64 test() { return 0; }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto* sym = findSymbol(*module, "m");
+    ASSERT_NE(sym, nullptr);
+    EXPECT_EQ(sym->type, Symbol::STT_OBJECT);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapExpressionInFunction) {
+    std::string code = R"(
+        func :int64 test() {
+            var m = new HashMap<int64, int64>();
+            return 0;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    // Should have a CALL instruction for hashmap_new
+    bool foundCall = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCall = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundCall);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithAnyValueType) {
+    std::string code = R"(
+        func :int64 test() {
+            var m = new HashMap<int64, any>();
+            return 0;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundCall = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCall = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundCall);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayModuleLevelVariable) {
+    std::string code = R"(
+        var values: AnyArray;
+        func :int64 test() { return 0; }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto* sym = findSymbol(*module, "values");
+    ASSERT_NE(sym, nullptr);
+    EXPECT_EQ(sym->type, Symbol::STT_OBJECT);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayLiteralCodegen) {
+    std::string code = R"(
+        func :int64 test() {
+            var values = [1, 2, 3]any;
+            return values.length();
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    EXPECT_GE(insts.size(), 4);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, AnyFunctionReturnType) {
+    std::string code = R"(
+        func:any getValue() {
+            return 42;
+        }
+        func :int64 test() {
+            return 0;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto* sym = findSymbol(*module, "getValue");
+    ASSERT_NE(sym, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, MapTypeModuleLevelVariable) {
+    std::string code = R"(
+        var m: map<string, int64>;
+        func :int64 test() { return 0; }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    auto* sym = findSymbol(*module, "m");
+    ASSERT_NE(sym, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithStringValue) {
+    std::string code = R"(
+        func :int64 test() {
+            var m = new HashMap<int8, string>();
+            return 0;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapByteKeyAnyValue) {
+    std::string code = R"(
+        func :int64 test() {
+            var m: HashMap<byte, any> = new HashMap<byte, any>();
+            return 0;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "Compilation failed: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, LocalVariableNamedR4DoesNotConflict) {

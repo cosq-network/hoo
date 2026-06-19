@@ -64,6 +64,7 @@ std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildVariableDeclaration(
     if (ctx->type()) {
         // Explicit type: var x: type or var x: type = expr
         auto type = buildType(ctx->type());
+        rejectAnyTypeInPosition(type.get(), "variable declaration");
         std::unique_ptr<Expression> initializer;
         if (ctx->expression()) {
             initializer = buildExpression(ctx->expression());
@@ -85,6 +86,7 @@ std::unique_ptr<VariableDeclaration> SimpleASTBuilder::buildConstantDeclaration(
 
     if (ctx->type()) {
         auto type = buildType(ctx->type());
+        rejectAnyTypeInPosition(type.get(), "constant declaration");
         auto initializer = buildExpression(ctx->expression());
         return std::make_unique<VariableDeclaration>(std::move(type), name, std::move(initializer), false, true);
     } else {
@@ -138,6 +140,7 @@ std::unique_ptr<Parameter> SimpleASTBuilder::buildParameter(HoocParser::Paramete
     // Grammar: IDENTIFIER COLON type
     std::string name = ctx->IDENTIFIER()->getText();
     auto type = buildType(ctx->type());
+    rejectAnyTypeInPosition(type.get(), "parameter");
     return std::make_unique<Parameter>(std::move(type), name);
 }
 
@@ -463,6 +466,7 @@ std::unique_ptr<TryCatchStatement> SimpleASTBuilder::buildTryCatchStatement(Hooc
                 if (idCtx && typeCtx) {
                     clause.variable = idCtx->getText();
                     clause.type = buildType(typeCtx);
+                    rejectAnyTypeInPosition(clause.type.get(), "catch clause");
                     clause.block = buildBlock(blocks[blockIdx]);
                     catchClauses.push_back(std::move(clause));
                 }
@@ -1060,6 +1064,13 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
         return std::make_unique<ClassMember>(std::move(decl));
     }
     throw std::runtime_error("Unknown class member type encountered");
+}
+
+void SimpleASTBuilder::rejectAnyTypeInPosition(const ast::Type* type, const std::string& context) {
+    if (dynamic_cast<const AnyType*>(type)) {
+        throw std::runtime_error("The 'any' meta type is not allowed in " + context +
+            ". It may only be used as a function return type or inside container type parameters (e.g., Map<K, any>, HashMap<K, any>).");
+    }
 }
 
 ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContext* ctx) {

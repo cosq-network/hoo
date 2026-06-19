@@ -201,7 +201,7 @@ baseType
     | qualifiedIdentifier
     ;
 
-mapType: MAP LBRACKET mapKeyType COMMA type RBRACKET;
+mapType: MAP LESS mapKeyType COMMA type GREATER;
 hashMapType: HASHMAP LESS hashMapKeyType COMMA type GREATER;
 anyType: ANY;
 anyArrayType: ANYARRAY;

@@ -584,6 +584,10 @@ std::string SymbolMangler::demangleType(const std::string& mangledType) {
             pos++;
             return "tensor";
         }
+        if (mangledType[pos] == 'y') {
+            pos++;
+            return "any";
+        }
 
         if (mangledType[pos] == 'O') {
             pos++;

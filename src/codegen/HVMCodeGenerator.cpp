@@ -653,6 +653,36 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 uint32_t rightElem = inferTensorElemType(binExpr->getRight());
                 if (leftElem != 100) elemTypeId = leftElem;
                 else if (rightElem != 100) elemTypeId = rightElem;
+            } else if (auto logicAnd = dynamic_cast<const ast::LogicalAnd*>(decl.getInitializer())) {
+                auto inferElem = [&](const ast::Expression& operand) -> uint32_t {
+                    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&operand)) {
+                        if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                            if (getLocalTypeId(id->getName()) == 104) {
+                                return getLocalElementTypeId(id->getName());
+                            }
+                        }
+                    }
+                    return 100;
+                };
+                uint32_t leftElem = inferElem(logicAnd->getLeft());
+                uint32_t rightElem = inferElem(logicAnd->getRight());
+                if (leftElem != 100) elemTypeId = leftElem;
+                else if (rightElem != 100) elemTypeId = rightElem;
+            } else if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(decl.getInitializer())) {
+                auto inferElem = [&](const ast::Expression& operand) -> uint32_t {
+                    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&operand)) {
+                        if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                            if (getLocalTypeId(id->getName()) == 104) {
+                                return getLocalElementTypeId(id->getName());
+                            }
+                        }
+                    }
+                    return 100;
+                };
+                uint32_t leftElem = inferElem(logicOr->getLeft());
+                uint32_t rightElem = inferElem(logicOr->getRight());
+                if (leftElem != 100) elemTypeId = leftElem;
+                else if (rightElem != 100) elemTypeId = rightElem;
             }
         }
         int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId);
@@ -1650,6 +1680,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     return 0;
             }
         }
+        if (leftExprType == 0 || rightExprType == 0) {
+            addError("Expression of type 'any' cannot be used in a binary expression");
+            return 0;
+        }
         uint8_t left = visitExpression(binary->getLeft());
         uint8_t right = visitExpression(binary->getRight());
         uint8_t dest = allocateRegister();
@@ -1691,10 +1725,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto logicAnd = dynamic_cast<const ast::LogicalAnd*>(&expr)) {
+        const uint32_t leftType = inferExpressionTypeId(logicAnd->getLeft());
+        const uint32_t rightType = inferExpressionTypeId(logicAnd->getRight());
+        if (leftType == 0 || rightType == 0) {
+            addError("Expression of type 'any' cannot be used in a logical expression");
+            return 0;
+        }
         uint8_t left = visitExpression(logicAnd->getLeft());
         uint8_t right = visitExpression(logicAnd->getRight());
         uint8_t dest = allocateRegister();
-        if (inferExpressionTypeId(logicAnd->getLeft()) == 104 || inferExpressionTypeId(logicAnd->getRight()) == 104) {
+        if (leftType == 104 || rightType == 104) {
             emit(Opcode::MOV, OperandsR{1, left, 0, 0});
             emit(Opcode::MOV, OperandsR{2, right, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Tensor_and_p_p_p");
@@ -1707,10 +1747,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         return dest;
     }
     if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
+        const uint32_t leftType = inferExpressionTypeId(logicOr->getLeft());
+        const uint32_t rightType = inferExpressionTypeId(logicOr->getRight());
+        if (leftType == 0 || rightType == 0) {
+            addError("Expression of type 'any' cannot be used in a logical expression");
+            return 0;
+        }
         uint8_t left = visitExpression(logicOr->getLeft());
         uint8_t right = visitExpression(logicOr->getRight());
         uint8_t dest = allocateRegister();
-        if (inferExpressionTypeId(logicOr->getLeft()) == 104 || inferExpressionTypeId(logicOr->getRight()) == 104) {
+        if (leftType == 104 || rightType == 104) {
             emit(Opcode::MOV, OperandsR{1, left, 0, 0});
             emit(Opcode::MOV, OperandsR{2, right, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Tensor_or_p_p_p");
@@ -2554,11 +2600,11 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&arrayAccess->getArray())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
-                if (getLocalTypeId(id->getName()) == 104) {
-                    uint32_t elementTypeId = getLocalElementTypeId(id->getName());
-                    if (elementTypeId != 100) return elementTypeId;
-                }
+                uint32_t containerTypeId = getLocalTypeId(id->getName());
                 uint32_t elementTypeId = getLocalElementTypeId(id->getName());
+                if (containerTypeId == 104) {
+                    return elementTypeId != 100 && elementTypeId != 0 ? elementTypeId : 1;
+                }
                 if (elementTypeId != 100) return elementTypeId;
             }
         }

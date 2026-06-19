@@ -107,6 +107,50 @@ TEST_F(ASTTypeTest, MapTakeValueType) {
     EXPECT_NE(taken, nullptr);
 }
 
+TEST_F(ASTTypeTest, HashMapTypeConstruction) {
+    auto vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
+    HashMapType hm(HashMapKeyType::INT64, std::move(vt));
+    EXPECT_EQ(hm.getKeyType(), HashMapKeyType::INT64);
+    EXPECT_EQ(hm.keyTypeToString(), "int64");
+    EXPECT_EQ(hm.toString(), "HashMapType");
+}
+
+TEST_F(ASTTypeTest, HashMapTypeAllKeyTypes) {
+    auto vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
+    EXPECT_EQ(HashMapType(HashMapKeyType::BYTE, std::move(vt)).keyTypeToString(), "byte");
+    vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
+    EXPECT_EQ(HashMapType(HashMapKeyType::INT8, std::move(vt)).keyTypeToString(), "int8");
+    vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
+    EXPECT_EQ(HashMapType(HashMapKeyType::INT64, std::move(vt)).keyTypeToString(), "int64");
+}
+
+TEST_F(ASTTypeTest, HashMapTypeWithAnyValue) {
+    auto vt = std::make_unique<AnyType>();
+    HashMapType hm(HashMapKeyType::INT64, std::move(vt));
+    EXPECT_EQ(hm.toString(), "HashMapType");
+    EXPECT_NE(dynamic_cast<const AnyType*>(&hm.getValueType()), nullptr);
+}
+
+TEST_F(ASTTypeTest, AnyArrayTypeConstruction) {
+    AnyArrayType aat;
+    EXPECT_EQ(aat.toString(), "AnyArrayType");
+}
+
+TEST_F(ASTTypeTest, AnyTypeConstruction) {
+    AnyType at;
+    EXPECT_EQ(at.toString(), "AnyType");
+}
+
+TEST_F(ASTTypeTest, NewHashMapExpressionConstruction) {
+    auto vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::STRING);
+    auto hmType = std::make_unique<HashMapType>(HashMapKeyType::INT64, std::move(vt));
+    auto args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>{});
+    NewHashMapExpression expr(std::move(hmType), std::move(args));
+    EXPECT_EQ(expr.toString(), "NewHashMapExpression");
+    EXPECT_EQ(expr.getHashMapType().getKeyType(), HashMapKeyType::INT64);
+    EXPECT_NE(expr.getArguments(), nullptr);
+}
+
 TEST_F(ASTTypeTest, TensorTypeConstruction) {
     auto elem = std::make_unique<BaseType>(std::make_unique<PrimitiveType>(PrimitiveTypeKind::F8));
     std::vector<std::unique_ptr<Expression>> dims;

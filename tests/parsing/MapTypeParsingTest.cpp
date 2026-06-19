@@ -33,7 +33,7 @@ protected:
 
 TEST_F(MapTypeParsingTest, ParseMapTypeWithStringKeyInt64Value) {
     std::string code = R"(
-        func test(m: map[string, int64]) {
+        func test(m: map<string, int64>) {
             return;
         }
     )";
@@ -51,7 +51,7 @@ TEST_F(MapTypeParsingTest, ParseMapTypeWithStringKeyInt64Value) {
 
 TEST_F(MapTypeParsingTest, ParseMapTypeWithInt64KeyStringValue) {
     std::string code = R"(
-        func test(m: map[int64, string]) {
+        func test(m: map<int64, string>) {
             return;
         }
     )";
@@ -69,7 +69,7 @@ TEST_F(MapTypeParsingTest, ParseMapTypeWithInt64KeyStringValue) {
 
 TEST_F(MapTypeParsingTest, ParseMapTypeWithByteKey) {
     std::string code = R"(
-        func test(m: map[byte, int64]) {
+        func test(m: map<byte, int64>) {
             return;
         }
     )";
@@ -84,7 +84,7 @@ TEST_F(MapTypeParsingTest, ParseMapTypeWithByteKey) {
 
 TEST_F(MapTypeParsingTest, ParseMapTypeWithInt8Key) {
     std::string code = R"(
-        func test(m: map[int8, string]) {
+        func test(m: map<int8, string>) {
             return;
         }
     )";
@@ -99,7 +99,7 @@ TEST_F(MapTypeParsingTest, ParseMapTypeWithInt8Key) {
 
 TEST_F(MapTypeParsingTest, ParseMapTypeWithCharKey) {
     std::string code = R"(
-        func test(m: map[char, double]) {
+        func test(m: map<char, double>) {
             return;
         }
     )";
@@ -117,7 +117,7 @@ TEST_F(MapTypeParsingTest, ParseMapTypeWithClassValue) {
         class Person {
             var name: string;
         }
-        func test(m: map[string, Person]) {
+        func test(m: map<string, Person>) {
             return;
         }
     )";
@@ -137,7 +137,7 @@ TEST_F(MapTypeParsingTest, ParseMapTypeWithClassValue) {
 TEST_F(MapTypeParsingTest, ParseMapReturnType) {
     // Hooc syntax: func:returnType name() { }
     std::string code = R"(
-        func:map[string, int64] createMap() {
+        func:map<string, int64> createMap() {
             return;
         }
     )";
@@ -152,7 +152,7 @@ TEST_F(MapTypeParsingTest, ParseMapReturnType) {
 
 TEST_F(MapTypeParsingTest, ParseMapReturnTypeWithInt64Key) {
     std::string code = R"(
-        func:map[int64, string] createMap() {
+        func:map<int64, string> createMap() {
             return;
         }
     )";
@@ -167,7 +167,7 @@ TEST_F(MapTypeParsingTest, ParseMapReturnTypeWithInt64Key) {
 
 TEST_F(MapTypeParsingTest, ParseMapReturnTypeWithCharKey) {
     std::string code = R"(
-        func:map[char, double] createMap() {
+        func:map<char, double> createMap() {
             return;
         }
     )";
@@ -186,7 +186,7 @@ TEST_F(MapTypeParsingTest, ParseMapReturnTypeWithCharKey) {
 
 TEST_F(MapTypeParsingTest, ParseMapVariableDeclaration) {
     std::string code = R"(
-        var scores: map[string, int64];
+        var scores: map<string, int64>;
     )";
     auto* parseTree = parseCode(code);
 

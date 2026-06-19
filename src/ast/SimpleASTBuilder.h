@@ -532,6 +532,16 @@ private:
      * @return The corresponding ClassModifier value.
      */
     ast::ClassModifier getClassModifier(HoocParser::ClassModifierContext* ctx);
+
+    /**
+     * @brief Rejects the 'any' meta type in positions where it is not allowed.
+     * 'any' is only allowed as a function return type or inside container type
+     * parameters (Map<K, V>, HashMap<K, V>). It is forbidden in variable
+     * declarations, parameters, constants, and catch clauses.
+     * @param type The type to check.
+     * @param context Descriptive string for error message (e.g., "variable", "parameter").
+     */
+    void rejectAnyTypeInPosition(const ast::Type* type, const std::string& context);
 };
 
 } // namespace hooc

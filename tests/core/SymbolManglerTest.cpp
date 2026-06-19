@@ -422,6 +422,37 @@ TEST_F(SymbolManglerTest, MalformedTypeDoesNotCollapseToGenericUnknownCode) {
     EXPECT_EQ(SymbolMangler::demangleType(mangled), malformed);
 }
 
+TEST_F(SymbolManglerTest, HashMapTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("HashMap[int64,any]");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "HashMap[int64,any]");
+}
+
+TEST_F(SymbolManglerTest, HashMapWithInt64ValueManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("HashMap[int8,int64]");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "HashMap[int8,int64]");
+}
+
+TEST_F(SymbolManglerTest, AnyArrayTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("AnyArray");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "AnyArray");
+}
+
+TEST_F(SymbolManglerTest, NestedHashMapManglingRoundTrip) {
+    std::string type = "HashMap[int64,HashMap[byte,string]]";
+    std::string mangled = SymbolMangler::mangleType(type);
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), type);
+}
+
+TEST_F(SymbolManglerTest, MangledMapKeysIncludeAny) {
+    std::string mangled = SymbolMangler::mangleType("map[string,any]");
+    EXPECT_NE(mangled, "o");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "map[string,any]");
+}
+
 TEST_F(SymbolManglerTest, InvalidStructuredTypeDemanglesToUnknown) {
     EXPECT_EQ(SymbolMangler::demangleType("QabcZ"), "unknown"); // odd hex-length payload
     EXPECT_EQ(SymbolMangler::demangleType("QzzZ"), "unknown");  // non-hex payload
