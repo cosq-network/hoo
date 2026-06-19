@@ -779,203 +779,1268 @@ func :int64 main() {
 
 ---
 
-# C++ API — Class Reference
+# C++ API — Class and Function Reference
 
 The `hoo::fs` namespace provides three object-oriented classes (`Path`, `File`,
-`Directory`) for filesystem operations. Each has a single explicit constructor
-with no overloads. These classes live in the C++ layer; Hoo code accesses the
-equivalent operations through the free functions documented above, which
-delegate to these classes via the C-ABI bridge.
+`Directory`) and several free functions for filesystem operations. Each class
+has a single explicit constructor with no overloads.
+
+These classes live in the C++ layer. Hoo code accesses the equivalent
+operations through the free functions documented above, which delegate to these
+classes via the C-ABI bridge.
 
 ---
 
-## `hoo::fs::Path`
+## `hoo::fs::Path::Path`
 
 ### Description
 
-Parses, inspects, and manipulates filesystem paths. All extraction methods
-return the relevant component as a `std::string`. Mutating methods
-(`normalized`, `absolute`) return a new `Path` object.
+Constructs a `Path` object from a path string. The constructor does not
+validate the path; validation and resolution happen on I/O or method calls.
 
-### Constructor
+### Syntax
 
 ```cpp
-explicit Path(const std::string& path);
+Path(const std::string& path);
 ```
 
-### Methods
+### Parameters
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `str` | `() -> string` | The original path string. |
-| `dirname` | `() -> string` | Parent directory path. |
-| `basename` | `() -> string` | File name with extension. |
-| `extension` | `() -> string` | Extension including the dot, or empty. |
-| `stem` | `() -> string` | File name without extension. |
-| `root` | `() -> string` | Root component (e.g. `/`, `C:\`). |
-| `normalized` | `() -> Path` | Path with `.`/`..` resolved. |
-| `absolute` | `() -> Path` | Resolved to absolute path. |
-| `isAbsolute` | `() -> bool` | Whether the path is absolute. |
-| `isRelative` | `() -> bool` | Whether the path is relative. |
-| `hasExtension` | `() -> bool` | Whether the path has an extension. |
-| `hasRoot` | `() -> bool` | Whether the path has a root component. |
-| `split` | `() -> vector<string>` | Path split into individual components. |
+`path`
+A filesystem path string.
+
+### Return Type
+
+`Path`
+A new `Path` instance.
 
 ### Errors
 
-- Constructor does not validate the path; validation happens on I/O.
-- Extraction methods return empty strings for missing components.
-- `normalized` / `absolute` throw `std::filesystem::filesystem_error` on
-  resolution failure.
+The constructor does not validate the path. Resolution methods
+(`absolute`, `normalized`) throw `std::filesystem::filesystem_error` on
+failure.
 
 ### Complete Example
 
 ```cpp
 #include "hoo_fs.h"
-#include <iostream>
+hoo::fs::Path p("/home/user/docs/file.txt");
+```
 
-int main() {
-    hoo::fs::Path p("/home/user/docs/file.txt");
+---
 
-    std::cout << "dirname:    " << p.dirname()    << "\n"; // /home/user/docs
-    std::cout << "basename:   " << p.basename()   << "\n"; // file.txt
-    std::cout << "extension:  " << p.extension()  << "\n"; // .txt
-    std::cout << "stem:       " << p.stem()       << "\n"; // file
-    std::cout << "root:       " << p.root()       << "\n"; // /
-    std::cout << "isAbsolute: " << p.isAbsolute() << "\n"; // 1
+## `hoo::fs::Path::str`
 
-    hoo::fs::Path abs = p.absolute();
-    std::cout << "absolute:   " << abs.str() << "\n";
+### Description
 
-    return 0;
+Returns the original path string used to construct this `Path` instance.
+
+### Syntax
+
+```cpp
+p.str() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The original path string.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/tmp");
+std::string s = p.str(); // "/tmp"
+```
+
+---
+
+## `hoo::fs::Path::dirname`
+
+### Description
+
+Returns the parent directory path. Equivalent to Python's
+`os.path.dirname()`.
+
+### Syntax
+
+```cpp
+p.dirname() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The parent directory path. Returns an empty string if there is no parent.
+
+### Errors
+
+Returns an empty string for paths without a parent (e.g. `"file.txt"`).
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/user/docs/file.txt");
+std::string d = p.dirname(); // "/home/user/docs"
+```
+
+---
+
+## `hoo::fs::Path::basename`
+
+### Description
+
+Returns the file name with extension. Equivalent to Python's
+`os.path.basename()`.
+
+### Syntax
+
+```cpp
+p.basename() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The file name including extension.
+
+### Errors
+
+Returns an empty string for root paths.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/user/docs/file.txt");
+std::string b = p.basename(); // "file.txt"
+```
+
+---
+
+## `hoo::fs::Path::extension`
+
+### Description
+
+Returns the file extension including the leading dot. Equivalent to
+Python's `os.path.splitext()[1]`.
+
+### Syntax
+
+```cpp
+p.extension() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The extension including the dot (e.g. `".txt"`). Returns an empty string if
+the path has no extension.
+
+### Errors
+
+Returns an empty string for paths without an extension or paths ending in a
+dot.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/user/docs/file.txt");
+std::string e = p.extension(); // ".txt"
+```
+
+---
+
+## `hoo::fs::Path::stem`
+
+### Description
+
+Returns the file name without the extension.
+
+### Syntax
+
+```cpp
+p.stem() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The file name without extension.
+
+### Errors
+
+Returns an empty string for paths with no filename.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/user/docs/file.txt");
+std::string s = p.stem(); // "file"
+```
+
+---
+
+## `hoo::fs::Path::root`
+
+### Description
+
+Returns the root component of the path (e.g. `"/"` on POSIX,
+`"C:\\"` on Windows).
+
+### Syntax
+
+```cpp
+p.root() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The root component. Returns an empty string for relative paths.
+
+### Errors
+
+Returns an empty string for relative paths.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/user/docs/file.txt");
+std::string r = p.root(); // "/"
+```
+
+---
+
+## `hoo::fs::Path::normalized`
+
+### Description
+
+Resolves `.` and `..` components without accessing the filesystem. Returns a
+new `Path`.
+
+### Syntax
+
+```cpp
+p.normalized() -> Path
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`Path`
+A new `Path` with `.` and `..` resolved.
+
+### Errors
+
+Throws `std::filesystem::filesystem_error` on resolution failure.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/../tmp/./file.txt");
+hoo::fs::Path n = p.normalized(); // "/tmp/file.txt"
+```
+
+---
+
+## `hoo::fs::Path::absolute`
+
+### Description
+
+Resolves the path to an absolute path relative to the current working
+directory. Requires the filesystem to be accessible. Returns a new `Path`.
+
+### Syntax
+
+```cpp
+p.absolute() -> Path
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`Path`
+A new `Path` containing the absolute path.
+
+### Errors
+
+Throws `std::filesystem::filesystem_error` if the current working directory
+cannot be determined.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("docs/file.txt");
+hoo::fs::Path a = p.absolute(); // e.g. "/home/user/proj/docs/file.txt"
+```
+
+---
+
+## `hoo::fs::Path::isAbsolute`
+
+### Description
+
+Checks whether the path is an absolute path.
+
+### Syntax
+
+```cpp
+p.isAbsolute() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path is absolute, `false` otherwise.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p1("/tmp");
+bool a1 = p1.isAbsolute(); // true
+
+hoo::fs::Path p2("relative/path");
+bool a2 = p2.isAbsolute(); // false
+```
+
+---
+
+## `hoo::fs::Path::isRelative`
+
+### Description
+
+Checks whether the path is a relative path.
+
+### Syntax
+
+```cpp
+p.isRelative() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path is relative, `false` otherwise.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("relative/path");
+bool r = p.isRelative(); // true
+```
+
+---
+
+## `hoo::fs::Path::hasExtension`
+
+### Description
+
+Checks whether the path has a file extension.
+
+### Syntax
+
+```cpp
+p.hasExtension() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path has an extension, `false` otherwise.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p1("file.txt");
+bool e1 = p1.hasExtension(); // true
+
+hoo::fs::Path p2("file");
+bool e2 = p2.hasExtension(); // false
+```
+
+---
+
+## `hoo::fs::Path::hasRoot`
+
+### Description
+
+Checks whether the path has a root component.
+
+### Syntax
+
+```cpp
+p.hasRoot() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path has a root component, `false` otherwise.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p1("/tmp");
+bool r1 = p1.hasRoot(); // true
+
+hoo::fs::Path p2("tmp");
+bool r2 = p2.hasRoot(); // false
+```
+
+---
+
+## `hoo::fs::Path::split`
+
+### Description
+
+Splits the path into individual components.
+
+### Syntax
+
+```cpp
+p.split() -> std::vector<std::string>
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::vector<std::string>`
+A vector of path components.
+
+### Errors
+
+Returns an empty vector for an empty path.
+
+### Complete Example
+
+```cpp
+hoo::fs::Path p("/home/user/docs/file.txt");
+auto parts = p.split();
+// parts = {"home", "user", "docs", "file.txt"}
+```
+
+---
+
+## `hoo::fs::File::File`
+
+### Description
+
+Constructs a `File` object from a path string. The class does **not** open
+a file handle; it operates on the path at each method call.
+
+### Syntax
+
+```cpp
+File(const std::string& path);
+```
+
+### Parameters
+
+`path`
+The filesystem path to the file.
+
+### Return Type
+
+`File`
+A new `File` instance.
+
+### Errors
+
+The constructor does not validate the path.
+
+### Complete Example
+
+```cpp
+#include "hoo_fs.h"
+hoo::fs::File f("/tmp/example.txt");
+```
+
+---
+
+## `hoo::fs::File::path`
+
+### Description
+
+Returns the path used to construct this `File` instance.
+
+### Syntax
+
+```cpp
+f.path() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The path string.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/example.txt");
+std::string p = f.path(); // "/tmp/example.txt"
+```
+
+---
+
+## `hoo::fs::File::exists`
+
+### Description
+
+Checks whether the file path exists on the filesystem.
+
+### Syntax
+
+```cpp
+f.exists() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path exists, `false` otherwise.
+
+### Errors
+
+Returns `false` if the path is inaccessible.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/example.txt");
+if (f.exists()) {
+    // file exists
 }
 ```
 
 ---
 
-## `hoo::fs::File`
+## `hoo::fs::File::isFile`
 
 ### Description
 
-Represents a file on the filesystem. Provides metadata queries and I/O
-operations. The class does **not** open a file handle; it operates on the path
-at each method call.
+Checks whether the path points to a regular file.
 
-### Constructor
+### Syntax
 
 ```cpp
-explicit File(const std::string& path);
+f.isFile() -> bool
 ```
 
-### Methods
+### Parameters
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `path` | `() -> string` | The path used to construct this instance. |
-| `exists` | `() -> bool` | Whether the path exists. |
-| `isFile` | `() -> bool` | Whether the path is a regular file. |
-| `size` | `() -> int64_t` | File size in bytes, `-1` on error. |
-| `lastModified` | `() -> int64_t` | Unix timestamp (seconds since epoch), `-1` on error. |
-| `remove` | `() -> bool` | Delete the file. |
-| `rename` | `(newPath: string) -> bool` | Rename / move; updates stored path on success. |
-| `readText` | `() -> string` | Read entire file as text; empty on error. |
-| `writeText` | `(content: string) -> bool` | Write string to file, overwriting. |
-| `appendText` | `(content: string) -> bool` | Append string to file; creates if missing. |
-| `readBytes` | `(out vector<u8>&) -> bool` | Read binary file into `vector`. |
-| `writeBytes` | `(vector<u8>&) -> bool` | Write bytes to file, overwriting. |
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path is a regular file, `false` otherwise.
 
 ### Errors
 
-- Constructor does not validate the path.
-- `exists`, `isFile`, `size`, `lastModified` return `false` / `-1` if the
-  path does not exist or is inaccessible.
-- `remove`, `rename`, `writeText`, `appendText`, `writeBytes` return `false`
-  on failure (permissions, read-only filesystem, etc.).
-- `readText` returns an empty string if the file does not exist or cannot be
-  read.
-- `readBytes` returns `false` and an empty vector on failure.
+Returns `false` if the path does not exist or is inaccessible.
 
 ### Complete Example
 
 ```cpp
-#include "hoo_fs.h"
-#include <iostream>
+hoo::fs::File f("/tmp/example.txt");
+bool ok = f.isFile();
+```
 
-int main() {
-    hoo::fs::File f("/tmp/example.txt");
+---
 
-    if (f.writeText("Hello, world!")) {
-        std::cout << "wrote " << f.size() << " bytes\n";
-    }
+## `hoo::fs::File::size`
 
-    std::string content = f.readText();
-    std::cout << "read: " << content << "\n";
+### Description
 
-    if (f.remove()) {
-        std::cout << "removed\n";
-    }
+Returns the size of the file in bytes.
 
-    return 0;
+### Syntax
+
+```cpp
+f.size() -> int64_t
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`int64_t`
+The file size in bytes. Returns `-1` on error.
+
+### Errors
+
+Returns `-1` if the file does not exist or cannot be read.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/example.txt");
+int64_t sz = f.size();
+if (sz >= 0) {
+    // use sz
 }
 ```
 
 ---
 
-## `hoo::fs::Directory`
+## `hoo::fs::File::lastModified`
 
 ### Description
 
-Represents a directory on the filesystem. Provides creation, removal, and
-listing operations.
+Returns the last modified time of the file as a Unix timestamp (seconds
+since epoch).
 
-### Constructor
+### Syntax
 
 ```cpp
-explicit Directory(const std::string& path);
+f.lastModified() -> int64_t
 ```
 
-### Methods
+### Parameters
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `path` | `() -> string` | The path used to construct this instance. |
-| `exists` | `() -> bool` | Whether the directory path exists. |
-| `isDirectory` | `() -> bool` | Whether the path is a directory. |
-| `create` | `() -> bool` | Create a single directory (parent must exist). |
-| `createTree` | `() -> bool` | Create directory tree (`mkdir -p`). |
-| `remove` | `() -> bool` | Remove an empty directory. |
-| `list` | `() -> vector<string>` | List entry names (filenames only, not full paths). |
+None.
+
+### Return Type
+
+`int64_t`
+A Unix timestamp. Returns `-1` on error.
 
 ### Errors
 
-- Constructor does not validate the path.
-- `exists`, `isDirectory` return `false` if the path does not exist or is
-  inaccessible.
-- `create` returns `false` if the parent does not exist.
-- `createTree` returns `false` if the tree cannot be created.
-- `remove` returns `false` if the directory is not empty.
-- `list` returns an empty vector if the directory does not exist or cannot be
-  read.
+Returns `-1` if the file does not exist or cannot be accessed.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/example.txt");
+int64_t ts = f.lastModified();
+```
+
+---
+
+## `hoo::fs::File::remove`
+
+### Description
+
+Deletes the file from the filesystem.
+
+### Syntax
+
+```cpp
+f.remove() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the file does not exist or cannot be deleted.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/temp.txt");
+if (f.remove()) {
+    // file deleted
+}
+```
+
+---
+
+## `hoo::fs::File::rename`
+
+### Description
+
+Renames or moves the file. Updates the stored path on success.
+
+### Syntax
+
+```cpp
+f.rename(const std::string& newPath) -> bool
+```
+
+### Parameters
+
+`newPath`
+The new filesystem path.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the source does not exist or the destination cannot be
+created.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/old.txt");
+if (f.rename("/tmp/new.txt")) {
+    // f.path() is now "/tmp/new.txt"
+}
+```
+
+---
+
+## `hoo::fs::File::readText`
+
+### Description
+
+Reads the entire contents of the file as a string.
+
+### Syntax
+
+```cpp
+f.readText() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The file contents. Returns an empty string on error.
+
+### Errors
+
+Returns an empty string if the file does not exist or cannot be read.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/hello.txt");
+std::string content = f.readText();
+```
+
+---
+
+## `hoo::fs::File::writeText`
+
+### Description
+
+Writes a string to the file, overwriting any existing content. Creates the
+file if it does not exist.
+
+### Syntax
+
+```cpp
+f.writeText(const std::string& content) -> bool
+```
+
+### Parameters
+
+`content`
+The text to write.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the file cannot be written.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/hello.txt");
+if (f.writeText("Hello, world!")) {
+    // file written
+}
+```
+
+---
+
+## `hoo::fs::File::appendText`
+
+### Description
+
+Appends a string to the end of the file. Creates the file if it does not
+exist.
+
+### Syntax
+
+```cpp
+f.appendText(const std::string& content) -> bool
+```
+
+### Parameters
+
+`content`
+The text to append.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the file cannot be written.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/log.txt");
+f.appendText("new entry\n");
+```
+
+---
+
+## `hoo::fs::File::readBytes`
+
+### Description
+
+Reads the entire file into a byte vector.
+
+### Syntax
+
+```cpp
+f.readBytes(std::vector<uint8_t>& outData) -> bool
+```
+
+### Parameters
+
+`outData`
+Output vector that receives the file bytes.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure. The vector is empty on
+failure.
+
+### Errors
+
+Returns `false` if the file does not exist or cannot be read.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/data.bin");
+std::vector<uint8_t> data;
+if (f.readBytes(data)) {
+    // data contains the file bytes
+}
+```
+
+---
+
+## `hoo::fs::File::writeBytes`
+
+### Description
+
+Writes raw bytes to the file, overwriting any existing content.
+
+### Syntax
+
+```cpp
+f.writeBytes(const std::vector<uint8_t>& data) -> bool
+```
+
+### Parameters
+
+`data`
+The bytes to write.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the file cannot be written.
+
+### Complete Example
+
+```cpp
+hoo::fs::File f("/tmp/data.bin");
+std::vector<uint8_t> data = {0x48, 0x65, 0x6C, 0x6C, 0x6F};
+f.writeBytes(data);
+```
+
+---
+
+## `hoo::fs::Directory::Directory`
+
+### Description
+
+Constructs a `Directory` object from a path string.
+
+### Syntax
+
+```cpp
+Directory(const std::string& path);
+```
+
+### Parameters
+
+`path`
+The filesystem path to the directory.
+
+### Return Type
+
+`Directory`
+A new `Directory` instance.
+
+### Errors
+
+The constructor does not validate the path.
 
 ### Complete Example
 
 ```cpp
 #include "hoo_fs.h"
-#include <iostream>
+hoo::fs::Directory d("/tmp/mydir");
+```
 
-int main() {
-    hoo::fs::Directory d("/tmp/myapp/data");
+---
 
-    if (d.createTree()) {
-        std::cout << "created tree\n";
+## `hoo::fs::Directory::path`
 
-        auto entries = d.list();
-        std::cout << entries.size() << " entries\n";
+### Description
 
-        d.remove();
-    }
+Returns the path used to construct this `Directory` instance.
 
-    return 0;
+### Syntax
+
+```cpp
+d.path() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The path string.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp/mydir");
+std::string p = d.path(); // "/tmp/mydir"
+```
+
+---
+
+## `hoo::fs::Directory::exists`
+
+### Description
+
+Checks whether the directory path exists on the filesystem.
+
+### Syntax
+
+```cpp
+d.exists() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path exists, `false` otherwise.
+
+### Errors
+
+Returns `false` if the path is inaccessible.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp/mydir");
+if (d.exists()) {
+    // directory exists
+}
+```
+
+---
+
+## `hoo::fs::Directory::isDirectory`
+
+### Description
+
+Checks whether the path points to a directory.
+
+### Syntax
+
+```cpp
+d.isDirectory() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` if the path is a directory, `false` otherwise.
+
+### Errors
+
+Returns `false` if the path does not exist or is inaccessible.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp/mydir");
+bool ok = d.isDirectory();
+```
+
+---
+
+## `hoo::fs::Directory::create`
+
+### Description
+
+Creates a single directory. The parent directory must already exist.
+
+### Syntax
+
+```cpp
+d.create() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the parent does not exist or the directory cannot be
+created.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp/mydir");
+if (d.create()) {
+    // directory created
+}
+```
+
+---
+
+## `hoo::fs::Directory::createTree`
+
+### Description
+
+Creates the directory and all missing parent directories (like `mkdir -p`).
+Does not fail if the directory already exists.
+
+### Syntax
+
+```cpp
+d.createTree() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the directory tree cannot be created.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp/a/b/c");
+if (d.createTree()) {
+    // whole tree created
+}
+```
+
+---
+
+## `hoo::fs::Directory::remove`
+
+### Description
+
+Removes an empty directory.
+
+### Syntax
+
+```cpp
+d.remove() -> bool
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the directory is not empty or cannot be removed.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp/emptydir");
+if (d.remove()) {
+    // directory removed
+}
+```
+
+---
+
+## `hoo::fs::Directory::list`
+
+### Description
+
+Returns the names of entries inside the directory. The entries are base
+names only (not full paths).
+
+### Syntax
+
+```cpp
+d.list() -> std::vector<std::string>
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::vector<std::string>`
+A vector of entry names.
+
+### Errors
+
+Returns an empty vector if the directory does not exist or cannot be read.
+
+### Complete Example
+
+```cpp
+hoo::fs::Directory d("/tmp");
+auto entries = d.list();
+for (const auto& name : entries) {
+    // process name
 }
 ```
 
@@ -983,14 +2048,285 @@ int main() {
 
 ## Free Functions (`hoo::fs`)
 
-| Function | Signature | Description |
-|----------|-----------|-------------|
-| `join` | `(a: string, b: string) -> string` | Concatenate two path components. |
-| `joinMulti` | `(parts: vector<string>&) -> string` | Join multiple path components. |
-| `relative` | `(path: string, base: string) -> string` | Compute relative path. |
-| `separator` | `() -> char` | System path separator (`/` or `\`). |
-| `listSeparator` | `() -> char` | System path list separator (`:` or `;`). |
-| `tempDir` | `() -> string` | System temporary directory path. |
-| `createTempFile` | `(prefix: string) -> string` | Create a temporary file, returns path. |
-| `copyFile` | `(src: string, dst: string) -> bool` | Copy a file. |
+### `join`
 
+### Description
+
+Concatenates two path components using the system path separator.
+
+### Syntax
+
+```cpp
+join(const std::string& a, const std::string& b) -> std::string
+```
+
+### Parameters
+
+`a`
+First path component.
+
+`b`
+Second path component.
+
+### Return Type
+
+`std::string`
+The joined path.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+std::string p = hoo::fs::join("a", "b"); // "a/b"
+```
+
+---
+
+### `joinMulti`
+
+### Description
+
+Joins multiple path components using the system path separator.
+
+### Syntax
+
+```cpp
+joinMulti(const std::vector<std::string>& parts) -> std::string
+```
+
+### Parameters
+
+`parts`
+A vector of path components.
+
+### Return Type
+
+`std::string`
+The joined path.
+
+### Errors
+
+Returns an empty string if `parts` is empty.
+
+### Complete Example
+
+```cpp
+std::vector<std::string> parts = {"a", "b", "c"};
+std::string p = hoo::fs::joinMulti(parts); // "a/b/c"
+```
+
+---
+
+### `relative`
+
+### Description
+
+Computes the relative path from `base` to `path`.
+
+### Syntax
+
+```cpp
+relative(const std::string& path, const std::string& base) -> std::string
+```
+
+### Parameters
+
+`path`
+The target path.
+
+`base`
+The base path.
+
+### Return Type
+
+`std::string`
+The relative path.
+
+### Errors
+
+Returns an empty string if no relative path can be computed.
+
+### Complete Example
+
+```cpp
+std::string r = hoo::fs::relative("/a/b/c", "/a/b"); // "c"
+```
+
+---
+
+### `separator`
+
+### Description
+
+Returns the system path separator character (`/` on POSIX, `\\` on
+Windows).
+
+### Syntax
+
+```cpp
+separator() -> char
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`char`
+The path separator.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+char sep = hoo::fs::separator(); // '/'
+```
+
+---
+
+### `listSeparator`
+
+### Description
+
+Returns the system path list separator character (`:` on POSIX, `;` on
+Windows).
+
+### Syntax
+
+```cpp
+listSeparator() -> char
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`char`
+The path list separator.
+
+### Errors
+
+None.
+
+### Complete Example
+
+```cpp
+char sep = hoo::fs::listSeparator(); // ':'
+```
+
+---
+
+### `tempDir`
+
+### Description
+
+Returns the system temporary directory path.
+
+### Syntax
+
+```cpp
+tempDir() -> std::string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`std::string`
+The temporary directory path.
+
+### Errors
+
+Returns an empty string if the temp directory cannot be determined.
+
+### Complete Example
+
+```cpp
+std::string tmp = hoo::fs::tempDir(); // e.g. "/tmp"
+```
+
+---
+
+### `createTempFile`
+
+### Description
+
+Creates a temporary file with the given prefix in the system temporary
+directory. The file is created empty and its path is returned.
+
+### Syntax
+
+```cpp
+createTempFile(const std::string& prefix) -> std::string
+```
+
+### Parameters
+
+`prefix`
+A string prefix for the temporary file name.
+
+### Return Type
+
+`std::string`
+The full path to the newly created temporary file.
+
+### Errors
+
+Returns an empty string if the file cannot be created.
+
+### Complete Example
+
+```cpp
+std::string path = hoo::fs::createTempFile("hoo_");
+// use path, then remove the file manually
+```
+
+---
+
+### `copyFile`
+
+### Description
+
+Copies a file from source to destination. Overwrites the destination if it
+exists.
+
+### Syntax
+
+```cpp
+copyFile(const std::string& src, const std::string& dst) -> bool
+```
+
+### Parameters
+
+`src`
+Source file path.
+
+`dst`
+Destination file path.
+
+### Return Type
+
+`bool`
+Returns `true` on success, `false` on failure.
+
+### Errors
+
+Returns `false` if the source does not exist or the destination cannot be
+written.
+
+### Complete Example
+
+```cpp
+bool ok = hoo::fs::copyFile("/tmp/src.txt", "/tmp/dst.txt");
+```
