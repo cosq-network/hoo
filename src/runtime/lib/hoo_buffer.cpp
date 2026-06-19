@@ -32,7 +32,7 @@ static uint8_t* buffer_data_ptr(BufferImpl* impl) {
     return reinterpret_cast<uint8_t*>(impl) + BUFFER_METADATA_SIZE;
 }
 
-static const uint8_t* buffer_data_ptr(const BufferImpl* impl) {
+static const uint8_t* buffer_data_ptr_const(const BufferImpl* impl) {
     return reinterpret_cast<const uint8_t*>(impl) + BUFFER_METADATA_SIZE;
 }
 
