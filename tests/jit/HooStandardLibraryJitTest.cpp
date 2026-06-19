@@ -14,7 +14,7 @@ TEST_F(HooStandardLibraryJitTest, SystemHostname) {
     const std::string source = R"(
         import hoo.system;
         func:int64 test() {
-            var name = System.hostname();
+            var name = system_hostname();
             return name.length();
         }
     )";
@@ -68,7 +68,7 @@ TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
             var str = "Hello";
             var bytes = str.data();
             var len = str.length();
-            var b64 = Encoding.base64Encode(bytes, len);
+            var b64 = encoding_base64_encode(bytes, len);
             return b64.length();
         }
     )";
@@ -80,7 +80,7 @@ TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
 TEST_F(HooStandardLibraryJitTest, MissingImportMath) {
     const std::string source = R"(
         func:int64 test() {
-            return Math.abs(-42);
+            return math_abs(-42);
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -130,7 +130,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportFsFunc) {
 TEST_F(HooStandardLibraryJitTest, MissingImportSystem) {
     const std::string source = R"(
         func:ptr test() {
-            return System.hostname();
+            return system_hostname();
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -171,7 +171,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportHashing) {
     const std::string source = R"(
         func:ptr test() {
             var data = "hello";
-            return Hashing.md5(data.data(), 5);
+            return hashing_md5(data.data(), 5);
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -182,7 +182,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportEncoding) {
     const std::string source = R"(
         func:ptr test() {
             var data = "hello";
-            return Encoding.base64Encode(data.data(), 5);
+            return encoding_base64_encode(data.data(), 5);
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));

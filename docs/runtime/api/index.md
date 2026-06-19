@@ -133,47 +133,47 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [Math](math.md) — Singleton `Math` + Class `Random`
+## [Math](math.md) — `math` free functions + Class `Random`
 
-**Pattern:** Singleton class + instance class
+**Pattern:** Module free functions + instance class
 
 ### Math — Constants
 
-`Math.getPi() :double`, `Math.getE() :double`, `Math.getTau() :double`,
-`Math.getInf() :double`, `Math.getNegInf() :double`, `Math.getNan() :double`
+`math_get_pi() :double`, `math_get_e() :double`, `math_get_tau() :double`,
+`math_get_inf() :double`, `math_get_neg_inf() :double`, `math_get_nan() :double`
 
 ### Math — Basic Functions
 
-`Math.abs(x)`, `Math.sign(x)`, `Math.min(a, b)`, `Math.max(a, b)`,
-`Math.clamp(val, min, max) :double`
+`math_abs(x)`, `math_sign(x)`, `math_min(a, b)`, `math_max(a, b)`,
+`math_clamp(val, min, max) :double`
 
 ### Math — Power & Roots
 
-`Math.pow(base, exp) :double`, `Math.sqrt(x) :double`, `Math.cbrt(x) :double`,
-`Math.hypot(x, y) :double`
+`math_pow(base, exp) :double`, `math_sqrt(x) :double`, `math_cbrt(x) :double`,
+`math_hypot(x, y) :double`
 
 ### Math — Trigonometric
 
-`Math.sin(x)`, `Math.cos(x)`, `Math.tan(x)`, `Math.asin(x)`, `Math.acos(x)`,
-`Math.atan(x)`, `Math.atan2(y, x)`, `Math.sinh(x)`, `Math.cosh(x)`,
-`Math.tanh(x)` — all take/return `:double`
+`math_sin(x)`, `math_cos(x)`, `math_tan(x)`, `math_asin(x)`, `math_acos(x)`,
+`math_atan(x)`, `math_atan2(y, x)`, `math_sinh(x)`, `math_cosh(x)`,
+`math_tanh(x)` — all take/return `:double`
 
 ### Math — Exponential & Logarithmic
 
-`Math.exp(x)`, `Math.exp2(x)`, `Math.expm1(x)`, `Math.log(x)`, `Math.log10(x)`,
-`Math.log2(x)`, `Math.log1p(x)` — all take/return `:double`
+`math_exp(x)`, `math_exp2(x)`, `math_expm1(x)`, `math_log(x)`, `math_log10(x)`,
+`math_log2(x)`, `math_log1p(x)` — all take/return `:double`
 
 ### Math — Rounding
 
-`Math.floor(x)`, `Math.ceil(x)`, `Math.round(x)`, `Math.trunc(x)`,
-`Math.fract(x)` — all take/return `:double`
+`math_floor(x)`, `math_ceil(x)`, `math_round(x)`, `math_trunc(x)`,
+`math_fract(x)` — all take/return `:double`
 
 ### Math — Number Utilities
 
-`Math.isEven(n: int64) :int64`, `Math.isOdd(n: int64) :int64`,
-`Math.isPrime(n: int64) :int64`, `Math.gcd(a: int64, b: int64) :int64`,
-`Math.lcm(a: int64, b: int64) :int64`,
-`Math.factorial(n: int64) :int64`, `Math.fibonacci(n: int64) :int64`
+`math_is_even(n: int64) :int64`, `math_is_odd(n: int64) :int64`,
+`math_is_prime(n: int64) :int64`, `math_gcd(a: int64, b: int64) :int64`,
+`math_lcm(a: int64, b: int64) :int64`,
+`math_factorial(n: int64) :int64`, `math_fibonacci(n: int64) :int64`
 
 ### Random
 
@@ -343,30 +343,30 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [System](system.md) — Singleton `System`
+## [System](system.md) — `system` free functions
 
-**Pattern:** Singleton class
+**Pattern:** Module free functions
 
 | API | Signature |
 |-----|-----------|
-| `System.getEnv` | `System.getEnv(name: string) :string` |
-| `System.setEnv` | `System.setEnv(name: string, value: string) :int64` |
-| `System.unsetEnv` | `System.unsetEnv(name: string) :int64` |
-| `System.hostname` | `System.hostname() :string` |
-| `System.osName` | `System.osName() :string` |
-| `System.osVersion` | `System.osVersion() :string` |
-| `System.cpuCount` | `System.cpuCount() :int64` |
-| `System.processId` | `System.processId() :int64` |
-| `System.uptimeMs` | `System.uptimeMs() :int64` |
-| `System.exit` | `System.exit(code: int64)` |
-| `System.exec` | `System.exec(command: string) :string` |
-| `System.execStatus` | `System.execStatus(command: string) :int64` |
-| `System.userHome` | `System.userHome() :string` |
-| `System.userName` | `System.userName() :string` |
-| `System.currentDir` | `System.currentDir() :string` |
-| `System.setCurrentDir` | `System.setCurrentDir(path: string) :int64` |
-| `System.totalMemory` | `System.totalMemory() :int64` |
-| `System.freeMemory` | `System.freeMemory() :int64` |
+| `system_get_env` | `system_get_env(name: string) :string` |
+| `system_set_env` | `system_set_env(name: string, value: string) :int64` |
+| `system_unset_env` | `system_unset_env(name: string) :int64` |
+| `system_hostname` | `system_hostname() :string` |
+| `system_os_name` | `system_os_name() :string` |
+| `system_os_version` | `system_os_version() :string` |
+| `system_cpu_count` | `system_cpu_count() :int64` |
+| `system_process_id` | `system_process_id() :int64` |
+| `system_uptime_ms` | `system_uptime_ms() :int64` |
+| `system_exit` | `system_exit(code: int64)` |
+| `system_exec` | `system_exec(command: string) :string` |
+| `system_exec_status` | `system_exec_status(command: string) :int64` |
+| `system_user_home` | `system_user_home() :string` |
+| `system_user_name` | `system_user_name() :string` |
+| `system_current_dir` | `system_current_dir() :string` |
+| `system_set_current_dir` | `system_set_current_dir(path: string) :int64` |
+| `system_total_memory` | `system_total_memory() :int64` |
+| `system_free_memory` | `system_free_memory() :int64` |
 
 ---
 
@@ -454,42 +454,42 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [Encoding](encoding.md) — Singleton `Encoding`
+## [Encoding](encoding.md) — Module `hoo.encoding`
 
-**Pattern:** Singleton class
+**Pattern:** Free Functions
 
 | API | Signature |
 |-----|-----------|
-| `Encoding.base64Encode` | `Encoding.base64Encode(data: string, len: int64) :string` |
-| `Encoding.base64Decode` | `Encoding.base64Decode(encoded: string) :string` |
-| `Encoding.hexEncode` | `Encoding.hexEncode(data: string, len: int64) :string` |
-| `Encoding.hexDecode` | `Encoding.hexDecode(hex: string) :string` |
-| `Encoding.urlEncode` | `Encoding.urlEncode(str: string) :string` |
-| `Encoding.urlDecode` | `Encoding.urlDecode(encoded: string) :string` |
+| `encoding_base64_encode` | `encoding_base64_encode(data: string, len: int64) :string` |
+| `encoding_base64_decode` | `encoding_base64_decode(encoded: string) :string` |
+| `encoding_hex_encode` | `encoding_hex_encode(data: string, len: int64) :string` |
+| `encoding_hex_decode` | `encoding_hex_decode(hex: string) :string` |
+| `encoding_url_encode` | `encoding_url_encode(str: string) :string` |
+| `encoding_url_decode` | `encoding_url_decode(encoded: string) :string` |
 
-Buffer overloads: `Encoding.base64Encode(buf: Buffer) :string`,
-`Encoding.base64Decode(encoded: string) :Buffer`,
-`Encoding.hexEncode(buf: Buffer) :string`,
-`Encoding.hexDecode(hex: string) :Buffer`
+Buffer overloads: `encoding_base64_encode_buffer(buf: Buffer) :string`,
+`encoding_base64_decode_buffer(encoded: string) :Buffer`,
+`encoding_hex_encode_buffer(buf: Buffer) :string`,
+`encoding_hex_decode_buffer(hex: string) :Buffer`
 
 ---
 
-## [Hashing](hashing.md) — Singleton `Hashing`
+## [Hashing](hashing.md) — `hashing` free functions
 
-**Pattern:** Singleton class
+**Pattern:** Module free functions
 
 | API | Signature |
 |-----|-----------|
-| `Hashing.sha256` | `Hashing.sha256(data: string, len: int64) :string` |
-| `Hashing.sha256File` | `Hashing.sha256File(path: string) :string` |
-| `Hashing.sha1` | `Hashing.sha1(data: string, len: int64) :string` |
-| `Hashing.md5` | `Hashing.md5(data: string, len: int64) :string` |
-| `Hashing.crc32` | `Hashing.crc32(data: string, len: int64) :int64` |
-| `Hashing.hmacSha256` | `Hashing.hmacSha256(key: string, keyLen: int64, data: string, dataLen: int64) :string` |
+| `hashing_sha256` | `hashing_sha256(data: string, len: int64) :string` |
+| `hashing_sha256_file` | `hashing_sha256_file(path: string) :string` |
+| `hashing_sha1` | `hashing_sha1(data: string, len: int64) :string` |
+| `hashing_md5` | `hashing_md5(data: string, len: int64) :string` |
+| `hashing_crc32` | `hashing_crc32(data: string, len: int64) :int64` |
+| `hashing_hmac_sha256` | `hashing_hmac_sha256(key: string, keyLen: int64, data: string, dataLen: int64) :string` |
 
-Buffer overloads: `Hashing.sha256(buf: Buffer)`, `Hashing.sha1(buf: Buffer)`,
-`Hashing.md5(buf: Buffer)`, `Hashing.crc32(buf: Buffer)`,
-`Hashing.hmacSha256(key: Buffer, data: Buffer)` — return types same as string versions.
+Buffer-aware functions: `hashing_sha256_buffer(buf: Buffer)`, `hashing_sha1_buffer(buf: Buffer)`,
+`hashing_md5_buffer(buf: Buffer)`, `hashing_crc32_buffer(buf: Buffer)`,
+`hashing_hmac_sha256_buffer(key: Buffer, data: Buffer)` — return types same as string versions.
 
 ---
 

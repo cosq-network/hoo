@@ -1,70 +1,79 @@
-# System — Operating System Information
+# System API Reference (`hoo.system`)
 
-The `System` class provides static methods to query the operating system and hardware environment.
+**Import Requirement:**
+```hoo
+import hoo.system;
+```
 
-## Methods
+The `hoo.system` module provides free functions to query the operating system, memory info, process execution, and environment.
 
-`System.getEnv(name: string) :string`
+## Functions
+
+### `system_get_env(name: string) :string`
 Returns the value of an environment variable, or empty string if not set.
 
-`System.setEnv(name: string, value: string) :int64`
+### `system_set_env(name: string, value: string) :int64`
 Sets an environment variable. Returns 1 on success, 0 on failure.
 
-`System.unsetEnv(name: string) :int64`
+### `system_unset_env(name: string) :int64`
 Unsets an environment variable. Returns 1 on success, 0 on failure.
 
-`System.hostname() :string`
+### `system_hostname() :string`
 Returns the system hostname.
 
-`System.osName() :string`
+### `system_os_name() :string`
 Returns the operating system name (e.g. `"darwin"`, `"linux"`, `"windows"`).
 
-`System.osVersion() :string`
+### `system_os_version() :string`
 Returns the operating system version string.
 
-`System.cpuCount() :int64`
+### `system_cpu_count() :int64`
 Returns the number of logical CPUs.
 
-`System.processId() :int64`
+### `system_process_id() :int64`
 Returns the current process ID.
 
-`System.uptimeMs() :int64`
+### `system_uptime_ms() :int64`
 Returns the system uptime in milliseconds.
 
-`System.exit(code: int64)`
+### `system_exit(code: int64)`
 Terminates the program with the given exit code.
 
-`System.exec(command: string) :string`
+### `system_exec(command: string) :string`
 Executes a shell command and returns its stdout output.
 
-`System.execStatus(command: string) :int64`
+### `system_exec_status(command: string) :int64`
 Executes a shell command and returns its exit status.
 
-`System.userHome() :string`
+### `system_user_home() :string`
 Returns the current user's home directory path.
 
-`System.userName() :string`
+### `system_user_name() :string`
 Returns the current user's login name.
 
-`System.currentDir() :string`
+### `system_current_dir() :string`
 Returns the current working directory.
 
-`System.setCurrentDir(path: string) :int64`
+### `system_set_current_dir(path: string) :int64`
 Changes the current working directory. Returns 1 on success, 0 on failure.
 
-`System.totalMemory() :int64`
+### `system_total_memory() :int64`
 Returns the total physical memory in bytes.
 
-`System.freeMemory() :int64`
+### `system_free_memory() :int64`
 Returns the amount of free memory in bytes.
 
 ## Example
 
 ```hoo
-println("Hostname: " + System.hostname())
-println("OS: " + System.osName())
-println("User: " + System.userName())
-println("Home: " + System.userHome())
-println("CPUs: " + System.cpuCount())
-println("Memory: " + System.totalMemory() + " bytes")
+import hoo.system;
+
+func :void example() {
+    println("Hostname: " + system_hostname());
+    println("OS: " + system_os_name());
+    println("User: " + system_user_name());
+    println("Home: " + system_user_home());
+    println("CPUs: " + system_cpu_count().toString());
+    println("Memory: " + system_total_memory().toString() + " bytes");
+}
 ```

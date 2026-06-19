@@ -15,7 +15,7 @@ and uses the free function `buffer_fromBytes(...)` for byte-source creation.
 
 Use `Buffer` when a runtime API needs binary-safe bytes instead of a text
 `string`. Several modules accept or return `Buffer` values, including `Fs`,
-`Encoding`, `Uuid`, `Hashing`, and `Compression`.
+`encoding`, `Uuid`, `hashing`, and `Compression`.
 
 ## `new Buffer`
 
@@ -470,17 +470,17 @@ Several modules accept or return `Buffer` handles:
 |--------|----------|-----------|
 | Fs | `writeBytes` | `fs_write_bytes(path: string, buf: Buffer) :int64` |
 | Fs | `readBytes` | `fs_read_bytes(path: string) :Buffer` |
-| Encoding | `base64Encode` | `Encoding.base64Encode(buf: Buffer) :string` |
-| Encoding | `base64Decode` | `Encoding.base64Decode(encoded: string) :Buffer` |
-| Encoding | `hexEncode` | `Encoding.hexEncode(buf: Buffer) :string` |
-| Encoding | `hexDecode` | `Encoding.hexDecode(hex: string) :Buffer` |
+| Encoding | `base64Encode` | `encoding_base64_encode_buffer(buf: Buffer) :string` |
+| Encoding | `base64Decode` | `encoding_base64_decode_buffer(encoded: string) :Buffer` |
+| Encoding | `hexEncode` | `encoding_hex_encode_buffer(buf: Buffer) :string` |
+| Encoding | `hexDecode` | `encoding_hex_decode_buffer(hex: string) :Buffer` |
 | Uuid | `fromBytes` | `Uuid.fromBytes(buf: Buffer) :uuid` |
 | Uuid | `toBytes` | `Uuid.toBytes(uuid: uuid) :Buffer` |
-| Hashing | `sha256` | `Hashing.sha256(buf: Buffer) :string` |
-| Hashing | `sha1` | `Hashing.sha1(buf: Buffer) :string` |
-| Hashing | `md5` | `Hashing.md5(buf: Buffer) :string` |
-| Hashing | `crc32` | `Hashing.crc32(buf: Buffer) :int64` |
-| Hashing | `hmacSha256` | `Hashing.hmacSha256(key: Buffer, data: Buffer) :string` |
+| Hashing | `sha256` | `hashing_sha256_buffer(buf: Buffer) :string` |
+| Hashing | `sha1` | `hashing_sha1_buffer(buf: Buffer) :string` |
+| Hashing | `md5` | `hashing_md5_buffer(buf: Buffer) :string` |
+| Hashing | `crc32` | `hashing_crc32_buffer(buf: Buffer) :int64` |
+| Hashing | `hmacSha256` | `hashing_hmac_sha256_buffer(key: Buffer, data: Buffer) :string` |
 | Compression | `gzipCompress` | `Compression.gzipCompress(buf: Buffer) :Buffer` |
 | Compression | `gzipDecompress` | `Compression.gzipDecompress(buf: Buffer) :Buffer` |
 | Compression | `deflateCompress` | `Compression.deflateCompress(buf: Buffer) :Buffer` |

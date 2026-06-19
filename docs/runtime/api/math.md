@@ -1,17 +1,17 @@
-# Math API Reference (`Math`)
+# Math API Reference (`hoo.math`)
 
 **Import Requirement:**
 ```hoo
 import hoo.math;
 ```
 
-The `Math` class provides constants, basic functions, power/root operations, trigonometry, exponentials, rounding, number utilities, and random number generation via the `Random` class. `Math` is a singleton utility API, so call its methods directly on the class.
+The `hoo.math` module provides constants, basic functions, power/root operations, trigonometry, exponentials, rounding, number utilities, and random number generation via the `Random` class. All math functions are free functions in the `hoo.math` module.
 
 ---
 
 ## 1. Constants
 
-### `Math.getPi() :double`
+### `math_get_pi() :double`
 
 Returns the value of π.
 
@@ -22,14 +22,14 @@ Returns the value of π.
 import hoo.math;
 
 func :void example() {
-    var pi = Math.getPi();
+    var pi = math_get_pi();
     println(pi.toString());
 }
 ```
 
 ---
 
-### `Math.getE() :double`
+### `math_get_e() :double`
 
 Returns the value of e.
 
@@ -40,14 +40,14 @@ Returns the value of e.
 import hoo.math;
 
 func :void example() {
-    var e = Math.getE();
+    var e = math_get_e();
     println(e.toString());
 }
 ```
 
 ---
 
-### `Math.getTau() :double`
+### `math_get_tau() :double`
 
 Returns the value of τ (tau).
 
@@ -58,14 +58,14 @@ Returns the value of τ (tau).
 import hoo.math;
 
 func :void example() {
-    var tau = Math.getTau();
+    var tau = math_get_tau();
     println(tau.toString());
 }
 ```
 
 ---
 
-### `Math.getInf() :double`
+### `math_get_inf() :double`
 
 Returns positive infinity.
 
@@ -76,14 +76,14 @@ Returns positive infinity.
 import hoo.math;
 
 func :void example() {
-    var inf = Math.getInf();
+    var inf = math_get_inf();
     println(inf.toString());
 }
 ```
 
 ---
 
-### `Math.getNegInf() :double`
+### `math_get_neg_inf() :double`
 
 Returns negative infinity.
 
@@ -94,14 +94,14 @@ Returns negative infinity.
 import hoo.math;
 
 func :void example() {
-    var neg_inf = Math.getNegInf();
+    var neg_inf = math_get_neg_inf();
     println(neg_inf.toString());
 }
 ```
 
 ---
 
-### `Math.getNan() :double`
+### `math_get_nan() :double`
 
 Returns Not-a-Number (NaN).
 
@@ -112,7 +112,7 @@ Returns Not-a-Number (NaN).
 import hoo.math;
 
 func :void example() {
-    var nan = Math.getNan();
+    var nan = math_get_nan();
     println(nan.toString());
 }
 ```
@@ -121,7 +121,7 @@ func :void example() {
 
 ## 2. Basic Functions
 
-### `Math.abs(x: int64) :int64`
+### `math_abs(x: int64) :int64`
 
 Returns the absolute value of an integer.
 
@@ -133,13 +133,13 @@ Returns the absolute value of an integer.
 import hoo.math;
 
 func :int64 example() {
-    return Math.abs(-42);
+    return math_abs(-42);
 }
 ```
 
 ---
 
-### `Math.abs(x: int8) :int8`
+### `math_abs(x: int8) :int8`
 
 Returns the absolute value of an 8-bit signed integer.
 
@@ -149,7 +149,7 @@ Returns the absolute value of an 8-bit signed integer.
 
 ---
 
-### `Math.abs(x: byte) :byte`
+### `math_abs(x: byte) :byte`
 
 Returns the absolute value of an 8-bit unsigned byte.
 
@@ -159,7 +159,7 @@ Returns the absolute value of an 8-bit unsigned byte.
 
 ---
 
-### `Math.abs(x: double) :double`
+### `math_abs(x: double) :double`
 
 Returns the absolute value of a double.
 
@@ -171,13 +171,13 @@ Returns the absolute value of a double.
 import hoo.math;
 
 func :double example() {
-    return Math.abs(-3.14);
+    return math_abs(-3.14);
 }
 ```
 
 ---
 
-### `Math.abs(x: f8) :double`
+### `math_abs(x: f8) :double`
 
 Returns the absolute value of an f8 precision value (promoted to double).
 
@@ -187,7 +187,7 @@ Returns the absolute value of an f8 precision value (promoted to double).
 
 ---
 
-### `Math.sign(x: int64) :int64`
+### `math_sign(x: int64) :int64`
 
 Returns the sign of an integer.
 
@@ -199,13 +199,13 @@ Returns the sign of an integer.
 import hoo.math;
 
 func :int64 example() {
-    return Math.sign(-7);
+    return math_sign(-7);
 }
 ```
 
 ---
 
-### `Math.sign(x: int8) :int8`
+### `math_sign(x: int8) :int8`
 
 Returns the sign of an 8-bit signed integer.
 
@@ -215,7 +215,7 @@ Returns the sign of an 8-bit signed integer.
 
 ---
 
-### `Math.sign(x: byte) :byte`
+### `math_sign(x: byte) :byte`
 
 Returns the sign of an 8-bit unsigned byte.
 
@@ -225,7 +225,7 @@ Returns the sign of an 8-bit unsigned byte.
 
 ---
 
-### `Math.sign(x: double) :double`
+### `math_sign(x: double) :double`
 
 Returns the sign of a double.
 
@@ -237,13 +237,13 @@ Returns the sign of a double.
 import hoo.math;
 
 func :double example() {
-    return Math.sign(-3.14);
+    return math_sign(-3.14);
 }
 ```
 
 ---
 
-### `Math.sign(x: f8) :double`
+### `math_sign(x: f8) :double`
 
 Returns the sign of an f8 precision value (promoted to double).
 
@@ -253,7 +253,7 @@ Returns the sign of an f8 precision value (promoted to double).
 
 ---
 
-### `Math.min(a: int64, b: int64) :int64`
+### `math_min(a: int64, b: int64) :int64`
 
 Returns the smaller of two integers.
 
@@ -266,25 +266,25 @@ Returns the smaller of two integers.
 import hoo.math;
 
 func :int64 example() {
-    return Math.min(10, 20);
+    return math_min(10, 20);
 }
 ```
 
 ---
 
-### `Math.min(a: int8, b: int8) :int8`
+### `math_min(a: int8, b: int8) :int8`
 
 Returns the smaller of two 8-bit signed integers.
 
 ---
 
-### `Math.min(a: byte, b: byte) :byte`
+### `math_min(a: byte, b: byte) :byte`
 
 Returns the smaller of two 8-bit unsigned bytes.
 
 ---
 
-### `Math.min(a: double, b: double) :double`
+### `math_min(a: double, b: double) :double`
 
 Returns the smaller of two doubles.
 
@@ -297,19 +297,19 @@ Returns the smaller of two doubles.
 import hoo.math;
 
 func :double example() {
-    return Math.min(3.5, 2.8);
+    return math_min(3.5, 2.8);
 }
 ```
 
 ---
 
-### `Math.min(a: f8, b: f8) :double`
+### `math_min(a: f8, b: f8) :double`
 
 Returns the smaller of two f8 values.
 
 ---
 
-### `Math.max(a: int64, b: int64) :int64`
+### `math_max(a: int64, b: int64) :int64`
 
 Returns the larger of two integers.
 
@@ -322,25 +322,25 @@ Returns the larger of two integers.
 import hoo.math;
 
 func :int64 example() {
-    return Math.max(10, 20);
+    return math_max(10, 20);
 }
 ```
 
 ---
 
-### `Math.max(a: int8, b: int8) :int8`
+### `math_max(a: int8, b: int8) :int8`
 
 Returns the larger of two 8-bit signed integers.
 
 ---
 
-### `Math.max(a: byte, b: byte) :byte`
+### `math_max(a: byte, b: byte) :byte`
 
 Returns the larger of two 8-bit unsigned bytes.
 
 ---
 
-### `Math.max(a: double, b: double) :double`
+### `math_max(a: double, b: double) :double`
 
 Returns the larger of two doubles.
 
@@ -353,19 +353,19 @@ Returns the larger of two doubles.
 import hoo.math;
 
 func :double example() {
-    return Math.max(3.5, 2.8);
+    return math_max(3.5, 2.8);
 }
 ```
 
 ---
 
-### `Math.max(a: f8, b: f8) :double`
+### `math_max(a: f8, b: f8) :double`
 
 Returns the larger of two f8 values.
 
 ---
 
-### `Math.clamp(val: double, min: double, max: double) :double`
+### `math_clamp(val: double, min: double, max: double) :double`
 
 Clamps a value within the inclusive range `[min, max]`.
 
@@ -379,7 +379,7 @@ Clamps a value within the inclusive range `[min, max]`.
 import hoo.math;
 
 func :double example() {
-    return Math.clamp(15.0, 0.0, 10.0);
+    return math_clamp(15.0, 0.0, 10.0);
 }
 ```
 
@@ -387,7 +387,7 @@ func :double example() {
 
 ## 3. Power and Roots
 
-### `Math.pow(base: double, exp: double) :double`
+### `math_pow(base: double, exp: double) :double`
 
 Returns `base` raised to the power of `exp`.
 
@@ -400,13 +400,13 @@ Returns `base` raised to the power of `exp`.
 import hoo.math;
 
 func :double example() {
-    return Math.pow(2.0, 3.0);
+    return math_pow(2.0, 3.0);
 }
 ```
 
 ---
 
-### `Math.sqrt(x: double) :double`
+### `math_sqrt(x: double) :double`
 
 Returns the square root of `x`.
 
@@ -418,13 +418,13 @@ Returns the square root of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.sqrt(9.0);
+    return math_sqrt(9.0);
 }
 ```
 
 ---
 
-### `Math.cbrt(x: double) :double`
+### `math_cbrt(x: double) :double`
 
 Returns the cube root of `x`.
 
@@ -436,13 +436,13 @@ Returns the cube root of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.cbrt(27.0);
+    return math_cbrt(27.0);
 }
 ```
 
 ---
 
-### `Math.hypot(x: double, y: double) :double`
+### `math_hypot(x: double, y: double) :double`
 
 Returns `sqrt(x * x + y * y)` without unnecessary overflow or underflow.
 
@@ -455,7 +455,7 @@ Returns `sqrt(x * x + y * y)` without unnecessary overflow or underflow.
 import hoo.math;
 
 func :double example() {
-    return Math.hypot(3.0, 4.0);
+    return math_hypot(3.0, 4.0);
 }
 ```
 
@@ -463,7 +463,7 @@ func :double example() {
 
 ## 4. Trigonometric Functions
 
-### `Math.sin(x: double) :double`
+### `math_sin(x: double) :double`
 
 Returns the sine of `x`.
 
@@ -475,13 +475,13 @@ Returns the sine of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.sin(0.0);
+    return math_sin(0.0);
 }
 ```
 
 ---
 
-### `Math.cos(x: double) :double`
+### `math_cos(x: double) :double`
 
 Returns the cosine of `x`.
 
@@ -493,13 +493,13 @@ Returns the cosine of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.cos(0.0);
+    return math_cos(0.0);
 }
 ```
 
 ---
 
-### `Math.tan(x: double) :double`
+### `math_tan(x: double) :double`
 
 Returns the tangent of `x`.
 
@@ -511,13 +511,13 @@ Returns the tangent of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.tan(0.0);
+    return math_tan(0.0);
 }
 ```
 
 ---
 
-### `Math.asin(x: double) :double`
+### `math_asin(x: double) :double`
 
 Returns the arc sine of `x` in radians.
 
@@ -529,13 +529,13 @@ Returns the arc sine of `x` in radians.
 import hoo.math;
 
 func :double example() {
-    return Math.asin(1.0);
+    return math_asin(1.0);
 }
 ```
 
 ---
 
-### `Math.acos(x: double) :double`
+### `math_acos(x: double) :double`
 
 Returns the arc cosine of `x` in radians.
 
@@ -547,13 +547,13 @@ Returns the arc cosine of `x` in radians.
 import hoo.math;
 
 func :double example() {
-    return Math.acos(0.0);
+    return math_acos(0.0);
 }
 ```
 
 ---
 
-### `Math.atan(x: double) :double`
+### `math_atan(x: double) :double`
 
 Returns the arc tangent of `x` in radians.
 
@@ -565,13 +565,13 @@ Returns the arc tangent of `x` in radians.
 import hoo.math;
 
 func :double example() {
-    return Math.atan(1.0);
+    return math_atan(1.0);
 }
 ```
 
 ---
 
-### `Math.atan2(y: double, x: double) :double`
+### `math_atan2(y: double, x: double) :double`
 
 Returns the arc tangent of `y / x` using the signs of both to determine the quadrant.
 
@@ -584,13 +584,13 @@ Returns the arc tangent of `y / x` using the signs of both to determine the quad
 import hoo.math;
 
 func :double example() {
-    return Math.atan2(1.0, 0.0);
+    return math_atan2(1.0, 0.0);
 }
 ```
 
 ---
 
-### `Math.sinh(x: double) :double`
+### `math_sinh(x: double) :double`
 
 Returns the hyperbolic sine of `x`.
 
@@ -602,13 +602,13 @@ Returns the hyperbolic sine of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.sinh(0.0);
+    return math_sinh(0.0);
 }
 ```
 
 ---
 
-### `Math.cosh(x: double) :double`
+### `math_cosh(x: double) :double`
 
 Returns the hyperbolic cosine of `x`.
 
@@ -620,13 +620,13 @@ Returns the hyperbolic cosine of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.cosh(0.0);
+    return math_cosh(0.0);
 }
 ```
 
 ---
 
-### `Math.tanh(x: double) :double`
+### `math_tanh(x: double) :double`
 
 Returns the hyperbolic tangent of `x`.
 
@@ -638,7 +638,7 @@ Returns the hyperbolic tangent of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.tanh(0.5);
+    return math_tanh(0.5);
 }
 ```
 
@@ -646,7 +646,7 @@ func :double example() {
 
 ## 5. Exponential and Logarithmic
 
-### `Math.exp(x: double) :double`
+### `math_exp(x: double) :double`
 
 Returns `e` raised to the power of `x`.
 
@@ -658,13 +658,13 @@ Returns `e` raised to the power of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.exp(1.0);
+    return math_exp(1.0);
 }
 ```
 
 ---
 
-### `Math.exp2(x: double) :double`
+### `math_exp2(x: double) :double`
 
 Returns 2 raised to the power of `x`.
 
@@ -676,13 +676,13 @@ Returns 2 raised to the power of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.exp2(3.0);
+    return math_exp2(3.0);
 }
 ```
 
 ---
 
-### `Math.expm1(x: double) :double`
+### `math_expm1(x: double) :double`
 
 Returns `e^x - 1` accurately even when `x` is near zero.
 
@@ -694,13 +694,13 @@ Returns `e^x - 1` accurately even when `x` is near zero.
 import hoo.math;
 
 func :double example() {
-    return Math.expm1(0.001);
+    return math_expm1(0.001);
 }
 ```
 
 ---
 
-### `Math.log(x: double) :double`
+### `math_log(x: double) :double`
 
 Returns the natural logarithm of `x`.
 
@@ -712,13 +712,13 @@ Returns the natural logarithm of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.log(2.71828);
+    return math_log(2.71828);
 }
 ```
 
 ---
 
-### `Math.log10(x: double) :double`
+### `math_log10(x: double) :double`
 
 Returns the base-10 logarithm of `x`.
 
@@ -730,13 +730,13 @@ Returns the base-10 logarithm of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.log10(100.0);
+    return math_log10(100.0);
 }
 ```
 
 ---
 
-### `Math.log2(x: double) :double`
+### `math_log2(x: double) :double`
 
 Returns the base-2 logarithm of `x`.
 
@@ -748,13 +748,13 @@ Returns the base-2 logarithm of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.log2(8.0);
+    return math_log2(8.0);
 }
 ```
 
 ---
 
-### `Math.log1p(x: double) :double`
+### `math_log1p(x: double) :double`
 
 Returns the natural logarithm of `1 + x` accurately even when `x` is near zero.
 
@@ -766,7 +766,7 @@ Returns the natural logarithm of `1 + x` accurately even when `x` is near zero.
 import hoo.math;
 
 func :double example() {
-    return Math.log1p(0.001);
+    return math_log1p(0.001);
 }
 ```
 
@@ -774,7 +774,7 @@ func :double example() {
 
 ## 6. Rounding Functions
 
-### `Math.floor(x: double) :double`
+### `math_floor(x: double) :double`
 
 Returns the largest integer less than or equal to `x`.
 
@@ -786,13 +786,13 @@ Returns the largest integer less than or equal to `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.floor(3.7);
+    return math_floor(3.7);
 }
 ```
 
 ---
 
-### `Math.ceil(x: double) :double`
+### `math_ceil(x: double) :double`
 
 Returns the smallest integer greater than or equal to `x`.
 
@@ -804,13 +804,13 @@ Returns the smallest integer greater than or equal to `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.ceil(3.2);
+    return math_ceil(3.2);
 }
 ```
 
 ---
 
-### `Math.round(x: double) :double`
+### `math_round(x: double) :double`
 
 Returns the nearest integer to `x`, rounding half away from zero.
 
@@ -822,13 +822,13 @@ Returns the nearest integer to `x`, rounding half away from zero.
 import hoo.math;
 
 func :double example() {
-    return Math.round(3.5);
+    return math_round(3.5);
 }
 ```
 
 ---
 
-### `Math.trunc(x: double) :double`
+### `math_trunc(x: double) :double`
 
 Returns the integer part of `x`, discarding the fractional part (truncates toward zero).
 
@@ -840,13 +840,13 @@ Returns the integer part of `x`, discarding the fractional part (truncates towar
 import hoo.math;
 
 func :double example() {
-    return Math.trunc(3.7);
+    return math_trunc(3.7);
 }
 ```
 
 ---
 
-### `Math.fract(x: double) :double`
+### `math_fract(x: double) :double`
 
 Returns the fractional part of `x`.
 
@@ -858,7 +858,7 @@ Returns the fractional part of `x`.
 import hoo.math;
 
 func :double example() {
-    return Math.fract(3.7);
+    return math_fract(3.7);
 }
 ```
 
@@ -866,7 +866,7 @@ func :double example() {
 
 ## 7. Number Utilities
 
-### `Math.isEven(n: int64) :int64`
+### `math_is_even(n: int64) :int64`
 
 Returns 1 if `n` is even, 0 otherwise.
 
@@ -878,13 +878,13 @@ Returns 1 if `n` is even, 0 otherwise.
 import hoo.math;
 
 func :int64 example() {
-    return Math.isEven(42);
+    return math_is_even(42);
 }
 ```
 
 ---
 
-### `Math.isOdd(n: int64) :int64`
+### `math_is_odd(n: int64) :int64`
 
 Returns 1 if `n` is odd, 0 otherwise.
 
@@ -896,13 +896,13 @@ Returns 1 if `n` is odd, 0 otherwise.
 import hoo.math;
 
 func :int64 example() {
-    return Math.isOdd(43);
+    return math_is_odd(43);
 }
 ```
 
 ---
 
-### `Math.isPrime(n: int64) :int64`
+### `math_is_prime(n: int64) :int64`
 
 Returns 1 if `n` is prime, 0 otherwise.
 
@@ -914,13 +914,13 @@ Returns 1 if `n` is prime, 0 otherwise.
 import hoo.math;
 
 func :int64 example() {
-    return Math.isPrime(17);
+    return math_is_prime(17);
 }
 ```
 
 ---
 
-### `Math.gcd(a: int64, b: int64) :int64`
+### `math_gcd(a: int64, b: int64) :int64`
 
 Returns the greatest common divisor of `a` and `b`.
 
@@ -933,13 +933,13 @@ Returns the greatest common divisor of `a` and `b`.
 import hoo.math;
 
 func :int64 example() {
-    return Math.gcd(12, 18);
+    return math_gcd(12, 18);
 }
 ```
 
 ---
 
-### `Math.lcm(a: int64, b: int64) :int64`
+### `math_lcm(a: int64, b: int64) :int64`
 
 Returns the least common multiple of `a` and `b`.
 
@@ -952,13 +952,13 @@ Returns the least common multiple of `a` and `b`.
 import hoo.math;
 
 func :int64 example() {
-    return Math.lcm(4, 6);
+    return math_lcm(4, 6);
 }
 ```
 
 ---
 
-### `Math.factorial(n: int64) :int64`
+### `math_factorial(n: int64) :int64`
 
 Returns `n!` (n factorial), the product of all positive integers up to `n`.
 
@@ -970,13 +970,13 @@ Returns `n!` (n factorial), the product of all positive integers up to `n`.
 import hoo.math;
 
 func :int64 example() {
-    return Math.factorial(5);
+    return math_factorial(5);
 }
 ```
 
 ---
 
-### `Math.fibonacci(n: int64) :int64`
+### `math_fibonacci(n: int64) :int64`
 
 Returns the `n`-th Fibonacci number (`F(0) = 0`, `F(1) = 1`).
 
@@ -988,7 +988,7 @@ Returns the `n`-th Fibonacci number (`F(0) = 0`, `F(1) = 1`).
 import hoo.math;
 
 func :int64 example() {
-    return Math.fibonacci(10);
+    return math_fibonacci(10);
 }
 ```
 
@@ -1170,9 +1170,9 @@ import hoo.math;
 
 func :int64 main() {
     var radius = 5.0;
-    var area = Math.getPi() * Math.pow(radius, 2.0);
+    var area = math_get_pi() * math_pow(radius, 2.0);
 
-    if (Math.isEven(Math.round(area).toInt64())) {
+    if (math_is_even(math_round(area).toInt64())) {
         println("Rounded area is even.");
     }
 

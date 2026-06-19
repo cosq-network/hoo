@@ -42,7 +42,7 @@ static bool isClassMethodJitClass(const std::string& className) {
 // Built-in classes that behave as singletons (no instances, all static methods).
 static bool isSingletonBuiltinClass(const std::string& className) {
     static const std::unordered_set<std::string> singletons = {
-        "Math", "System", "Encoding", "Uuid"
+        "Uuid"
     };
     return singletons.count(className) > 0;
 }
@@ -87,7 +87,6 @@ static std::string classToPrefix(const std::string& className) {
         {"Net", "net"},
         {"Path", "path"},
         {"Hashing", "hashing"},
-        {"Encoding", "encoding"},
         {"Uuid", "uuid"},
         {"Compression", "compression"},
         {"Character", "character"},
@@ -214,8 +213,58 @@ static bool isDatetimeFreeFunction(const std::string& functionName) {
     return names.count(functionName) > 0;
 }
 
+static bool isEncodingFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "encoding_base64_encode",
+        "encoding_base64_decode",
+        "encoding_hex_encode",
+        "encoding_hex_decode",
+        "encoding_url_encode",
+        "encoding_url_decode",
+        "encoding_base64_encode_buffer",
+        "encoding_base64_decode_buffer",
+        "encoding_hex_encode_buffer",
+        "encoding_hex_decode_buffer",
+    };
+    return names.count(functionName) > 0;
+}
+
+static bool isMathFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "math_get_pi", "math_get_e", "math_get_tau", "math_get_inf", "math_get_neg_inf", "math_get_nan",
+        "math_abs", "math_min", "math_max", "math_clamp", "math_sign", "math_pow", "math_sqrt", "math_cbrt",
+        "math_hypot", "math_sin", "math_cos", "math_tan", "math_asin", "math_acos", "math_atan", "math_atan2",
+        "math_sinh", "math_cosh", "math_tanh", "math_exp", "math_exp2", "math_expm1", "math_log", "math_log10",
+        "math_log2", "math_log1p", "math_floor", "math_ceil", "math_round", "math_trunc", "math_fract",
+        "math_is_even", "math_is_odd", "math_is_prime", "math_gcd", "math_lcm", "math_factorial", "math_fibonacci"
+    };
+    return names.count(functionName) > 0;
+}
+
+static bool isHashingFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "hashing_sha256", "hashing_sha256_file", "hashing_sha1", "hashing_md5", "hashing_crc32", "hashing_hmac_sha256",
+        "hashing_sha256_buffer", "hashing_sha1_buffer", "hashing_md5_buffer", "hashing_crc32_buffer", "hashing_hmac_sha256_buffer"
+    };
+    return names.count(functionName) > 0;
+}
+
+static bool isSystemFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "system_get_env", "system_set_env", "system_unset_env", "system_hostname", "system_os_name",
+        "system_os_version", "system_cpu_count", "system_process_id", "system_uptime_ms", "system_exit",
+        "system_exec", "system_exec_status", "system_user_home", "system_user_name", "system_current_dir",
+        "system_set_current_dir", "system_total_memory", "system_free_memory"
+    };
+    return names.count(functionName) > 0;
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
-    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) || isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) || isDatetimeFreeFunction(functionName);
+    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
+           isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) ||
+           isDatetimeFreeFunction(functionName) || isEncodingFreeFunction(functionName) ||
+           isMathFreeFunction(functionName) || isHashingFreeFunction(functionName) ||
+           isSystemFreeFunction(functionName);
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -243,12 +292,62 @@ static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
     return 100;
 }
 
-static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName) {
+static uint32_t mathFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
+    static const std::unordered_set<std::string> int64Methods = {
+        "math_abs", "math_min", "math_max", "math_sign", "math_gcd", "math_factorial", "math_fibonacci",
+        "math_is_even", "math_is_odd", "math_is_prime", "math_lcm"
+    };
+    static const std::unordered_set<std::string> doubleMethods = {
+        "math_sqrt", "math_get_pi", "math_get_e", "math_get_tau", "math_get_inf", "math_get_neg_inf", "math_get_nan",
+        "math_pow", "math_cbrt", "math_hypot", "math_sin", "math_cos", "math_tan", "math_asin", "math_acos", "math_atan",
+        "math_atan2", "math_sinh", "math_cosh", "math_tanh", "math_exp", "math_exp2", "math_expm1", "math_log",
+        "math_log10", "math_log2", "math_log1p", "math_floor", "math_ceil", "math_round", "math_trunc", "math_fract", "math_clamp"
+    };
+    if (functionName == "math_abs" || functionName == "math_min" ||
+        functionName == "math_max" || functionName == "math_sign") {
+        for (uint32_t typeId : argTypeIds) {
+            if (typeId == 2 || typeId == 9) return 2; // double
+            if (typeId == 5) return 5; // int8
+            if (typeId == 6) return 6; // byte
+        }
+    }
+    if (int64Methods.count(functionName)) return 1; // int64
+    if (doubleMethods.count(functionName)) return 2; // double
+    return 100;
+}
+
+static uint32_t hashingFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "hashing_crc32" || functionName == "hashing_crc32_buffer") return 1; // int64
+    return 101; // string
+}
+
+static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "system_get_env" || functionName == "system_hostname" ||
+        functionName == "system_os_name" || functionName == "system_os_version" ||
+        functionName == "system_exec" || functionName == "system_user_home" ||
+        functionName == "system_user_name" || functionName == "system_current_dir") {
+        return 101; // string
+    }
+    if (functionName == "system_exit") return 4; // void
+    return 1; // int64
+}
+
+static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) return 113;
     if (isCsvFreeFunction(functionName)) return 112;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
     if (isDatetimeFreeFunction(functionName)) return datetimeFreeFunctionReturnTypeId(functionName);
+    if (isEncodingFreeFunction(functionName)) {
+        if (functionName == "encoding_base64_decode_buffer" ||
+            functionName == "encoding_hex_decode_buffer") {
+            return 113; // Buffer type ID is 113
+        }
+        return 101; // String type ID is 101
+    }
+    if (isMathFreeFunction(functionName)) return mathFreeFunctionReturnTypeId(functionName, argTypeIds);
+    if (isHashingFreeFunction(functionName)) return hashingFreeFunctionReturnTypeId(functionName);
+    if (isSystemFreeFunction(functionName)) return systemFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 
@@ -340,7 +439,6 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name == "Net" || name == "URL" || name == "HttpClient" || name == "HttpResponse") return "hoo.net";
     if (name == "Path") return "hoo.path";
     if (name == "Hashing") return "hoo.hashing";
-    if (name == "Encoding") return "hoo.encoding";
     if (name == "Uuid") return "hoo.uuid";
     if (name == "Compression") return "hoo.compression";
     if (name == "Process") return "hoo.process";
@@ -2268,7 +2366,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 
                 auto retIt = functionReturnTypes_.find(functionName);
                 if (isHooModuleFreeFunction(functionName)) {
-                    mp.returnType = "ptr";
+                    if (isMathFreeFunction(functionName)) {
+                        std::vector<uint32_t> argTypeIds;
+                        if (funcCall->getArguments()) {
+                            for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                                argTypeIds.push_back(inferExpressionTypeId(*arg));
+                            }
+                        }
+                        uint32_t typeId = hooModuleFreeFunctionReturnTypeId(functionName, argTypeIds);
+                        mp.returnType = typeIdToMangleType(typeId);
+                    } else {
+                        mp.returnType = "ptr";
+                    }
                 } else {
                     mp.returnType = retIt != functionReturnTypes_.end()
                                         ? typeIdToMangleType(retIt->second)
@@ -2838,9 +2947,9 @@ uint32_t HVMCodeGenerator::getLocalKeyTypeId(const std::string& name) const {
 bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
     static const std::unordered_set<std::string> builtinClasses = {
         "String", "Array", "Map", "Exception", "Character",
-        "DateTime", "Math", "Fs", "System", "Thread", "Regex",
+        "DateTime", "Fs", "Thread", "Regex",
         "Net", "URL", "HttpClient", "HttpResponse",
-        "Path", "Hashing", "Encoding", "Uuid", "Compression",
+        "Path", "Uuid", "Compression",
         "Process", "Args", "Csv", "Console", "StringBuilder",
         "Buffer", "Random", "HashMap", "AnyArray"
     };
@@ -3253,7 +3362,15 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
-                if (isHooModuleFreeFunction(id->getName())) return hooModuleFreeFunctionReturnTypeId(id->getName());
+                if (isHooModuleFreeFunction(id->getName())) {
+                    std::vector<uint32_t> argTypeIds;
+                    if (funcCall->getArguments()) {
+                        for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                            argTypeIds.push_back(inferExpressionTypeId(*arg));
+                        }
+                    }
+                    return hooModuleFreeFunctionReturnTypeId(id->getName(), argTypeIds);
+                }
                 auto it = functionReturnTypes_.find(id->getName());
                 if (it != functionReturnTypes_.end()) return it->second;
             }

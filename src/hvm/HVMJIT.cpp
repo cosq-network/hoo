@@ -1432,6 +1432,16 @@ extern "C" {
         uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
         return bits;
     }
+    uint64_t jit_math_clamp(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double val, min, max;
+        std::memcpy(&val, &state->regs[1], sizeof(double));
+        std::memcpy(&min, &state->regs[2], sizeof(double));
+        std::memcpy(&max, &state->regs[3], sizeof(double));
+        double result = hoo_math_clamp(val, min, max);
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
     uint64_t jit_math_floor(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         double arg; std::memcpy(&arg, &state->regs[1], sizeof(double));
@@ -1642,12 +1652,107 @@ extern "C" {
         return 0;
     }
     // ── Standard library (hoo module namespace) ───────────────────────────────
+    uint64_t jit_system_get_env(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* val = hoo_system_get_env(name);
+        if (!val) return 0;
+        void* str = hoo_string_from_cstr(val);
+        hoo_system_free_string(val);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_set_env(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* value = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_system_set_env(name, value));
+    }
+    uint64_t jit_system_unset_env(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_system_unset_env(name));
+    }
     uint64_t jit_system_hostname(void* /*state_ptr*/) {
         char* hostname = hoo_system_hostname();
         if (!hostname) return 0;
         void* str = hoo_string_from_cstr(hostname);
         hoo_system_free_string(hostname);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_os_name(void* /*state_ptr*/) {
+        char* os = hoo_system_os_name();
+        if (!os) return 0;
+        void* str = hoo_string_from_cstr(os);
+        hoo_system_free_string(os);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_os_version(void* /*state_ptr*/) {
+        char* ver = hoo_system_os_version();
+        if (!ver) return 0;
+        void* str = hoo_string_from_cstr(ver);
+        hoo_system_free_string(ver);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_cpu_count(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_system_cpu_count());
+    }
+    uint64_t jit_system_process_id(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_system_process_id());
+    }
+    uint64_t jit_system_uptime_ms(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_system_uptime_ms());
+    }
+    uint64_t jit_system_exit(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        int64_t code = state->regs[1];
+        hoo_system_exit(code);
+        return 0;
+    }
+    uint64_t jit_system_exec(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* command = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* out = hoo_system_exec(command);
+        if (!out) return 0;
+        void* str = hoo_string_from_cstr(out);
+        hoo_system_free_string(out);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_exec_status(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* command = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_system_exec_status(command));
+    }
+    uint64_t jit_system_user_home(void* /*state_ptr*/) {
+        char* home = hoo_system_user_home();
+        if (!home) return 0;
+        void* str = hoo_string_from_cstr(home);
+        hoo_system_free_string(home);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_user_name(void* /*state_ptr*/) {
+        char* name = hoo_system_user_name();
+        if (!name) return 0;
+        void* str = hoo_string_from_cstr(name);
+        hoo_system_free_string(name);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_current_dir(void* /*state_ptr*/) {
+        char* dir = hoo_system_current_dir();
+        if (!dir) return 0;
+        void* str = hoo_string_from_cstr(dir);
+        hoo_system_free_string(dir);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_system_set_current_dir(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_system_set_current_dir(path));
+    }
+    uint64_t jit_system_total_memory(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_system_total_memory());
+    }
+    uint64_t jit_system_free_memory(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_system_free_memory());
     }
     uint64_t jit_fs_exists(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -1870,6 +1975,84 @@ extern "C" {
         void* str = hoo_string_from_cstr(encoded);
         hoo_encoding_free_string(encoded);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_base64_decode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* encoded = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        uint8_t* out = nullptr;
+        int64_t len = hoo_encoding_base64_decode(encoded, &out);
+        if (len < 0 || !out) return 0;
+        void* str = hoo_string_from_cstr(reinterpret_cast<const char*>(out));
+        hoo_encoding_free_bytes(out);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_hex_encode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[1]);
+        int64_t len = state->regs[2];
+        char* encoded = hoo_encoding_hex_encode(data, len);
+        if (!encoded) return 0;
+        void* str = hoo_string_from_cstr(encoded);
+        hoo_encoding_free_string(encoded);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_hex_decode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* hex = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        uint8_t* out = nullptr;
+        int64_t len = hoo_encoding_hex_decode(hex, &out);
+        if (len < 0 || !out) return 0;
+        void* str = hoo_string_from_cstr(reinterpret_cast<const char*>(out));
+        hoo_encoding_free_bytes(out);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_url_encode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* raw = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* encoded = hoo_encoding_url_encode(raw);
+        if (!encoded) return 0;
+        void* str = hoo_string_from_cstr(encoded);
+        hoo_encoding_free_string(encoded);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_url_decode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* raw = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* decoded = hoo_encoding_url_decode(raw);
+        if (!decoded) return 0;
+        void* str = hoo_string_from_cstr(decoded);
+        hoo_encoding_free_string(decoded);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_base64_encode_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        char* encoded = hoo_encoding_base64_encode_buffer(buf);
+        if (!encoded) return 0;
+        void* str = hoo_string_from_cstr(encoded);
+        hoo_encoding_free_string(encoded);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_base64_decode_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* encoded = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooBuffer buf = hoo_encoding_base64_decode_buffer(encoded);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
+    }
+    uint64_t jit_encoding_hex_encode_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        char* encoded = hoo_encoding_hex_encode_buffer(buf);
+        if (!encoded) return 0;
+        void* str = hoo_string_from_cstr(encoded);
+        hoo_encoding_free_string(encoded);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_encoding_hex_decode_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* hex = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooBuffer buf = hoo_encoding_hex_decode_buffer(hex);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
     }
 
     // ── CSV module (instance-based, self in regs[1]) ──────────────────────
@@ -2308,6 +2491,48 @@ extern "C" {
         const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[3]);
         int64_t data_len = state->regs[4];
         char* result = hoo_hashing_hmac_sha256(key, key_len, data, data_len);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_sha256_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        char* result = hoo_hashing_sha256_buffer(buf);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_sha1_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        char* result = hoo_hashing_sha1_buffer(buf);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_md5_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        char* result = hoo_hashing_md5_buffer(buf);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_hashing_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_hashing_crc32_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_hashing_crc32_buffer(buf));
+    }
+    uint64_t jit_hashing_hmac_sha256_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer key = reinterpret_cast<HooBuffer>(state->regs[1]);
+        HooBuffer data = reinterpret_cast<HooBuffer>(state->regs[2]);
+        char* result = hoo_hashing_hmac_sha256_buffer(key, data);
         if (!result) return 0;
         void* str = hoo_string_from_cstr(result);
         hoo_hashing_free_string(result);
@@ -3292,98 +3517,67 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_math_max_v_p_p", reinterpret_cast<void*>(&jit_math_max_int64)},
         {"_F_M_hoo_E_math_sign_v_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
         // Math functions (singleton class mangled names)
-        {"_F_M_hoo_E_Math_N_abs_i8_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
-        {"_F_M_hoo_E_Math_N_abs_i1_p", reinterpret_cast<void*>(&jit_math_abs_int8)},
-        {"_F_M_hoo_E_Math_N_abs_u1_p", reinterpret_cast<void*>(&jit_math_abs_byte)},
-        {"_F_M_hoo_E_Math_N_abs_d_p", reinterpret_cast<void*>(&jit_math_abs_double)},
-        {"_F_M_hoo_E_Math_N_abs_e_p", reinterpret_cast<void*>(&jit_math_abs_f8)},
-        {"_F_M_hoo_E_Math_N_min_i8_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
-        {"_F_M_hoo_E_Math_N_min_i1_p_p", reinterpret_cast<void*>(&jit_math_min_int8)},
-        {"_F_M_hoo_E_Math_N_min_u1_p_p", reinterpret_cast<void*>(&jit_math_min_byte)},
-        {"_F_M_hoo_E_Math_N_min_d_p_p", reinterpret_cast<void*>(&jit_math_min_double)},
-        {"_F_M_hoo_E_Math_N_min_e_p_p", reinterpret_cast<void*>(&jit_math_min_f8)},
-        {"_F_M_hoo_E_Math_N_max_i8_p_p", reinterpret_cast<void*>(&jit_math_max_int64)},
-        {"_F_M_hoo_E_Math_N_max_i1_p_p", reinterpret_cast<void*>(&jit_math_max_int8)},
-        {"_F_M_hoo_E_Math_N_max_u1_p_p", reinterpret_cast<void*>(&jit_math_max_byte)},
-        {"_F_M_hoo_E_Math_N_max_d_p_p", reinterpret_cast<void*>(&jit_math_max_double)},
-        {"_F_M_hoo_E_Math_N_max_e_p_p", reinterpret_cast<void*>(&jit_math_max_f8)},
-        {"_F_M_hoo_E_Math_N_sign_i8_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
-        {"_F_M_hoo_E_Math_N_sign_i1_p", reinterpret_cast<void*>(&jit_math_sign_int8)},
-        {"_F_M_hoo_E_Math_N_sign_u1_p", reinterpret_cast<void*>(&jit_math_sign_byte)},
-        {"_F_M_hoo_E_Math_N_sign_d_p", reinterpret_cast<void*>(&jit_math_sign_double)},
-        {"_F_M_hoo_E_Math_N_sign_e_p", reinterpret_cast<void*>(&jit_math_sign_f8)},
-        {"_F_M_hoo_E_Math_N_gcd_i8_p_p", reinterpret_cast<void*>(&jit_math_gcd)},
-        {"_F_M_hoo_E_Math_N_factorial_i8_p", reinterpret_cast<void*>(&jit_math_factorial)},
-        {"_F_M_hoo_E_Math_N_fibonacci_i8_p", reinterpret_cast<void*>(&jit_math_fibonacci)},
-        {"_F_M_hoo_E_Math_N_is_even_i8_p", reinterpret_cast<void*>(&jit_math_is_even)},
-        {"_F_M_hoo_E_Math_N_is_odd_i8_p", reinterpret_cast<void*>(&jit_math_is_odd)},
-        {"_F_M_hoo_E_Math_N_is_prime_i8_p", reinterpret_cast<void*>(&jit_math_is_prime)},
-        {"_F_M_hoo_E_Math_N_lcm_i8_p_p", reinterpret_cast<void*>(&jit_math_lcm)},
-        {"_F_M_hoo_E_Math_N_sqrt_d_p", reinterpret_cast<void*>(&jit_math_sqrt)},
-        {"_F_M_hoo_E_Math_N_get_pi_d", reinterpret_cast<void*>(&jit_math_get_pi)},
-        {"_F_M_hoo_E_Math_N_get_e_d", reinterpret_cast<void*>(&jit_math_get_e)},
-        {"_F_M_hoo_E_Math_N_get_tau_d", reinterpret_cast<void*>(&jit_math_get_tau)},
-        {"_F_M_hoo_E_Math_N_get_inf_d", reinterpret_cast<void*>(&jit_math_get_inf)},
-        {"_F_M_hoo_E_Math_N_get_neg_inf_d", reinterpret_cast<void*>(&jit_math_get_neg_inf)},
-        {"_F_M_hoo_E_Math_N_get_nan_d", reinterpret_cast<void*>(&jit_math_get_nan)},
-        {"_F_M_hoo_E_Math_N_pow_d_p_p", reinterpret_cast<void*>(&jit_math_pow)},
-        {"_F_M_hoo_E_Math_N_cbrt_d_p", reinterpret_cast<void*>(&jit_math_cbrt)},
-        {"_F_M_hoo_E_Math_N_hypot_d_p_p", reinterpret_cast<void*>(&jit_math_hypot)},
-        {"_F_M_hoo_E_Math_N_floor_d_p", reinterpret_cast<void*>(&jit_math_floor)},
-        {"_F_M_hoo_E_Math_N_ceil_d_p", reinterpret_cast<void*>(&jit_math_ceil)},
-        {"_F_M_hoo_E_Math_N_round_d_p", reinterpret_cast<void*>(&jit_math_round)},
-        {"_F_M_hoo_E_Math_N_trunc_d_p", reinterpret_cast<void*>(&jit_math_trunc)},
-        {"_F_M_hoo_E_Math_N_fract_d_p", reinterpret_cast<void*>(&jit_math_fract)},
-        {"_F_M_hoo_E_Math_N_sin_d_p", reinterpret_cast<void*>(&jit_math_sin)},
-        {"_F_M_hoo_E_Math_N_cos_d_p", reinterpret_cast<void*>(&jit_math_cos)},
-        {"_F_M_hoo_E_Math_N_tan_d_p", reinterpret_cast<void*>(&jit_math_tan)},
-        {"_F_M_hoo_E_Math_N_asin_d_p", reinterpret_cast<void*>(&jit_math_unary_asin)},
-        {"_F_M_hoo_E_Math_N_acos_d_p", reinterpret_cast<void*>(&jit_math_unary_acos)},
-        {"_F_M_hoo_E_Math_N_atan_d_p", reinterpret_cast<void*>(&jit_math_unary_atan)},
-        {"_F_M_hoo_E_Math_N_atan2_d_p_p", reinterpret_cast<void*>(&jit_math_atan2)},
-        {"_F_M_hoo_E_Math_N_sinh_d_p", reinterpret_cast<void*>(&jit_math_sinh)},
-        {"_F_M_hoo_E_Math_N_cosh_d_p", reinterpret_cast<void*>(&jit_math_cosh)},
-        {"_F_M_hoo_E_Math_N_tanh_d_p", reinterpret_cast<void*>(&jit_math_tanh)},
-        {"_F_M_hoo_E_Math_N_exp_d_p", reinterpret_cast<void*>(&jit_math_exp)},
-        {"_F_M_hoo_E_Math_N_exp2_d_p", reinterpret_cast<void*>(&jit_math_exp2)},
-        {"_F_M_hoo_E_Math_N_expm1_d_p", reinterpret_cast<void*>(&jit_math_expm1)},
-        {"_F_M_hoo_E_Math_N_log_d_p", reinterpret_cast<void*>(&jit_math_log)},
-        {"_F_M_hoo_E_Math_N_log10_d_p", reinterpret_cast<void*>(&jit_math_log10)},
-        {"_F_M_hoo_E_Math_N_log2_d_p", reinterpret_cast<void*>(&jit_math_log2)},
-        {"_F_M_hoo_E_Math_N_log1p_d_p", reinterpret_cast<void*>(&jit_math_log1p)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_Math_N_isEven_i8_p", reinterpret_cast<void*>(&jit_math_is_even)},
-        {"_F_M_hoo_E_Math_N_isOdd_i8_p", reinterpret_cast<void*>(&jit_math_is_odd)},
-        {"_F_M_hoo_E_Math_N_isPrime_i8_p", reinterpret_cast<void*>(&jit_math_is_prime)},
-        {"_F_M_hoo_E_Math_N_getPi_d", reinterpret_cast<void*>(&jit_math_get_pi)},
-        {"_F_M_hoo_E_Math_N_getE_d", reinterpret_cast<void*>(&jit_math_get_e)},
-        {"_F_M_hoo_E_Math_N_getTau_d", reinterpret_cast<void*>(&jit_math_get_tau)},
-        {"_F_M_hoo_E_Math_N_getInf_d", reinterpret_cast<void*>(&jit_math_get_inf)},
-        {"_F_M_hoo_E_Math_N_getNegInf_d", reinterpret_cast<void*>(&jit_math_get_neg_inf)},
-        {"_F_M_hoo_E_Math_N_getNan_d", reinterpret_cast<void*>(&jit_math_get_nan)},
-        // Math functions (legacy type-suffixed names)
-        {"_F_M_hoo_E_math_abs_int64_v_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
-        {"_F_M_hoo_E_math_min_int64_v_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
-        {"_F_M_hoo_E_math_max_int64_v_p_p", reinterpret_cast<void*>(&jit_math_max_int64)},
-        {"_F_M_hoo_E_math_sign_int64_v_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
-        {"_F_M_hoo_E_math_gcd_v_p_p", reinterpret_cast<void*>(&jit_math_gcd)},
-        {"_F_M_hoo_E_math_factorial_v_p", reinterpret_cast<void*>(&jit_math_factorial)},
-        {"_F_M_hoo_E_math_fibonacci_v_p", reinterpret_cast<void*>(&jit_math_fibonacci)},
-        {"_F_M_hoo_E_math_is_even_v_p", reinterpret_cast<void*>(&jit_math_is_even)},
-        {"_F_M_hoo_E_math_is_odd_v_p", reinterpret_cast<void*>(&jit_math_is_odd)},
-        {"_F_M_hoo_E_math_is_prime_v_p", reinterpret_cast<void*>(&jit_math_is_prime)},
-        {"_F_M_hoo_E_math_lcm_v_p_p", reinterpret_cast<void*>(&jit_math_lcm)},
-        {"_F_M_hoo_E_math_sqrt_v_p", reinterpret_cast<void*>(&jit_math_sqrt)},
-        {"_F_M_hoo_E_math_get_pi_v", reinterpret_cast<void*>(&jit_math_get_pi)},
-        {"_F_M_hoo_E_math_pow_v_p_p", reinterpret_cast<void*>(&jit_math_pow)},
-        {"_F_M_hoo_E_math_floor_v_p", reinterpret_cast<void*>(&jit_math_floor)},
-        {"_F_M_hoo_E_math_ceil_v_p", reinterpret_cast<void*>(&jit_math_ceil)},
-        {"_F_M_hoo_E_math_sin_v_p", reinterpret_cast<void*>(&jit_math_sin)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_math_isEven_v_p", reinterpret_cast<void*>(&jit_math_is_even)},
-        {"_F_M_hoo_E_math_isOdd_v_p", reinterpret_cast<void*>(&jit_math_is_odd)},
-        {"_F_M_hoo_E_math_isPrime_v_p", reinterpret_cast<void*>(&jit_math_is_prime)},
-        {"_F_M_hoo_E_math_getPi_v", reinterpret_cast<void*>(&jit_math_get_pi)},
+        // Math functions (free function snake_case names)
+        {"_F_M_hoo_E_math_abs_i8_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
+        {"_F_M_hoo_E_math_abs_i1_p", reinterpret_cast<void*>(&jit_math_abs_int8)},
+        {"_F_M_hoo_E_math_abs_u1_p", reinterpret_cast<void*>(&jit_math_abs_byte)},
+        {"_F_M_hoo_E_math_abs_d_p", reinterpret_cast<void*>(&jit_math_abs_double)},
+        {"_F_M_hoo_E_math_abs_e_p", reinterpret_cast<void*>(&jit_math_abs_f8)},
+        {"_F_M_hoo_E_math_min_i8_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
+        {"_F_M_hoo_E_math_min_i1_p_p", reinterpret_cast<void*>(&jit_math_min_int8)},
+        {"_F_M_hoo_E_math_min_u1_p_p", reinterpret_cast<void*>(&jit_math_min_byte)},
+        {"_F_M_hoo_E_math_min_d_p_p", reinterpret_cast<void*>(&jit_math_min_double)},
+        {"_F_M_hoo_E_math_min_e_p_p", reinterpret_cast<void*>(&jit_math_min_f8)},
+        {"_F_M_hoo_E_math_max_i8_p_p", reinterpret_cast<void*>(&jit_math_max_int64)},
+        {"_F_M_hoo_E_math_max_i1_p_p", reinterpret_cast<void*>(&jit_math_max_int8)},
+        {"_F_M_hoo_E_math_max_u1_p_p", reinterpret_cast<void*>(&jit_math_max_byte)},
+        {"_F_M_hoo_E_math_max_d_p_p", reinterpret_cast<void*>(&jit_math_max_double)},
+        {"_F_M_hoo_E_math_max_e_p_p", reinterpret_cast<void*>(&jit_math_max_f8)},
+        {"_F_M_hoo_E_math_sign_i8_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
+        {"_F_M_hoo_E_math_sign_i1_p", reinterpret_cast<void*>(&jit_math_sign_int8)},
+        {"_F_M_hoo_E_math_sign_u1_p", reinterpret_cast<void*>(&jit_math_sign_byte)},
+        {"_F_M_hoo_E_math_sign_d_p", reinterpret_cast<void*>(&jit_math_sign_double)},
+        {"_F_M_hoo_E_math_sign_e_p", reinterpret_cast<void*>(&jit_math_sign_f8)},
+        {"_F_M_hoo_E_math_gcd_i8_p_p", reinterpret_cast<void*>(&jit_math_gcd)},
+        {"_F_M_hoo_E_math_factorial_i8_p", reinterpret_cast<void*>(&jit_math_factorial)},
+        {"_F_M_hoo_E_math_fibonacci_i8_p", reinterpret_cast<void*>(&jit_math_fibonacci)},
+        {"_F_M_hoo_E_math_is_even_i8_p", reinterpret_cast<void*>(&jit_math_is_even)},
+        {"_F_M_hoo_E_math_is_odd_i8_p", reinterpret_cast<void*>(&jit_math_is_odd)},
+        {"_F_M_hoo_E_math_is_prime_i8_p", reinterpret_cast<void*>(&jit_math_is_prime)},
+        {"_F_M_hoo_E_math_lcm_i8_p_p", reinterpret_cast<void*>(&jit_math_lcm)},
+        {"_F_M_hoo_E_math_sqrt_d_p", reinterpret_cast<void*>(&jit_math_sqrt)},
+        {"_F_M_hoo_E_math_get_pi_d", reinterpret_cast<void*>(&jit_math_get_pi)},
+        {"_F_M_hoo_E_math_get_e_d", reinterpret_cast<void*>(&jit_math_get_e)},
+        {"_F_M_hoo_E_math_get_tau_d", reinterpret_cast<void*>(&jit_math_get_tau)},
+        {"_F_M_hoo_E_math_get_inf_d", reinterpret_cast<void*>(&jit_math_get_inf)},
+        {"_F_M_hoo_E_math_get_neg_inf_d", reinterpret_cast<void*>(&jit_math_get_neg_inf)},
+        {"_F_M_hoo_E_math_get_nan_d", reinterpret_cast<void*>(&jit_math_get_nan)},
+        {"_F_M_hoo_E_math_pow_d_p_p", reinterpret_cast<void*>(&jit_math_pow)},
+        {"_F_M_hoo_E_math_cbrt_d_p", reinterpret_cast<void*>(&jit_math_cbrt)},
+        {"_F_M_hoo_E_math_hypot_d_p_p", reinterpret_cast<void*>(&jit_math_hypot)},
+        {"_F_M_hoo_E_math_floor_d_p", reinterpret_cast<void*>(&jit_math_floor)},
+        {"_F_M_hoo_E_math_ceil_d_p", reinterpret_cast<void*>(&jit_math_ceil)},
+        {"_F_M_hoo_E_math_round_d_p", reinterpret_cast<void*>(&jit_math_round)},
+        {"_F_M_hoo_E_math_trunc_d_p", reinterpret_cast<void*>(&jit_math_trunc)},
+        {"_F_M_hoo_E_math_fract_d_p", reinterpret_cast<void*>(&jit_math_fract)},
+        {"_F_M_hoo_E_math_sin_d_p", reinterpret_cast<void*>(&jit_math_sin)},
+        {"_F_M_hoo_E_math_cos_d_p", reinterpret_cast<void*>(&jit_math_cos)},
+        {"_F_M_hoo_E_math_tan_d_p", reinterpret_cast<void*>(&jit_math_tan)},
+        {"_F_M_hoo_E_math_asin_d_p", reinterpret_cast<void*>(&jit_math_unary_asin)},
+        {"_F_M_hoo_E_math_acos_d_p", reinterpret_cast<void*>(&jit_math_unary_acos)},
+        {"_F_M_hoo_E_math_atan_d_p", reinterpret_cast<void*>(&jit_math_unary_atan)},
+        {"_F_M_hoo_E_math_atan2_d_p_p", reinterpret_cast<void*>(&jit_math_atan2)},
+        {"_F_M_hoo_E_math_sinh_d_p", reinterpret_cast<void*>(&jit_math_sinh)},
+        {"_F_M_hoo_E_math_cosh_d_p", reinterpret_cast<void*>(&jit_math_cosh)},
+        {"_F_M_hoo_E_math_tanh_d_p", reinterpret_cast<void*>(&jit_math_tanh)},
+        {"_F_M_hoo_E_math_exp_d_p", reinterpret_cast<void*>(&jit_math_exp)},
+        {"_F_M_hoo_E_math_exp2_d_p", reinterpret_cast<void*>(&jit_math_exp2)},
+        {"_F_M_hoo_E_math_expm1_d_p", reinterpret_cast<void*>(&jit_math_expm1)},
+        {"_F_M_hoo_E_math_log_d_p", reinterpret_cast<void*>(&jit_math_log)},
+        {"_F_M_hoo_E_math_log10_d_p", reinterpret_cast<void*>(&jit_math_log10)},
+        {"_F_M_hoo_E_math_log2_d_p", reinterpret_cast<void*>(&jit_math_log2)},
+        {"_F_M_hoo_E_math_log1p_d_p", reinterpret_cast<void*>(&jit_math_log1p)},
+        {"_F_M_hoo_E_math_clamp_d_p_p_p", reinterpret_cast<void*>(&jit_math_clamp)},
         // Random module (instance-based, prefix-style)
         {"_F_M_hoo_E_random_new_v", reinterpret_cast<void*>(&jit_random_new)},
         {"_F_M_hoo_E_random_new_v_p", reinterpret_cast<void*>(&jit_random_new_with_seed)},
@@ -3393,9 +3587,25 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_random_nextBool_v", reinterpret_cast<void*>(&jit_random_next_bool)},
         {"_F_M_hoo_E_random_nextBytes_v_p_p", reinterpret_cast<void*>(&jit_random_next_bytes)},
         {"_F_M_hoo_E_random_release_v", reinterpret_cast<void*>(&jit_random_release)},
-        // Standard library (hoo module namespace, as codegen redirects them)
-        {"_F_M_hoo_E_system_hostname_v", reinterpret_cast<void*>(&jit_system_hostname)},
-        {"_F_M_hoo_E_System_N_hostname_p", reinterpret_cast<void*>(&jit_system_hostname)},
+        // System module (free function snake_case names)
+        {"_F_M_hoo_E_system_get_env_p_p", reinterpret_cast<void*>(&jit_system_get_env)},
+        {"_F_M_hoo_E_system_set_env_p_p_p", reinterpret_cast<void*>(&jit_system_set_env)},
+        {"_F_M_hoo_E_system_unset_env_p_p", reinterpret_cast<void*>(&jit_system_unset_env)},
+        {"_F_M_hoo_E_system_hostname_p", reinterpret_cast<void*>(&jit_system_hostname)},
+        {"_F_M_hoo_E_system_os_name_p", reinterpret_cast<void*>(&jit_system_os_name)},
+        {"_F_M_hoo_E_system_os_version_p", reinterpret_cast<void*>(&jit_system_os_version)},
+        {"_F_M_hoo_E_system_cpu_count_p", reinterpret_cast<void*>(&jit_system_cpu_count)},
+        {"_F_M_hoo_E_system_process_id_p", reinterpret_cast<void*>(&jit_system_process_id)},
+        {"_F_M_hoo_E_system_uptime_ms_p", reinterpret_cast<void*>(&jit_system_uptime_ms)},
+        {"_F_M_hoo_E_system_exit_p_p", reinterpret_cast<void*>(&jit_system_exit)},
+        {"_F_M_hoo_E_system_exec_p_p", reinterpret_cast<void*>(&jit_system_exec)},
+        {"_F_M_hoo_E_system_exec_status_p_p", reinterpret_cast<void*>(&jit_system_exec_status)},
+        {"_F_M_hoo_E_system_user_home_p", reinterpret_cast<void*>(&jit_system_user_home)},
+        {"_F_M_hoo_E_system_user_name_p", reinterpret_cast<void*>(&jit_system_user_name)},
+        {"_F_M_hoo_E_system_current_dir_p", reinterpret_cast<void*>(&jit_system_current_dir)},
+        {"_F_M_hoo_E_system_set_current_dir_p_p", reinterpret_cast<void*>(&jit_system_set_current_dir)},
+        {"_F_M_hoo_E_system_total_memory_p", reinterpret_cast<void*>(&jit_system_total_memory)},
+        {"_F_M_hoo_E_system_free_memory_p", reinterpret_cast<void*>(&jit_system_free_memory)},
         // Fs functions (hoo module namespace, both Fs.methodName and fs_methodName syntax)
         {"_F_M_hoo_E_fs_exists_v_p", reinterpret_cast<void*>(&jit_fs_exists)},
         {"_F_M_hoo_E_fs_exists_p_p", reinterpret_cast<void*>(&jit_fs_exists)},
@@ -3446,9 +3656,16 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_uuid_to_string_v_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
         {"_F_M_hoo_E_Uuid_N_v4_p", reinterpret_cast<void*>(&jit_uuid_v4)},
         {"_F_M_hoo_E_Uuid_N_to_string_p_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
-        {"_F_M_hoo_E_Encoding_N_base64_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_Encoding_N_base64Encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
+        {"_F_M_hoo_E_encoding_base64_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
+        {"_F_M_hoo_E_encoding_base64_decode_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode)},
+        {"_F_M_hoo_E_encoding_hex_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode)},
+        {"_F_M_hoo_E_encoding_hex_decode_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode)},
+        {"_F_M_hoo_E_encoding_url_encode_p_p", reinterpret_cast<void*>(&jit_encoding_url_encode)},
+        {"_F_M_hoo_E_encoding_url_decode_p_p", reinterpret_cast<void*>(&jit_encoding_url_decode)},
+        {"_F_M_hoo_E_encoding_base64_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode_buffer)},
+        {"_F_M_hoo_E_encoding_base64_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode_buffer)},
+        {"_F_M_hoo_E_encoding_hex_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode_buffer)},
+        {"_F_M_hoo_E_encoding_hex_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode_buffer)},
         {"_F_M_hoo_E_thread_spawn_v_p_p", reinterpret_cast<void*>(&jit_thread_spawn)},
         {"_F_M_hoo_E_thread_join_v_p", reinterpret_cast<void*>(&jit_thread_join)},
         {"_F_M_hoo_E_thread_self_v", reinterpret_cast<void*>(&jit_thread_self)},
@@ -3525,12 +3742,17 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_path_list_separator_v", reinterpret_cast<void*>(&jit_path_list_separator)},
 
         // Hashing module
-        {"_F_M_hoo_E_hashing_sha256_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha256)},
-        {"_F_M_hoo_E_hashing_sha1_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha1)},
-        {"_F_M_hoo_E_hashing_md5_v_p_p", reinterpret_cast<void*>(&jit_hashing_md5)},
-        {"_F_M_hoo_E_hashing_sha256_file_v_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
-        {"_F_M_hoo_E_hashing_crc32_v_p_p", reinterpret_cast<void*>(&jit_hashing_crc32)},
-        {"_F_M_hoo_E_hashing_hmac_sha256_v_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
+        {"_F_M_hoo_E_hashing_sha256_p_p_p", reinterpret_cast<void*>(&jit_hashing_sha256)},
+        {"_F_M_hoo_E_hashing_sha1_p_p_p", reinterpret_cast<void*>(&jit_hashing_sha1)},
+        {"_F_M_hoo_E_hashing_md5_p_p_p", reinterpret_cast<void*>(&jit_hashing_md5)},
+        {"_F_M_hoo_E_hashing_sha256_file_p_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
+        {"_F_M_hoo_E_hashing_crc32_p_p_p", reinterpret_cast<void*>(&jit_hashing_crc32)},
+        {"_F_M_hoo_E_hashing_hmac_sha256_p_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
+        {"_F_M_hoo_E_hashing_sha256_buffer_p_p", reinterpret_cast<void*>(&jit_hashing_sha256_buffer)},
+        {"_F_M_hoo_E_hashing_sha1_buffer_p_p", reinterpret_cast<void*>(&jit_hashing_sha1_buffer)},
+        {"_F_M_hoo_E_hashing_md5_buffer_p_p", reinterpret_cast<void*>(&jit_hashing_md5_buffer)},
+        {"_F_M_hoo_E_hashing_crc32_buffer_p_p", reinterpret_cast<void*>(&jit_hashing_crc32_buffer)},
+        {"_F_M_hoo_E_hashing_hmac_sha256_buffer_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256_buffer)},
 
         // Process module
         {"_F_M_hoo_E_process_kill_v_p_p", reinterpret_cast<void*>(&jit_process_kill)},

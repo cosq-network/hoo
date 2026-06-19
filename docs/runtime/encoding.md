@@ -1,23 +1,26 @@
 # Encoding (`hoo.encoding`)
 
-The `hoo.encoding` module provides Base64, hex, and URL percent-encoding encode/decode with round-trip guarantees.
+The `hoo.encoding` module provides Base64, hex, and URL percent-encoding encode/decode with round-trip guarantees. All functions in this module are snake_case free-functions.
 
 ## 1. Base64
 
-- `Encoding.base64Encode(data, len)` — Encode bytes to Base64 string (free with `Encoding.freeString`).
-- `Encoding.base64Decode(encoded)` — Decode Base64 string to bytes (free with `Encoding.freeBytes`). Returns decoded length or -1 on error.
+- `encoding_base64_encode(data, len)` — Encode bytes to Base64 string.
+- `encoding_base64_decode(encoded)` — Decode Base64 string to a string.
+- `encoding_base64_encode_buffer(buf)` — Encode a `Buffer` to a Base64 string.
+- `encoding_base64_decode_buffer(encoded)` — Decode Base64 string to a `Buffer`.
 
 ## 2. Hex
 
-- `Encoding.hexEncode(data, len)` — Encode bytes to lowercase hex string.
-- `Encoding.hexDecode(hex)` — Decode hex string to bytes. Returns decoded length or -1 on error.
+- `encoding_hex_encode(data, len)` — Encode bytes to lowercase hex string.
+- `encoding_hex_decode(hex)` — Decode hex string to a string.
+- `encoding_hex_encode_buffer(buf)` — Encode a `Buffer` to a lowercase hex string.
+- `encoding_hex_decode_buffer(hex)` — Decode hex string to a `Buffer`.
 
 ## 3. URL Encoding
 
-- `Encoding.urlEncode(str)` — Percent-encode a string (free with `Encoding.freeString`).
-- `Encoding.urlDecode(encoded)` — Decode percent-encoded string.
+- `encoding_url_encode(str)` — Percent-encode a string.
+- `encoding_url_decode(encoded)` — Decode percent-encoded string.
 
 ## Memory Management
 
-- `Encoding.freeString(str)` — Free allocated string.
-- `Encoding.freeBytes(data)` — Free allocated byte buffer.
+Memory management in Hoo is automated. The returned string and buffer structures are managed by the runtime and garbage collected.

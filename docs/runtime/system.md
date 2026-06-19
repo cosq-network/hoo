@@ -1,42 +1,36 @@
 # System Information (`hoo.system`)
 
-The `hoo.system` module provides environment variables, OS name, hostname, CPU count, process ID, user info, and current working directory.
-
-Functions returning `char*` allocate strings that the caller must free with `System.freeString`.
+The `hoo.system` module provides free functions for environment variables, OS name, hostname, CPU count, process ID, user info, process execution, and memory info.
 
 ## 1. Environment Variables
 
-- `System.getEnv(name)` — Get environment variable value, or NULL if not set.
-- `System.setEnv(name, value)` — Set environment variable. Returns 0 on success, -1 on failure.
-- `System.unsetEnv(name)` — Unset environment variable.
+- `system_get_env(name)` — Get environment variable value, or empty string if not set.
+- `system_set_env(name, value)` — Set environment variable. Returns 1 on success, 0 on failure.
+- `system_unset_env(name)` — Unset environment variable.
 
 ## 2. System Info
 
-- `System.hostname()` — Hostname string.
-- `System.osName()` — OS name (`"macOS"`, `"Linux"`, `"Windows"`, or `"Unknown"`).
-- `System.osVersion()` — OS version string (e.g., kernel release).
-- `System.cpuCount()` — Number of logical CPU cores.
-- `System.pid()` — Current process ID.
-- `System.uptimeMs()` — System uptime in milliseconds, or -1 if unavailable.
+- `system_hostname()` — Hostname string.
+- `system_os_name()` — OS name (`"darwin"`, `"linux"`, `"windows"`, or `"unknown"`).
+- `system_os_version()` — OS version string (e.g., kernel release).
+- `system_cpu_count()` — Number of logical CPU cores.
+- `system_process_id()` — Current process ID.
+- `system_uptime_ms()` — System uptime in milliseconds.
 
 ## 3. Process Control
 
-- `System.exit(code)` — Terminate the process with an exit code.
-- `System.exec(command)` — Execute a shell command and capture stdout (returns allocated string).
-- `System.execStatus(command)` — Execute a shell command and return the exit status.
+- `system_exit(code)` — Terminate the process with an exit code.
+- `system_exec(command)` — Execute a shell command and capture stdout.
+- `system_exec_status(command)` — Execute a shell command and return the exit status.
 
 ## 4. User Info
 
-- `System.userHome()` — User's home directory path.
-- `System.userName()` — User login name.
-- `System.cwd()` — Current working directory.
-- `System.setCwd(path)` — Change working directory. Returns 0 on success.
+- `system_user_home()` — User's home directory path.
+- `system_user_name()` — User login name.
+- `system_current_dir()` — Current working directory.
+- `system_set_current_dir(path)` — Change working directory. Returns 1 on success.
 
 ## 5. Memory Info
 
-- `System.totalMemory()` — Total physical RAM in bytes, or -1 if unavailable.
-- `System.freeMemory()` — Free physical RAM in bytes, or -1 if unavailable.
-
-## Memory Management
-
-Allocated strings must be freed with `System.freeString(str)`.
+- `system_total_memory()` — Total physical RAM in bytes.
+- `system_free_memory()` — Free physical RAM in bytes.

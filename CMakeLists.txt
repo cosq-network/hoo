@@ -485,6 +485,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/HooDatetimeJitTest.cpp
         tests/jit/HooPathJitTest.cpp
         tests/jit/HooHashingJitTest.cpp
+        tests/jit/HooEncodingJitTest.cpp
         tests/jit/HooProcessJitTest.cpp
         tests/jit/HooCompressionJitTest.cpp
         tests/jit/HooClassApiTest.cpp

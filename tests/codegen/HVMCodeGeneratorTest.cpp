@@ -322,9 +322,9 @@ TEST_F(HVMCodeGeneratorTest, SerializableClassSymbolsHaveCorrectAttributes) {
 TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     std::string code = R"(
         import hoo.io;
-        import hoo.system;
+        import hoo.uuid;
         func:int64 test() {
-            var x = System.hostname();
+            var x = Uuid.v4();
             var y = Fs.read_text("test.txt");
             return 0;
         }
@@ -333,14 +333,14 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 
-    bool foundSystem = false;
+    bool foundUuid = false;
     bool foundFs = false;
     for (const auto& sym : module->getSymbols()) {
-        if (sym.name.find("_M_hoo_E_System_N_hostname") != std::string::npos) foundSystem = true;
+        if (sym.name.find("_M_hoo_E_Uuid_N_v4") != std::string::npos) foundUuid = true;
         if (sym.name.find("_M_hoo_E_fs_read_text") != std::string::npos) foundFs = true;
     }
 
-    EXPECT_TRUE(foundSystem) << "Expected System.hostname() to produce _M_hoo_E_System_N_hostname symbol";
+    EXPECT_TRUE(foundUuid) << "Expected Uuid.v4() to produce _M_hoo_E_Uuid_N_v4 symbol";
     EXPECT_TRUE(foundFs) << "Expected Fs.read_text() to produce _M_hoo_E_fs_read_text symbol";
 }
 

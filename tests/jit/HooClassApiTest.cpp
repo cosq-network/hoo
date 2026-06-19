@@ -66,22 +66,22 @@ TEST_F(HooClassApiTest, FreeFuncDateTimeNow) {
     EXPECT_GT(r, 1000000);
 }
 
-TEST_F(HooClassApiTest, StaticMathAbs) {
+TEST_F(HooClassApiTest, FreeFuncMathAbs) {
     const std::string source = R"(
         import hoo.math;
         func :int64 test() {
-            return Math.abs(-42);
+            return math_abs(-42);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 42);
 }
 
-TEST_F(HooClassApiTest, StaticMathGetPi) {
+TEST_F(HooClassApiTest, FreeFuncMathGetPi) {
     const std::string source = R"(
         import hoo.math;
         func :int64 test() {
-            return Math.getPi();
+            return math_get_pi();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -101,11 +101,11 @@ TEST_F(HooClassApiTest, FreeFuncDateTimeNowSeconds) {
     EXPECT_GT(r, 1000000);
 }
 
-TEST_F(HooClassApiTest, StaticSystemHostname) {
+TEST_F(HooClassApiTest, FreeFuncSystemHostname) {
     const std::string source = R"(
         import hoo.system;
         func :string test() {
-            return System.hostname();
+            return system_hostname();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
