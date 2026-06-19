@@ -3,8 +3,6 @@
 The `Args` runtime API provides an instance-based interface for command-line
 arguments. Create an instance with `new Args()`.
 
-Before calling `Args` methods from JIT-compiled Hoo code, the host must provide
-raw command-line arguments by calling `hoo_args_init(argc, argv)` from C/C++.
 The runtime parses:
 
 - positional arguments, excluding the program name
@@ -17,21 +15,6 @@ The API has two layers:
 
 - raw access methods for reading positional and named arguments directly
 - argparse-style methods for declaring typed arguments and reading parsed values
-
-## Host Setup
-
-```cpp
-const char* argv[] = {
-    "/usr/bin/hoo",
-    "input.txt",
-    "--output=result.txt",
-    "--verbose"
-};
-hoo_args_init(4, argv);
-```
-
-Call `hoo_args_shutdown()` from the host when the runtime no longer needs the
-argument snapshot.
 
 ## `new Args`
 
@@ -57,8 +40,7 @@ An argument parser instance.
 
 ### Errors
 
-Returns a runtime object handle. If the host has not called `hoo_args_init`,
-the native constructor returns null.
+Returns a null handle if the runtime has no command-line argument data.
 
 ### Complete Example
 
@@ -93,7 +75,7 @@ The positional argument count.
 
 ### Errors
 
-Returns `0` when no argument data is available.
+Does not throw. Returns `0` when no argument data is available.
 
 ### Complete Example
 
@@ -126,8 +108,7 @@ Zero-based positional argument index.
 ### Return Type
 
 `string`
-The positional argument value. Out-of-range indexes return a null string handle
-from the JIT wrapper.
+The positional argument value.
 
 ### Errors
 
@@ -174,7 +155,7 @@ Returns `1` when the argument exists, otherwise `0`.
 
 ### Errors
 
-Returns `0` for missing names or unavailable argument data.
+Does not throw for missing names or unavailable argument data.
 
 ### Complete Example
 
@@ -213,7 +194,7 @@ The argument name without leading dashes.
 
 `string`
 The raw value for the named argument. Flags without values return an empty
-string. Missing names return a null string handle from the JIT wrapper.
+string.
 
 ### Errors
 
@@ -234,7 +215,7 @@ func :int64 main() {
 
 ### Description
 
-Returns the program name/path from `argv[0]`.
+Returns the program name or path (the first element of the argument list).
 
 ### Syntax
 
@@ -253,7 +234,7 @@ The program name or path.
 
 ### Errors
 
-Returns an empty string when no program name is available.
+Does not throw. Returns an empty string when no program name is available.
 
 ### Complete Example
 
@@ -301,7 +282,7 @@ Value returned when the option is not provided.
 
 ### Errors
 
-Invalid or nil strings are treated as empty strings by the native runtime.
+Does not throw. Invalid or nil strings are treated as empty strings.
 
 ### Complete Example
 
@@ -335,10 +316,10 @@ args.addInt(name: string, shortOpt: string, longOpt: string, help: string, defau
 The parsed value name used by `getInt`.
 
 `shortOpt`
-The short option, such as `"-c"`, or `""`.
+The short option, such as `"-c"`. Pass `""` when there is no short option.
 
 `longOpt`
-The long option, such as `"--count"`, or `""`.
+The long option, such as `"--count"`. Pass `""` when there is no long option.
 
 `help`
 Help text used by `helpText`.
@@ -386,10 +367,10 @@ args.addFlag(name: string, shortOpt: string, longOpt: string, help: string)
 The parsed flag name used by `getBool`.
 
 `shortOpt`
-The short option, such as `"-v"`, or `""`.
+The short option, such as `"-v"`. Pass `""` when there is no short option.
 
 `longOpt`
-The long option, such as `"--verbose"`, or `""`.
+The long option, such as `"--verbose"`. Pass `""` when there is no long option.
 
 `help`
 Help text used by `helpText`.
@@ -436,10 +417,10 @@ args.addFloat(name: string, shortOpt: string, longOpt: string, help: string, def
 The parsed value name used by `getFloat`.
 
 `shortOpt`
-The short option, such as `"-t"`, or `""`.
+The short option, such as `"-t"`. Pass `""` when there is no short option.
 
 `longOpt`
-The long option, such as `"--threshold"`, or `""`.
+The long option, such as `"--threshold"`. Pass `""` when there is no long option.
 
 `help`
 Help text used by `helpText`.
@@ -497,8 +478,8 @@ Help text used by `helpText`.
 
 ### Errors
 
-Does not throw when the positional argument is missing; `getString` returns an
-empty string.
+Does not throw. When the positional argument is missing at the command line,
+`getString` returns an empty string after `parse`.
 
 ### Complete Example
 
@@ -518,8 +499,8 @@ func :int64 main() {
 
 ### Description
 
-Parses the host-provided command-line arguments against the definitions added
-with `addString`, `addInt`, `addFlag`, `addFloat`, and `addPositional`.
+Parses the command-line arguments against the definitions added with
+`addString`, `addInt`, `addFlag`, `addFloat`, and `addPositional`.
 
 ### Syntax
 
@@ -737,11 +718,12 @@ None.
 ### Return Type
 
 `string`
-Generated usage/help text.
+Generated usage or help text.
 
 ### Errors
 
-Returns help text for the definitions currently attached to the `Args` instance.
+Does not throw. Returns help text for the definitions currently attached to the
+`Args` instance, or an empty string if no definitions were added.
 
 ### Complete Example
 
@@ -761,8 +743,8 @@ func :int64 main() {
 
 ### Description
 
-Clears argument definitions and parsed values so the same `Args` instance can
-be reused.
+Clears all argument definitions and parsed values so the same `Args` instance
+can be reused for a new set of definitions.
 
 ### Syntax
 
