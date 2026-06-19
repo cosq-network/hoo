@@ -20,6 +20,7 @@ typedef void* HooMap;
 
 HooCsv    hoo_csv_new(void);
 HooCsv    hoo_csv_new_with_opts(int32_t delimiter, int32_t quote_char);
+HooCsv    hoo_csv_from_opts(int32_t delimiter, int32_t quote_char);
 HooCsv    hoo_csv_retain(HooCsv csv);
 void      hoo_csv_release(HooCsv csv);
 int64_t   hoo_csv_refcount(HooCsv csv);

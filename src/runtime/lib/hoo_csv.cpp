@@ -82,6 +82,10 @@ HooCsv hoo_csv_new_with_opts(int32_t delimiter, int32_t quote_char) {
     return (HooCsv)h;
 }
 
+HooCsv hoo_csv_from_opts(int32_t delimiter, int32_t quote_char) {
+    return hoo_csv_new_with_opts(delimiter, quote_char);
+}
+
 HooCsv hoo_csv_retain(HooCsv csv) {
     return (HooCsv)hoo_retain(csv);
 }
@@ -351,7 +355,6 @@ HooArray hoo_csv_parse(HooCsv csv, const char* csv_str)
     char*** table = hoo_csv_parse_raw_with_opts(csv_str, h->delimiter, h->quote_char, &rows, &cols);
     if (!table) return NULL;
 
-    // Convert char*** to HooArray<HooArray<HooString>>
     HooArray result = hoo_array_new();
     if (!result) {
         hoo_csv_free_table(table, rows, cols);
@@ -368,13 +371,19 @@ HooArray hoo_csv_parse(HooCsv csv, const char* csv_str)
         for (int64_t j = 0; j < cols; j++) {
             HooString s = hoo_string_from_cstr(table[i][j] ? table[i][j] : "");
             if (s) {
-                hoo_array_push_object(row, s);
+                hoo_string_retain(s);
+                row = (HooArray)hoo_array_push_object(row, s);
                 hoo_string_release(s);
             }
         }
-        hoo_array_push_array(result, row);
+        // Mark row as holding strings so hoo_array_release frees them
+        if (row) ((int64_t*)row)[2] = HOO_TYPE_STRING;
+        result = hoo_array_push_array(result, row);
         hoo_array_release(row);
     }
+
+    // Mark result as holding arrays so hoo_array_release frees rows
+    if (result) ((int64_t*)result)[2] = HOO_TYPE_ARRAY;
 
     hoo_csv_free_table(table, rows, cols);
     return result;
@@ -455,12 +464,11 @@ HooArray hoo_csv_read_file(HooCsv csv, const char* path)
 
     int64_t rows = 0, cols = 0;
     char*** table = hoo_csv_parse_raw_with_opts(content, h->delimiter, h->quote_char,
-                                                 &rows, &cols);
+                                                  &rows, &cols);
     hoo_fs_free_string(content);
 
     if (!table) return NULL;
 
-    // Convert char*** to HooArray
     HooArray result = hoo_array_new();
     if (!result) {
         hoo_csv_free_table(table, rows, cols);
@@ -477,13 +485,17 @@ HooArray hoo_csv_read_file(HooCsv csv, const char* path)
         for (int64_t j = 0; j < cols; j++) {
             HooString s = hoo_string_from_cstr(table[i][j] ? table[i][j] : "");
             if (s) {
-                hoo_array_push_object(row, s);
+                hoo_string_retain(s);
+                row = (HooArray)hoo_array_push_object(row, s);
                 hoo_string_release(s);
             }
         }
-        hoo_array_push_array(result, row);
+        if (row) ((int64_t*)row)[2] = HOO_TYPE_STRING;
+        result = hoo_array_push_array(result, row);
         hoo_array_release(row);
     }
+
+    if (result) ((int64_t*)result)[2] = HOO_TYPE_ARRAY;
 
     hoo_csv_free_table(table, rows, cols);
     return result;
@@ -546,11 +558,14 @@ HooArray hoo_csv_parse_as_maps(HooCsv csv, const char* csv_str)
             hoo_map_set(map, key, val);
         }
 
-        // Array stores raw pointer; retain so map survives
+        // Retain so map survives in the array
         hoo_map_retain(map);
         hoo_array_push_object(result, map);
         hoo_map_release(map);
     }
+
+    // Mark as holding maps so hoo_array_release frees them
+    if (result) ((int64_t*)result)[2] = HOO_TYPE_MAP;
 
     hoo_csv_free_table(table, rows, cols);
     return result;
@@ -720,11 +735,14 @@ HooArray hoo_csv_select(HooCsv csv, void* data, void* columns)
             hoo_map_set(dst, col_names[(size_t)j], val ? val : "");
         }
 
-        // Array stores raw pointer; retain so map survives
+        // Retain so map survives in the array
         hoo_map_retain(dst);
         hoo_array_push_object(result, dst);
         hoo_map_release(dst);
     }
+
+    // Mark as holding maps so hoo_array_release frees them
+    if (result) ((int64_t*)result)[2] = HOO_TYPE_MAP;
 
     return result;
 }
@@ -787,9 +805,13 @@ HooArray hoo_csv_filter(HooCsv csv, void* data, const char* column,
         }
 
         if (compare_values(raw_val ? raw_val : "", value ? value : "", op)) {
+            hoo_map_retain(map);
             hoo_array_push_object(result, map);
         }
     }
+
+    // Mark as holding maps so hoo_array_release frees them
+    if (result) ((int64_t*)result)[2] = HOO_TYPE_MAP;
 
     return result;
 }
@@ -824,9 +846,13 @@ HooArray hoo_csv_sort(HooCsv csv, void* data, const char* column, int64_t ascend
     for (int64_t i = 0; i < len; i++) {
         HooMap src = NULL;
         if (hoo_array_get_object(data, indices[(size_t)i], (void**)&src) && src) {
+            hoo_map_retain(src);
             hoo_array_push_object(result, src);
         }
     }
+
+    // Mark as holding maps so hoo_array_release frees them
+    if (result) ((int64_t*)result)[2] = HOO_TYPE_MAP;
 
     return result;
 }

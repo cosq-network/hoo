@@ -1733,11 +1733,11 @@ extern "C" {
         void* handle = hoo_csv_new();
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(handle));
     }
-    uint64_t jit_csv_new_with_opts(void* state_ptr) {
+    uint64_t jit_hoo_csv_from_opts(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         int32_t delimiter = static_cast<int32_t>(state->regs[1]);
         int32_t quote_char = static_cast<int32_t>(state->regs[2]);
-        void* handle = hoo_csv_new_with_opts(delimiter, quote_char);
+        void* handle = hoo_csv_from_opts(delimiter, quote_char);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(handle));
     }
     uint64_t jit_csv_release(void* state_ptr) {
@@ -3196,7 +3196,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_thread_mutexDestroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
         // CSV module (instance-based, prefix-style)
         {"_F_M_hoo_E_csv_new_v", reinterpret_cast<void*>(&jit_csv_new)},
-        {"_F_M_hoo_E_csv_newWithOpts_v_p_p", reinterpret_cast<void*>(&jit_csv_new_with_opts)},
+        {"_F_M_hoo_E_csv_fromOpts_p_p_p", reinterpret_cast<void*>(&jit_hoo_csv_from_opts)},
         {"_F_M_hoo_E_csv_release_v", reinterpret_cast<void*>(&jit_csv_release)},
         {"_F_M_hoo_E_csv_parse_v_p", reinterpret_cast<void*>(&jit_csv_parse)},
         {"_F_M_hoo_E_csv_generate_v_p", reinterpret_cast<void*>(&jit_csv_generate)},
@@ -3453,6 +3453,7 @@ void* lookupPlainRuntimeSymbolAddress(const std::string& name) {
         {"hoo_hashmap_clear", reinterpret_cast<void*>(&hoo_hashmap_clear)},
         {"hoo_buffer_new", reinterpret_cast<void*>(&hoo_buffer_new)},
         {"hoo_buffer_from_bytes", reinterpret_cast<void*>(&hoo_buffer_from_bytes)},
+        {"hoo_csv_from_opts", reinterpret_cast<void*>(&hoo_csv_from_opts)},
         {"hoo_buffer_copy", reinterpret_cast<void*>(&hoo_buffer_copy)},
         {"hoo_buffer_length", reinterpret_cast<void*>(&hoo_buffer_length)},
         {"hoo_buffer_capacity", reinterpret_cast<void*>(&hoo_buffer_capacity)},

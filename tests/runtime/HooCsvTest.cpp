@@ -147,6 +147,29 @@ TEST_F(HooCsvTest, ParseWithOpts) {
     hoo_csv_free_table(table, rows, cols);
 }
 
+TEST_F(HooCsvTest, FromOptsCreatesInstanceWithCustomDelimiter) {
+    HooCsv csv = hoo_csv_from_opts(59, 39);
+    ASSERT_NE(csv, nullptr);
+
+    int64_t rows = 0, cols = 0;
+    char*** table = hoo_csv_parse_raw_with_opts("a;b;c", ';', '\'', &rows, &cols);
+    ASSERT_NE(table, nullptr);
+    EXPECT_EQ(rows, 1);
+    EXPECT_EQ(cols, 3);
+    EXPECT_STREQ(table[0][0], "a");
+    EXPECT_STREQ(table[0][1], "b");
+    EXPECT_STREQ(table[0][2], "c");
+    hoo_csv_free_table(table, rows, cols);
+
+    // Same test using the instance-based OOP API
+    HooArray arr = hoo_csv_parse(csv, "a;b;c");
+    ASSERT_NE(arr, nullptr);
+    EXPECT_EQ(hoo_array_length(arr), 1);
+    hoo_array_release(arr);
+
+    hoo_csv_release(csv);
+}
+
 TEST_F(HooCsvTest, FreeString) {
     hoo_csv_free_string(nullptr);
 }
@@ -546,6 +569,164 @@ TEST_F(HooCsvTest, AvgWorksForAllNumeric) {
     hoo_string_release(avg);
     hoo_csv_release(csv);
     hoo_array_release(data);
+}
+
+// ============================================================================
+// ARC Memory Management Tests
+// ============================================================================
+
+TEST_F(HooCsvTest, CsvInstanceRetainReleaseRefcount) {
+    HooCsv csv = hoo_csv_new();
+    ASSERT_NE(csv, nullptr);
+    EXPECT_EQ(hoo_csv_refcount(csv), 1);
+
+    HooCsv csv2 = hoo_csv_retain(csv);
+    EXPECT_EQ(csv2, csv);
+    EXPECT_EQ(hoo_csv_refcount(csv), 2);
+
+    hoo_csv_release(csv);
+    EXPECT_EQ(hoo_csv_refcount(csv), 1);
+
+    hoo_csv_release(csv);
+}
+
+TEST_F(HooCsvTest, ParseResultElementsIndependentlyOwned) {
+    HooCsv csv = hoo_csv_new();
+    ASSERT_NE(csv, nullptr);
+
+    HooArray result = hoo_csv_parse(csv, "a,b\n1,2\n3,4");
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(hoo_array_length(result), 3);
+
+    // Access each row and verify content
+    HooArray row0 = NULL;
+    ASSERT_TRUE(hoo_array_get_array(result, 0, &row0));
+    HooString s0 = NULL;
+    ASSERT_TRUE(hoo_array_get_object(row0, 0, (void**)&s0));
+    EXPECT_STREQ(hoo_string_data(s0), "a");
+    HooString s1 = NULL;
+    ASSERT_TRUE(hoo_array_get_object(row0, 1, (void**)&s1));
+    EXPECT_STREQ(hoo_string_data(s1), "b");
+
+    HooArray row1 = NULL;
+    ASSERT_TRUE(hoo_array_get_array(result, 1, &row1));
+    HooString s2 = NULL;
+    ASSERT_TRUE(hoo_array_get_object(row1, 0, (void**)&s2));
+    EXPECT_STREQ(hoo_string_data(s2), "1");
+    HooString s3 = NULL;
+    ASSERT_TRUE(hoo_array_get_object(row1, 1, (void**)&s3));
+    EXPECT_STREQ(hoo_string_data(s3), "2");
+
+    HooArray row2 = NULL;
+    ASSERT_TRUE(hoo_array_get_array(result, 2, &row2));
+    HooString s4 = NULL;
+    ASSERT_TRUE(hoo_array_get_object(row2, 0, (void**)&s4));
+    EXPECT_STREQ(hoo_string_data(s4), "3");
+    HooString s5 = NULL;
+    ASSERT_TRUE(hoo_array_get_object(row2, 1, (void**)&s5));
+    EXPECT_STREQ(hoo_string_data(s5), "4");
+
+    // Retain the result to keep it alive, release, then verify accessibility
+    hoo_array_retain(result);
+    hoo_array_release(result);
+
+    // Data should still be accessible via retained reference
+    ASSERT_TRUE(hoo_array_get_array(result, 0, &row0));
+    ASSERT_TRUE(hoo_array_get_object(row0, 1, (void**)&s1));
+    EXPECT_STREQ(hoo_string_data(s1), "b");
+
+    hoo_array_release(result);
+    hoo_csv_release(csv);
+}
+
+TEST_F(HooCsvTest, ParseAsMapsResultSurvivesAfterRelease) {
+    HooCsv csv = hoo_csv_new();
+    ASSERT_NE(csv, nullptr);
+
+    HooArray result = hoo_csv_parse_as_maps(csv, "name,val\nAlice,10\nBob,20");
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(hoo_array_length(result), 2);
+
+    // Retain result, release, verify maps survive
+    hoo_array_retain(result);
+    hoo_array_release(result);
+
+    HooMap map = NULL;
+    ASSERT_TRUE(hoo_array_get_object(result, 0, (void**)&map));
+    ASSERT_NE(map, nullptr);
+
+    const char* name = NULL;
+    ASSERT_TRUE(hoo_map_try_get(map, "name", &name));
+    EXPECT_STREQ(name, "Alice");
+
+    hoo_array_release(result);
+    hoo_csv_release(csv);
+}
+
+TEST_F(HooCsvTest, FilterResultSurvivesAfterInputReleased) {
+    // filter now retains maps, so the result should live independently
+    HooArray data = parse_to_maps("x\n10\n20\n30");
+    ASSERT_NE(data, nullptr);
+
+    HooCsv csv = hoo_csv_new();
+    ASSERT_NE(csv, nullptr);
+
+    HooArray result = hoo_csv_filter(csv, data, "x", ">", "15");
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(hoo_array_length(result), 2);
+
+    // Release input data — result should still be valid
+    hoo_array_release(data);
+
+    // Access maps in the result
+    HooMap map = NULL;
+    ASSERT_TRUE(hoo_array_get_object(result, 0, (void**)&map));
+    ASSERT_NE(map, nullptr);
+
+    const char* val = NULL;
+    ASSERT_TRUE(hoo_map_try_get(map, "x", &val));
+    EXPECT_STREQ(val, "20");
+
+    hoo_array_release(result);
+    hoo_csv_release(csv);
+}
+
+TEST_F(HooCsvTest, SortResultSurvivesAfterInputReleased) {
+    HooArray data = parse_to_maps("name\nCharlie\nAlice\nBob");
+    ASSERT_NE(data, nullptr);
+
+    HooCsv csv = hoo_csv_new();
+    ASSERT_NE(csv, nullptr);
+
+    HooArray result = hoo_csv_sort(csv, data, "name", 1);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(hoo_array_length(result), 3);
+
+    // Release input — result should still be valid
+    hoo_array_release(data);
+
+    HooMap map = NULL;
+    ASSERT_TRUE(hoo_array_get_object(result, 0, (void**)&map));
+    ASSERT_NE(map, nullptr);
+
+    const char* name = NULL;
+    ASSERT_TRUE(hoo_map_try_get(map, "name", &name));
+    EXPECT_STREQ(name, "Alice");
+
+    hoo_array_release(result);
+    hoo_csv_release(csv);
+}
+
+TEST_F(HooCsvTest, CsvReleaseNullIsSafe) {
+    hoo_csv_release(nullptr);
+}
+
+TEST_F(HooCsvTest, CsvRetainNullReturnsNull) {
+    EXPECT_EQ(hoo_csv_retain(nullptr), nullptr);
+}
+
+TEST_F(HooCsvTest, CsvRefcountNullReturnsZero) {
+    EXPECT_EQ(hoo_csv_refcount(nullptr), 0);
 }
 
 TEST_F(HooCsvTest, FilterGreaterThanWorksForAllNumeric) {

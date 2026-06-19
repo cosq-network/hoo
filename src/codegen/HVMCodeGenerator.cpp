@@ -131,7 +131,6 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
 }
 
 static std::string builtinConstructorMethodName(const std::string& className, size_t argCount) {
-    if (className == "Csv" && argCount == 2) return "newWithOpts";
     return "new";
 }
 
@@ -157,13 +156,18 @@ static bool isBufferFreeFunction(const std::string& functionName) {
     return functionName == "buffer_fromBytes";
 }
 
+static bool isCsvFreeFunction(const std::string& functionName) {
+    return functionName == "csv_fromOpts";
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
-    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName);
+    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) || isCsvFreeFunction(functionName);
 }
 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName) {
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) return 113;
+    if (isCsvFreeFunction(functionName)) return 112;
     return 100;
 }
 

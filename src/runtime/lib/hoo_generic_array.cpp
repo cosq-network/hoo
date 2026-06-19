@@ -16,6 +16,29 @@
 
 #define ARRAY_HEADER_WORDS 4 // length, capacity, element_type, reserved
 
+// Destructor for HOO_TYPE_ARRAY: releases all managed-typed elements
+static void array_destructor(void* obj) {
+    int64_t* raw = (int64_t*)obj;
+    int64_t len = raw[0];
+    int64_t elem_type = raw[2];
+
+    if (elem_type >= 100) {
+        for (int64_t i = 0; i < len; i++) {
+            void* elem = (void*)raw[i + ARRAY_HEADER_WORDS];
+            if (elem) hoo_release(elem);
+        }
+    }
+}
+
+// Register array destructor at library load time
+namespace {
+    struct ArrayDestructorRegistrar {
+        ArrayDestructorRegistrar() {
+            hoo_register_destructor(HOO_TYPE_ARRAY, array_destructor);
+        }
+    } registrar;
+}
+
 HooArray hoo_array_new(void) {
     // Allocate with initial capacity for 1024 elements + header
     int64_t* arr = (int64_t*)hoo_alloc(ARRAY_HEADER_WORDS * 8 + 8192, HOO_TYPE_ARRAY);
@@ -210,18 +233,6 @@ HooArray hoo_array_retain(HooArray arr) {
 }
 
 void hoo_array_release(HooArray arr) {
-    if (!arr) return;
-    int64_t* raw = (int64_t*)arr;
-    int64_t len = raw[0];
-    int64_t elem_type = raw[2];
-
-    // If it's an object array, release all elements
-    if (elem_type >= 100) {
-        for (int64_t i = 0; i < len; i++) {
-            void* obj = (void*)raw[i + ARRAY_HEADER_WORDS];
-            if (obj) hoo_release(obj);
-        }
-    }
     hoo_release(arr);
 }
 
