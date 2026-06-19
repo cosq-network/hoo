@@ -13,6 +13,12 @@
 #include <sstream>
 #include <algorithm>
 
+#ifdef _MSC_VER
+#define hoo_strdup _strdup
+#else
+#define hoo_strdup strdup
+#endif
+
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -234,9 +240,9 @@ char*** hoo_csv_parse_raw_with_opts(const char* csv, char delimiter, char quote_
             }
             for (int64_t j = 0; j < ncols; j++) {
                 if (j < (int64_t)rows[i].size())
-                    table[i][j] = strdup(rows[i][j].c_str());
+                    table[i][j] = hoo_strdup(rows[i][j].c_str());
                 else
-                    table[i][j] = strdup("");
+                    table[i][j] = hoo_strdup("");
             }
         }
 
@@ -290,7 +296,7 @@ char* hoo_csv_generate_raw_with_opts(const char** headers, const char*** data,
         }
 
         std::string result = ss.str();
-        return strdup(result.c_str());
+        return hoo_strdup(result.c_str());
 
     } catch (...) {
         return NULL;
@@ -410,14 +416,14 @@ HooString hoo_csv_generate(HooCsv csv, void* data_arr)
         if (rows == 0 || cols == 0) return hoo_string_from_cstr("");
 
         // Convert HooArray to char***
-        const char*** cdata = (const char***)malloc(sizeof(const char**) * (size_t)rows);
+        const char*** cdata = (const char***)std::malloc(sizeof(const char**) * (size_t)rows);
         if (!cdata) return NULL;
 
         for (int64_t i = 0; i < rows; i++) {
-            cdata[i] = (const char**)malloc(sizeof(const char*) * (size_t)cols);
+            cdata[i] = (const char**)std::malloc(sizeof(const char*) * (size_t)cols);
             if (!cdata[i]) {
-                for (int64_t k = 0; k < i; k++) free((void*)cdata[k]);
-                free((void*)cdata);
+                for (int64_t k = 0; k < i; k++) std::free((void*)cdata[k]);
+                std::free((void*)cdata);
                 return NULL;
             }
             HooArray row = NULL;
@@ -441,12 +447,12 @@ HooString hoo_csv_generate(HooCsv csv, void* data_arr)
                                                    h->delimiter, h->quote_char);
 
         for (int64_t i = 0; i < rows; i++)
-            free((void*)cdata[i]);
-        free((void*)cdata);
+            std::free((void*)cdata[i]);
+        std::free((void*)cdata);
 
         if (!raw) return NULL;
         HooString result = hoo_string_from_cstr(raw);
-        free(raw);
+        std::free(raw);
         return result;
 
     } catch (...) {
