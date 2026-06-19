@@ -79,6 +79,7 @@ private:
         bool isFinal = false;
         bool isImmutable = false;
         bool isService = false;
+        bool isSerializable = false;
         uint32_t singletonDataOffset = 0; // .data offset for singleton pointer
     };
     std::unordered_map<std::string, ClassLayout> classes_;
@@ -88,6 +89,9 @@ private:
     ClassLayout* currentClass_ = nullptr;
     bool inConstructor_ = false;
     std::vector<std::pair<std::string, uint32_t>> pendingSingletons_; // className, .data offset
+    
+    // Serializable class adjacency for cycle detection: className -> ser. dependency class names
+    std::unordered_map<std::string, std::vector<std::string>> serializableAdjacency_;
     
     /**
      * Emit a module_init function that runs once at module load time.
@@ -211,6 +215,21 @@ private:
                                        const ast::ConstructorDeclaration* ctorDecl,
                                        bool isMethod, bool isConstructor);
     void endFunction(const FunctionPrologueInfo& info);
+
+    // Serializable class validation
+    void validateSerializableClass(const ast::ClassDeclaration& classDecl,
+                                   const ClassLayout& layout,
+                                   const std::string& name);
+    bool isValidSerializableType(const ast::Type& type,
+                                  const std::string& className,
+                                  const std::string& fieldName);
+    void detectSerializableCycles();
+
+    // Serializable class code generation
+    void emitSerializeMethod(const ClassLayout& layout, const ast::ClassDeclaration& classDecl);
+    void emitDeserializeMethod(const ClassLayout& layout, const ast::ClassDeclaration& classDecl);
+    uint8_t emitStringLiteral(const std::string& str);
+    uint32_t serializeFieldTypeId(const ast::Type& type) const;
 
     // Instruction Helpers
     void emit(hvm::Opcode op, const hvm::Operands& operands);

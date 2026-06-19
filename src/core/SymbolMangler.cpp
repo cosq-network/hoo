@@ -80,7 +80,8 @@ const std::vector<std::pair<std::string, std::string>>& getModifierCodeMap() {
         {"SINGLETON", "N"},
         {"IMMUTABLE", "I"},
         {"SERVICE", "S"},
-        {"FINAL", "Z"}
+        {"FINAL", "Z"},
+        {"SERIALIZABLE", "R"}
     };
     return map;
 }
@@ -352,13 +353,14 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
         };
         auto isClassModifierCode = [](const std::string& comp) {
             return comp == "N" || comp == "I" ||
-                   comp == "S" || comp == "Z";
+                   comp == "S" || comp == "Z" || comp == "R";
         };
         auto pushClassModifier = [&](const std::string& comp) {
             if (comp == "N") result.classModifiers.push_back("SINGLETON");
             else if (comp == "I") result.classModifiers.push_back("IMMUTABLE");
             else if (comp == "S") result.classModifiers.push_back("SERVICE");
             else if (comp == "Z") result.classModifiers.push_back("FINAL");
+            else if (comp == "R") result.classModifiers.push_back("SERIALIZABLE");
         };
         auto pushFunctionModifier = [&](const std::string& comp) {
             if (comp == "Pb") result.functionModifiers.push_back("PUBLIC");
@@ -419,6 +421,17 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
                 if (names.size() > 2) result.functionName = names[2];
             } else if (names.size() == 1) {
                 result.className = names[0];
+            }
+            // If functionName was not in the names array (e.g., it came after modifiers),
+            // check the current position for a non-special token that could be the function name.
+            if (result.functionName.empty() && i < components.size()) {
+                const std::string& comp = components[i];
+                if (comp != "CT" && comp != "DT" && comp != "static" && comp != "virtual" &&
+                    !isFunctionModifierCode(comp) && !isClassModifierCode(comp) &&
+                    demangleType(comp) == "unknown") {
+                    result.functionName = comp;
+                    i++;
+                }
             }
         } else {
             // Ambiguous or plain function.

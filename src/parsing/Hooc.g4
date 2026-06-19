@@ -27,6 +27,7 @@ SINGLETON: 'singleton';
 IMMUTABLE: 'immutable';
 CONSTRUCTOR: 'constructor';
 SERVICE: 'service';
+SERIALIZABLE: 'serializable';
 HOO_INIT: '__hoo_init';
 AS: 'as';
 BY: 'by';
@@ -165,7 +166,7 @@ classDeclaration
     : classModifier* CLASS IDENTIFIER (EXTENDS IDENTIFIER)? classBody
     ;
 
-classModifier: SINGLETON | IMMUTABLE | SERVICE | FINAL;
+classModifier: SINGLETON | IMMUTABLE | SERVICE | FINAL | SERIALIZABLE;
 
 classBody: LBRACE classMember* RBRACE;
 

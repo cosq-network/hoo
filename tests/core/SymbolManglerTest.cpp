@@ -145,6 +145,25 @@ TEST_F(SymbolManglerTest, ClassModifiersMangling) {
     EXPECT_EQ(m2, "_F_Cache_I_getValue_i8");
 }
 
+TEST_F(SymbolManglerTest, SerializableModifierMangling) {
+    auto params = makeParams();
+    params.className = "UserConfig";
+    params.classModifiers = {"SERIALIZABLE"};
+    params.functionName = "serialize";
+    params.returnType = "ptr";
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    EXPECT_EQ(mangled, "_F_UserConfig_R_serialize_p");
+
+    // Test demangling
+    auto demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_EQ(demangled.className, "UserConfig");
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SERIALIZABLE"),
+              demangled.classModifiers.end());
+    EXPECT_EQ(demangled.functionName, "serialize");
+    EXPECT_EQ(demangled.returnType, "ptr");
+}
+
 TEST_F(SymbolManglerTest, FunctionModifiersMangling) {
     auto params1 = makeParams();
     params1.className = "Person";

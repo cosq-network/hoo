@@ -230,27 +230,30 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [DateTime](datetime.md) — Singleton `DateTime`
+## [DateTime](datetime.md) — Instance Class `DateTime` + Free Functions
 
-**Pattern:** Singleton class
+**Pattern:** Instance class + built-in class-qualified dispatch + free functions
 
-| API | Signature |
-|-----|-----------|
-| `DateTime.now` | `DateTime.now() :int64` |
-| `DateTime.nowSeconds` | `DateTime.nowSeconds() :int64` |
-| `DateTime.format` | `DateTime.format(ts: int64, fmt: string) :string` |
-| `DateTime.parse` | `DateTime.parse(str: string, fmt: string) :int64` |
-| `DateTime.iso8601` | `DateTime.iso8601(ts: int64) :string` |
-| `DateTime.fromIso8601` | `DateTime.fromIso8601(str: string) :int64` |
-| `DateTime.addDays` | `DateTime.addDays(ts: int64, days: int64) :int64` |
-| `DateTime.addHours` | `DateTime.addHours(ts: int64, hours: int64) :int64` |
-| `DateTime.addMinutes` | `DateTime.addMinutes(ts: int64, minutes: int64) :int64` |
-| `DateTime.addSeconds` | `DateTime.addSeconds(ts: int64, seconds: int64) :int64` |
-| `DateTime.addMilliseconds` | `DateTime.addMilliseconds(ts: int64, ms: int64) :int64` |
-| `DateTime.diffDays` | `DateTime.diffDays(ts1: int64, ts2: int64) :int64` |
-| `DateTime.diffHours` | `DateTime.diffHours(ts1: int64, ts2: int64) :int64` |
-| `DateTime.diffSeconds` | `DateTime.diffSeconds(ts1: int64, ts2: int64) :double` |
-| `DateTime.compare` | `DateTime.compare(ts1: int64, ts2: int64) :int64` |
+| Kind | API | Return Type |
+|------|-----|-------------|
+| Factory | `DateTime.now()` / `datetime_now()` | `DateTime` |
+| Factory | `DateTime.new(ts)` / `datetime_new(ts)` | `DateTime` |
+| Factory | `DateTime.parse(s,f)` / `datetime_parse(s,f)` | `DateTime` |
+| Factory | `DateTime.fromIso8601(s)` / `datetime_fromIso8601(s)` | `DateTime` |
+| Raw time | `DateTime.nowSeconds()` / `datetime_nowSeconds()` | `int64` |
+| Raw time | `DateTime.nowPrecise()` / `datetime_nowPrecise()` | `double` |
+| Accessor | `dt.getTimestamp()` | `int64` |
+| Format | `dt.format(f)` / `DateTime.format(dt,f)` / `datetime_format(dt,f)` | `string` |
+| Format | `dt.iso8601()` / `DateTime.iso8601(dt)` / `datetime_iso8601(dt)` | `string` |
+| Arithmetic | `dt.addDays(n)` / `DateTime.addDays(dt,n)` / `datetime_addDays(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addHours(n)` / `DateTime.addHours(dt,n)` / `datetime_addHours(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addMinutes(n)` / `DateTime.addMinutes(dt,n)` / `datetime_addMinutes(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addSeconds(n)` / `DateTime.addSeconds(dt,n)` / `datetime_addSeconds(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addMilliseconds(n)` / `DateTime.addMilliseconds(dt,n)` / `datetime_addMilliseconds(dt,n)` | `DateTime` |
+| Diff | `a.diffDays(b)` / `DateTime.diffDays(a,b)` / `datetime_diffDays(a,b)` | `int64` |
+| Diff | `a.diffHours(b)` / `DateTime.diffHours(a,b)` / `datetime_diffHours(a,b)` | `int64` |
+| Diff | `a.diffSeconds(b)` / `DateTime.diffSeconds(a,b)` / `datetime_diffSeconds(a,b)` | `double` |
+| Compare | `a.compare(b)` / `DateTime.compare(a,b)` / `datetime_compare(a,b)` | `int64` |
 
 ---
 

@@ -1,4 +1,6 @@
 #include "hoo_datetime.h"
+#include "hoo_runtime.h"
+#include "hoo_string.h"
 #include <chrono>
 #include <cstring>
 #include <cstdlib>
@@ -91,39 +93,18 @@ static char* win_strptime(const char* s, const char* fmt, struct tm* buf) {
 #define strptime win_strptime
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // ============================================================================
-// Current Time
+// Internal Helpers (raw int64 timestamp operations, not part of public API)
 // ============================================================================
 
-int64_t hoo_datetime_now(void) {
+static int64_t now_ms(void) {
     auto now = std::chrono::system_clock::now();
     return static_cast<int64_t>(
         std::chrono::duration_cast<std::chrono::milliseconds>(
             now.time_since_epoch()).count());
 }
 
-int64_t hoo_datetime_now_seconds(void) {
-    auto now = std::chrono::system_clock::now();
-    return static_cast<int64_t>(
-        std::chrono::duration_cast<std::chrono::seconds>(
-            now.time_since_epoch()).count());
-}
-
-double hoo_datetime_now_precise(void) {
-    auto now = std::chrono::system_clock::now();
-    return std::chrono::duration_cast<std::chrono::duration<double>>(
-        now.time_since_epoch()).count();
-}
-
-// ============================================================================
-// Decompose / Compose
-// ============================================================================
-
-HooDateTimeFields hoo_datetime_decompose(int64_t epoch_ms) {
+static HooDateTimeFields decompose(int64_t epoch_ms) {
     HooDateTimeFields fields = {};
 
     int64_t ms = epoch_ms % 1000;
@@ -151,46 +132,38 @@ HooDateTimeFields hoo_datetime_decompose(int64_t epoch_ms) {
     return fields;
 }
 
-int64_t hoo_datetime_compose(HooDateTimeFields fields) {
+static int64_t compose(HooDateTimeFields f) {
     struct tm tm_buf = {};
-    tm_buf.tm_year = static_cast<int>(fields.year - 1900);
-    tm_buf.tm_mon  = static_cast<int>(fields.month - 1);
-    tm_buf.tm_mday = static_cast<int>(fields.day);
-    tm_buf.tm_hour = static_cast<int>(fields.hour);
-    tm_buf.tm_min  = static_cast<int>(fields.minute);
-    tm_buf.tm_sec  = static_cast<int>(fields.second);
+    tm_buf.tm_year = static_cast<int>(f.year - 1900);
+    tm_buf.tm_mon  = static_cast<int>(f.month - 1);
+    tm_buf.tm_mday = static_cast<int>(f.day);
+    tm_buf.tm_hour = static_cast<int>(f.hour);
+    tm_buf.tm_min  = static_cast<int>(f.minute);
+    tm_buf.tm_sec  = static_cast<int>(f.second);
     tm_buf.tm_isdst = -1;
 
     time_t secs = mktime(&tm_buf);
-    if (secs == static_cast<time_t>(-1)) {
-        return -1;
-    }
+    if (secs == static_cast<time_t>(-1)) return -1;
 
-    return static_cast<int64_t>(secs) * 1000 + fields.millisecond;
+    return static_cast<int64_t>(secs) * 1000 + f.millisecond;
 }
 
-int64_t hoo_datetime_compose_utc(HooDateTimeFields fields) {
+static int64_t compose_utc(HooDateTimeFields f) {
     struct tm tm_buf = {};
-    tm_buf.tm_year = static_cast<int>(fields.year - 1900);
-    tm_buf.tm_mon  = static_cast<int>(fields.month - 1);
-    tm_buf.tm_mday = static_cast<int>(fields.day);
-    tm_buf.tm_hour = static_cast<int>(fields.hour);
-    tm_buf.tm_min  = static_cast<int>(fields.minute);
-    tm_buf.tm_sec  = static_cast<int>(fields.second);
+    tm_buf.tm_year = static_cast<int>(f.year - 1900);
+    tm_buf.tm_mon  = static_cast<int>(f.month - 1);
+    tm_buf.tm_mday = static_cast<int>(f.day);
+    tm_buf.tm_hour = static_cast<int>(f.hour);
+    tm_buf.tm_min  = static_cast<int>(f.minute);
+    tm_buf.tm_sec  = static_cast<int>(f.second);
 
     time_t secs = timegm(&tm_buf);
-    if (secs == static_cast<time_t>(-1)) {
-        return -1;
-    }
+    if (secs == static_cast<time_t>(-1)) return -1;
 
-    return static_cast<int64_t>(secs) * 1000 + fields.millisecond;
+    return static_cast<int64_t>(secs) * 1000 + f.millisecond;
 }
 
-// ============================================================================
-// Formatting and Parsing
-// ============================================================================
-
-char* hoo_datetime_format(int64_t epoch_ms, const char* format) {
+static char* format_ts(int64_t epoch_ms, const char* format) {
     if (!format) return nullptr;
 
     int64_t ms = epoch_ms % 1000;
@@ -201,9 +174,7 @@ char* hoo_datetime_format(int64_t epoch_ms, const char* format) {
 
     time_t secs = static_cast<time_t>(epoch_ms / 1000);
     struct tm tm_buf;
-    if (gmtime_r(&secs, &tm_buf) == nullptr) {
-        return nullptr;
-    }
+    if (gmtime_r(&secs, &tm_buf) == nullptr) return nullptr;
 
     std::string result;
     const char* p = format;
@@ -211,71 +182,22 @@ char* hoo_datetime_format(int64_t epoch_ms, const char* format) {
     while (*p) {
         if (*p == '%') {
             p++;
-            if (*p == '\0') {
-                result += '%';
-                break;
-            }
+            if (*p == '\0') { result += '%'; break; }
 
             switch (*p) {
                 case '%': result += '%'; break;
-                case 'Y': {
-                    char buf[8];
-                    snprintf(buf, sizeof(buf), "%04d", tm_buf.tm_year + 1900);
-                    result += buf;
-                    break;
-                }
-                case 'm': {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_mon + 1);
-                    result += buf;
-                    break;
-                }
-                case 'd': {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_mday);
-                    result += buf;
-                    break;
-                }
-                case 'H': {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_hour);
-                    result += buf;
-                    break;
-                }
-                case 'M': {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_min);
-                    result += buf;
-                    break;
-                }
-                case 'S': {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_sec);
-                    result += buf;
-                    break;
-                }
-                case 'f': {
-                    char buf[8];
-                    snprintf(buf, sizeof(buf), "%03lld", static_cast<long long>(ms));
-                    result += buf;
-                    break;
-                }
-                case 'w': {
-                    char buf[4];
-                    snprintf(buf, sizeof(buf), "%d", tm_buf.tm_wday);
-                    result += buf;
-                    break;
-                }
-                case 'j': {
-                    char buf[8];
-                    snprintf(buf, sizeof(buf), "%03d", tm_buf.tm_yday);
-                    result += buf;
-                    break;
-                }
+                case 'Y': { char buf[8]; snprintf(buf, sizeof(buf), "%04d", tm_buf.tm_year + 1900); result += buf; break; }
+                case 'm': { char buf[4]; snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_mon + 1); result += buf; break; }
+                case 'd': { char buf[4]; snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_mday); result += buf; break; }
+                case 'H': { char buf[4]; snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_hour); result += buf; break; }
+                case 'M': { char buf[4]; snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_min); result += buf; break; }
+                case 'S': { char buf[4]; snprintf(buf, sizeof(buf), "%02d", tm_buf.tm_sec); result += buf; break; }
+                case 'f': { char buf[8]; snprintf(buf, sizeof(buf), "%03lld", static_cast<long long>(ms)); result += buf; break; }
+                case 'w': { char buf[4]; snprintf(buf, sizeof(buf), "%d", tm_buf.tm_wday); result += buf; break; }
+                case 'j': { char buf[8]; snprintf(buf, sizeof(buf), "%03d", tm_buf.tm_yday); result += buf; break; }
                 default: {
                     char fmt[4] = {'%', static_cast<char>(*p), '\0'};
-                    char buf[256];
-                    buf[0] = '\0';
+                    char buf[256]; buf[0] = '\0';
                     strftime(buf, sizeof(buf), fmt, &tm_buf);
                     result += buf;
                     break;
@@ -291,7 +213,7 @@ char* hoo_datetime_format(int64_t epoch_ms, const char* format) {
     return strdup(result.c_str());
 }
 
-int64_t hoo_datetime_parse(const char* str, const char* format) {
+static int64_t parse_ts(const char* str, const char* format) {
     if (!str || !format) return -1;
 
     struct tm tm_buf = {};
@@ -306,15 +228,13 @@ int64_t hoo_datetime_parse(const char* str, const char* format) {
 
             if (*p == '%') {
                 if (*s != '%') return -1;
-                s++;
-                p++;
+                s++; p++;
             } else if (*p == 'f') {
                 int count = 0;
                 int64_t val = 0;
                 while (*s && *s >= '0' && *s <= '9' && count < 3) {
                     val = val * 10 + (*s - '0');
-                    s++;
-                    count++;
+                    s++; count++;
                 }
                 if (count == 0) return -1;
                 while (count < 3) { val *= 10; count++; }
@@ -329,8 +249,7 @@ int64_t hoo_datetime_parse(const char* str, const char* format) {
             }
         } else {
             if (*s != *p) return -1;
-            s++;
-            p++;
+            s++; p++;
         }
     }
 
@@ -340,18 +259,13 @@ int64_t hoo_datetime_parse(const char* str, const char* format) {
     return static_cast<int64_t>(secs) * 1000 + ms_part;
 }
 
-char* hoo_datetime_iso8601(int64_t epoch_ms) {
+static char* iso8601_ts(int64_t epoch_ms) {
     int64_t ms = epoch_ms % 1000;
-    if (ms < 0) {
-        ms += 1000;
-        epoch_ms -= 1000;
-    }
+    if (ms < 0) { ms += 1000; epoch_ms -= 1000; }
 
     time_t secs = static_cast<time_t>(epoch_ms / 1000);
     struct tm tm_buf;
-    if (gmtime_r(&secs, &tm_buf) == nullptr) {
-        return nullptr;
-    }
+    if (gmtime_r(&secs, &tm_buf) == nullptr) return nullptr;
 
     char date_buf[64];
     strftime(date_buf, sizeof(date_buf), "%Y-%m-%dT%H:%M:%S", &tm_buf);
@@ -362,7 +276,7 @@ char* hoo_datetime_iso8601(int64_t epoch_ms) {
     return strdup(result);
 }
 
-int64_t hoo_datetime_from_iso8601(const char* str) {
+static int64_t from_iso8601_ts(const char* str) {
     if (!str) return -1;
 
     struct tm tm_buf = {};
@@ -375,9 +289,7 @@ int64_t hoo_datetime_from_iso8601(const char* str) {
     char* result = strptime(s, "%Y-%m-%dT%H:%M:%S", &tm_buf);
     if (result == nullptr) {
         result = strptime(s, "%Y-%m-%dT%H:%M", &tm_buf);
-        if (result == nullptr) {
-            return -1;
-        }
+        if (result == nullptr) return -1;
     }
     s = result;
 
@@ -387,8 +299,7 @@ int64_t hoo_datetime_from_iso8601(const char* str) {
         int count = 0;
         while (*s && *s >= '0' && *s <= '9' && count < 9) {
             val = val * 10 + (*s - '0');
-            s++;
-            count++;
+            s++; count++;
         }
         if (count < 3) {
             for (int i = count; i < 3; i++) val *= 10;
@@ -405,23 +316,9 @@ int64_t hoo_datetime_from_iso8601(const char* str) {
         s++;
 
         int h = 0, m = 0;
-        if (*s >= '0' && *s <= '9') {
-            h = (*s - '0') * 10;
-            s++;
-            if (*s >= '0' && *s <= '9') {
-                h += (*s - '0');
-                s++;
-            }
-        }
+        if (*s >= '0' && *s <= '9') { h = (*s - '0') * 10; s++; if (*s >= '0' && *s <= '9') { h += (*s - '0'); s++; } }
         if (*s == ':') s++;
-        if (*s >= '0' && *s <= '9') {
-            m = (*s - '0') * 10;
-            s++;
-            if (*s >= '0' && *s <= '9') {
-                m += (*s - '0');
-                s++;
-            }
-        }
+        if (*s >= '0' && *s <= '9') { m = (*s - '0') * 10; s++; if (*s >= '0' && *s <= '9') { m += (*s - '0'); s++; } }
         tz_minutes = h * 60 + m;
     }
 
@@ -429,7 +326,6 @@ int64_t hoo_datetime_from_iso8601(const char* str) {
     if (secs == static_cast<time_t>(-1)) return -1;
 
     int64_t epoch_ms_result = static_cast<int64_t>(secs) * 1000 + ms_part;
-
     if (tz_sign != 0) {
         epoch_ms_result -= static_cast<int64_t>(tz_sign) * tz_minutes * 60000LL;
     }
@@ -437,50 +333,244 @@ int64_t hoo_datetime_from_iso8601(const char* str) {
     return epoch_ms_result;
 }
 
-// ============================================================================
-// Duration Helpers
-// ============================================================================
-
-int64_t hoo_datetime_add_days(int64_t epoch_ms, int64_t days) {
+static int64_t add_days(int64_t epoch_ms, int64_t days) {
     return epoch_ms + days * 86400000LL;
 }
 
-int64_t hoo_datetime_add_hours(int64_t epoch_ms, int64_t hours) {
+static int64_t add_hours(int64_t epoch_ms, int64_t hours) {
     return epoch_ms + hours * 3600000LL;
 }
 
-int64_t hoo_datetime_add_minutes(int64_t epoch_ms, int64_t minutes) {
+static int64_t add_minutes(int64_t epoch_ms, int64_t minutes) {
     return epoch_ms + minutes * 60000LL;
 }
 
-int64_t hoo_datetime_add_seconds(int64_t epoch_ms, int64_t seconds) {
+static int64_t add_seconds(int64_t epoch_ms, int64_t seconds) {
     return epoch_ms + seconds * 1000LL;
 }
 
-int64_t hoo_datetime_add_milliseconds(int64_t epoch_ms, int64_t ms) {
+static int64_t add_milliseconds(int64_t epoch_ms, int64_t ms) {
     return epoch_ms + ms;
 }
 
-int64_t hoo_datetime_diff_days(int64_t from, int64_t to) {
+static int64_t diff_days(int64_t from, int64_t to) {
     return (to - from) / 86400000LL;
 }
 
-int64_t hoo_datetime_diff_hours(int64_t from, int64_t to) {
+static int64_t diff_hours(int64_t from, int64_t to) {
     return (to - from) / 3600000LL;
 }
 
-double hoo_datetime_diff_seconds(int64_t from, int64_t to) {
+static double diff_seconds(int64_t from, int64_t to) {
     return static_cast<double>(to - from) / 1000.0;
 }
 
-// ============================================================================
-// Comparison
-// ============================================================================
-
-int64_t hoo_datetime_compare(int64_t a, int64_t b) {
+static int64_t compare_ts(int64_t a, int64_t b) {
     if (a < b) return -1;
     if (a > b) return 1;
     return 0;
+}
+
+// ============================================================================
+// Public API — Time Utilities (raw values, no DateTime instance)
+// ============================================================================
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+int64_t hoo_datetime_now_seconds(void) {
+    auto now = std::chrono::system_clock::now();
+    return static_cast<int64_t>(
+        std::chrono::duration_cast<std::chrono::seconds>(
+            now.time_since_epoch()).count());
+}
+
+double hoo_datetime_now_precise(void) {
+    auto now = std::chrono::system_clock::now();
+    return std::chrono::duration_cast<std::chrono::duration<double>>(
+        now.time_since_epoch()).count();
+}
+
+// ============================================================================
+// Public API — DateTime Class Instance API
+// ============================================================================
+
+void* hoo_datetime_new(int64_t epoch_ms) {
+    void* obj = hoo_alloc(sizeof(int64_t), HOO_TYPE_DATETIME);
+    if (!obj) return nullptr;
+    int64_t* ts = static_cast<int64_t*>(obj);
+    *ts = epoch_ms;
+    return obj;
+}
+
+void* hoo_datetime_new_now(void) {
+    return hoo_datetime_new(now_ms());
+}
+
+void* hoo_datetime_new_from_iso8601(const char* str) {
+    int64_t ts = from_iso8601_ts(str);
+    if (ts < 0) return nullptr;
+    return hoo_datetime_new(ts);
+}
+
+void* hoo_datetime_new_parse(const char* str, const char* format) {
+    int64_t ts = parse_ts(str, format);
+    if (ts < 0) return nullptr;
+    return hoo_datetime_new(ts);
+}
+
+int64_t hoo_datetime_get_timestamp(void* dt) {
+    if (!dt) return 0;
+    return *static_cast<int64_t*>(dt);
+}
+
+void* hoo_datetime_instance_format(void* dt, const char* format) {
+    if (!dt || !format) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    char* result = format_ts(ts, format);
+    if (!result) return nullptr;
+    void* str = hoo_string_from_cstr(result);
+    hoo_datetime_free_string(result);
+    return str;
+}
+
+void* hoo_datetime_instance_iso8601(void* dt) {
+    if (!dt) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    char* result = iso8601_ts(ts);
+    if (!result) return nullptr;
+    void* str = hoo_string_from_cstr(result);
+    hoo_datetime_free_string(result);
+    return str;
+}
+
+void* hoo_datetime_instance_add_days(void* dt, int64_t days) {
+    if (!dt) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    return hoo_datetime_new(add_days(ts, days));
+}
+
+void* hoo_datetime_instance_add_hours(void* dt, int64_t hours) {
+    if (!dt) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    return hoo_datetime_new(add_hours(ts, hours));
+}
+
+void* hoo_datetime_instance_add_minutes(void* dt, int64_t minutes) {
+    if (!dt) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    return hoo_datetime_new(add_minutes(ts, minutes));
+}
+
+void* hoo_datetime_instance_add_seconds(void* dt, int64_t seconds) {
+    if (!dt) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    return hoo_datetime_new(add_seconds(ts, seconds));
+}
+
+void* hoo_datetime_instance_add_milliseconds(void* dt, int64_t ms) {
+    if (!dt) return nullptr;
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    return hoo_datetime_new(add_milliseconds(ts, ms));
+}
+
+int64_t hoo_datetime_instance_diff_days(void* from, void* to) {
+    if (!from || !to) return 0;
+    int64_t ts_from = hoo_datetime_get_timestamp(from);
+    int64_t ts_to = hoo_datetime_get_timestamp(to);
+    return diff_days(ts_from, ts_to);
+}
+
+int64_t hoo_datetime_instance_diff_hours(void* from, void* to) {
+    if (!from || !to) return 0;
+    int64_t ts_from = hoo_datetime_get_timestamp(from);
+    int64_t ts_to = hoo_datetime_get_timestamp(to);
+    return diff_hours(ts_from, ts_to);
+}
+
+double hoo_datetime_instance_diff_seconds(void* from, void* to) {
+    if (!from || !to) return 0.0;
+    int64_t ts_from = hoo_datetime_get_timestamp(from);
+    int64_t ts_to = hoo_datetime_get_timestamp(to);
+    return diff_seconds(ts_from, ts_to);
+}
+
+int64_t hoo_datetime_instance_compare(void* a, void* b) {
+    if (!a || !b) return 0;
+    int64_t ts_a = hoo_datetime_get_timestamp(a);
+    int64_t ts_b = hoo_datetime_get_timestamp(b);
+    return compare_ts(ts_a, ts_b);
+}
+
+HooDateTimeFields hoo_datetime_instance_decompose(void* dt) {
+    if (!dt) return HooDateTimeFields{};
+    int64_t ts = hoo_datetime_get_timestamp(dt);
+    return decompose(ts);
+}
+
+// ============================================================================
+// Module-Level Free Function API (thin wrappers around instance API)
+// ============================================================================
+
+void* hoo_datetime_now(void) {
+    return hoo_datetime_new_now();
+}
+
+void* hoo_datetime_from_iso8601(const char* str) {
+    return hoo_datetime_new_from_iso8601(str);
+}
+
+void* hoo_datetime_parse(const char* str, const char* format) {
+    return hoo_datetime_new_parse(str, format);
+}
+
+void* hoo_datetime_format(void* dt, const char* format) {
+    return hoo_datetime_instance_format(dt, format);
+}
+
+void* hoo_datetime_iso8601(void* dt) {
+    return hoo_datetime_instance_iso8601(dt);
+}
+
+void* hoo_datetime_add_days(void* dt, int64_t days) {
+    return hoo_datetime_instance_add_days(dt, days);
+}
+
+void* hoo_datetime_add_hours(void* dt, int64_t hours) {
+    return hoo_datetime_instance_add_hours(dt, hours);
+}
+
+void* hoo_datetime_add_minutes(void* dt, int64_t minutes) {
+    return hoo_datetime_instance_add_minutes(dt, minutes);
+}
+
+void* hoo_datetime_add_seconds(void* dt, int64_t seconds) {
+    return hoo_datetime_instance_add_seconds(dt, seconds);
+}
+
+void* hoo_datetime_add_milliseconds(void* dt, int64_t ms) {
+    return hoo_datetime_instance_add_milliseconds(dt, ms);
+}
+
+int64_t hoo_datetime_diff_days(void* from, void* to) {
+    return hoo_datetime_instance_diff_days(from, to);
+}
+
+int64_t hoo_datetime_diff_hours(void* from, void* to) {
+    return hoo_datetime_instance_diff_hours(from, to);
+}
+
+double hoo_datetime_diff_seconds(void* from, void* to) {
+    return hoo_datetime_instance_diff_seconds(from, to);
+}
+
+int64_t hoo_datetime_compare(void* a, void* b) {
+    return hoo_datetime_instance_compare(a, b);
+}
+
+HooDateTimeFields hoo_datetime_decompose(void* dt) {
+    return hoo_datetime_instance_decompose(dt);
 }
 
 // ============================================================================

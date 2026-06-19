@@ -33,7 +33,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 7. **[File System](fs.md)**
    * `hoo.fs` — object-oriented class API (`hoo::fs::File`, `hoo::fs::Directory`, `hoo::fs::Path`) wrapping C++17 `<filesystem>`; C-ABI bridge preserved for JIT/FFI compatibility.
 8. **[Date & Time](datetime.md)**
-   * `hoo.datetime` — current time, decompose/compose fields, ISO 8601 formatting, duration arithmetic via `<chrono>`.
+   * `hoo.datetime` — instantiable ARC-managed DateTime class with instance methods, module-level free functions, decompose into fields, ISO 8601 formatting, and duration arithmetic via `<chrono>`.
 9. **[System Information](system.md)**
    * `hoo.system` — environment variables, OS name, hostname, CPU count, process ID, user info, current/working directory.
 10. **[Path Manipulation](path.md)**

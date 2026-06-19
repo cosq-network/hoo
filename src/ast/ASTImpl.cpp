@@ -350,6 +350,7 @@ std::string hooc::ast::classModifierToString(ClassModifier modifier) {
         case ClassModifier::IMMUTABLE: return "immutable";
         case ClassModifier::SERVICE: return "service";
         case ClassModifier::FINAL: return "final";
+        case ClassModifier::SERIALIZABLE: return "serializable";
         default: return "unknown";
     }
 }

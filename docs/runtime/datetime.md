@@ -1,75 +1,78 @@
 # Date & Time (`DateTime`)
 
-The `DateTime` class provides current time, decompose/compose fields, ISO 8601 formatting, and duration arithmetic via `<chrono>`.
+The `DateTime` class is an instantiable ARC-managed class (type ID 119) that wraps
+a Unix epoch timestamp (milliseconds). Each instance is a heap object with a single
+`int64 timestamp` field, making it eligible for the `serializable` modifier.
 
-All timestamps are `int64_t` representing **milliseconds since Unix epoch** (1970-01-01 UTC). Functions returning `String` are ARC-managed and do not require manual freeing.
+## Object Model
 
-## 1. DateTime Fields
+| Property | Value |
+|----------|-------|
+| Type ID  | 119   |
+| Fields   | `timestamp: int64` (PUBLIC, offset 0) |
+| Memory   | ARC-managed heap object (16-byte header + 8-byte payload) |
+| Serialization | Compatible via `serializable` modifier (all fields are valid serializable types) |
 
-```c
-typedef struct {
-    int64_t year;
-    int64_t month;       // 1-12
-    int64_t day;         // 1-31
-    int64_t hour;        // 0-23
-    int64_t minute;      // 0-59
-    int64_t second;      // 0-59
-    int64_t millisecond; // 0-999
-    int64_t weekday;     // 0=Sunday, 1=Monday, ..., 6=Saturday
-    int64_t yearday;     // 0-365
-} HooDateTimeFields;
-```
+## Construction
 
-## 2. Current Time
+| Expression | Returns | Notes |
+|---|---|---|
+| `DateTime.now()` | `DateTime` | Current system time |
+| `DateTime.parse(str, fmt)` | `DateTime` | Parse with strftime-style format |
+| `DateTime.fromIso8601(str)` | `DateTime` | Parse ISO 8601 string |
+| `DateTime.nowSeconds()` | `int64` | Raw seconds (static utility) |
+| `DateTime.nowPrecise()` | `double` | Raw seconds with sub-ms precision |
 
-- `DateTime.now()` — Current time as Unix epoch milliseconds.
-- `DateTime.nowSeconds()` — Current time as Unix epoch seconds.
-- `DateTime.nowPrecise()` — Current time as `double` seconds since epoch.
+## Instance Methods
 
-## 3. Decompose / Compose
+All arithmetic methods return a new DateTime (original is unmodified).
 
-- `DateTime.decompose(epoch_ms)` — Break timestamp into `DateTimeFields` (local time).
-- `DateTime.compose(fields)` — Rebuild timestamp from fields (local time).
-- `DateTime.composeUtc(fields)` — Rebuild timestamp from fields (UTC).
+| Method | Returns | Description |
+|---|---|---|
+| `dt.getTimestamp()` | `int64` | Raw timestamp in ms |
+| `dt.format(fmt)` | `string` | strftime-style format |
+| `dt.iso8601()` | `string` | ISO 8601 string |
+| `dt.addDays(n)` | `DateTime` | Add days (negative subtracts) |
+| `dt.addHours(n)` | `DateTime` | Add hours |
+| `dt.addMinutes(n)` | `DateTime` | Add minutes |
+| `dt.addSeconds(n)` | `DateTime` | Add seconds |
+| `dt.addMilliseconds(ms)` | `DateTime` | Add milliseconds |
+| `a.diffDays(b)` | `int64` | Difference in days |
+| `a.diffHours(b)` | `int64` | Difference in hours |
+| `a.diffSeconds(b)` | `double` | Fractional difference in seconds |
+| `a.compare(b)` | `int64` | -1, 0, or 1 |
 
-## 4. Formatting & Parsing
+## Format Specifiers
 
-- `ts.format(format)` — strftime-style format on a timestamp. Supported specifiers: `%Y`, `%m`, `%d`, `%H`, `%M`, `%S`, `%f` (milliseconds), `%w` (weekday), `%j` (yearday).
-- `DateTime.parse(str, format)` — Parse string with strftime-style format, returns milliseconds or -1.
-- `ts.iso8601()` — Format as ISO 8601 (`"2024-01-15T10:30:00Z"`).
-- `DateTime.fromIso8601(str)` — Parse ISO 8601 string, returns milliseconds or -1.
+`%Y` `%m` `%d` `%H` `%M` `%S` `%f` (ms) `%w` (weekday 0-6) `%j` (yearday 0-365)
 
-## 5. Duration Helpers
-
-- `ts.addDays(days)` — Add days (can be negative).
-- `ts.addHours(hours)`
-- `ts.addMinutes(minutes)`
-- `ts.addSeconds(seconds)`
-- `ts.addMilliseconds(ms)`
-- `from.diffDays(to)` — Difference in days.
-- `from.diffHours(to)` — Difference in hours.
-- `from.diffSeconds(to)` — Difference as `double` (fractional seconds).
-
-## 6. Comparison
-
-- `a.compare(b)` — Returns -1, 0, or 1.
-
-## Usage from Hoo Source
-
-All `DateTime` methods are accessed via the class or instance:
+## Example
 
 ```hoo
 func :int64 demo() {
-    var now = DateTime.now();                        // ms since Unix epoch
+    var now = DateTime.now();
     var iso = now.iso8601();                         // "2024-01-15T10:30:00.000Z"
-    var formatted = now.format("%Y-%m-%d");
-    var parsed = DateTime.fromIso8601("2024-01-15T10:30:00Z");
+    var formatted = now.format("%Y-%m-%d");          // "2024-01-15"
     var later = now.addDays(7);
-    var cmp = now.compare(later);                    // -1, 0, or 1
-    return formatted.length();                       // 10 for "2024-01-15"
+    var cmp = now.compare(later);                    // -1
+    return now.diffDays(later);                      // 7
 }
 ```
 
-## Memory Management
+## C API
 
-All `DateTime` methods return ARC-managed `String` objects that do not require manual freeing.
+The C implementation layer provides three tiers of functions:
+
+- **Instance API** (`hoo_datetime_new`, `hoo_datetime_instance_format`, etc.) —
+  ARC-managed DateTime handle operations. All functions take a `void* dt` handle
+  as their first parameter where applicable. These are used by the JIT bridges.
+
+- **Free function API** (`hoo_datetime_now`, `hoo_datetime_format(dt, fmt)`, etc.) —
+  Thin wrappers that delegate to the instance API. Name-matched to the Hoo-language
+  `datetime_*()` free functions.
+
+- **Time utilities** (`hoo_datetime_now_seconds`, `hoo_datetime_now_precise`) —
+  Return raw `int64`/`double` values without creating a DateTime instance.
+
+No raw-int64 timestamp functions are exposed in the public API; all timestamp
+arithmetic operates through DateTime handles.

@@ -18,7 +18,8 @@ enum class ClassModifier {
     SINGLETON,
     IMMUTABLE,
     SERVICE,
-    FINAL
+    FINAL,
+    SERIALIZABLE
 };
 
 // Constructor declaration (Kotlin-style)

@@ -125,6 +125,7 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"Random", 105},
         {"HashMap", 117},
         {"AnyArray", 118},
+        {"DateTime", 119},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -201,8 +202,48 @@ static bool isFsFreeFunction(const std::string& functionName) {
     return names.count(functionName) > 0;
 }
 
+static bool isDatetimeFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "datetime_now",
+        "datetime_now_seconds",
+        "datetime_now_precise",
+        "datetime_new",
+        "datetime_parse",
+        "datetime_from_iso8601",
+        "datetime_format",
+        "datetime_iso8601",
+        "datetime_add_days",
+        "datetime_add_hours",
+        "datetime_add_minutes",
+        "datetime_add_seconds",
+        "datetime_add_milliseconds",
+        "datetime_diff_days",
+        "datetime_diff_hours",
+        "datetime_diff_seconds",
+        "datetime_compare",
+        "datetime_nowSeconds",
+        "datetime_nowPrecise",
+        "datetime_fromIso8601",
+        "datetime_addDays",
+        "datetime_addHours",
+        "datetime_addMinutes",
+        "datetime_addSeconds",
+        "datetime_addMilliseconds",
+        "datetime_diffDays",
+        "datetime_diffHours",
+        "datetime_diffSeconds",
+    };
+    return names.count(functionName) > 0;
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
-    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) || isCsvFreeFunction(functionName) || isFsFreeFunction(functionName);
+    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) || isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) || isDatetimeFreeFunction(functionName);
+}
+
+static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "datetime_now_seconds" || functionName == "datetime_nowSeconds") return 1;
+    if (functionName == "datetime_now_precise" || functionName == "datetime_nowPrecise") return 2;
+    return 119;
 }
 
 static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -220,6 +261,7 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isBufferFreeFunction(functionName)) return 113;
     if (isCsvFreeFunction(functionName)) return 112;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
+    if (isDatetimeFreeFunction(functionName)) return datetimeFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 
@@ -243,6 +285,19 @@ HVMCodeGenerator::HVMCodeGenerator() {
     excLayout.totalSize = 40;
     classes_["Exception"] = excLayout;
     classes_["hoo.Exception"] = excLayout;
+
+    // Pre-populate DateTime class layout (instantiable, serializable-ready)
+    ClassLayout dtLayout;
+    dtLayout.name = "DateTime";
+    dtLayout.fieldOffsets["timestamp"] = 0;
+    dtLayout.fieldAccess["timestamp"] = FieldAccess::PUBLIC;
+    dtLayout.totalSize = 8;
+    dtLayout.isSingleton = false;
+    dtLayout.isFinal = false;
+    dtLayout.isImmutable = false;
+    dtLayout.isService = false;
+    classes_["DateTime"] = dtLayout;
+    classes_["hoo.DateTime"] = dtLayout;
 }
 
 void HVMCodeGenerator::setModuleContext(const std::string& moduleName) {
@@ -354,8 +409,9 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             layout.isFinal = classDecl->hasModifier(ast::ClassModifier::FINAL);
             layout.isImmutable = classDecl->hasModifier(ast::ClassModifier::IMMUTABLE);
             layout.isService = classDecl->hasModifier(ast::ClassModifier::SERVICE);
+            layout.isSerializable = classDecl->hasModifier(ast::ClassModifier::SERIALIZABLE);
             
-            // Service validation: cannot be combined with singleton, immutable, or final
+            // Service validation: cannot be combined with singleton, immutable, final, or serializable
             if (layout.isService) {
                 if (layout.isSingleton) {
                     addError("Service class '" + layout.name + "' cannot also be singleton");
@@ -365,6 +421,9 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 }
                 if (layout.isFinal) {
                     addError("Service class '" + layout.name + "' cannot also be final");
+                }
+                if (layout.isSerializable) {
+                    addError("Service class '" + layout.name + "' cannot also be serializable");
                 }
                 // Validate constructor parameters
                 for (const auto& member : classDecl->getBody().getMembers()) {
@@ -432,6 +491,11 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             }
             classes_[layout.name].privateMethods = layout.privateMethods;
 
+            // Serializable validation
+            if (layout.isSerializable) {
+                validateSerializableClass(*classDecl, layout, layout.name);
+            }
+
             // Singleton validation: constructor must have no arguments
             if (layout.isSingleton) {
                 for (const auto& member : classDecl->getBody().getMembers()) {
@@ -471,8 +535,21 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                     visitConstructor(*ctor);
                 }
             }
+            // Emit generated serialize/deserialize methods for serializable classes
+            if (layout.isSerializable) {
+                emitSerializeMethod(layout, *classDecl);
+                emitDeserializeMethod(layout, *classDecl);
+            }
             currentClass_ = nullptr;
         }
+    }
+
+    // Serializable class cycle detection (must run after all classes are loaded)
+    if (!serializableAdjacency_.empty()) {
+        detectSerializableCycles();
+    }
+    if (hasErrors()) {
+        return nullptr;
     }
 
     // Emit module_init function if needed (e.g., singleton initialization)
@@ -651,6 +728,254 @@ void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl)
     auto info = beginFunction(nullptr, &decl, true, true);
     endFunction(info);
     inConstructor_ = false;
+}
+
+void HVMCodeGenerator::validateSerializableClass(
+    const ast::ClassDeclaration& classDecl,
+    const ClassLayout& layout,
+    const std::string& name)
+{
+    // Phase 3: Field count validation — at least one public field
+    bool hasPublicField = false;
+    for (const auto& member : classDecl.getBody().getMembers()) {
+        if (auto declMember = member->getDeclaration()) {
+            if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
+                if (var->isPublic()) {
+                    hasPublicField = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (!hasPublicField) {
+        addError("Serializable class '" + name + "' must have at least one public field");
+        return;
+    }
+
+    // Phase 3: Constructor validation — exactly one constructor with zero parameters
+    int ctorCount = 0;
+    for (const auto& member : classDecl.getBody().getMembers()) {
+        if (auto ctor = member->getConstructor()) {
+            ++ctorCount;
+            if (!ctor->getParameters().empty()) {
+                addError("Serializable class '" + name + "' constructor must have no parameters");
+            }
+        }
+    }
+    if (ctorCount == 0) {
+        addError("Serializable class '" + name + "' must have exactly one constructor");
+    } else if (ctorCount > 1) {
+        addError("Serializable class '" + name + "' must have exactly one constructor");
+    }
+
+    // Phase 2: Field type validation — verify each public field type is allowed
+    // Also build adjacency for cycle detection
+    for (const auto& member : classDecl.getBody().getMembers()) {
+        if (auto declMember = member->getDeclaration()) {
+            if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
+                if (!var->isPublic()) continue;
+                const ast::Type* type = var->getType();
+                if (!type) {
+                    addError("Serializable class '" + name + "' field '" + var->getName() + "' must have an explicit type");
+                    continue;
+                }
+                if (!isValidSerializableType(*type, name, var->getName())) {
+                    addError("Serializable class '" + name + "' field '" + var->getName() + "' has unsupported type for serialization");
+                }
+                // Record adjacency for serializable class references
+                if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
+                    if (!bt->isPrimitive()) {
+                        std::string typeName = bt->getIdentifier();
+                        auto it = classes_.find(typeName);
+                        if (it != classes_.end() && it->second.isSerializable) {
+                            serializableAdjacency_[name].push_back(typeName);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+bool HVMCodeGenerator::isValidSerializableType(
+    const ast::Type& type,
+    const std::string& className,
+    const std::string& fieldName)
+{
+    // Check for HashMapType
+    if (auto hmType = dynamic_cast<const ast::HashMapType*>(&type)) {
+        const ast::Type& valueType = hmType->getValueType();
+        // Value type must be a restricted primitive (no float, char, or serializable class)
+        if (auto bt = dynamic_cast<const ast::BaseType*>(&valueType)) {
+            if (bt->isPrimitive()) {
+                auto kind = bt->getPrimitiveType()->getKind();
+                // Allowed: int8, byte, int64, double, f64, f8, string, bool, bit, buffer
+                // Rejected: float, char
+                switch (kind) {
+                    case ast::PrimitiveTypeKind::INT8:
+                    case ast::PrimitiveTypeKind::BYTE:
+                    case ast::PrimitiveTypeKind::INT64:
+                    case ast::PrimitiveTypeKind::DOUBLE:
+                    case ast::PrimitiveTypeKind::F64:
+                    case ast::PrimitiveTypeKind::F8:
+                    case ast::PrimitiveTypeKind::STRING:
+                    case ast::PrimitiveTypeKind::BOOL:
+                    case ast::PrimitiveTypeKind::BIT:
+                    case ast::PrimitiveTypeKind::BUFFER:
+                        return true;
+                    case ast::PrimitiveTypeKind::FLOAT:
+                        addError("Serializable class '" + className + "' field '" + fieldName + "': float not allowed as HashMap value type");
+                        return false;
+                    case ast::PrimitiveTypeKind::CHAR:
+                        addError("Serializable class '" + className + "' field '" + fieldName + "': char not allowed as HashMap value type");
+                        return false;
+                    default:
+                        return false;
+                }
+            }
+            // Check if it's a BaseType referencing a class name
+            if (bt->getIdentifier() == "String" || bt->getIdentifier() == "string") return true;
+            if (bt->getIdentifier() == "Buffer" || bt->getIdentifier() == "buffer") return true;
+            // Serializable class as HashMap value is NOT allowed
+            addError("Serializable class '" + className + "' field '" + fieldName + "': serializable class not allowed as HashMap value type");
+            return false;
+        }
+        if (dynamic_cast<const ast::TensorType*>(&valueType)) {
+            return true;
+        }
+        addError("Serializable class '" + className + "' field '" + fieldName + "': unsupported HashMap value type");
+        return false;
+    }
+
+    // Check for AnyArrayType
+    if (dynamic_cast<const ast::AnyArrayType*>(&type)) {
+        return true;
+    }
+
+    // Check for TensorType
+    if (auto tensorType = dynamic_cast<const ast::TensorType*>(&type)) {
+        const ast::BaseType& elemType = tensorType->getElementType();
+        if (elemType.isPrimitive()) {
+            auto kind = elemType.getPrimitiveType()->getKind();
+            switch (kind) {
+                case ast::PrimitiveTypeKind::INT8:
+                case ast::PrimitiveTypeKind::BYTE:
+                case ast::PrimitiveTypeKind::INT64:
+                case ast::PrimitiveTypeKind::DOUBLE:
+                case ast::PrimitiveTypeKind::F64:
+                case ast::PrimitiveTypeKind::F8:
+                case ast::PrimitiveTypeKind::BOOL:
+                case ast::PrimitiveTypeKind::BIT:
+                case ast::PrimitiveTypeKind::BUFFER:
+                    return true;
+                case ast::PrimitiveTypeKind::FLOAT:
+                case ast::PrimitiveTypeKind::CHAR:
+                case ast::PrimitiveTypeKind::STRING:
+                default:
+                    return false;
+            }
+        }
+        return false;
+    }
+
+    // Check for BaseType (primitives or class references)
+    if (auto bt = dynamic_cast<const ast::BaseType*>(&type)) {
+        if (bt->isPrimitive()) {
+            auto kind = bt->getPrimitiveType()->getKind();
+            switch (kind) {
+                case ast::PrimitiveTypeKind::INT8:
+                case ast::PrimitiveTypeKind::BYTE:
+                case ast::PrimitiveTypeKind::INT64:
+                case ast::PrimitiveTypeKind::DOUBLE:
+                case ast::PrimitiveTypeKind::F64:
+                case ast::PrimitiveTypeKind::F8:
+                case ast::PrimitiveTypeKind::STRING:
+                case ast::PrimitiveTypeKind::BOOL:
+                case ast::PrimitiveTypeKind::BIT:
+                case ast::PrimitiveTypeKind::BUFFER:
+                    return true;
+                case ast::PrimitiveTypeKind::FLOAT:
+                    addError("Serializable class '" + className + "' field '" + fieldName + "': float not allowed");
+                    return false;
+                case ast::PrimitiveTypeKind::CHAR:
+                    addError("Serializable class '" + className + "' field '" + fieldName + "': char not allowed");
+                    return false;
+                default:
+                    return false;
+            }
+        }
+        // Class reference — must be a serializable class
+        std::string typeName = bt->getIdentifier();
+        auto it = classes_.find(typeName);
+        if (it != classes_.end() && it->second.isSerializable) {
+            return true;
+        }
+        // Also check common wrapper types
+        if (typeName == "String" || typeName == "Buffer" || typeName == "AnyArray") {
+            return true;
+        }
+        addError("Serializable class '" + className + "' field '" + fieldName + "' references non-serializable class '" + typeName + "'");
+        return false;
+    }
+
+    // ArrayType — not allowed
+    if (dynamic_cast<const ast::ArrayType*>(&type)) {
+        addError("Serializable class '" + className + "' field '" + fieldName + "': Array type not allowed for serialization");
+        return false;
+    }
+
+    // MapType — not allowed
+    if (dynamic_cast<const ast::MapType*>(&type)) {
+        addError("Serializable class '" + className + "' field '" + fieldName + "': Map type not allowed for serialization (use HashMap)");
+        return false;
+    }
+
+    return false;
+}
+
+void HVMCodeGenerator::detectSerializableCycles() {
+    enum class Color { WHITE, GRAY, BLACK };
+    std::unordered_map<std::string, Color> color;
+    std::vector<std::string> path;
+
+    std::function<bool(const std::string&)> dfs = [&](const std::string& node) -> bool {
+        color[node] = Color::GRAY;
+        path.push_back(node);
+        auto adjIt = serializableAdjacency_.find(node);
+        if (adjIt != serializableAdjacency_.end()) {
+            for (const auto& neighbor : adjIt->second) {
+                auto colorIt = color.find(neighbor);
+                if (colorIt != color.end() && colorIt->second == Color::GRAY) {
+                    // Cycle found: from neighbor to node back to neighbor
+                    std::string cyclePath;
+                    bool inCycle = false;
+                    for (const auto& p : path) {
+                        if (p == neighbor) inCycle = true;
+                        if (inCycle) {
+                            if (!cyclePath.empty()) cyclePath += " -> ";
+                            cyclePath += p;
+                        }
+                    }
+                    cyclePath += " -> " + neighbor;
+                    addError("Serializable class '" + node + "' forms a cycle: " + cyclePath);
+                    path.pop_back();
+                    color[node] = Color::BLACK;
+                    return true;
+                } else if (colorIt == color.end() || colorIt->second == Color::WHITE) {
+                    dfs(neighbor);
+                }
+            }
+        }
+        path.pop_back();
+        color[node] = Color::BLACK;
+        return false;
+    };
+
+    for (const auto& [className, _] : serializableAdjacency_) {
+        if (color[className] == Color::WHITE) {
+            dfs(className);
+        }
+    }
 }
 
 void HVMCodeGenerator::visitMethod(const ast::FunctionDeclaration& decl) {
@@ -1469,6 +1794,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 resolvedClass = objName;
                 isStaticCall = true;
             }
+            // DateTime is in classes_ map but still supports static calls (now(), parse(), etc.)
+            if (resolvedClass.empty() && objName == "DateTime" && isBuiltinClassName(objName)) {
+                resolvedClass = objName;
+                isStaticCall = true;
+            }
 
             // Detect instance calls on user-defined classes
             if (resolvedClass.empty()) {
@@ -1529,6 +1859,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 105: resolvedClass = "Random"; break;
                     case 117: resolvedClass = "HashMap"; break;
                     case 118: resolvedClass = "AnyArray"; break;
+                    case 119: resolvedClass = "DateTime"; break;
                     default: break;
                 }
             }
@@ -1613,6 +1944,31 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 } else {
                     addError("Unsupported HashMap method '" + methodName + "'");
                 }
+                uint8_t dest = allocateRegister();
+                emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                return dest;
+            }
+
+            // DateTime instance methods
+            if (resolvedClass == "DateTime" && !isStaticCall) {
+                MangledFunctionParams mp;
+                mp.modulePath = (resolvedClass.empty() || !isBuiltinClassName(resolvedClass))
+                                ? modulePath_ : std::vector<std::string>{"hoo"};
+                mp.functionName = "datetime_inst_" + methodName;
+                mp.returnType = "ptr";
+                if (methodName == "compare" || methodName == "diffDays" || methodName == "diffHours" || methodName == "getTimestamp") {
+                    mp.returnType = "int64";
+                } else if (methodName == "diffSeconds") {
+                    mp.returnType = "double";
+                }
+                if (funcCall->getArguments()) {
+                    auto& args = funcCall->getArguments()->getArguments();
+                    for (size_t i = 0; i < args.size(); ++i) {
+                        mp.parameterTypes.push_back("ptr");
+                    }
+                }
+                std::string mangledName = SymbolMangler::mangleFunctionName(mp);
+                emitCall(Opcode::CALL, mangledName);
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
                 return dest;
@@ -2769,6 +3125,16 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                         if (member == "pop") return 0;
                         return 100;
                     }
+                    if (objectTypeId == 119) {
+                        if (member == "format" || member == "iso8601") return 101;
+                        if (member == "addDays" || member == "addHours" || member == "addMinutes" ||
+                            member == "addSeconds" || member == "addMilliseconds" ||
+                            member == "now" || member == "parse" || member == "fromIso8601") return 119;
+                        if (member == "getTimestamp" || member == "compare" ||
+                            member == "diffDays" || member == "diffHours") return 1;
+                        if (member == "diffSeconds") return 2;
+                        return 119;
+                    }
                 }
             }
         }
@@ -2838,7 +3204,16 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (ma->getMember() == "new") return 105;
                         return 100;
                     }
+                    if (clsName == "DateTime") {
+                        const std::string& member = ma->getMember();
+                        if (member == "iso8601" || member == "format") return 101;
+                        if (member == "nowSeconds") return 1;
+                        if (member == "nowPrecise") return 2;
+                        return 119;
+                    }
                     if (isBuiltinClassName(clsName)) {
+                        uint32_t tid = builtinConstructedTypeId(clsName);
+                        if (tid != 100) return tid;
                         return 101;
                     }
                     // Inference from instance method calls (e.g. args.get(0))
@@ -3093,5 +3468,234 @@ bool HVMCodeGenerator::canWriteField(const std::string& fieldName, const std::st
         return true;
     }
     return false;
+}
+
+uint8_t HVMCodeGenerator::emitStringLiteral(const std::string& str) {
+    Section* rodata = module_->getSection(".rodata");
+    if (!rodata) {
+        Section s;
+        s.name = ".rodata";
+        s.type = SectionType::SHT_RODATA;
+        s.flags = SectionFlags::ALLOC;
+        module_->addSection(std::move(s));
+        rodata = module_->getSection(".rodata");
+    }
+    uint32_t offset = static_cast<uint32_t>(rodata->data.size());
+    for (char c : str) rodata->data.push_back(c);
+    rodata->data.push_back('\0');
+    rodata->virtual_size = rodata->data.size();
+    return emitRoDataAddress(offset);
+}
+
+uint32_t HVMCodeGenerator::serializeFieldTypeId(const ast::Type& type) const {
+    if (auto bt = dynamic_cast<const ast::BaseType*>(&type)) {
+        if (bt->isPrimitive()) {
+            switch (bt->getPrimitiveType()->getKind()) {
+                case ast::PrimitiveTypeKind::INT64:  return 1;   // HOO_TYPE_INT64
+                case ast::PrimitiveTypeKind::INT8:   return 1;   // Promote to INT64
+                case ast::PrimitiveTypeKind::BYTE:   return 1;   // Promote to INT64
+                case ast::PrimitiveTypeKind::FLOAT:
+                case ast::PrimitiveTypeKind::DOUBLE:
+                case ast::PrimitiveTypeKind::F64:    return 2;   // HOO_TYPE_FLOAT64
+                case ast::PrimitiveTypeKind::F8:     return 2;   // Promote to FLOAT64
+                case ast::PrimitiveTypeKind::BOOL:   return 3;   // HOO_TYPE_BOOL
+                case ast::PrimitiveTypeKind::BIT:    return 3;   // Promote to BOOL
+                case ast::PrimitiveTypeKind::STRING: return 101; // HOO_TYPE_STRING
+                case ast::PrimitiveTypeKind::BUFFER: return 101; // Promote to STRING (base64)
+                default: return 0;
+            }
+        }
+        std::string name = bt->getIdentifier();
+        if (name == "String" || name == "string") return 101;
+        if (name == "Buffer" || name == "buffer") return 101; // Promoted to STRING (base64)
+        return 0;
+    }
+    if (dynamic_cast<const ast::HashMapType*>(&type)) return 117;  // HOO_TYPE_HASHMAP
+    if (dynamic_cast<const ast::AnyArrayType*>(&type)) return 118; // HOO_TYPE_ANYARRAY
+    return 0;
+}
+
+void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast::ClassDeclaration& classDecl) {
+    uint32_t funcStart = currentByteOffset_;
+    size_t enterIdx = instructions_.size();
+    emit(Opcode::ENTER, OperandsI{0, 0, 0});
+    scopeStack_.push_back({});
+
+    // 1. Create HashMap<int64, any>: hoo_hashmap_new(HOO_TYPE_INT64=1, HOO_TYPE_ANY=0)
+    uint8_t keyTypeReg = emitConstant(1);
+    emit(Opcode::MOV, OperandsR{1, keyTypeReg, 0, 0});
+    uint8_t valTypeReg = emitConstant(0);
+    emit(Opcode::MOV, OperandsR{2, valTypeReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_hashmap_new_p_i8_i8");
+    freeRegister(keyTypeReg);
+    freeRegister(valTypeReg);
+    uint8_t mapReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{mapReg, 1, 0, 0});
+
+    // 2. For each public field, store in HashMap with field index as key
+    int fieldIndex = 0;
+    for (const auto& member : classDecl.getBody().getMembers()) {
+        if (auto declMember = member->getDeclaration()) {
+            if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
+                if (!var->isPublic()) continue;
+                auto fieldIt = layout.fieldOffsets.find(var->getName());
+                if (fieldIt == layout.fieldOffsets.end()) continue;
+                int32_t fieldOffset = fieldIt->second;
+
+                // Load field value from this (r1)
+                uint8_t fieldReg = allocateRegister();
+                emit(Opcode::LD_D, OperandsI{fieldReg, 1, static_cast<int16_t>(fieldOffset)});
+
+                // Determine HOO_TYPE for the field
+                const ast::Type* fieldType = var->getType();
+                uint32_t hooType = 0;
+                if (fieldType) {
+                    hooType = serializeFieldTypeId(*fieldType);
+                }
+
+                // hashmap_set_any_i8(map, key, typeId, data)
+                // Calling convention: r1=map, r2=key, r3=typeId, r5=data
+                emit(Opcode::MOV, OperandsR{1, mapReg, 0, 0});
+                uint8_t keyReg = emitConstant(fieldIndex);
+                emit(Opcode::MOV, OperandsR{2, keyReg, 0, 0});
+                uint8_t typeReg = emitConstant(static_cast<int64_t>(hooType));
+                emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{5, fieldReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_hashmap_set_any_i8_p_i8_i8_i8");
+                freeRegister(keyReg);
+                freeRegister(typeReg);
+                freeRegister(fieldReg);
+                ++fieldIndex;
+            }
+        }
+    }
+
+    // 3. Serialize HashMap to JSON
+    emit(Opcode::MOV, OperandsR{1, mapReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_M_hoo_E_json_serialize_hashmap_p_p");
+    freeRegister(mapReg);
+
+    // 4. Return — result is already in r1
+    emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+    emit(Opcode::RET, OperandsR{0, 0, 0, 0});
+
+    // Fix up ENTER frame size
+    int32_t frameSize = -currentStackOffset_;
+    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
+
+    // Register symbol
+    Symbol sym;
+    MangledFunctionParams mp;
+    mp.modulePath = modulePath_;
+    mp.className = layout.name;
+    mp.functionName = "serialize";
+    mp.returnType = "ptr";
+    sym.name = SymbolMangler::mangleFunctionName(mp);
+    sym.value = funcStart;
+    sym.type = Symbol::STT_FUNC;
+    sym.binding = Symbol::STB_GLOBAL;
+    sym.section_index = 0;
+    module_->addSymbol(sym);
+
+    scopeStack_.clear();
+    currentStackOffset_ = 0;
+}
+
+void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const ast::ClassDeclaration& classDecl) {
+    uint32_t funcStart = currentByteOffset_;
+    size_t enterIdx = instructions_.size();
+    emit(Opcode::ENTER, OperandsI{0, 0, 0});
+    scopeStack_.push_back({});
+
+    // 1. Parse JSON into HashMap<int64, any>: json_deserialize_hashmap(json)
+    // json string pointer is in r1 (first parameter)
+    emitCall(Opcode::CALL, "_F_M_hoo_E_json_deserialize_hashmap_p_p");
+    uint8_t mapReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{mapReg, 1, 0, 0});
+
+    // 2. Allocate new instance: hoo_alloc(size, typeId)
+    uint8_t sizeReg = emitConstant(static_cast<int64_t>(layout.totalSize));
+    emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
+    uint8_t typeReg = emitConstant(100); // Generic Object typeId
+    emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
+    freeRegister(sizeReg);
+    freeRegister(typeReg);
+    uint8_t instanceReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{instanceReg, 1, 0, 0});
+
+    // Save instance on stack for later field assignments
+    currentStackOffset_ -= 8;
+    int32_t instanceTempOffset = currentStackOffset_;
+    emit(Opcode::ST_D, OperandsI{instanceReg, 30, static_cast<int16_t>(instanceTempOffset)});
+
+    // 3. Call constructor
+    MangledFunctionParams ctorMp;
+    ctorMp.modulePath = modulePath_;
+    ctorMp.className = layout.name;
+    ctorMp.isConstructor = true;
+    std::string ctorName = SymbolMangler::mangleFunctionName(ctorMp);
+    emit(Opcode::MOV, OperandsR{1, instanceReg, 0, 0});
+    emitCall(Opcode::CALL, ctorName);
+
+    // 4. For each public field, extract from HashMap and assign
+    int fieldIndex = 0;
+    for (const auto& member : classDecl.getBody().getMembers()) {
+        if (auto declMember = member->getDeclaration()) {
+            if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
+                if (!var->isPublic()) continue;
+                auto fieldIt = layout.fieldOffsets.find(var->getName());
+                if (fieldIt == layout.fieldOffsets.end()) continue;
+                int32_t fieldOffset = fieldIt->second;
+
+                // Extract value from HashMap by field index
+                // hoo_hashmap_get_any_i8(map, key, &out) — returns HooAnyValue
+                // JIT bridge: get_any_data returns value.data
+                emit(Opcode::MOV, OperandsR{1, mapReg, 0, 0});
+                uint8_t keyReg = emitConstant(fieldIndex);
+                emit(Opcode::MOV, OperandsR{2, keyReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_hashmap_get_any_data_i8_p_i8");
+                freeRegister(keyReg);
+
+                // r1 now has the value.data — store to field
+                // Reload instance from stack
+                uint8_t instReg = allocateRegister();
+                emit(Opcode::LD_D, OperandsI{instReg, 30, static_cast<int16_t>(instanceTempOffset)});
+                // Store the extracted value into the field
+                emit(Opcode::ST_D, OperandsI{1, instReg, static_cast<int16_t>(fieldOffset)});
+                freeRegister(instReg);
+
+                ++fieldIndex;
+            }
+        }
+    }
+
+    // 5. Return the instance
+    emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(instanceTempOffset)});
+    emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+    emit(Opcode::RET, OperandsR{0, 0, 0, 0});
+
+    // Fix up ENTER frame size
+    int32_t frameSize = -currentStackOffset_;
+    instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
+
+    // Register symbol
+    Symbol sym;
+    MangledFunctionParams mp;
+    mp.modulePath = modulePath_;
+    mp.className = layout.name;
+    mp.functionName = "deserialize";
+    mp.returnType = "ptr";
+    mp.isStatic = true;
+    mp.parameterTypes = {"string"};
+    sym.name = SymbolMangler::mangleFunctionName(mp);
+    sym.value = funcStart;
+    sym.type = Symbol::STT_FUNC;
+    sym.binding = Symbol::STB_GLOBAL;
+    sym.section_index = 0;
+    module_->addSymbol(sym);
+
+    scopeStack_.clear();
+    currentStackOffset_ = 0;
 }
 } // namespace hooc

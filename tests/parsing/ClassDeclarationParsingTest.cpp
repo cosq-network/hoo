@@ -657,3 +657,55 @@ TEST_F(ClassDeclarationParsingTest, ClassWithPrivateInferredField) {
     ASSERT_NE(varDecl, nullptr);
     EXPECT_TRUE(varDecl->isPrivate());
 }
+
+// Test 22: Class with SERIALIZABLE modifier
+TEST_F(ClassDeclarationParsingTest, ClassWithSerializableModifier) {
+    std::string code = R"(
+        serializable class UserConfig {
+            public var name: string;
+            public var version: int64;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "UserConfig");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+    EXPECT_FALSE(classDecl->hasModifier(ClassModifier::SINGLETON));
+}
+
+// Test 23: Class with combined SERIALIZABLE and final modifiers
+TEST_F(ClassDeclarationParsingTest, ClassWithSerializableAndFinal) {
+    std::string code = R"(
+        final serializable class FinalConfig {
+            public var name: string;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "FinalConfig");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::FINAL));
+}
+
+// Test 24: Serializable class toString includes modifier
+TEST_F(ClassDeclarationParsingTest, SerializableModifierToString) {
+    EXPECT_EQ(classModifierToString(ClassModifier::SERIALIZABLE), "serializable");
+}

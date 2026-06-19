@@ -1078,6 +1078,7 @@ ClassModifier SimpleASTBuilder::getClassModifier(HoocParser::ClassModifierContex
     if (ctx->IMMUTABLE()) return ClassModifier::IMMUTABLE;
     if (ctx->SERVICE()) return ClassModifier::SERVICE;
     if (ctx->FINAL()) return ClassModifier::FINAL;
+    if (ctx->SERIALIZABLE()) return ClassModifier::SERIALIZABLE;
     throw std::runtime_error("Unknown class modifier: " + ctx->getText());
 }
 

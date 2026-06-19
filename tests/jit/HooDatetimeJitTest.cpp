@@ -12,7 +12,10 @@ protected:
 
 TEST_F(HooDatetimeJitTest, Now) {
     const std::string source = R"(
-        func :int64 test() { return DateTime.now(); }
+        func :int64 test() {
+            var dt = DateTime.now();
+            return dt.getTimestamp();
+        }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     // Should be a positive timestamp (after epoch)
@@ -52,7 +55,8 @@ TEST_F(HooDatetimeJitTest, AddDays) {
     const std::string source = R"(
         func :int64 test() {
             var base = DateTime.fromIso8601("2024-01-01T00:00:00Z");
-            return DateTime.addDays(base, 1);
+            var result = base.addDays(1);
+            return result.getTimestamp();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -89,8 +93,8 @@ TEST_F(HooDatetimeJitTest, Format) {
 TEST_F(HooDatetimeJitTest, ParseCustom) {
     const std::string source = R"(
         func :int64 test() {
-            var ts = DateTime.parse("2024-06-15", "%Y-%m-%d");
-            return ts;
+            var dt = DateTime.parse("2024-06-15", "%Y-%m-%d");
+            return dt.getTimestamp();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -110,4 +114,65 @@ TEST_F(HooDatetimeJitTest, FormatLiteral) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     // Literal format "Hello" produces "Hello" = 5 chars
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+}
+
+TEST_F(HooDatetimeJitTest, FreeFuncNow) {
+    const std::string source = R"(
+        func :int64 test() {
+            var dt = datetime_now();
+            return dt.getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1700000000000);
+}
+
+TEST_F(HooDatetimeJitTest, FreeFuncNew) {
+    const std::string source = R"(
+        func :int64 test() {
+            var dt = datetime_new(1704067200000);
+            return dt.getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1704067200000);
+}
+
+TEST_F(HooDatetimeJitTest, FreeFuncParse) {
+    const std::string source = R"(
+        func :int64 test() {
+            var dt = datetime_parse("2024-06-15", "%Y-%m-%d");
+            return dt.getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_i8");
+    EXPECT_GT(result, 1700000000000);
+}
+
+TEST_F(HooDatetimeJitTest, FreeFuncIso8601) {
+    const std::string source = R"(
+        func :int64 test() {
+            var dt = datetime_fromIso8601("2024-01-01T00:00:00Z");
+            return dt.getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooDatetimeJitTest, FreeFuncNowSeconds) {
+    const std::string source = R"(
+        func :int64 test() { return datetime_nowSeconds(); }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1700000000);
+}
+
+TEST_F(HooDatetimeJitTest, FreeFuncNowPrecise) {
+    const std::string source = R"(
+        func :int64 test() { return datetime_nowPrecise(); }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1700000000);
 }
