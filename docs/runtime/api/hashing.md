@@ -59,7 +59,7 @@ Each hashing function also accepts a `Buffer` handle:
 - `Hashing.hmacSha256(key: buffer, data: buffer) :string`
 
 ```hoo
-let buf = Buffer.fromBytes("Hello, World!", 13)
+let buf = buffer_fromBytes("Hello, World!", 13)
 let hash = Hashing.sha256(buf)  // same result as string version
 ```
 

@@ -93,7 +93,7 @@ Each compression method also accepts a `Buffer` handle and returns a `Buffer`:
 
 ```hoo
 var c = new Compression()
-var input = Buffer.fromBytes("Hello, Hoo!", 12)
+var input = buffer_fromBytes("Hello, Hoo!", 12)
 var compressed = c.gzipCompress(input)
 var decompressed = c.gzipDecompress(compressed)
 c.release()

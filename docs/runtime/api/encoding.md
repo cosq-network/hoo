@@ -63,7 +63,7 @@ let decoded = Encoding.urlDecode("a%20b%3Dc")
 Base64 and hex functions accept a `Buffer` handle directly (no length parameter needed):
 
 ```hoo
-let buf = Buffer.fromBytes("Hello", 5)
+let buf = buffer_fromBytes("Hello", 5)
 let b64 = Encoding.base64Encode(buf)   // "SGVsbG8="
 let hex = Encoding.hexEncode(buf)      // "48656C6C6F"
 ```

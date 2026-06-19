@@ -699,14 +699,11 @@ extern "C" {
     uint64_t jit_hoo_buffer_new(void* /*state_ptr*/) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_new(0)));
     }
-    uint64_t jit_hoo_buffer_new_with_capacity(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_buffer_new(static_cast<int64_t>(state->regs[1]))));
-    }
     uint64_t jit_hoo_buffer_from_bytes(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* data = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
-            hoo_buffer_from_bytes(reinterpret_cast<const uint8_t*>(state->regs[1]), state->regs[2])));
+            hoo_buffer_from_bytes(reinterpret_cast<const uint8_t*>(data), state->regs[2])));
     }
     uint64_t jit_hoo_buffer_copy(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -730,9 +727,10 @@ extern "C" {
     }
     uint64_t jit_hoo_buffer_append(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* data = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
             hoo_buffer_append(reinterpret_cast<void*>(state->regs[1]),
-                              reinterpret_cast<const uint8_t*>(state->regs[2]), state->regs[3])));
+                              reinterpret_cast<const uint8_t*>(data), state->regs[3])));
     }
     uint64_t jit_hoo_buffer_append_buffer(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2997,8 +2995,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_getBool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         // Buffer hoo-module-qualified symbols (codegen redirects buffer_* to hoo module)
         {"_F_M_hoo_E_buffer_new_v", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
-        {"_F_M_hoo_E_buffer_new_v_p", reinterpret_cast<void*>(&jit_hoo_buffer_new_with_capacity)},
-        {"_F_M_hoo_E_buffer_fromBytes_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
+        {"_F_M_hoo_E_buffer_fromBytes_p_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
         {"_F_M_hoo_E_buffer_copy_v", reinterpret_cast<void*>(&jit_hoo_buffer_copy)},
         {"_F_M_hoo_E_buffer_length_v", reinterpret_cast<void*>(&jit_hoo_buffer_length)},
         {"_F_M_hoo_E_buffer_capacity_v", reinterpret_cast<void*>(&jit_hoo_buffer_capacity)},
@@ -3011,7 +3008,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_buffer_data_v", reinterpret_cast<void*>(&jit_hoo_buffer_data)},
         // CamelCase aliases
         {"_F_M_hoo_E_buffer_new_v", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
-        {"_F_M_hoo_E_buffer_fromBytes_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
+        {"_F_M_hoo_E_buffer_fromBytes_p_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},
         {"_F_M_hoo_E_buffer_copy_v", reinterpret_cast<void*>(&jit_hoo_buffer_copy)},
         {"_F_M_hoo_E_buffer_length_v", reinterpret_cast<void*>(&jit_hoo_buffer_length)},
         {"_F_M_hoo_E_buffer_capacity_v", reinterpret_cast<void*>(&jit_hoo_buffer_capacity)},

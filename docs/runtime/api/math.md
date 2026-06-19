@@ -1022,7 +1022,7 @@ Fills the provided buffer with random bytes.
 ```hoo
 func :void example() {
     var rng = new Random();
-    var buf = new Buffer(10);
+    var buf = new Buffer();
     rng.nextBytes(buf, 10);
     rng.release();
 }

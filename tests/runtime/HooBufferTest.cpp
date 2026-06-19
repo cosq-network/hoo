@@ -2,6 +2,7 @@
 #include "../src/runtime/lib/hoo_buffer.h"
 #include "../src/runtime/lib/hoo_runtime.h"
 #include <cstring>
+#include <limits>
 #include <cstdlib>
 
 class HooBufferTest : public ::testing::Test {
@@ -41,6 +42,12 @@ TEST_F(HooBufferTest, CreateFromEmptyBytes) {
     ASSERT_NE(buf, nullptr);
     EXPECT_EQ(hoo_buffer_length(buf), 0);
     hoo_buffer_release(buf);
+}
+
+TEST_F(HooBufferTest, RejectOversizedByteLength) {
+    const uint8_t data = 1;
+    HooBuffer buf = hoo_buffer_from_bytes(&data, std::numeric_limits<int64_t>::max());
+    EXPECT_EQ(buf, nullptr);
 }
 
 TEST_F(HooBufferTest, CopyBuffer) {

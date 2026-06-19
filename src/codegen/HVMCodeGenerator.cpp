@@ -153,6 +153,20 @@ static uint32_t jsonFreeFunctionReturnTypeId(const std::string& functionName) {
     return 101;
 }
 
+static bool isBufferFreeFunction(const std::string& functionName) {
+    return functionName == "buffer_fromBytes";
+}
+
+static bool isHooModuleFreeFunction(const std::string& functionName) {
+    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName);
+}
+
+static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
+    if (isBufferFreeFunction(functionName)) return 113;
+    return 100;
+}
+
 HVMCodeGenerator::HVMCodeGenerator() {
     for (int i = 0; i < 32; ++i) usedRegs_[i] = false;
     // Reserved registers
@@ -1242,6 +1256,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 return dest;
             }
 
+            if (className == "Buffer" && argCount != 0) {
+                addError("Buffer constructor expects no arguments");
+                return 0;
+            }
+
             MangledFunctionParams mp;
             mp.modulePath = {"hoo"};
             mp.functionName = classToPrefix(className) + "_" + builtinConstructorMethodName(className, argCount);
@@ -1462,6 +1481,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 addError("Cannot resolve method '" + methodName + "'");
             }
 
+            if (isStaticCall && resolvedClass == "Buffer" && methodName == "fromBytes") {
+                addError("Buffer.fromBytes is not supported; use free function buffer_fromBytes(data, len)");
+                return 0;
+            }
+
             if (isStaticCall) {
                 // Static call: no 'this' in r1, args start from r1
                 if (funcCall->getArguments()) {
@@ -1640,7 +1664,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
-                mp.modulePath = isJsonFreeFunction(functionName)
+                mp.modulePath = isHooModuleFreeFunction(functionName)
                                     ? std::vector<std::string>{"hoo"}
                                     : modulePath_;
 
@@ -1657,7 +1681,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
                 
                 auto retIt = functionReturnTypes_.find(functionName);
-                if (isJsonFreeFunction(functionName)) {
+                if (isHooModuleFreeFunction(functionName)) {
                     mp.returnType = "ptr";
                 } else {
                     mp.returnType = retIt != functionReturnTypes_.end()
@@ -2643,7 +2667,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
-                if (isJsonFreeFunction(id->getName())) return jsonFreeFunctionReturnTypeId(id->getName());
+                if (isHooModuleFreeFunction(id->getName())) return hooModuleFreeFunctionReturnTypeId(id->getName());
                 auto it = functionReturnTypes_.find(id->getName());
                 if (it != functionReturnTypes_.end()) return it->second;
             }
@@ -2751,7 +2775,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         return 101;
                     }
                     if (clsName == "Buffer") {
-                        if (ma->getMember() == "new" || ma->getMember() == "fromBytes") return 113;
+                        if (ma->getMember() == "new") return 113;
                         return 101;
                     }
                     if (clsName == "Random") {

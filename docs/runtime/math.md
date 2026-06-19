@@ -774,7 +774,7 @@ func :int64 main() {
 ```hoo
 func :int64 main() {
     var rng = new Random();
-    var buf = new Buffer(10);
+    var buf = new Buffer();
     rng.nextBytes(buf, 10);
     rng.release();
     return 0;
