@@ -336,6 +336,16 @@ endif()
 # Generated ANTLR4 parser files must exist before hoo-core sources can include them
 add_dependencies(hoo-core generate_parser)
 
+add_library(hoorepl STATIC
+    src/repl/REPLSession.cpp
+    src/repl/REPLSession.h
+)
+if(MSVC)
+    hoo_use_static_msvc_runtime(hoorepl)
+endif()
+target_link_libraries(hoorepl PRIVATE hoo-core)
+target_include_directories(hoorepl PUBLIC ${CMAKE_SOURCE_DIR}/src)
+
 # =============================================================================
 # CLI Executable
 # =============================================================================
@@ -344,14 +354,14 @@ add_executable(hoo src/core/main.cpp)
 if(MSVC)
     hoo_use_static_msvc_runtime(hoo)
 endif()
-target_link_libraries(hoo hoo-core)
+target_link_libraries(hoo hoo-core hoorepl)
 target_include_directories(hoo PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 # =============================================================================
 # Install
 # =============================================================================
 
-install(TARGETS hoo hoo-core hoo-parser hoort
+install(TARGETS hoo hoo-core hoo-parser hoort hoorepl
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
     RUNTIME DESTINATION bin
@@ -504,6 +514,7 @@ if(HOO_BUILD_TESTS)
         tests/ast/ASTTypeTest.cpp
         tests/ast/ASTExpressionTest.cpp
         tests/ast/ASTStatementTest.cpp
+        tests/repl/HooReplTest.cpp
     )
     if(MSVC)
         hoo_use_static_msvc_runtime(hoo-tests)
@@ -511,6 +522,7 @@ if(HOO_BUILD_TESTS)
 
     target_link_libraries(hoo-tests
         hoo-core
+        hoorepl
     )
     add_dependencies(hoo-tests hoo)
     if(WIN32)

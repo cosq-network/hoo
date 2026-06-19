@@ -3,6 +3,7 @@
 #include "hvm/HOModule.h"
 #include "hvm/HVMJIT.h"
 #include "runtime/lib/hoo_args.h"
+#include "repl/REPLSession.h"
 
 #include <iostream>
 #include <cstdlib>
@@ -41,6 +42,7 @@ std::string HooCLI::getUsage(std::string_view programName) const {
     usage += "  -v, --version   Display version information\n";
     usage += "  -c, --compile   Compile only, do not execute (valid only for .hoo)\n";
     usage += "  -o, --output    Specify output .ho file path (valid only for .hoo, implies -c)\n";
+    usage += "  --repl          Enter interactive REPL mode\n";
     usage += "  --verbose       Enable verbose logging\n";
     usage += "\n";
     usage += "Examples:\n";
@@ -83,6 +85,9 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
         else if (arg == "--verbose") {
             opts.verbose = true;
         }
+        else if (arg == "--repl") {
+            opts.repl = true;
+        }
         else if (arg.rfind("--", 0) == 0 || (arg.size() > 1 && arg[0] == '-')) {
             opts.hasError = true;
             opts.errorMessage = "Error: Unknown option '" + std::string(arg) + "'\n";
@@ -98,7 +103,7 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
         }
     }
 
-    if (opts.showHelp || opts.showVersion) {
+    if (opts.showHelp || opts.showVersion || opts.repl) {
         return opts;
     }
 
@@ -251,6 +256,12 @@ int HooCLI::run(int argc, char* argv[]) {
 
     if (opts.showVersion) {
         ioProvider_->writeStdout(getVersion());
+        return 0;
+    }
+
+    if (opts.repl) {
+        hooc::repl::REPLSession session;
+        session.run();
         return 0;
     }
 

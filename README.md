@@ -32,7 +32,8 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 - [x] **Phase 11.1 (Map OOP API Redesign)**: Consolidated 70+ type-specific C-ABI functions into 15 polymorphic functions (`hoo_map_new`, `hoo_map_set`, `hoo_map_try_get`, `hoo_map_contains_key`, `hoo_map_remove`, `hoo_map_clear`, `hoo_map_count`, `hoo_map_is_empty`, etc.) with internal key/value type dispatch via template helpers. Key/value type-erased via `void*` at the C-ABI layer. JIT wrappers rewritten to delegate to the polymorphic C-ABI. 23 runtime tests + 21 JIT tests pass. Cross-platform fix: char map storage uses `int8_t` instead of `char` to avoid signedness differences on ARM64 Linux.
 - [x] **Phase 11.2 (DateTime Redesign as Instantiable Class)**: Converted DateTime from a raw-int64 singleton API into an ARC-managed instantiable class (type ID 119) with `timestamp: int64` field, enabling future `serializable` modifier support. Added instance methods (`dt.format()`, `dt.addDays()`, `dt.compare()`, etc.), built-in class-qualified factory dispatch (`DateTime.now()`, `DateTime.parse()`), module-level free functions (`datetime_now()`, `datetime_new(ts)`), and full C-level free function wrappers (`hoo_datetime_now`, `hoo_datetime_format`, etc.). 15 JIT tests + 24 runtime tests pass.
 - [x] **Phase 11.3 (Serializable Class Modifier)**: Added `serializable` class modifier to grammar, AST, symbol mangling, and code generation. Implements field type validation (primitives, HashMap, AnyArray, tensor, serializable classes), constructor constraints (exactly one parameterless constructor), cycle detection via DFS, and auto-generated `serialize()`/`deserialize()` methods (lowering through existing HashMap+JSON runtime). 4 new tests (parsing, symbol mangling).
-- [x] **Verification**: full preset test run passing (`1660 tests`, 0 failures, 2 disabled).
+- [x] **Phase 12 (REPL Integration)**: Added interactive REPL shell mode via `--repl` flag, with nested multiline brace matching, built-in commands (`/exit`, `/quit`, `/help`, `/reset`), static library target `hoorepl`, and complete unit testing coverage.
+- [x] **Verification**: full preset test run passing (`1745 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 
@@ -77,7 +78,8 @@ src/
   hvm/        ISA definitions, module serialization, and physical state model.
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
-tests/         Exhaustive unit and integration test suites (1660 tests in the current preset run).
+  repl/       REPL session implementation and interactive driver loop.
+tests/         Exhaustive unit and integration test suites (1745 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 

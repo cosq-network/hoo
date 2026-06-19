@@ -23,6 +23,7 @@ private:
         bool showHelp = false;
         bool showVersion = false;
         bool compileOnly = false;
+        bool repl = false;
         std::optional<std::string> inputFile;
         std::optional<std::string> outputFile;
         

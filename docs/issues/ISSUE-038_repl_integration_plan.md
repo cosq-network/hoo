@@ -48,7 +48,7 @@ The `hoorepl` library does not re-implement the compiler frontend or the executi
 
 We will implement the REPL integration across five distinct phases:
 
-### Phase 1: REPL Static Library Target (`hoorepl`)
+### Phase 1: REPL Static Library Target (`hoorepl`) - [Completed]
 - **Directory Layout**: Create a new subdirectory `src/repl` for housing the library source files.
 - **REPLSession Interface Design**: Define the primary `REPLSession` class in `src/repl/REPLSession.h`:
   ```cpp
@@ -87,7 +87,7 @@ We will implement the REPL integration across five distinct phases:
   ```
 - **Build System Setup**: Add the static library target in the main [CMakeLists.txt](file:///Users/benoybose/Projects/hoo/CMakeLists.txt) and link it privately with `hoo-core` to provide access to `HooCompiler`, `HVMCodeGenerator`, and `HVMJIT`.
 
-### Phase 2: CLI Integration in the Driver
+### Phase 2: CLI Integration in the Driver - [Completed]
 - **Command Line Parsing**: Modify `src/main.cpp` (or the `hoo` driver binary source) to check `argv` for the `--repl` flag.
 - **Execution Flow Redirection**:
   - If `--repl` is found, instantiate `hooc::repl::REPLSession` and delegate execution entirely to `session.run()`, ignoring other compilation target arguments.
@@ -96,7 +96,7 @@ We will implement the REPL integration across five distinct phases:
     target_link_libraries(hoo PRIVATE hoorepl)
     ```
 
-### Phase 3: Shell Console Loop & Built-in Command Parser
+### Phase 3: Shell Console Loop & Built-in Command Parser - [Completed]
 - **Interactive Input Handling**: 
   - Standard input `std::cin` will be read line-by-line using `std::getline`.
   - Multi-line block detection: If a line ends with an unclosed brace `{` or has unmatched parenthesis, the prompt shifts from `>>> ` to `... ` and accumulates subsequent lines until the scope braces are balanced.
@@ -107,23 +107,105 @@ We will implement the REPL integration across five distinct phases:
     - `/reset`: Clear `accumulatedDeclarations_` and instantiate a fresh `HVMJIT` context.
 - **Error Propagation**: Catch any compilation or AST generation errors from `HooCompiler::getLastError()` and output them to `std::cerr` without terminating the process loop.
 
-### Phase 4: Incremental Code Generation & Execution
-- **Dynamic Wrapper Generator**:
-  - For declarations (`func` or `class` definitions), append them directly to `accumulatedDeclarations_` and compile them to verify syntax. If compilation succeeds, the declaration remains in the session.
-  - For expressions or statements (like `1 + 2;` or `var x = Fs.exists(".");`), wrap them inside a transient wrapper function:
-    ```hoo
-    func :any __repl_line_N() {
-        return <user_statement>;
-    }
-    ```
-  - Prepend the current `accumulatedDeclarations_` to the wrapper function to build the full transient module code string.
-- **Module JIT Load & Execution**:
-  - Call `HooCompiler::compile` on the generated transient source.
-  - Load the resulting module bytes into the persistent `HVMJIT` context.
-  - Invoke the compiled wrapper function `_F_M_test_E___repl_line_N` using `HVMJIT::run`.
-  - Format and output the return register `r1` value (or print nothing if the statement is void).
+### Phase 4: Incremental Code Generation & Execution - [Pending]
 
-### Phase 5: Test Infrastructure & CI Verification
+To execute arbitrary expressions and statements interactively, Phase 4 wraps transient inputs and dynamically evaluates them via the JIT engine.
+
+#### 4.1 State & Variable Scope Persistence
+1. **Module-Level Declarations**: 
+   When the user declares global variables (e.g. `var x = 42;`), functions (`func ...`), or classes (`class ...`), they are parsed as top-level declarations and added to the persistent `accumulatedDeclarations_` string.
+2. **Re-compilation**:
+   Whenever a new statement or declaration is evaluated:
+   - The entire virtual module `__repl_session` (comprising all `accumulatedDeclarations_` plus any transient wrapper) is recompiled from source.
+   - The compiled bytecode module is loaded into the persistent `HVMJIT` context via `HVMJIT::loadModule()`.
+   - The JIT rebinds the definitions and updates the dynamic symbol registry.
+
+#### 4.2 Dynamic Wrapper Generation & Symbol Mangling
+If the input block is a transient statement or expression (not a global declaration), it is wrapped inside a helper function with a unique serial suffix `__repl_line_N`:
+```hoo
+func :any __repl_line_N() {
+    // If it's a value-returning expression:
+    return <user_statement>;
+    // If it's control-flow or declaration:
+    <user_statement>;
+    return 0;
+}
+```
+The transient wrapper is **not** appended to `accumulatedDeclarations_` to prevent code pollution. 
+
+##### Symbol Name Mangling
+The compiler mangles functions according to the layout `_F_M_<module_name>_E_<func_name>_<arg_types>`.
+For the function `func :any __repl_line_N()` inside the module `__repl_session`, the target JIT entry symbol is:
+`_F_M___repl_session_E___repl_line_N_any` or `_F_M___repl_session_E___repl_line_N_v` (where `any`/`v` corresponds to the mangled return type).
+
+#### 4.3 Detailed Execution Pseudocode
+Below is the execution flow to be implemented in `REPLSession::eval`:
+
+```cpp
+bool REPLSession::eval(const std::string& input, std::string& outResult, std::string& outError) {
+    outResult.clear();
+    outError.clear();
+
+    bool isDecl = isDeclaration(input);
+    std::string fullSource;
+    std::string targetSymbol;
+
+    if (isDecl) {
+        // Append declaration to test verification
+        fullSource = accumulatedDeclarations_ + "\n" + input;
+    } else {
+        // Wrap transient expression
+        std::string wrapper = buildWrapperFunction(input);
+        fullSource = accumulatedDeclarations_ + "\n" + wrapper;
+        
+        // Target mangled symbol name to execute
+        std::string funcName = "__repl_line_" + std::to_string(lineCounter_);
+        targetSymbol = "_F_M___repl_session_E_" + funcName + "_any"; 
+        // Note: Fallback to _F_M___repl_session_E_ + funcName + "_v" if type matches void/int.
+    }
+
+    // 1. Compile the temporary module
+    auto hoModule = compiler_->compile("__repl_session", fullSource);
+    if (!hoModule) {
+        outError = compiler_->getLastError();
+        return false;
+    }
+
+    // 2. Load the module into the persistent JIT context
+    if (!jit_->loadModule(std::move(hoModule))) {
+        outError = jit_->getLastError();
+        return false;
+    }
+
+    // 3. If it was a declaration, persist it in the session memory
+    if (isDecl) {
+        accumulatedDeclarations_ += "\n" + input;
+        outResult = "Declaration defined.";
+        return true;
+    }
+
+    // 4. Run the wrapper function
+    int64_t exitCode = jit_->run(targetSymbol);
+    if (jit_->hasError()) {
+        // Fallback check for void / alternative return types
+        jit_->clearError();
+        std::string fallbackSymbol = "_F_M___repl_session_E___repl_line_" + std::to_string(lineCounter_) + "_v";
+        exitCode = jit_->run(fallbackSymbol);
+    }
+
+    if (jit_->hasError()) {
+        outError = "Runtime JIT Execution Error: " + jit_->getLastError();
+        return false;
+    }
+
+    // 5. Format and return result
+    // Extract returned value from register (r1 is standard return in HVM)
+    outResult = std::to_string(exitCode);
+    return true;
+}
+```
+
+### Phase 5: Test Infrastructure & CI Verification - [In Progress]
 - **Unit Test Target Setup**:
   - Add `tests/repl/HooReplTest.cpp` to `CMakeLists.txt` inside the `hoo-tests` build target.
 - **Verification Tests**:
