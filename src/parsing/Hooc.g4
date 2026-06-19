@@ -40,6 +40,9 @@ FINALLY: 'finally';
 THROW: 'throw';
 RETHROW: 'rethrow';
 MAP: 'map';
+HASHMAP: 'HashMap';
+ANYARRAY: 'AnyArray';
+ANY: 'any';
 FUNCTION: 'function';
 TENSOR: 'tensor';
 
@@ -187,7 +190,7 @@ constantDeclaration
     ;
 
 // Types
-type: tensorType | mapType | optionalType;
+type: tensorType | hashMapType | mapType | anyType | anyArrayType | optionalType;
 
 optionalType: arrayType QUESTION?;
 
@@ -199,9 +202,13 @@ baseType
     ;
 
 mapType: MAP LBRACKET mapKeyType COMMA type RBRACKET;
+hashMapType: HASHMAP LESS hashMapKeyType COMMA type GREATER;
+anyType: ANY;
+anyArrayType: ANYARRAY;
 tensorType: TENSOR LESS baseType GREATER LBRACKET INTEGER_LITERAL (COMMA INTEGER_LITERAL)* RBRACKET;
 
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
+hashMapKeyType: BYTE | INT8 | INT64;
 
 primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BOOL | CHAR | STRING | VOID;
 
@@ -321,14 +328,14 @@ primary
     | TRUE
     | FALSE
     | NULL
-    | LBRACKET expressionList? RBRACKET IDENTIFIER?
+    | LBRACKET expressionList? RBRACKET (IDENTIFIER | ANY)?
     | LPAREN expression RPAREN
     | newExpression
     ;
 
 // Object creation expression
 newExpression
-    : NEW qualifiedIdentifier LPAREN argumentList? RPAREN
+    : NEW (hashMapType | anyArrayType | qualifiedIdentifier) LPAREN argumentList? RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

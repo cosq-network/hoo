@@ -102,3 +102,71 @@ Numeric keys are always passed as pointers to the value (e.g., pass `&int64_key`
 - **Object values**: Object handles are stored as raw `void*` **without** `hoo_retain`/`hoo_release` (consistent with `HooArray`). The caller is responsible for retaining objects that must survive beyond the map's lifetime. Null object values (`nullptr`) are permitted.
 - **Primitive values** (`int64`, `double`, `bool`, `int8`): Stored by value; no lifetime management needed.
 - **Generic value API** (`hoo_map_set`/`hoo_map_try_get` via `void*`): The caller is responsible for lifetime management when using the raw `void*` path.
+
+---
+
+## 3. Intrinsic Heterogeneous Collections (`any`, `HashMap`, `AnyArray`)
+
+`HashMap` and `AnyArray` are runtime-managed intrinsic collections for heterogeneous values. They are separate from the older `Map` and `Array` APIs and use a shared tagged value layout:
+
+```cpp
+struct HooAnyValue {
+    int64_t type_id;
+    uint64_t data;
+};
+```
+
+- `any` has type ID `0` and represents the two-slot tagged value shape.
+- `HashMap` has managed runtime type ID `117`.
+- `AnyArray` has managed runtime type ID `118`.
+- Managed payloads use existing ARC rules. When `type_id >= 100`, insertion retains the payload and overwrite/remove/clear/destruction releases it.
+
+### `HashMap<K, V>`
+
+`HashMap` is declared with angle brackets and supports only `byte`, `int8`, and `int64` keys:
+
+```hoo
+var fixed: HashMap<int64, int64> = new HashMap<int64, int64>();
+var mixed: HashMap<byte, any> = new HashMap<byte, any>();
+
+fixed[10] = 42;
+mixed[1] = "hello";
+mixed[2] = 100;
+```
+
+The raw runtime ABI keeps the object layout opaque:
+
+| Function | Description |
+| :--- | :--- |
+| `hoo_hashmap_new(key_type_id, value_type_id)` | Creates a managed hash map. |
+| `hoo_hashmap_count(map)` | Returns entry count. |
+| `hoo_hashmap_set_fixed_i8(map, key, data)` | Stores a fixed-width value. |
+| `hoo_hashmap_get_fixed_i8(map, key, out)` | Writes a fixed-width value to `out`; returns `1` if found. |
+| `hoo_hashmap_set_any_i8(map, key, type_id, data)` | Stores a tagged `any` value. |
+| `hoo_hashmap_get_any_i8(map, key, out)` | Writes a `HooAnyValue` to `out`; returns `1` if found. |
+| `hoo_hashmap_remove_i8(map, key)` | Removes an entry. |
+| `hoo_hashmap_clear(map)` | Releases contained managed `any` payloads and clears entries. |
+
+### `AnyArray`
+
+`AnyArray` is a variable-length array whose element type is always `any`.
+
+```hoo
+var values = [1, "two", 3.0]any;
+var more = new AnyArray(16);
+more.push(42);
+more[0] = "updated";
+```
+
+| Function | Description |
+| :--- | :--- |
+| `hoo_anyarray_new()` | Creates an empty managed array. |
+| `hoo_anyarray_new_capacity(capacity)` | Creates an empty managed array with reserved capacity. |
+| `hoo_anyarray_length(array)` | Returns element count. |
+| `hoo_anyarray_push(array, type_id, data)` | Appends a tagged value. |
+| `hoo_anyarray_set(array, index, type_id, data)` | Replaces an existing element. |
+| `hoo_anyarray_get(array, index, out)` | Writes a `HooAnyValue` to `out`; returns `1` if found. |
+| `hoo_anyarray_pop(array, out)` | Removes the last element and transfers it to `out` when provided. |
+| `hoo_anyarray_clear(array)` | Releases contained managed payloads and clears elements. |
+
+The HVM/JIT lowering uses ordinary `CALL` instructions and existing registers. No HVM opcode or object-layout extension is required.

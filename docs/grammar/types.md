@@ -37,6 +37,25 @@ Maps are built-in dictionary types mapping keys to values.
 
 *See also: [Runtime Collections: Maps](../runtime/collections.md#2-maps-hoomap).*
 
+### Intrinsic `any`, `HashMap`, and `AnyArray`
+`any` is the tagged value type used by heterogeneous intrinsic collections. It carries a runtime type ID plus a 64-bit data payload.
+
+- `any` - A virtual tagged value type. Type ID `0`.
+- `HashMap<int64, int64>` - A native hash map from `int64` keys to fixed-width `int64` values.
+- `HashMap<byte, any>` - A native hash map from `byte` keys to heterogeneous tagged values.
+- `AnyArray` - A variable-length array whose element type is always `any`.
+
+`HashMap` keys are intentionally restricted to hardware-friendly integer scalars: `byte`, `int8`, and `int64`. `HashMap` uses angle brackets (`HashMap<int64, any>`), while the older `map` type keeps square brackets (`map[string, int64]`).
+
+`AnyArray` literals use an explicit `any` suffix:
+
+```hoo
+var values = [1, "two", 3.0]any;
+var more = new AnyArray(16);
+```
+
+*See also: [ISSUE-033](../issues/ISSUE-033_hashmap_intrinsic.md) and [Runtime Collections](../runtime/collections.md#3-intrinsic-heterogeneous-collections-any-hashmap-anyarray).*
+
 ### Tensors
 Tensors are multi-dimensional, fixed-size numerical arrays optimized for AI/ML algebra.
 - `tensor<f8>[3, 3]` - A 3x3 2D matrix of 8-bit floating point values.

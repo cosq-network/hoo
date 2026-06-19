@@ -36,6 +36,8 @@ extern "C" {
 #define HOO_TYPE_JSON         112  // HooRegex
 #define HOO_TYPE_BUFFER       113  // HooBuffer
 #define HOO_TYPE_CSV          114  // HooCsv
+#define HOO_TYPE_HASHMAP      117  // HooHashMap intrinsic
+#define HOO_TYPE_ANYARRAY     118  // HooAnyArray intrinsic
 
 // Primitive Type IDs (for runtime conversion/reflection)
 #define HOO_TYPE_INT64        1

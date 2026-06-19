@@ -57,6 +57,7 @@ const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap() {
         {"int64", "i8"},
         {"int8", "i1"},
         {"byte", "u1"},
+        {"any", "y"},
         {"double", "d"},
         {"int", "i8"},
         {"f64", "d"},

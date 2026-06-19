@@ -70,6 +70,7 @@ Defined in `getTypeCodeMap()` (SymbolMangler.cpp lines 55-72):
 | `bool` | `b` |
 | `char` | `c` |
 | `string` | `s` |
+| `any` | `y` |
 | `void` | `v` |
 | `ptr` | `p` |
 | `array` | `a` |
@@ -216,6 +217,8 @@ if (functionName == "print" || functionName == "println" ||
 | Class method, no module | method `bar` in class `Foo` | `_F_Foo_bar_v` |
 | Class constructor, module `app` | constructor of class `Foo` | `_F_M_app_E_Foo_CT_v` |
 | Core runtime intrinsic | `hoo_alloc(size, typeId)` | `_F_hoo_alloc_p_i8_i8` |
+| AnyArray core intrinsic | `hoo_anyarray_push(arr,type,data)` | `_F_hoo_anyarray_push_i8_p_i8_i8` |
+| HashMap core intrinsic | `hoo_hashmap_new(keyType,valueType)` | `_F_hoo_hashmap_new_p_i8_i8` |
 
 ---
 
@@ -377,6 +380,7 @@ If `jit.run()` returns -1 or the JIT reports a missing symbol:
 | `b` | bool |
 | `c` | char |
 | `s` | string |
+| `y` | any |
 | `v` | void |
 | `p` | ptr |
 | `a` | array |

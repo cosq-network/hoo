@@ -146,6 +146,18 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
         throw std::runtime_error("TypeContext is null");
     }
 
+    if (ctx->anyType()) {
+        return std::make_unique<AnyType>();
+    }
+
+    if (ctx->anyArrayType()) {
+        return std::make_unique<AnyArrayType>();
+    }
+
+    if (ctx->hashMapType()) {
+        return buildHashMapType(ctx->hashMapType());
+    }
+
     // Handle mapType first
     if (ctx->mapType()) {
         return buildMapType(ctx->mapType());
@@ -157,7 +169,7 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
 
     // Handle optionalType (array types and primitives)
     if (!ctx->optionalType()) {
-        throw std::runtime_error("Malformed Type: missing optionalType, mapType, and tensorType");
+        throw std::runtime_error("Malformed Type: missing supported type form");
     }
 
     auto optionalCtx = ctx->optionalType();
@@ -270,6 +282,35 @@ std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeConte
     }
 
     return std::make_unique<MapType>(keyType, std::move(valueType));
+}
+
+std::unique_ptr<HashMapType> SimpleASTBuilder::buildHashMapType(HoocParser::HashMapTypeContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("HashMapTypeContext is null");
+    }
+
+    auto keyTypeCtx = ctx->hashMapKeyType();
+    if (!keyTypeCtx) {
+        throw std::runtime_error("HashMapKeyType missing in HashMapType");
+    }
+
+    HashMapKeyType keyType;
+    if (keyTypeCtx->BYTE()) {
+        keyType = HashMapKeyType::BYTE;
+    } else if (keyTypeCtx->INT8()) {
+        keyType = HashMapKeyType::INT8;
+    } else if (keyTypeCtx->INT64()) {
+        keyType = HashMapKeyType::INT64;
+    } else {
+        throw std::runtime_error("Unknown HashMapKeyType encountered");
+    }
+
+    auto valueType = buildType(ctx->type());
+    if (!valueType) {
+        throw std::runtime_error("Failed to build value type for HashMapType");
+    }
+
+    return std::make_unique<HashMapType>(keyType, std::move(valueType));
 }
 
 std::unique_ptr<TensorType> SimpleASTBuilder::buildTensorType(HoocParser::TensorTypeContext* ctx) {
@@ -742,7 +783,7 @@ std::unique_ptr<ArrayLiteral> SimpleASTBuilder::buildArrayLiteral(HoocParser::Pr
         elements = std::make_unique<ExpressionList>(std::vector<std::unique_ptr<Expression>>());
     }
 
-    return std::make_unique<ArrayLiteral>(std::move(elements));
+    return std::make_unique<ArrayLiteral>(std::move(elements), ctx->ANY() != nullptr);
 }
 
 std::unique_ptr<TensorLiteral> SimpleASTBuilder::buildTensorLiteral(HoocParser::PrimaryContext* ctx) {
@@ -841,17 +882,25 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::NewExpressionContext* ctx) {
-    // Get the qualified class name
-    auto qualifiedClassName = buildQualifiedIdentifier(ctx->qualifiedIdentifier());
-
-    // Build argument list if present
     std::unique_ptr<ArgumentList> args;
     if (ctx->argumentList()) {
         args = buildArgumentList(ctx->argumentList());
     } else {
-        // Empty argument list
         args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
     }
+
+    if (ctx->hashMapType()) {
+        return std::make_unique<NewHashMapExpression>(
+            buildHashMapType(ctx->hashMapType()),
+            std::move(args));
+    }
+
+    if (ctx->anyArrayType()) {
+        return std::make_unique<NewObjectExpression>("AnyArray", std::move(args));
+    }
+
+    // Get the qualified class name
+    auto qualifiedClassName = buildQualifiedIdentifier(ctx->qualifiedIdentifier());
 
     return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), std::move(args));
 }

@@ -45,7 +45,21 @@ The JIT maintains a registry of host-native functions that can be called directl
 
 Defined function symbols now set `section_index = 0` (instead of leaving it uninitialized) to ensure consistent section-aware lookups in `HVMCodeGenerator::endFunction()`.
 
-### 3.1 Flexible Symbol Resolution
+### 3.1 `any`, `HashMap`, and `AnyArray` Bridges
+
+The heterogeneous collection intrinsics introduced by ISSUE-033 use ordinary HVM `CALL` lowering and do not add opcodes. `HashMap` and `AnyArray` handles are opaque 64-bit managed-object pointers. The shared `any` payload layout is two 64-bit fields: `type_id` and `data`.
+
+Raw runtime APIs that return `any` write into an explicit out-buffer:
+
+- `hoo_anyarray_get(array, index, HooAnyValue* out)`
+- `hoo_anyarray_pop(array, HooAnyValue* out)`
+- `hoo_hashmap_get_any_i8(map, key, HooAnyValue* out)`
+
+Current expression-level JIT lowering also registers scalar data bridge helpers such as `_F_hoo_anyarray_get_data_i8_p_i8` and `_F_hoo_hashmap_get_any_data_i8_p_i8`. These helpers are JIT conveniences for payload reads in scalar expressions; they do not expose C++ container layout and must remain behaviorally equivalent to the out-buffer APIs for success/failure and ownership.
+
+Arguments follow the normal HVM register convention: `r1`, `r2`, `r3`, then `r5` and above because `r4` is reserved as the thread pointer. Four-argument helpers such as `_F_hoo_anyarray_set_i8_p_i8_i8_i8` and `_F_hoo_hashmap_set_any_i8_p_i8_i8_i8` therefore read the fourth logical argument from `r5`.
+
+### 3.2 Flexible Symbol Resolution
 The JIT employs `buildLookupCandidates()` to resolve symbols that may have been compiled with different mangling conventions:
 
 1. **Direct match**: The exact symbol name is tried first.

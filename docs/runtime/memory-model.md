@@ -24,6 +24,10 @@ Every object managed by the runtime (including Arrays, Strings, Maps, and User O
 - `111`: HooRegex
 - `112`: HooJSON
 - `113`: HooBuffer
+- `117`: HooHashMap
+- `118`: HooAnyArray
+
+Type ID `0` is reserved for the virtual `any` tagged value. It is not a managed object header type; it identifies the two-slot `{ type_id, data }` value shape used by heterogeneous runtime containers.
 
 ## 2. Thread-Local Allocation Buffer (TLAB)
 To minimize lock contention during allocation, the runtime utilizes a TLAB.

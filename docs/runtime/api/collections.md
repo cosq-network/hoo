@@ -36,6 +36,36 @@ Removes all elements from the array.
 
 ---
 
+## 1.5 Heterogeneous Arrays (`AnyArray`)
+
+`AnyArray` is an intrinsic managed collection whose element type is `any`.
+
+### `new AnyArray() :AnyArray`
+Creates an empty heterogeneous array.
+
+### `new AnyArray(capacity: int64) :AnyArray`
+Creates an empty heterogeneous array with reserved capacity.
+
+### `[expr, ...]any :AnyArray`
+Creates an `AnyArray` literal and packs each element as `(type_id, data)`.
+
+### `arr.length() :int64`
+Returns the number of elements.
+
+### `arr.push(value) :int64`
+Appends any primitive or managed value. Returns `1` on success.
+
+### `arr[index]`
+Returns the stored value payload for current expression lowering. The raw runtime getter returns a full tagged `HooAnyValue`.
+
+### `arr[index] = value`
+Replaces an existing element and updates ARC ownership for managed payloads.
+
+### `arr.clear()`
+Releases managed payloads and removes all elements.
+
+---
+
 ## 2. Maps (`Map`)
 
 Hoo maps are type-safe dictionaries that map keys to values. Keys are restricted to specific types (int64, string, etc.) for efficient hashing, and value types can also be specified at creation.
@@ -121,6 +151,33 @@ Returns the value type of the map (HooMapValueType value).
 
 ---
 
+## 3. Native Hash Maps (`HashMap`)
+
+`HashMap<K, V>` is an intrinsic hash map with `byte`, `int8`, or `int64` keys. `V` may be a fixed value type or `any`.
+
+### `new HashMap<int64, int64>() :HashMap`
+Creates a fixed-value native hash map.
+
+### `new HashMap<byte, any>() :HashMap`
+Creates a heterogeneous native hash map.
+
+### `m[key] = value`
+Stores `value`. Fixed maps store the 64-bit payload directly. `HashMap<K, any>` stores the runtime type ID plus payload and retains managed values.
+
+### `m[key]`
+Returns the stored value payload for current expression lowering. The raw runtime getter for `HashMap<K, any>` returns the full tagged `HooAnyValue`.
+
+### `m.count() :int64`
+Returns the number of entries.
+
+### `m.remove(key) :int64`
+Removes an entry and returns `1` if present.
+
+### `m.clear()`
+Clears all entries and releases managed `any` payloads.
+
+---
+
 ## Usage Example
 
 ```hoo
@@ -149,6 +206,12 @@ func :int64 main() {
     users.setInt64String(1001, "Alice");
     users.setInt64String(1002, "Bob");
     var name = users.getInt64String(1001);
+
+    // Intrinsic heterogeneous collections
+    var values = [1, "two", 3]any;
+    var mixed: HashMap<byte, any> = new HashMap<byte, any>();
+    mixed[1] = values[0];
+    mixed[2] = "hello";
 
     return 0;
 }

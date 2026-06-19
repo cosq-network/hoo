@@ -16,6 +16,16 @@ public:
     virtual ~Type() = default;
 };
 
+class AnyType : public Type {
+public:
+    std::string toString() const override;
+};
+
+class AnyArrayType : public Type {
+public:
+    std::string toString() const override;
+};
+
 // Primitive types
 enum class PrimitiveTypeKind {
     INT8,
@@ -147,6 +157,37 @@ public:
 
 private:
     MapKeyType keyType_;
+    std::unique_ptr<Type> valueType_;
+};
+
+// HashMap key types (restricted to hardware-friendly integer scalars)
+enum class HashMapKeyType {
+    BYTE,
+    INT8,
+    INT64
+};
+
+class HashMapType : public Type {
+public:
+    HashMapType(HashMapKeyType keyType, std::unique_ptr<Type> valueType)
+        : keyType_(keyType), valueType_(std::move(valueType)) {}
+
+    std::string toString() const override;
+
+    HashMapKeyType getKeyType() const { return keyType_; }
+    const Type& getValueType() const { return *valueType_; }
+
+    std::string keyTypeToString() const {
+        switch (keyType_) {
+            case HashMapKeyType::BYTE: return "byte";
+            case HashMapKeyType::INT8: return "int8";
+            case HashMapKeyType::INT64: return "int64";
+            default: return "unknown";
+        }
+    }
+
+private:
+    HashMapKeyType keyType_;
     std::unique_ptr<Type> valueType_;
 };
 

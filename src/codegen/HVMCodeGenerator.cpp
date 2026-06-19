@@ -28,6 +28,8 @@ static uint8_t argReg(uint8_t first, size_t i) {
     return reg;
 }
 
+static uint32_t hashMapKeyTypeId(const ast::HashMapType& type);
+
 // Built-in classes that support class.method mangling in JIT symbols.
 static bool isClassMethodJitClass(const std::string& className) {
     static const std::unordered_set<std::string> cmClasses = {
@@ -101,6 +103,8 @@ static std::string classToPrefix(const std::string& className) {
         {"Map", "map"},
         {"Buffer", "buffer"},
         {"Random", "random"},
+        {"AnyArray", "anyarray"},
+        {"HashMap", "hashmap"},
     };
     auto it = map.find(className);
     return it != map.end() ? it->second : "";
@@ -120,6 +124,8 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"HttpClient", 115},
         {"HttpResponse", 116},
         {"Random", 105},
+        {"HashMap", 117},
+        {"AnyArray", 118},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -595,14 +601,26 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         std::string varClassName;
         uint32_t typeId = getTypeId(decl.getType(), decl.getInitializer(), &varClassName);
         uint32_t elemTypeId = 0;
+        uint32_t keyTypeId = 0;
         if (decl.getType()) {
             if (auto arrType = dynamic_cast<const ast::ArrayType*>(decl.getType())) {
                 elemTypeId = typeIdFromDeclaredType(&arrType->getBaseType());
             } else if (auto tensorType = dynamic_cast<const ast::TensorType*>(decl.getType())) {
                 elemTypeId = tensorElementTypeIdFromType(*tensorType);
+            } else if (auto hashMapType = dynamic_cast<const ast::HashMapType*>(decl.getType())) {
+                keyTypeId = hashMapKeyTypeId(*hashMapType);
+                elemTypeId = typeIdFromDeclaredType(&hashMapType->getValueType());
+            } else if (dynamic_cast<const ast::AnyArrayType*>(decl.getType())) {
+                elemTypeId = 0;
             }
         } else if (decl.getInitializer()) {
-            if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
+            if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(decl.getInitializer())) {
+                keyTypeId = hashMapKeyTypeId(newHash->getHashMapType());
+                elemTypeId = typeIdFromDeclaredType(&newHash->getHashMapType().getValueType());
+            } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
+                if (arrLit->isAnyArray()) {
+                    elemTypeId = 0;
+                } else {
                 auto& elements = arrLit->getElements()->getExpressions();
                 uint32_t commonType = 100;
                 for (const auto& elem : elements) {
@@ -613,9 +631,12 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                     }
                 }
                 elemTypeId = commonType;
+                }
             } else if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(decl.getInitializer())) {
                 if (auto tensorLit = dynamic_cast<const ast::TensorLiteral*>(&pe->getPrimary())) {
                     elemTypeId = tensorElementTypeIdFromLiteral(*tensorLit);
+                } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
+                    if (arrLit->isAnyArray()) elemTypeId = 0;
                 }
             } else if (auto binExpr = dynamic_cast<const ast::BinaryExpression*>(decl.getInitializer())) {
                 auto inferTensorElemType = [&](const ast::Expression& operand) -> uint32_t {
@@ -634,7 +655,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 else if (rightElem != 100) elemTypeId = rightElem;
             }
         }
-        int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId);
+        int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId);
         if (decl.getInitializer()) {
             uint8_t reg = visitExpression(*decl.getInitializer());
             emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
@@ -937,6 +958,26 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         if (auto arrayLit = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
             auto& elements = arrayLit->getElements()->getExpressions();
+
+            if (arrayLit->isAnyArray()) {
+                emitCall(Opcode::CALL, "_F_hoo_anyarray_new_p");
+                uint8_t arrReg = allocateRegister();
+                emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
+
+                for (const auto& elem : elements) {
+                    uint8_t elemReg = visitExpression(*elem);
+                    uint32_t elemType = getTypeId(nullptr, elem.get());
+                    uint8_t typeReg = emitConstant(static_cast<int64_t>(elemType));
+                    emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+                    emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
+                    emit(Opcode::MOV, OperandsR{3, elemReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_push_i8_p_i8_i8");
+                    freeRegister(typeReg);
+                    freeRegister(elemReg);
+                }
+
+                return arrReg;
+            }
             
             emitCall(Opcode::CALL, "_F_hoo_Array_new_p");
             uint8_t arrReg = allocateRegister();
@@ -1108,6 +1149,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
     }
 
+    if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
+        const auto& type = newHash->getHashMapType();
+        uint8_t keyTypeReg = emitConstant(static_cast<int64_t>(hashMapKeyTypeId(type)));
+        uint8_t valueTypeReg = emitConstant(static_cast<int64_t>(typeIdFromDeclaredType(&type.getValueType())));
+        emit(Opcode::MOV, OperandsR{1, keyTypeReg, 0, 0});
+        emit(Opcode::MOV, OperandsR{2, valueTypeReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_hoo_hashmap_new_p_i8_i8");
+        freeRegister(keyTypeReg);
+        freeRegister(valueTypeReg);
+        uint8_t dest = allocateRegister();
+        emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        return dest;
+    }
+
     if (auto newExpr = dynamic_cast<const ast::NewObjectExpression*>(&expr)) {
         std::string className = newExpr->getClassName();
         if (isBuiltinClassName(className) && classes_.find(className) == classes_.end()) {
@@ -1124,6 +1179,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             for (size_t i = 0; i < argRegs.size(); ++i) {
                 emit(Opcode::MOV, OperandsR{argReg(1, i), argRegs[i], 0, 0});
                 freeRegister(argRegs[i]);
+            }
+
+            if (className == "AnyArray") {
+                if (argCount == 0) {
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_new_p");
+                } else if (argCount == 1) {
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_new_capacity_p_i8");
+                } else {
+                    addError("AnyArray constructor expects zero or one argument");
+                    return 0;
+                }
+                uint8_t dest = allocateRegister();
+                emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                return dest;
             }
 
             MangledFunctionParams mp;
@@ -1336,6 +1405,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 115: resolvedClass = "HttpClient"; break;
                     case 116: resolvedClass = "HttpResponse"; break;
                     case 105: resolvedClass = "Random"; break;
+                    case 117: resolvedClass = "HashMap"; break;
+                    case 118: resolvedClass = "AnyArray"; break;
                     default: break;
                 }
             }
@@ -1374,6 +1445,50 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     emit(Opcode::MOV, OperandsR{argReg(2, i), argRegs[i], 0, 0});
                     freeRegister(argRegs[i]);
                 }
+            }
+
+            if (resolvedClass == "AnyArray") {
+                if (methodName == "push") {
+                    uint32_t argType = 100;
+                    if (funcCall->getArguments() && !funcCall->getArguments()->getArguments().empty()) {
+                        argType = getTypeId(nullptr, funcCall->getArguments()->getArguments()[0].get());
+                    }
+                    uint8_t typeReg = emitConstant(static_cast<int64_t>(argType));
+                    emit(Opcode::MOV, OperandsR{3, 2, 0, 0});
+                    emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_push_i8_p_i8_i8");
+                    freeRegister(typeReg);
+                } else if (methodName == "length") {
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_length_i8_p");
+                } else if (methodName == "clear") {
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_clear_v_p");
+                } else if (methodName == "pop") {
+                    emitCall(Opcode::CALL, "_F_hoo_anyarray_pop_data_i8_p");
+                } else if (methodName == "release") {
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_anyarray_release_v");
+                } else {
+                    addError("Unsupported AnyArray method '" + methodName + "'");
+                }
+                uint8_t dest = allocateRegister();
+                emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                return dest;
+            }
+
+            if (resolvedClass == "HashMap") {
+                if (methodName == "count") {
+                    emitCall(Opcode::CALL, "_F_hoo_hashmap_count_i8_p");
+                } else if (methodName == "clear") {
+                    emitCall(Opcode::CALL, "_F_hoo_hashmap_clear_v_p");
+                } else if (methodName == "remove") {
+                    emitCall(Opcode::CALL, "_F_hoo_hashmap_remove_i8_p_i8");
+                } else if (methodName == "release") {
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_hashmap_release_v");
+                } else {
+                    addError("Unsupported HashMap method '" + methodName + "'");
+                }
+                uint8_t dest = allocateRegister();
+                emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                return dest;
             }
 
             MangledFunctionParams mp;
@@ -1800,6 +1915,46 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 emit(Opcode::ST_D, OperandsI{valueReg, 30, static_cast<int16_t>(offset)});
                 return valueReg;
             }
+        } else if (auto leftArray = dynamic_cast<const ast::ArrayAccess*>(&assign->getLeft())) {
+            uint8_t objReg = visitExpression(leftArray->getArray());
+            uint8_t idxReg = visitExpression(leftArray->getIndex());
+            uint32_t sourceTypeId = 0;
+            uint32_t valueTypeId = getTypeId(nullptr, &assign->getRight());
+            uint32_t mapValueTypeId = 0;
+            if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&leftArray->getArray())) {
+                if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                    sourceTypeId = getLocalTypeId(id->getName());
+                    mapValueTypeId = getLocalElementTypeId(id->getName());
+                }
+            }
+
+            if (sourceTypeId == 118) {
+                uint8_t typeReg = emitConstant(static_cast<int64_t>(valueTypeId));
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{5, valueReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_anyarray_set_i8_p_i8_i8_i8");
+                freeRegister(typeReg);
+            } else if (sourceTypeId == 117) {
+                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
+                if (mapValueTypeId == 0) {
+                    uint8_t typeReg = emitConstant(static_cast<int64_t>(valueTypeId));
+                    emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
+                    emit(Opcode::MOV, OperandsR{5, valueReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_hashmap_set_any_i8_p_i8_i8_i8");
+                    freeRegister(typeReg);
+                } else {
+                    emit(Opcode::MOV, OperandsR{3, valueReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_hashmap_set_fixed_i8_p_i8_i8");
+                }
+            } else {
+                addError("Unsupported indexed assignment target");
+            }
+            freeRegister(objReg);
+            freeRegister(idxReg);
+            return valueReg;
         } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&assign->getLeft())) {
             uint8_t objReg = visitExpression(leftMember->getObject());
             int32_t offset = 0;
@@ -1846,6 +2001,32 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 sourceTypeId = getLocalTypeId(id->getName());
                 elementTypeId = getLocalElementTypeId(id->getName());
             }
+        }
+
+        if (sourceTypeId == 118) {
+            emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+            emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_anyarray_get_data_i8_p_i8");
+            freeRegister(arrReg);
+            freeRegister(idxReg);
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            return dest;
+        }
+
+        if (sourceTypeId == 117) {
+            emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+            emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
+            if (elementTypeId == 0) {
+                emitCall(Opcode::CALL, "_F_hoo_hashmap_get_any_data_i8_p_i8");
+            } else {
+                emitCall(Opcode::CALL, "_F_hoo_hashmap_get_fixed_data_i8_p_i8");
+            }
+            freeRegister(arrReg);
+            freeRegister(idxReg);
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            return dest;
         }
         
         // Bounds check: compare idx against length via runtime call
@@ -1918,11 +2099,20 @@ void HVMCodeGenerator::freeRegister(uint8_t reg) {
 }
 
 
-int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId, const std::string& className, uint32_t elementTypeId) {
+int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId, const std::string& className, uint32_t elementTypeId, uint32_t keyTypeId) {
     currentStackOffset_ -= 8;
     if (scopeStack_.empty()) scopeStack_.push_back({});
-    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId};
+    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId, keyTypeId};
     return currentStackOffset_;
+}
+
+static uint32_t hashMapKeyTypeId(const ast::HashMapType& type) {
+    switch (type.getKeyType()) {
+        case ast::HashMapKeyType::INT64: return 1;
+        case ast::HashMapKeyType::INT8: return 5;
+        case ast::HashMapKeyType::BYTE: return 6;
+    }
+    return 1;
 }
 
 int32_t HVMCodeGenerator::getLocalOffset(const std::string& name) {
@@ -1958,6 +2148,14 @@ uint32_t HVMCodeGenerator::getLocalElementTypeId(const std::string& name) const 
     return 0;
 }
 
+uint32_t HVMCodeGenerator::getLocalKeyTypeId(const std::string& name) const {
+    for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
+        auto found = it->find(name);
+        if (found != it->end()) return found->second.keyTypeId;
+    }
+    return 0;
+}
+
 bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
     static const std::unordered_set<std::string> builtinClasses = {
         "String", "Array", "Map", "Exception", "Character",
@@ -1965,7 +2163,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "Json", "Net", "URL", "HttpClient", "HttpResponse",
         "Path", "Hashing", "Encoding", "Uuid", "Compression",
         "Process", "Args", "Csv", "Console", "StringBuilder",
-        "Buffer", "Random"
+        "Buffer", "Random", "HashMap", "AnyArray"
     };
     return builtinClasses.count(name) > 0;
 }
@@ -2108,6 +2306,15 @@ void HVMCodeGenerator::emitBranch(Opcode op, uint8_t rs1, uint8_t rs2, Label* ta
 
 
 uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName) const {
+    if (dynamic_cast<const ast::AnyType*>(type)) return 0;
+    if (dynamic_cast<const ast::AnyArrayType*>(type)) {
+        if (outClassName) *outClassName = "AnyArray";
+        return 118;
+    }
+    if (dynamic_cast<const ast::HashMapType*>(type)) {
+        if (outClassName) *outClassName = "HashMap";
+        return 117;
+    }
     if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
         if (bt->isPrimitive()) {
             switch (bt->getPrimitiveType()->getKind()) {
@@ -2132,6 +2339,8 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
             if (name == "String") return 101;
             if (name == "Character") return 109;
             if (name == "Buffer" || name == "buffer") return 113;
+            if (name == "AnyArray") return 118;
+            if (name == "HashMap") return 117;
             return 100;
         }
     }
@@ -2153,6 +2362,7 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 7: return "char";
         case 8: return "bit";
         case 9: return "f8";
+        case 0: return "any";
         case 101: return "string";
         case 104: return "tensor";
         default: return "ptr";
@@ -2290,7 +2500,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         if (dynamic_cast<const ast::F8Literal*>(&primary)) return 9;
         if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
-        if (dynamic_cast<const ast::ArrayLiteral*>(&primary)) return 102;
+        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isAnyArray() ? 118 : 102;
         if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
             return getLocalTypeId(id->getName());
@@ -2358,6 +2568,9 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         uint32_t typeId = builtinConstructedTypeId(newExpr->getClassName());
         return typeId != 100 ? typeId : 100;
     }
+    if (dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
+        return 117;
+    }
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
@@ -2395,6 +2608,17 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                         if (member == "nextDouble") return 2;
                         return 100;
                     }
+                    if (objectTypeId == 117) {
+                        if (member == "count" || member == "remove") return 1;
+                        if (member == "clear") return 4;
+                        return 100;
+                    }
+                    if (objectTypeId == 118) {
+                        if (member == "length" || member == "push") return 1;
+                        if (member == "clear") return 4;
+                        if (member == "pop") return 0;
+                        return 100;
+                    }
                 }
             }
         }
@@ -2415,7 +2639,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 if (dynamic_cast<const ast::F8Literal*>(&node)) return 9;
                 if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
                 if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
-                if (dynamic_cast<const ast::ArrayLiteral*>(&node)) return 102;
+                if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&node)) return arr->isAnyArray() ? 118 : 102;
                 if (dynamic_cast<const ast::TensorLiteral*>(&node)) return 104;
                 if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
             }
@@ -2528,6 +2752,17 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             if (member == "nextDouble") return 2;
                             return 100;
                         }
+                        if (objTypeId == 117) {
+                            if (member == "count" || member == "remove") return 1;
+                            if (member == "clear") return 4;
+                            return 100;
+                        }
+                        if (objTypeId == 118) {
+                            if (member == "length" || member == "push") return 1;
+                            if (member == "clear") return 4;
+                            if (member == "pop") return 0;
+                            return 100;
+                        }
                         if (objTypeId == 114) {
                             if (member == "getPort") return 1;
                             if (member == "getScheme" || member == "getHost" ||
@@ -2597,6 +2832,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         return retIt->second;
                     }
                 }
+            }
+            if (dynamic_cast<const ast::NewHashMapExpression*>(initializer)) {
+                if (outClassName) *outClassName = "HashMap";
+                return 117;
             }
             // Inference from array subscript (arr[0])
             if (auto aa = dynamic_cast<const ast::ArrayAccess*>(initializer)) {

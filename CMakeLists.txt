@@ -225,6 +225,9 @@ endif()
 
 add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_runtime.c
+    src/runtime/lib/hoo_any.cpp
+    src/runtime/lib/hoo_anyarray.cpp
+    src/runtime/lib/hoo_hashmap.cpp
     src/runtime/lib/hoo_string.cpp
     src/runtime/lib/hoo_character.cpp
     src/runtime/lib/hoo_generic_array.cpp
@@ -420,6 +423,7 @@ if(HOO_BUILD_TESTS)
         tests/parsing/ClassDeclarationParsingTest.cpp
         tests/parsing/SimpleASTBuilderTest.cpp
         tests/parsing/MapTypeParsingTest.cpp
+        tests/parsing/AnyHashMapParsingTest.cpp
         tests/parsing/OptionalReturnTypeTest.cpp
         tests/parsing/MathModuleParsingTest.cpp
         tests/parsing/NetworkModuleParsingTest.cpp
@@ -438,6 +442,7 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooCharacterTest.cpp
         tests/runtime/HooRuntimeTest.cpp
         tests/runtime/HooMapTest.cpp
+        tests/runtime/HooAnyCollectionsTest.cpp
         tests/runtime/HooExceptionTest.cpp
         tests/runtime/HooMathTest.cpp
         tests/runtime/HooIOTest.cpp
@@ -461,6 +466,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/HooMathJitTest.cpp
         tests/jit/HooStringJitTest.cpp
         tests/jit/HooMapJitTest.cpp
+        tests/jit/HooAnyCollectionsJitTest.cpp
         tests/jit/HooArrayJitTest.cpp
         tests/jit/HooTensorJitTest.cpp
         tests/jit/HooStandardLibraryJitTest.cpp

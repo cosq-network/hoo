@@ -2,6 +2,7 @@
 
 #include "ASTNode.h"
 #include "QualifiedIdentifier.h"
+#include "Type.h"
 #include <vector>
 #include <string>
 
@@ -120,6 +121,22 @@ public:
 
 private:
     std::unique_ptr<QualifiedIdentifier> className_;
+    std::unique_ptr<ArgumentList> arguments_;
+};
+
+class NewHashMapExpression : public Expression {
+public:
+    NewHashMapExpression(std::unique_ptr<HashMapType> type,
+                         std::unique_ptr<ArgumentList> arguments)
+        : type_(std::move(type)), arguments_(std::move(arguments)) {}
+
+    std::string toString() const override;
+
+    const HashMapType& getHashMapType() const { return *type_; }
+    const ArgumentList* getArguments() const { return arguments_.get(); }
+
+private:
+    std::unique_ptr<HashMapType> type_;
     std::unique_ptr<ArgumentList> arguments_;
 };
 
@@ -316,15 +333,17 @@ private:
 // Array literal
 class ArrayLiteral : public Expression {
 public:
-    ArrayLiteral(std::unique_ptr<ExpressionList> elements)
-        : elements_(std::move(elements)) {}
+    ArrayLiteral(std::unique_ptr<ExpressionList> elements, bool isAnyArray = false)
+        : elements_(std::move(elements)), isAnyArray_(isAnyArray) {}
 
     std::string toString() const override;
 
     const ExpressionList* getElements() const { return elements_.get(); }
+    bool isAnyArray() const { return isAnyArray_; }
 
 private:
     std::unique_ptr<ExpressionList> elements_;
+    bool isAnyArray_;
 };
 
 class TensorLiteral : public Expression {

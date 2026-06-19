@@ -253,6 +253,8 @@ private:
      */
     std::unique_ptr<ast::MapType> buildMapType(HoocParser::MapTypeContext* ctx);
 
+    std::unique_ptr<ast::HashMapType> buildHashMapType(HoocParser::HashMapTypeContext* ctx);
+
     /**
      * @brief Builds a TensorType (tensor[T][d0, d1, d2]).
      * @param ctx Tensor type context.

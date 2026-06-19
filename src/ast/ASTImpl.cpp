@@ -102,6 +102,14 @@ bool ClassDeclaration::hasModifier(ClassModifier modifier) const {
 }
 
 // Type implementations
+std::string AnyType::toString() const {
+    return "AnyType";
+}
+
+std::string AnyArrayType::toString() const {
+    return "AnyArrayType";
+}
+
 std::string PrimitiveType::toString() const {
     return "PrimitiveType";
 }
@@ -127,6 +135,10 @@ std::string OptionalType::toString() const {
 
 std::string MapType::toString() const {
     return "MapType";
+}
+
+std::string HashMapType::toString() const {
+    return "HashMapType";
 }
 
 std::string TensorType::toString() const {
@@ -216,6 +228,10 @@ std::string NewObjectExpression::toString() const {
     return ss.str();
 }
 
+std::string NewHashMapExpression::toString() const {
+    return "NewHashMapExpression";
+}
+
 std::string UnaryMinus::toString() const {
     return "UnaryMinus";
 }
@@ -261,7 +277,7 @@ std::string ExpressionList::toString() const {
 }
 
 std::string ArrayLiteral::toString() const {
-    return "ArrayLiteral";
+    return isAnyArray_ ? "AnyArrayLiteral" : "ArrayLiteral";
 }
 
 std::string TensorLiteral::toString() const {

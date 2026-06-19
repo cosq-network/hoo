@@ -60,6 +60,7 @@ private:
         uint32_t typeId;
         std::string className; // Class name for user-defined types (empty for primitives)
         uint32_t elementTypeId = 0; // Element type for Array variables (0 = unknown/Object)
+        uint32_t keyTypeId = 0; // Key type for HashMap variables
     };
     std::vector<std::unordered_map<std::string, Local>> scopeStack_;
     int32_t currentStackOffset_ = 0;
@@ -96,7 +97,7 @@ private:
     /**
      * Reserve space on stack for a local variable.
      */
-    int32_t reserveLocal(const std::string& name, uint32_t typeId, const std::string& className = "", uint32_t elementTypeId = 0);
+    int32_t reserveLocal(const std::string& name, uint32_t typeId, const std::string& className = "", uint32_t elementTypeId = 0, uint32_t keyTypeId = 0);
     int32_t getLocalOffset(const std::string& name);
 
     // Label & Control Flow
@@ -139,6 +140,7 @@ private:
      * Look up the elementTypeId of a local variable (for Array types) from scope.
      */
     uint32_t getLocalElementTypeId(const std::string& name) const;
+    uint32_t getLocalKeyTypeId(const std::string& name) const;
 
     /**
      * Convert a declared AST type to a runtime typeId.
