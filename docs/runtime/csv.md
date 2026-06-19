@@ -1,13 +1,13 @@
 # CSV (`hoo.csv`)
 
-The `hoo.csv` module provides CSV parsing, generation, and file I/O operations with Automatic Reference Counting (ARC). Create an instance with `new Csv()` or `csv_fromOpts(delimiter, quote)` and release it with `release()`.
+The `hoo.csv` module provides CSV parsing, generation, and file I/O operations with Automatic Reference Counting (ARC). Create an instance with `new Csv()` or `csv_from_opts(delimiter, quote)` and release it with `release()`.
 
-The `Csv` class supports only one constructor (`new Csv()`). To create an instance with custom options, use the free function `csv_fromOpts(...)` instead of a second constructor.
+The `Csv` class supports only one constructor (`new Csv()`). To create an instance with custom options, use the free function `csv_from_opts(...)` instead of a second constructor.
 
 ## 1. Constructor / Destructor
 
 - `new Csv()` — Create with default options (`,`, `"`).
-- `csv_fromOpts(delimiter, quote)` — Create with custom delimiter and quote (free function).
+- `csv_from_opts(delimiter, quote)` — Create with custom delimiter and quote (free function).
 - `csv.retain()` — Increment reference count.
 - `csv.release()` — Decrement reference count; frees when zero.
 - `csv.refcount()` — Return current reference count (for debugging).

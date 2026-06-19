@@ -4,7 +4,7 @@ The `Process` class provides static methods for process control and command exec
 
 ## Methods
 
-`Process.selfPid() :int64`
+`Process.self_pid() :int64`
 Returns the current process ID.
 
 `Process.capture(command: string) :string`
@@ -22,7 +22,7 @@ Waits for a child process to exit. Returns the exit code.
 ## Example
 
 ```hoo
-let pid = Process.selfPid()
+let pid = Process.self_pid()
 println("PID: " + pid)
 
 let out = Process.capture("echo hello")

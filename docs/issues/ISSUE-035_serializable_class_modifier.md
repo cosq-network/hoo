@@ -373,8 +373,8 @@ var restored = ModelConfig.deserialize(json);
 | Constructor | N/A | Parameterless constructor |
 | `DateTime.now()` | Returns `int64` | Returns `DateTime` instance |
 | Formatting | `DateTime.iso8601(ts)` static | `dt.iso8601()` instance method |
-| Arithmetic | `DateTime.addDays(ts, n)` static | `dt.addDays(n)` instance method |
-| Differences | `DateTime.diffDays(a, b)` static | `a.diffDays(b)` instance method |
+| Arithmetic | `DateTime.add_days(ts, n)` static | `dt.addDays(n)` instance method |
+| Differences | `DateTime.diff_days(a, b)` static | `a.diffDays(b)` instance method |
 | Comparison | `DateTime.compare(a, b)` static | `a.compare(b)` instance method |
 | Serialization | N/A (no instance state) | Auto-generated via modifier |
 

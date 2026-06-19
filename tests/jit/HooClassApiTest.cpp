@@ -93,7 +93,7 @@ TEST_F(HooClassApiTest, FreeFuncDateTimeNowSeconds) {
     const std::string source = R"(
         import hoo.datetime;
         func :int64 test() {
-            return datetime_nowSeconds();
+            return datetime_now_seconds();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

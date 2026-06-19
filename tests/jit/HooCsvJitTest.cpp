@@ -79,7 +79,7 @@ TEST_F(HooCsvJitTest, ParseCustomOpts) {
     const std::string source = R"(
         import hoo.csv;
         func :int64 test() {
-            var csv = csv_fromOpts(59, 39);
+            var csv = csv_from_opts(59, 39);
             var input = "a;b;c";
             var rows = csv.parse(input);
             csv.release();

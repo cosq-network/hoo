@@ -74,12 +74,12 @@ TEST_F(HooPathJitTest, IsAbsolute) {
 #ifdef _WIN32
     const std::string source = R"(
         import hoo.path;
-        func :int64 test() { return Path.isAbsolute("C:\\usr\\bin"); }
+        func :int64 test() { return Path.is_absolute("C:\\usr\\bin"); }
     )";
 #else
     const std::string source = R"(
         import hoo.path;
-        func :int64 test() { return Path.isAbsolute("/usr/bin"); }
+        func :int64 test() { return Path.is_absolute("/usr/bin"); }
     )";
 #endif
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -89,7 +89,7 @@ TEST_F(HooPathJitTest, IsAbsolute) {
 TEST_F(HooPathJitTest, IsRelative) {
     const std::string source = R"(
         import hoo.path;
-        func :int64 test() { return Path.isRelative("foo/bar"); }
+        func :int64 test() { return Path.is_relative("foo/bar"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -98,7 +98,7 @@ TEST_F(HooPathJitTest, IsRelative) {
 TEST_F(HooPathJitTest, HasExtension) {
     const std::string source = R"(
         import hoo.path;
-        func :int64 test() { return Path.hasExtension("file.txt"); }
+        func :int64 test() { return Path.has_extension("file.txt"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
@@ -132,7 +132,7 @@ TEST_F(HooPathJitTest, Separator) {
 TEST_F(HooPathJitTest, ListSeparator) {
     const std::string source = R"(
         import hoo.path;
-        func :int64 test() { return Path.listSeparator(); }
+        func :int64 test() { return Path.list_separator(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
 #ifdef _WIN32

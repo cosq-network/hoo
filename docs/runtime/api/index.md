@@ -246,20 +246,20 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 | Factory | `DateTime.now()` / `datetime_now()` | `DateTime` |
 | Factory | `DateTime.new(ts)` / `datetime_new(ts)` | `DateTime` |
 | Factory | `DateTime.parse(s,f)` / `datetime_parse(s,f)` | `DateTime` |
-| Factory | `DateTime.fromIso8601(s)` / `datetime_fromIso8601(s)` | `DateTime` |
-| Raw time | `DateTime.nowSeconds()` / `datetime_nowSeconds()` | `int64` |
-| Raw time | `DateTime.nowPrecise()` / `datetime_nowPrecise()` | `double` |
+| Factory | `DateTime.from_iso8601(s)` / `datetime_from_iso8601(s)` | `DateTime` |
+| Raw time | `DateTime.now_seconds()` / `datetime_now_seconds()` | `int64` |
+| Raw time | `DateTime.now_precise()` / `datetime_now_precise()` | `double` |
 | Accessor | `dt.getTimestamp()` | `int64` |
 | Format | `dt.format(f)` / `DateTime.format(dt,f)` / `datetime_format(dt,f)` | `string` |
 | Format | `dt.iso8601()` / `DateTime.iso8601(dt)` / `datetime_iso8601(dt)` | `string` |
-| Arithmetic | `dt.addDays(n)` / `DateTime.addDays(dt,n)` / `datetime_addDays(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addHours(n)` / `DateTime.addHours(dt,n)` / `datetime_addHours(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addMinutes(n)` / `DateTime.addMinutes(dt,n)` / `datetime_addMinutes(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addSeconds(n)` / `DateTime.addSeconds(dt,n)` / `datetime_addSeconds(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addMilliseconds(n)` / `DateTime.addMilliseconds(dt,n)` / `datetime_addMilliseconds(dt,n)` | `DateTime` |
-| Diff | `a.diffDays(b)` / `DateTime.diffDays(a,b)` / `datetime_diffDays(a,b)` | `int64` |
-| Diff | `a.diffHours(b)` / `DateTime.diffHours(a,b)` / `datetime_diffHours(a,b)` | `int64` |
-| Diff | `a.diffSeconds(b)` / `DateTime.diffSeconds(a,b)` / `datetime_diffSeconds(a,b)` | `double` |
+| Arithmetic | `dt.addDays(n)` / `DateTime.add_days(dt,n)` / `datetime_add_days(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addHours(n)` / `DateTime.add_hours(dt,n)` / `datetime_add_hours(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addMinutes(n)` / `DateTime.add_minutes(dt,n)` / `datetime_add_minutes(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addSeconds(n)` / `DateTime.add_seconds(dt,n)` / `datetime_add_seconds(dt,n)` | `DateTime` |
+| Arithmetic | `dt.addMilliseconds(n)` / `DateTime.add_milliseconds(dt,n)` / `datetime_add_milliseconds(dt,n)` | `DateTime` |
+| Diff | `a.diffDays(b)` / `DateTime.diff_days(a,b)` / `datetime_diff_days(a,b)` | `int64` |
+| Diff | `a.diffHours(b)` / `DateTime.diff_hours(a,b)` / `datetime_diff_hours(a,b)` | `int64` |
+| Diff | `a.diffSeconds(b)` / `DateTime.diff_seconds(a,b)` / `datetime_diff_seconds(a,b)` | `double` |
 | Compare | `a.compare(b)` / `DateTime.compare(a,b)` / `datetime_compare(a,b)` | `int64` |
 
 ---
@@ -290,24 +290,24 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 | API | Signature |
 |-----|-----------|
 | `fs_exists` | `fs_exists(path: string) :int64` |
-| `fs_isFile` | `fs_isFile(path: string) :int64` |
-| `fs_isDir` | `fs_isDir(path: string) :int64` |
+| `fs_is_file` | `fs_is_file(path: string) :int64` |
+| `fs_is_dir` | `fs_is_dir(path: string) :int64` |
 | `fs_size` | `fs_size(path: string) :int64` |
-| `fs_lastModified` | `fs_lastModified(path: string) :int64` |
-| `fs_readText` | `fs_readText(path: string) :string` |
-| `fs_writeText` | `fs_writeText(path: string, content: string) :int64` |
-| `fs_appendText` | `fs_appendText(path: string, content: string) :int64` |
-| `fs_readBytes` | `fs_readBytes(path: string) :buffer` |
-| `fs_writeBytes` | `fs_writeBytes(path: string, buf: buffer) :int64` |
+| `fs_last_modified` | `fs_last_modified(path: string) :int64` |
+| `fs_read_text` | `fs_read_text(path: string) :string` |
+| `fs_write_text` | `fs_write_text(path: string, content: string) :int64` |
+| `fs_append_text` | `fs_append_text(path: string, content: string) :int64` |
+| `fs_read_bytes` | `fs_read_bytes(path: string) :buffer` |
+| `fs_write_bytes` | `fs_write_bytes(path: string, buf: buffer) :int64` |
 | `fs_delete` | `fs_delete(path: string) :int64` |
 | `fs_rename` | `fs_rename(oldPath: string, newPath: string) :int64` |
 | `fs_copy` | `fs_copy(src: string, dst: string) :int64` |
 | `fs_mkdir` | `fs_mkdir(path: string) :int64` |
 | `fs_mkdirs` | `fs_mkdirs(path: string) :int64` |
 | `fs_rmdir` | `fs_rmdir(path: string) :int64` |
-| `fs_listDir` | `fs_listDir(path: string) :array` |
-| `fs_tempDir` | `fs_tempDir() :string` |
-| `fs_createTempFile` | `fs_createTempFile(prefix: string) :string` |
+| `fs_list_dir` | `fs_list_dir(path: string) :array` |
+| `fs_temp_dir` | `fs_temp_dir() :string` |
+| `fs_create_temp_file` | `fs_create_temp_file(prefix: string) :string` |
 
 ---
 
@@ -324,7 +324,7 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 | `Path.join` | `Path.join(parts: array) :string` |
 | `Path.absolute` | `Path.absolute(p: string) :string` |
 | `Path.separator` | `Path.separator() :string` |
-| `Path.isAbsolute` | `Path.isAbsolute(p: string) :int64` |
+| `Path.is_absolute` | `Path.is_absolute(p: string) :int64` |
 | `Path.normalize` | `Path.normalize(p: string) :string` |
 
 ---
@@ -335,7 +335,7 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 | API | Signature |
 |-----|-----------|
-| `Process.selfPid` | `Process.selfPid() :int64` |
+| `Process.self_pid` | `Process.self_pid() :int64` |
 | `Process.capture` | `Process.capture(command: string) :string` |
 | `Process.kill` | `Process.kill(pid: int64, signal: int64) :int64` |
 | `Process.spawn` | `Process.spawn(command: string, argv: array) :int64` |
@@ -520,7 +520,7 @@ Buffer overloads: `c.gzipCompress(buf: Buffer) :Buffer`,
 | Kind | API | Signature |
 |------|-----|-----------|
 | Constructor | `new Csv` | `new Csv() :Csv` |
-| Free function | `csv_fromOpts` | `csv_fromOpts(delimiter: int64, quote: int64) :Csv` |
+| Free function | `csv_from_opts` | `csv_from_opts(delimiter: int64, quote: int64) :Csv` |
 | Instance | `csv.retain` | `csv.retain() :Csv` |
 | Instance | `csv.release` | `csv.release()` |
 | Instance | `csv.refcount` | `csv.refcount() :int64` |
@@ -550,10 +550,10 @@ Buffer overloads: `c.gzipCompress(buf: Buffer) :Buffer`,
 | API | Signature |
 |-----|-----------|
 | `Thread.self` | `Thread.self() :int64` |
-| `Thread.mutexCreate` | `Thread.mutexCreate() :ptr` |
-| `Thread.mutexLock` | `Thread.mutexLock(mutex: ptr) :int64` |
-| `Thread.mutexUnlock` | `Thread.mutexUnlock(mutex: ptr) :int64` |
-| `Thread.mutexDestroy` | `Thread.mutexDestroy(mutex: ptr) :int64` |
+| `Thread.mutex_create` | `Thread.mutex_create() :ptr` |
+| `Thread.mutex_lock` | `Thread.mutex_lock(mutex: ptr) :int64` |
+| `Thread.mutex_unlock` | `Thread.mutex_unlock(mutex: ptr) :int64` |
+| `Thread.mutex_destroy` | `Thread.mutex_destroy(mutex: ptr) :int64` |
 
 ---
 

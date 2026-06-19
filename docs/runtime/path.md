@@ -51,7 +51,7 @@ func :int64 demo() {
     var ext = Path.extension("file.txt");           // ".txt"
     var joined = Path.join("a", "b");               // "a/b"
     var norm = Path.normalize("a/b/../c");          // "a/c"
-    var abs = Path.isAbsolute("/usr/bin");          // true
+    var abs = Path.is_absolute("/usr/bin");          // true
     var sep = Path.separator();                     // '/' on Unix
     return string_length(dir);
 }

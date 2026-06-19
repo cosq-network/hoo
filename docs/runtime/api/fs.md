@@ -53,7 +53,7 @@ func :int64 main() {
 
 ---
 
-## `isFile`
+## `is_file`
 
 ### Description
 
@@ -62,7 +62,7 @@ Checks whether a path points to a regular file.
 ### Syntax
 
 ```hoo
-fs_isFile(path: string) :int64
+fs_is_file(path: string) :int64
 ```
 
 ### Parameters
@@ -85,7 +85,7 @@ Returns `0` if `path` is nil.
 import hoo.io;
 
 func :int64 main() {
-    var ok = fs_isFile("/tmp/data.txt");
+    var ok = fs_is_file("/tmp/data.txt");
     println(ok);
     return ok;
 }
@@ -93,7 +93,7 @@ func :int64 main() {
 
 ---
 
-## `isDir`
+## `is_dir`
 
 ### Description
 
@@ -102,7 +102,7 @@ Checks whether a path points to a directory.
 ### Syntax
 
 ```hoo
-fs_isDir(path: string) :int64
+fs_is_dir(path: string) :int64
 ```
 
 ### Parameters
@@ -125,7 +125,7 @@ Returns `0` if `path` is nil.
 import hoo.io;
 
 func :int64 main() {
-    var ok = fs_isDir("/tmp");
+    var ok = fs_is_dir("/tmp");
     println(ok); // 1
     return ok;
 }
@@ -176,7 +176,7 @@ func :int64 main() {
 
 ---
 
-## `lastModified`
+## `last_modified`
 
 ### Description
 
@@ -186,7 +186,7 @@ Returns the last modified time of a file or directory as a Unix timestamp
 ### Syntax
 
 ```hoo
-fs_lastModified(path: string) :int64
+fs_last_modified(path: string) :int64
 ```
 
 ### Parameters
@@ -209,7 +209,7 @@ Returns `-1` if `path` is nil or the path cannot be accessed.
 import hoo.io;
 
 func :int64 main() {
-    var ts = fs_lastModified("/tmp");
+    var ts = fs_last_modified("/tmp");
     if ts >= 0 {
         println("last modified: " + ts);
     }
@@ -219,7 +219,7 @@ func :int64 main() {
 
 ---
 
-## `readText`
+## `read_text`
 
 ### Description
 
@@ -228,7 +228,7 @@ Reads the entire contents of a text file as a string.
 ### Syntax
 
 ```hoo
-fs_readText(path: string) :string
+fs_read_text(path: string) :string
 ```
 
 ### Parameters
@@ -253,7 +253,7 @@ contains no data.
 import hoo.io;
 
 func :int64 main() {
-    var content = fs_readText("/tmp/hello.txt");
+    var content = fs_read_text("/tmp/hello.txt");
     if content != 0 {
         println(content);
     }
@@ -263,7 +263,7 @@ func :int64 main() {
 
 ---
 
-## `writeText`
+## `write_text`
 
 ### Description
 
@@ -273,7 +273,7 @@ file if it does not exist.
 ### Syntax
 
 ```hoo
-fs_writeText(path: string, content: string) :int64
+fs_write_text(path: string, content: string) :int64
 ```
 
 ### Parameters
@@ -299,7 +299,7 @@ Returns `0` if `path` is nil or the file cannot be written.
 import hoo.io;
 
 func :int64 main() {
-    var ok = fs_writeText("/tmp/hello.txt", "Hello, world!");
+    var ok = fs_write_text("/tmp/hello.txt", "Hello, world!");
     println(ok); // 1
     return ok;
 }
@@ -307,7 +307,7 @@ func :int64 main() {
 
 ---
 
-## `appendText`
+## `append_text`
 
 ### Description
 
@@ -317,7 +317,7 @@ exist.
 ### Syntax
 
 ```hoo
-fs_appendText(path: string, content: string) :int64
+fs_append_text(path: string, content: string) :int64
 ```
 
 ### Parameters
@@ -343,7 +343,7 @@ Returns `0` if `path` is nil or the file cannot be written.
 import hoo.io;
 
 func :int64 main() {
-    var ok = fs_appendText("/tmp/log.txt", "new entry\n");
+    var ok = fs_append_text("/tmp/log.txt", "new entry\n");
     println(ok); // 1
     return ok;
 }
@@ -351,7 +351,7 @@ func :int64 main() {
 
 ---
 
-## `readBytes`
+## `read_bytes`
 
 ### Description
 
@@ -360,7 +360,7 @@ Reads the entire contents of a file into a Buffer.
 ### Syntax
 
 ```hoo
-fs_readBytes(path: string) :buffer
+fs_read_bytes(path: string) :buffer
 ```
 
 ### Parameters
@@ -385,7 +385,7 @@ contains no data.
 import hoo.io;
 
 func :int64 main() {
-    var buf = fs_readBytes("/tmp/data.bin");
+    var buf = fs_read_bytes("/tmp/data.bin");
     if buf != 0 {
         println(buf.length());
     }
@@ -395,7 +395,7 @@ func :int64 main() {
 
 ---
 
-## `writeBytes`
+## `write_bytes`
 
 ### Description
 
@@ -405,7 +405,7 @@ Creates the file if it does not exist.
 ### Syntax
 
 ```hoo
-fs_writeBytes(path: string, buf: buffer) :int64
+fs_write_bytes(path: string, buf: buffer) :int64
 ```
 
 ### Parameters
@@ -433,7 +433,7 @@ import hoo.io;
 func :int64 main() {
     var buf = new Buffer();
     buf.append("binary data");
-    var ok = fs_writeBytes("/tmp/data.bin", buf);
+    var ok = fs_write_bytes("/tmp/data.bin", buf);
     buf.release();
     println(ok); // 1
     return ok;
@@ -692,7 +692,7 @@ func :int64 main() {
 
 ---
 
-## `listDir`
+## `list_dir`
 
 ### Description
 
@@ -702,7 +702,7 @@ of files and subdirectories (not full paths).
 ### Syntax
 
 ```hoo
-fs_listDir(path: string) :array
+fs_list_dir(path: string) :array
 ```
 
 ### Parameters
@@ -727,7 +727,7 @@ cannot be read.
 import hoo.io;
 
 func :int64 main() {
-    var entries = fs_listDir("/tmp");
+    var entries = fs_list_dir("/tmp");
     if entries != 0 {
         println(entries.length());
     }
@@ -737,7 +737,7 @@ func :int64 main() {
 
 ---
 
-## `tempDir`
+## `temp_dir`
 
 ### Description
 
@@ -746,7 +746,7 @@ Returns the system's temporary directory path.
 ### Syntax
 
 ```hoo
-fs_tempDir() :string
+fs_temp_dir() :string
 ```
 
 ### Parameters
@@ -768,7 +768,7 @@ Returns `0` if the temporary directory cannot be determined.
 import hoo.io;
 
 func :int64 main() {
-    var tmp = fs_tempDir();
+    var tmp = fs_temp_dir();
     if tmp != 0 {
         println(tmp);
     }
@@ -778,7 +778,7 @@ func :int64 main() {
 
 ---
 
-## `createTempFile`
+## `create_temp_file`
 
 ### Description
 
@@ -788,7 +788,7 @@ directory. The file is created empty and its path is returned.
 ### Syntax
 
 ```hoo
-fs_createTempFile(prefix: string) :string
+fs_create_temp_file(prefix: string) :string
 ```
 
 ### Parameters
@@ -811,7 +811,7 @@ Returns `0` if `prefix` is nil or the file cannot be created.
 import hoo.io;
 
 func :int64 main() {
-    var tmp = fs_createTempFile("hoo_");
+    var tmp = fs_create_temp_file("hoo_");
     if tmp != 0 {
         println(tmp);
         fs_delete(tmp);

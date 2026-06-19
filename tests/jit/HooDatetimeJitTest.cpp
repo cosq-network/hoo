@@ -26,7 +26,7 @@ TEST_F(HooDatetimeJitTest, Now) {
 TEST_F(HooDatetimeJitTest, NowSeconds) {
     const std::string source = R"(
         import hoo.datetime;
-        func :int64 test() { return datetime_nowSeconds(); }
+        func :int64 test() { return datetime_now_seconds(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1700000000);
@@ -49,7 +49,7 @@ TEST_F(HooDatetimeJitTest, Iso8601) {
 TEST_F(HooDatetimeJitTest, ParseIso8601) {
     const std::string source = R"(
         import hoo.datetime;
-        func :int64 test() { return datetime_fromIso8601("2024-01-15T10:30:00Z"); }
+        func :int64 test() { return datetime_from_iso8601("2024-01-15T10:30:00Z"); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
@@ -59,7 +59,7 @@ TEST_F(HooDatetimeJitTest, AddDays) {
     const std::string source = R"(
         import hoo.datetime;
         func :int64 test() {
-            var base = datetime_fromIso8601("2024-01-01T00:00:00Z");
+            var base = datetime_from_iso8601("2024-01-01T00:00:00Z");
             var result = base.addDays(1);
             return result.getTimestamp();
         }
@@ -74,8 +74,8 @@ TEST_F(HooDatetimeJitTest, Compare) {
     const std::string source = R"(
         import hoo.datetime;
         func :int64 test() {
-            var a = datetime_fromIso8601("2024-01-01T00:00:00Z");
-            var b = datetime_fromIso8601("2024-06-15T00:00:00Z");
+            var a = datetime_from_iso8601("2024-01-01T00:00:00Z");
+            var b = datetime_from_iso8601("2024-06-15T00:00:00Z");
             return datetime_compare(a, b);
         }
     )";
@@ -87,7 +87,7 @@ TEST_F(HooDatetimeJitTest, Format) {
     const std::string source = R"(
         import hoo.datetime;
         func :int64 test() {
-            var ts = datetime_fromIso8601("2024-01-15T10:30:00Z");
+            var ts = datetime_from_iso8601("2024-01-15T10:30:00Z");
             var str = datetime_format(ts, "%Y-%m-%d");
             return str.length();
         }
@@ -115,7 +115,7 @@ TEST_F(HooDatetimeJitTest, FormatLiteral) {
     const std::string source = R"(
         import hoo.datetime;
         func :int64 test() {
-            var ts = datetime_fromIso8601("2024-01-15T10:30:00Z");
+            var ts = datetime_from_iso8601("2024-01-15T10:30:00Z");
             var str = datetime_format(ts, "Hello");
             return str.length();
         }
@@ -166,7 +166,7 @@ TEST_F(HooDatetimeJitTest, FreeFuncIso8601) {
     const std::string source = R"(
         import hoo.datetime;
         func :int64 test() {
-            var dt = datetime_fromIso8601("2024-01-01T00:00:00Z");
+            var dt = datetime_from_iso8601("2024-01-01T00:00:00Z");
             return dt.getTimestamp();
         }
     )";
@@ -177,7 +177,7 @@ TEST_F(HooDatetimeJitTest, FreeFuncIso8601) {
 TEST_F(HooDatetimeJitTest, FreeFuncNowSeconds) {
     const std::string source = R"(
         import hoo.datetime;
-        func :int64 test() { return datetime_nowSeconds(); }
+        func :int64 test() { return datetime_now_seconds(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1700000000);
@@ -186,7 +186,7 @@ TEST_F(HooDatetimeJitTest, FreeFuncNowSeconds) {
 TEST_F(HooDatetimeJitTest, FreeFuncNowPrecise) {
     const std::string source = R"(
         import hoo.datetime;
-        func :int64 test() { return datetime_nowPrecise(); }
+        func :int64 test() { return datetime_now_precise(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1700000000);

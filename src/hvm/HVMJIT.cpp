@@ -3439,47 +3439,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_fs_temp_dir_p", reinterpret_cast<void*>(&jit_fs_temp_dir)},
         {"_F_M_hoo_E_fs_create_temp_file_v_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
         {"_F_M_hoo_E_fs_create_temp_file_p_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
-        // CamelCase aliases for backward compatibility
-        {"_F_M_hoo_E_fs_readText_v_p", reinterpret_cast<void*>(&jit_fs_read_text)},
-        {"_F_M_hoo_E_fs_readText_p_p", reinterpret_cast<void*>(&jit_fs_read_text)},
-        {"_F_M_hoo_E_fs_readText_v_p_p", reinterpret_cast<void*>(&jit_fs_read_text_default)},
-        {"_F_M_hoo_E_fs_readText_p_p_p", reinterpret_cast<void*>(&jit_fs_read_text_default)},
-        {"_F_M_hoo_E_fs_isFile_v_p", reinterpret_cast<void*>(&jit_fs_is_file)},
-        {"_F_M_hoo_E_fs_isFile_p_p", reinterpret_cast<void*>(&jit_fs_is_file)},
-        {"_F_M_hoo_E_fs_isDir_v_p", reinterpret_cast<void*>(&jit_fs_is_dir)},
-        {"_F_M_hoo_E_fs_isDir_p_p", reinterpret_cast<void*>(&jit_fs_is_dir)},
-        {"_F_M_hoo_E_fs_lastModified_v_p", reinterpret_cast<void*>(&jit_fs_last_modified)},
-        {"_F_M_hoo_E_fs_lastModified_p_p", reinterpret_cast<void*>(&jit_fs_last_modified)},
-        {"_F_M_hoo_E_fs_remove_v_p", reinterpret_cast<void*>(&jit_fs_delete)},
-        {"_F_M_hoo_E_fs_remove_p_p", reinterpret_cast<void*>(&jit_fs_delete)},
-        {"_F_M_hoo_E_fs_move_v_p_p", reinterpret_cast<void*>(&jit_fs_rename)},
-        {"_F_M_hoo_E_fs_move_p_p_p", reinterpret_cast<void*>(&jit_fs_rename)},
-        {"_F_M_hoo_E_fs_writeText_v_p_p", reinterpret_cast<void*>(&jit_fs_write_text)},
-        {"_F_M_hoo_E_fs_writeText_p_p_p", reinterpret_cast<void*>(&jit_fs_write_text)},
-        {"_F_M_hoo_E_fs_appendText_v_p_p", reinterpret_cast<void*>(&jit_fs_append_text)},
-        {"_F_M_hoo_E_fs_appendText_p_p_p", reinterpret_cast<void*>(&jit_fs_append_text)},
-        {"_F_M_hoo_E_fs_readBytes_v_p", reinterpret_cast<void*>(&jit_fs_read_bytes_buffer)},
-        {"_F_M_hoo_E_fs_readBytes_p_p", reinterpret_cast<void*>(&jit_fs_read_bytes_buffer)},
-        {"_F_M_hoo_E_fs_readBytes_v_p_p", reinterpret_cast<void*>(&jit_fs_read_bytes_buffer_default)},
-        {"_F_M_hoo_E_fs_readBytes_p_p_p", reinterpret_cast<void*>(&jit_fs_read_bytes_buffer_default)},
-        {"_F_M_hoo_E_fs_writeBytes_v_p_p", reinterpret_cast<void*>(&jit_fs_write_bytes_buffer)},
-        {"_F_M_hoo_E_fs_writeBytes_p_p_p", reinterpret_cast<void*>(&jit_fs_write_bytes_buffer)},
-        {"_F_M_hoo_E_fs_createDir_v_p", reinterpret_cast<void*>(&jit_fs_mkdirs)},
-        {"_F_M_hoo_E_fs_createDir_p_p", reinterpret_cast<void*>(&jit_fs_mkdirs)},
-        {"_F_M_hoo_E_fs_removeDir_v_p", reinterpret_cast<void*>(&jit_fs_rmdir)},
-        {"_F_M_hoo_E_fs_removeDir_p_p", reinterpret_cast<void*>(&jit_fs_rmdir)},
-        {"_F_M_hoo_E_fs_listDir_v_p", reinterpret_cast<void*>(&jit_fs_list_dir)},
-        {"_F_M_hoo_E_fs_listDir_p_p", reinterpret_cast<void*>(&jit_fs_list_dir)},
-        {"_F_M_hoo_E_fs_createTempFile_v_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
-        {"_F_M_hoo_E_fs_createTempFile_p_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
-        {"_F_M_hoo_E_fs_currentDir_v", reinterpret_cast<void*>(&jit_fs_temp_dir)},
-        {"_F_M_hoo_E_fs_currentDir_p", reinterpret_cast<void*>(&jit_fs_temp_dir)},
-        {"_F_M_hoo_E_fs_currentExeDir_v", reinterpret_cast<void*>(&jit_fs_temp_dir)},
-        {"_F_M_hoo_E_fs_currentExeDir_p", reinterpret_cast<void*>(&jit_fs_temp_dir)},
-        {"_F_M_hoo_E_fs_tempDir_v", reinterpret_cast<void*>(&jit_fs_temp_dir)},
-        {"_F_M_hoo_E_fs_tempDir_p", reinterpret_cast<void*>(&jit_fs_temp_dir)},
-        {"_F_M_hoo_E_fs_createTempDir_v_p", reinterpret_cast<void*>(&jit_fs_mkdirs)},
-        {"_F_M_hoo_E_fs_createTempDir_p_p", reinterpret_cast<void*>(&jit_fs_mkdirs)},
+
         {"_F_M_hoo_E_regex_compile_v_p", reinterpret_cast<void*>(&jit_regex_compile)},
         {"_F_M_hoo_E_regex_match_v_p_p", reinterpret_cast<void*>(&jit_regex_match)},
         {"_F_M_hoo_E_uuid_v4_v", reinterpret_cast<void*>(&jit_uuid_v4)},
@@ -3496,14 +3456,10 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_thread_mutex_lock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
         {"_F_M_hoo_E_thread_mutex_unlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
         {"_F_M_hoo_E_thread_mutex_destroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_thread_mutexCreate_v", reinterpret_cast<void*>(&jit_thread_mutex_create)},
-        {"_F_M_hoo_E_thread_mutexLock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
-        {"_F_M_hoo_E_thread_mutexUnlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
-        {"_F_M_hoo_E_thread_mutexDestroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
+
         // CSV module (instance-based, prefix-style)
         {"_F_M_hoo_E_csv_new_v", reinterpret_cast<void*>(&jit_csv_new)},
-        {"_F_M_hoo_E_csv_fromOpts_p_p_p", reinterpret_cast<void*>(&jit_hoo_csv_from_opts)},
+        {"_F_M_hoo_E_csv_from_opts_p_p_p", reinterpret_cast<void*>(&jit_hoo_csv_from_opts)},
         {"_F_M_hoo_E_csv_release_v", reinterpret_cast<void*>(&jit_csv_release)},
         {"_F_M_hoo_E_csv_parse_v_p", reinterpret_cast<void*>(&jit_csv_parse)},
         {"_F_M_hoo_E_csv_generate_v_p", reinterpret_cast<void*>(&jit_csv_generate)},
@@ -3537,19 +3493,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_datetime_diff_hours_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
         {"_F_M_hoo_E_datetime_diff_seconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
         {"_F_M_hoo_E_datetime_compare_p_p_p", reinterpret_cast<void*>(&jit_datetime_compare)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_datetime_nowSeconds_p", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
-        {"_F_M_hoo_E_datetime_nowPrecise_p", reinterpret_cast<void*>(&jit_datetime_now_precise)},
-        {"_F_M_hoo_E_datetime_new_p_p", reinterpret_cast<void*>(&jit_datetime_new)},
-        {"_F_M_hoo_E_datetime_fromIso8601_p_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
-        {"_F_M_hoo_E_datetime_addDays_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
-        {"_F_M_hoo_E_datetime_addHours_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
-        {"_F_M_hoo_E_datetime_addMinutes_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
-        {"_F_M_hoo_E_datetime_addSeconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
-        {"_F_M_hoo_E_datetime_addMilliseconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
-        {"_F_M_hoo_E_datetime_diffDays_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
-        {"_F_M_hoo_E_datetime_diffHours_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
-        {"_F_M_hoo_E_datetime_diffSeconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
+
 
         // DateTime instance methods
         {"_F_M_hoo_E_datetime_inst_format_p_p", reinterpret_cast<void*>(&jit_datetime_inst_format)},
@@ -3579,11 +3523,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_path_has_extension_v_p", reinterpret_cast<void*>(&jit_path_has_extension)},
         {"_F_M_hoo_E_path_separator_v", reinterpret_cast<void*>(&jit_path_separator)},
         {"_F_M_hoo_E_path_list_separator_v", reinterpret_cast<void*>(&jit_path_list_separator)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_path_isAbsolute_v_p", reinterpret_cast<void*>(&jit_path_is_absolute)},
-        {"_F_M_hoo_E_path_isRelative_v_p", reinterpret_cast<void*>(&jit_path_is_relative)},
-        {"_F_M_hoo_E_path_hasExtension_v_p", reinterpret_cast<void*>(&jit_path_has_extension)},
-        {"_F_M_hoo_E_path_listSeparator_v", reinterpret_cast<void*>(&jit_path_list_separator)},
+
         // Hashing module
         {"_F_M_hoo_E_hashing_sha256_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha256)},
         {"_F_M_hoo_E_hashing_sha1_v_p_p", reinterpret_cast<void*>(&jit_hashing_sha1)},
@@ -3591,15 +3531,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_hashing_sha256_file_v_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
         {"_F_M_hoo_E_hashing_crc32_v_p_p", reinterpret_cast<void*>(&jit_hashing_crc32)},
         {"_F_M_hoo_E_hashing_hmac_sha256_v_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_hashing_sha256File_v_p", reinterpret_cast<void*>(&jit_hashing_sha256_file)},
-        {"_F_M_hoo_E_hashing_hmacSha256_v_p_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256)},
+
         // Process module
         {"_F_M_hoo_E_process_kill_v_p_p", reinterpret_cast<void*>(&jit_process_kill)},
         {"_F_M_hoo_E_process_self_pid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
         {"_F_M_hoo_E_process_capture_v_p", reinterpret_cast<void*>(&jit_process_capture)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_process_selfPid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
+
         // Compression module (instance-based, prefix-style)
         {"_F_M_hoo_E_compression_new_v", reinterpret_cast<void*>(&jit_compression_new)},
         {"_F_M_hoo_E_compression_release_v", reinterpret_cast<void*>(&jit_compression_release)},

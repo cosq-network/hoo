@@ -19,9 +19,9 @@ a Unix epoch timestamp (milliseconds). Each instance is a heap object with a sin
 |---|---|---|
 | `DateTime.now()` | `DateTime` | Current system time |
 | `DateTime.parse(str, fmt)` | `DateTime` | Parse with strftime-style format |
-| `DateTime.fromIso8601(str)` | `DateTime` | Parse ISO 8601 string |
-| `DateTime.nowSeconds()` | `int64` | Raw seconds (static utility) |
-| `DateTime.nowPrecise()` | `double` | Raw seconds with sub-ms precision |
+| `DateTime.from_iso8601(str)` | `DateTime` | Parse ISO 8601 string |
+| `DateTime.now_seconds()` | `int64` | Raw seconds (static utility) |
+| `DateTime.now_precise()` | `double` | Raw seconds with sub-ms precision |
 
 ## Instance Methods
 

@@ -13,7 +13,7 @@ protected:
 TEST_F(HooProcessJitTest, SelfPid) {
     const std::string source = R"(
         import hoo.process;
-        func :int64 test() { return Process.selfPid(); }
+        func :int64 test() { return Process.self_pid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
@@ -47,7 +47,7 @@ TEST_F(HooProcessJitTest, KillSignalZero) {
     const std::string source = R"(
         import hoo.process;
         func :int64 test() {
-            var pid = Process.selfPid();
+            var pid = Process.self_pid();
             return Process.kill(pid, 0);
         }
     )";

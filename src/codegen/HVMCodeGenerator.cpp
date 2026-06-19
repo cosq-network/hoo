@@ -159,46 +159,34 @@ static bool isBufferFreeFunction(const std::string& functionName) {
 }
 
 static bool isCsvFreeFunction(const std::string& functionName) {
-    return functionName == "csv_fromOpts";
+    return functionName == "csv_from_opts";
 }
 
 static bool isFsFreeFunction(const std::string& functionName) {
     static const std::unordered_set<std::string> names = {
-        // Primary documented names
         "fs_exists",
-        "fs_readText",
-        "fs_readBytes",
-        "fs_writeText",
-        "fs_writeBytes",
-        "fs_appendText",
+        "fs_read_text",
+        "fs_read_bytes",
+        "fs_write_text",
+        "fs_write_bytes",
+        "fs_append_text",
         "fs_copy",
         "fs_move",
         "fs_remove",
-        "fs_createDir",
-        "fs_removeDir",
-        "fs_listDir",
-        "fs_isDir",
-        "fs_isFile",
-        "fs_size",
-        "fs_lastModified",
-        "fs_createTempDir",
-        "fs_createTempFile",
-        "fs_currentDir",
-        "fs_currentExeDir",
-        // snake_case aliases
-        "fs_read_text",
-        "fs_is_file",
-        "fs_is_dir",
-        "fs_last_modified",
-        "fs_create_temp_file",
-        "fs_write_bytes",
-        "fs_append_text",
-        "fs_create_dir",
-        "fs_remove_dir",
+        "fs_delete",
+        "fs_mkdir",
+        "fs_mkdirs",
+        "fs_rmdir",
         "fs_list_dir",
+        "fs_temp_dir",
+        "fs_create_temp_dir",
+        "fs_create_temp_file",
         "fs_current_dir",
         "fs_current_exe_dir",
-        "fs_create_temp_dir",
+        "fs_is_dir",
+        "fs_is_file",
+        "fs_size",
+        "fs_last_modified",
     };
     return names.count(functionName) > 0;
 }
@@ -222,17 +210,6 @@ static bool isDatetimeFreeFunction(const std::string& functionName) {
         "datetime_diff_hours",
         "datetime_diff_seconds",
         "datetime_compare",
-        "datetime_nowSeconds",
-        "datetime_nowPrecise",
-        "datetime_fromIso8601",
-        "datetime_addDays",
-        "datetime_addHours",
-        "datetime_addMinutes",
-        "datetime_addSeconds",
-        "datetime_addMilliseconds",
-        "datetime_diffDays",
-        "datetime_diffHours",
-        "datetime_diffSeconds",
     };
     return names.count(functionName) > 0;
 }
@@ -242,23 +219,27 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "datetime_now_seconds" || functionName == "datetime_nowSeconds") return 1;
-    if (functionName == "datetime_now_precise" || functionName == "datetime_nowPrecise") return 2;
+    if (functionName == "datetime_now_seconds") return 1;
+    if (functionName == "datetime_now_precise") return 2;
     if (functionName == "datetime_format" || functionName == "datetime_iso8601") return 101; // string is type ID 101
-    if (functionName == "datetime_diff_days" || functionName == "datetime_diffDays" ||
-        functionName == "datetime_diff_hours" || functionName == "datetime_diffHours" ||
+    if (functionName == "datetime_diff_days" ||
+        functionName == "datetime_diff_hours" ||
         functionName == "datetime_compare") return 1; // int64
-    if (functionName == "datetime_diff_seconds" || functionName == "datetime_diffSeconds") return 2; // double
+    if (functionName == "datetime_diff_seconds") return 2; // double
     return 119; // DateTime is 119
 }
 
 static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "fs_exists" || functionName == "fs_isDir" ||
-        functionName == "fs_isFile" || functionName == "fs_size") return 1;
-    if (functionName == "fs_readBytes" || functionName == "fs_readBytes_default") return 113;
-    if (functionName == "fs_readText" || functionName == "fs_readText_default") return 101;
-    if (functionName == "fs_listDir") return 102;
-    if (functionName == "fs_lastModified") return 101;
+    if (functionName == "fs_exists" || functionName == "fs_is_dir" ||
+        functionName == "fs_is_file" || functionName == "fs_size" ||
+        functionName == "fs_remove" || functionName == "fs_delete" ||
+        functionName == "fs_mkdir" || functionName == "fs_mkdirs" ||
+        functionName == "fs_rmdir" || functionName == "fs_copy" ||
+        functionName == "fs_move") return 1;
+    if (functionName == "fs_read_bytes" || functionName == "fs_read_bytes_default") return 113;
+    if (functionName == "fs_read_text" || functionName == "fs_read_text_default") return 101;
+    if (functionName == "fs_list_dir") return 102;
+    if (functionName == "fs_last_modified") return 101;
     return 100;
 }
 
@@ -2036,21 +2017,21 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             if (isStaticCall && resolvedClass == "DateTime") {
                 std::string suggest;
                 if (methodName == "now") suggest = "datetime_now()";
-                else if (methodName == "nowSeconds") suggest = "datetime_nowSeconds()";
-                else if (methodName == "nowPrecise") suggest = "datetime_nowPrecise()";
+                else if (methodName == "nowSeconds") suggest = "datetime_now_seconds()";
+                else if (methodName == "nowPrecise") suggest = "datetime_now_precise()";
                 else if (methodName == "new") suggest = "datetime_new(ts)";
                 else if (methodName == "parse") suggest = "datetime_parse(str, fmt)";
-                else if (methodName == "fromIso8601") suggest = "datetime_fromIso8601(str)";
+                else if (methodName == "fromIso8601") suggest = "datetime_from_iso8601(str)";
                 else if (methodName == "format") suggest = "datetime_format(dt, fmt)";
                 else if (methodName == "iso8601") suggest = "datetime_iso8601(dt)";
-                else if (methodName == "addDays") suggest = "datetime_addDays(dt, days)";
-                else if (methodName == "addHours") suggest = "datetime_addHours(dt, hours)";
-                else if (methodName == "addMinutes") suggest = "datetime_addMinutes(dt, mins)";
-                else if (methodName == "addSeconds") suggest = "datetime_addSeconds(dt, secs)";
-                else if (methodName == "addMilliseconds") suggest = "datetime_addMilliseconds(dt, ms)";
-                else if (methodName == "diffDays") suggest = "datetime_diffDays(a, b)";
-                else if (methodName == "diffHours") suggest = "datetime_diffHours(a, b)";
-                else if (methodName == "diffSeconds") suggest = "datetime_diffSeconds(a, b)";
+                else if (methodName == "addDays") suggest = "datetime_add_days(dt, days)";
+                else if (methodName == "addHours") suggest = "datetime_add_hours(dt, hours)";
+                else if (methodName == "addMinutes") suggest = "datetime_add_minutes(dt, mins)";
+                else if (methodName == "addSeconds") suggest = "datetime_add_seconds(dt, secs)";
+                else if (methodName == "addMilliseconds") suggest = "datetime_add_milliseconds(dt, ms)";
+                else if (methodName == "diffDays") suggest = "datetime_diff_days(a, b)";
+                else if (methodName == "diffHours") suggest = "datetime_diff_hours(a, b)";
+                else if (methodName == "diffSeconds") suggest = "datetime_diff_seconds(a, b)";
                 else if (methodName == "compare") suggest = "datetime_compare(a, b)";
                 
                 if (!suggest.empty()) {

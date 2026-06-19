@@ -6,7 +6,7 @@ The module exposes two API layers:
 - **C++ API** — object-oriented classes: `hoo::fs::File`, `hoo::fs::Directory`, `hoo::fs::Path`
 - **C-ABI bridge** — flat `hoo_fs_*` functions used by the JIT / FFI layer
 
-All Hoo language calls (`fs_exists`, `fs_readText`, etc.) resolve through the JIT bridge to the C-ABI layer, which delegates to the C++ classes. The `fs_methodName(...)` syntax is a namespace-prefixed free-function dispatch resolved at compile time via the codegen's `Fs` → `fs_` mapping — there is no `Fs` instance, constructor, or static class methods.
+All Hoo language calls (`fs_exists`, `fs_read_text`, etc.) resolve through the JIT bridge to the C-ABI layer, which delegates to the C++ classes. The `fs_methodName(...)` syntax is a namespace-prefixed free-function dispatch resolved at compile time via the codegen's `Fs` → `fs_` mapping — there is no `Fs` instance, constructor, or static class methods.
 
 For detailed structured API documentation with parameter descriptions, return types,
 error handling, and complete examples for every function, see the
@@ -171,25 +171,25 @@ there is no `Fs` instance, constructor, or static methods.
 | Function | Return | Description |
 |---|---|---|
 | `fs_exists(path)` | `int64` | 1 if path exists, 0 otherwise |
-| `fs_isFile(path)` | `int64` | 1 if path is a regular file |
-| `fs_isDir(path)` | `int64` | 1 if path is a directory |
+| `fs_is_file(path)` | `int64` | 1 if path is a regular file |
+| `fs_is_dir(path)` | `int64` | 1 if path is a directory |
 | `fs_size(path)` | `int64` | File size in bytes, -1 on error |
-| `fs_lastModified(path)` | `int64` | Unix timestamp, -1 on error |
+| `fs_last_modified(path)` | `int64` | Unix timestamp, -1 on error |
 
 ### Text I/O
 
 | Function | Return | Description |
 |---|---|---|
-| `fs_readText(path)` | `string` | File contents, 0 on error/empty |
-| `fs_writeText(path, content)` | `int64` | 1 on success, 0 on failure |
-| `fs_appendText(path, content)` | `int64` | 1 on success, 0 on failure |
+| `fs_read_text(path)` | `string` | File contents, 0 on error/empty |
+| `fs_write_text(path, content)` | `int64` | 1 on success, 0 on failure |
+| `fs_append_text(path, content)` | `int64` | 1 on success, 0 on failure |
 
 ### Binary I/O
 
 | Function | Return | Description |
 |---|---|---|
-| `fs_readBytes(path)` | `buffer` | File bytes as Buffer, 0 on error/empty |
-| `fs_writeBytes(path, buf)` | `int64` | 1 on success, 0 on failure |
+| `fs_read_bytes(path)` | `buffer` | File bytes as Buffer, 0 on error/empty |
+| `fs_write_bytes(path, buf)` | `int64` | 1 on success, 0 on failure |
 
 ### File Operations
 
@@ -206,31 +206,31 @@ there is no `Fs` instance, constructor, or static methods.
 | `fs_mkdir(path)` | `int64` | Create single directory (parent must exist) |
 | `fs_mkdirs(path)` | `int64` | Create directory tree (mkdir -p) |
 | `fs_rmdir(path)` | `int64` | Remove empty directory |
-| `fs_listDir(path)` | `array` | Array of filenames, 0 on error/empty |
+| `fs_list_dir(path)` | `array` | Array of filenames, 0 on error/empty |
 
 ### System Paths
 
 | Function | Return | Description |
 |---|---|---|
-| `fs_tempDir()` | `string` | System temp directory path |
-| `fs_createTempFile(prefix)` | `string` | Create temp file, returns path |
+| `fs_temp_dir()` | `string` | System temp directory path |
+| `fs_create_temp_file(prefix)` | `string` | Create temp file, returns path |
 
 ### Usage Example
 
 ```hoo
 func :int64 main() {
     if fs_exists("/tmp/data.txt") == 1 {
-        var content = fs_readText("/tmp/data.txt");
+        var content = fs_read_text("/tmp/data.txt");
         println(content);
     }
 
     if fs_mkdirs("/tmp/a/b/c") == 1 {
-        var files = fs_listDir("/tmp/a/b/c");
+        var files = fs_list_dir("/tmp/a/b/c");
         println("created dir with " + files.length() + " entries");
     }
 
-    var tmp = fs_createTempFile("hoo_");
-    fs_writeText(tmp, "hello world");
+    var tmp = fs_create_temp_file("hoo_");
+    fs_write_text(tmp, "hello world");
     println(fs_size(tmp));
     fs_delete(tmp);
     return 0;

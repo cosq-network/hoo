@@ -25,7 +25,7 @@ Resolves a path to an absolute path by expanding relative paths against the curr
 `Path.separator() :string`
 Returns the platform path separator: `"/"` on Unix, `"\"` on Windows.
 
-`Path.isAbsolute(p: string) :int64`
+`Path.is_absolute(p: string) :int64`
 Returns 1 if the path is absolute, 0 otherwise.
 
 `Path.normalize(p: string) :string`
@@ -41,7 +41,7 @@ println(Path.dirname(p))        // /home/user/docs/..
 println(Path.extension(p))      // .txt
 println(Path.filename(p))       // file
 println(Path.normalize(p))      // /home/user/file.txt
-println(Path.isAbsolute(p))     // 1
+println(Path.is_absolute(p))     // 1
 println(Path.separator())       // /
 
 let parts = ["usr", "local", "bin"]

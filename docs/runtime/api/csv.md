@@ -8,7 +8,7 @@ import hoo.csv;
 The `Csv` class provides CSV parsing, generation, and file I/O operations with
 Automatic Reference Counting (ARC). The class supports only one constructor
 (`new Csv()`). To create an instance with custom options, use the free function
-`csv_fromOpts(...)` instead of a second constructor.
+`csv_from_opts(...)` instead of a second constructor.
 
 ## `new Csv`
 
@@ -49,7 +49,7 @@ func :int64 main() {
 }
 ```
 
-## `csv_fromOpts`
+## `csv_from_opts`
 
 ### Description
 
@@ -60,7 +60,7 @@ points.
 ### Syntax
 
 ```hoo
-csv_fromOpts(delimiter: int64, quote: int64) :Csv
+csv_from_opts(delimiter: int64, quote: int64) :Csv
 ```
 
 ### Parameters
@@ -86,7 +86,7 @@ Returns a null handle only if allocation fails.
 import hoo.csv;
 
 func :int64 main() {
-    var csv = csv_fromOpts(59, 39);
+    var csv = csv_from_opts(59, 39);
     var input = "a;b;c";
     var rows = csv.parse(input);
     csv.release();
