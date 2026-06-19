@@ -25,6 +25,10 @@ int64_t    hoo_hashmap_get_fixed_i8(HooHashMap map, int64_t key, uint64_t* out);
 int64_t    hoo_hashmap_set_any_i8(HooHashMap map, int64_t key, int64_t type_id, uint64_t data);
 int64_t    hoo_hashmap_get_any_i8(HooHashMap map, int64_t key, HooAnyValue* out);
 
+int64_t    hoo_hashmap_get_keys_i8(HooHashMap map, int64_t* keys, int64_t max_count);
+int64_t    hoo_hashmap_get_fixed_at_i8(HooHashMap map, int64_t key, uint64_t* out);
+int64_t    hoo_hashmap_get_any_at_i8(HooHashMap map, int64_t key, HooAnyValue* out);
+
 #ifdef __cplusplus
 }
 #endif

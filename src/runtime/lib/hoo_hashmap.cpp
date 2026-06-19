@@ -150,4 +150,32 @@ int64_t hoo_hashmap_get_any_i8(HooHashMap map, int64_t key, HooAnyValue* out) {
     return 1;
 }
 
+int64_t hoo_hashmap_get_keys_i8(HooHashMap map, int64_t* keys, int64_t max_count) {
+    if (!map || !keys || max_count <= 0) return 0;
+    auto* impl = static_cast<HooHashMapImpl*>(map);
+    int64_t written = 0;
+    if (impl->value_type_id == HOO_TYPE_ANY) {
+        for (const auto& [key, value] : impl->any_values) {
+            (void)value;
+            if (written >= max_count) break;
+            keys[written++] = key;
+        }
+    } else {
+        for (const auto& [key, value] : impl->fixed_values) {
+            (void)value;
+            if (written >= max_count) break;
+            keys[written++] = key;
+        }
+    }
+    return written;
+}
+
+int64_t hoo_hashmap_get_fixed_at_i8(HooHashMap map, int64_t key, uint64_t* out) {
+    return hoo_hashmap_get_fixed_i8(map, key, out);
+}
+
+int64_t hoo_hashmap_get_any_at_i8(HooHashMap map, int64_t key, HooAnyValue* out) {
+    return hoo_hashmap_get_any_i8(map, key, out);
+}
+
 }

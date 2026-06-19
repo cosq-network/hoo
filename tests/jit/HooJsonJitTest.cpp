@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
-#include "hvm/HVMJIT.h"
+
 #include "core/DefaultIOProvider.h"
+#include "hvm/HVMJIT.h"
 
 using namespace hooc;
 
@@ -10,131 +11,81 @@ protected:
     HVMJIT jit{io};
 };
 
-TEST_F(HooJsonJitTest, ParseAndStringify) {
+TEST_F(HooJsonJitTest, SerializeHashMapFreeFunction) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = Json.parse("{\"key\":\"value\"}");
-            var type = Json.type(obj);
-            Json.release(obj);
-            return type;
+            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            m[1] = 42;
+            var json = json_serialize_hashmap(m);
+            return json.contains("\"1\":42");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    // JSON_OBJECT = 5
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooJsonJitTest, GetString) {
+TEST_F(HooJsonJitTest, SerializeAnyArrayFreeFunction) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = Json.parse("{\"name\":\"Alice\"}");
-            var val = Json.getString(obj, "name");
-            var len = val.length();
-            Json.release(obj);
-            return len;
+            var values = [1, 2, 3]any;
+            var json = json_serialize_anyarray(values);
+            return json.equals("[1,2,3]");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooJsonJitTest, GetInt) {
+TEST_F(HooJsonJitTest, MinifyFreeFunction) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = Json.parse("{\"age\":30}");
-            var age = Json.getInt(obj, "age");
-            Json.release(obj);
-            return age;
+            var json = json_minify("{ \"a\" : [ 1, true ] }");
+            return json.equals("{\"a\":[1,true]}");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 30);
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooJsonJitTest, ArrayAccess) {
+TEST_F(HooJsonJitTest, DeserializeHashMapFreeFunction) {
     const std::string source = R"(
         func :int64 test() {
-            var arr = Json.parse("[10, 20, 30]");
-            var len = Json.arrayLength(arr);
-            Json.release(arr);
-            return len;
-        }
-    )";
-    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
-}
-
-TEST_F(HooJsonJitTest, BuildObject) {
-    const std::string source = R"(
-        func :int64 test() {
-            var obj = Json.newObject();
-            var name = Json.newString("Bob");
-            Json.set(obj, "name", name);
-            var age = Json.newInt(25);
-            Json.set(obj, "age", age);
-            var out = Json.stringify(obj);
-            var len = out.length();
-            Json.release(obj);
-            Json.release(name);
-            Json.release(age);
-            return len;
-        }
-    )";
-    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_TRUE(jit.run("_F_M_test_E_test_i8") > 0);
-}
-
-TEST_F(HooJsonJitTest, BuildArray) {
-    const std::string source = R"(
-        func :int64 test() {
-            var arr = Json.newArray();
-            var one = Json.newInt(1);
-            var two = Json.newInt(2);
-            Json.arrayPush(arr, one);
-            Json.arrayPush(arr, two);
-            var len = Json.arrayLength(arr);
-            Json.release(arr);
-            Json.release(one);
-            Json.release(two);
-            return len;
+            var m = json_deserialize_hashmap("{\"1\":42,\"2\":[7]}");
+            return m.count();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooJsonJitTest, NullAndBool) {
+TEST_F(HooJsonJitTest, DeserializeAnyArrayFreeFunction) {
     const std::string source = R"(
         func :int64 test() {
-            var n = Json.newNull();
-            var t = Json.newBool(1);
-            var f = Json.newBool(0);
-            var nt = Json.type(n);
-            var tt = Json.type(t);
-            var ft = Json.type(f);
-            Json.release(n);
-            Json.release(t);
-            Json.release(f);
-            return nt;
+            var values = json_deserialize_anyarray("[1,\"two\",true]");
+            return values.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    // JSON_NULL = 0
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
 }
 
-TEST_F(HooJsonJitTest, NestedObject) {
+TEST_F(HooJsonJitTest, BeautifyFreeFunction) {
     const std::string source = R"(
         func :int64 test() {
-            var obj = Json.parse("{\"user\":{\"name\":\"Alice\",\"scores\":[95,87,92]}}");
-            var user = Json.get(obj, "user");
-            var name = Json.getString(user, "name");
-            var len = name.length();
-            Json.release(obj);
-            Json.release(user);
-            return len;
+            var json = json_beautify("{\"a\":1}");
+            return json.contains("\n  \"a\": 1");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooJsonJitTest, ClassStyleJsonApiIsNotSupported) {
+    const std::string source = R"(
+        func :int64 test() {
+            var obj = Json.parse("{\"key\":\"value\"}");
+            return 0;
+        }
+    )";
+    EXPECT_FALSE(jit.loadSourceCode("test", source));
 }

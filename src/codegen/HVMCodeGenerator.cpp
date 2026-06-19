@@ -83,7 +83,6 @@ static std::string classToPrefix(const std::string& className) {
         {"Fs", "fs"},
         {"System", "system"},
         {"Regex", "regex"},
-        {"Json", "json"},
         {"Net", "net"},
         {"Path", "path"},
         {"Hashing", "hashing"},
@@ -134,6 +133,24 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
 static std::string builtinConstructorMethodName(const std::string& className, size_t argCount) {
     if (className == "Csv" && argCount == 2) return "newWithOpts";
     return "new";
+}
+
+static bool isJsonFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "json_serialize_hashmap",
+        "json_serialize_anyarray",
+        "json_deserialize_hashmap",
+        "json_deserialize_anyarray",
+        "json_minify",
+        "json_beautify",
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t jsonFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "json_deserialize_hashmap") return 117;
+    if (functionName == "json_deserialize_anyarray") return 118;
+    return 101;
 }
 
 HVMCodeGenerator::HVMCodeGenerator() {
@@ -1623,7 +1640,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
-                mp.modulePath = modulePath_;
+                mp.modulePath = isJsonFreeFunction(functionName)
+                                    ? std::vector<std::string>{"hoo"}
+                                    : modulePath_;
 
                 if (funcCall->getArguments()) {
                     auto& args = funcCall->getArguments()->getArguments();
@@ -1638,9 +1657,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
                 
                 auto retIt = functionReturnTypes_.find(functionName);
-                mp.returnType = retIt != functionReturnTypes_.end()
-                                    ? typeIdToMangleType(retIt->second)
-                                    : "void";
+                if (isJsonFreeFunction(functionName)) {
+                    mp.returnType = "ptr";
+                } else {
+                    mp.returnType = retIt != functionReturnTypes_.end()
+                                        ? typeIdToMangleType(retIt->second)
+                                        : "void";
+                }
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                          mp.parameterTypes.push_back("ptr");
@@ -2206,7 +2229,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
     static const std::unordered_set<std::string> builtinClasses = {
         "String", "Array", "Map", "Exception", "Character",
         "DateTime", "Math", "Fs", "System", "Thread", "Regex",
-        "Json", "Net", "URL", "HttpClient", "HttpResponse",
+        "Net", "URL", "HttpClient", "HttpResponse",
         "Path", "Hashing", "Encoding", "Uuid", "Compression",
         "Process", "Args", "Csv", "Console", "StringBuilder",
         "Buffer", "Random", "HashMap", "AnyArray"
@@ -2620,6 +2643,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
+                if (isJsonFreeFunction(id->getName())) return jsonFreeFunctionReturnTypeId(id->getName());
                 auto it = functionReturnTypes_.find(id->getName());
                 if (it != functionReturnTypes_.end()) return it->second;
             }
@@ -2732,13 +2756,6 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     }
                     if (clsName == "Random") {
                         if (ma->getMember() == "new") return 105;
-                        return 100;
-                    }
-                    if (clsName == "Json") {
-                        if (ma->getMember() == "parseToMap") return 103;
-                        if (ma->getMember() == "serializeMap" || ma->getMember() == "minify" ||
-                            ma->getMember() == "beautify" || ma->getMember() == "getString" ||
-                            ma->getMember() == "stringify") return 101;
                         return 100;
                     }
                     if (isBuiltinClassName(clsName)) {

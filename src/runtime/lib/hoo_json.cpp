@@ -1,637 +1,93 @@
 #include "hoo_json.h"
-#include "hoo_map.h"
-#include "hoo_string.h"
+
+#include "hoo_any.h"
+#include "hoo_anyarray.h"
+#include "hoo_exception.h"
+#include "hoo_hashmap.h"
 #include "hoo_runtime.h"
+#include "hoo_string.h"
+
+#include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cerrno>
+#include <climits>
+#include <cstdint>
+#include <exception>
+#include <iomanip>
+#include <memory>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <map>
-#include <cstdio>
 
-// Forward declarations for C++ helpers (outside extern "C" to avoid
-// C-vs-C++ language linkage mismatch for static functions on GCC/Clang)
-static std::string json_escape(const std::string& s);
-static void stringify_value_pretty(struct JsonBase* json, std::string& out, int indent);
+namespace {
 
-extern "C" {
-
-// ============================================================================
-// Internal structures
-// ============================================================================
-
-enum HooJsonType {
-    JSON_NULL = 0,
-    JSON_BOOL = 1,
-    JSON_INT = 2,
-    JSON_STRING = 3,
-    JSON_ARRAY = 4,
-    JSON_OBJECT = 5,
-    JSON_FLOAT = 6
+enum class JsonKind {
+    Null,
+    Bool,
+    Number,
+    String,
+    Array,
+    Object
 };
 
-struct JsonBase {
-    int64_t refcount;
-    int64_t type;
+struct JsonNode {
+    JsonKind kind = JsonKind::Null;
+    bool boolValue = false;
+    std::string numberValue;
+    std::string stringValue;
+    std::vector<std::unique_ptr<JsonNode>> arrayValues;
+    std::vector<std::pair<std::string, std::unique_ptr<JsonNode>>> objectValues;
 };
 
-struct JsonNull : JsonBase {};
-struct JsonBool : JsonBase { int64_t value; };
-struct JsonInt : JsonBase { int64_t value; };
-struct JsonFloat : JsonBase { double value; };
-struct JsonString : JsonBase { std::string value; };
-struct JsonArray : JsonBase { std::vector<JsonBase*> items; };
-struct JsonObject : JsonBase { std::map<std::string, JsonBase*> fields; };
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-static JsonBase* json_alloc(int64_t type, size_t size) {
-    void* mem = hoo_alloc(size, HOO_TYPE_JSON);
-    auto* base = static_cast<JsonBase*>(mem);
-    base->refcount = 1;
-    base->type = type;
-    return base;
+[[noreturn]] void throwJsonRuntime(const std::string& message) {
+    HooException exc = hoo_exception_runtime(message.c_str());
+    hoo_exception_throw(exc);
+    std::abort();
 }
 
-static JsonBase* json_retain(JsonBase* json) {
-    if (json) {
-        hoo_retain(json);
-        json->refcount++;
-    }
-    return json;
+[[noreturn]] void rethrowAsJsonRuntime(const char* operation, const std::exception& e) {
+    throwJsonRuntime(std::string("JSON ") + operation + " failed: " + e.what());
 }
 
-static void json_release(JsonBase* json) {
-    if (!json) return;
-    json->refcount--;
-    if (json->refcount > 0) {
-        hoo_release(json);
-        return;
-    }
-    if (json->type == JSON_ARRAY) {
-        auto* arr = static_cast<JsonArray*>(json);
-        for (auto* item : arr->items) {
-            json_release(item);
-        }
-        arr->items.~vector();
-    } else if (json->type == JSON_OBJECT) {
-        auto* obj = static_cast<JsonObject*>(json);
-        for (auto& [_, val] : obj->fields) {
-            json_release(val);
-        }
-        obj->fields.~map();
-    } else if (json->type == JSON_STRING) {
-        static_cast<JsonString*>(json)->value.~basic_string();
-    }
-    hoo_release(json);
+[[noreturn]] void rethrowAsJsonRuntime(const char* operation) {
+    throwJsonRuntime(std::string("JSON ") + operation + " failed");
 }
 
-// ============================================================================
-// Parser
-// ============================================================================
-
-struct Parser {
-    const char* p;
-    size_t len;
-    size_t pos;
-
-    Parser(const char* s) : p(s), len(std::strlen(s)), pos(0) {}
-
-    void skip_ws() {
-        while (pos < len && (p[pos] == ' ' || p[pos] == '\t' || p[pos] == '\n' || p[pos] == '\r'))
-            pos++;
+bool appendUtf8(uint32_t cp, std::string& out) {
+    if (cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) return false;
+    if (cp <= 0x7F) {
+        out += static_cast<char>(cp);
+    } else if (cp <= 0x7FF) {
+        out += static_cast<char>(0xC0 | (cp >> 6));
+        out += static_cast<char>(0x80 | (cp & 0x3F));
+    } else if (cp <= 0xFFFF) {
+        out += static_cast<char>(0xE0 | (cp >> 12));
+        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (cp & 0x3F));
+    } else {
+        out += static_cast<char>(0xF0 | (cp >> 18));
+        out += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+        out += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+        out += static_cast<char>(0x80 | (cp & 0x3F));
     }
-
-    char peek() {
-        skip_ws();
-        return pos < len ? p[pos] : '\0';
-    }
-
-    char advance() {
-        return pos < len ? p[pos++] : '\0';
-    }
-
-    bool expect(char c) {
-        skip_ws();
-        if (pos < len && p[pos] == c) {
-            pos++;
-            return true;
-        }
-        return false;
-    }
-
-    JsonBase* parse_value();
-
-    JsonBase* parse_object() {
-        auto* obj = static_cast<JsonObject*>(json_alloc(JSON_OBJECT, sizeof(JsonObject)));
-        new (&obj->fields) std::map<std::string, JsonBase*>();
-        advance();
-        if (peek() == '}') { advance(); return obj; }
-        while (true) {
-            skip_ws();
-            if (pos >= len) { json_release(obj); return nullptr; }
-            std::string key = parse_string_raw();
-            if (!expect(':')) { json_release(obj); return nullptr; }
-            auto* val = parse_value();
-            if (!val) { json_release(obj); return nullptr; }
-            obj->fields[key] = val;
-            skip_ws();
-            if (peek() == '}') { advance(); break; }
-            if (!expect(',')) { json_release(obj); return nullptr; }
-        }
-        return obj;
-    }
-
-    JsonBase* parse_array() {
-        auto* arr = static_cast<JsonArray*>(json_alloc(JSON_ARRAY, sizeof(JsonArray)));
-        new (&arr->items) std::vector<JsonBase*>();
-        advance();
-        if (peek() == ']') { advance(); return arr; }
-        while (true) {
-            auto* val = parse_value();
-            if (!val) { json_release(arr); return nullptr; }
-            arr->items.push_back(val);
-            skip_ws();
-            if (peek() == ']') { advance(); break; }
-            if (!expect(',')) { json_release(arr); return nullptr; }
-        }
-        return arr;
-    }
-
-    std::string parse_string_raw() {
-        skip_ws();
-        if (pos >= len || p[pos] != '"') return "";
-        pos++;
-        std::string result;
-        while (pos < len) {
-            char c = p[pos++];
-            if (c == '"') break;
-            if (c == '\\') {
-                if (pos >= len) break;
-                char esc = p[pos++];
-                switch (esc) {
-                    case '"': result += '"'; break;
-                    case '\\': result += '\\'; break;
-                    case '/': result += '/'; break;
-                    case 'b': result += '\b'; break;
-                    case 'f': result += '\f'; break;
-                    case 'n': result += '\n'; break;
-                    case 'r': result += '\r'; break;
-                    case 't': result += '\t'; break;
-                    case 'u': {
-                        if (pos + 4 > len) break;
-                        char hex[5] = {p[pos], p[pos+1], p[pos+2], p[pos+3], 0};
-                        pos += 4;
-                        unsigned int cp;
-                        std::sscanf(hex, "%x", &cp);
-                        if (cp <= 0x7F) {
-                            result += static_cast<char>(cp);
-                        } else if (cp <= 0x7FF) {
-                            result += static_cast<char>(0xC0 | (cp >> 6));
-                            result += static_cast<char>(0x80 | (cp & 0x3F));
-                        } else {
-                            result += static_cast<char>(0xE0 | (cp >> 12));
-                            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
-                            result += static_cast<char>(0x80 | (cp & 0x3F));
-                        }
-                        break;
-                    }
-                    default: result += esc; break;
-                }
-            } else {
-                result += c;
-            }
-        }
-        return result;
-    }
-
-    JsonBase* parse_string() {
-        std::string s = parse_string_raw();
-        auto* js = static_cast<JsonString*>(json_alloc(JSON_STRING, sizeof(JsonString)));
-        new (&js->value) std::string(std::move(s));
-        return js;
-    }
-
-    JsonBase* parse_number() {
-        skip_ws();
-        size_t start = pos;
-        if (pos < len && p[pos] == '-') pos++;
-        while (pos < len && p[pos] >= '0' && p[pos] <= '9') pos++;
-        bool is_float = false;
-        if (pos < len && p[pos] == '.') {
-            is_float = true;
-            pos++;
-            while (pos < len && p[pos] >= '0' && p[pos] <= '9') pos++;
-        }
-        if (pos < len && (p[pos] == 'e' || p[pos] == 'E')) {
-            is_float = true;
-            pos++;
-            if (pos < len && (p[pos] == '+' || p[pos] == '-')) pos++;
-            while (pos < len && p[pos] >= '0' && p[pos] <= '9') pos++;
-        }
-        std::string num(p + start, pos - start);
-        if (is_float) {
-            auto* js = static_cast<JsonFloat*>(json_alloc(JSON_FLOAT, sizeof(JsonFloat)));
-            js->value = std::stod(num);
-            return js;
-        }
-        auto* js = static_cast<JsonInt*>(json_alloc(JSON_INT, sizeof(JsonInt)));
-        js->value = std::stoll(num);
-        return js;
-    }
-
-    JsonBase* parse_keyword(const char* kw, int64_t type_val) {
-        size_t kwlen = std::strlen(kw);
-        skip_ws();
-        if (pos + kwlen <= len && std::strncmp(p + pos, kw, kwlen) == 0) {
-            pos += kwlen;
-            auto* js = static_cast<JsonInt*>(json_alloc(type_val, sizeof(JsonInt)));
-            js->value = type_val == JSON_BOOL ? 1 : 0;
-            return js;
-        }
-        return nullptr;
-    }
-};
-
-JsonBase* Parser::parse_value() {
-    char c = peek();
-    if (c == '{') return parse_object();
-    if (c == '[') return parse_array();
-    if (c == '"') return parse_string();
-    if (c == '-' || (c >= '0' && c <= '9')) return parse_number();
-    if (c == 't') {
-        auto* r = parse_keyword("true", JSON_BOOL);
-        if (r) static_cast<JsonBool*>(r)->value = 1;
-        return r;
-    }
-    if (c == 'f') {
-        auto* r = parse_keyword("false", JSON_BOOL);
-        if (r) static_cast<JsonBool*>(r)->value = 0;
-        return r;
-    }
-    if (c == 'n') {
-        auto* result = parse_keyword("null", JSON_NULL);
-        if (result) {
-            result->type = JSON_NULL;
-            static_cast<JsonInt*>(result)->value = 0;
-        }
-        return result;
-    }
-    return nullptr;
+    return true;
 }
 
-// ============================================================================
-// Stringification
-// ============================================================================
-
-static void stringify_value(JsonBase* json, std::string& out) {
-    if (!json) { out += "null"; return; }
-    switch (json->type) {
-        case JSON_NULL: out += "null"; break;
-        case JSON_BOOL: out += static_cast<JsonBool*>(json)->value ? "true" : "false"; break;
-        case JSON_INT: out += std::to_string(static_cast<JsonInt*>(json)->value); break;
-        case JSON_FLOAT: {
-            double d = static_cast<JsonFloat*>(json)->value;
-            std::string s = std::to_string(d);
-            // Strip trailing zeros
-            auto dot = s.find('.');
-            if (dot != std::string::npos) {
-                auto last = s.find_last_not_of('0');
-                if (last > dot) s = s.substr(0, last + 1);
-                else if (last == dot) s = s.substr(0, dot + 2);
-            }
-            out += s;
-            break;
-        }
-        case JSON_STRING: {
-            out += '"';
-            const auto& s = static_cast<JsonString*>(json)->value;
-            for (char c : s) {
-                switch (c) {
-                    case '"': out += "\\\""; break;
-                    case '\\': out += "\\\\"; break;
-                    case '\b': out += "\\b"; break;
-                    case '\f': out += "\\f"; break;
-                    case '\n': out += "\\n"; break;
-                    case '\r': out += "\\r"; break;
-                    case '\t': out += "\\t"; break;
-                    default: out += c; break;
-                }
-            }
-            out += '"';
-            break;
-        }
-        case JSON_ARRAY: {
-            out += '[';
-            auto& items = static_cast<JsonArray*>(json)->items;
-            for (size_t i = 0; i < items.size(); i++) {
-                if (i > 0) out += ',';
-                stringify_value(items[i], out);
-            }
-            out += ']';
-            break;
-        }
-        case JSON_OBJECT: {
-            out += '{';
-            auto& fields = static_cast<JsonObject*>(json)->fields;
-            bool first = true;
-            for (auto& [key, val] : fields) {
-                if (!first) out += ',';
-                first = false;
-                out += '"' + key + '"' + ':';
-                stringify_value(val, out);
-            }
-            out += '}';
-            break;
-        }
-    }
+int hexValue(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return 10 + (c - 'a');
+    if (c >= 'A' && c <= 'F') return 10 + (c - 'A');
+    return -1;
 }
 
-// ============================================================================
-// Public API
-// ============================================================================
-
-HooJson hoo_json_parse(const char* json) {
-    if (!json) return nullptr;
-    Parser parser(json);
-    auto* result = parser.parse_value();
-    if (!result || parser.peek() != '\0') {
-        if (result) json_release(result);
-        return nullptr;
-    }
-    return result;
-}
-
-char* hoo_json_stringify(HooJson json) {
-    if (!json) return strdup("null");
+std::string jsonEscape(const std::string& s) {
     std::string out;
-    stringify_value(static_cast<JsonBase*>(json), out);
-    return strdup(out.c_str());
-}
-
-HooJson hoo_json_get(HooJson obj, const char* key) {
-    if (!obj || !key) return nullptr;
-    auto* base = static_cast<JsonBase*>(obj);
-    if (base->type != JSON_OBJECT) return nullptr;
-    auto& fields = static_cast<JsonObject*>(base)->fields;
-    auto it = fields.find(key);
-    if (it == fields.end()) return nullptr;
-    return json_retain(it->second);
-}
-
-int64_t hoo_json_get_int(HooJson obj, const char* key) {
-    HooJson val = hoo_json_get(obj, key);
-    if (!val) return 0;
-    auto* base = static_cast<JsonBase*>(val);
-    int64_t result = 0;
-    if (base->type == JSON_INT) result = static_cast<JsonInt*>(val)->value;
-    else if (base->type == JSON_FLOAT) result = static_cast<int64_t>(static_cast<JsonFloat*>(val)->value);
-    json_release(static_cast<JsonBase*>(val));
-    return result;
-}
-
-char* hoo_json_get_string(HooJson obj, const char* key) {
-    HooJson val = hoo_json_get(obj, key);
-    if (!val) return nullptr;
-    auto* base = static_cast<JsonBase*>(val);
-    char* result = nullptr;
-    if (base->type == JSON_STRING) {
-        result = strdup(static_cast<JsonString*>(val)->value.c_str());
-    }
-    json_release(static_cast<JsonBase*>(val));
-    return result;
-}
-
-int64_t hoo_json_set(HooJson obj, const char* key, HooJson val) {
-    if (!obj || !key) return 0;
-    auto* base = static_cast<JsonBase*>(obj);
-    if (base->type != JSON_OBJECT) return 0;
-    auto& fields = static_cast<JsonObject*>(base)->fields;
-    auto it = fields.find(key);
-    if (it != fields.end()) {
-        json_release(it->second);
-    }
-    fields[key] = static_cast<JsonBase*>(val);
-    json_retain(static_cast<JsonBase*>(val));
-    return 1;
-}
-
-HooJson hoo_json_array_get(HooJson arr, int64_t index) {
-    if (!arr) return nullptr;
-    auto* base = static_cast<JsonBase*>(arr);
-    if (base->type != JSON_ARRAY) return nullptr;
-    auto& items = static_cast<JsonArray*>(base)->items;
-    if (index < 0 || static_cast<size_t>(index) >= items.size()) return nullptr;
-    return json_retain(items[index]);
-}
-
-int64_t hoo_json_array_push(HooJson arr, HooJson val) {
-    if (!arr || !val) return 0;
-    auto* base = static_cast<JsonBase*>(arr);
-    if (base->type != JSON_ARRAY) return 0;
-    static_cast<JsonArray*>(base)->items.push_back(static_cast<JsonBase*>(val));
-    json_retain(static_cast<JsonBase*>(val));
-    return 1;
-}
-
-int64_t hoo_json_array_length(HooJson arr) {
-    if (!arr) return 0;
-    auto* base = static_cast<JsonBase*>(arr);
-    if (base->type != JSON_ARRAY) return 0;
-    return static_cast<int64_t>(static_cast<JsonArray*>(base)->items.size());
-}
-
-int64_t hoo_json_type(HooJson json) {
-    if (!json) return HOO_JSON_NULL;
-    return static_cast<JsonBase*>(json)->type;
-}
-
-HooJson hoo_json_new_object(void) {
-    auto* obj = static_cast<JsonObject*>(json_alloc(JSON_OBJECT, sizeof(JsonObject)));
-    new (&obj->fields) std::map<std::string, JsonBase*>();
-    return obj;
-}
-
-HooJson hoo_json_new_array(void) {
-    auto* arr = static_cast<JsonArray*>(json_alloc(JSON_ARRAY, sizeof(JsonArray)));
-    new (&arr->items) std::vector<JsonBase*>();
-    return arr;
-}
-
-HooJson hoo_json_new_string(const char* s) {
-    auto* js = static_cast<JsonString*>(json_alloc(JSON_STRING, sizeof(JsonString)));
-    new (&js->value) std::string(s ? s : "");
-    return js;
-}
-
-HooJson hoo_json_new_int(int64_t n) {
-    auto* js = static_cast<JsonInt*>(json_alloc(JSON_INT, sizeof(JsonInt)));
-    js->value = n;
-    return js;
-}
-
-HooJson hoo_json_new_float(double f) {
-    auto* js = static_cast<JsonFloat*>(json_alloc(JSON_FLOAT, sizeof(JsonFloat)));
-    js->value = f;
-    return js;
-}
-
-HooJson hoo_json_new_bool(int64_t b) {
-    auto* js = static_cast<JsonBool*>(json_alloc(JSON_BOOL, sizeof(JsonBool)));
-    js->value = b;
-    return js;
-}
-
-HooJson hoo_json_new_null(void) {
-    return json_alloc(JSON_NULL, sizeof(JsonNull));
-}
-
-void hoo_json_retain(HooJson json) {
-    json_retain(static_cast<JsonBase*>(json));
-}
-
-void hoo_json_release(HooJson json) {
-    json_release(static_cast<JsonBase*>(json));
-}
-
-void hoo_json_free_string(char* str) {
-    std::free(str);
-}
-
-// ============================================================================
-// HooMap Interop
-// ============================================================================
-
-HooMap hoo_json_parse_to_map(const char* json) {
-    if (!json) return nullptr;
-    Parser parser(json);
-    auto* val = parser.parse_value();
-    if (!val || val->type != JSON_OBJECT || parser.peek() != '\0') {
-        if (val) json_release(val);
-        return nullptr;
-    }
-    auto* obj = static_cast<JsonObject*>(val);
-    HooMap map = hoo_map_new(HOO_MAP_KEY_STRING, HOO_MAP_VAL_STRING);
-    if (!map) { json_release(val); return nullptr; }
-    for (auto& [key, field_val] : obj->fields) {
-        const char* str_val = nullptr;
-        std::string num_str;
-        switch (field_val->type) {
-            case JSON_STRING:
-                str_val = static_cast<JsonString*>(field_val)->value.c_str();
-                break;
-            case JSON_INT:
-                num_str = std::to_string(static_cast<JsonInt*>(field_val)->value);
-                str_val = num_str.c_str();
-                break;
-            case JSON_FLOAT: {
-                num_str = std::to_string(static_cast<JsonFloat*>(field_val)->value);
-                auto dot = num_str.find('.');
-                if (dot != std::string::npos) {
-                    auto last = num_str.find_last_not_of('0');
-                    if (last > dot) num_str = num_str.substr(0, last + 1);
-                    else if (last == dot) num_str = num_str.substr(0, dot + 2);
-                }
-                str_val = num_str.c_str();
-                break;
-            }
-            case JSON_BOOL:
-                str_val = static_cast<JsonBool*>(field_val)->value ? "true" : "false";
-                break;
-            case JSON_NULL:
-                str_val = "null";
-                break;
-            default:
-                json_release(val);
-                hoo_map_release(map);
-                return nullptr;
-        }
-        hoo_map_set(map, key.c_str(), str_val);
-    }
-    json_release(val);
-    return map;
-}
-
-HooString hoo_json_serialize_map(HooMap map) {
-    if (!map) return nullptr;
-    if (hoo_map_value_type(map) != HOO_MAP_VAL_STRING) return nullptr;
-    int64_t count = hoo_map_count(map);
-    if (count == 0) return hoo_string_from_cstr("{}");
-    std::vector<const char*> keys(count);
-    int64_t actual = hoo_map_get_keys(map, keys.data(), count);
-    std::string out = "{";
-    for (int64_t i = 0; i < actual; i++) {
-        if (i > 0) out += ",";
-        out += '"' + json_escape(keys[i]) + "\":";
-        const char* val = nullptr;
-        hoo_map_try_get(map, keys[i], &val);
-        if (!val) {
-            out += "null";
-        } else if (std::strcmp(val, "null") == 0) {
-            out += "null";
-        } else if (std::strcmp(val, "true") == 0) {
-            out += "true";
-        } else if (std::strcmp(val, "false") == 0) {
-            out += "false";
-        } else {
-            char* end = nullptr;
-            (void)std::strtod(val, &end);
-            if (end && *end == '\0' && val[0] != '\0') {
-                out += val;
-            } else {
-                out += '"' + json_escape(val) + '"';
-            }
-        }
-    }
-    out += "}";
-    return hoo_string_from_cstr(out.c_str());
-}
-
-// ============================================================================
-// String Transformation
-// ============================================================================
-
-HooString hoo_json_minify(const char* json) {
-    if (!json) return nullptr;
-    Parser parser(json);
-    auto* val = parser.parse_value();
-    if (!val || parser.peek() != '\0') {
-        if (val) json_release(val);
-        return nullptr;
-    }
-    std::string out;
-    stringify_value(val, out);
-    json_release(val);
-    return hoo_string_from_cstr(out.c_str());
-}
-
-HooString hoo_json_beautify(const char* json) {
-    if (!json) return nullptr;
-    Parser parser(json);
-    auto* val = parser.parse_value();
-    if (!val || parser.peek() != '\0') {
-        if (val) json_release(val);
-        return nullptr;
-    }
-    std::string out;
-    stringify_value_pretty(val, out, 0);
-    json_release(val);
-    return hoo_string_from_cstr(out.c_str());
-}
-
-} // extern "C"
-
-// ============================================================================
-// Internal C++ helpers (no C-linkage needed)
-// ============================================================================
-
-static std::string json_escape(const std::string& s) {
-    std::string out;
-    for (char c : s) {
+    for (unsigned char c : s) {
         switch (c) {
-            case '"':  out += "\\\""; break;
+            case '"': out += "\\\""; break;
             case '\\': out += "\\\\"; break;
             case '\b': out += "\\b"; break;
             case '\f': out += "\\f"; break;
@@ -639,12 +95,12 @@ static std::string json_escape(const std::string& s) {
             case '\r': out += "\\r"; break;
             case '\t': out += "\\t"; break;
             default:
-                if (static_cast<unsigned char>(c) < 0x20) {
+                if (c < 0x20) {
                     char buf[8];
-                    std::snprintf(buf, sizeof(buf), "\\u%04x", (unsigned char)c);
+                    std::snprintf(buf, sizeof(buf), "\\u%04x", c);
                     out += buf;
                 } else {
-                    out += c;
+                    out += static_cast<char>(c);
                 }
                 break;
         }
@@ -652,67 +108,580 @@ static std::string json_escape(const std::string& s) {
     return out;
 }
 
-static void stringify_value_pretty(JsonBase* json, std::string& out, int indent) {
-    if (!json) { out += "null"; return; }
-    std::string ind(indent * 2, ' ');
-    std::string ind_next((indent + 1) * 2, ' ');
-    switch (json->type) {
-        case JSON_NULL:
-            out += "null";
-            break;
-        case JSON_BOOL:
-            out += static_cast<JsonBool*>(json)->value ? "true" : "false";
-            break;
-        case JSON_INT:
-            out += std::to_string(static_cast<JsonInt*>(json)->value);
-            break;
-        case JSON_FLOAT: {
-            double d = static_cast<JsonFloat*>(json)->value;
-            std::string s = std::to_string(d);
-            auto dot = s.find('.');
-            if (dot != std::string::npos) {
-                auto last = s.find_last_not_of('0');
-                if (last > dot) s = s.substr(0, last + 1);
-                else if (last == dot) s = s.substr(0, dot + 2);
-            }
-            out += s;
-            break;
-        }
-        case JSON_STRING:
-            out += '"' + json_escape(static_cast<JsonString*>(json)->value) + '"';
-            break;
-        case JSON_ARRAY: {
-            auto& items = static_cast<JsonArray*>(json)->items;
-            if (items.empty()) {
-                out += "[]";
-            } else {
-                out += "[\n";
-                for (size_t i = 0; i < items.size(); i++) {
-                    out += ind_next;
-                    stringify_value_pretty(items[i], out, indent + 1);
-                    if (i < items.size() - 1) out += ",";
-                    out += "\n";
-                }
-                out += ind + "]";
-            }
-            break;
-        }
-        case JSON_OBJECT: {
-            auto& fields = static_cast<JsonObject*>(json)->fields;
-            if (fields.empty()) {
-                out += "{}";
-            } else {
-                out += "{\n";
-                bool first = true;
-                for (auto& [key, val] : fields) {
-                    if (!first) out += ",\n";
-                    first = false;
-                    out += ind_next + '"' + json_escape(key) + "\": ";
-                    stringify_value_pretty(val, out, indent + 1);
-                }
-                out += "\n" + ind + "}";
-            }
-            break;
+std::string formatDouble(double value) {
+    if (!std::isfinite(value)) return {};
+    std::ostringstream oss;
+    oss << std::setprecision(17) << value;
+    return oss.str();
+}
+
+uint64_t pointerToData(const void* ptr) {
+    return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(ptr));
+}
+
+template<typename T>
+T* dataToPointer(uint64_t data) {
+    return reinterpret_cast<T*>(static_cast<uintptr_t>(data));
+}
+
+uint64_t int64ToData(int64_t value) {
+    uint64_t data = 0;
+    static_assert(sizeof(data) == sizeof(value), "int64_t and uint64_t size mismatch");
+    std::memcpy(&data, &value, sizeof(data));
+    return data;
+}
+
+int64_t dataToInt64(uint64_t data) {
+    int64_t value = 0;
+    static_assert(sizeof(data) == sizeof(value), "int64_t and uint64_t size mismatch");
+    std::memcpy(&value, &data, sizeof(value));
+    return value;
+}
+
+struct Parser {
+    const char* input = nullptr;
+    size_t len = 0;
+    size_t pos = 0;
+
+    explicit Parser(const char* json) : input(json), len(std::strlen(json)) {}
+
+    void skipWhitespace() {
+        while (pos < len) {
+            char c = input[pos];
+            if (c != ' ' && c != '\t' && c != '\n' && c != '\r') break;
+            ++pos;
         }
     }
+
+    bool consume(char c) {
+        skipWhitespace();
+        if (pos < len && input[pos] == c) {
+            ++pos;
+            return true;
+        }
+        return false;
+    }
+
+    bool consumeLiteral(const char* literal) {
+        skipWhitespace();
+        size_t literalLen = std::strlen(literal);
+        if (pos + literalLen > len) return false;
+        if (std::strncmp(input + pos, literal, literalLen) != 0) return false;
+        pos += literalLen;
+        return true;
+    }
+
+    bool parseHex4(uint32_t& out) {
+        if (pos + 4 > len) return false;
+        uint32_t value = 0;
+        for (int i = 0; i < 4; ++i) {
+            int nibble = hexValue(input[pos + i]);
+            if (nibble < 0) return false;
+            value = (value << 4) | static_cast<uint32_t>(nibble);
+        }
+        pos += 4;
+        out = value;
+        return true;
+    }
+
+    bool parseString(std::string& out) {
+        skipWhitespace();
+        if (pos >= len || input[pos] != '"') return false;
+        ++pos;
+        out.clear();
+
+        while (pos < len) {
+            unsigned char c = static_cast<unsigned char>(input[pos++]);
+            if (c == '"') return true;
+            if (c < 0x20) return false;
+            if (c != '\\') {
+                out += static_cast<char>(c);
+                continue;
+            }
+            if (pos >= len) return false;
+            char esc = input[pos++];
+            switch (esc) {
+                case '"': out += '"'; break;
+                case '\\': out += '\\'; break;
+                case '/': out += '/'; break;
+                case 'b': out += '\b'; break;
+                case 'f': out += '\f'; break;
+                case 'n': out += '\n'; break;
+                case 'r': out += '\r'; break;
+                case 't': out += '\t'; break;
+                case 'u': {
+                    uint32_t cp = 0;
+                    if (!parseHex4(cp)) return false;
+                    if (cp >= 0xD800 && cp <= 0xDBFF) {
+                        if (pos + 6 > len || input[pos] != '\\' || input[pos + 1] != 'u') return false;
+                        pos += 2;
+                        uint32_t low = 0;
+                        if (!parseHex4(low) || low < 0xDC00 || low > 0xDFFF) return false;
+                        cp = 0x10000 + (((cp - 0xD800) << 10) | (low - 0xDC00));
+                    }
+                    if (!appendUtf8(cp, out)) return false;
+                    break;
+                }
+                default:
+                    return false;
+            }
+        }
+        return false;
+    }
+
+    std::unique_ptr<JsonNode> parseNumber() {
+        skipWhitespace();
+        size_t start = pos;
+        if (pos < len && input[pos] == '-') ++pos;
+        if (pos >= len) return nullptr;
+        if (input[pos] == '0') {
+            ++pos;
+        } else if (input[pos] >= '1' && input[pos] <= '9') {
+            while (pos < len && input[pos] >= '0' && input[pos] <= '9') ++pos;
+        } else {
+            return nullptr;
+        }
+        if (pos < len && input[pos] == '.') {
+            ++pos;
+            size_t fracStart = pos;
+            while (pos < len && input[pos] >= '0' && input[pos] <= '9') ++pos;
+            if (pos == fracStart) return nullptr;
+        }
+        if (pos < len && (input[pos] == 'e' || input[pos] == 'E')) {
+            ++pos;
+            if (pos < len && (input[pos] == '+' || input[pos] == '-')) ++pos;
+            size_t expStart = pos;
+            while (pos < len && input[pos] >= '0' && input[pos] <= '9') ++pos;
+            if (pos == expStart) return nullptr;
+        }
+
+        auto node = std::make_unique<JsonNode>();
+        node->kind = JsonKind::Number;
+        node->numberValue.assign(input + start, pos - start);
+        return node;
+    }
+
+    std::unique_ptr<JsonNode> parseArray() {
+        if (!consume('[')) return nullptr;
+        auto node = std::make_unique<JsonNode>();
+        node->kind = JsonKind::Array;
+        skipWhitespace();
+        if (consume(']')) return node;
+        while (true) {
+            auto item = parseValue();
+            if (!item) return nullptr;
+            node->arrayValues.push_back(std::move(item));
+            skipWhitespace();
+            if (consume(']')) return node;
+            if (!consume(',')) return nullptr;
+        }
+    }
+
+    std::unique_ptr<JsonNode> parseObject() {
+        if (!consume('{')) return nullptr;
+        auto node = std::make_unique<JsonNode>();
+        node->kind = JsonKind::Object;
+        skipWhitespace();
+        if (consume('}')) return node;
+        while (true) {
+            std::string key;
+            if (!parseString(key)) return nullptr;
+            if (!consume(':')) return nullptr;
+            auto value = parseValue();
+            if (!value) return nullptr;
+            node->objectValues.emplace_back(std::move(key), std::move(value));
+            skipWhitespace();
+            if (consume('}')) return node;
+            if (!consume(',')) return nullptr;
+        }
+    }
+
+    std::unique_ptr<JsonNode> parseValue() {
+        skipWhitespace();
+        if (pos >= len) return nullptr;
+        char c = input[pos];
+        if (c == '{') return parseObject();
+        if (c == '[') return parseArray();
+        if (c == '"') {
+            auto node = std::make_unique<JsonNode>();
+            node->kind = JsonKind::String;
+            if (!parseString(node->stringValue)) return nullptr;
+            return node;
+        }
+        if (c == '-' || (c >= '0' && c <= '9')) return parseNumber();
+        if (consumeLiteral("true")) {
+            auto node = std::make_unique<JsonNode>();
+            node->kind = JsonKind::Bool;
+            node->boolValue = true;
+            return node;
+        }
+        if (consumeLiteral("false")) {
+            auto node = std::make_unique<JsonNode>();
+            node->kind = JsonKind::Bool;
+            node->boolValue = false;
+            return node;
+        }
+        if (consumeLiteral("null")) {
+            return std::make_unique<JsonNode>();
+        }
+        return nullptr;
+    }
+
+    std::unique_ptr<JsonNode> parseDocument() {
+        auto root = parseValue();
+        if (!root) return nullptr;
+        skipWhitespace();
+        return pos == len ? std::move(root) : nullptr;
+    }
+};
+
+void stringifyNode(const JsonNode& node, std::string& out, int indent, bool pretty) {
+    const std::string currentIndent(pretty ? indent * 2 : 0, ' ');
+    const std::string nextIndent(pretty ? (indent + 1) * 2 : 0, ' ');
+
+    switch (node.kind) {
+        case JsonKind::Null:
+            out += "null";
+            break;
+        case JsonKind::Bool:
+            out += node.boolValue ? "true" : "false";
+            break;
+        case JsonKind::Number:
+            out += node.numberValue;
+            break;
+        case JsonKind::String:
+            out += '"';
+            out += jsonEscape(node.stringValue);
+            out += '"';
+            break;
+        case JsonKind::Array:
+            if (node.arrayValues.empty()) {
+                out += "[]";
+                break;
+            }
+            out += '[';
+            if (pretty) out += '\n';
+            for (size_t i = 0; i < node.arrayValues.size(); ++i) {
+                if (pretty) out += nextIndent;
+                stringifyNode(*node.arrayValues[i], out, indent + 1, pretty);
+                if (i + 1 < node.arrayValues.size()) out += ',';
+                if (pretty) out += '\n';
+            }
+            if (pretty) out += currentIndent;
+            out += ']';
+            break;
+        case JsonKind::Object:
+            if (node.objectValues.empty()) {
+                out += "{}";
+                break;
+            }
+            out += '{';
+            if (pretty) out += '\n';
+            for (size_t i = 0; i < node.objectValues.size(); ++i) {
+                if (pretty) out += nextIndent;
+                out += '"';
+                out += jsonEscape(node.objectValues[i].first);
+                out += pretty ? "\": " : "\":";
+                stringifyNode(*node.objectValues[i].second, out, indent + 1, pretty);
+                if (i + 1 < node.objectValues.size()) out += ',';
+                if (pretty) out += '\n';
+            }
+            if (pretty) out += currentIndent;
+            out += '}';
+            break;
+    }
 }
+
+void serializeAnyValue(HooAnyValue value, std::string& out);
+
+void serializeAnyArray(HooAnyArray array, std::string& out) {
+    if (!array) throw std::runtime_error("AnyArray is nil");
+    int64_t length = hoo_anyarray_length(array);
+    if (length < 0) throw std::runtime_error("AnyArray length is invalid");
+    out += '[';
+    for (int64_t i = 0; i < length; ++i) {
+        HooAnyValue value{0, 0};
+        if (!hoo_anyarray_get(array, i, &value)) throw std::runtime_error("failed to read AnyArray element");
+        if (i > 0) out += ',';
+        serializeAnyValue(value, out);
+    }
+    out += ']';
+}
+
+void serializeHashMap(HooHashMap map, std::string& out) {
+    if (!map) throw std::runtime_error("HashMap is nil");
+    int64_t count = hoo_hashmap_count(map);
+    if (count < 0) throw std::runtime_error("HashMap count is invalid");
+
+    std::vector<int64_t> keys(static_cast<size_t>(count));
+    int64_t actual = count == 0 ? 0 : hoo_hashmap_get_keys_i8(map, keys.data(), count);
+    if (actual < 0) throw std::runtime_error("failed to enumerate HashMap keys");
+
+    int64_t valueType = hoo_hashmap_value_type(map);
+    out += '{';
+    for (int64_t i = 0; i < actual; ++i) {
+        if (i > 0) out += ',';
+        out += '"';
+        out += std::to_string(keys[static_cast<size_t>(i)]);
+        out += "\":";
+        if (valueType == HOO_TYPE_ANY) {
+            HooAnyValue value{0, 0};
+            if (!hoo_hashmap_get_any_at_i8(map, keys[static_cast<size_t>(i)], &value)) {
+                throw std::runtime_error("failed to read HashMap any value");
+            }
+            serializeAnyValue(value, out);
+        } else {
+            uint64_t data = 0;
+            if (!hoo_hashmap_get_fixed_at_i8(map, keys[static_cast<size_t>(i)], &data)) {
+                throw std::runtime_error("failed to read HashMap value");
+            }
+            HooAnyValue value{valueType, data};
+            serializeAnyValue(value, out);
+        }
+    }
+    out += '}';
+}
+
+void serializeAnyValue(HooAnyValue value, std::string& out) {
+    switch (value.type_id) {
+        case HOO_TYPE_INT64:
+            out += std::to_string(dataToInt64(value.data));
+            return;
+        case HOO_TYPE_INT8:
+            out += std::to_string(static_cast<int8_t>(value.data));
+            return;
+        case HOO_TYPE_BYTE:
+            out += std::to_string(static_cast<uint8_t>(value.data));
+            return;
+        case HOO_TYPE_BOOL:
+            out += value.data ? "true" : "false";
+            return;
+        case HOO_TYPE_FLOAT64: {
+            double d = 0.0;
+            static_assert(sizeof(d) == sizeof(value.data), "double and uint64_t size mismatch");
+            std::memcpy(&d, &value.data, sizeof(d));
+            std::string formatted = formatDouble(d);
+            if (formatted.empty()) throw std::runtime_error("non-finite floating-point value");
+            out += formatted;
+            return;
+        }
+        case HOO_TYPE_STRING: {
+            if (value.data == 0) {
+                out += "null";
+                return;
+            }
+            const char* data = hoo_string_data(dataToPointer<void>(value.data));
+            if (!data) throw std::runtime_error("string value is invalid");
+            out += '"';
+            out += jsonEscape(data);
+            out += '"';
+            return;
+        }
+        case HOO_TYPE_HASHMAP:
+            serializeHashMap(dataToPointer<void>(value.data), out);
+            return;
+        case HOO_TYPE_ANYARRAY:
+            serializeAnyArray(dataToPointer<void>(value.data), out);
+            return;
+        case HOO_TYPE_VOID:
+            out += "null";
+            return;
+        default:
+            throw std::runtime_error("unsupported value type id " + std::to_string(value.type_id));
+    }
+}
+
+bool parseInt64Text(const std::string& text, int64_t& out) {
+    if (text.empty()) return false;
+    errno = 0;
+    char* end = nullptr;
+    long long value = std::strtoll(text.c_str(), &end, 10);
+    if (errno == ERANGE || !end || *end != '\0') return false;
+    out = static_cast<int64_t>(value);
+    return true;
+}
+
+bool numberIsFloat(const std::string& text) {
+    return text.find_first_of(".eE") != std::string::npos;
+}
+
+HooAnyValue nodeToAnyValue(const JsonNode& node);
+
+HooAnyArray nodeToAnyArray(const JsonNode& node) {
+    if (node.kind != JsonKind::Array) throw std::runtime_error("JSON root is not an array");
+    HooAnyArray array = hoo_anyarray_new_capacity(static_cast<int64_t>(node.arrayValues.size()));
+    if (!array) throw std::runtime_error("failed to allocate AnyArray");
+    try {
+        for (const auto& item : node.arrayValues) {
+            HooAnyValue value = nodeToAnyValue(*item);
+            if (!hoo_anyarray_push(array, value.type_id, value.data)) {
+                hoo_any_release(value);
+                throw std::runtime_error("failed to append AnyArray element");
+            }
+            hoo_any_release(value);
+        }
+        return array;
+    } catch (...) {
+        hoo_anyarray_release(array);
+        throw;
+    }
+}
+
+HooHashMap nodeToHashMap(const JsonNode& node) {
+    if (node.kind != JsonKind::Object) throw std::runtime_error("JSON root is not an object");
+    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    if (!map) throw std::runtime_error("failed to allocate HashMap");
+    try {
+        for (const auto& [keyText, valueNode] : node.objectValues) {
+            int64_t key = 0;
+            if (!parseInt64Text(keyText, key)) {
+                throw std::runtime_error("JSON object key '" + keyText + "' is not a valid int64 HashMap key");
+            }
+            HooAnyValue value = nodeToAnyValue(*valueNode);
+            if (!hoo_hashmap_set_any_i8(map, key, value.type_id, value.data)) {
+                hoo_any_release(value);
+                throw std::runtime_error("failed to set HashMap value");
+            }
+            hoo_any_release(value);
+        }
+        return map;
+    } catch (...) {
+        hoo_hashmap_release(map);
+        throw;
+    }
+}
+
+HooAnyValue nodeToAnyValue(const JsonNode& node) {
+    switch (node.kind) {
+        case JsonKind::Null:
+            return HooAnyValue{HOO_TYPE_VOID, 0};
+        case JsonKind::Bool:
+            return HooAnyValue{HOO_TYPE_BOOL, node.boolValue ? 1ULL : 0ULL};
+        case JsonKind::Number:
+            if (numberIsFloat(node.numberValue)) {
+                char* end = nullptr;
+                errno = 0;
+                double d = std::strtod(node.numberValue.c_str(), &end);
+                if (errno == ERANGE || !end || *end != '\0' || !std::isfinite(d)) {
+                    throw std::runtime_error("JSON number is outside supported f64 range");
+                }
+                uint64_t bits = 0;
+                std::memcpy(&bits, &d, sizeof(bits));
+                return HooAnyValue{HOO_TYPE_FLOAT64, bits};
+            } else {
+                int64_t value = 0;
+                if (!parseInt64Text(node.numberValue, value)) {
+                    throw std::runtime_error("JSON integer is outside int64 range");
+                }
+                return HooAnyValue{HOO_TYPE_INT64, int64ToData(value)};
+            }
+        case JsonKind::String: {
+            HooString str = hoo_string_from_cstr(node.stringValue.c_str());
+            if (!str) throw std::runtime_error("failed to allocate string");
+            return HooAnyValue{HOO_TYPE_STRING, pointerToData(str)};
+        }
+        case JsonKind::Array: {
+            HooAnyArray array = nodeToAnyArray(node);
+            return HooAnyValue{HOO_TYPE_ANYARRAY, pointerToData(array)};
+        }
+        case JsonKind::Object: {
+            HooHashMap map = nodeToHashMap(node);
+            return HooAnyValue{HOO_TYPE_HASHMAP, pointerToData(map)};
+        }
+    }
+    throw std::runtime_error("unsupported JSON value");
+}
+
+HooString parseAndFormat(const char* json, bool pretty) {
+    if (!json) throw std::runtime_error("input string is nil");
+    Parser parser(json);
+    auto root = parser.parseDocument();
+    if (!root) throw std::runtime_error("invalid JSON input");
+    std::string out;
+    stringifyNode(*root, out, 0, pretty);
+    HooString result = hoo_string_from_cstr(out.c_str());
+    if (!result) throw std::runtime_error("failed to allocate output string");
+    return result;
+}
+
+} // namespace
+
+extern "C" {
+
+HooString hoo_json_serialize_hashmap(HooHashMap map) {
+    try {
+        std::string out;
+        serializeHashMap(map, out);
+        HooString result = hoo_string_from_cstr(out.c_str());
+        if (!result) throw std::runtime_error("failed to allocate output string");
+        return result;
+    } catch (const std::exception& e) {
+        rethrowAsJsonRuntime("serialization", e);
+    } catch (...) {
+        rethrowAsJsonRuntime("serialization");
+    }
+}
+
+HooString hoo_json_serialize_anyarray(HooAnyArray array) {
+    try {
+        std::string out;
+        serializeAnyArray(array, out);
+        HooString result = hoo_string_from_cstr(out.c_str());
+        if (!result) throw std::runtime_error("failed to allocate output string");
+        return result;
+    } catch (const std::exception& e) {
+        rethrowAsJsonRuntime("serialization", e);
+    } catch (...) {
+        rethrowAsJsonRuntime("serialization");
+    }
+}
+
+HooHashMap hoo_json_deserialize_hashmap(const char* json) {
+    try {
+        if (!json) throw std::runtime_error("input string is nil");
+        Parser parser(json);
+        auto root = parser.parseDocument();
+        if (!root) throw std::runtime_error("invalid JSON input");
+        return nodeToHashMap(*root);
+    } catch (const std::exception& e) {
+        rethrowAsJsonRuntime("deserialization", e);
+    } catch (...) {
+        rethrowAsJsonRuntime("deserialization");
+    }
+}
+
+HooAnyArray hoo_json_deserialize_anyarray(const char* json) {
+    try {
+        if (!json) throw std::runtime_error("input string is nil");
+        Parser parser(json);
+        auto root = parser.parseDocument();
+        if (!root) throw std::runtime_error("invalid JSON input");
+        return nodeToAnyArray(*root);
+    } catch (const std::exception& e) {
+        rethrowAsJsonRuntime("deserialization", e);
+    } catch (...) {
+        rethrowAsJsonRuntime("deserialization");
+    }
+}
+
+HooString hoo_json_minify(const char* json) {
+    try {
+        return parseAndFormat(json, false);
+    } catch (const std::exception& e) {
+        rethrowAsJsonRuntime("minification", e);
+    } catch (...) {
+        rethrowAsJsonRuntime("minification");
+    }
+}
+
+HooString hoo_json_beautify(const char* json) {
+    try {
+        return parseAndFormat(json, true);
+    } catch (const std::exception& e) {
+        rethrowAsJsonRuntime("beautification", e);
+    } catch (...) {
+        rethrowAsJsonRuntime("beautification");
+    }
+}
+
+} // extern "C"

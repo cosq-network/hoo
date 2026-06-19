@@ -258,8 +258,12 @@ Example: adding a new module (e.g. `hoo.xml`).
 `Encoding` → `encoding_`, `Math` → `math_`, `Thread` → `thread_`,
 `Csv` → `csv_`, `DateTime` → `datetime_`, `Path` → `path_`,
 `Hash` → `hashing_`, `Process` → `process_`, `Compression` → `compression_`,
-`Args` → `args_`, `Net` → `net_`, `Json` → `json_`, `Character` → `character_`,
+`Args` → `args_`, `Net` → `net_`, `Character` → `character_`,
 `Buffer` → `buffer_`
+
+JSON is intentionally not part of the class-name mapping. Its runtime surface is
+free-function only and is redirected by exact `json_` function names, for
+example `json_serialize_hashmap` and `json_deserialize_anyarray`.
 
 ---
 

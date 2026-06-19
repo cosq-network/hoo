@@ -1,92 +1,469 @@
-# Buffer API Reference
+# Buffer API Developer Reference
 
-The `Buffer` class provides a managed, mutable byte array for working with raw binary data. Buffers are ARC-managed and support dynamic resizing.
+The `Buffer` runtime API provides a managed, mutable byte array for raw binary
+data. Buffers are ARC-managed runtime objects with type ID `113` and dynamic
+capacity growth.
 
-## Constructor
+Use `Buffer` when a runtime API needs binary-safe bytes instead of a text
+`string`. Several modules accept or return `Buffer` values, including `Fs`,
+`Encoding`, `Uuid`, `Hashing`, and `Compression`.
 
-### `new Buffer(capacity: int64) :buffer`
+## `new Buffer`
 
-Creates a new empty Buffer with the given initial capacity.
+### Description
+
+Creates an empty buffer. When a capacity is supplied, the buffer reserves at
+least that many bytes.
+
+### Syntax
 
 ```hoo
-let buf = new Buffer(64)
+new Buffer() :Buffer
+new Buffer(capacity: int64) :Buffer
 ```
 
-### `Buffer.fromBytes(data: string, len: int64) :buffer`
+### Parameters
 
-Creates a new Buffer initialized with `len` bytes from `data`.
+`capacity`
+Optional initial capacity in bytes. Negative values are treated as zero by the
+native runtime.
+
+### Return Type
+
+`Buffer`
+A new empty buffer with length `0`.
+
+### Errors
+
+Returns a null handle only if allocation fails.
+
+### Complete Example
 
 ```hoo
-let buf = Buffer.fromBytes("Hello", 5)
+func :int64 main() {
+    var buf = new Buffer(64);
+    println("length: " + buf.length());
+    println("capacity: " + buf.capacity());
+    return buf.length();
+}
 ```
 
-## Instance Methods
+## `Buffer.fromBytes`
 
-### `buf.length() :int64`
+### Description
+
+Creates a buffer initialized with bytes from a string-like byte source.
+
+### Syntax
+
+```hoo
+Buffer.fromBytes(data: string, len: int64) :Buffer
+```
+
+### Parameters
+
+`data`
+Source bytes.
+
+`len`
+Number of bytes to copy from `data`.
+
+### Return Type
+
+`Buffer`
+A new buffer containing the copied bytes. Length is `len`.
+
+### Errors
+
+If `data` is nil or `len` is `0`, the native runtime creates an empty buffer.
+Negative lengths return null.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = Buffer.fromBytes("Hello", 5);
+    println(buf.length()); // 5
+    return buf.byteAt(0); // 72
+}
+```
+
+## `length`
+
+### Description
 
 Returns the number of bytes currently stored in the buffer.
 
-### `buf.capacity() :int64`
+### Syntax
 
-Returns the current allocated capacity of the buffer.
+```hoo
+buf.length() :int64
+```
 
-### `buf.copy() :buffer`
+### Parameters
 
-Creates an independent copy of the buffer with the same contents.
+None.
 
-### `buf.byteAt(index: int64) :int64`
+### Return Type
 
-Returns the byte at the given zero-based index, or -1 if the index is out of bounds.
+`int64`
+The current byte length.
 
-### `buf.setByte(index: int64, val: int64) :int64`
+### Errors
 
-Sets the byte at the given index to `val`. Returns 1 on success, 0 if the index is out of bounds.
+Returns `0` for a null buffer handle.
 
-### `buf.append(data: string, len: int64) :buffer`
+### Complete Example
 
-Appends `len` bytes from `data` to the end of the buffer. Returns the buffer (may be a reallocated handle).
+```hoo
+func :int64 main() {
+    var buf = Buffer.fromBytes("abc", 3);
+    return buf.length();
+}
+```
 
-### `buf.appendBuffer(other: buffer) :buffer`
+## `capacity`
 
-Appends all bytes from `other` to the end of this buffer. Returns the buffer.
+### Description
 
-### `buf.clear() :int64`
+Returns the number of bytes currently allocated for the buffer payload.
 
-Removes all bytes from the buffer (sets length to 0). Capacity is preserved. Returns 1.
+### Syntax
 
-### `buf.slice(start: int64, end: int64) :buffer`
+```hoo
+buf.capacity() :int64
+```
 
-Returns a new Buffer containing bytes from index `start` (inclusive) to `end` (exclusive). Returns null if the range is invalid.
+### Parameters
 
-## Buffer-Aware Overloads in Other Modules
+None.
 
-Several modules accept Buffer handles instead of raw (data, len) pairs:
+### Return Type
+
+`int64`
+The current buffer capacity in bytes.
+
+### Errors
+
+Returns `0` for a null buffer handle.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = new Buffer(32);
+    return buf.capacity();
+}
+```
+
+## `copy`
+
+### Description
+
+Creates an independent copy of the buffer with the same byte contents.
+
+### Syntax
+
+```hoo
+buf.copy() :Buffer
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`Buffer`
+A new buffer containing the same bytes.
+
+### Errors
+
+Returns null if the source buffer is null or allocation fails.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var original = Buffer.fromBytes("abc", 3);
+    var copy = original.copy();
+
+    copy.setByte(0, 120); // 'x'
+    return original.byteAt(0); // still 97 ('a')
+}
+```
+
+## `byteAt`
+
+### Description
+
+Reads one byte by zero-based index.
+
+### Syntax
+
+```hoo
+buf.byteAt(index: int64) :int64
+```
+
+### Parameters
+
+`index`
+Zero-based byte index.
+
+### Return Type
+
+`int64`
+The byte value in the range `0..255`, or `-1` when `index` is out of bounds.
+
+### Errors
+
+Does not throw for out-of-bounds indexes.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = Buffer.fromBytes("ABC", 3);
+    return buf.byteAt(1); // 66
+}
+```
+
+## `setByte`
+
+### Description
+
+Writes one byte at an existing index. The buffer length is not extended.
+
+### Syntax
+
+```hoo
+buf.setByte(index: int64, value: int64) :int64
+```
+
+### Parameters
+
+`index`
+Zero-based byte index.
+
+`value`
+Byte value to write. Only the low 8 bits are stored.
+
+### Return Type
+
+`int64`
+Returns the previous byte value on success. Returns `-1` when the index is out
+of bounds or the buffer is null.
+
+### Errors
+
+Does not throw for out-of-bounds indexes.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = Buffer.fromBytes("abc", 3);
+    buf.setByte(0, 65); // 'A'
+    return buf.byteAt(0);
+}
+```
+
+## `append`
+
+### Description
+
+Appends bytes from a string-like byte source to the end of the buffer. The
+buffer may reallocate as it grows.
+
+### Syntax
+
+```hoo
+buf.append(data: string, len: int64) :Buffer
+```
+
+### Parameters
+
+`data`
+Source bytes to append.
+
+`len`
+Number of bytes to append.
+
+### Return Type
+
+`Buffer`
+The buffer handle after append. Use the returned value because the native buffer
+may be reallocated.
+
+### Errors
+
+Returns the original buffer when `data` is nil, `len` is `0`, `len` is negative,
+or allocation fails. Returns null only when `buf` is null.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = new Buffer();
+    buf = buf.append("ab", 2);
+    buf = buf.append("cd", 2);
+
+    println(buf.length()); // 4
+    return buf.byteAt(3); // 100
+}
+```
+
+## `appendBuffer`
+
+### Description
+
+Appends all bytes from another buffer.
+
+### Syntax
+
+```hoo
+buf.appendBuffer(other: Buffer) :Buffer
+```
+
+### Parameters
+
+`other`
+Buffer whose bytes should be appended.
+
+### Return Type
+
+`Buffer`
+The buffer handle after append. Use the returned value because the native buffer
+may be reallocated.
+
+### Errors
+
+Returns the original buffer when `other` is null or allocation fails. Returns
+null only when `buf` is null.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var left = Buffer.fromBytes("Hello", 5);
+    var right = Buffer.fromBytes("!", 1);
+
+    left = left.appendBuffer(right);
+    return left.length(); // 6
+}
+```
+
+## `clear`
+
+### Description
+
+Removes all bytes from the buffer while preserving allocated capacity.
+
+### Syntax
+
+```hoo
+buf.clear() :int64
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`int64`
+Returns `0` on success and `-1` for a null buffer.
+
+### Errors
+
+Does not throw.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = Buffer.fromBytes("data", 4);
+    buf.clear();
+    return buf.length();
+}
+```
+
+## `slice`
+
+### Description
+
+Creates a new buffer containing bytes from `start` inclusive to `end`
+exclusive.
+
+### Syntax
+
+```hoo
+buf.slice(start: int64, end: int64) :Buffer
+```
+
+### Parameters
+
+`start`
+Inclusive start index.
+
+`end`
+Exclusive end index.
+
+### Return Type
+
+`Buffer`
+A new buffer containing the selected byte range.
+
+### Errors
+
+Returns null when the source buffer is null, `start` is negative, `end` is
+smaller than `start`, or `end` is greater than the source length.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var buf = Buffer.fromBytes("abcdef", 6);
+    var mid = buf.slice(2, 5);
+
+    println(mid.length()); // 3
+    return mid.byteAt(0); // 99 ('c')
+}
+```
+
+## Buffer-Aware Runtime APIs
+
+Several modules accept or return `Buffer` handles:
 
 | Module | Function | Signature |
 |--------|----------|-----------|
-| Fs | `writeBytes` | `Fs.writeBytes(path: string, buf: buffer) :int64` |
-| Fs | `readBytes` | `Fs.readBytes(path: string) :buffer` |
-| Encoding | `base64Encode` | `Encoding.base64Encode(buf: buffer) :string` |
-| Encoding | `base64Decode` | `Encoding.base64Decode(encoded: string) :buffer` |
-| Encoding | `hexEncode` | `Encoding.hexEncode(buf: buffer) :string` |
-| Encoding | `hexDecode` | `Encoding.hexDecode(hex: string) :buffer` |
-| Uuid | `fromBytes` | `Uuid.fromBytes(buf: buffer) :uuid` |
-| Uuid | `toBytes` | `Uuid.toBytes(uuid: uuid) :buffer` |
-| Hashing | `sha256` | `Hashing.sha256(buf: buffer) :string` |
-| Hashing | `sha1` | `Hashing.sha1(buf: buffer) :string` |
-| Hashing | `md5` | `Hashing.md5(buf: buffer) :string` |
-| Hashing | `crc32` | `Hashing.crc32(buf: buffer) :int64` |
-| Hashing | `hmacSha256` | `Hashing.hmacSha256(key: buffer, data: buffer) :string` |
-| Compression | `gzipCompress` | `Compression.gzipCompress(buf: buffer) :buffer` |
-| Compression | `gzipDecompress` | `Compression.gzipDecompress(buf: buffer) :buffer` |
-| Compression | `deflateCompress` | `Compression.deflateCompress(buf: buffer) :buffer` |
-| Compression | `deflateDecompress` | `Compression.deflateDecompress(buf: buffer) :buffer` |
+| Fs | `writeBytes` | `Fs.writeBytes(path: string, buf: Buffer) :int64` |
+| Fs | `readBytes` | `Fs.readBytes(path: string) :Buffer` |
+| Encoding | `base64Encode` | `Encoding.base64Encode(buf: Buffer) :string` |
+| Encoding | `base64Decode` | `Encoding.base64Decode(encoded: string) :Buffer` |
+| Encoding | `hexEncode` | `Encoding.hexEncode(buf: Buffer) :string` |
+| Encoding | `hexDecode` | `Encoding.hexDecode(hex: string) :Buffer` |
+| Uuid | `fromBytes` | `Uuid.fromBytes(buf: Buffer) :uuid` |
+| Uuid | `toBytes` | `Uuid.toBytes(uuid: uuid) :Buffer` |
+| Hashing | `sha256` | `Hashing.sha256(buf: Buffer) :string` |
+| Hashing | `sha1` | `Hashing.sha1(buf: Buffer) :string` |
+| Hashing | `md5` | `Hashing.md5(buf: Buffer) :string` |
+| Hashing | `crc32` | `Hashing.crc32(buf: Buffer) :int64` |
+| Hashing | `hmacSha256` | `Hashing.hmacSha256(key: Buffer, data: Buffer) :string` |
+| Compression | `gzipCompress` | `Compression.gzipCompress(buf: Buffer) :Buffer` |
+| Compression | `gzipDecompress` | `Compression.gzipDecompress(buf: Buffer) :Buffer` |
+| Compression | `deflateCompress` | `Compression.deflateCompress(buf: Buffer) :Buffer` |
+| Compression | `deflateDecompress` | `Compression.deflateDecompress(buf: Buffer) :Buffer` |
 
 ## Memory Layout
 
-```
+```text
 [ARC header: 16 bytes (refcount + type_id=113)] [BufferImpl: length(8) + capacity(8) + data...]
-                                                         ^-- handle points here (right after ARC header)
+                                                         ^-- handle points here
 ```
 
-The handle returned by `new Buffer(...)` and `Buffer.fromBytes()` points to the `BufferImpl` struct, which is located immediately after the 16-byte ARC header. This is the same layout used by `HooString`, ensuring `hoo_get_refcount()`, `hoo_get_type_id()`, `hoo_release()`, and `hoo_retain()` work transparently without offset correction.
+The handle returned by `new Buffer(...)` and `Buffer.fromBytes(...)` points to
+the `BufferImpl` struct immediately after the 16-byte ARC header. This is the
+same layout model used by `HooString`, so `hoo_get_refcount()`,
+`hoo_get_type_id()`, `hoo_release()`, and `hoo_retain()` work without offset
+correction.

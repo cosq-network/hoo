@@ -2465,114 +2465,26 @@ extern "C" {
         return 0;
     }
 
-    // ── JSON module ─────────────────────────────────────────────────────────
-    uint64_t jit_json_parse(void* state_ptr) {
+    // ── JSON free functions ─────────────────────────────────────────────────
+    uint64_t jit_json_serialize_hashmap(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        auto* map = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_serialize_hashmap(map)));
+    }
+    uint64_t jit_json_serialize_anyarray(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        auto* array = reinterpret_cast<void*>(state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_serialize_anyarray(array)));
+    }
+    uint64_t jit_json_deserialize_hashmap(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* json = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_parse(json)));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_deserialize_hashmap(json)));
     }
-    uint64_t jit_json_stringify(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* obj = reinterpret_cast<void*>(state->regs[1]);
-        char* result = hoo_json_stringify(obj);
-        if (!result) return 0;
-        void* str = hoo_string_from_cstr(result);
-        hoo_json_free_string(result);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
-    }
-    uint64_t jit_json_get(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* obj = reinterpret_cast<void*>(state->regs[1]);
-        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_get(obj, key)));
-    }
-    uint64_t jit_json_get_int(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* obj = reinterpret_cast<void*>(state->regs[1]);
-        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        return static_cast<uint64_t>(hoo_json_get_int(obj, key));
-    }
-    uint64_t jit_json_get_string(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* obj = reinterpret_cast<void*>(state->regs[1]);
-        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        char* result = hoo_json_get_string(obj, key);
-        if (!result) return 0;
-        void* str = hoo_string_from_cstr(result);
-        hoo_json_free_string(result);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
-    }
-    uint64_t jit_json_set(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* obj = reinterpret_cast<void*>(state->regs[1]);
-        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        void* val = reinterpret_cast<void*>(state->regs[3]);
-        return static_cast<uint64_t>(hoo_json_set(obj, key, val));
-    }
-    uint64_t jit_json_array_get(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* arr = reinterpret_cast<void*>(state->regs[1]);
-        int64_t index = state->regs[2];
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_array_get(arr, index)));
-    }
-    uint64_t jit_json_array_push(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* arr = reinterpret_cast<void*>(state->regs[1]);
-        void* val = reinterpret_cast<void*>(state->regs[2]);
-        return static_cast<uint64_t>(hoo_json_array_push(arr, val));
-    }
-    uint64_t jit_json_array_length(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* arr = reinterpret_cast<void*>(state->regs[1]);
-        return static_cast<uint64_t>(hoo_json_array_length(arr));
-    }
-    uint64_t jit_json_type(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        void* obj = reinterpret_cast<void*>(state->regs[1]);
-        return static_cast<uint64_t>(hoo_json_type(obj));
-    }
-    uint64_t jit_json_new_object(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_object()));
-    }
-    uint64_t jit_json_new_array(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_array()));
-    }
-    uint64_t jit_json_new_string(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        const char* s = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_string(s)));
-    }
-    uint64_t jit_json_new_int(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_int(state->regs[1])));
-    }
-    uint64_t jit_json_new_float(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        double d;
-        memcpy(&d, &state->regs[1], sizeof(d));
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_float(d)));
-    }
-    uint64_t jit_json_new_bool(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_bool(state->regs[1])));
-    }
-    uint64_t jit_json_new_null(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_new_null()));
-    }
-    uint64_t jit_json_release(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        hoo_json_release(reinterpret_cast<void*>(state->regs[1]));
-        return 0;
-    }
-    uint64_t jit_json_parse_to_map(void* state_ptr) {
+    uint64_t jit_json_deserialize_anyarray(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* json = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_parse_to_map(json)));
-    }
-    uint64_t jit_json_serialize_map(void* state_ptr) {
-        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        auto* hoo_map = reinterpret_cast<void*>(state->regs[1]);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_serialize_map(hoo_map)));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_deserialize_anyarray(json)));
     }
     uint64_t jit_json_minify(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -3487,43 +3399,13 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_Console_println_static_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
         {"_F_M_hoo_E_Console_readline_static_p", reinterpret_cast<void*>(&jit_hoo_readline)},
         {"_F_M_hoo_E_Console_readchar_static_i8", reinterpret_cast<void*>(&jit_hoo_readchar)},
-        // JSON module
-        {"_F_M_hoo_E_json_parse_v_p", reinterpret_cast<void*>(&jit_json_parse)},
-        {"_F_M_hoo_E_json_stringify_v_p", reinterpret_cast<void*>(&jit_json_stringify)},
-        {"_F_M_hoo_E_json_get_v_p_p", reinterpret_cast<void*>(&jit_json_get)},
-        {"_F_M_hoo_E_json_get_int_v_p_p", reinterpret_cast<void*>(&jit_json_get_int)},
-        {"_F_M_hoo_E_json_get_string_v_p_p", reinterpret_cast<void*>(&jit_json_get_string)},
-        {"_F_M_hoo_E_json_set_v_p_p_p", reinterpret_cast<void*>(&jit_json_set)},
-        {"_F_M_hoo_E_json_array_get_v_p_p", reinterpret_cast<void*>(&jit_json_array_get)},
-        {"_F_M_hoo_E_json_array_push_v_p_p", reinterpret_cast<void*>(&jit_json_array_push)},
-        {"_F_M_hoo_E_json_array_length_v_p", reinterpret_cast<void*>(&jit_json_array_length)},
-        {"_F_M_hoo_E_json_type_v_p", reinterpret_cast<void*>(&jit_json_type)},
-        {"_F_M_hoo_E_json_new_object_v", reinterpret_cast<void*>(&jit_json_new_object)},
-        {"_F_M_hoo_E_json_new_array_v", reinterpret_cast<void*>(&jit_json_new_array)},
-        {"_F_M_hoo_E_json_new_string_v_p", reinterpret_cast<void*>(&jit_json_new_string)},
-        {"_F_M_hoo_E_json_new_int_v_p", reinterpret_cast<void*>(&jit_json_new_int)},
-        {"_F_M_hoo_E_json_new_float_v_p", reinterpret_cast<void*>(&jit_json_new_float)},
-        {"_F_M_hoo_E_json_new_bool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
-        {"_F_M_hoo_E_json_new_null_v", reinterpret_cast<void*>(&jit_json_new_null)},
-        {"_F_M_hoo_E_json_release_v_p", reinterpret_cast<void*>(&jit_json_release)},
-        // JSON module (camelCase aliases)
-        {"_F_M_hoo_E_json_getInt_v_p_p", reinterpret_cast<void*>(&jit_json_get_int)},
-        {"_F_M_hoo_E_json_getString_v_p_p", reinterpret_cast<void*>(&jit_json_get_string)},
-        {"_F_M_hoo_E_json_arrayGet_v_p_p", reinterpret_cast<void*>(&jit_json_array_get)},
-        {"_F_M_hoo_E_json_arrayPush_v_p_p", reinterpret_cast<void*>(&jit_json_array_push)},
-        {"_F_M_hoo_E_json_arrayLength_v_p", reinterpret_cast<void*>(&jit_json_array_length)},
-        {"_F_M_hoo_E_json_newObject_v", reinterpret_cast<void*>(&jit_json_new_object)},
-        {"_F_M_hoo_E_json_newArray_v", reinterpret_cast<void*>(&jit_json_new_array)},
-        {"_F_M_hoo_E_json_newString_v_p", reinterpret_cast<void*>(&jit_json_new_string)},
-        {"_F_M_hoo_E_json_newInt_v_p", reinterpret_cast<void*>(&jit_json_new_int)},
-        {"_F_M_hoo_E_json_newFloat_v_p", reinterpret_cast<void*>(&jit_json_new_float)},
-        {"_F_M_hoo_E_json_newBool_v_p", reinterpret_cast<void*>(&jit_json_new_bool)},
-        {"_F_M_hoo_E_json_newNull_v", reinterpret_cast<void*>(&jit_json_new_null)},
-        // JSON HooMap interop
-        {"_F_M_hoo_E_json_parseToMap_v_p", reinterpret_cast<void*>(&jit_json_parse_to_map)},
-        {"_F_M_hoo_E_json_serializeMap_v_p", reinterpret_cast<void*>(&jit_json_serialize_map)},
-        {"_F_M_hoo_E_json_minify_v_p", reinterpret_cast<void*>(&jit_json_minify)},
-        {"_F_M_hoo_E_json_beautify_v_p", reinterpret_cast<void*>(&jit_json_beautify)},
+        // JSON free functions
+        {"_F_M_hoo_E_json_serialize_hashmap_p_p", reinterpret_cast<void*>(&jit_json_serialize_hashmap)},
+        {"_F_M_hoo_E_json_serialize_anyarray_p_p", reinterpret_cast<void*>(&jit_json_serialize_anyarray)},
+        {"_F_M_hoo_E_json_deserialize_hashmap_p_p", reinterpret_cast<void*>(&jit_json_deserialize_hashmap)},
+        {"_F_M_hoo_E_json_deserialize_anyarray_p_p", reinterpret_cast<void*>(&jit_json_deserialize_anyarray)},
+        {"_F_M_hoo_E_json_minify_p_p", reinterpret_cast<void*>(&jit_json_minify)},
+        {"_F_M_hoo_E_json_beautify_p_p", reinterpret_cast<void*>(&jit_json_beautify)},
     };
 }
 

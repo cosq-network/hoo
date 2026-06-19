@@ -33,7 +33,7 @@ The hoo runtime provides a set of modules that bridge the high-level language wi
 | Module | Description |
 | :--- | :--- |
 | **[Networking](net.md)** | URL parsing and a robust HTTP client. |
-| **[JSON](json.md)** | JSON parsing, generation, and value manipulation. |
+| **[JSON](json.md)** | Free-function JSON serialization/deserialization for `HashMap<int64, any>` and `AnyArray`, plus minify/beautify helpers. |
 | **[Encoding](encoding.md)** | Base64, hex, and URL encoding/decoding. |
 | **[Hashing](hashing.md)** | SHA-256, SHA-1, MD5, CRC32, and HMAC-SHA256 hashing. |
 | **[Compression](compression.md)** | Gzip and deflate compression/decompression. |
@@ -60,6 +60,10 @@ In hoo source code, runtime functions are called using class-based method syntax
 - `new Array()` — constructors use the same `new Class(...)` syntax as user-defined classes
 
 Standard I/O functions like `print` and `println` are available globally (without a prefix or class qualifier).
+
+JSON is the exception to the class-based convention: it is exposed only as free
+functions such as `json_serialize_hashmap`, `json_deserialize_anyarray`,
+`json_minify`, and `json_beautify`.
 
 ### Memory Management
 

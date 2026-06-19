@@ -22,7 +22,7 @@ Every object managed by the runtime (including Arrays, Strings, Maps, and User O
 - `109`: HooCharacter
 - `110`: HooUUID
 - `111`: HooRegex
-- `112`: HooJSON
+- `112`: Reserved legacy JSON type ID. The current JSON API does not allocate or return a managed JSON document handle; it operates on `HashMap<int64, any>`, `AnyArray`, and `HooString`.
 - `113`: HooBuffer
 - `117`: HooHashMap
 - `118`: HooAnyArray

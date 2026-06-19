@@ -1,293 +1,802 @@
-# Args — Command-Line Arguments
+# Args API Developer Reference
 
-The `Args` class provides an instance-based interface for reading command-line arguments passed to the program. Obtain an instance via `new Args()`.
+The `Args` runtime API provides an instance-based interface for command-line
+arguments. Create an instance with `new Args()`.
 
-It offers two tiers of API:
+Before calling `Args` methods from JIT-compiled Hoo code, the host must provide
+raw command-line arguments by calling `hoo_args_init(argc, argv)` from C/C++.
+The runtime parses:
 
-1. **Low-level raw access** — direct access to parsed positional and named arguments.
-2. **Argparse-style API** — define expected arguments (typed, with defaults) and access parsed values with automatic type conversion.
+- positional arguments, excluding the program name
+- long options such as `--output=result.txt` and `--output result.txt`
+- short options such as `-o result.txt`
+- flags without values such as `--verbose`
+- `--` as an end-of-options marker
 
-Before calling any `Args` methods from JIT-compiled Hoo code, you must call `hoo_args_init(argc, argv)` from C/C++ to provide the raw command-line arguments. The examples below are complete, self-contained Hoo programs with `func :int64 main()` as the entry point.
+The API has two layers:
 
-## Low-Level Methods
+- raw access methods for reading positional and named arguments directly
+- argparse-style methods for declaring typed arguments and reading parsed values
 
-`count() :int64`
-Returns the number of positional arguments (excluding the program name and named flags).
-
-`get(index: int64) :string`
-Returns the positional argument at the given 0-based index. Returns an empty string if the index is out of range.
-
-`has(name: string) :int64`
-Returns 1 if a named argument with the given name exists (e.g. `--output`), 0 otherwise.
-
-`value(name: string) :string`
-Returns the value associated with a named argument. For `--output=result.txt`, calling `value("output")` returns `"result.txt"`. For `--verbose` (no value), returns an empty string.
-
-`programName() :string`
-Returns the name or path of the running program (argv[0]).
-
-### Low-Level Example
-
-Given the C++ setup code:
+## Host Setup
 
 ```cpp
-const char* argv[] = {"/usr/bin/hoo", "input.txt", "--output=result.txt", "--verbose"};
+const char* argv[] = {
+    "/usr/bin/hoo",
+    "input.txt",
+    "--output=result.txt",
+    "--verbose"
+};
 hoo_args_init(4, argv);
-// ... compile and run the Hoo function below
 ```
 
-The following Hoo program counts positional args, prints each one, checks for named flags, and prints the program name:
+Call `hoo_args_shutdown()` from the host when the runtime no longer needs the
+argument snapshot.
+
+## `new Args`
+
+### Description
+
+Creates an `Args` parser handle for raw argument access and argparse-style
+definitions.
+
+### Syntax
+
+```hoo
+new Args() :Args
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`Args`
+An argument parser instance.
+
+### Errors
+
+Returns a runtime object handle. If the host has not called `hoo_args_init`,
+the native constructor returns null.
+
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    return args.count();
+}
+```
 
-    var count = args.count()
-    println("Positional args: " + count)
+## `count`
 
-    for i in 0..count {
-        println("  " + i + ": " + args.get(i))
+### Description
+
+Returns the number of positional arguments. The program name and named flags are
+not counted.
+
+### Syntax
+
+```hoo
+args.count() :int64
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`int64`
+The positional argument count.
+
+### Errors
+
+Returns `0` when no argument data is available.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    var count = args.count();
+    println("positional args: " + count);
+    return count;
+}
+```
+
+## `get`
+
+### Description
+
+Returns a positional argument by zero-based index.
+
+### Syntax
+
+```hoo
+args.get(index: int64) :string
+```
+
+### Parameters
+
+`index`
+Zero-based positional argument index.
+
+### Return Type
+
+`string`
+The positional argument value. Out-of-range indexes return a null string handle
+from the JIT wrapper.
+
+### Errors
+
+Does not throw for out-of-range indexes. Check `count()` before calling `get`
+when the result will be used as a string.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    if args.count() == 0 {
+        return 0;
     }
 
-    if args.has("output") == 1 {
-        var out = args.value("output")
-        println("Output: " + out)
-    }
+    var first = args.get(0);
+    println(first);
+    return first.length();
+}
+```
 
+## `has`
+
+### Description
+
+Checks whether a named argument or flag exists.
+
+### Syntax
+
+```hoo
+args.has(name: string) :int64
+```
+
+### Parameters
+
+`name`
+The argument name without leading dashes. For `--output=result.txt`, use
+`"output"`. For `-v`, use `"v"`.
+
+### Return Type
+
+`int64`
+Returns `1` when the argument exists, otherwise `0`.
+
+### Errors
+
+Returns `0` for missing names or unavailable argument data.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
     if args.has("verbose") == 1 {
-        println("Verbose mode enabled")
+        println("verbose enabled");
+        return 1;
     }
-
-    println("Program: " + args.programName())
-    return 0
+    return 0;
 }
 ```
 
-## Argparse-Style API
+## `value`
 
-The argparse-style API (inspired by Python's `argparse` module) lets you declare typed arguments with flags, defaults, and help text, then parse all arguments at once.
+### Description
 
-### Argument Definition Methods
+Returns the raw value associated with a named argument.
 
-`addString(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: string)`
-Define a string-valued optional argument. `shortOpt` is the short flag (e.g. `"-o"`); `longOpt` is the long flag (e.g. `"--output"`). Pass `""` for either to omit.
+For `--output=result.txt`, `args.value("output")` returns `"result.txt"`. For a
+flag without a value, such as `--verbose`, it returns an empty string.
 
-`addInt(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: int64)`
-Define an integer-valued optional argument.
+### Syntax
 
-`addFlag(name: string, shortOpt: string, longOpt: string, help: string)`
-Define a boolean flag (no value expected). `getBool()` returns 1 if the flag was present, 0 otherwise.
+```hoo
+args.value(name: string) :string
+```
 
-`addFloat(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: float)`
-Define a float-valued optional argument.
+### Parameters
 
-`addPositional(name: string, help: string)`
-Define a positional argument. Positional arguments are matched in declaration order.
+`name`
+The argument name without leading dashes.
 
-### Parse & Access Methods
+### Return Type
 
-`parse() :int64`
-Parse command-line arguments against the defined argument list. Returns 1 on success, 0 on failure (e.g. when `--help` is passed). When `--help` is present, the result is still accessible via `helpText()`.
+`string`
+The raw value for the named argument. Flags without values return an empty
+string. Missing names return a null string handle from the JIT wrapper.
 
-`getString(name: string) :string`
-Get the parsed value of a string or positional argument by its declared name. Returns the default if the argument was not provided.
+### Errors
 
-`getInt(name: string) :int64`
-Get the parsed value of an integer argument by its declared name. Returns the default if not provided.
+Does not throw for missing names.
 
-`getBool(name: string) :int64`
-Get whether a flag argument was set. Returns 1 if the flag was present, 0 otherwise.
-
-`getFloat(name: string) :float`
-Get the parsed value of a float argument by its declared name. Returns the default if not provided.
-
-`helpText() :string`
-Generate a formatted help/usage string describing all defined arguments.
-
-`clear()`
-Clear all argument definitions and parsed state, allowing the instance to be reused.
-
-### Example 1: All Argument Types
-
-Given the argv `{"program", "data.csv", "--output=report.txt", "--verbose", "--count=10", "--threshold=0.75"}`:
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    var output = args.value("output");
+    println(output);
+    return output.length();
+}
+```
 
-    args.addString("output", "-o", "--output", "Output file path", "out.txt")
-    args.addFlag("verbose", "-v", "--verbose", "Enable verbose output")
-    args.addInt("count", "-c", "--count", "Number of iterations", 1)
-    args.addFloat("threshold", "-t", "--threshold", "Threshold value", 0.5)
-    args.addPositional("input", "Input file path")
+## `programName`
+
+### Description
+
+Returns the program name/path from `argv[0]`.
+
+### Syntax
+
+```hoo
+args.programName() :string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`string`
+The program name or path.
+
+### Errors
+
+Returns an empty string when no program name is available.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    var name = args.programName();
+    println(name);
+    return name.length();
+}
+```
+
+## `addString`
+
+### Description
+
+Defines a string-valued optional argument for argparse-style parsing.
+
+### Syntax
+
+```hoo
+args.addString(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: string)
+```
+
+### Parameters
+
+`name`
+The parsed value name used by `getString`.
+
+`shortOpt`
+The short option, such as `"-o"`. Pass `""` when there is no short option.
+
+`longOpt`
+The long option, such as `"--output"`. Pass `""` when there is no long option.
+
+`help`
+Help text used by `helpText`.
+
+`defaultVal`
+Value returned when the option is not provided.
+
+### Return Type
+
+`void`
+
+### Errors
+
+Invalid or nil strings are treated as empty strings by the native runtime.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addString("output", "-o", "--output", "Output file", "out.txt");
+    args.parse();
+
+    var output = args.getString("output");
+    println(output);
+    return output.length();
+}
+```
+
+## `addInt`
+
+### Description
+
+Defines an integer-valued optional argument for argparse-style parsing.
+
+### Syntax
+
+```hoo
+args.addInt(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: int64)
+```
+
+### Parameters
+
+`name`
+The parsed value name used by `getInt`.
+
+`shortOpt`
+The short option, such as `"-c"`, or `""`.
+
+`longOpt`
+The long option, such as `"--count"`, or `""`.
+
+`help`
+Help text used by `helpText`.
+
+`defaultVal`
+Integer returned when the option is not provided or cannot be parsed.
+
+### Return Type
+
+`void`
+
+### Errors
+
+Does not throw on parse conversion failure; the default value is used.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addInt("count", "-c", "--count", "Iteration count", 1);
+    args.parse();
+
+    var count = args.getInt("count");
+    println("count: " + count);
+    return count;
+}
+```
+
+## `addFlag`
+
+### Description
+
+Defines a boolean flag. Flags do not consume a value.
+
+### Syntax
+
+```hoo
+args.addFlag(name: string, shortOpt: string, longOpt: string, help: string)
+```
+
+### Parameters
+
+`name`
+The parsed flag name used by `getBool`.
+
+`shortOpt`
+The short option, such as `"-v"`, or `""`.
+
+`longOpt`
+The long option, such as `"--verbose"`, or `""`.
+
+`help`
+Help text used by `helpText`.
+
+### Return Type
+
+`void`
+
+### Errors
+
+Does not throw.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addFlag("verbose", "-v", "--verbose", "Enable verbose logging");
+    args.parse();
+
+    if args.getBool("verbose") == 1 {
+        println("verbose");
+        return 1;
+    }
+    return 0;
+}
+```
+
+## `addFloat`
+
+### Description
+
+Defines a floating-point optional argument for argparse-style parsing.
+
+### Syntax
+
+```hoo
+args.addFloat(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: f64)
+```
+
+### Parameters
+
+`name`
+The parsed value name used by `getFloat`.
+
+`shortOpt`
+The short option, such as `"-t"`, or `""`.
+
+`longOpt`
+The long option, such as `"--threshold"`, or `""`.
+
+`help`
+Help text used by `helpText`.
+
+`defaultVal`
+Floating-point value returned when the option is not provided or cannot be
+parsed.
+
+### Return Type
+
+`void`
+
+### Errors
+
+Does not throw on parse conversion failure; the default value is used.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addFloat("threshold", "-t", "--threshold", "Threshold", 0.5);
+    args.parse();
+
+    var threshold = args.getFloat("threshold");
+    println("threshold: " + threshold);
+    return 0;
+}
+```
+
+## `addPositional`
+
+### Description
+
+Defines a positional argument for argparse-style parsing. Positional arguments
+are matched in declaration order.
+
+### Syntax
+
+```hoo
+args.addPositional(name: string, help: string)
+```
+
+### Parameters
+
+`name`
+The parsed value name used by `getString`.
+
+`help`
+Help text used by `helpText`.
+
+### Return Type
+
+`void`
+
+### Errors
+
+Does not throw when the positional argument is missing; `getString` returns an
+empty string.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addPositional("input", "Input file path");
+    args.parse();
+
+    var input = args.getString("input");
+    println(input);
+    return input.length();
+}
+```
+
+## `parse`
+
+### Description
+
+Parses the host-provided command-line arguments against the definitions added
+with `addString`, `addInt`, `addFlag`, `addFloat`, and `addPositional`.
+
+### Syntax
+
+```hoo
+args.parse() :int64
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`int64`
+Returns `1` on success. Returns `0` for parse failure or help flow, such as
+`--help`.
+
+### Errors
+
+Does not throw for missing or malformed user input.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addString("output", "-o", "--output", "Output file", "out.txt");
+    args.addFlag("verbose", "-v", "--verbose", "Verbose mode");
 
     if args.parse() == 0 {
-        println(args.helpText())
-        return 1
+        println(args.helpText());
+        return 1;
     }
 
-    var input = args.getString("input")
-    var output = args.getString("output")
-    var verbose = args.getBool("verbose")
-    var count = args.getInt("count")
-    var threshold = args.getFloat("threshold")
-
-    println("Input: " + input)
-    println("Output: " + output)
-    println("Verbose: " + verbose)
-    println("Count: " + count)
-    println("Threshold: " + threshold)
-    return 0
+    return args.getBool("verbose");
 }
 ```
 
-### Example 2: Flags and Conditionals
+## `getString`
 
-Given the argv `{"program", "--verbose"}`:
+### Description
+
+Returns a parsed string or positional argument value by definition name.
+
+### Syntax
+
+```hoo
+args.getString(name: string) :string
+```
+
+### Parameters
+
+`name`
+The argument definition name.
+
+### Return Type
+
+`string`
+The parsed value, the configured default value, or an empty string.
+
+### Errors
+
+Does not throw for unknown names.
+
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    args.addString("name", "-n", "--name", "Display name", "world");
+    args.parse();
 
-    args.addFlag("verbose", "-v", "--verbose", "Enable verbose mode")
-    args.addFlag("quiet", "-q", "--quiet", "Suppress output")
-    args.addFlag("dryRun", "-n", "--dry-run", "Dry run mode")
-
-    args.parse()
-
-    var verbose = args.getBool("verbose")
-    var quiet = args.getBool("quiet")
-    var dryRun = args.getBool("dryRun")
-
-    if quiet == 1 {
-        println("Quiet mode — no output")
-        return 0
-    }
-
-    if verbose == 1 {
-        println("Verbose logging enabled")
-    }
-
-    if dryRun == 1 {
-        println("Dry run — no changes will be made")
-    }
-
-    println("Verbose=" + verbose + " Quiet=" + quiet + " DryRun=" + dryRun)
-    return 0
+    var name = args.getString("name");
+    println("hello " + name);
+    return name.length();
 }
 ```
 
-### Example 3: Short-Only and Long-Only Options
+## `getInt`
 
-Given the argv `{"program", "-o", "short.txt", "--name", "alice"}`:
+### Description
+
+Returns a parsed integer argument value by definition name.
+
+### Syntax
+
+```hoo
+args.getInt(name: string) :int64
+```
+
+### Parameters
+
+`name`
+The argument definition name.
+
+### Return Type
+
+`int64`
+The parsed integer value, the configured default value, or `0` for unknown
+names.
+
+### Errors
+
+Does not throw for unknown names or failed integer conversion.
+
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    args.addInt("port", "-p", "--port", "Server port", 8080);
+    args.parse();
 
-    args.addString("output", "-o", "", "Short-only option", "")
-    args.addString("name", "", "--name", "Long-only option", "unknown")
-
-    args.parse()
-
-    var out = args.getString("output")
-    var name = args.getString("name")
-
-    println("Output: " + out)
-    println("Name: " + name)
-    return out.length() + name.length()
+    var port = args.getInt("port");
+    println("port: " + port);
+    return port;
 }
 ```
 
-### Example 4: Default Values When Args Are Missing
+## `getBool`
 
-Given the argv `{"program"}` (no additional arguments):
+### Description
+
+Returns whether a parsed flag was present.
+
+### Syntax
+
+```hoo
+args.getBool(name: string) :int64
+```
+
+### Parameters
+
+`name`
+The flag definition name.
+
+### Return Type
+
+`int64`
+Returns `1` when the flag was present, otherwise `0`.
+
+### Errors
+
+Does not throw for unknown names.
+
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    args.addFlag("dryRun", "-n", "--dry-run", "Do not write changes");
+    args.parse();
 
-    args.addString("host", "-h", "--host", "Server host", "localhost")
-    args.addInt("port", "-p", "--port", "Server port", 8080)
-    args.addFlag("tls", "-t", "--tls", "Enable TLS")
-    args.addFloat("timeout", "", "--timeout", "Connection timeout", 30.0)
-
-    args.parse()
-
-    var host = args.getString("host")
-    var port = args.getInt("port")
-    var tls = args.getBool("tls")
-    var timeout = args.getFloat("timeout")
-
-    println("Host: " + host)
-    println("Port: " + port)
-    println("TLS: " + tls)
-    println("Timeout: " + timeout)
-
-    // All defaults used: host="localhost", port=8080, tls=0, timeout=30.0
-    return port
+    return args.getBool("dryRun");
 }
 ```
 
-### Example 5: Clear and Reuse
+## `getFloat`
 
-Given the argv `{"program", "--output=file.txt"}`:
+### Description
+
+Returns a parsed floating-point argument value by definition name.
+
+### Syntax
+
+```hoo
+args.getFloat(name: string) :f64
+```
+
+### Parameters
+
+`name`
+The argument definition name.
+
+### Return Type
+
+`f64`
+The parsed floating-point value, the configured default value, or `0.0` for
+unknown names.
+
+### Errors
+
+Does not throw for unknown names or failed floating-point conversion.
+
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    args.addFloat("timeout", "", "--timeout", "Timeout seconds", 30.0);
+    args.parse();
 
-    args.addString("output", "-o", "--output", "Output path", "")
-    args.parse()
-    var first = args.getString("output")
-    println("First output: " + first)
-
-    args.clear()
-
-    args.addString("name", "-n", "--name", "Name", "world")
-    args.parse()
-    var second = args.getString("name")
-    println("Hello, " + second)
-
-    return first.length() + second.length()
+    var timeout = args.getFloat("timeout");
+    println("timeout: " + timeout);
+    return 0;
 }
 ```
 
-### Example 6: Auto-Generated Help Text
+## `helpText`
 
-Given the argv `{"program", "--help"}`:
+### Description
+
+Builds a formatted help string from the current argument definitions.
+
+### Syntax
+
+```hoo
+args.helpText() :string
+```
+
+### Parameters
+
+None.
+
+### Return Type
+
+`string`
+Generated usage/help text.
+
+### Errors
+
+Returns help text for the definitions currently attached to the `Args` instance.
+
+### Complete Example
 
 ```hoo
 func :int64 main() {
-    var args = new Args()
+    var args = new Args();
+    args.addString("output", "-o", "--output", "Output file", "out.txt");
+    args.addFlag("verbose", "-v", "--verbose", "Verbose mode");
 
-    args.addString("output", "-o", "--output", "Output file path", "out.txt")
-    args.addFlag("verbose", "-v", "--verbose", "Enable verbose output")
-    args.addInt("count", "-c", "--count", "Number of iterations", 1)
-    args.addFloat("threshold", "-t", "--threshold", "Threshold value", 0.5)
-    args.addPositional("input", "Input file path")
-
-    if args.parse() == 0 {
-        var help = args.helpText()
-        println(help)
-        return help.length()
-    }
-    return 0
+    var help = args.helpText();
+    println(help);
+    return help.length();
 }
 ```
 
-The generated help text looks like:
+## `clear`
 
+### Description
+
+Clears argument definitions and parsed values so the same `Args` instance can
+be reused.
+
+### Syntax
+
+```hoo
+args.clear()
 ```
-usage: program [--output OUTPUT] [--verbose] [--count COUNT] [--threshold THRESHOLD] input
 
-positional arguments:
-  input                 Input file path
+### Parameters
 
-optional arguments:
-  -h, --help            Show this help message and exit
-  -o, --output          Output file path (default: out.txt)
-  -v, --verbose         Enable verbose output
-  -c, --count           Number of iterations (default: 1)
-  -t, --threshold       Threshold value (default: 0.5)
+None.
+
+### Return Type
+
+`void`
+
+### Errors
+
+Does not throw.
+
+### Complete Example
+
+```hoo
+func :int64 main() {
+    var args = new Args();
+    args.addString("output", "-o", "--output", "Output file", "out.txt");
+    args.parse();
+
+    var first = args.getString("output");
+    args.clear();
+
+    args.addString("name", "-n", "--name", "Name", "world");
+    args.parse();
+
+    var second = args.getString("name");
+    return first.length() + second.length();
+}
 ```
