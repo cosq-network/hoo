@@ -244,7 +244,12 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
     if (functionName == "datetime_now_seconds" || functionName == "datetime_nowSeconds") return 1;
     if (functionName == "datetime_now_precise" || functionName == "datetime_nowPrecise") return 2;
-    return 119;
+    if (functionName == "datetime_format" || functionName == "datetime_iso8601") return 101; // string is type ID 101
+    if (functionName == "datetime_diff_days" || functionName == "datetime_diffDays" ||
+        functionName == "datetime_diff_hours" || functionName == "datetime_diffHours" ||
+        functionName == "datetime_compare") return 1; // int64
+    if (functionName == "datetime_diff_seconds" || functionName == "datetime_diffSeconds") return 2; // double
+    return 119; // DateTime is 119
 }
 
 static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -1889,6 +1894,34 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (isStaticCall && resolvedClass == "Buffer" && methodName == "fromBytes") {
                 addError("Buffer.fromBytes is not supported; use free function buffer_fromBytes(data, len)");
+                return 0;
+            }
+
+            if (isStaticCall && resolvedClass == "DateTime") {
+                std::string suggest;
+                if (methodName == "now") suggest = "datetime_now()";
+                else if (methodName == "nowSeconds") suggest = "datetime_nowSeconds()";
+                else if (methodName == "nowPrecise") suggest = "datetime_nowPrecise()";
+                else if (methodName == "new") suggest = "datetime_new(ts)";
+                else if (methodName == "parse") suggest = "datetime_parse(str, fmt)";
+                else if (methodName == "fromIso8601") suggest = "datetime_fromIso8601(str)";
+                else if (methodName == "format") suggest = "datetime_format(dt, fmt)";
+                else if (methodName == "iso8601") suggest = "datetime_iso8601(dt)";
+                else if (methodName == "addDays") suggest = "datetime_addDays(dt, days)";
+                else if (methodName == "addHours") suggest = "datetime_addHours(dt, hours)";
+                else if (methodName == "addMinutes") suggest = "datetime_addMinutes(dt, mins)";
+                else if (methodName == "addSeconds") suggest = "datetime_addSeconds(dt, secs)";
+                else if (methodName == "addMilliseconds") suggest = "datetime_addMilliseconds(dt, ms)";
+                else if (methodName == "diffDays") suggest = "datetime_diffDays(a, b)";
+                else if (methodName == "diffHours") suggest = "datetime_diffHours(a, b)";
+                else if (methodName == "diffSeconds") suggest = "datetime_diffSeconds(a, b)";
+                else if (methodName == "compare") suggest = "datetime_compare(a, b)";
+                
+                if (!suggest.empty()) {
+                    addError("DateTime." + methodName + " is not supported as a static method; use free function " + suggest);
+                } else {
+                    addError("DateTime." + methodName + " is not supported as a static method");
+                }
                 return 0;
             }
 

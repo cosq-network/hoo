@@ -2001,7 +2001,7 @@ extern "C" {
 
     // ── Datetime module ─────────────────────────────────────────────────────
     uint64_t jit_datetime_now(void* /*state_ptr*/) {
-        return reinterpret_cast<uint64_t>(hoo_datetime_new_now());
+        return reinterpret_cast<uint64_t>(hoo_datetime_now());
     }
     uint64_t jit_datetime_now_seconds(void* /*state_ptr*/) {
         return static_cast<uint64_t>(hoo_datetime_now_seconds());
@@ -2019,66 +2019,66 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
         const char* fmt = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_format(dt, fmt));
+        return reinterpret_cast<uint64_t>(hoo_datetime_format(dt, fmt));
     }
     uint64_t jit_datetime_iso8601(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_iso8601(dt));
+        return reinterpret_cast<uint64_t>(hoo_datetime_iso8601(dt));
     }
     uint64_t jit_datetime_parse(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* str = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         const char* fmt = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        return reinterpret_cast<uint64_t>(hoo_datetime_new_parse(str, fmt));
+        return reinterpret_cast<uint64_t>(hoo_datetime_parse(str, fmt));
     }
     uint64_t jit_datetime_from_iso8601(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* str = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return reinterpret_cast<uint64_t>(hoo_datetime_new_from_iso8601(str));
+        return reinterpret_cast<uint64_t>(hoo_datetime_from_iso8601(str));
     }
     uint64_t jit_datetime_add_days(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_add_days(dt, state->regs[2]));
+        return reinterpret_cast<uint64_t>(hoo_datetime_add_days(dt, state->regs[2]));
     }
     uint64_t jit_datetime_add_hours(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_add_hours(dt, state->regs[2]));
+        return reinterpret_cast<uint64_t>(hoo_datetime_add_hours(dt, state->regs[2]));
     }
     uint64_t jit_datetime_add_minutes(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_add_minutes(dt, state->regs[2]));
+        return reinterpret_cast<uint64_t>(hoo_datetime_add_minutes(dt, state->regs[2]));
     }
     uint64_t jit_datetime_add_seconds(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_add_seconds(dt, state->regs[2]));
+        return reinterpret_cast<uint64_t>(hoo_datetime_add_seconds(dt, state->regs[2]));
     }
     uint64_t jit_datetime_add_milliseconds(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* dt = reinterpret_cast<void*>(state->regs[1]);
-        return reinterpret_cast<uint64_t>(hoo_datetime_instance_add_milliseconds(dt, state->regs[2]));
+        return reinterpret_cast<uint64_t>(hoo_datetime_add_milliseconds(dt, state->regs[2]));
     }
     uint64_t jit_datetime_diff_days(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* from = reinterpret_cast<void*>(state->regs[1]);
         void* to = reinterpret_cast<void*>(state->regs[2]);
-        return static_cast<uint64_t>(hoo_datetime_instance_diff_days(from, to));
+        return static_cast<uint64_t>(hoo_datetime_diff_days(from, to));
     }
     uint64_t jit_datetime_diff_hours(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* from = reinterpret_cast<void*>(state->regs[1]);
         void* to = reinterpret_cast<void*>(state->regs[2]);
-        return static_cast<uint64_t>(hoo_datetime_instance_diff_hours(from, to));
+        return static_cast<uint64_t>(hoo_datetime_diff_hours(from, to));
     }
     uint64_t jit_datetime_diff_seconds(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* from = reinterpret_cast<void*>(state->regs[1]);
         void* to = reinterpret_cast<void*>(state->regs[2]);
-        double result = hoo_datetime_instance_diff_seconds(from, to);
+        double result = hoo_datetime_diff_seconds(from, to);
         uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
         return bits;
     }
@@ -3519,65 +3519,36 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_csv_filter_v_p_p_p_p", reinterpret_cast<void*>(&jit_csv_filter)},
         {"_F_M_hoo_E_csv_sort_v_p_p_p", reinterpret_cast<void*>(&jit_csv_sort)},
         {"_F_M_hoo_E_csv_describe_v_p_p", reinterpret_cast<void*>(&jit_csv_describe)},
-        // Datetime module — free function (_v return for static dispatch, _p return for free function dispatch)
-        {"_F_M_hoo_E_datetime_now_v", reinterpret_cast<void*>(&jit_datetime_now)},
+        // Datetime module — free function (_p return for free function dispatch)
         {"_F_M_hoo_E_datetime_now_p", reinterpret_cast<void*>(&jit_datetime_now)},
-        {"_F_M_hoo_E_datetime_new_v_p", reinterpret_cast<void*>(&jit_datetime_new)},
         {"_F_M_hoo_E_datetime_new_p_p", reinterpret_cast<void*>(&jit_datetime_new)},
-        {"_F_M_hoo_E_datetime_now_seconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
         {"_F_M_hoo_E_datetime_now_seconds_p", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
-        {"_F_M_hoo_E_datetime_now_precise_v", reinterpret_cast<void*>(&jit_datetime_now_precise)},
         {"_F_M_hoo_E_datetime_now_precise_p", reinterpret_cast<void*>(&jit_datetime_now_precise)},
-        {"_F_M_hoo_E_datetime_format_v_p_p", reinterpret_cast<void*>(&jit_datetime_format)},
         {"_F_M_hoo_E_datetime_format_p_p_p", reinterpret_cast<void*>(&jit_datetime_format)},
-        {"_F_M_hoo_E_datetime_iso8601_v_p", reinterpret_cast<void*>(&jit_datetime_iso8601)},
         {"_F_M_hoo_E_datetime_iso8601_p_p", reinterpret_cast<void*>(&jit_datetime_iso8601)},
-        {"_F_M_hoo_E_datetime_parse_v_p_p", reinterpret_cast<void*>(&jit_datetime_parse)},
         {"_F_M_hoo_E_datetime_parse_p_p_p", reinterpret_cast<void*>(&jit_datetime_parse)},
-        {"_F_M_hoo_E_datetime_from_iso8601_v_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
         {"_F_M_hoo_E_datetime_from_iso8601_p_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
-        {"_F_M_hoo_E_datetime_add_days_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
         {"_F_M_hoo_E_datetime_add_days_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
-        {"_F_M_hoo_E_datetime_add_hours_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
         {"_F_M_hoo_E_datetime_add_hours_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
-        {"_F_M_hoo_E_datetime_add_minutes_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
         {"_F_M_hoo_E_datetime_add_minutes_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
-        {"_F_M_hoo_E_datetime_add_seconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
         {"_F_M_hoo_E_datetime_add_seconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
-        {"_F_M_hoo_E_datetime_add_milliseconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
         {"_F_M_hoo_E_datetime_add_milliseconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
-        {"_F_M_hoo_E_datetime_diff_days_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
         {"_F_M_hoo_E_datetime_diff_days_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
-        {"_F_M_hoo_E_datetime_diff_hours_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
         {"_F_M_hoo_E_datetime_diff_hours_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
-        {"_F_M_hoo_E_datetime_diff_seconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
         {"_F_M_hoo_E_datetime_diff_seconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
-        {"_F_M_hoo_E_datetime_compare_v_p_p", reinterpret_cast<void*>(&jit_datetime_compare)},
         {"_F_M_hoo_E_datetime_compare_p_p_p", reinterpret_cast<void*>(&jit_datetime_compare)},
         // CamelCase aliases
-        {"_F_M_hoo_E_datetime_nowSeconds_v", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
-        {"_F_M_hoo_E_datetime_nowPrecise_v", reinterpret_cast<void*>(&jit_datetime_now_precise)},
         {"_F_M_hoo_E_datetime_nowSeconds_p", reinterpret_cast<void*>(&jit_datetime_now_seconds)},
         {"_F_M_hoo_E_datetime_nowPrecise_p", reinterpret_cast<void*>(&jit_datetime_now_precise)},
-        {"_F_M_hoo_E_datetime_new_v_p", reinterpret_cast<void*>(&jit_datetime_new)},
         {"_F_M_hoo_E_datetime_new_p_p", reinterpret_cast<void*>(&jit_datetime_new)},
-        {"_F_M_hoo_E_datetime_fromIso8601_v_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
         {"_F_M_hoo_E_datetime_fromIso8601_p_p", reinterpret_cast<void*>(&jit_datetime_from_iso8601)},
-        {"_F_M_hoo_E_datetime_addDays_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
         {"_F_M_hoo_E_datetime_addDays_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_days)},
-        {"_F_M_hoo_E_datetime_addHours_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
         {"_F_M_hoo_E_datetime_addHours_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_hours)},
-        {"_F_M_hoo_E_datetime_addMinutes_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
         {"_F_M_hoo_E_datetime_addMinutes_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_minutes)},
-        {"_F_M_hoo_E_datetime_addSeconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
         {"_F_M_hoo_E_datetime_addSeconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_seconds)},
-        {"_F_M_hoo_E_datetime_addMilliseconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
         {"_F_M_hoo_E_datetime_addMilliseconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_add_milliseconds)},
-        {"_F_M_hoo_E_datetime_diffDays_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
         {"_F_M_hoo_E_datetime_diffDays_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_days)},
-        {"_F_M_hoo_E_datetime_diffHours_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
         {"_F_M_hoo_E_datetime_diffHours_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_hours)},
-        {"_F_M_hoo_E_datetime_diffSeconds_v_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
         {"_F_M_hoo_E_datetime_diffSeconds_p_p_p", reinterpret_cast<void*>(&jit_datetime_diff_seconds)},
 
         // DateTime instance methods

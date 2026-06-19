@@ -49,10 +49,11 @@ TEST_F(HooClassApiTest, StringIsEmptyMethod) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooClassApiTest, StaticDateTimeNow) {
+TEST_F(HooClassApiTest, FreeFuncDateTimeNow) {
     const std::string source = R"(
         func :int64 test() {
-            return DateTime.now();
+            var dt = datetime_now();
+            return dt.getTimestamp();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -82,10 +83,10 @@ TEST_F(HooClassApiTest, StaticMathGetPi) {
     EXPECT_NE(jit.run("_F_M_test_E_test_i8"), 0);
 }
 
-TEST_F(HooClassApiTest, StaticDateTimeNowSeconds) {
+TEST_F(HooClassApiTest, FreeFuncDateTimeNowSeconds) {
     const std::string source = R"(
         func :int64 test() {
-            return DateTime.nowSeconds();
+            return datetime_nowSeconds();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
