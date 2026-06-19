@@ -12,6 +12,7 @@
 #include "ast/SimpleASTBuilder.h"
 #include <stdexcept>
 #include <algorithm>
+#include <cctype>
 #include <typeinfo>
 #include <atomic>
 #include <sstream>
@@ -347,6 +348,24 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             } else {
                 functionReturnTypes_[funcDecl->getName()] = 4;
             }
+        }
+    }
+
+    // Register class modifier metadata before validation so forward references
+    // between serializable/service classes can be resolved consistently.
+    for (const auto& decl : compilationUnit.getDeclarations()) {
+        if (auto classDecl = dynamic_cast<const ast::ClassDeclaration*>(decl.get())) {
+            ClassLayout layout;
+            layout.name = classDecl->getName();
+            layout.isSingleton = classDecl->hasModifier(ast::ClassModifier::SINGLETON);
+            layout.isFinal = classDecl->hasModifier(ast::ClassModifier::FINAL);
+            layout.isImmutable = classDecl->hasModifier(ast::ClassModifier::IMMUTABLE);
+            layout.isService = classDecl->hasModifier(ast::ClassModifier::SERVICE);
+            layout.isSerializable = classDecl->hasModifier(ast::ClassModifier::SERIALIZABLE);
+            if (classDecl->hasBaseClass()) {
+                layout.baseClass = classDecl->getBaseClass();
+            }
+            classes_[layout.name] = layout;
         }
     }
 
@@ -3588,6 +3607,14 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
     MangledFunctionParams mp;
     mp.modulePath = modulePath_;
     mp.className = layout.name;
+    for (auto mod : classDecl.getModifiers()) {
+        std::string modStr = classModifierToString(mod);
+        // Uppercase to match modifier code map keys in SymbolMangler
+        for (char& c : modStr) {
+            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        }
+        mp.classModifiers.push_back(modStr);
+    }
     mp.functionName = "serialize";
     mp.returnType = "ptr";
     sym.name = SymbolMangler::mangleFunctionName(mp);
@@ -3684,6 +3711,13 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
     MangledFunctionParams mp;
     mp.modulePath = modulePath_;
     mp.className = layout.name;
+    for (auto mod : classDecl.getModifiers()) {
+        std::string modStr = classModifierToString(mod);
+        for (char& c : modStr) {
+            c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        }
+        mp.classModifiers.push_back(modStr);
+    }
     mp.functionName = "deserialize";
     mp.returnType = "ptr";
     mp.isStatic = true;

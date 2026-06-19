@@ -235,12 +235,43 @@ TEST_F(ClassDeclarationParsingTest, ClassWithFunctionMember) {
 
 // Tests for class modifiers
 
-// Test 11: Class with mixed members (functions only)
+TEST_F(ClassDeclarationParsingTest, EachClassModifierParsesToExpectedEnum) {
+    struct ModifierCase {
+        const char* sourceName;
+        ClassModifier expectedModifier;
+    };
 
-// Test 16: Class with all modifiers
-TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
+    const ModifierCase cases[] = {
+        {"singleton", ClassModifier::SINGLETON},
+        {"immutable", ClassModifier::IMMUTABLE},
+        {"service", ClassModifier::SERVICE},
+        {"final", ClassModifier::FINAL},
+        {"serializable", ClassModifier::SERIALIZABLE},
+    };
+
+    for (const auto& testCase : cases) {
+        SCOPED_TRACE(testCase.sourceName);
+        std::string code = std::string(testCase.sourceName) + R"( class ModifierTest {
+        })";
+
+        auto* parseTree = parseCode(code);
+        ASSERT_NE(parseTree, nullptr);
+
+        auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+        ASSERT_NE(ast, nullptr);
+
+        auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+        ASSERT_NE(classDecl, nullptr);
+
+        ASSERT_EQ(classDecl->getModifiers().size(), 1);
+        EXPECT_EQ(classDecl->getModifiers()[0], testCase.expectedModifier);
+        EXPECT_TRUE(classDecl->hasModifier(testCase.expectedModifier));
+    }
+}
+
+TEST_F(ClassDeclarationParsingTest, ClassModifierSourceOrderIsPreserved) {
     std::string code = R"(
-        singleton immutable service final class AllModifiers {
+        service serializable singleton final immutable class OrderedModifiers {
         }
     )";
 
@@ -253,12 +284,77 @@ TEST_F(ClassDeclarationParsingTest, ClassWithAllModifiers) {
     auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
     ASSERT_NE(classDecl, nullptr);
 
-    // Verify all modifiers
-    EXPECT_EQ(classDecl->getModifiers().size(), 4);
+    ASSERT_EQ(classDecl->getModifiers().size(), 5);
+    EXPECT_EQ(classDecl->getModifiers()[0], ClassModifier::SERVICE);
+    EXPECT_EQ(classDecl->getModifiers()[1], ClassModifier::SERIALIZABLE);
+    EXPECT_EQ(classDecl->getModifiers()[2], ClassModifier::SINGLETON);
+    EXPECT_EQ(classDecl->getModifiers()[3], ClassModifier::FINAL);
+    EXPECT_EQ(classDecl->getModifiers()[4], ClassModifier::IMMUTABLE);
+}
+
+TEST_F(ClassDeclarationParsingTest, ClassModifiersPreservedWithInheritanceConstructorAndMembers) {
+    std::string code = R"(
+        final serializable class DerivedConfig extends BaseConfig {
+            public var name: string;
+            constructor() {
+            }
+            public func:string serialize() {
+                return name;
+            }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "DerivedConfig");
+    EXPECT_TRUE(classDecl->hasBaseClass());
+    EXPECT_EQ(classDecl->getBaseClass(), "BaseConfig");
+
+    ASSERT_EQ(classDecl->getModifiers().size(), 2);
+    EXPECT_EQ(classDecl->getModifiers()[0], ClassModifier::FINAL);
+    EXPECT_EQ(classDecl->getModifiers()[1], ClassModifier::SERIALIZABLE);
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::FINAL));
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+
+    const auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 3);
+    EXPECT_FALSE(members[0]->isConstructor());
+    EXPECT_TRUE(members[1]->isConstructor());
+    EXPECT_FALSE(members[2]->isConstructor());
+}
+
+// Test 11: Class with mixed members (functions only)
+
+// Test 16: Class with all modifiers (including SERIALIZABLE)
+TEST_F(ClassDeclarationParsingTest, ClassWithAllFiveModifiers) {
+    std::string code = R"(
+        singleton immutable service final serializable class AllModifiers {
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    // Verify all five modifiers
+    EXPECT_EQ(classDecl->getModifiers().size(), 5);
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SINGLETON));
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::IMMUTABLE));
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERVICE));
     EXPECT_TRUE(classDecl->hasModifier(ClassModifier::FINAL));
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
 }
 
 // Test 17: Complex class with all features
@@ -708,4 +804,235 @@ TEST_F(ClassDeclarationParsingTest, ClassWithSerializableAndFinal) {
 // Test 24: Serializable class toString includes modifier
 TEST_F(ClassDeclarationParsingTest, SerializableModifierToString) {
     EXPECT_EQ(classModifierToString(ClassModifier::SERIALIZABLE), "serializable");
+}
+
+// Test 25: All class modifiers toString
+TEST_F(ClassDeclarationParsingTest, AllClassModifiersToString) {
+    EXPECT_EQ(classModifierToString(ClassModifier::SINGLETON), "singleton");
+    EXPECT_EQ(classModifierToString(ClassModifier::IMMUTABLE), "immutable");
+    EXPECT_EQ(classModifierToString(ClassModifier::SERVICE), "service");
+    EXPECT_EQ(classModifierToString(ClassModifier::FINAL), "final");
+    EXPECT_EQ(classModifierToString(ClassModifier::SERIALIZABLE), "serializable");
+}
+
+// Test 26: Serializable class with HashMap field
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithHashMapField) {
+    std::string code = R"(
+        serializable class Config {
+            public var labels: HashMap<int64, string>;
+            public var version: int64;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "Config");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_GE(members.size(), 2);
+
+    auto* field1 = dynamic_cast<const VariableDeclaration*>(members[0]->getDeclaration());
+    ASSERT_NE(field1, nullptr);
+    EXPECT_EQ(field1->getName(), "labels");
+    EXPECT_TRUE(field1->isPublic());
+}
+
+// Test 27: Serializable class with AnyArray field
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithAnyArrayField) {
+    std::string code = R"(
+        serializable class Container {
+            public var items: AnyArray;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "Container");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+}
+
+// Test 28: Serializable class with tensor field
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithTensorField) {
+    std::string code = R"(
+        serializable class TensorHolder {
+            public var mat: tensor<double>[4, 4];
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "TensorHolder");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+}
+
+// Test 29: Serializable class with buffer and bit fields
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithBufferAndBitFields) {
+    std::string code = R"(
+        serializable class Flags {
+            public var active: bit;
+            public var raw: buffer;
+            public var name: string;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "Flags");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_GE(members.size(), 3);
+}
+
+// Test 30: Serializable class with constructor having parameters (parsing OK, codegen rejects)
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithParameterizedConstructorParsing) {
+    std::string code = R"(
+        serializable class ParamCtor {
+            public var x: int64;
+            constructor(x: int64) { this.x = x; }
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "ParamCtor");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+
+    // Parser should accept it; validation happens in codegen
+    auto& members = classDecl->getBody().getMembers();
+    // The class has 2 members: the var decl + the constructor
+    ASSERT_EQ(members.size(), 2);
+    EXPECT_TRUE(members[1]->isConstructor());
+    auto* ctor = members[1]->getConstructor();
+    ASSERT_NE(ctor, nullptr);
+    EXPECT_EQ(ctor->getParameters().size(), 1);
+}
+
+// Test 31: Serializable class with only private field
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithOnlyPrivateFieldParsing) {
+    std::string code = R"(
+        serializable class PrivateOnly {
+            private var x: int64;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+
+    // Parser accepts it; codegen rejects "no public field"
+    auto& members = classDecl->getBody().getMembers();
+    ASSERT_EQ(members.size(), 2);
+    ASSERT_TRUE(members[0]->getDeclaration() != nullptr);
+    auto* varDecl = dynamic_cast<const VariableDeclaration*>(members[0]->getDeclaration());
+    ASSERT_NE(varDecl, nullptr);
+    EXPECT_FALSE(varDecl->isPublic());
+}
+
+// Test 32: Serializable class with nested serializable class field (parsing)
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithNestedSerializableField) {
+    std::string code = R"(
+        serializable class Point {
+            public var x: double;
+            public var y: double;
+            constructor() { x = 0.0; y = 0.0; }
+        }
+
+        serializable class Line {
+            public var start: Point;
+            public var end: Point;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    ASSERT_EQ(ast->getDeclarations().size(), 2);
+
+    auto* pointDecl = dynamic_cast<const ClassDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(pointDecl, nullptr);
+    EXPECT_EQ(pointDecl->getName(), "Point");
+    EXPECT_TRUE(pointDecl->hasModifier(ClassModifier::SERIALIZABLE));
+
+    auto* lineDecl = dynamic_cast<const ClassDeclaration*>(ast->getDeclarations()[1].get());
+    ASSERT_NE(lineDecl, nullptr);
+    EXPECT_EQ(lineDecl->getName(), "Line");
+    EXPECT_TRUE(lineDecl->hasModifier(ClassModifier::SERIALIZABLE));
+}
+
+// Test 33: Class with SERIALIZABLE in different positions
+TEST_F(ClassDeclarationParsingTest, SerializableModifierVariousPositions) {
+    std::string code = R"(
+        serializable final immutable class Multi {
+            public var x: int64;
+            constructor() {}
+        }
+    )";
+
+    auto* parseTree = parseCode(code);
+    ASSERT_NE(parseTree, nullptr);
+
+    auto ast = astBuilder->buildAST(getCompilationUnit(parseTree));
+    ASSERT_NE(ast, nullptr);
+
+    auto* classDecl = dynamic_cast<const ClassDeclaration*>(getFirstDeclaration(*ast));
+    ASSERT_NE(classDecl, nullptr);
+
+    EXPECT_EQ(classDecl->getName(), "Multi");
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::SERIALIZABLE));
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::FINAL));
+    EXPECT_TRUE(classDecl->hasModifier(ClassModifier::IMMUTABLE));
+    EXPECT_EQ(classDecl->getModifiers().size(), 3);
 }

@@ -55,6 +55,7 @@ TEST_F(ASTCoreTest, ClassModifierToStringAll) {
     EXPECT_EQ(classModifierToString(ClassModifier::IMMUTABLE), "immutable");
     EXPECT_EQ(classModifierToString(ClassModifier::SERVICE), "service");
     EXPECT_EQ(classModifierToString(ClassModifier::FINAL), "final");
+    EXPECT_EQ(classModifierToString(ClassModifier::SERIALIZABLE), "serializable");
 }
 
 TEST_F(ASTCoreTest, PrimitiveTypeToStringAll) {
@@ -198,6 +199,25 @@ TEST_F(ASTCoreTest, ClassDeclarationWithModifierAndBase) {
     EXPECT_TRUE(decl.hasBaseClass());
     EXPECT_EQ(decl.getBaseClass(), "Shape");
     EXPECT_TRUE(decl.hasModifier(ClassModifier::FINAL));
+}
+
+TEST_F(ASTCoreTest, ClassDeclarationWithMultipleModifiers) {
+    auto body = std::make_unique<ClassBody>(std::vector<std::unique_ptr<ClassMember>>{});
+    ClassDeclaration decl(
+        {ClassModifier::SINGLETON, ClassModifier::IMMUTABLE, ClassModifier::SERIALIZABLE},
+        "Config",
+        "",
+        std::move(body));
+
+    ASSERT_EQ(decl.getModifiers().size(), 3);
+    EXPECT_EQ(decl.getModifiers()[0], ClassModifier::SINGLETON);
+    EXPECT_EQ(decl.getModifiers()[1], ClassModifier::IMMUTABLE);
+    EXPECT_EQ(decl.getModifiers()[2], ClassModifier::SERIALIZABLE);
+    EXPECT_TRUE(decl.hasModifier(ClassModifier::SINGLETON));
+    EXPECT_TRUE(decl.hasModifier(ClassModifier::IMMUTABLE));
+    EXPECT_TRUE(decl.hasModifier(ClassModifier::SERIALIZABLE));
+    EXPECT_FALSE(decl.hasModifier(ClassModifier::SERVICE));
+    EXPECT_FALSE(decl.hasModifier(ClassModifier::FINAL));
 }
 
 TEST_F(ASTCoreTest, ConstructorDeclaration) {

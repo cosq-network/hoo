@@ -1,4 +1,6 @@
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
 #include <filesystem>
 #include <memory>
 #include <vector>
@@ -6,9 +8,27 @@
 #include <cstring>
 #include "hvm/HOModule.h"
 
+#ifdef _WIN32
+#include <process.h>
+#define hoo_getpid _getpid
+#else
+#include <unistd.h>
+#define hoo_getpid getpid
+#endif
+
 using namespace hvm;
 
 namespace {
+std::filesystem::path uniqueTempPath(const std::string& prefix, const std::string& extension) {
+    static std::atomic<uint64_t> counter{0};
+    const auto now = std::chrono::steady_clock::now().time_since_epoch();
+    const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+    return std::filesystem::temp_directory_path()
+        / (prefix + "_" + std::to_string(static_cast<long long>(hoo_getpid())) + "_"
+           + std::to_string(static_cast<long long>(nanos)) + "_"
+           + std::to_string(counter.fetch_add(1, std::memory_order_relaxed)) + extension);
+}
+
 uint64_t readU64LE(const std::vector<uint8_t>& data, size_t offset) {
     uint64_t value = 0;
     for (size_t i = 0; i < 8; ++i) {
@@ -520,10 +540,11 @@ TEST_F(HOModuleTest, SerializeToFilePath) {
     text.data.resize(16, 0);
     module->addSection(std::move(text));
     
-    std::string tempPath = (std::filesystem::temp_directory_path() / "hvm_test_module.bin").string();
+    std::string tempPath = uniqueTempPath("hvm_test_module", ".bin").string();
     ASSERT_TRUE(module->serialize(tempPath));
     
     auto parsed = HOModule::parse(tempPath);
+    std::filesystem::remove(tempPath);
     ASSERT_NE(parsed, nullptr);
     EXPECT_GE(parsed->getSectionCount(), 1U);
     EXPECT_NE(parsed->getSection(".text"), nullptr);

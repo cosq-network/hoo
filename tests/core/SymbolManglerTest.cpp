@@ -164,6 +164,121 @@ TEST_F(SymbolManglerTest, SerializableModifierMangling) {
     EXPECT_EQ(demangled.returnType, "ptr");
 }
 
+TEST_F(SymbolManglerTest, SerializableDeserializeMangling) {
+    auto params = makeParams();
+    params.className = "UserConfig";
+    params.classModifiers = {"SERIALIZABLE"};
+    params.functionName = "deserialize";
+    params.returnType = "ptr";
+    params.isStatic = true;
+    params.parameterTypes = {"string"};
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    EXPECT_EQ(mangled, "_F_UserConfig_R_deserialize_static_p_s");
+
+    // Test demangling round-trip
+    auto demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_EQ(demangled.className, "UserConfig");
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SERIALIZABLE"),
+              demangled.classModifiers.end());
+    EXPECT_EQ(demangled.functionName, "deserialize");
+    EXPECT_TRUE(demangled.isStatic);
+    EXPECT_EQ(demangled.returnType, "ptr");
+    ASSERT_GE(demangled.parameterTypes.size(), 1);
+    EXPECT_EQ(demangled.parameterTypes[0], "string");
+}
+
+TEST_F(SymbolManglerTest, SerializableWithFinalModifierMangling) {
+    auto params = makeParams();
+    params.className = "FinalConfig";
+    params.classModifiers = {"FINAL", "SERIALIZABLE"};
+    params.functionName = "serialize";
+    params.returnType = "ptr";
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    // FINAL=Z, SERIALIZABLE=R — each modifier code is followed by '_'
+    EXPECT_EQ(mangled, "_F_FinalConfig_Z_R_serialize_p");
+
+    // Test demangling round-trip
+    auto demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_EQ(demangled.className, "FinalConfig");
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "FINAL"),
+              demangled.classModifiers.end());
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SERIALIZABLE"),
+              demangled.classModifiers.end());
+    EXPECT_EQ(demangled.functionName, "serialize");
+}
+
+TEST_F(SymbolManglerTest, AllFiveClassModifiersManglingRoundTrip) {
+    auto params = makeParams();
+    params.className = "AllModClass";
+    params.classModifiers = {"SINGLETON", "IMMUTABLE", "SERVICE", "FINAL", "SERIALIZABLE"};
+    params.functionName = "execute";
+    params.returnType = "void";
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    // Each modifier code is followed by '_': N_I_S_Z_R_
+    EXPECT_EQ(mangled, "_F_AllModClass_N_I_S_Z_R_execute_v");
+
+    // Demangling round-trip
+    auto demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_EQ(demangled.className, "AllModClass");
+    EXPECT_EQ(demangled.classModifiers.size(), 5);
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SINGLETON"),
+              demangled.classModifiers.end());
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "IMMUTABLE"),
+              demangled.classModifiers.end());
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SERVICE"),
+              demangled.classModifiers.end());
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "FINAL"),
+              demangled.classModifiers.end());
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SERIALIZABLE"),
+              demangled.classModifiers.end());
+    EXPECT_EQ(demangled.functionName, "execute");
+}
+
+TEST_F(SymbolManglerTest, SerializableWithInheritanceMangling) {
+    auto params = makeParams();
+    params.className = "DerivedConfig";
+    params.baseClassName = "BaseConfig";
+    params.classModifiers = {"SERIALIZABLE"};
+    params.functionName = "serialize";
+    params.returnType = "ptr";
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    EXPECT_EQ(mangled, "_F_DerivedConfig_BaseConfig_R_serialize_p");
+
+    // Demangling round-trip
+    auto demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_EQ(demangled.className, "DerivedConfig");
+    EXPECT_EQ(demangled.baseClassName, "BaseConfig");
+    EXPECT_NE(std::find(demangled.classModifiers.begin(), demangled.classModifiers.end(), "SERIALIZABLE"),
+              demangled.classModifiers.end());
+    EXPECT_EQ(demangled.functionName, "serialize");
+}
+
+TEST_F(SymbolManglerTest, ModifierCodeMapIsExhaustive) {
+    // Verify that every ClassModifier has a corresponding code in the map
+    auto roundTrip = [](const std::string& modifier) {
+        auto params = MangledFunctionParams();
+        params.className = "Test";
+        params.classModifiers = {modifier};
+        params.functionName = "fn";
+        params.returnType = "void";
+        std::string mangled = SymbolMangler::mangleFunctionName(params);
+        auto demangled = SymbolMangler::demangleSymbol(mangled);
+        return std::find(demangled.classModifiers.begin(),
+                         demangled.classModifiers.end(), modifier)
+               != demangled.classModifiers.end();
+    };
+
+    EXPECT_TRUE(roundTrip("SINGLETON"));
+    EXPECT_TRUE(roundTrip("IMMUTABLE"));
+    EXPECT_TRUE(roundTrip("SERVICE"));
+    EXPECT_TRUE(roundTrip("FINAL"));
+    EXPECT_TRUE(roundTrip("SERIALIZABLE"));
+}
+
 TEST_F(SymbolManglerTest, FunctionModifiersMangling) {
     auto params1 = makeParams();
     params1.className = "Person";

@@ -1,8 +1,18 @@
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
 #include <cstring>
 #include <cstdlib>
 #include <ctime>
 #include "runtime/lib/hoo_fs.h"
+
+#ifdef _WIN32
+#include <process.h>
+#define hoo_getpid _getpid
+#else
+#include <unistd.h>
+#define hoo_getpid getpid
+#endif
 
 using namespace hoo::fs;
 
@@ -12,7 +22,13 @@ protected:
         tempDir_ = hoo::fs::tempDir();
         ASSERT_FALSE(tempDir_.empty());
 
-        testDir = tempDir_ + "/hoo_fs_test_" + std::to_string(time(nullptr));
+        static std::atomic<uint64_t> counter{0};
+        const auto now = std::chrono::steady_clock::now().time_since_epoch();
+        const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
+        testDir = tempDir_ + "/hoo_fs_test_"
+            + std::to_string(static_cast<long long>(hoo_getpid())) + "_"
+            + std::to_string(static_cast<long long>(nanos)) + "_"
+            + std::to_string(counter.fetch_add(1, std::memory_order_relaxed));
         bool ok = Directory(testDir).createTree();
         ASSERT_TRUE(ok);
     }

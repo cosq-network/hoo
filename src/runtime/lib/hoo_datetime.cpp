@@ -11,6 +11,7 @@
 
 #ifdef _WIN32
 #include <malloc.h>
+#define hoo_strdup _strdup
 static struct tm* win_gmtime_r(const time_t* t, struct tm* buf) {
     if (gmtime_s(buf, t) != 0) return nullptr;
     return buf;
@@ -91,6 +92,8 @@ static char* win_strptime(const char* s, const char* fmt, struct tm* buf) {
 #define gmtime_r win_gmtime_r
 #define timegm win_timegm
 #define strptime win_strptime
+#else
+#define hoo_strdup strdup
 #endif
 
 // ============================================================================
@@ -210,7 +213,7 @@ static char* format_ts(int64_t epoch_ms, const char* format) {
         }
     }
 
-    return strdup(result.c_str());
+    return hoo_strdup(result.c_str());
 }
 
 static int64_t parse_ts(const char* str, const char* format) {
@@ -273,7 +276,7 @@ static char* iso8601_ts(int64_t epoch_ms) {
     char result[80];
     snprintf(result, sizeof(result), "%s.%03lldZ", date_buf, static_cast<long long>(ms));
 
-    return strdup(result);
+    return hoo_strdup(result);
 }
 
 static int64_t from_iso8601_ts(const char* str) {

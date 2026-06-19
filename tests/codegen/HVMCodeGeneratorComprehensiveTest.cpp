@@ -1782,3 +1782,396 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, LocalVariableNamedR4DoesNotConflict) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
 }
+
+// ============================================================================
+// Serializable Class Modifier Tests
+// ============================================================================
+
+// ---------- Valid serializable classes (should compile and produce symbols) ----------
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassGeneratesSerializeSymbol) {
+    std::string code = R"(
+        serializable class Person {
+            public var name: string;
+            public var age: int64;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cerr << "COMPILE ERROR: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Person_R_serialize_p") != std::string::npos) {
+            foundSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundSerialize) << "Expected serialize symbol in module symbols";
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassGeneratesDeserializeSymbol) {
+    std::string code = R"(
+        serializable class Person {
+            public var name: string;
+            public var age: int64;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundDeserialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_R_deserialize_static") != std::string::npos) {
+            foundDeserialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundDeserialize) << "Expected deserialize symbol with SERIALIZABLE modifier(R) in module symbols";
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassConstructorSymbolRemainsResolvable) {
+    std::string code = R"(
+        serializable class Person {
+            public var name: string;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    EXPECT_NE(module->getSymbol("_F_M_test_E_Person_CT"), nullptr);
+    EXPECT_EQ(module->getSymbol("_F_M_test_E_Person_R_CT"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithMultiplePublicFields) {
+    std::string code = R"(
+        serializable class Profile {
+            public var name: string;
+            public var age: int64;
+            public var score: double;
+            public var active: bool;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    bool foundDeserialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Profile_R_serialize") != std::string::npos) foundSerialize = true;
+        if (sym.name.find("_Profile_R_deserialize") != std::string::npos) foundDeserialize = true;
+    }
+    EXPECT_TRUE(foundSerialize);
+    EXPECT_TRUE(foundDeserialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithHashMapField) {
+    std::string code = R"(
+        serializable class Config {
+            public var labels: HashMap<int64, string>;
+            public var version: int64;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Config_R_serialize_p") != std::string::npos) {
+            foundSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundSerialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithAnyArrayField) {
+    std::string code = R"(
+        serializable class Container {
+            public var items: AnyArray;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Container_R_serialize") != std::string::npos) {
+            foundSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundSerialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithTensorField) {
+    std::string code = R"(
+        serializable class TensorHolder {
+            public var mat: tensor<double>[2, 3];
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_TensorHolder_R_serialize") != std::string::npos) {
+            foundSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundSerialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassAcyclicDagSucceeds) {
+    std::string code = R"(
+        serializable class Point {
+            public var x: double;
+            public var y: double;
+            constructor() {}
+        }
+        serializable class Line {
+            public var start: Point;
+            public var end: Point;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundLineSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Line_R_serialize") != std::string::npos) {
+            foundLineSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundLineSerialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableSingletonSucceeds) {
+    std::string code = R"(
+        serializable singleton class Config {
+            public var version: int64;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Config_R_N_serialize") != std::string::npos) {
+            foundSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundSerialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableImmutableSucceeds) {
+    std::string code = R"(
+        serializable immutable class Config {
+            public var version: int64;
+            public var name: string;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    bool foundSerialize = false;
+    for (const auto& sym : module->getSymbols()) {
+        if (sym.name.find("_Config_R_I_serialize_p") != std::string::npos) {
+            foundSerialize = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundSerialize);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, NonSerializableClassNoAutoMethods) {
+    std::string code = R"(
+        class Plain {
+            public var x: int64;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    for (const auto& sym : module->getSymbols()) {
+        EXPECT_TRUE(sym.name.find("_R_serialize") == std::string::npos)
+            << "Non-serializable class should not have serialize symbol: " << sym.name;
+        EXPECT_TRUE(sym.name.find("_R_deserialize") == std::string::npos)
+            << "Non-serializable class should not have deserialize symbol: " << sym.name;
+    }
+}
+
+// ---------- Error cases: serializable validation ----------
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNoPublicFields) {
+    std::string code = R"(
+        serializable class Empty {
+            private var x: int64;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("must have at least one public field") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNoConstructor) {
+    std::string code = R"(
+        serializable class NoCtor {
+            public var x: int64;
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("must have exactly one constructor") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithMultipleConstructors) {
+    // The AST builder itself rejects multiple constructors before serializable validation
+    std::string code = R"(
+        serializable class MultiCtor {
+            public var x: int64;
+            constructor() {}
+            constructor(y: int64) {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("multiple constructors") != std::string::npos ||
+                compiler_->getLastError().find("exactly one constructor") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithParamCtor) {
+    std::string code = R"(
+        serializable class ParamCtor {
+            public var x: int64;
+            constructor(x: int64) { this.x = x; }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("constructor must have no parameters") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatField) {
+    std::string code = R"(
+        serializable class Bad {
+            public var x: float;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("float not allowed") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharField) {
+    std::string code = R"(
+        serializable class Bad {
+            public var ch: char;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("char not allowed") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNonSerializableRef) {
+    std::string code = R"(
+        class NonSerial {}
+
+        serializable class Bad {
+            public var ref: NonSerial;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("non-serializable class") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatHashMapValue) {
+    std::string code = R"(
+        serializable class Bad {
+            public var values: HashMap<int64, float>;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("float not allowed as HashMap value") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharHashMapValue) {
+    std::string code = R"(
+        serializable class Bad {
+            public var values: HashMap<int64, char>;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("char not allowed as HashMap value") != std::string::npos);
+}
+
+// ---------- Error cases: cycle detection ----------
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithSelfCycle) {
+    std::string code = R"(
+        serializable class Node {
+            public var next: Node;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    // Self-cycle is detected by type validation (serializable class ref to self creates no edge
+    // in adjacency since self isn't in serializableAdjacency_ yet at validation time).
+    // It's caught by the "no edges to self" nature of the adjacency building.
+    // The error may come from validate or cycle detection.
+    EXPECT_TRUE(compiler_->getLastError().find("cycle") != std::string::npos ||
+                compiler_->getLastError().find("Serializable") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithMutualCycle) {
+    std::string code = R"(
+        serializable class A {
+            public var b: B;
+            constructor() {}
+        }
+        serializable class B {
+            public var a: A;
+            constructor() {}
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cycle") != std::string::npos);
+}
+
+// ---------- Error cases: modifier incompatibility ----------
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableFailsWithServiceModifier) {
+    std::string code = R"(
+        serializable service class Bad {}
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot also be serializable") != std::string::npos);
+}

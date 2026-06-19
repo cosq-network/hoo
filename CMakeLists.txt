@@ -512,6 +512,7 @@ if(HOO_BUILD_TESTS)
     target_link_libraries(hoo-tests
         hoo-core
     )
+    add_dependencies(hoo-tests hoo)
     if(WIN32)
         target_link_libraries(hoo-tests GTest::gtest GTest::gtest_main)
         target_link_options(hoo-tests PRIVATE
