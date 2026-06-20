@@ -2392,8 +2392,8 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         void* data = reinterpret_cast<void*>(state->regs[2]);
         const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* op = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
-        const char* value = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* op = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* value = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
         void* result = hoo_csv_filter(handle, data, column, op, value);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
     }
@@ -2402,7 +2402,7 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         void* data = reinterpret_cast<void*>(state->regs[2]);
         const char* column = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        int64_t ascending = state->regs[4];
+        int64_t ascending = state->regs[5];
         void* result = hoo_csv_sort(handle, data, column, ascending);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
     }
@@ -2722,7 +2722,7 @@ extern "C" {
         const uint8_t* key = reinterpret_cast<const uint8_t*>(state->regs[1]);
         int64_t key_len = state->regs[2];
         const uint8_t* data = reinterpret_cast<const uint8_t*>(state->regs[3]);
-        int64_t data_len = state->regs[4];
+        int64_t data_len = state->regs[5];
         char* result = hoo_hashing_hmac_sha256(key, key_len, data, data_len);
         if (!result) return 0;
         void* str = hoo_string_from_cstr(result);
@@ -2936,9 +2936,9 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
-        const char* default_val = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        const char* default_val = hoo_string_data(reinterpret_cast<void*>(state->regs[7]));
         hoo_args_add_string(handle, name, short_opt, long_opt, help, default_val);
         return 0;
     }
@@ -2947,9 +2947,9 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
-        int64_t default_val = state->regs[6];
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        int64_t default_val = state->regs[7];
         hoo_args_add_int(handle, name, short_opt, long_opt, help, default_val);
         return 0;
     }
@@ -2958,8 +2958,8 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
         hoo_args_add_flag(handle, name, short_opt, long_opt, help);
         return 0;
     }
@@ -2968,10 +2968,10 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
         double default_val;
-        std::memcpy(&default_val, &state->regs[6], sizeof(double));
+        std::memcpy(&default_val, &state->regs[7], sizeof(double));
         hoo_args_add_float(handle, name, short_opt, long_opt, help, default_val);
         return 0;
     }
@@ -5277,6 +5277,8 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::LDA:
         case hvm::Opcode::CALL:
         case hvm::Opcode::TAILCALL:
+        case hvm::Opcode::RETAIN:
+        case hvm::Opcode::RELEASE:
         case hvm::Opcode::SYSCALL:
         case hvm::Opcode::BREAK:
             return true;
@@ -5997,6 +5999,20 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 }
                 writeReg(o.rd, v);
                 state.regs[31] += 8;
+                break;
+            }
+            case hvm::Opcode::RETAIN: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                uint64_t val = readReg(o.rs1);
+                hooc_hvm_arc_retain_if_managed(val);
+                writeReg(o.rd, val);
+                break;
+            }
+            case hvm::Opcode::RELEASE: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                uint64_t val = readReg(o.rs1);
+                hooc_hvm_arc_release_if_managed(val);
+                writeReg(o.rd, 0);
                 break;
             }
             case hvm::Opcode::SYSCALL: {
@@ -7144,6 +7160,16 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto* p = builder.CreateBitCast(memAddr(sp), llvm::PointerType::get(*context, 0));
                     writeReg(o.rd, builder.CreateLoad(i64, p));
                     writeReg(31, builder.CreateAdd(sp, builder.getInt64(8)));
+                } else if (op == hvm::Opcode::RETAIN) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* val = readReg(o.rs1);
+                    builder.CreateCall(arcRetainCallee, {val});
+                    writeReg(o.rd, val);
+                } else if (op == hvm::Opcode::RELEASE) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* val = readReg(o.rs1);
+                    builder.CreateCall(arcReleaseCallee, {val});
+                    writeReg(o.rd, builder.getInt64(0));
                 } else if (op == hvm::Opcode::SYSCALL) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
                     auto* syscallErr = llvm::BasicBlock::Create(*context, "sys_err", fn);
@@ -7404,13 +7430,18 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
                          text->data.begin() + static_cast<ptrdiff_t>(pc + maxRead));
             size_t used = 0;
             auto ins = hvm::HVMInstruction::decode(slice, used);
-            if (!ins || used == 0) return false;
+            if (!ins || used == 0) {
+                fprintf(stderr, "DEBUG: decode failed at PC %llu in module %s\n", (unsigned long long)pc, module->getName().c_str());
+                return false;
+            }
             uint16_t func = 0;
             if (ins->getFormat() == hvm::InstructionFormat::R) {
                 func = std::get<hvm::OperandsR>(ins->getOperands()).func;
             }
 
             if (!isSupportedForIRLowering(ins->getOpcode(), func)) {
+                fprintf(stderr, "DEBUG: unsupported instruction: opcode %d mnemonic %s func %d at PC %llu in module %s\n",
+                        (int)ins->getOpcode(), ins->getMnemonic().c_str(), (int)func, (unsigned long long)pc, module->getName().c_str());
                 return false;
             }
             if (ins->getOpcode() == hvm::Opcode::RET) break;

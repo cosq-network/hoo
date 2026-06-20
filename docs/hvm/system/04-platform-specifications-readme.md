@@ -15,7 +15,7 @@ The documents split the HVM hardware family into deployable reference platforms:
 
 ## Common HVM Platform Assumptions
 
-All platforms use the HVM 64-bit RISC execution model, HVM-C compressed instruction support, HVM-ARC retain/release acceleration, fine-grained `ICACHE.RNG` invalidation, and the HVM-V vector extension where the thermal envelope allows it.
+All platforms use the HVM 64-bit RISC execution model, HVM-C compressed instruction support, HVM-ARC retain/release acceleration, fine-grained `ICACHE.RNG` invalidation, HVM-L/HVM-MEM low-overhead loop and memory primitives where the core profile supports them, and the HVM-V vector extension where the thermal envelope allows it. HVM-Alloc, compact object references, HVM-Cap, HVM-Prof, and HVM-NZ remain profile-gated runtime extensions until simulator, RTL, and workload data justify promotion.
 
 | Profile | Primary Form | CPU Package | Memory Class | Target Power | Comparable Industry Class |
 | :--- | :--- | :--- | :--- | :--- | :--- |

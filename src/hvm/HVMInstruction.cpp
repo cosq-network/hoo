@@ -121,11 +121,34 @@ HVMInstruction::HVMInstruction(Opcode opcode, const Operands& operands)
     mnemonic_ = opcodeToString(opcode, func);
 }
 
-std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed) {
+std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed, bool allowCompressed) {
     bytesUsed = 0;
     if (bytes.empty()) return nullptr;
 
     const uint8_t firstByte = bytes[0];
+    // Check for 16‑bit compressed instructions (HVM‑C)
+    if (allowCompressed && firstByte != kExtendedOpcodeEscape && (firstByte & 0xF0) == 0xF0) {
+        // Compressed format: 4‑bit opcode, 4‑bit rd, 4‑bit rs1, 4‑bit imm4
+        if (bytes.size() < 2) return nullptr;
+        uint8_t secondByte = bytes[1];
+        uint8_t opcode4 = (firstByte >> 0) & 0x0F; // lower 4 bits hold opcode
+        uint8_t rd = (secondByte >> 4) & 0x0F;
+        uint8_t rs1 = secondByte & 0x0F;
+        uint8_t imm4 = (firstByte >> 4) & 0x0F; // upper 4 bits are immediate
+        // Map 4‑bit opcode to full 8‑bit opcode space (simple identity for demo)
+        Opcode opcode = static_cast<Opcode>(opcode4);
+        auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, 0);
+        if (!info || info->encoding != InstructionEncoding::Compressed16) return nullptr;
+        auto inst = std::make_unique<HVMInstruction>();
+        inst->opcode_ = opcode;
+        inst->format_ = info->format;
+        inst->mnemonic_ = info->mnemonic;
+        // For simplicity we treat this as an R‑type with immediate in func field
+        inst->operands_ = OperandsR{rd, rs1, 0, static_cast<uint16_t>(imm4)};
+        bytesUsed = 2;
+        return inst;
+    }
+
     if (firstByte == kExtendedOpcodeEscape) {
         uint32_t opcodeVal = 0;
         size_t opcodeBytes = 0;
@@ -442,6 +465,8 @@ std::string HVMInstruction::toAssembly() const {
 std::string HVMInstruction::opcodeToString(Opcode opcode, uint16_t func) {
     auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, func);
     if (info) return info->mnemonic;
+    auto compInfo = InstructionRegistry::instance().getCompressedInfoByOpcode(opcode, func);
+    if (compInfo) return compInfo->mnemonic;
     return "unknown";
 }
 
@@ -476,10 +501,16 @@ InstructionRegistry::InstructionRegistry() {
     auto reg = [&](const std::string& mnemonic, Opcode opcode, InstructionFormat format, uint16_t func = 0) {
         registerInstruction(mnemonic, opcode, format, func);
     };
+    // Helper for compressed registration
+    auto regCompressed = [&](const std::string& mnemonic, Opcode opcode, InstructionFormat format, uint16_t func = 0) {
+        registerInstruction(mnemonic, opcode, format, func, InstructionEncoding::Compressed16);
+    };
     
     // Core families from hvm_instruction_set.csv
     reg("nop",   Opcode::NOP,   InstructionFormat::R);
     reg("mov",   Opcode::MOV,   InstructionFormat::R);
+    reg("retain", Opcode::RETAIN, InstructionFormat::R);
+    reg("release", Opcode::RELEASE, InstructionFormat::R);
     reg("movz",  Opcode::MOVZ,  InstructionFormat::I);
     reg("lui",   Opcode::LUI,   InstructionFormat::I);
     reg("addi",  Opcode::ADDI,  InstructionFormat::I);
@@ -492,6 +523,13 @@ InstructionRegistry::InstructionRegistry() {
     reg("divu",  Opcode::ARITH, InstructionFormat::R, 6);
     reg("rem",   Opcode::ARITH, InstructionFormat::R, 7);
     
+    // Compressed 16‑bit instructions (HVM‑C) – only those that satisfy the 4‑bit register/immediate constraint
+    regCompressed("add.c", Opcode::ARITH, InstructionFormat::R, 0); // rd = rs1 + imm4
+    regCompressed("sub.c", Opcode::ARITH, InstructionFormat::R, 1); // rd = rs1 - imm4
+    regCompressed("ld.p.c", Opcode::LD_P, InstructionFormat::R);
+    regCompressed("st.p.c", Opcode::ST_P, InstructionFormat::R);
+    regCompressed("ret.c", Opcode::RET, InstructionFormat::R);
+
     // Shift (0x13)
     reg("shl",   Opcode::SHIFT, InstructionFormat::R, 0);
     reg("shr",   Opcode::SHIFT, InstructionFormat::R, 1);
@@ -566,6 +604,18 @@ void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcod
     opcode_func_to_info_[static_cast<uint16_t>(opcode)][func] = info;
 }
 
+// Overload allowing explicit encoding (e.g., for compressed 16‑bit instructions)
+void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcode opcode,
+                                    InstructionFormat format, uint16_t func, InstructionEncoding encoding) {
+    InstructionInfo info = {mnemonic, opcode, encoding, format, func};
+    mnemonic_to_info_[mnemonic] = info;
+    if (encoding == InstructionEncoding::Compressed16) {
+        opcode_func_to_compressed_info_[static_cast<uint16_t>(opcode)][func] = info;
+    } else {
+        opcode_func_to_info_[static_cast<uint16_t>(opcode)][func] = info;
+    }
+}
+
 std::optional<InstructionRegistry::InstructionInfo> InstructionRegistry::getInfoByMnemonic(const std::string& mnemonic) const {
     auto it = mnemonic_to_info_.find(mnemonic);
     if (it != mnemonic_to_info_.end()) {
@@ -577,6 +627,17 @@ std::optional<InstructionRegistry::InstructionInfo> InstructionRegistry::getInfo
 std::optional<InstructionRegistry::InstructionInfo> InstructionRegistry::getInfoByOpcode(Opcode opcode, uint16_t func) const {
     auto it = opcode_func_to_info_.find(static_cast<uint16_t>(opcode));
     if (it != opcode_func_to_info_.end()) {
+        auto it2 = it->second.find(func);
+        if (it2 != it->second.end()) {
+            return it2->second;
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<InstructionRegistry::InstructionInfo> InstructionRegistry::getCompressedInfoByOpcode(Opcode opcode, uint16_t func) const {
+    auto it = opcode_func_to_compressed_info_.find(static_cast<uint16_t>(opcode));
+    if (it != opcode_func_to_compressed_info_.end()) {
         auto it2 = it->second.find(func);
         if (it2 != it->second.end()) {
             return it2->second;

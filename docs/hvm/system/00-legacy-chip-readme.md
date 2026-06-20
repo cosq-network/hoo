@@ -13,7 +13,7 @@ This directory contains the design notes for a new HVM-based processor stack.
 
 - 64-bit RISC-style HVM processor family spanning mobile, desktop, server, and robotics profiles
 - Silicon, package, socket, voltage, clock, memory, I/O, and board-level constraints
-- Green-compute ISA extensions including HVM-C, HVM-ARC, HVM-V, HVM-A, and `ICACHE.RNG`
+- Green-compute ISA extensions including HVM-C, HVM-ARC, HVM-L, HVM-MEM, HVM-V, HVM-A, HVM-Prof, HVM-Alloc, compact references, and `ICACHE.RNG`
 - Mobile SoC packaging, PMIC, MIPI, UFS, RF, and compact board routing guidance
 
 ## Profile Naming

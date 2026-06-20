@@ -10,6 +10,7 @@
 #include "hvm/HVMInstruction.h"
 #include "hvm/HOModule.h"
 #include <vector>
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <stack>
@@ -47,6 +48,9 @@ private:
     std::unique_ptr<hvm::HOModule> module_;
     std::vector<hvm::HVMInstruction> instructions_;
     uint32_t currentByteOffset_ = 0;
+    std::vector<uint8_t> compressedInstructions_;
+
+
     std::vector<std::string> errors_;
     std::unordered_set<std::string> importedModules_;
     std::unordered_map<std::string, std::string> importedSymbols_;
@@ -59,6 +63,8 @@ private:
     bool usedRegs_[32];
     uint8_t allocateRegister();
     void freeRegister(uint8_t reg);
+    void emitCompressed(uint8_t opcode4, uint8_t rd, uint8_t rs1, uint8_t imm4);
+
 
 
     // Local Variable & Stack Management
@@ -243,6 +249,8 @@ private:
     uint8_t emitConstant(int64_t value);
     uint8_t emitRoDataAddress(uint32_t offset);
     void addError(const std::string& message);
+    // Compressed 16‑bit instruction support
+
 };
 
 } // namespace hooc

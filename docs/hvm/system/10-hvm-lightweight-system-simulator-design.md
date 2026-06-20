@@ -202,8 +202,10 @@ Each virtual CPU has:
 - HVM status/control registers: privilege mode, interrupt enable, exception cause, trap value, timer compare, MMU root PPN, feature flags.
 - Optional HVM-V vector state: `v0..v15`, `vl`, `vtype`, dirty/clean state.
 - HVM-ARC state and atomic memory hooks.
+- Optional HVM-L loop state for active hardware-loop counters and backedge metadata.
+- Optional HVM-Alloc state through runtime TLS fields or allocation CSRs, depending on finalized ABI.
 - Debug state: breakpoints, watchpoints, single-step latch.
-- Execution counters: retired instructions, branches, cache invalidations, MMIO exits, JIT block hits.
+- Execution counters: retired instructions, branches, branch-miss estimates, cache invalidations, MMIO exits, JIT block hits, ARC slow paths, allocation slow paths, vector utilization, DRAM byte estimates, and sleep/throttle residency.
 
 ### 5.2 Execution Modes
 
@@ -223,7 +225,7 @@ The decoder should be table-driven:
 - A compact C++ decode table for base32 instructions.
 - Support for HVM-C 16-bit compressed instructions.
 - Support for `escape32` and future extension spaces.
-- Instruction metadata: mnemonic, operand layout, side effects, privilege requirement, memory access class, vector requirement.
+- Instruction metadata: mnemonic, operand layout, side effects, privilege requirement, memory access class, vector requirement, advisory-hint behavior, and feature-bit requirement.
 
 Generated files:
 
@@ -1476,7 +1478,10 @@ Tasks:
 6. Implement HVM-C decompression and execution.
 7. Implement HVM-ARC `RETAIN` and `RELEASE`.
 8. Implement `ICACHE.RNG` as decode/JIT-cache invalidation hook.
-9. Add instruction unit tests and random-state differential microtests against simple reference helpers.
+9. Implement `LD.P` and `ST.P` pair load/store instructions with precise exception behavior.
+10. Decode HVM-L hardware-loop instructions and execute them functionally as counted branches.
+11. Decode `PREFETCH.R`, `PREFETCH.W`, `PREFETCH.NTA`, branch hints, and `MEMZERO.HINT` as architecturally safe no-ops until timing/performance models exist.
+12. Add instruction unit tests and random-state differential microtests against simple reference helpers.
 
 Deliverables:
 
@@ -1812,9 +1817,13 @@ Tasks:
    - arithmetic
    - branches
    - loads/stores
+   - pair loads/stores
    - atomics
    - exceptions
-3. Route MMIO and privileged operations through runtime helpers.
+   - HVM-L hardware loops as counted host loops
+   - prefetch and branch hints as LLVM hints or no-ops
+   - HVM-Alloc fast path with slow-path fallback
+3. Route MMIO, compact-reference decode checks, and privileged operations through runtime helpers.
 4. Implement JIT invalidation:
    - `ICACHE.RNG`
    - writes to executable pages
@@ -1943,12 +1952,21 @@ Support levels:
 | HVM-C compressed instructions | Required | Required | Required | Required | Functional decode and execution | 1 |
 | HVM-ARC `RETAIN`/`RELEASE` | Required | Required | Required | Optional for RT cores | Functional atomics through memory subsystem | 1 |
 | `ICACHE.RNG` | Required | Required | Required | Required | JIT/decode cache invalidation | 1, 5 |
+| HVM-L hardware loops | Required | Optional | Optional | Required on RT cores | Functional counted-loop semantics; timing annotation later | 1, 6 |
+| `LD.P` / `ST.P` pair memory ops | Required | Required | Required | Required | Functional with precise exception order | 1 |
+| Prefetch and cache hints | Optional | Optional | Required for server perf studies | Optional | No-op legal; timing/perf model later | 1, 5 |
+| Branch/code layout hints | Optional | Optional | Optional | Optional | No-op legal; JIT advisory lowering | 5 |
+| `MEMZERO.HINT` | Optional | Optional | Optional | Optional | No-op legal; block helper later | 5 |
 | HVM-V vector state | Required on big cores | Required | Required | Required on app cores, optional on RT cores | Functional scalar fallback first | 1 |
 | HVM-V vector performance lowering | Optional | Required | Required | Optional | LLVM JIT vector lowering | 5 |
 | HVM-A doorbell instruction | Stub | Required | Required | Optional | MMIO doorbell semantics | 3 |
+| HVM-Alloc `ALLOC.BUMP` | Optional | Optional | Required for runtime-performance studies | Optional on app cores; prohibited in hard RT regions | Functional fast path plus runtime fallback | 5 |
+| Compact object references | Optional | Optional | Optional | Optional | Runtime/JIT model with heap-window checks | Future |
 | HVM-Cap tagged pointer checks | Optional | Optional | Optional | Optional | Functional if ISA finalized | Future |
 | HVM-Prof counters | Optional | Required | Required | Optional | Simulator PMU counters | 5 |
+| Power-aware HVM-Prof counters | Required for power studies | Required | Required | Required for safety/power studies | Simulator counters and `hvm-sim perf` output | 5 |
 | HVM-NZ null-check loads | Optional | Optional | Optional | Optional | Functional if ISA finalized | Future |
+| Deterministic RT subset enforcement | N/A | N/A | N/A | Required | Simulator rejects/profile-flags unbounded hard-RT instructions | 6 |
 | Precise exceptions | Required | Required | Required | Required | Functional and deterministic | 1 |
 | Debug breakpoints/watchpoints | Required | Required | Required | Required | Functional monitor support | 1 |
 | LLVM ORC JIT | Optional | Required for performance | Required for performance | Optional, off by default for lockstep | Functional with interpreter differential tests | 5 |
@@ -2074,7 +2092,7 @@ The simulator should only claim profile support when the following gates pass:
 
 | Claim | Minimum Gate |
 | :--- | :--- |
-| `hvm-sim supports HVM CPU` | Base ISA, HVM-C, HVM-ARC, HVM-39, HLIC, HPIC, exceptions, UART boot smoke test |
+| `hvm-sim supports HVM CPU` | Base ISA, HVM-C, HVM-ARC, HVM-L, HVM-MEM, HVM-39, HLIC, HPIC, exceptions, UART boot smoke test |
 | `hvm-sim supports hvm-mobile` | `HVM-M1` topology, LPDDR model, UFS block device, PMIC stubs, framebuffer, MIPI stubs, device tree, firmware boot |
 | `hvm-sim supports hvm-desktop` | `HVM-D1` topology, DDR5 model, PCIe root complex, NVMe block, framebuffer/input, firmware boot, direct kernel boot |
 | `hvm-sim supports hvm-server` | `HVM-S1` scalable SMP, DDR5 ECC model, PCIe/NVMe, NIC stub, BMC bridge stub, RAS injection basics, firmware boot |

@@ -2,7 +2,7 @@
 
 This document defines the `HVM-R1` robotics SoC and `HVM-RB-R1` reference robotics carrier board. The profile targets autonomous mobile robots, humanoid controllers, industrial arms, motor drives, machine vision nodes, and safety-critical embedded controllers.
 
-The design combines deterministic HVM real-time cores with application cores, HVM-C compressed code density, HVM-ARC runtime acceleration, optional HVM-V vectors, accelerator doorbells, lockstep safety logic, CAN-FD, PWM, ADC, encoder, and industrial Ethernet connectivity.
+The design combines deterministic HVM real-time cores with application cores, HVM-C compressed code density, HVM-L bounded hardware loops for RT firmware, HVM-ARC runtime acceleration on application cores, HVM-MEM pair memory operations, optional HVM-V vectors, accelerator doorbells, lockstep safety logic, CAN-FD, PWM, ADC, encoder, and industrial Ethernet connectivity.
 
 ## 1. Industry Reference Envelope
 
@@ -14,7 +14,7 @@ The design combines deterministic HVM real-time cores with application cores, HV
 | :--- | :--- |
 | CPU topology | 2 deterministic real-time cores + 2-8 application cores |
 | Safety mode | Dual-Core Lockstep (DCLS) for RT core pair |
-| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`; HVM-V 128-bit on application cores |
+| ISA extensions | HVM-C, HVM-L deterministic RT subset, HVM-ARC, HVM-MEM, `ICACHE.RNG`; HVM-V 128-bit on application cores |
 | Process target | 6 nm-12 nm automotive/industrial-qualified node or N4P for AI-heavy module |
 | Package | BGA-699/BGA-1024 robotics module or BGA-256/LQFP-144 control SKU |
 | Memory | 8 GB-64 GB LPDDR5X plus on-die ECC SRAM for RT islands |
@@ -121,9 +121,11 @@ Thermal requirements:
 
 - Boot ROM validates safety firmware before application firmware.
 - RT firmware starts first and owns safe-state defaults for PWM and field outputs.
-- Application firmware boots Linux or an RTOS partition using OpenSBI-compatible HVM supervisor services.
+- Application firmware boots Linux or an RTOS partition using HVM-SFI supervisor services.
 - Device tree must describe safety island ownership, RT timers, fieldbus interrupts, and DMA isolation domains.
 - HVM-ARC is enabled on application cores; RT cores may restrict dynamic allocation and use ARC only in bounded regions.
+- HVM-L is enabled on RT cores for bounded counted loops; unbounded vector, division, allocation fast-path, and compact-reference operations are prohibited in hard real-time regions unless a board-specific worst-case execution-time contract exists.
+- HVM-MEM pair load/store operations may be used in RT firmware only where alignment and timing are bounded.
 - HVM-V is enabled for perception, filtering, and sensor-fusion kernels on application cores.
 
 ## 9. Layout and Reliability Rules
@@ -143,6 +145,7 @@ Thermal requirements:
 - CAN-FD passes bus saturation with ECC-protected message buffers.
 - PTP timestamping passes sub-microsecond synchronization tests.
 - HVM-V perception kernels run concurrently with RT motor loops without deadline misses.
+- HVM-L deterministic-loop tests and HVM-MEM bounded-memory tests pass under lockstep simulation and hardware validation.
 - Power-loss and brownout tests preserve safe output state.
 - Thermal cycling validates solder joints and connector retention.
 - EMI pre-scan passes with motors switching under realistic cable loads.

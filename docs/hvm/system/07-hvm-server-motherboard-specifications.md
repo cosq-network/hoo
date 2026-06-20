@@ -2,7 +2,7 @@
 
 This document defines the `HVM-S1` server CPU family and `HVM-MB-S1` reference server motherboard. The platform targets virtualization hosts, cloud nodes, high-density storage servers, compiler farms, AI CPU front ends, and power-aware datacenter deployments.
 
-The design inherits the HVM server profile: high-core-count sockets, HVM-V 512-bit or wider vectors, HVM-ARC, HVM-C, `ICACHE.RNG`, HVM-A accelerator doorbells, ECC memory, BMC management, and multi-socket coherency.
+The design inherits the HVM server profile: high-core-count sockets, HVM-V 512-bit or wider vectors, HVM-ARC, HVM-C, `ICACHE.RNG`, HVM-L/HVM-MEM runtime-kernel acceleration, HVM-Prof power-aware counters, optional HVM-Alloc and compact references for managed services, HVM-A accelerator doorbells, ECC memory, BMC management, and multi-socket coherency.
 
 ## 1. Industry Reference Envelope
 
@@ -13,7 +13,7 @@ The design inherits the HVM server profile: high-core-count sockets, HVM-V 512-b
 | Item | `HVM-S1` Specification |
 | :--- | :--- |
 | CPU topology | 64-128 big HVM cores per socket, chiplet-based |
-| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-V 512-bit `VLEN`, optional 1024-bit server vector SKU |
+| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM, HVM-V 512-bit `VLEN`, HVM-Prof, optional HVM-Alloc, optional compact references, optional 1024-bit server vector SKU |
 | Package | HVM-S2 LGA-4096-class server socket |
 | Socket count | 1P and 2P reference boards |
 | Cache | 64 KB I + 64 KB D L1 per core, 1 MB L2 per core, 256 MB-512 MB shared/chiplet L3 |
@@ -42,7 +42,7 @@ The design inherits the HVM server profile: high-core-count sockets, HVM-V 512-b
 | Storage | 2x M.2 PCIe Gen 5 x4, 8x SATA, 2x MCIO or SlimSAS x8 |
 | Networking | 2x 10GBase-T onboard, OCP NIC 3.0 option |
 | Management | ASPEED AST2600-class BMC, dedicated 1 GbE management port |
-| Firmware | 64 MB redundant SPI flash, OpenBMC, OpenSBI/coreboot server payload |
+| Firmware | 64 MB redundant SPI flash, OpenBMC, HVM-SFI/coreboot server payload |
 | Security | TPM 2.0 header, secure boot fuses, measured boot log |
 
 ## 5. Dual-Socket Board Specification
@@ -96,7 +96,7 @@ The board must keep CPU junction temperature at or below 95 C sustained in datac
 - OpenBMC-compatible BMC image with Redfish, IPMI, serial-over-LAN, remote firmware update, and crash dump capture.
 - Host firmware publishes ACPI, SMBIOS, NUMA, RAS, PCIe AER, and CXL tables.
 - BMC logs VRM telemetry, DIMM thermal warnings, correctable ECC rate, PCIe AER events, and watchdog resets.
-- HVM runtime counters for HVM-ARC operations, `ICACHE.RNG` invalidations, vector context switches, and accelerator doorbells must be exposed through performance-monitoring registers.
+- HVM runtime counters for HVM-ARC operations, HVM-L loop use, HVM-MEM pair/hint use, allocation fast-path and slow-path counts, compact-reference decode faults, `ICACHE.RNG` invalidations, vector context switches, sleep/throttle residency, and accelerator doorbells must be exposed through performance-monitoring registers.
 
 ## 10. PCB and Signal Integrity Rules
 
@@ -114,6 +114,7 @@ The board must keep CPU junction temperature at or below 95 C sustained in datac
 - BMC power-cycle, firmware recovery, serial-over-LAN, and Redfish update tests.
 - HVM-V vector workloads run under virtualization with lazy context switching.
 - HVM-ARC atomic stress passes under high core counts and NUMA migration.
+- HVM-L, HVM-MEM, HVM-Prof, and optional HVM-Alloc/compact-reference workloads pass interpreter/JIT/silicon validation before production enablement.
 - Accelerator SVM tests validate ATS/PRI, Resizable BAR, and HVM-A doorbell ordering.
 
 ## 12. Server Silicon Production Requirements

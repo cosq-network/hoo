@@ -2,7 +2,7 @@
 
 This document defines the `HVM-D1` desktop CPU and `HVM-MB-D1` reference motherboard. The platform targets developer workstations, gaming desktops, compact tower PCs, and local AI/graphics workstations.
 
-The design inherits the HVM desktop CPU profile: 8 big HVM cores, 256-bit HVM-V vector width, HVM-C compressed instruction decode, HVM-ARC atomic reference management, `ICACHE.RNG`, PCIe accelerator doorbells, and a socketed DDR5 board ecosystem.
+The design inherits the HVM desktop CPU profile: 8 big HVM cores, 256-bit HVM-V vector width, HVM-C compressed instruction decode, HVM-ARC atomic reference management, `ICACHE.RNG`, optional HVM-L hardware loops, HVM-MEM pair load/store and prefetch hints, PCIe accelerator doorbells, and a socketed DDR5 board ecosystem.
 
 ## 1. Industry Reference Envelope
 
@@ -15,7 +15,7 @@ The HVM desktop platform should compete at the board level: socketed CPU, dual-c
 | Item | `HVM-D1` Specification |
 | :--- | :--- |
 | CPU topology | 8 big HVM cores |
-| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-V 256-bit `VLEN`, HVM-A |
+| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM, HVM-V 256-bit `VLEN`, HVM-A, HVM-Prof |
 | Process target | TSMC N4P or equivalent 4 nm-class FinFET |
 | Package | Socket HVM-S1, LGA-1700-class pin budget |
 | Base / boost clock | 3.2 GHz base, up to 4.8 GHz boost target |
@@ -37,7 +37,7 @@ The HVM desktop platform should compete at the board level: socketed CPU, dual-c
 | Storage | 2x M.2 PCIe Gen 5 x4, 2x M.2 PCIe Gen 4 x4, 4x SATA 6 Gb/s |
 | Rear I/O | USB4 Type-C, USB 3.2 Gen 2, HDMI/DP from iGPU, 2.5 GbE |
 | Wireless | M.2 Key-E Wi-Fi 7 / Bluetooth module slot |
-| Firmware | 32 MB SPI flash, OpenSBI + coreboot/UEFI payload |
+| Firmware | 32 MB SPI flash, HVM-SFI + coreboot/UEFI payload |
 | Debug | POST code display, UART header, JTAG header, recovery SPI header |
 
 ## 4. Board Block Diagram
@@ -102,9 +102,9 @@ Thermal design must support:
 
 ## 8. Firmware and Runtime Support
 
-- Boot ROM enters OpenSBI-compatible firmware from SPI flash.
+- Boot ROM enters HVM-SFI firmware from SPI flash.
 - coreboot or UEFI payload performs board initialization, memory training, PCIe enumeration, and ACPI/SMBIOS table publication.
-- Firmware must expose HVM feature flags for HVM-C, HVM-ARC, HVM-V, HVM-A, and `ICACHE.RNG`.
+- Firmware must expose HVM feature flags for HVM-C, HVM-ARC, HVM-L, HVM-MEM, HVM-V, HVM-A, HVM-Prof, and `ICACHE.RNG`.
 - GPU doorbell MMIO regions must be mapped non-cacheable and marked with the appropriate privilege policy.
 - Secure boot is optional on consumer boards but required on workstation validation boards.
 
@@ -122,7 +122,7 @@ Thermal design must support:
 - DDR5 memory training passes 1 DPC and 2 DPC matrices.
 - PCIe Gen 5 x16 graphics link trains at full width and speed with Resizable BAR enabled.
 - M.2 Gen 5 storage passes thermal throttling and signal integrity validation.
-- HVM-ARC and `ICACHE.RNG` tests pass under JIT-heavy workloads.
+- HVM-ARC, HVM-L, HVM-MEM, HVM-Prof, and `ICACHE.RNG` tests pass under JIT-heavy workloads.
 - HVM-V vector context save/restore passes OS scheduler stress tests.
 - Board passes suspend/resume, wake-on-LAN, USB4 hot-plug, and SPI recovery flows.
 
@@ -134,7 +134,7 @@ The `HVM-D1` CPU is socketed, so production readiness depends on both silicon an
 - DFT must include scan compression, JTAG boundary scan, MBIST for cache/SRAM arrays, LBIST for core logic, PLL test modes, PCIe/DDR PHY loopback, and package-level continuity coverage.
 - Speed binning must define base clock, boost clock, voltage-frequency curves, leakage limits, AVX/vector-equivalent guardbands for HVM-V, and per-bin TDP.
 - Package design must include substrate stackup, land pattern, keepout zones, socket load specification, heatsink load limits, thermal resistance, and mechanical tolerances.
-- Final test must validate HVM-C decode, HVM-ARC atomics, HVM-V vector execution, `ICACHE.RNG`, DDR5 PHY margins, PCIe Gen 5 PHY margins, fuse programming, and debug lock.
+- Final test must validate HVM-C decode, HVM-ARC atomics, HVM-L hardware loops where enabled, HVM-MEM pair loads/stores and hints, HVM-V vector execution, HVM-Prof counters, `ICACHE.RNG`, DDR5 PHY margins, PCIe Gen 5 PHY margins, fuse programming, and debug lock.
 
 ## 12. Desktop Board Production Package
 

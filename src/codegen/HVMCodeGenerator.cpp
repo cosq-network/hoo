@@ -24,10 +24,26 @@ namespace hooc {
 // Map argument index to register number, skipping r4 (tp).
 // r4 is reserved as the thread pointer and not available for args.
 static uint8_t argReg(uint8_t first, size_t i) {
+    // Helper for emitting 16‑bit compressed instructions (HVM‑C)
+    // Stores raw bytes in a dedicated buffer; later merged into the final module.
+    // Parameters:
+    //   opcode4: lower 4 bits of the opcode (already fits in 0‑15)
+    //   rd, rs1: registers (0‑15) for destination and source
+    //   imm4: immediate value (0‑15)
+    // The layout matches the decoder: [imm4|opcode4] [rd|rs1]
+    // This function will be used by codegen when conditions allow compression.
+    // For now, it simply appends the two bytes to compressedInstructions_.
+    // Note: registers must be <=15; caller ensures this.
+    // Returns nothing.
+    // (Actual implementation is added later in the class.)
     uint8_t reg = static_cast<uint8_t>(first + i);
     if (reg >= 4) ++reg;
     return reg;
 }
+
+
+
+
 
 static uint32_t hashMapKeyTypeId(const ast::HashMapType& type);
 
@@ -465,6 +481,8 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
 }
 
 HVMCodeGenerator::HVMCodeGenerator() {
+    // Initialize compressed instruction buffer
+    compressedInstructions_.clear();
     for (int i = 0; i < 32; ++i) usedRegs_[i] = false;
     // Reserved registers
     usedRegs_[0] = true; // r0 is hardwired zero
@@ -610,6 +628,17 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     }
     
     // In a real scenario, this would come from the compiler's source tracking.
+    // Append any compressed instructions collected during codegen.
+    if (!compressedInstructions_.empty()) {
+        // Create a dummy section for compressed code (treated as code)
+        Section* compSec = module_->getSection(".compcode");
+        if (!compSec) {
+            Section s; s.name = ".compcode"; s.type = SectionType::SHT_TEXT; s.flags = SectionFlags::ALLOC | SectionFlags::EXECUTE; module_->addSection(std::move(s));
+            compSec = module_->getSection(".compcode");
+        }
+        compSec->data.insert(compSec->data.end(), compressedInstructions_.begin(), compressedInstructions_.end());
+        compSec->virtual_size = compSec->data.size();
+    }
     // For now we look for a marker or use default.
     module_ = std::make_unique<hvm::HOModule>(moduleName);
     instructions_.clear();
@@ -916,6 +945,11 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
 
     // Finalize instructions
     std::vector<uint8_t> textData = module_->encodeInstructions(instructions_);
+    // Append any 16‑bit compressed instructions emitted earlier
+    if (!compressedInstructions_.empty()) {
+        textData.insert(textData.end(), compressedInstructions_.begin(), compressedInstructions_.end());
+        compressedInstructions_.clear();
+    }
     Section textSection;
     textSection.name = ".text";
     textSection.type = SectionType::SHT_TEXT;
@@ -1341,6 +1375,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (ret->hasExpression()) {
             uint8_t reg = visitExpression(*ret->getExpression());
             emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
+        emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
             freeRegister(reg);
         }
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
@@ -2046,6 +2081,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+    emit(Opcode::RETAIN, OperandsR{dest, dest, 0, 0}); // ARC retain for new object
         freeRegister(sizeReg);
         freeRegister(typeReg);
 
@@ -3015,6 +3051,16 @@ void HVMCodeGenerator::freeRegister(uint8_t reg) {
     if (reg >= 9 && reg <= 20) usedRegs_[reg] = false;
 }
 
+void HVMCodeGenerator::emitCompressed(uint8_t opcode4, uint8_t rd, uint8_t rs1, uint8_t imm4) {
+    // Layout: byte0 = (imm4 << 4) | (opcode4 & 0x0F)
+    //          byte1 = (rd << 4) | (rs1 & 0x0F)
+    uint8_t byte0 = static_cast<uint8_t>((imm4 << 4) | (opcode4 & 0x0F));
+    uint8_t byte1 = static_cast<uint8_t>((rd << 4) | (rs1 & 0x0F));
+    compressedInstructions_.push_back(byte0);
+    compressedInstructions_.push_back(byte1);
+    // Update offset tracking (compressed instructions are 2 bytes each)
+    currentByteOffset_ += 2;
+}
 
 int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId, const std::string& className, uint32_t elementTypeId, uint32_t keyTypeId) {
     currentStackOffset_ -= 8;
@@ -3087,10 +3133,15 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
 }
 
 void HVMCodeGenerator::emit(Opcode op, const Operands& operands) {
+    // Regular 32‑bit/escape emission
     HVMInstruction inst(op, operands);
     instructions_.push_back(inst);
     currentByteOffset_ += inst.getSize();
 }
+
+
+
+
 
 uint8_t HVMCodeGenerator::emitConstant(int64_t value) {
     uint8_t reg = allocateRegister();

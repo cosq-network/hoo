@@ -1,21 +1,21 @@
 # HVM Core Instruction Reference
 
-Version: `1.4`  
-Profile: `core-minimalest` (Hardware Ready)  
+Version: `1.5`
+Profile: `hvm64-core-system` (Hardware Ready)
 Normative sources:
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm-spec.md`
 
-This reference defines a **pure hardware-ready ISA**. All high-level VM constructs have been purged and are now handled via software lowering or standard library calls.
+This reference defines a **64-bit hardware-ready ISA**. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.5 runtime acceleration instructions with software fallback.
 
 ## 1. Scope
 
-This reference defines the physical instructions supported by the HVM core. It is sufficient to support the Hoo language through aggressive compiler-level lowering.
+This reference defines the physical instructions supported by the HVM core and optional HVM 1.5 system profiles. It is sufficient to support the Hoo language through aggressive compiler-level lowering while preserving a 64-bit register and pointer ABI.
 
 ## 2. Register Convention Summary
 
 - `r0`: hardwired zero
-- `r1`: return-value register
+- `r1`: first argument and return-value register
 - `r2..r3`: argument registers
 - `r4`: thread pointer (`tp`)
 - `r5..r8`: argument registers
@@ -75,6 +75,7 @@ Tooling must encode and decode instructions using this 8-byte layout for any opc
 ### 4.7 Memory (Standard Load/Store)
 - Loads: `LD.B` `LD.BU` `LD.H` `LD.HU` `LD.W` `LD.WU` `LD.D`
 - Stores: `ST.B` `ST.H` `ST.W` `ST.D`
+- Pair operations: `LD.P` `ST.P`
 - Address: `LDA`
 
 ### 4.8 Atomic memory
@@ -100,6 +101,28 @@ syscall number table.
 - `TRAPRET`: Return from supervisor trap (S-mode only; illegal in U-mode).
 - `CSRRW`: Atomic read-write of CSR (S-mode only; traps in U-mode).
 - `SFENCE.VMA`: TLB flush after page-table modification (S-mode only).
+
+### 4.13 HVM 1.5 runtime and green-compute extensions
+- `RETAIN` `RELEASE`: Non-trapping reference-count update helpers for managed Hoo objects.
+- `ICACHE.RNG`: Invalidate instruction/JIT cache state for an address range after code generation.
+- `LOOP.SET` `LOOP.DECBR`: Optional hardware-loop support for low-power counted loops.
+- `PREFETCH.R` `PREFETCH.W` `PREFETCH.NTA` `MEMZERO.HINT`: Advisory memory-traffic hints. Legal implementations may ignore them.
+- `ALLOC.BUMP`: Optional thread-local allocation-buffer fast path; zero return means fall back to runtime allocator.
+- `RDPROF`: Read HVM profiling/performance counters, subject to privilege and policy.
+- `CHK.B`: Optional bounds/tag check for capability-style memory safety.
+- `LD.D.NZ`: Optional null-checking 64-bit load.
+- `BR.HINT`: Optional branch/code-layout hint.
+- `DOORBELL`: Optional accelerator doorbell dispatch for HVM-A.
+
+### 4.14 HVM-V vector extension
+- Configuration: `VSETVL`
+- Memory: `VLD.V` `VST.V` `VLDS.V` `VSTS.V` `VLDX.V` `VSTX.V`
+- Arithmetic: `VADD.VV` `VADD.VX` `VSUB.VV` `VSUB.VX` `VMUL.VV` `VMUL.VX` `VDIV.VV` `VDIV.VX` `VFMACC.VV` `VFMACC.VF`
+- Compare/mask: `VCOMP.VV` `VCOMP.VX` `VMERGE.VVM` `VFIRST.M`
+- Reductions: `VREDADD.VS` `VREDMIN.VS` `VREDMAX.VS`
+- Bit/shift: `VSLL.VV` `VSLL.VX` `VSRL.VV` `VSRL.VX` `VAND.VV` `VOR.VV` `VXOR.VV`
+
+Vector support is profile-gated. Implementations that expose HVM-V must save/restore vector state according to the ABI profile and feature flags.
 
 ## 5. Lowering Rules (Software Implemented)
 

@@ -2,7 +2,7 @@
 
 This document defines the `HVM-M1` mobile SoC and its compact reference board. The profile targets smartphones, handheld gaming devices, tablets, wearables, and battery-powered edge nodes.
 
-The design inherits the base HVM CPU profile of 2 big HVM-V-capable cores plus 4 little efficiency cores, HVM-C compressed opcodes, HVM-ARC non-trapping retain/release instructions, `ICACHE.RNG`, and an integrated low-power graphics and AI subsystem.
+The design inherits the base HVM CPU profile of 2 big HVM-V-capable cores plus 4 little efficiency cores, HVM-C compressed opcodes, HVM-ARC non-trapping retain/release instructions, `ICACHE.RNG`, HVM-L hardware loops, HVM-MEM pair load/store and advisory prefetch support, and an integrated low-power graphics and AI subsystem. HVM-Alloc and compact object references are optional managed-runtime features for battery-sensitive Hoo workloads.
 
 ## 1. Industry Reference Envelope
 
@@ -15,7 +15,7 @@ The `HVM-M1` platform is sized against current premium mobile SoCs such as Qualc
 | Item | `HVM-M1` Specification |
 | :--- | :--- |
 | CPU topology | 2 big HVM cores + 4 little HVM cores |
-| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-V 128-bit `VLEN` |
+| ISA extensions | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM, HVM-V 128-bit `VLEN`; optional HVM-Alloc and compact references |
 | Process target | TSMC N4P or equivalent 4 nm-class FinFET |
 | Package | BGA-1218 bottom package with optional LPDDR PoP top package |
 | Memory | 8 GB-24 GB LPDDR5X, 128-bit aggregate bus |
@@ -103,9 +103,9 @@ Low-power state requirements:
 
 1. Mask ROM validates the first-stage bootloader using fused root keys.
 2. FSBL initializes PMIC, LPDDR training, clocks, and secure monitor state.
-3. OpenSBI-compatible supervisor firmware exposes HVM machine services.
+3. HVM-SFI supervisor firmware exposes HVM machine services.
 4. U-Boot or a mobile boot chain loads the kernel from UFS.
-5. Runtime advertises HVM-C, HVM-ARC, HVM-V, and HVM-A feature bits through device tree.
+5. Runtime advertises HVM-C, HVM-ARC, HVM-L, HVM-MEM, HVM-V, HVM-A, and any enabled HVM-Alloc/compact-reference feature bits through device tree.
 
 ## 8. Layout Rules
 
@@ -121,6 +121,8 @@ Low-power state requirements:
 - LPDDR5X training passes across voltage, temperature, and process corners.
 - Sustained 8 W workload maintains junction temperature below 95 C with handheld cooling.
 - HVM-ARC retain/release operations pass atomic stress tests on all CPU clusters.
+- HVM-L hardware-loop and HVM-MEM pair load/store tests pass on big and little cores where feature bits are exposed.
+- HVM-Alloc and compact-reference tests pass when enabled, and software fallback is verified when disabled.
 - HVM-V vector context switch lazy-save behavior passes suspend/resume and multitasking tests.
 - MIPI display and camera links pass eye margin and EMI pre-scan.
 

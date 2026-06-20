@@ -2,7 +2,7 @@
 
 This chapter compares the HVM system architecture with x64, ARM, AArch64, and RISC-V across CPU ISA design, microarchitecture assumptions, memory model, firmware, SoC integration, boards, simulation, and production implications.
 
-HVM is not specified here as a clone of any existing ISA. It is a 64-bit RISC-style architecture intended to support Hoo Virtual Machine workloads, LLVM/JIT compatibility, hardware-assisted reference counting, compressed instructions, vector-length-agnostic SIMD, accelerator doorbells, and profile-specific SoC/board designs for mobile, desktop, server, and robotics.
+HVM is not specified here as a clone of any existing ISA. It is a 64-bit RISC-style architecture intended to support Hoo Virtual Machine workloads, LLVM/JIT compatibility, hardware-assisted reference counting, compressed instructions, hardware loops, memory-traffic hints, vector-length-agnostic SIMD, accelerator doorbells, and profile-specific SoC/board designs for mobile, desktop, server, and robotics.
 
 ---
 
@@ -13,7 +13,7 @@ HVM is not specified here as a clone of any existing ISA. It is a 64-bit RISC-st
 | ISA style | 64-bit RISC-style HVM ISA with VM/runtime acceleration | Complex variable-length CISC with micro-op translation | 32-bit RISC with multiple profiles and Thumb encodings | 64-bit fixed-width RISC with optional extensions | Open modular RISC ISA with standard and custom extensions |
 | Primary design center | Hoo VM execution, green compute, portable SoC/board profiles | Backward-compatible PC/server ecosystem | Embedded/mobile legacy and microcontroller/controller deployments | Mobile, server, embedded, automotive, high-performance SoCs | Open extensibility from microcontrollers to Linux/server systems |
 | Instruction length | Base 32-bit plus HVM-C 16-bit compressed forms and escape space | Variable 1-15 bytes | 32-bit ARM, 16/32-bit Thumb/Thumb-2 | Mostly 32-bit; optional compressed extensions are not part of base AArch64 | 32-bit base; optional 16-bit compressed extension |
-| Runtime acceleration | HVM-ARC, `ICACHE.RNG`, HVM-Cap, HVM-Prof, HVM-NZ proposals | Hardware features exist but not Hoo-specific | Limited runtime-specific acceleration | Pointer auth, memory tagging, SVE, crypto, virtualization depending SKU | Custom extensions possible, but software ecosystem must agree |
+| Runtime acceleration | HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM, HVM-Alloc, compact references, HVM-Cap, HVM-Prof, HVM-NZ proposals | Hardware features exist but not Hoo-specific | Limited runtime-specific acceleration | Pointer auth, memory tagging, SVE, crypto, virtualization depending SKU | Custom extensions possible, but software ecosystem must agree |
 | Vector model | HVM-V VLA, 128-2048 bit implementation width | SSE/AVX/AVX2/AVX-512 fixed-width families | NEON optional/varies by profile | NEON fixed-width; SVE/SVE2 scalable on supported CPUs | RISC-V V scalable vector extension |
 | Memory model | HVM-defined 64-bit memory model with HVM-39 MMU in simulator spec | Stronger ordering than many RISC systems; complex legacy behavior | Weakly ordered with barriers | Weakly ordered with barriers, mature OS support | Weakly ordered base; profiles define expectations |
 | Firmware model | HVM Boot ROM + FSBL + HVM-SFI; U-Boot/coreboot/EDK II ports possible | BIOS/UEFI, ACPI, SMM/firmware ecosystem | U-Boot, TF-A-like vendor flows, RTOS boot | TF-A, U-Boot, UEFI/EDK II, ACPI/DT depending platform | OpenSBI, U-Boot, EDK II, device tree |
@@ -34,7 +34,8 @@ HVM takes the opposite path. It should keep the architectural ISA small, regular
 
 - fixed 32-bit base instruction encoding
 - HVM-C 16-bit compressed forms for code density
-- explicit VM/runtime instructions such as `RETAIN`, `RELEASE`, and `ICACHE.RNG`
+- explicit VM/runtime instructions such as `RETAIN`, `RELEASE`, `ICACHE.RNG`, and optional allocation fast paths
+- HVM-L hardware loops and HVM-MEM pair loads/stores for low-overhead runtime kernels
 - vector-length-agnostic HVM-V rather than several fixed SIMD generations
 - accelerator doorbells as explicit low-overhead dispatch primitives
 
@@ -85,6 +86,8 @@ HVM differs by putting Hoo runtime behavior into the ISA roadmap:
 
 - HVM-ARC for non-trapping reference-count operations
 - `ICACHE.RNG` for JIT cache coherency
+- HVM-L and HVM-MEM for lower loop and memory instruction overhead
+- HVM-Alloc and compact object references for managed-runtime heap efficiency
 - HVM-V as a required design theme across profiles
 - HVM-A doorbells for accelerator submission
 - HVM-Cap/HVM-Prof/HVM-NZ as VM/runtime-focused proposals
@@ -139,6 +142,7 @@ HVM should be careful here. If broad ecosystem compatibility is more important t
 | Core range | Little, big, server big, RT cores | Mostly high-performance cores plus efficiency hybrid in modern client | Tiny MCUs to server cores | Tiny MCUs to Linux/server cores |
 | Cache coherency | MOESI, SCU, ring/mesh | Mature coherent multi-core systems | Mature coherent SoCs | Varies by implementation/profile |
 | Atomics | HVM-ARC and general atomics | Mature locked atomics | Mature exclusive/atomic instructions | AMO/LR-SC extensions |
+| Loop/memory efficiency | HVM-L hardware loops, pair loads/stores, advisory prefetch | Strong micro-op fusion and prefetchers | Strong prefetchers; some cores have load/store pair idioms | Depends on implementation and extensions |
 | Vector | HVM-V VLA | SSE/AVX families | NEON/SVE | RVV |
 | Lockstep safety | `HVM-R1` DCLS target | Available in specialized safety CPUs, not generic PC | Common in safety MCUs/SoCs | Possible by implementation |
 
@@ -285,6 +289,8 @@ HVM's power advantage is not automatic. It depends on actually implementing the 
 - HVM-C must reduce instruction fetch bandwidth.
 - HVM-ARC must remove frequent trap/context-switch costs.
 - `ICACHE.RNG` must avoid whole-cache flushes in JIT workloads.
+- HVM-L and HVM-MEM must reduce loop-control and memory instruction overhead without bloating the base core.
+- HVM-Alloc and compact references must remain runtime-owned optimizations with software fallback.
 - HVM-V must reduce loop overhead for memory/string/math kernels.
 - Power islands must be physically implemented and firmware-managed.
 
@@ -295,7 +301,7 @@ If HVM only implements a generic RISC core without those features, AArch64 and R
 | Metric | HVM | x64 | ARM/AArch64 | RISC-V |
 | :--- | :--- | :--- | :--- | :--- |
 | Scalar performance | Unknown until silicon; should be competitive with clean RISC cores | Very mature, high single-thread performance | Mature, ranges from tiny cores to high-end server cores | Implementation-dependent, improving quickly |
-| JIT/runtime workloads | HVM has a design advantage through HVM-ARC, `ICACHE.RNG`, HVM-C, and HVM-Prof | Mature JIT support through existing engines, but no Hoo-specific ISA support | Strong JIT support, explicit cache maintenance costs must be handled | Good potential, but depends on extension/profile availability |
+| JIT/runtime workloads | HVM has a design advantage through HVM-ARC, `ICACHE.RNG`, HVM-C, HVM-L, HVM-MEM, HVM-Alloc, compact references, and HVM-Prof | Mature JIT support through existing engines, but no Hoo-specific ISA support | Strong JIT support, explicit cache maintenance costs must be handled | Good potential, but depends on extension/profile availability |
 | Vector workloads | HVM-V VLA should be portable across profiles | Excellent with AVX/AVX-512 where available, but fragmented across generations | NEON ubiquitous, SVE/SVE2 powerful where available | RVV is architecturally elegant, but hardware availability varies |
 | Accelerator dispatch | HVM-A doorbells provide clean low-overhead model | Mature PCIe/driver ecosystem | Mature SoC and PCIe accelerator paths | Emerging accelerator ecosystems |
 | Server throughput | Depends heavily on memory, coherency, NUMA, and JIT backend | Excellent ecosystem and tuned software | Excellent in mature server platforms | Emerging |
@@ -306,6 +312,7 @@ For computation-heavy workloads, HVM should prioritize:
 - optimized runtime libraries using HVM-V
 - simulator-driven performance counters
 - hardware profiling through HVM-Prof
+- measured adoption of HVM-L, HVM-MEM, HVM-Alloc, and compact references only where benchmarks justify the silicon or runtime cost
 - accelerator dispatch paths that avoid unnecessary kernel crossings
 
 ### 9.3 Carbon Emissions and Energy Impact

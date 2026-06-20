@@ -93,6 +93,63 @@ The HVM JIT compiler and `hoo` code generator will be updated to output these in
 
 ---
 
+### 2.3 HVM-L: Zero-Overhead Hardware Loops
+Many Hoo runtime loops are short, hot, and predictable: byte scanning, reference-table walking, bounds-checked array iteration, DSP filters, robotics control loops, and memory initialization. A conventional branch-based loop repeatedly fetches, decodes, predicts, and retires loop-control instructions even when the loop body itself is small.
+
+HVM-L introduces a minimal hardware loop facility for profile-selected cores:
+
+* **`LOOP.SET rs_count, imm_backedge`**
+  - Loads a per-core loop counter from `rs_count`.
+  - Records a signed backward branch displacement for the loop body.
+  - Does not branch by itself.
+* **`LOOP.DECBR label`**
+  - Decrements the active loop counter.
+  - Branches to `label` while the counter is nonzero.
+  - Retires as a bounded loop-control operation with predictable timing.
+
+Implementation requirements:
+
+- The loop counter is architectural only while a loop is active; traps must save enough state to resume correctly.
+- Nested hardware loops are optional. First silicon may support only one active hardware loop per core.
+- `HVM-R1` real-time cores may require a bounded-latency single-loop implementation and reject nested or variable-latency forms.
+- The interpreter and LLVM JIT may lower HVM-L to ordinary counted branches while preserving behavior.
+
+Why it helps:
+
+- Reduces fetch/decode activity in tight loops.
+- Improves branch predictor energy and avoids repeated predictor updates for simple counted loops.
+- Gives robotics and mobile profiles predictable low-power loop execution without requiring a wide out-of-order core.
+
+---
+
+### 2.4 HVM-MEM: Pair Loads, Pair Stores, and Memory Hints
+Memory traffic is often more expensive than arithmetic. HVM should add small memory-oriented instructions that reduce instruction count without forcing a complex CISC memory model.
+
+Recommended instructions:
+
+* **`LD.P rd1, rd2, (rs1)`**
+  - Loads two adjacent XLEN words from `rs1` into `rd1` and `rd2`.
+  - Requires natural alignment for best performance. Misaligned behavior follows the base load rules.
+* **`ST.P rs1, rs2, (rd)`**
+  - Stores two adjacent XLEN words to `rd`.
+* **`PREFETCH.R rs1, imm`**
+  - Advisory read prefetch for `rs1 + imm`.
+* **`PREFETCH.W rs1, imm`**
+  - Advisory write-intent prefetch for `rs1 + imm`.
+* **`PREFETCH.NTA rs1, imm`**
+  - Advisory non-temporal prefetch for streaming data that should not displace hot cache lines.
+* **`MEMZERO.HINT rs_base, rs_size`**
+  - Advisory hint that a region will be zeroed. Implementations may accelerate it with a microcoded fill engine, cache-line zeroing, or treat it as a no-op and let software perform stores.
+
+Realistic implementation posture:
+
+- `LD.P` and `ST.P` are strong first-silicon candidates because they reuse the load/store unit and cache pipeline.
+- Prefetch instructions must be architecturally advisory: a legal implementation may ignore them.
+- `MEMZERO.HINT` should not be required for correctness. The runtime must keep a software fallback.
+- Board and simulator profiles should expose these features independently through HVM feature registers.
+
+---
+
 ## 3. Coprocessor & Data-Parallel Execution
 
 To meet the high-performance and low-power computation requirements of modern server tensor processing, mobile gaming, and desktop graphics, we propose two optional profiles: **HVM-V** (Vector processing ISA) and **HVM-A** (Accelerator/GPU communication protocol).
@@ -562,9 +619,60 @@ RET
 
 ---
 
+### 7.4 HVM-Alloc: Thread-Local Allocation Fast Path
+Managed runtimes frequently allocate short-lived objects. A traditional allocation path may call into runtime code, acquire allocator metadata, check slow-path conditions, and return a pointer. That is correct but expensive for small objects in tight loops.
+
+HVM-Alloc defines an optional fast path for thread-local bump allocation:
+
+* **`ALLOC.BUMP rd, rs_size, imm_align`**
+  - Reads the active thread-local allocation buffer (TLAB) base and limit from ABI-defined thread-local fields or implementation-defined allocation CSRs.
+  - Rounds `rs_size` up to `imm_align`.
+  - If enough space remains, advances the TLAB pointer and writes the object payload pointer to `rd`.
+  - If the fast path fails, writes zero to `rd`; software branches to the runtime slow path.
+
+Recommended ABI model:
+
+- User-space runtimes own TLAB metadata.
+- The kernel does not interpret managed heap contents.
+- Trap/signal handling must preserve architecturally visible allocation state if a profile exposes it outside TLS.
+- The runtime must maintain a pure software fallback for portability, debugging, sanitizers, and conservative GC/ARC modes.
+
+Why it helps:
+
+- Eliminates most allocation helper calls for small objects.
+- Reduces branch and cache pressure in allocation-heavy Hoo programs.
+- Keeps failure handling explicit and software-owned, avoiding complex garbage-collector hardware.
+
+---
+
+### 7.5 HVM-ObjRef: Compact Object References
+Many managed heaps do not need full 64-bit virtual addresses for every object reference. If a heap fits within a configured window, a 32-bit or 35-bit compact reference can be decoded as:
+
+```text
+native_pointer = heap_base + (compact_ref << heap_shift)
+```
+
+HVM-ObjRef is an HVM object-reference compression profile for Hoo-managed heaps. It is unrelated to Objective-C.
+
+Recommended contract:
+
+- Compact references are an optional runtime representation, not an OS pointer type.
+- `heap_base`, `heap_shift`, and heap size limits are runtime-controlled and discoverable through Hoo runtime metadata.
+- Public C/C++ ABI pointers remain 64-bit native pointers.
+- The JIT may keep compact references in registers and expand only at object load/store boundaries.
+- The simulator should model compact-reference decode faults when references exceed the configured heap window.
+
+Why it helps:
+
+- Reduces heap memory footprint.
+- Improves cache residency for arrays of object references.
+- Reduces DRAM bandwidth, which directly improves mobile battery life and server energy use.
+
+---
+
 ## 8. Lightweight Virtual Machine Extensions
 
-To ensure HVM remains competitive on next-generation computing targets, we propose three forward-looking but hardware-simple extensions that align compiler JIT design and physical silicon execution:
+To ensure HVM remains competitive on next-generation computing targets, we propose forward-looking but hardware-simple extensions that align compiler JIT design and physical silicon execution:
 
 ### 8.1 HVM-Cap: Lightweight Capability-Based Bounds (Tagged Pointers)
 Memory safety checks are a major source of processor power waste. We propose using the upper 16 unused bits of HVM's 64-bit pointers to store tag metadata (e.g., allocation size boundaries or lifetime epochs):
@@ -583,6 +691,27 @@ Traditional profiling software uses code instrumentation, which slows compilatio
   - **rd**: Destination for register value.
 * **Why it's JIT/Silicon Friendly**: Enables the running JIT compiler to query hardware hotspots directly in user-space with zero runtime software overhead. The JIT can execute feedback-guided optimizations (FGO) and dynamically re-compile hot loops, saving up to **10%** overall compute energy.
 
+Recommended `RDPROF` selectors:
+
+| Selector | Counter |
+| :---: | :--- |
+| `0x00` | Retired instructions |
+| `0x01` | Core cycles |
+| `0x02` | Branch mispredicts |
+| `0x03` | I-cache misses |
+| `0x04` | D-cache misses |
+| `0x05` | Data TLB misses |
+| `0x06` | JIT invalidation events |
+| `0x07` | HVM-ARC contention or slow paths |
+| `0x08` | Allocation slow-path count |
+| `0x09` | Estimated DRAM bytes read |
+| `0x0A` | Estimated DRAM bytes written |
+| `0x0B` | Vector utilization |
+| `0x0C` | Sleep-state residency |
+| `0x0D` | Thermal throttle residency |
+
+These counters should be virtualizable and permission-gated. User-space may read low-risk counters directly, while high-resolution or cross-process counters may require kernel policy to avoid side-channel exposure.
+
 ---
 
 ### 8.3 HVM-NZ: Static Null-Check Folding
@@ -590,6 +719,37 @@ Operating system and object-oriented binaries execute millions of null-pointer v
 * **Instruction**: `LD.D.NZ rd, rs1, imm15` (Load Doubleword, Null-Check Assert)
   - **Operation**: If `rs1` is zero (null), the CPU execution unit immediately triggers a hardware trap handler (raising a NullPointerException). Otherwise, it loads `mem[rs1 + imm15]` to `rd`.
 * **Why it's JIT/Silicon Friendly**: Eliminates the compiler's need to emit separate `BEQZ` branch sequences for null checks. Saves code space, prevents instruction cache pollution, and reduces pressure on the CPU's branch predictor, leading to an **8%** reduction in energy consumption.
+
+---
+
+### 8.4 Branch and Code Layout Hints
+HVM should support optional branch-likelihood and code-layout hints without changing program semantics:
+
+* **`BR.HINT likely, label`** or hint bits attached to conditional branches.
+* Hot/cold block metadata in object files and JIT code buffers.
+* Return-stack-buffer preservation hints for indirect-call-heavy runtime code.
+
+Rules:
+
+- Hints are advisory and must be ignored safely by simple cores.
+- The JIT may emit hints based on HVM-Prof feedback.
+- Firmware and OS code should avoid depending on hints for correctness or timing.
+
+This is realistic because the simplest implementation treats hints as no-ops, while performance cores can use them to reduce branch misses and instruction-cache pollution.
+
+---
+
+### 8.5 Deterministic Low-Power RT Subset
+The robotics profile needs a subset that is both power-efficient and predictable. `HVM-R1` should define an RT execution profile with:
+
+- bounded interrupt entry and return latency
+- fixed-latency integer ALU operations for RT cores
+- optional HVM-L hardware loops with bounded loop-control timing
+- HVM-C compressed decode if decode timing remains deterministic
+- no unbounded vector, division, cache-miss-dependent, or allocation fast-path instruction inside hard RT regions unless a board-specific worst-case execution time contract exists
+- deterministic timer, PWM, ADC, CAN-FD, QEI, and safety-fault MMIO timing in the simulator
+
+This subset allows the same HVM ecosystem to cover application processors and deterministic motor-control firmware without pretending that every high-performance feature is suitable for hard real-time loops.
 
 ---
 
@@ -608,60 +768,72 @@ The table below summarizes the projected benefits of each proposed improvement:
 | **HVM-Cap Tagged Pointers** | Memory Safety Check Instructions | Low (1-cycle validation ALU) | High (lowers to pointer masks) | **5%** | **+10% (safe execution)** |
 | **HVM-Prof feedback** | Profile-Guided Opt. Overhead | Low (basic counter registers) | Very High (direct register read) | **10% (via hot loop tuning)** | **+15% (optimized compilation)** |
 | **HVM-NZ Null-check fold** | Null Check Branch Instructions | Negligible (comparator on load) | High (maps to LLVM null traps) | **8%** | **+12%** |
+| **HVM-L Hardware Loops** | Loop Fetch, Decode, and Branch Energy | Low (loop counter and decode support) | High (lowers to counted loops) | **3% – 8% on loop-heavy services** | **+3% – +8%** |
+| **HVM-MEM Pair Loads/Stores** | Load/Store Instruction Count | Low to Medium (LSU pairing) | High | **3% – 8%** | **+5% – +15% memory-heavy code** |
+| **Prefetch / Cache Hints** | Cache Miss Energy and Stall Time | Low (advisory hint path) | Very High (safe no-op fallback) | **2% – 6%** | **+2% – +8%** |
+| **HVM-Alloc Fast Path** | Allocation Calls and Branches | Low to Medium | High (runtime fallback) | **5% – 15% runtime-heavy services** | **+10% – +25% allocation-heavy apps** |
+| **Compact Object References** | Heap Footprint and DRAM Bandwidth | Medium (runtime/JIT decode support) | Medium to High | **5% – 12% managed workloads** | **+5% – +10%** |
+| **Deterministic RT Subset** | Robotics Deadline Energy | Low (profile restrictions) | High | N/A | N/A; improves deadline margin and control-loop power |
 
 ---
 
-## 10. HVM QEMU System Simulator Implementation Specifications
+## 10. HVM Reference Simulator Alignment
 
-For testing, OS bring-up, and compiler integration, HVM architectures must be simulateable via standard emulation frameworks. This section defines the implementation design for an HVM-specific system emulation target in **QEMU** (`qemu-system-hvm`).
+For testing, OS bring-up, compiler work, firmware development, and green-compute validation, HVM must have a reference system simulator. The project simulator is **`hvm-sim`**, specified in [HVM Lightweight System Simulator Design](./10-hvm-lightweight-system-simulator-design.md). QEMU remains useful as a conceptual reference for machine models, block devices, monitors, and dynamic translation, but HVM should not depend on QEMU source code or become a QEMU target in the core project.
 
-### 10.1 TCG (Tiny Code Generator) Instruction Translation
-QEMU translates HVM machine instructions to host execution blocks on the fly using TCG:
-* **Register Mapping**: Guest registers `r0..r31` map directly to offsets inside QEMU's `CPUState` architecture struct (e.g. `env->regs[32]`). `r0` is hardwired: TCG helper writes to `regs[0]` are discarded, and reads return constant `0`.
-* **Opcode Decoding (`target/hvm/translate.c`)**:
-  - Reads 32-bit words from PC. If first byte is `0xFE`, decodes the ULEB128 logical opcode and transitions to `escape32` format.
-  - Translates arithmetic and branch opcodes to TCG IR blocks (e.g., `tcg_gen_add_i64` for `ADD`, `tcg_gen_brcond_i64` for branches).
-* **System Call Translation**: `SYSCALL` instructions translate to TCG helper calls routing args `regs[2..4]` to QEMU host emulation hooks (`hooc_hvm_sys_...` definitions).
+### 10.1 Execution Backends
 
----
+`hvm-sim` must support three CPU execution paths:
 
-### 10.2 HVM-39 MMU Address Translation Walk (`target/hvm/helper.c`)
-To emulate virtual-memory-based operating systems like Linux, QEMU models the HVM-39 Radix MMU:
-1. **Trigger**: On memory loads/stores in supervisor mode when `hvm_mmu.MODE == HVM39`.
-2. **Walk**:
-   - Fetches the root page table from physical page number (`hvm_mmu.PPN * 4096`).
-   - Translates virtual address `VA[38:0]` by parsing three 9-bit indexing offsets: `VPN[2]`, `VPN[1]`, and `VPN[0]`.
-   - Loads the 8-byte Page Table Entry (PTE) at each level.
-3. **Exceptions**: Raises HVM instruction page faults (`hcause=0`), load page faults (`hcause=1`), or store page faults (`hcause=2`) if `PTE.V == 0` or if page access permissions (Read/Write/Execute/User) are violated.
-4. **JIT Parity**: The virtual address walk matches the execution boundary checks performed by the host OS during JIT execution.
+| Backend | Purpose | Green-Compute Requirement |
+| :--- | :--- | :--- |
+| C++ interpreter | Correctness oracle and first boot path | Implements every finalized instruction functionally, including no-op behavior for advisory hints |
+| Verilated RTL backend | Hardware validation | Runs the Verilog HVM core and compares architectural state against the interpreter |
+| LLVM ORC JIT | Fast host execution | Lowers HVM-ARC, HVM-C, HVM-L, HVM-MEM, HVM-V, HVM-Alloc, branch hints, and cache invalidation to host-safe code |
 
----
+The interpreter is the legal and architectural reference. The JIT and Verilated backends must pass differential tests against it.
 
-### 10.3 Core Interrupts & I/O Routing (HLIC & HPIC)
-* **HVM Local Interrupt Controller (HLIC)**: Models timer ticks, software interrupts, and inter-processor interrupts. If the supervisor timer register `htime >= htimecmp`, HLIC raises a supervisor timer interrupt in `env->pending_interrupts`.
-* **HVM Platform Interrupt Controller (HPIC)**: Routes hardware device interrupts (UART, NVMe, USB) to the execution cores:
-  - Devices write to HPIC MMIO registers (e.g. `0x0C00_0000`) to claim, set priority, or complete interrupts.
+### 10.2 Machine Targets
 
----
+The simulator machine names align with the system book:
 
-### 10.4 MMIO Virtual Device Models & Machine Targets
-QEMU registers the following virtual devices to implement reference motherboard maps:
+| Simulator Machine | Hardware Profile | Required Green Features |
+| :--- | :--- | :--- |
+| `hvm-mobile` | `HVM-M1` mobile SoC | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM pair loads/stores, HVM-V on big cores, PMIC sleep counters |
+| `hvm-desktop` | `HVM-D1` desktop board | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM, HVM-V 256-bit profile, HVM-A doorbells, HVM-Prof |
+| `hvm-server` | `HVM-S1` server board | HVM-C, HVM-ARC, `ICACHE.RNG`, HVM-L, HVM-MEM, HVM-V 512-bit profile, HVM-Prof, optional HVM-Alloc and compact references, NUMA/RAS/power telemetry |
+| `hvm-robot` | `HVM-R1` robotics SoC | HVM-C, deterministic RT subset, HVM-L on RT cores, HVM-MEM bounded pair loads/stores, HVM-ARC/HVM-V on app cores, safety-fault timing |
 
-```
-+---------------------------------------------------------------+
-|                      QEMU MMIO Address Map                    |
-|                                                               |
-|   0x10000000 (1MB)   ===>   Standard 16550A UART Serial       |
-|   0x30000000 (64MB)  ===>   PCIe NVMe Storage Controller      |
-|   0x40000000 (1MB)   ===>   SPI-attached TPM/HSM Cryptography |
-|   0x50000000 (256MB) ===>   VirtIO-GPU Display Framebuffer    |
-+---------------------------------------------------------------+
-```
+### 10.3 Storage and Disk Image Policy
 
-QEMU defines three guest machine targets:
-1. **`-M hvm-desktop`**: Models `HVM-MB v1.0`. Simulates an 8-core CPU config, 16GB RAM, NVMe storage controller, and a 16550A UART debug interface.
-2. **`-M hvm-mobile`**: Models `HVM-MB-Mobile v1.0`. Simulates a 6-core cluster (2 Big + 4 Little), LPDDR5/LPDDR5X memory controller, PMIC low-power register controls, and VirtIO touchscreen display input events.
-3. **`-M hvm-server`**: Models `HVM-MB-Server v1.0`. Emulates dual-socket multi-core configurations, 512GB ECC RAM, U.2 NVMe storage arrays, QSFP28 100G network cards, and an out-of-band ASPEED BMC console loop.
+`hvm-sim` should support raw, HSD, VHDX, and clean-room QCOW/QCOW2 backends through the HVM-owned block layer. The default bring-up path should be raw or HSD because both can be implemented permissively and tested easily. QCOW/QCOW2 compatibility should be maintained only through independently written code based on public format documentation, not linked QEMU block drivers.
+
+### 10.4 Green-Compute Validation Requirements
+
+The simulator must expose enough instrumentation to prove that the proposed features actually help:
+
+- retired instruction count
+- branch count and branch-miss estimate
+- instruction-cache invalidation count and invalidated bytes
+- HVM-ARC retain/release count and slow-path count
+- allocation fast-path and slow-path count
+- vector active-lane utilization
+- DRAM byte estimates for load/store traffic
+- low-power state residency for mobile and robotics profiles
+- thermal and power-cap throttle events for desktop/server profiles
+
+These counters should be available through `RDPROF`, simulator traces, and `hvm-sim perf` summaries. If a proposed ISA feature cannot show measurable benefit in simulator workloads, it should remain optional rather than entering the required base ISA.
+
+### 10.5 Simulator Acceptance Gates
+
+Before a green-compute extension is treated as production-ready, it must pass:
+
+1. Interpreter instruction tests.
+2. JIT lowering tests against the interpreter.
+3. Verilated RTL differential tests where hardware is implemented.
+4. OS boot smoke tests for affected machine profiles.
+5. Runtime benchmarks showing energy-proxy or performance improvement.
+6. ABI tests proving that unsupported feature bits trigger software fallback instead of illegal behavior.
 
 ---
 
@@ -869,14 +1041,15 @@ To execute vector instructions on diverse hardware architectures, the JIT compil
 
 ## 12. Concrete Implementation Plan
 
-To roll out these specifications safely and systematically, we propose a 5-phase execution plan. This roadmap ensures that baseline VM compatibility is maintained at each step and verified through the existing test suite:
+To roll out these specifications safely and systematically, we propose a 7-phase execution plan. This roadmap ensures that baseline VM compatibility is maintained at each step and verified through the existing test suite:
 
 ### Phase 1: Metadata & Decoder Foundations
 * **Goal**: Enable HVM instruction tooling to parse and validate the new opcodes.
 * **Tasks**:
-  1. Add `RETAIN`, `RELEASE`, and `ICACHE_RNG` enum declarations in `HVMInstruction.h`.
+  1. Add `RETAIN`, `RELEASE`, `ICACHE_RNG`, `LD.P`, `ST.P`, `PREFETCH.*`, and initial HVM-L loop enum declarations in `HVMInstruction.h`.
   2. Register opcode mnemonics and R-Format parameters inside the instruction registry in `HVMInstruction.cpp`.
   3. Write instruction decode/encode roundtrip unit tests in `tests/hvm/HVMInstructionTest.cpp` asserting that these 4-byte instructions decode with zero bitwise drift.
+  4. Add feature-bit definitions for HVM-C, HVM-ARC, HVM-L, HVM-MEM, HVM-V, HVM-A, HVM-Alloc, HVM-ObjRef, HVM-Cap, HVM-Prof, and HVM-NZ.
 
 ### Phase 2: Compiler Code Generation Lowering
 * **Goal**: Transition the compiler from outputting library FFI functions to emitting hardware-ready opcodes.
@@ -890,13 +1063,17 @@ To roll out these specifications safely and systematically, we propose a 5-phase
 * **Tasks**:
   1. Implement interpreter execution logic for the instructions in the `HVMJIT::simulate` loop.
   2. Implement JIT compiler translation rules in `HVMJIT::compile` to translate the instructions to optimized LLVM IR (mapping `RETAIN`/`RELEASE` to LLVM atomic instructions or thread-safe C-ABI helpers).
-  3. Execute the entire `hoo-tests` test suite and verify that standard programs run with the new instructions with zero functional regressions.
+  3. Lower `LD.P` and `ST.P` to adjacent host loads/stores with precise fault ordering; lower prefetch hints to LLVM prefetch intrinsics or no-ops.
+  4. Lower HVM-L hardware loops to ordinary counted host branches first, then optimize hot loops after differential tests pass.
+  5. Execute the entire `hoo-tests` test suite and verify that standard programs run with the new instructions with zero functional regressions.
 
 ### Phase 4: Core Pipeline Optimization
 * **Goal**: Reduce power consumption and increase decode speed.
 * **Tasks**:
   1. Code compression (`HVM-C`): Implement instruction encoder logic for 16-bit boundaries.
   2. Instruction Fusion: Program JIT analyze blocks to recognize consecutive Compare-Branch and Scale-Load sequences.
+  3. HVM-L: Teach the compiler and JIT to select hardware loops for short counted loops and runtime library kernels.
+  4. HVM-MEM: Teach the compiler and runtime library to use `LD.P`, `ST.P`, and prefetch hints where alignment and aliasing make this safe.
 
 ### Phase 5: Coprocessor & Vector Integration
 * **Goal**: Support parallel data processing (Vector/SIMD) and accelerator (GPU) interfaces.
@@ -906,6 +1083,25 @@ To roll out these specifications safely and systematically, we propose a 5-phase
   3. Integrate HVM-V assembly optimizations inside the core runtime library (`hoort`) for functions like `hoort_string_find`, `hoort_memcpy`, and high-performance buffer/math loops.
   4. Define MMIO doorbell command paths in user-space to accelerate GPU render queues.
   5. Expand unit tests in `tests/hvm/` to verify vector instruction correctness, context save/restore state flags (`sstatus.VS`), and JIT lowering behavior.
+
+### Phase 6: Runtime Allocation and Object Layout Optimization
+* **Goal**: Reduce managed-runtime heap traffic without exposing garbage-collector complexity to hardware.
+* **Tasks**:
+  1. Define the TLAB ABI fields in the Hoo runtime TLS block.
+  2. Implement `ALLOC.BUMP` as an optional instruction with zero-result fallback to the software allocator.
+  3. Add compact-reference heap metadata for `heap_base`, `heap_shift`, and heap-window limits.
+  4. Teach the JIT to keep compact references compressed across object-array operations and expand at load/store boundaries.
+  5. Add sanitizer/debug modes that disable HVM-Alloc and compact references to preserve observability.
+  6. Benchmark allocation-heavy Hoo workloads and reject the feature for required profiles unless it demonstrates measurable benefit.
+
+### Phase 7: Profiling, RT, and Simulator Validation
+* **Goal**: Prove that green-compute features improve realistic workloads and remain safe for RT profiles.
+* **Tasks**:
+  1. Implement `RDPROF` counters for instructions, cycles, cache estimates, branch misses, ARC slow paths, allocation slow paths, vector utilization, DRAM bytes, sleep residency, and thermal throttling.
+  2. Add `hvm-sim perf` summaries for mobile, desktop, server, and robotics workloads.
+  3. Define the `HVM-R1` deterministic RT subset and enforce it in firmware build profiles and simulator checks.
+  4. Add Verilated RTL differential tests for all instructions promoted from proposal to required feature.
+  5. Keep branch hints, prefetch hints, and `MEMZERO.HINT` advisory until workload data justifies stronger requirements.
 
 ---
 
@@ -926,6 +1122,6 @@ The project's codebase compiles into several discrete CMake targets. Introducing
 
 ## 14. Conclusion & Next Steps
 
-By transitioning from trap-based runtime coordination to hardware-assisted execution (`HVM-ARC`) and improving instruction cache utilization (`HVM-C` & `ICACHE.RNG`), we can construct a CPU architecture that reduces carbon footprint on servers, maximizes battery performance on mobile, and operates with top-tier desktop responsiveness. 
+By transitioning from trap-based runtime coordination to hardware-assisted execution (`HVM-ARC`), improving instruction cache utilization (`HVM-C` and `ICACHE.RNG`), reducing loop and memory overhead (HVM-L and HVM-MEM), and selectively accelerating managed-runtime allocation and object references, we can construct a CPU architecture that reduces carbon footprint on servers, maximizes battery performance on mobile, and operates with top-tier desktop responsiveness.
 
 These specifications retain absolute compatibility with the JIT compilation model and can be introduced incrementally as backward-compatible CPU feature flags.

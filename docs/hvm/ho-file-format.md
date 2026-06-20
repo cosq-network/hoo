@@ -1,6 +1,6 @@
 # HVM Object File Format (HO)
 
-Version: `1.4`  
+Version: `1.5`
 Extension: `.ho`  
 Endianness: little-endian only
 
@@ -27,7 +27,7 @@ All fields are little-endian.
 |---|---:|---|---|
 | `0x00` | 4 | `magic` | `0x484F4F43` (`"HOO"`) |
 | `0x04` | 2 | `version_major` | format major (`1`) |
-| `0x06` | 2 | `version_minor` | format minor (`4`) |
+| `0x06` | 2 | `version_minor` | format minor (`5`) |
 | `0x08` | 1 | `file_type` | executable/shared/object |
 | `0x09` | 1 | `target_arch` | `0x00` x86_64, `0x01` arm64, `0xFF` any |
 | `0x0A` | 1 | `endianness` | must be `0x01` |
@@ -45,6 +45,30 @@ All fields are little-endian.
 Notes:
 - Parser validates magic, header size, section table bounds, and little-endian mode.
 - `symtab_offset` is written by serializer and kept for compatibility, but parser discovers metadata via section table.
+- HVM 1.5 modules remain 64-bit. `pointer_size` must be `8` for native HVM64 code.
+- HVM 1.4 readers must reject 1.5 modules unless they explicitly opt into forward-compatible parsing of unknown feature flags.
+
+### 3.1 Module Feature Flags
+
+The 32-bit `flags` field advertises required instruction/profile features used by `.text`. A loader must reject a module if any required bit is set and the target CPU/simulator does not expose the corresponding HVM feature.
+
+| Bit | Name | Meaning |
+|---:|---|---|
+| 0 | `HVM_FLAG_HVM_C` | Module may contain HVM-C compressed encodings |
+| 1 | `HVM_FLAG_HVM_ARC` | Module may contain `RETAIN` or `RELEASE` |
+| 2 | `HVM_FLAG_ICACHE_RNG` | Module may contain `ICACHE.RNG` |
+| 3 | `HVM_FLAG_HVM_L` | Module may contain HVM-L hardware-loop instructions |
+| 4 | `HVM_FLAG_HVM_MEM` | Module may contain pair memory operations or memory hints |
+| 5 | `HVM_FLAG_HVM_V` | Module may contain HVM-V vector instructions |
+| 6 | `HVM_FLAG_HVM_A` | Module may contain HVM-A accelerator doorbell instructions |
+| 7 | `HVM_FLAG_HVM_ALLOC` | Module may contain `ALLOC.BUMP` |
+| 8 | `HVM_FLAG_HVM_OBJREF` | Module expects compact object-reference runtime support |
+| 9 | `HVM_FLAG_HVM_CAP` | Module may contain capability/bounds-check instructions |
+| 10 | `HVM_FLAG_HVM_PROF` | Module may contain `RDPROF` |
+| 11 | `HVM_FLAG_HVM_NZ` | Module may contain null-checking load instructions |
+| 12 | `HVM_FLAG_HVM_RT` | Module is built for the deterministic RT subset |
+
+Bits 13-31 are reserved and must be zero until assigned.
 
 ## 4. Section Entry (40 bytes)
 
@@ -190,6 +214,8 @@ Bit masks from `SectionFlags`:
 ## 11. Relationship to HVM ISA
 
 - `.text` carries encoded HVM instructions.
+- HVM 1.5 `.text` may contain base32 and escape32 instructions from `docs/hvm/hvm_instruction_set.csv`.
+- Optional v1.5 extensions must be reflected in the header `flags` field.
 - Supported language/runtime surface is defined by:
   - `docs/hvm/hvm-spec.md`
   - `docs/hvm/hvm_instruction_set.csv`

@@ -12,7 +12,7 @@
 namespace hvm {
 
 /**
- * @brief HVM Opcodes as defined in the core-minimalest profile.
+ * @brief HVM opcodes as defined by the HVM64 core/system profile.
  * Note: Multiple instructions may share the same opcode value (e.g., Arithmetic family 0x10),
  * being differentiated by the 'func' field in R-type instructions.
  */
@@ -22,6 +22,9 @@ enum class Opcode : uint16_t {
     MOVZ     = 0x03,
     LUI      = 0x04,
     ADDI     = 0x05,
+    RETAIN   = 0x06,
+    RELEASE  = 0x07,
+    ICACHE_RNG = 0x0B,
     ARITH    = 0x10, // ADD, SUB, MUL, DIV, DIVU, REM
     SHIFT    = 0x13, // SHL, SHR, SAR
     LOGIC    = 0x20, // AND, OR, XOR
@@ -44,10 +47,12 @@ enum class Opcode : uint16_t {
     LD_W     = 0x74,
     LD_WU    = 0x75,
     LD_D     = 0x76,
+    LD_P     = 0x77,
     ST_B     = 0x78,
     ST_H     = 0x79,
     ST_W     = 0x7A,
     ST_D     = 0x7B,
+    ST_P     = 0x7C,
     LDA      = 0x7D,
     PUSH     = 0x7E,
     POP      = 0x7F,
@@ -59,6 +64,32 @@ enum class Opcode : uint16_t {
     TAILCALL = 0xB6,
     SYSCALL  = 0xC0,
     BREAK    = 0xC1,
+    ECALL    = 0xC2,
+    TRAPRET  = 0xC3,
+    LR_D     = 0xC4,
+    SC_D     = 0xC5,
+    CSRRW    = 0xC6,
+    SFENCE_VMA = 0xC8,
+    LOOP_SET = 0xD0,
+    LOOP_DECBR = 0xD1,
+    PREFETCH_R = 0xD2,
+    PREFETCH_W = 0xD3,
+    PREFETCH_NTA = 0xD4,
+    MEMZERO_HINT = 0xD5,
+    ALLOC_BUMP = 0xD6,
+    RDPROF = 0xD7,
+    CHK_B = 0xD8,
+    LD_D_NZ = 0xD9,
+    BR_HINT = 0xDA,
+    DOORBELL = 0xDB,
+    VSETVL = 0xE0,
+    VECTOR_MEM = 0xE1,
+    VECTOR_ARITH = 0xE2,
+    VECTOR_FMA = 0xE3,
+    VECTOR_MASK = 0xE4,
+    VECTOR_REDUCE = 0xE5,
+    VECTOR_SHIFT = 0xE6,
+    VECTOR_BITWISE = 0xE7,
     UNKNOWN  = 0xFFFF
 };
 
@@ -74,6 +105,7 @@ enum class InstructionFormat {
 enum class InstructionEncoding {
     Base32,
     Escape32,
+    Compressed16,
     UNKNOWN
 };
 
@@ -117,7 +149,7 @@ public:
     HVMInstruction(Opcode opcode, const Operands& operands);
     ~HVMInstruction() = default;
 
-    static std::unique_ptr<HVMInstruction> decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed);
+    static std::unique_ptr<HVMInstruction> decode(const std::vector<uint8_t>& bytes, size_t& bytesUsed, bool allowCompressed = false);
     static std::unique_ptr<HVMInstruction> decode(const std::vector<uint8_t>& bytes); // convenience wrapper
     static std::unique_ptr<HVMInstruction> decode(const uint32_t word);
 
@@ -170,10 +202,14 @@ public:
     };
 
     void registerInstruction(const std::string& mnemonic, Opcode opcode,
-                            InstructionFormat format, uint16_t func = 0);
+    InstructionFormat format, uint16_t func = 0);
+    // Overload that allows explicit encoding specification (e.g., for Compressed16)
+    void registerInstruction(const std::string& mnemonic, Opcode opcode,
+    InstructionFormat format, uint16_t func, InstructionEncoding encoding);
     
     std::optional<InstructionInfo> getInfoByMnemonic(const std::string& mnemonic) const;
     std::optional<InstructionInfo> getInfoByOpcode(Opcode opcode, uint16_t func = 0) const;
+    std::optional<InstructionInfo> getCompressedInfoByOpcode(Opcode opcode, uint16_t func = 0) const;
     
     const std::unordered_map<std::string, InstructionInfo>& getAllInfo() const { return mnemonic_to_info_; }
 
@@ -182,6 +218,7 @@ private:
     std::unordered_map<std::string, InstructionInfo> mnemonic_to_info_;
     // Secondary index for decoding: opcode -> (func -> info)
     std::unordered_map<uint16_t, std::unordered_map<uint16_t, InstructionInfo>> opcode_func_to_info_;
+    std::unordered_map<uint16_t, std::unordered_map<uint16_t, InstructionInfo>> opcode_func_to_compressed_info_;
 };
 
 }

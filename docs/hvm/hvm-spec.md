@@ -1,16 +1,19 @@
 # Hoo Virtual Machine (HVM) Specification
 
-This is the **minimal core HVM profile** required to implement the current Hoo grammar in `src/parsing/Hoo.g4`. This profile is designed for **physical hardware compatibility**, strictly using low-level RISC instructions.
+Version: `1.5`
+
+This is the **64-bit HVM core and system profile** required to implement the current Hoo grammar in `src/parsing/Hoo.g4` and to support the documented HVM CPU, SoC, board, firmware, ABI, and simulator work. The base profile remains a physical-hardware-compatible RISC ISA. HVM 1.5 adds profile-gated green-compute and runtime extensions without changing the 64-bit register machine or public 64-bit ABI.
 
 ## 1. Scope
 
 This profile is limited to the physical ISA required to support Hoo. All high-level language constructs (objects, arrays, exceptions) are lowered to standard memory operations and function calls to a runtime library.
 
-Anything not required by a pure RISC core (SIMD, threading, interrupts, specialized VM opcodes) is excluded or handled via system calls.
+Anything not required by the mandatory core remains profile-gated. Optional extensions must be discoverable through feature flags and must have software fallbacks unless the platform profile explicitly requires them.
 
 ## 2. Execution Model
 
 - 64-bit register machine
+- 64-bit public pointer ABI and LP64 C/C++ data model
 - byte-addressable little-endian memory
 - downward-growing stack
 - flat physical memory model (paged/protected via MMU if present)
@@ -24,7 +27,7 @@ Anything not required by a pure RISC core (SIMD, threading, interrupts, speciali
 
 The core profile uses 32 general-purpose 64-bit registers (`r0..r31`):
 - `r0`: hardwired zero
-- `r1`: return-value register
+- `r1`: first argument and return-value register
 - `r2..r3`: argument registers
 - `r4`: thread pointer (`tp`)
 - `r5..r8`: argument registers
@@ -54,7 +57,7 @@ Extended opcode encoding:
 
 The normative list is `docs/hvm/hvm_instruction_set.csv`.
 
-### 5.1 Required Families (`core-minimalest`)
+### 5.1 Required Families (`hvm64-core-system`)
 
 - Data movement: `NOP`, `MOV`, `MOVZ`, `LUI`, `ADDI`
 - Integer arithmetic: `ADD`, `SUB`, `MUL`, `DIV`, `DIVU`, `REM`, `SHL`, `SHR`, `SAR`
@@ -68,7 +71,34 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 - Calls/linking: `CALL`, `TAILCALL`
 - Hardware/System: `SYSCALL`, `BREAK`
 
-### 5.2 Explicitly Excluded from Core (Lowered to Software)
+### 5.2 HVM 1.5 Required Green-Compute Core Extensions
+
+HVM 1.5 promotes the following low-complexity extensions into the standard HVM CPU profile for documented mobile, desktop, server, and robotics systems:
+
+- Runtime atomics: `RETAIN`, `RELEASE`
+- JIT cache coherency: `ICACHE.RNG`
+- Pair memory operations: `LD.P`, `ST.P`
+
+These instructions remain 64-bit operations. They do not change pointer width, register width, stack slot width, or the public ABI.
+
+### 5.3 Optional Profile-Gated Extensions
+
+The following extensions are optional unless required by a specific HVM platform profile:
+
+- HVM-L hardware loops: `LOOP.SET`, `LOOP.DECBR`
+- HVM-MEM advisory memory hints: `PREFETCH.R`, `PREFETCH.W`, `PREFETCH.NTA`, `MEMZERO.HINT`
+- HVM-V vector operations: `VSETVL`, vector load/store, arithmetic, compare, merge, reduction, shift, bitwise, and `VFIRST.M`
+- HVM-A accelerator dispatch: `DOORBELL`
+- HVM-Alloc: `ALLOC.BUMP`
+- HVM-ObjRef: compact managed object references represented by runtime metadata, not native ABI pointers
+- HVM-Prof: `RDPROF`
+- HVM-Cap: `CHK.B`
+- HVM-NZ: `LD.D.NZ`
+- Branch/code layout hints: `BR.HINT`
+
+Advisory instructions may be implemented as no-ops. Runtime-specific instructions must have software fallback unless the platform profile says otherwise.
+
+### 5.4 Explicitly Excluded from Core (Lowered to Software)
 
 The following are **NOT** in the ISA and must be lowered by the compiler:
 - `NEW`/`NEWA`: Lowered to `CALL hoo_alloc`.
@@ -76,9 +106,9 @@ The following are **NOT** in the ISA and must be lowered by the compiler:
 - `LDELEM`/`STELEM`: Lowered to pointer arithmetic + `LD.D`/`ST.D`.
 - `TRY`/`CATCH`/`THROW`: Lowered to control flow + `CALL hoo_push_handler`.
 
-### 5.3 Privileged Instructions (System Profile)
+### 5.5 Privileged Instructions (System Profile)
 
-The following are **only** required for the system-level profile (e.g., running a kernel). They are not part of `core-minimalest`:
+The following are **only** required for the system-level profile (e.g., running a kernel). Minimal embedded HVM64 implementations may omit them when they do not run a protected OS:
 
 - Supervisor traps: `ECALL`, `TRAPRET`
 - System register access: `CSRRW`
@@ -126,6 +156,7 @@ Arguments are passed in registers `r2`, `r3`, and `r4` (for three-argument calls
 
 - This spec is a **pure hardware profile**, suitable for physical CPU design.
 - The HVM backend now performs aggressive lowering to maintain this purity.
+- HVM 1.5 remains a **64-bit architecture**. Compact object references are an optional managed-runtime representation and are not native pointers at C/C++ ABI boundaries.
 - **RET implementation note**: The architectural semantics of `RET` are `pc = r29` (branch to link register). In the interpreter and JIT backends, `RET` is implemented via native C++ function return (`return r1`); this is equivalent because `CALL` stores the return address (`pc+4`) in `r29` before transferring control via a C++ function call. A physical hardware implementation must execute `pc = r29` directly.
 - **JAL / CALL redundancy**: `JAL` (base32, 16-bit offset) and `CALL` (escape32, 20-bit offset) are semantically identical — both set `rd = pc+4; pc += offset`. `CALL` provides a larger reachable range; `JAL` saves code space when the offset fits in 16 bits.
 - **JMP / TAILCALL redundancy**: `JMP` (base32, 16-bit offset) and `TAILCALL` (escape32, 20-bit offset) are semantically identical — both perform `pc += offset` without saving a return address. `TAILCALL` provides a larger range; `JMP` saves code space when the offset fits.
@@ -182,7 +213,7 @@ CSRs are addressed by a 12-bit immediate field in the `CSRRW` instruction.
 - Bits 63–2: BASE (trap handler PC, must be 4-byte aligned)
 
 **`satp` encoding** (64-bit):
-- Bits 63–60: MODE (0 = Bare, no translation; 8 = Sv39)
+- Bits 63–60: MODE (0 = Bare, no translation; 8 = HVM-39)
 - Bits 59–44: ASID (16-bit address-space identifier)
 - Bits 43–0: PPN (physical page number of root page table, shifted right by 12)
 
@@ -211,9 +242,9 @@ Interrupts are taken when `sstatus.SIE == 1` and `sstatus.SPP == 0` (U-mode). In
 
 When `stime >= stimecmp`, a timer interrupt (scause = 0x8000_0000_0000_0000) is pending. It fires when interrupts are enabled and not masked.
 
-### 9.5 Supervisor Address Translation (Sv39)
+### 9.5 Supervisor Address Translation (HVM-39)
 
-Sv39 provides a 39-bit virtual address space with 4 KiB pages using a 3-level radix tree.
+HVM-39 provides a 39-bit virtual address space with 4 KiB pages using a 3-level radix tree.
 
 **Address format:**
 - Virtual address `VA[38:0]` is translated; `VA[63:39]` must equal `VA[38]` (canonical sign-extension).

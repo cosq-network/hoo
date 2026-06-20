@@ -46,37 +46,37 @@ HVM uses 32 general-purpose 64-bit registers:
 | Register | ABI Name | Role | Preserved Across Calls |
 | :---: | :--- | :--- | :---: |
 | `r0` | `zero` | Constant zero; writes are ignored | N/A |
-| `r1` | `ra` | Return address | No |
-| `r2` | `sp` | Stack pointer | Yes |
-| `r3` | `fp` | Frame pointer / base pointer | Yes |
-| `r4` | `gp` | Global pointer / small data base | Yes |
-| `r5` | `tp` | Thread pointer / TLS base | Yes |
-| `r6` | `a0` | Argument 0 / return value 0 | No |
-| `r7` | `a1` | Argument 1 / return value 1 | No |
-| `r8` | `a2` | Argument 2 | No |
-| `r9` | `a3` | Argument 3 | No |
-| `r10` | `a4` | Argument 4 | No |
-| `r11` | `a5` | Argument 5 | No |
-| `r12` | `a6` | Argument 6 | No |
-| `r13` | `a7` | Argument 7 / syscall number where used | No |
-| `r14` | `t0` | Temporary 0 | No |
-| `r15` | `t1` | Temporary 1 | No |
-| `r16` | `t2` | Temporary 2 | No |
-| `r17` | `t3` | Temporary 3 | No |
-| `r18` | `t4` | Temporary 4 | No |
-| `r19` | `t5` | Temporary 5 | No |
-| `r20` | `t6` | Temporary 6 | No |
-| `r21` | `s0` | Saved register 0 | Yes |
-| `r22` | `s1` | Saved register 1 | Yes |
-| `r23` | `s2` | Saved register 2 | Yes |
-| `r24` | `s3` | Saved register 3 | Yes |
-| `r25` | `s4` | Saved register 4 | Yes |
-| `r26` | `s5` | Saved register 5 | Yes |
-| `r27` | `s6` | Saved register 6 | Yes |
-| `r28` | `s7` | Saved register 7 | Yes |
-| `r29` | `k0` | Kernel scratch 0 | No user ABI use |
-| `r30` | `k1` | Kernel scratch 1 | No user ABI use |
-| `r31` | `pc_alias` | Optional link/scratch alias; avoid in portable ABI until finalized | No |
+| `r1` | `a0` / `ret` | Argument 0 and primary return value | No |
+| `r2` | `a1` | Argument 1 | No |
+| `r3` | `a2` | Argument 2 | No |
+| `r4` | `tp` | Thread pointer / TLS base | Yes |
+| `r5` | `a3` | Argument 3 | No |
+| `r6` | `a4` | Argument 4 | No |
+| `r7` | `a5` | Argument 5 | No |
+| `r8` | `a6` | Argument 6 / service selector where used | No |
+| `r9` | `t0` | Temporary 0 | No |
+| `r10` | `t1` | Temporary 1 | No |
+| `r11` | `t2` | Temporary 2 | No |
+| `r12` | `t3` | Temporary 3 | No |
+| `r13` | `t4` | Temporary 4 | No |
+| `r14` | `t5` | Temporary 5 | No |
+| `r15` | `t6` | Temporary 6 | No |
+| `r16` | `s0` | Saved register 0 | Yes |
+| `r17` | `s1` | Saved register 1 | Yes |
+| `r18` | `s2` | Saved register 2 | Yes |
+| `r19` | `s3` | Saved register 3 | Yes |
+| `r20` | `s4` | Saved register 4 | Yes |
+| `r21` | `s5` | Saved register 5 | Yes |
+| `r22` | `s6` | Saved register 6 | Yes |
+| `r23` | `s7` | Saved register 7 | Yes |
+| `r24` | `s8` | Saved register 8 | Yes |
+| `r25` | `s9` | Saved register 9 | Yes |
+| `r26` | `s10` | Saved register 10 | Yes |
+| `r27` | `s11` | Saved register 11 | Yes |
+| `r28` | `s12` | Saved register 12 | Yes |
+| `r29` | `lr` | Link register / return address for `RET` | No |
+| `r30` | `fp` | Frame pointer | Yes |
+| `r31` | `sp` | Stack pointer | Yes |
 
 Notes:
 
@@ -84,8 +84,8 @@ Notes:
 - `sp` must remain 16-byte aligned at public ABI call boundaries.
 - `fp` is optional in optimized code but must be valid when frame pointers are enabled.
 - `tp` points at the active thread-local storage control block.
-- `k0` and `k1` are reserved for trap/interrupt entry and should not be used by user-space ABI code.
-- `r31` requires final ISA agreement. Portable ABI code should avoid depending on special behavior for `r31`.
+- `lr` holds the return address used by `RET`.
+- User-space ABI code may use caller-saved temporaries `t0-t6`; trap entry code must save any user-visible register it clobbers.
 
 ### 2.2 Vector Registers
 
@@ -116,7 +116,7 @@ Recommended ABI rule:
 
 ### 3.1 Integer and Pointer Arguments
 
-- First eight integer/pointer arguments use `a0-a7` (`r6-r13`).
+- First seven integer/pointer arguments use `a0-a6` (`r1-r3`, then `r5-r8`). `r4` is reserved for `tp` and is not a normal public-call argument register.
 - Additional arguments are passed on the stack.
 - Integer return values use `a0` and `a1` for two-register returns.
 - Pointers are 64-bit.
@@ -221,13 +221,13 @@ Recommended handoff registers:
 
 | Register | Value |
 | :---: | :--- |
-| `a0` (`r6`) | boot hart/core ID |
-| `a1` (`r7`) | physical pointer to device tree blob or HVM boot info table |
-| `a2` (`r8`) | physical pointer to HVM-SFI service table |
-| `a3` (`r9`) | boot flags |
-| `a4` (`r10`) | initrd physical base, or 0 |
-| `a5` (`r11`) | initrd size, or 0 |
-| `sp` (`r2`) | temporary boot stack |
+| `a0` (`r1`) | boot hart/core ID |
+| `a1` (`r2`) | physical pointer to device tree blob or HVM boot info table |
+| `a2` (`r3`) | physical pointer to HVM-SFI service table |
+| `a3` (`r5`) | boot flags |
+| `a4` (`r6`) | initrd physical base, or 0 |
+| `a5` (`r7`) | initrd size, or 0 |
+| `sp` (`r31`) | temporary boot stack |
 | `pc` | kernel entry point |
 
 Boot flags:
@@ -286,8 +286,8 @@ Recommended convention:
 
 | Register | Meaning |
 | :---: | :--- |
-| `a7` | HVM-SFI function ID |
-| `a0-a5` | arguments |
+| `a6` (`r8`) | HVM-SFI function ID |
+| `a0-a5` (`r1-r3`, `r5-r7`) | arguments |
 | `a0` | return value / status |
 | `a1` | optional secondary return value |
 
@@ -584,8 +584,8 @@ This chapter does not define a POSIX-compatible syscall table, but it reserves a
 
 | Register | Meaning |
 | :---: | :--- |
-| `a7` | syscall number |
-| `a0-a5` | syscall arguments |
+| `a6` (`r8`) | syscall number for OS ABIs that use register-selected syscalls |
+| `a0-a5` (`r1-r3`, `r5-r7`) | syscall arguments |
 | `a0` | return value |
 | `a1` | secondary return value or error detail |
 
@@ -595,6 +595,8 @@ Recommended error convention:
 - failure: negative errno-style value in `a0`
 
 OS projects may define their own syscall tables, but they should preserve this register convention for toolchain and runtime compatibility.
+
+The legacy `SYSCALL imm15` runtime interface in [hvm-spec.md](../hvm-spec.md) remains valid for Hoo runtime-internal services; it uses the immediate field to select the service and the core-runtime argument registers documented there.
 
 ---
 
@@ -694,15 +696,71 @@ Recommended cache maintenance primitives:
 | `ICACHE.RNG base, size` | Invalidate instruction cache for modified code |
 | `DCACHE.CLEAN base, size` | Clean data cache before device reads |
 | `DCACHE.INV base, size` | Invalidate data cache after device writes |
+| `PREFETCH.R base, offset` | Advisory read prefetch for likely future loads |
+| `PREFETCH.W base, offset` | Advisory write-intent prefetch for likely future stores |
+| `PREFETCH.NTA base, offset` | Advisory non-temporal prefetch for streaming data |
 | `FENCE rw, rw` | Order memory operations |
 
 Final mnemonics and encodings must be synchronized with the ISA table.
 
+Prefetch rules:
+
+- Prefetch operations are advisory. A conforming implementation may ignore them.
+- Prefetch must not raise a page fault or device bus fault visible to software.
+- Prefetch to MMIO has no required effect and should be suppressed by implementations where practical.
+- JIT and simulator implementations may lower prefetch to host prefetch intrinsics or no-ops.
+
+Cache policy attributes should primarily live in page-table entries, device tree, ACPI tables, or firmware memory maps. HVM should avoid adding mandatory per-instruction cache-policy controls until OS memory-type handling is fully specified.
+
 ---
 
-## 16. Profile ABI Requirements
+## 16. Managed Runtime ABI Hooks
 
-### 16.1 Minimum OS Port Requirements
+HVM runtime acceleration must not make the kernel responsible for understanding Hoo object layouts. The OS exposes standard memory, signal, trap, and TLS behavior; the Hoo runtime owns managed heap semantics.
+
+### 16.1 Thread-Local Allocation Buffer ABI
+
+If HVM-Alloc is enabled, the Hoo runtime may reserve fields in the thread-local storage block referenced by `tp`:
+
+| Field | Purpose |
+| :--- | :--- |
+| `hvm_alloc_cursor` | Next free byte in the active thread-local allocation buffer |
+| `hvm_alloc_limit` | End of the active thread-local allocation buffer |
+| `hvm_alloc_epoch` | Optional runtime epoch for debug, safepoint, or allocator validation |
+| `hvm_alloc_flags` | Runtime-owned flags for sanitizer, tracing, or slow-path forcing |
+
+`ALLOC.BUMP` may read and update these fields directly or use implementation-defined allocation CSRs if a future ISA profile defines them. In either case:
+
+- zero return means fast-path allocation failed and software must call the runtime allocator
+- signal/trap delivery must preserve user-visible allocation state
+- kernel code must not inspect object headers or TLAB contents
+- debug/sanitizer runtimes may disable `ALLOC.BUMP` by clearing the feature bit
+
+### 16.2 Compact Object References
+
+Compact references are a managed-runtime representation, not a system pointer ABI. Public C/C++ ABI pointers remain 64-bit native virtual addresses.
+
+Recommended runtime metadata:
+
+| Field | Purpose |
+| :--- | :--- |
+| `heap_base` | Native virtual base address of the compact-reference heap window |
+| `heap_shift` | Left shift applied before adding to `heap_base` |
+| `heap_limit` | Maximum decoded native address or compact-reference count |
+| `heap_generation` | Optional runtime generation for moving/compacting heaps |
+
+Rules:
+
+- The kernel treats compact references as integer payloads inside user memory.
+- The JIT may keep references compressed in registers only inside managed-code regions.
+- Transitions to native ABI calls must expand object references to native pointers unless the callee explicitly accepts compact references.
+- The simulator should trap or report compact-reference decode violations when the configured heap window is exceeded.
+
+---
+
+## 17. Profile ABI Requirements
+
+### 17.1 Minimum OS Port Requirements
 
 To boot a minimal HVM OS, the platform must provide:
 
@@ -716,7 +774,7 @@ To boot a minimal HVM OS, the platform must provide:
 - exception entry/return
 - block device or initrd
 
-### 16.2 Mobile OS Requirements
+### 17.2 Mobile OS Requirements
 
 - suspend/resume
 - PMIC events
@@ -726,7 +784,7 @@ To boot a minimal HVM OS, the platform must provide:
 - thermal sensors
 - device tree
 
-### 16.3 Desktop OS Requirements
+### 17.3 Desktop OS Requirements
 
 - PCIe enumeration
 - NVMe
@@ -735,7 +793,7 @@ To boot a minimal HVM OS, the platform must provide:
 - ACPI/SMBIOS eventually
 - firmware boot variables
 
-### 16.4 Server OS Requirements
+### 17.4 Server OS Requirements
 
 - SMP scaling
 - NUMA memory map
@@ -745,7 +803,7 @@ To boot a minimal HVM OS, the platform must provide:
 - power cap/thermal telemetry
 - crash dump reservation
 
-### 16.5 Robotics OS/RTOS Requirements
+### 17.5 Robotics OS/RTOS Requirements
 
 - deterministic timer
 - RT SRAM
@@ -758,7 +816,7 @@ To boot a minimal HVM OS, the platform must provide:
 
 ---
 
-## 17. Simulator Requirements for ABI Validation
+## 18. Simulator Requirements for ABI Validation
 
 The HVM simulator must validate this ABI through:
 
@@ -795,7 +853,7 @@ The output should include:
 
 ---
 
-## 18. Open ABI Decisions
+## 19. Open ABI Decisions
 
 - Final HVM ELF machine ID.
 - Final syscall instruction encoding and syscall table ownership.
