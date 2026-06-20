@@ -16,6 +16,15 @@
 
 #define ARRAY_HEADER_WORDS 4 // length, capacity, element_type, reserved
 
+// Simple intrinsic type identifiers used for homogeneous arrays
+#define TYPE_ID_NONE   0
+#define TYPE_ID_INT64  1
+#define TYPE_ID_DOUBLE 2
+#define TYPE_ID_BOOL   3
+#define TYPE_ID_CHAR   4
+#define TYPE_ID_STRING 5
+#define TYPE_ID_OBJECT 6
+
 // Destructor for HOO_TYPE_ARRAY: releases all managed-typed elements
 static void array_destructor(void* obj) {
     int64_t* raw = (int64_t*)obj;
@@ -104,17 +113,16 @@ HooArray hoo_array_push(HooArray arr_handle, const void* value) {
     int64_t* raw = (int64_t*)arr_handle;
     int64_t len = raw[0];
     int64_t cap = raw[1];
-    
+    int64_t elem_type = raw[2]; // preserve element type
     if (len >= cap) {
         int64_t new_cap = (cap <= 0) ? 8 : cap * 2;
         size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
         int64_t* new_raw = (int64_t*)hoo_realloc(arr_handle, new_size);
         if (!new_raw) return nullptr;
-        
         raw = new_raw;
         raw[1] = new_cap;
+        raw[2] = elem_type; // restore element type
     }
-    
     raw[len + ARRAY_HEADER_WORDS] = *(const int64_t*)value;
     raw[0] = len + 1;
     return (HooArray)raw;
@@ -151,39 +159,104 @@ int64_t hoo_array_empty(HooArray arr) {
 // Type-specific implementations mapping to generic 64-bit slots
 
 HooArray hoo_array_push_int64(HooArray arr, int64_t value) {
+    // Enforce homogeneous int64 type and set element type on first insert
+    int64_t* raw = (int64_t*)arr;
+    if (raw) {
+        int64_t len = raw[0];
+        int64_t elem_type = raw[2];
+        if (len == 0) {
+            raw[2] = TYPE_ID_INT64;
+        } else if (elem_type != TYPE_ID_INT64) {
+            return nullptr; // type mismatch
+        }
+    }
+    return hoo_array_push(arr, &value);
     return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_double(HooArray arr, double value) {
+    // Enforce homogeneous double type and set element type on first insert
+    int64_t* raw = (int64_t*)arr;
+    if (raw) {
+        int64_t len = raw[0];
+        int64_t elem_type = raw[2];
+        if (len == 0) {
+            raw[2] = TYPE_ID_DOUBLE;
+        } else if (elem_type != TYPE_ID_DOUBLE) {
+            return nullptr; // type mismatch
+        }
+    }
+    return hoo_array_push(arr, &value);
+    // Directly push double value without type enforcement
     return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_float(HooArray arr, float value) {
+    // Store float as double without type enforcement
     double dval = value;
     return hoo_array_push(arr, &dval);
 }
 
 HooArray hoo_array_push_bool(HooArray arr, int64_t value) {
+    // Store bool as int64 0/1 without type enforcement
     int64_t bval = value ? 1 : 0;
     return hoo_array_push(arr, &bval);
 }
 
 HooArray hoo_array_push_char(HooArray arr, char value) {
+    // Store char as int64 without type enforcement
     int64_t cval = value;
     return hoo_array_push(arr, &cval);
 }
 
 HooArray hoo_array_push_string(HooArray arr, const char* value) {
+    // Push string pointer without type enforcement
     return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_object(HooArray arr, void* value) {
+    // Push object pointer without type enforcement
     return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_array(HooArray arr, HooArray value) {
+    // Push nested array without type enforcement
     if (value) hoo_retain(value);
     return hoo_array_push(arr, &value);
+}
+
+// SIMD-friendly batch push for int64 arrays
+HooArray hoo_array_push_vector_int64(HooArray arr, const int64_t* src, int64_t count) {
+    if (!arr || !src || count <= 0) return nullptr;
+    int64_t* raw = (int64_t*)arr;
+    // Ensure homogeneous int64 type
+    if (raw) {
+        int64_t len = raw[0];
+        int64_t elem_type = raw[2];
+        if (len == 0) {
+            raw[2] = TYPE_ID_INT64;
+        } else if (elem_type != TYPE_ID_INT64) {
+            return nullptr; // type mismatch
+        }
+    }
+    // Ensure capacity
+    int64_t len = raw[0];
+    int64_t cap = raw[1];
+    if (len + count > cap) {
+        int64_t new_cap = cap;
+        while (len + count > new_cap) {
+            new_cap = (new_cap <= 0) ? 8 : new_cap * 2;
+        }
+        size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
+        int64_t* new_raw = (int64_t*)hoo_realloc(arr, new_size);
+        if (!new_raw) return nullptr;
+        raw = new_raw;
+        raw[1] = new_cap;
+    }
+    // Copy values
+    std::memcpy(raw + ARRAY_HEADER_WORDS + len, src, (size_t)count * 8);
+    raw[0] = len + count;
+    return (HooArray)raw;
 }
 
 int64_t hoo_array_get_int64(HooArray arr, int64_t index, int64_t* dest) {
@@ -241,10 +314,20 @@ int64_t hoo_array_refcount(HooArray arr) {
 }
 
 const char* hoo_array_element_type(HooArray arr) {
-    if (hoo_array_length(arr) == 0) return nullptr;
-    return "raw64";
+    if (!arr) return nullptr;
+    int64_t elem_type = ((int64_t*)arr)[2];
+    switch (elem_type) {
+        case TYPE_ID_INT64: return "int64";
+        case TYPE_ID_DOUBLE: return "double";
+        case TYPE_ID_BOOL: return "bool";
+        case TYPE_ID_CHAR: return "char";
+        case TYPE_ID_STRING: return "string";
+        case TYPE_ID_OBJECT: return "object";
+        default: return nullptr;
+    }
 }
 
 int64_t hoo_array_is_type(HooArray arr, const char* type_name) {
-    return 0;
+    const char* actual = hoo_array_element_type(arr);
+    return (actual && strcmp(actual, type_name) == 0) ? 1 : 0;
 }

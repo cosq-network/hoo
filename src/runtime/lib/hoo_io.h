@@ -45,7 +45,7 @@ void* hoo_readline(void);
  *
  * @return The character value as int64_t (0-255 for valid chars, -1 for EOF)
  */
-int64_t hoo_readchar(void);
+char hoo_readchar(void);
 
 #ifdef __cplusplus
 }

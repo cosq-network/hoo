@@ -2,6 +2,7 @@
 
 #include "ASTNode.h"
 #include <string>
+#include <cassert>
 
 namespace hooc {
 namespace ast {
@@ -99,7 +100,7 @@ private:
 // Character literal
 class CharacterLiteral : public Primary {
 public:
-    CharacterLiteral(int64_t value) : value_(value) {}
+    CharacterLiteral(int64_t value) : value_(value) { assert(value >= 0 && value <= 0x10FFFF && "Unicode codepoint out of range"); }
 
     std::string toString() const override;
 

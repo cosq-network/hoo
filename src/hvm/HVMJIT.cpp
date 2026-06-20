@@ -700,6 +700,16 @@ extern "C" {
         state->regs[1] = static_cast<int64_t>(reinterpret_cast<intptr_t>(new_arr));
         return 0;
     }
+
+    uint64_t jit_hoo_array_push_vector_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        // src pointer is located in memory at offset regs[2]
+        int64_t* src = reinterpret_cast<int64_t*>(state->memory + state->regs[2]);
+        int64_t count = state->regs[3];
+        HooArray new_arr = hoo_array_push_vector_int64(reinterpret_cast<void*>(state->regs[1]), src, count);
+        state->regs[1] = static_cast<int64_t>(reinterpret_cast<intptr_t>(new_arr));
+        return 0;
+    }
     uint64_t jit_hoo_array_get_int64(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         int64_t dest = 0;

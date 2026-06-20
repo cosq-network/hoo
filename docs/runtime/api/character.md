@@ -45,7 +45,7 @@ Character(codepoint: int64) :Character
 |-----------|------|-------------|
 | `codepoint` | `int64` | The Unicode codepoint value. |
 
-**Returns:** `Character` — A new `Character` instance.
+**Returns:** `Character` — A new `Character` instance. The constructor asserts the codepoint is within 0..0x10FFFF.
 
 **Errors:** None.
 

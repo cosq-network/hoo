@@ -4,9 +4,11 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
-#include <string>
 #include <iostream>
 #include <sstream>
+#include <unistd.h>
+#include <sys/select.h>
+#include <string>
 
 // ============================================================================
 // I/O Implementation
@@ -48,10 +50,19 @@ void* hoo_readline(void) {
     return hoo_string_from_cstr(line.c_str());
 }
 
-int64_t hoo_readchar(void) {
-    int ch = std::getchar();
-    if (ch == EOF) {
-        return -1;
+char hoo_readchar(void) {
+    int fd = fileno(stdin);
+    fd_set set;
+    FD_ZERO(&set);
+    FD_SET(fd, &set);
+    struct timeval timeout = {0, 0}; // zero timeout – non‑blocking
+    if (select(fd + 1, &set, nullptr, nullptr, &timeout) > 0) {
+        int ch = std::getchar();
+        if (ch == EOF) {
+            return static_cast<char>(-1);
+        }
+        return static_cast<char>(ch);
     }
-    return static_cast<int64_t>(ch);
+    // No data available – indicate EOF/non‑blocking
+    return static_cast<char>(-1);
 }

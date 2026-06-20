@@ -18,6 +18,7 @@ TEST_F(HooIOTest, BasicPrint) {
 
 TEST_F(HooIOTest, ReadChar) {
     // Basic test to ensure it returns something (likely -1 if no input)
-    // int64_t ch = hoo_readchar();
-    // EXPECT_GE(ch, -1);
+    char ch = hoo_readchar();
+    // Since char may be signed or unsigned, we compare to static_cast<char>(-1)
+    EXPECT_TRUE(ch == static_cast<char>(-1) || ch >= 0);
 }

@@ -190,6 +190,13 @@ HooArray hoo_array_push_object(HooArray arr, void* value);
  */
 HooArray hoo_array_push_array(HooArray arr, HooArray value);
 
+/// Push a batch of int64 values using SIMD-friendly vector operation
+/// @param arr Array handle (must be homogeneous int64)
+/// @param src Pointer to contiguous int64 values
+/// @param count Number of elements (multiple of active vector length)
+/// @return The array handle (possibly new after reallocation) or nullptr on failure
+HooArray hoo_array_push_vector_int64(HooArray arr, const int64_t* src, int64_t count);
+
 // ============================================================================
 // Type-Specific Get Operations
 // ============================================================================

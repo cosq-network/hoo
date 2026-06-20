@@ -179,10 +179,10 @@ Reads a single character from stdin. Blocks until a character is available.
 
 **Syntax:**
 ```hoo
-readchar() :int64
+readchar() :char
 ```
 **Parameters:** None.
-**Returns:** `int64` — The character code of the read character, or `-1` if EOF is reached.
+**Returns:** `char` — The character code of the read character (0‑255) or `-1` (as a `char` value) on EOF.
 **Errors:** Returns `-1` on EOF or error.
 **Complete Example:**
 ```hoo
