@@ -1,51 +1,77 @@
 # Uuid — Universally Unique Identifiers
 
-The `Uuid` class provides static methods for generating and manipulating UUIDs.
+The `uuid` module provides a `Uuid` class and free functions for generating and manipulating UUIDs without exposing raw pointer handles.
 
-## Methods
+## Uuid Class
 
-`Uuid.v4() :ptr`
-Generates a random UUID version 4 and returns a UUID handle.
+### Constructor
 
-`Uuid.nil() :ptr`
-Creates a nil UUID (`00000000-0000-0000-0000-000000000000`).
+`new Uuid(source: string) :Uuid`
+Creates a Uuid. If `source` is empty, generates a random UUID version 4. If `source` is `"nil"`, creates a nil UUID. Otherwise, parses the UUID from its canonical string representation.
 
-`Uuid.fromString(str: string) :ptr`
-Parses a UUID from its canonical string representation. Returns NULL on parse failure.
+### Methods
 
-`Uuid.toString(uuid: ptr) :string`
-Converts a UUID to its canonical string representation.
+`uuid.toString() :string`
+Converts the UUID to its canonical string representation.
 
-`Uuid.isNil(uuid: ptr) :int64`
+`uuid.isNil() :int64`
 Returns 1 if the UUID is the nil UUID, 0 otherwise.
 
-`Uuid.equals(a: ptr, b: ptr) :int64`
+`uuid.equals(other: Uuid) :int64`
 Returns 1 if two UUIDs are equal, 0 otherwise.
 
-`Uuid.compare(a: ptr, b: ptr) :int64`
-Lexicographically compares two UUIDs. Returns -1 if a < b, 0 if a == b, 1 if a > b.
+`uuid.compare(other: Uuid) :int64`
+Lexicographically compares two UUIDs. Returns -1 if `this` < `other`, 0 if they are equal, 1 if `this` > `other`.
 
-`Uuid.release(uuid: ptr)`
-Releases a UUID handle.
+`uuid.toBytes() :buffer`
+Extracts the raw 16 bytes of the UUID into a new Buffer.
 
-### Buffer-Aware Overloads
+`uuid.release()`
+Releases the UUID handle.
 
-`Uuid.fromBytes(buf: buffer) :ptr`
-Creates a UUID from a 16-byte Buffer. Returns NULL if the buffer is not exactly 16 bytes.
+## Free Functions
 
-`Uuid.toBytes(uuid: ptr) :buffer`
-Extracts the raw 16 bytes of a UUID into a new Buffer.
+`uuid_v4() :string`
+Returns a new random UUID version 4 as a string.
+
+`uuid_nil() :string`
+Returns the nil UUID string (`00000000-0000-0000-0000-000000000000`).
+
+`uuid_is_nil(str: string) :int64`
+Returns 1 if the UUID string is nil, 0 otherwise.
+
+`uuid_from_bytes(buf: buffer) :Uuid`
+Creates a Uuid instance from a 16-byte Buffer. Returns NULL if the buffer is not exactly 16 bytes.
+
+`uuid_to_bytes(str: string) :buffer`
+Converts a UUID string to a 16-byte Buffer.
+
+`uuid_equals(a: string, b: string) :int64`
+Returns 1 if the two UUID strings are equal, 0 otherwise.
+
+`uuid_compare(a: string, b: string) :int64`
+Compares two UUID strings. Returns -1, 0, or 1.
+
+`uuid_to_string(id: Uuid) :string`
+Returns the canonical string representation of the `Uuid` object.
 
 ## Example
 
 ```hoo
-let id = Uuid.v4()
-let str = Uuid.toString(id)
+import hoo.uuid;
+
+-- Object-oriented style
+let id = new Uuid("")
+let str = id.toString()
 println(str)  // e.g. "550e8400-e29b-41d4-a716-446655440000"
 
-let nil = Uuid.nil()
-let isNil = Uuid.isNil(nil)  // 1
+let nil = new Uuid("nil")
+let isNil = nil.isNil()  // 1
 
-Uuid.release(id)
-Uuid.release(nil)
+id.release()
+nil.release()
+
+-- Free functions style
+let simpleV4 = uuid_v4()
+println("V4 String: " + simpleV4)
 ```

@@ -177,9 +177,9 @@ if (funcCall->getArguments()) {
 
 | Arity | Pattern | Example |
 |-------|---------|---------|
-| 0 params | `_F_M_hoo_E_<name>_v` | `Thread.self()` → `_F_M_hoo_E_thread_self_v` |
-| 1 param | `_F_M_hoo_E_<name>_v_p` | `Thread.join(t)` → `_F_M_hoo_E_thread_join_v_p` |
-| 2 params | `_F_M_hoo_E_<name>_v_p_p` | `Thread.spawn(f,a)` → `_F_M_hoo_E_thread_spawn_v_p_p` |
+| 0 params | `_F_M_hoo_E_<name>_p` | `thread_self()` → `_F_M_hoo_E_thread_self_p` |
+| 1 param | `_F_M_hoo_E_<name>_p_p` | `thread_join(t)` → `_F_M_hoo_E_thread_join_p_p` |
+| 2 params | `_F_M_hoo_E_<name>_p_p_p` | `thread_spawn(f,a)` → `_F_M_hoo_E_thread_spawn_p_p_p` |
 | 3 params | `_F_M_hoo_E_<name>_v_p_p_p` | `m.set(key,val)` → `_F_M_hoo_E_map_set_string_int64_v_p_p_p` |
 
 The `v` (void return) and `p` (ptr parameters) are **hardcoded irrespective of the
@@ -210,9 +210,9 @@ if (functionName == "print" || functionName == "println" ||
 | User function, no module | `func test() int64 {}` | `_F_test_i8` |
 | User function, module `test` | `func test() int64 {}` in module `test` | `_F_M_test_E_test_i8` |
 | User function, module `test`, two int64 params | `func test(a: int64, b: int64) int64 {}` | `_F_M_test_E_test_i8_i8_i8` |
-| Runtime, hoo module, 0 params | `Thread.self()` | `_F_M_hoo_E_thread_self_v` |
-| Runtime, hoo module, 1 param | `Thread.join(tid)` | `_F_M_hoo_E_thread_join_v_p` |
-| Runtime, hoo module, 2 params | `Thread.spawn(f, a)` | `_F_M_hoo_E_thread_spawn_v_p_p` |
+| Runtime, hoo module, 0 params | `thread_self()` | `_F_M_hoo_E_thread_self_p` |
+| Runtime, hoo module, 1 param | `thread_join(tid)` | `_F_M_hoo_E_thread_join_p_p` |
+| Runtime, hoo module, 2 params | `thread_spawn(f, a)` | `_F_M_hoo_E_thread_spawn_p_p_p` |
 | Built-in, hoo module | `print(x)` | `_F_M_hoo_E_print_v_p` |
 | Class method, no module | method `bar` in class `Foo` | `_F_Foo_bar_v` |
 | Class constructor, module `app` | constructor of class `Foo` | `_F_M_app_E_Foo_CT_v` |

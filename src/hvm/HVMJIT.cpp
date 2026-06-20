@@ -1923,7 +1923,7 @@ extern "C" {
         hoo_retain(fallback);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(fallback));
     }
-    uint64_t jit_regex_compile(void* state_ptr) {
+    uint64_t jit_regex_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* pattern = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_regex_compile(pattern)));
@@ -1934,8 +1934,127 @@ extern "C" {
         const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         return static_cast<uint64_t>(hoo_regex_match(re, text));
     }
+    uint64_t jit_regex_search(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_regex_search(re, text));
+    }
+    uint64_t jit_regex_replace(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* repl = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        char* result = hoo_regex_replace(re, text, repl);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_regex_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_regex_split(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        int64_t count = 0;
+        char** parts = hoo_regex_split(re, text, &count);
+        void* arr = hoo_array_new();
+        if (parts) {
+            for (int64_t i = 0; i < count; ++i) {
+                void* s = hoo_string_from_cstr(parts[i]);
+                arr = hoo_array_push_object(arr, s);
+            }
+            hoo_regex_free_matches(parts, count);
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
+    }
+    uint64_t jit_regex_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        hoo_regex_release(re);
+        return 0;
+    }
+    uint64_t jit_regex_match_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* pat = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        HooRegex re = hoo_regex_compile(pat);
+        int64_t res = 0;
+        if (re) {
+            res = hoo_regex_match(re, text);
+            hoo_regex_release(re);
+        }
+        return static_cast<uint64_t>(res);
+    }
+    uint64_t jit_regex_search_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* pat = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        HooRegex re = hoo_regex_compile(pat);
+        int64_t res = 0;
+        if (re) {
+            res = hoo_regex_search(re, text);
+            hoo_regex_release(re);
+        }
+        return static_cast<uint64_t>(res);
+    }
+    uint64_t jit_regex_replace_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* pat = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* repl = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        HooRegex re = hoo_regex_compile(pat);
+        void* str = nullptr;
+        if (re) {
+            char* res = hoo_regex_replace(re, text, repl);
+            if (res) {
+                str = hoo_string_from_cstr(res);
+                hoo_regex_free_string(res);
+            }
+            hoo_regex_release(re);
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_regex_split_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* pat = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        HooRegex re = hoo_regex_compile(pat);
+        void* arr = hoo_array_new();
+        if (re) {
+            int64_t count = 0;
+            char** parts = hoo_regex_split(re, text, &count);
+            if (parts) {
+                for (int64_t i = 0; i < count; ++i) {
+                    void* s = hoo_string_from_cstr(parts[i]);
+                    arr = hoo_array_push_object(arr, s);
+                }
+                hoo_regex_free_matches(parts, count);
+            }
+            hoo_regex_release(re);
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
+    }
+    uint64_t jit_uuid_new_with_string(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* repr = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooUUID id = nullptr;
+        if (std::strcmp(repr, "") == 0) {
+            id = hoo_uuid_v4();
+        } else if (std::strcmp(repr, "nil") == 0) {
+            id = hoo_uuid_nil();
+        } else {
+            id = hoo_uuid_from_string(repr);
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(id));
+    }
     uint64_t jit_uuid_v4(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_uuid_v4()));
+        HooUUID id = hoo_uuid_v4();
+        if (!id) return 0;
+        char* cstr = hoo_uuid_to_string(id);
+        void* str = hoo_string_from_cstr(cstr);
+        hoo_uuid_free_string(cstr);
+        hoo_uuid_release(id);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_uuid_to_string(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -1945,6 +2064,110 @@ extern "C" {
         void* str = hoo_string_from_cstr(cstr);
         hoo_uuid_free_string(cstr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_uuid_is_nil(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooUUID id = reinterpret_cast<HooUUID>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_uuid_is_nil(id));
+    }
+    uint64_t jit_uuid_equals(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooUUID a = reinterpret_cast<HooUUID>(state->regs[1]);
+        HooUUID b = reinterpret_cast<HooUUID>(state->regs[2]);
+        return static_cast<uint64_t>(hoo_uuid_equals(a, b));
+    }
+    uint64_t jit_uuid_compare(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooUUID a = reinterpret_cast<HooUUID>(state->regs[1]);
+        HooUUID b = reinterpret_cast<HooUUID>(state->regs[2]);
+        return static_cast<uint64_t>(hoo_uuid_compare(a, b));
+    }
+    uint64_t jit_uuid_to_bytes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooUUID id = reinterpret_cast<HooUUID>(state->regs[1]);
+        HooBuffer buf = hoo_uuid_to_bytes_buffer(id);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
+    }
+    uint64_t jit_uuid_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooUUID id = reinterpret_cast<HooUUID>(state->regs[1]);
+        hoo_uuid_release(id);
+        return 0;
+    }
+    uint64_t jit_uuid_nil_free(void* /*state_ptr*/) {
+        HooUUID id = hoo_uuid_nil();
+        if (!id) return 0;
+        char* cstr = hoo_uuid_to_string(id);
+        void* str = hoo_string_from_cstr(cstr);
+        hoo_uuid_free_string(cstr);
+        hoo_uuid_release(id);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_uuid_is_nil_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* repr = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooUUID id = hoo_uuid_from_string(repr);
+        int64_t res = 0;
+        if (id) {
+            res = hoo_uuid_is_nil(id);
+            hoo_uuid_release(id);
+        } else {
+            res = 1;
+        }
+        return static_cast<uint64_t>(res);
+    }
+    uint64_t jit_uuid_from_bytes_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[1]);
+        HooUUID id = hoo_uuid_from_bytes_buffer(buf);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(id));
+    }
+    uint64_t jit_uuid_to_bytes_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* repr = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooUUID id = hoo_uuid_from_string(repr);
+        HooBuffer buf = nullptr;
+        if (id) {
+            buf = hoo_uuid_to_bytes_buffer(id);
+            hoo_uuid_release(id);
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
+    }
+    uint64_t jit_uuid_equals_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* s1 = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* s2 = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        HooUUID a = hoo_uuid_from_string(s1);
+        HooUUID b = hoo_uuid_from_string(s2);
+        int64_t res = 0;
+        if (a && b) {
+            res = hoo_uuid_equals(a, b);
+        }
+        if (a) hoo_uuid_release(a);
+        if (b) hoo_uuid_release(b);
+        return static_cast<uint64_t>(res);
+    }
+    uint64_t jit_uuid_compare_free(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* s1 = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* s2 = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        HooUUID a = hoo_uuid_from_string(s1);
+        HooUUID b = hoo_uuid_from_string(s2);
+        int64_t res = 0;
+        if (a && b) {
+            res = hoo_uuid_compare(a, b);
+        }
+        if (a) hoo_uuid_release(a);
+        if (b) hoo_uuid_release(b);
+        return static_cast<uint64_t>(res);
+    }
+    uint64_t jit_thread_mutex_new(void* /*state_ptr*/) {
+        return reinterpret_cast<uint64_t>(hoo_thread_mutex_create());
+    }
+    uint64_t jit_thread_mutex_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooMutex m = reinterpret_cast<HooMutex>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_thread_mutex_destroy(m));
     }
     // ── Thread module ──────────────────────────────────────────────────
     uint64_t jit_thread_spawn(void* state_ptr) {
@@ -2565,6 +2788,37 @@ extern "C" {
         void* str = hoo_string_from_cstr(result);
         hoo_process_free_string(result);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_process_spawn(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* cmd = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooArray args = reinterpret_cast<HooArray>(state->regs[2]);
+        
+        int64_t len = hoo_array_length(args);
+        std::vector<const char*> argv_vec;
+        argv_vec.push_back(cmd);
+        for (int64_t i = 0; i < len; ++i) {
+            void* obj = nullptr;
+            if (hoo_array_get_object(args, i, &obj) && obj) {
+                argv_vec.push_back(hoo_string_data(obj));
+            } else {
+                argv_vec.push_back("");
+            }
+        }
+        argv_vec.push_back(nullptr);
+        
+        int64_t pid = 0;
+        int64_t ret = hoo_process_spawn(cmd, argv_vec.data(), &pid);
+        if (ret != 0) return static_cast<uint64_t>(-1);
+        return static_cast<uint64_t>(pid);
+    }
+    uint64_t jit_process_wait(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        int64_t pid = state->regs[1];
+        int64_t exit_code = -1;
+        int64_t ret = hoo_process_wait(pid, &exit_code);
+        if (ret != 0) return static_cast<uint64_t>(-1);
+        return static_cast<uint64_t>(exit_code);
     }
 
     // ── Compression module (instance-based, self in regs[1]) ────────────────
@@ -3425,7 +3679,6 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_anyarray_pop_data_i8_p", reinterpret_cast<void*>(&jit_anyarray_pop_data)},
         {"_F_hoo_anyarray_clear_v_p", reinterpret_cast<void*>(&jit_anyarray_clear)},
         {"_F_M_hoo_E_anyarray_new_v", reinterpret_cast<void*>(&jit_anyarray_new)},
-        {"_F_M_hoo_E_anyarray_new_v_p", reinterpret_cast<void*>(&jit_anyarray_new_capacity)},
         {"_F_M_hoo_E_anyarray_release_v", reinterpret_cast<void*>(&jit_anyarray_release)},
         {"_F_hoo_hashmap_new_p_i8_i8", reinterpret_cast<void*>(&jit_hashmap_new)},
         {"_F_hoo_hashmap_count_i8_p", reinterpret_cast<void*>(&jit_hashmap_count)},
@@ -3485,7 +3738,6 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_buffer_slice_v_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_slice)},
         {"_F_M_hoo_E_buffer_data_v", reinterpret_cast<void*>(&jit_hoo_buffer_data)},
         // Map hoo-module-qualified symbols (codegen redirects map_* to hoo module)
-        {"_F_M_hoo_E_map_new_v_p", reinterpret_cast<void*>(&jit_map_new_plain)},
         {"_F_M_hoo_E_map_new_v_p_p", reinterpret_cast<void*>(&jit_map_new_types)},
         {"_F_M_hoo_E_map_set_int64_int64_v_p_p", reinterpret_cast<void*>(&jit_map_set_int64_int64)},
         {"_F_M_hoo_E_map_get_int64_int64_v_p", reinterpret_cast<void*>(&jit_map_get_int64_int64)},
@@ -3660,29 +3912,49 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_fs_create_temp_file_v_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
         {"_F_M_hoo_E_fs_create_temp_file_p_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
 
-        {"_F_M_hoo_E_regex_compile_v_p", reinterpret_cast<void*>(&jit_regex_compile)},
-        {"_F_M_hoo_E_regex_match_v_p_p", reinterpret_cast<void*>(&jit_regex_match)},
-        {"_F_M_hoo_E_uuid_v4_v", reinterpret_cast<void*>(&jit_uuid_v4)},
-        {"_F_M_hoo_E_uuid_to_string_v_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
-        {"_F_M_hoo_E_Uuid_N_v4_p", reinterpret_cast<void*>(&jit_uuid_v4)},
-        {"_F_M_hoo_E_Uuid_N_to_string_p_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
-        {"_F_M_hoo_E_encoding_base64_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
-        {"_F_M_hoo_E_encoding_base64_decode_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode)},
-        {"_F_M_hoo_E_encoding_hex_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode)},
-        {"_F_M_hoo_E_encoding_hex_decode_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode)},
-        {"_F_M_hoo_E_encoding_url_encode_p_p", reinterpret_cast<void*>(&jit_encoding_url_encode)},
-        {"_F_M_hoo_E_encoding_url_decode_p_p", reinterpret_cast<void*>(&jit_encoding_url_decode)},
-        {"_F_M_hoo_E_encoding_base64_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode_buffer)},
-        {"_F_M_hoo_E_encoding_base64_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode_buffer)},
-        {"_F_M_hoo_E_encoding_hex_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode_buffer)},
-        {"_F_M_hoo_E_encoding_hex_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode_buffer)},
-        {"_F_M_hoo_E_thread_spawn_v_p_p", reinterpret_cast<void*>(&jit_thread_spawn)},
-        {"_F_M_hoo_E_thread_join_v_p", reinterpret_cast<void*>(&jit_thread_join)},
-        {"_F_M_hoo_E_thread_self_v", reinterpret_cast<void*>(&jit_thread_self)},
-        {"_F_M_hoo_E_thread_mutex_create_v", reinterpret_cast<void*>(&jit_thread_mutex_create)},
-        {"_F_M_hoo_E_thread_mutex_lock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
-        {"_F_M_hoo_E_thread_mutex_unlock_v_p", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
-        {"_F_M_hoo_E_thread_mutex_destroy_v_p", reinterpret_cast<void*>(&jit_thread_mutex_destroy)},
+        // Regex class/instance methods
+        {"_F_M_hoo_E_regex_new_v_p", reinterpret_cast<void*>(&jit_regex_new)},
+        {"_F_M_hoo_E_regex_match_v_p", reinterpret_cast<void*>(&jit_regex_match)},
+        {"_F_M_hoo_E_regex_search_v_p", reinterpret_cast<void*>(&jit_regex_search)},
+        {"_F_M_hoo_E_regex_replace_v_p_p", reinterpret_cast<void*>(&jit_regex_replace)},
+        {"_F_M_hoo_E_regex_split_v_p", reinterpret_cast<void*>(&jit_regex_split)},
+        {"_F_M_hoo_E_regex_release_v", reinterpret_cast<void*>(&jit_regex_release)},
+
+        // Regex free functions
+        {"_F_M_hoo_E_regex_match_p_p_p", reinterpret_cast<void*>(&jit_regex_match_free)},
+        {"_F_M_hoo_E_regex_search_p_p_p", reinterpret_cast<void*>(&jit_regex_search_free)},
+        {"_F_M_hoo_E_regex_replace_p_p_p_p", reinterpret_cast<void*>(&jit_regex_replace_free)},
+        {"_F_M_hoo_E_regex_split_p_p_p", reinterpret_cast<void*>(&jit_regex_split_free)},
+
+        // Uuid class/instance methods
+        {"_F_M_hoo_E_uuid_new_v_p", reinterpret_cast<void*>(&jit_uuid_new_with_string)},
+        {"_F_M_hoo_E_uuid_toString_v", reinterpret_cast<void*>(&jit_uuid_to_string)},
+        {"_F_M_hoo_E_uuid_isNil_v", reinterpret_cast<void*>(&jit_uuid_is_nil)},
+        {"_F_M_hoo_E_uuid_equals_v_p", reinterpret_cast<void*>(&jit_uuid_equals)},
+        {"_F_M_hoo_E_uuid_compare_v_p", reinterpret_cast<void*>(&jit_uuid_compare)},
+        {"_F_M_hoo_E_uuid_toBytes_v", reinterpret_cast<void*>(&jit_uuid_to_bytes)},
+        {"_F_M_hoo_E_uuid_release_v", reinterpret_cast<void*>(&jit_uuid_release)},
+
+        // Uuid free functions
+        {"_F_M_hoo_E_uuid_v4_p", reinterpret_cast<void*>(&jit_uuid_v4)},
+        {"_F_M_hoo_E_uuid_nil_p", reinterpret_cast<void*>(&jit_uuid_nil_free)},
+        {"_F_M_hoo_E_uuid_is_nil_p_p", reinterpret_cast<void*>(&jit_uuid_is_nil_free)},
+        {"_F_M_hoo_E_uuid_from_bytes_p_p", reinterpret_cast<void*>(&jit_uuid_from_bytes_free)},
+        {"_F_M_hoo_E_uuid_to_bytes_p_p", reinterpret_cast<void*>(&jit_uuid_to_bytes_free)},
+        {"_F_M_hoo_E_uuid_equals_p_p_p", reinterpret_cast<void*>(&jit_uuid_equals_free)},
+        {"_F_M_hoo_E_uuid_compare_p_p_p", reinterpret_cast<void*>(&jit_uuid_compare_free)},
+        {"_F_M_hoo_E_uuid_to_string_p_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
+
+        // Thread free functions
+        {"_F_M_hoo_E_thread_spawn_p_p_p", reinterpret_cast<void*>(&jit_thread_spawn)},
+        {"_F_M_hoo_E_thread_join_p_p", reinterpret_cast<void*>(&jit_thread_join)},
+        {"_F_M_hoo_E_thread_self_p", reinterpret_cast<void*>(&jit_thread_self)},
+
+        // Mutex class/instance methods
+        {"_F_M_hoo_E_thread_mutex_new_v", reinterpret_cast<void*>(&jit_thread_mutex_new)},
+        {"_F_M_hoo_E_thread_mutex_lock_v", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
+        {"_F_M_hoo_E_thread_mutex_unlock_v", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
+        {"_F_M_hoo_E_thread_mutex_release_v", reinterpret_cast<void*>(&jit_thread_mutex_release)},
 
         // CSV module (instance-based, prefix-style)
         {"_F_M_hoo_E_csv_new_v", reinterpret_cast<void*>(&jit_csv_new)},
@@ -3764,10 +4036,24 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_hashing_crc32_buffer_p_p", reinterpret_cast<void*>(&jit_hashing_crc32_buffer)},
         {"_F_M_hoo_E_hashing_hmac_sha256_buffer_p_p_p", reinterpret_cast<void*>(&jit_hashing_hmac_sha256_buffer)},
 
+        // Encoding module
+        {"_F_M_hoo_E_encoding_base64_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode)},
+        {"_F_M_hoo_E_encoding_base64_decode_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode)},
+        {"_F_M_hoo_E_encoding_hex_encode_p_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode)},
+        {"_F_M_hoo_E_encoding_hex_decode_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode)},
+        {"_F_M_hoo_E_encoding_url_encode_p_p", reinterpret_cast<void*>(&jit_encoding_url_encode)},
+        {"_F_M_hoo_E_encoding_url_decode_p_p", reinterpret_cast<void*>(&jit_encoding_url_decode)},
+        {"_F_M_hoo_E_encoding_base64_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode_buffer)},
+        {"_F_M_hoo_E_encoding_base64_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode_buffer)},
+        {"_F_M_hoo_E_encoding_hex_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode_buffer)},
+        {"_F_M_hoo_E_encoding_hex_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode_buffer)},
+
         // Process module
-        {"_F_M_hoo_E_process_kill_v_p_p", reinterpret_cast<void*>(&jit_process_kill)},
-        {"_F_M_hoo_E_process_self_pid_v", reinterpret_cast<void*>(&jit_process_self_pid)},
-        {"_F_M_hoo_E_process_capture_v_p", reinterpret_cast<void*>(&jit_process_capture)},
+        {"_F_M_hoo_E_process_kill_p_p_p", reinterpret_cast<void*>(&jit_process_kill)},
+        {"_F_M_hoo_E_process_self_pid_p", reinterpret_cast<void*>(&jit_process_self_pid)},
+        {"_F_M_hoo_E_process_capture_p_p", reinterpret_cast<void*>(&jit_process_capture)},
+        {"_F_M_hoo_E_process_spawn_p_p_p", reinterpret_cast<void*>(&jit_process_spawn)},
+        {"_F_M_hoo_E_process_wait_p_p", reinterpret_cast<void*>(&jit_process_wait)},
 
         // Compression module (instance-based, prefix-style)
         {"_F_M_hoo_E_compression_new_v", reinterpret_cast<void*>(&jit_compression_new)},
@@ -3880,12 +4166,6 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_HttpClient_put_p_p_p", reinterpret_cast<void*>(&jit_net_http_client_put)},
         {"_F_M_hoo_E_HttpClient_delete_p_p", reinterpret_cast<void*>(&jit_net_http_client_delete)},
         {"_F_M_hoo_E_HttpClient_release_v", reinterpret_cast<void*>(&jit_net_http_client_release)},
-        // Process class methods
-        {"_F_M_hoo_E_Process_self_pid_static_i8", reinterpret_cast<void*>(&jit_process_self_pid)},
-        // CamelCase aliases
-        {"_F_M_hoo_E_Process_selfPid_static_i8", reinterpret_cast<void*>(&jit_process_self_pid)},
-        {"_F_M_hoo_E_Process_capture_static_p_p", reinterpret_cast<void*>(&jit_process_capture)},
-        {"_F_M_hoo_E_Process_kill_static_i8_p_p", reinterpret_cast<void*>(&jit_process_kill)},
         // Console class methods
         {"_F_M_hoo_E_Console_print_static_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
         {"_F_M_hoo_E_Console_println_static_v_p", reinterpret_cast<void*>(&jit_hoo_println)},

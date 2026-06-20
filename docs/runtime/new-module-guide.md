@@ -206,8 +206,9 @@ protected:
 
 TEST_F(HooThreadJitTest, SelfId) {
     const std::string source = R"(
+        import hoo.thread;
         func:int64 test() {
-            return Thread.self();
+            return thread_self();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

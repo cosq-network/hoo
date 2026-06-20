@@ -42,7 +42,6 @@ static bool isClassMethodJitClass(const std::string& className) {
 // Built-in classes that behave as singletons (no instances, all static methods).
 static bool isSingletonBuiltinClass(const std::string& className) {
     static const std::unordered_set<std::string> singletons = {
-        "Uuid"
     };
     return singletons.count(className) > 0;
 }
@@ -90,7 +89,6 @@ static std::string classToPrefix(const std::string& className) {
         {"Uuid", "uuid"},
         {"Compression", "compression"},
         {"Character", "character"},
-        {"Process", "process"},
         {"Args", "args"},
         {"Csv", "csv"},
         {"Console", "console"},
@@ -98,6 +96,7 @@ static std::string classToPrefix(const std::string& className) {
         {"HttpClient", "net_http_client"},
         {"HttpResponse", "net_http_response"},
         {"Thread", "thread"},
+        {"Mutex", "thread_mutex"},
         {"Array", "array"},
         {"Map", "map"},
         {"Buffer", "buffer"},
@@ -126,6 +125,9 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"HashMap", 117},
         {"AnyArray", 118},
         {"DateTime", 119},
+        {"Regex", 120},
+        {"Mutex", 121},
+        {"Uuid", 122},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -259,12 +261,64 @@ static bool isSystemFreeFunction(const std::string& functionName) {
     return names.count(functionName) > 0;
 }
 
+static bool isProcessFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "process_self_pid", "process_capture", "process_kill", "process_spawn", "process_wait"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t processFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "process_capture") return 101; // string (type ID 101)
+    return 1; // int64 (type ID 1)
+}
+
+static bool isRegexFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "regex_match", "regex_search", "regex_replace", "regex_split"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t regexFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "regex_replace") return 101; // string
+    if (functionName == "regex_split") return 102; // array
+    return 1; // int64 (match, search)
+}
+
+static bool isThreadFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "thread_self", "thread_spawn", "thread_join"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t threadFreeFunctionReturnTypeId(const std::string& functionName) {
+    return 1; // int64
+}
+
+static bool isUuidFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "uuid_v4", "uuid_nil", "uuid_is_nil", "uuid_from_bytes", "uuid_to_bytes", "uuid_equals", "uuid_compare", "uuid_to_string"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t uuidFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "uuid_from_bytes") return 122; // Uuid
+    if (functionName == "uuid_to_bytes") return 113; // Buffer
+    if (functionName == "uuid_v4" || functionName == "uuid_nil" || functionName == "uuid_to_string") return 101; // string
+    return 1; // int64
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
     return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
            isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) ||
            isDatetimeFreeFunction(functionName) || isEncodingFreeFunction(functionName) ||
            isMathFreeFunction(functionName) || isHashingFreeFunction(functionName) ||
-           isSystemFreeFunction(functionName);
+           isSystemFreeFunction(functionName) || isProcessFreeFunction(functionName) ||
+           isRegexFreeFunction(functionName) || isThreadFreeFunction(functionName) ||
+           isUuidFreeFunction(functionName);
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -348,6 +402,10 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isMathFreeFunction(functionName)) return mathFreeFunctionReturnTypeId(functionName, argTypeIds);
     if (isHashingFreeFunction(functionName)) return hashingFreeFunctionReturnTypeId(functionName);
     if (isSystemFreeFunction(functionName)) return systemFreeFunctionReturnTypeId(functionName);
+    if (isProcessFreeFunction(functionName)) return processFreeFunctionReturnTypeId(functionName);
+    if (isRegexFreeFunction(functionName)) return regexFreeFunctionReturnTypeId(functionName);
+    if (isThreadFreeFunction(functionName)) return threadFreeFunctionReturnTypeId(functionName);
+    if (isUuidFreeFunction(functionName)) return uuidFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 
@@ -437,11 +495,11 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name == "System") return "hoo.system";
     if (name == "Regex") return "hoo.regex";
     if (name == "Net" || name == "URL" || name == "HttpClient" || name == "HttpResponse") return "hoo.net";
+    if (name == "Mutex") return "hoo.thread";
     if (name == "Path") return "hoo.path";
     if (name == "Hashing") return "hoo.hashing";
     if (name == "Uuid") return "hoo.uuid";
     if (name == "Compression") return "hoo.compression";
-    if (name == "Process") return "hoo.process";
     if (name == "Args") return "hoo.args";
     if (name == "Csv") return "hoo.csv";
     if (name == "Console") return "hoo";
@@ -1857,14 +1915,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
 
             if (className == "AnyArray") {
-                if (argCount == 0) {
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_new_p");
-                } else if (argCount == 1) {
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_new_capacity_p_i8");
-                } else {
-                    addError("AnyArray constructor expects zero or one argument");
+                if (argCount != 0) {
+                    addError("AnyArray constructor expects zero arguments");
                     return 0;
                 }
+                emitCall(Opcode::CALL, "_F_hoo_anyarray_new_p");
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
                 return dest;
@@ -1872,6 +1927,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (className == "Buffer" && argCount != 0) {
                 addError("Buffer constructor expects no arguments");
+                return 0;
+            }
+
+            if (className == "Map" && argCount != 2) {
+                addError("Map constructor expects exactly two arguments");
+                return 0;
+            }
+
+            if (className == "Uuid" && argCount != 1) {
+                addError("Uuid constructor expects exactly one argument");
                 return 0;
             }
 
@@ -2093,6 +2158,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 117: resolvedClass = "HashMap"; break;
                     case 118: resolvedClass = "AnyArray"; break;
                     case 119: resolvedClass = "DateTime"; break;
+                    case 120: resolvedClass = "Regex"; break;
+                    case 121: resolvedClass = "Mutex"; break;
+                    case 122: resolvedClass = "Uuid"; break;
                     default: break;
                 }
             }
@@ -2950,8 +3018,9 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "DateTime", "Fs", "Thread", "Regex",
         "Net", "URL", "HttpClient", "HttpResponse",
         "Path", "Uuid", "Compression",
-        "Process", "Args", "Csv", "Console", "StringBuilder",
-        "Buffer", "Random", "HashMap", "AnyArray"
+        "Args", "Csv", "Console", "StringBuilder",
+        "Buffer", "Random", "HashMap", "AnyArray",
+        "Mutex"
     };
     return builtinClasses.count(name) > 0;
 }
@@ -3124,11 +3193,10 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
         } else {
             std::string name = bt->getIdentifier();
             if (outClassName) *outClassName = name;
-            if (name == "String") return 101;
-            if (name == "Character") return 109;
-            if (name == "Buffer" || name == "buffer") return 113;
-            if (name == "AnyArray") return 118;
-            if (name == "HashMap") return 117;
+            uint32_t tid = builtinConstructedTypeId(name);
+            if (tid != 100) return tid;
+            // Case-insensitive fallback for buffer
+            if (name == "buffer") return 113;
             return 100;
         }
     }
@@ -3594,6 +3662,24 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             if (member == "getBody" || member == "body" ||
                                 member == "statusText" || member == "getStatusText")
                                 return 101;
+                            return 100;
+                        }
+                        if (objTypeId == 120) { // Regex
+                            if (member == "match" || member == "search") return 1; // int64 (type ID 1)
+                            if (member == "replace" || member == "find" || member == "group") return 101; // string (type ID 101)
+                            if (member == "split") return 102; // array (type ID 102)
+                            if (member == "release") return 4; // void (type ID 4)
+                            return 100;
+                        }
+                        if (objTypeId == 121) { // Mutex
+                            if (member == "lock" || member == "unlock" || member == "release") return 1; // int64 (type ID 1)
+                            return 100;
+                        }
+                        if (objTypeId == 122) { // Uuid
+                            if (member == "toString") return 101; // string (type ID 101)
+                            if (member == "isNil" || member == "equals" || member == "compare") return 1; // int64 (type ID 1)
+                            if (member == "release") return 4; // void (type ID 4)
+                            if (member == "toBytes") return 113; // Buffer (type ID 113)
                             return 100;
                         }
                         if (objTypeId == 103) {

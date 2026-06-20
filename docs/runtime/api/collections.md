@@ -48,9 +48,6 @@ Removes all elements from the array.
 ### `new AnyArray() :AnyArray`
 Creates an empty heterogeneous array.
 
-### `new AnyArray(capacity: int64) :AnyArray`
-Creates an empty heterogeneous array with reserved capacity.
-
 ### `[expr, ...]any :AnyArray`
 Creates an `AnyArray` literal and packs each element as `(type_id, data)`.
 
@@ -90,10 +87,6 @@ Creates a new map bound to a specific key type and value type.
   - `3`: `bool`
   - `4`: `string`
   - `5`: `object`
-
-### `new Map(keyType: int64) :map`
-Creates a new map with the given key type and value type set to `any`. Provided for backward compatibility.
-
 ### `m.length() :int64`
 Returns the number of entries in the map.
 

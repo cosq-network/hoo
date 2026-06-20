@@ -304,7 +304,7 @@ TEST_F(HooMapJitTest, ValueTypeDefault) {
     const std::string source = R"(
         import hoo;
         func :int64 test() {
-            var m = new Map(2);
+            var m = new Map(2, 0);
             return m.valueType();
         }
     )";

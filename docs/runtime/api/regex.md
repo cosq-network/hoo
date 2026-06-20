@@ -1,55 +1,68 @@
 # Regex — Regular Expressions
 
-The `Regex` class provides static methods for compiling and matching regular expressions.
+The `regex` module provides a `Regex` class and free functions for matching and manipulating regular expressions.
 
-## Methods
+## Regex Class
 
-`Regex.compile(pattern: string) :ptr`
-Compiles a regular expression pattern and returns a compiled regex handle.
+### Constructor
 
-`Regex.match(re: ptr, subject: string) :int64`
+`new Regex(pattern: string) :Regex`
+Compiles a regular expression pattern and returns a Regex instance.
+
+### Methods
+
+`re.match(subject: string) :int64`
 Returns 1 if `subject` fully matches the compiled pattern, 0 otherwise.
 
-`Regex.search(re: ptr, subject: string) :int64`
+`re.search(subject: string) :int64`
 Returns 1 if any part of `subject` matches the compiled pattern, 0 otherwise.
 
-`Regex.replace(re: ptr, subject: string, replacement: string) :string`
+`re.find(subject: string) :string`
+Returns the first substring match of the pattern in `subject`, or null if no match is found.
+
+`re.group(subject: string, group_index: int64) :string`
+Returns the captured group at `group_index` from the first search match in `subject`, or null if no match is found.
+
+`re.replace(subject: string, replacement: string) :string`
 Replaces all matches in `subject` with `replacement`.
 
-`Regex.split(re: ptr, subject: string) :array`
+`re.split(subject: string) :array`
 Splits `subject` around matches. Returns an array of strings.
 
-`Regex.release(re: ptr)`
-Releases the compiled regex handle.
+`re.release()`
+Releases the compiled regex resources.
 
-## Convenience Static Methods
+## Free Functions
 
-`Regex.match(pattern: string, subject: string) :int64`
-Compiles `pattern` and checks if `subject` fully matches it. Returns 1 on match, 0 otherwise.
+`regex_match(pattern: string, subject: string) :int64`
+Compiles `pattern` and returns 1 if `subject` fully matches it, 0 otherwise.
 
-`Regex.find(pattern: string, subject: string) :int64`
-Compiles `pattern` and checks if any part of `subject` matches. Returns 1 if a match is found, 0 otherwise.
+`regex_search(pattern: string, subject: string) :int64`
+Compiles `pattern` and returns 1 if any part of `subject` matches it, 0 otherwise.
 
-`Regex.replace(pattern: string, subject: string, replacement: string) :string`
+`regex_replace(pattern: string, subject: string, replacement: string) :string`
 Compiles `pattern` and replaces all matches in `subject` with `replacement`.
 
-`Regex.split(pattern: string, subject: string) :array`
+`regex_split(pattern: string, subject: string) :array`
 Compiles `pattern` and splits `subject` around matches. Returns an array of strings.
 
 ## Example
 
 ```hoo
-let re = Regex.compile("[a-z]+")
+import hoo.regex;
 
-let matchResult = Regex.match(re, "hello")   // 1
-let searchResult = Regex.search(re, "foo123")  // 1
+-- Object-oriented style
+let re = new Regex("[a-z]+")
 
-let replaced = Regex.replace(re, "hello 123", "X")  // "X 123"
-let parts = Regex.split(re, "a1b2c3")           // ["a", "b", "c"]
+let matchResult = re.match("hello")   // 1
+let searchResult = re.search("foo123")  // 1
 
-Regex.release(re)
+let replaced = re.replace("hello 123", "X")  // "X 123"
+let parts = re.split("a1b2c3")           // ["a", "b", "c"]
 
--- Convenience one-liner
-let found = Regex.find("\\d+", "order 42")  // 1
+re.release()
+
+-- Free functions style
+let found = regex_search("\\d+", "order 42")  // 1
 println(found)
 ```

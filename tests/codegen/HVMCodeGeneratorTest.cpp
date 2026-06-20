@@ -324,7 +324,7 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
         import hoo.io;
         import hoo.uuid;
         func:int64 test() {
-            var x = Uuid.v4();
+            var x = uuid_v4();
             var y = Fs.read_text("test.txt");
             return 0;
         }
@@ -336,11 +336,11 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     bool foundUuid = false;
     bool foundFs = false;
     for (const auto& sym : module->getSymbols()) {
-        if (sym.name.find("_M_hoo_E_Uuid_N_v4") != std::string::npos) foundUuid = true;
+        if (sym.name.find("_M_hoo_E_uuid_v4") != std::string::npos) foundUuid = true;
         if (sym.name.find("_M_hoo_E_fs_read_text") != std::string::npos) foundFs = true;
     }
 
-    EXPECT_TRUE(foundUuid) << "Expected Uuid.v4() to produce _M_hoo_E_Uuid_N_v4 symbol";
+    EXPECT_TRUE(foundUuid) << "Expected uuid_v4() to produce _M_hoo_E_uuid_v4 symbol";
     EXPECT_TRUE(foundFs) << "Expected Fs.read_text() to produce _M_hoo_E_fs_read_text symbol";
 }
 

@@ -127,15 +127,16 @@ TEST_F(HooClassApiTest, StaticFsExists) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooClassApiTest, StaticRegexCompile) {
+TEST_F(HooClassApiTest, RegexConstructor) {
     const std::string source = R"(
         import hoo.regex;
         func :int64 test() {
-            return Regex.compile("[a-z]+");
+            var re = new Regex("[a-z]+");
+            re.release();
+            return 1;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_i8");
-    // compile should return a non-zero pointer value
-    EXPECT_NE(r, 0);
+    EXPECT_EQ(r, 1);
 }

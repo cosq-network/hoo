@@ -42,7 +42,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayCapacityConstructorAndLength) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var values = new AnyArray(8);
+            var values = new AnyArray();
             values.push(31);
             return values.length();
         }

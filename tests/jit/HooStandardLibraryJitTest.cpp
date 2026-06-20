@@ -39,8 +39,9 @@ TEST_F(HooStandardLibraryJitTest, RegexCompile) {
     const std::string source = R"(
         import hoo.regex;
         func:int64 test() {
-            var re = Regex.compile("[a-z]+");
-            var result = Regex.match(re, "hello");
+            var re = new Regex("[a-z]+");
+            var result = re.match("hello");
+            re.release();
             return result;
         }
     )";
@@ -48,17 +49,42 @@ TEST_F(HooStandardLibraryJitTest, RegexCompile) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooStandardLibraryJitTest, UuidV4) {
+TEST_F(HooStandardLibraryJitTest, RegexFree) {
+    const std::string source = R"(
+        import hoo.regex;
+        func:int64 test() {
+            var result = regex_match("[a-z]+", "hello");
+            return result;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooStandardLibraryJitTest, UuidClass) {
     const std::string source = R"(
         import hoo.uuid;
         func:int64 test() {
-            var id = Uuid.v4();
-            var str = Uuid.to_string(id);
+            var id = new Uuid("");
+            var str = id.toString();
+            id.release();
             return str.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 36); // UUID is 36 chars long
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 36);
+}
+
+TEST_F(HooStandardLibraryJitTest, UuidFree) {
+    const std::string source = R"(
+        import hoo.uuid;
+        func:int64 test() {
+            var str = uuid_v4();
+            return str.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 36);
 }
 
 TEST_F(HooStandardLibraryJitTest, EncodingBase64) {
@@ -139,8 +165,8 @@ TEST_F(HooStandardLibraryJitTest, MissingImportSystem) {
 
 TEST_F(HooStandardLibraryJitTest, MissingImportRegex) {
     const std::string source = R"(
-        func:ptr test() {
-            return Regex.compile("[a-z]+");
+        func :int64 test() {
+            return regex_match("[a-z]+", "hello");
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -192,7 +218,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportEncoding) {
 TEST_F(HooStandardLibraryJitTest, MissingImportUuid) {
     const std::string source = R"(
         func:ptr test() {
-            return Uuid.v4();
+            return new Uuid();
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -211,13 +237,14 @@ TEST_F(HooStandardLibraryJitTest, MissingImportCompression) {
 
 TEST_F(HooStandardLibraryJitTest, MissingImportProcess) {
     const std::string source = R"(
-        func:ptr test() {
-            return new Process();
+        func :int64 test() {
+            return process_self_pid();
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
     EXPECT_NE(jit.getLastError().find("requires 'import hoo.process;'"), std::string::npos);
 }
+
 
 TEST_F(HooStandardLibraryJitTest, MissingImportArgs) {
     const std::string source = R"(

@@ -218,22 +218,24 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [Regex](regex.md) — Singleton `Regex`
+## [Regex](regex.md) — regular expressions
 
-**Pattern:** Singleton class
+**Pattern:** Instance class & free functions
 
 | API | Signature |
 |-----|-----------|
-| `Regex.compile` | `Regex.compile(pattern: string) :ptr` |
-| `Regex.match` | `Regex.match(re: ptr, subject: string) :int64` |
-| `Regex.search` | `Regex.search(re: ptr, subject: string) :int64` |
-| `Regex.replace` | `Regex.replace(re: ptr, subject: string, replacement: string) :string` |
-| `Regex.split` | `Regex.split(re: ptr, subject: string) :array` |
-| `Regex.release` | `Regex.release(re: ptr)` |
-| `Regex.match` (convenience) | `Regex.match(pattern: string, subject: string) :int64` |
-| `Regex.find` (convenience) | `Regex.find(pattern: string, subject: string) :int64` |
-| `Regex.replace` (convenience) | `Regex.replace(pattern: string, subject: string, replacement: string) :string` |
-| `Regex.split` (convenience) | `Regex.split(pattern: string, subject: string) :array` |
+| `new Regex` | `new Regex(pattern: string) :Regex` |
+| `re.match` | `re.match(subject: string) :int64` |
+| `re.search` | `re.search(subject: string) :int64` |
+| `re.find` | `re.find(subject: string) :string` |
+| `re.group` | `re.group(subject: string, group_index: int64) :string` |
+| `re.replace` | `re.replace(subject: string, replacement: string) :string` |
+| `re.split` | `re.split(subject: string) :array` |
+| `re.release` | `re.release()` |
+| `regex_match` | `regex_match(pattern: string, subject: string) :int64` |
+| `regex_search` | `regex_search(pattern: string, subject: string) :int64` |
+| `regex_replace` | `regex_replace(pattern: string, subject: string, replacement: string) :string` |
+| `regex_split` | `regex_split(pattern: string, subject: string) :array` |
 
 ---
 
@@ -264,22 +266,27 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [Uuid](uuid.md) — Singleton `Uuid`
+## [Uuid](uuid.md) — universally unique identifiers
 
-**Pattern:** Singleton class
+**Pattern:** Instance class & free functions
 
 | API | Signature |
 |-----|-----------|
-| `Uuid.v4` | `Uuid.v4() :ptr` |
-| `Uuid.nil` | `Uuid.nil() :ptr` |
-| `Uuid.fromString` | `Uuid.fromString(str: string) :ptr` |
-| `Uuid.toString` | `Uuid.toString(uuid: ptr) :string` |
-| `Uuid.isNil` | `Uuid.isNil(uuid: ptr) :int64` |
-| `Uuid.equals` | `Uuid.equals(a: ptr, b: ptr) :int64` |
-| `Uuid.compare` | `Uuid.compare(a: ptr, b: ptr) :int64` |
-| `Uuid.release` | `Uuid.release(uuid: ptr)` |
-| `Uuid.fromBytes` | `Uuid.fromBytes(buf: buffer) :ptr` |
-| `Uuid.toBytes` | `Uuid.toBytes(uuid: ptr) :buffer` |
+| `new Uuid` | `new Uuid(source: string) :Uuid` |
+| `uuid.toString` | `uuid.toString() :string` |
+| `uuid.isNil` | `uuid.isNil() :int64` |
+| `uuid.equals` | `uuid.equals(other: Uuid) :int64` |
+| `uuid.compare` | `uuid.compare(other: Uuid) :int64` |
+| `uuid.toBytes` | `uuid.toBytes() :buffer` |
+| `uuid.release` | `uuid.release()` |
+| `uuid_v4` | `uuid_v4() :string` |
+| `uuid_nil` | `uuid_nil() :string` |
+| `uuid_is_nil` | `uuid_is_nil(str: string) :int64` |
+| `uuid_from_bytes` | `uuid_from_bytes(buf: buffer) :Uuid` |
+| `uuid_to_bytes` | `uuid_to_bytes(str: string) :buffer` |
+| `uuid_equals` | `uuid_equals(a: string, b: string) :int64` |
+| `uuid_compare` | `uuid_compare(a: string, b: string) :int64` |
+| `uuid_to_string` | `uuid_to_string(id: Uuid) :string` |
 
 ---
 
@@ -329,17 +336,17 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ---
 
-## [Process](process.md) — Singleton `Process`
+## [Process](process.md) — `process` free functions
 
-**Pattern:** Singleton class
+**Pattern:** Module free functions
 
 | API | Signature |
 |-----|-----------|
-| `Process.self_pid` | `Process.self_pid() :int64` |
-| `Process.capture` | `Process.capture(command: string) :string` |
-| `Process.kill` | `Process.kill(pid: int64, signal: int64) :int64` |
-| `Process.spawn` | `Process.spawn(command: string, argv: array) :int64` |
-| `Process.wait` | `Process.wait(pid: int64) :int64` |
+| `process_self_pid` | `process_self_pid() :int64` |
+| `process_capture` | `process_capture(command: string) :string` |
+| `process_kill` | `process_kill(pid: int64, signal: int64) :int64` |
+| `process_spawn` | `process_spawn(command: string, argv: array) :int64` |
+| `process_wait` | `process_wait(pid: int64) :int64` |
 
 ---
 
@@ -543,17 +550,19 @@ Buffer overloads: `c.gzipCompress(buf: Buffer) :Buffer`,
 
 ---
 
-## [Thread](thread.md) — Singleton `Thread`
+## [Thread](thread.md) — concurrency and mutexes
 
-**Pattern:** Singleton class
+**Pattern:** Instance class & free functions
 
 | API | Signature |
 |-----|-----------|
-| `Thread.self` | `Thread.self() :int64` |
-| `Thread.mutex_create` | `Thread.mutex_create() :ptr` |
-| `Thread.mutex_lock` | `Thread.mutex_lock(mutex: ptr) :int64` |
-| `Thread.mutex_unlock` | `Thread.mutex_unlock(mutex: ptr) :int64` |
-| `Thread.mutex_destroy` | `Thread.mutex_destroy(mutex: ptr) :int64` |
+| `new Mutex` | `new Mutex() :Mutex` |
+| `mutex.lock` | `mutex.lock() :int64` |
+| `mutex.unlock` | `mutex.unlock() :int64` |
+| `mutex.release` | `mutex.release() :int64` |
+| `thread_self` | `thread_self() :int64` |
+| `thread_spawn` | `thread_spawn(func: ptr, arg: ptr) :int64` |
+| `thread_join` | `thread_join(thread_id: int64) :int64` |
 
 ---
 

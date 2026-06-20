@@ -13,7 +13,7 @@ protected:
 TEST_F(HooProcessJitTest, SelfPid) {
     const std::string source = R"(
         import hoo.process;
-        func :int64 test() { return Process.self_pid(); }
+        func :int64 test() { return process_self_pid(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 0);
@@ -24,7 +24,7 @@ TEST_F(HooProcessJitTest, Capture) {
     const std::string source = R"(
         import hoo.process;
         func :int64 test() {
-            var out = Process.capture("cmd.exe /c echo hello");
+            var out = process_capture("cmd.exe /c echo hello");
             return out.length();
         }
     )";
@@ -32,7 +32,7 @@ TEST_F(HooProcessJitTest, Capture) {
     const std::string source = R"(
         import hoo.process;
         func :int64 test() {
-            var out = Process.capture("echo hello");
+            var out = process_capture("echo hello");
             return out.length();
         }
     )";
@@ -47,11 +47,46 @@ TEST_F(HooProcessJitTest, KillSignalZero) {
     const std::string source = R"(
         import hoo.process;
         func :int64 test() {
-            var pid = Process.self_pid();
-            return Process.kill(pid, 0);
+            var pid = process_self_pid();
+            return process_kill(pid, 0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     // kill with signal 0 on self should succeed
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooProcessJitTest, SpawnAndWait) {
+#ifdef _WIN32
+    const std::string source = R"(
+        import hoo;
+        import hoo.process;
+        func :int64 test() {
+            var args = new Array();
+            Array.pushString(args, "/c");
+            Array.pushString(args, "echo hi");
+            var pid = process_spawn("cmd.exe", args);
+            if (pid <= 0) {
+                return -1;
+            }
+            return process_wait(pid);
+        }
+    )";
+#else
+    const std::string source = R"(
+        import hoo;
+        import hoo.process;
+        func :int64 test() {
+            var args = new Array();
+            Array.pushString(args, "hi");
+            var pid = process_spawn("echo", args);
+            if (pid <= 0) {
+                return -1;
+            }
+            return process_wait(pid);
+        }
+    )";
+#endif
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
 }
