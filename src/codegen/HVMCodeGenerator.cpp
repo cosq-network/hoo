@@ -1535,37 +1535,103 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         }
     } else if (auto forRange = dynamic_cast<const ast::ForRangeStatement*>(&stmt)) {
         int32_t offset = reserveLocal(forRange->getVariable(), 1);
-        uint8_t startReg = visitExpression(forRange->getStart());
-        emit(Opcode::ST_D, OperandsI{startReg, 30, static_cast<int16_t>(offset)});
-        freeRegister(startReg);
-        Label* startLabel = createLabel();
-        Label* endLabel = createLabel();
-        Label* stepLabel = createLabel();
-        bindLabel(startLabel);
-        uint8_t iReg = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{iReg, 30, static_cast<int16_t>(offset)});
-        uint8_t endReg = visitExpression(forRange->getEnd());
-        uint8_t condReg = allocateRegister();
-        emit(Opcode::CMP, OperandsR{condReg, iReg, endReg, 2});
-        emitBranch(Opcode::BEQ, condReg, 0, endLabel);
-        freeRegister(iReg);
-        freeRegister(endReg);
-        freeRegister(condReg);
-        controlFlowStack_.push({endLabel, stepLabel});
-        visitStatement(forRange->getBody());
-        controlFlowStack_.pop();
-        bindLabel(stepLabel);
-        iReg = allocateRegister();
-        emit(Opcode::LD_D, OperandsI{iReg, 30, static_cast<int16_t>(offset)});
-        uint8_t stepReg = forRange->getStep() ? visitExpression(*forRange->getStep()) : emitConstant(1);
-        uint8_t nextIReg = allocateRegister();
-        emit(Opcode::ARITH, OperandsR{nextIReg, iReg, stepReg, 0});
-        emit(Opcode::ST_D, OperandsI{nextIReg, 30, static_cast<int16_t>(offset)});
-        freeRegister(iReg);
-        freeRegister(stepReg);
-        freeRegister(nextIReg);
-        emitJump(Opcode::JMP, 0, startLabel);
-        bindLabel(endLabel);
+        bool isStepOne = true;
+        if (forRange->getStep()) {
+            isStepOne = false;
+            if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(forRange->getStep())) {
+                if (auto il = dynamic_cast<const ast::IntegerLiteral*>(&pe->getPrimary())) {
+                    if (il->getValue() == 1) {
+                        isStepOne = true;
+                    }
+                }
+            }
+        }
+
+        if (isStepOne) {
+            uint8_t startReg = visitExpression(forRange->getStart());
+            uint8_t endReg = visitExpression(forRange->getEnd());
+            uint8_t countReg = allocateRegister();
+            emit(Opcode::ARITH, OperandsR{countReg, endReg, startReg, 1}); // sub
+            
+            Label* endLabel = createLabel();
+            uint8_t zeroReg = emitConstant(0);
+            uint8_t condReg = allocateRegister();
+            emit(Opcode::CMP, OperandsR{condReg, zeroReg, countReg, 2}); // lt (0 < count)
+            freeRegister(zeroReg);
+            emitBranch(Opcode::BEQ, condReg, 0, endLabel);
+            freeRegister(condReg);
+            
+            emit(Opcode::ST_D, OperandsI{startReg, 30, static_cast<int16_t>(offset)});
+            freeRegister(startReg);
+            freeRegister(endReg);
+            
+            size_t loopSetIdx = instructions_.size();
+            emit(Opcode::LOOP_SET, OperandsI{0, countReg, 0});
+            freeRegister(countReg);
+            
+            Label* startLabel = createLabel();
+            Label* stepLabel = createLabel();
+            bindLabel(startLabel);
+            
+            controlFlowStack_.push({endLabel, stepLabel});
+            visitStatement(forRange->getBody());
+            controlFlowStack_.pop();
+            
+            bindLabel(stepLabel);
+            uint8_t iReg = allocateRegister();
+            emit(Opcode::LD_D, OperandsI{iReg, 30, static_cast<int16_t>(offset)});
+            uint8_t oneReg = emitConstant(1);
+            uint8_t nextIReg = allocateRegister();
+            emit(Opcode::ARITH, OperandsR{nextIReg, iReg, oneReg, 0}); // add
+            emit(Opcode::ST_D, OperandsI{nextIReg, 30, static_cast<int16_t>(offset)});
+            freeRegister(iReg);
+            freeRegister(oneReg);
+            freeRegister(nextIReg);
+            
+            uint32_t loopDecbrOffset = currentByteOffset_;
+            emitBranch(Opcode::LOOP_DECBR, 0, 0, startLabel);
+            
+            auto& loopSetInst = instructions_[loopSetIdx];
+            auto ops = std::get<OperandsI>(loopSetInst.getOperands());
+            int32_t byteOffset = startLabel->targetByteOffset - static_cast<int32_t>(loopDecbrOffset);
+            int32_t wordOffset = byteOffset / 4;
+            ops.imm15 = static_cast<int16_t>(wordOffset);
+            loopSetInst.setOperands(ops);
+            
+            bindLabel(endLabel);
+        } else {
+            uint8_t startReg = visitExpression(forRange->getStart());
+            emit(Opcode::ST_D, OperandsI{startReg, 30, static_cast<int16_t>(offset)});
+            freeRegister(startReg);
+            Label* startLabel = createLabel();
+            Label* endLabel = createLabel();
+            Label* stepLabel = createLabel();
+            bindLabel(startLabel);
+            uint8_t iReg = allocateRegister();
+            emit(Opcode::LD_D, OperandsI{iReg, 30, static_cast<int16_t>(offset)});
+            uint8_t endReg = visitExpression(forRange->getEnd());
+            uint8_t condReg = allocateRegister();
+            emit(Opcode::CMP, OperandsR{condReg, iReg, endReg, 2});
+            emitBranch(Opcode::BEQ, condReg, 0, endLabel);
+            freeRegister(iReg);
+            freeRegister(endReg);
+            freeRegister(condReg);
+            controlFlowStack_.push({endLabel, stepLabel});
+            visitStatement(forRange->getBody());
+            controlFlowStack_.pop();
+            bindLabel(stepLabel);
+            iReg = allocateRegister();
+            emit(Opcode::LD_D, OperandsI{iReg, 30, static_cast<int16_t>(offset)});
+            uint8_t stepReg = visitExpression(*forRange->getStep());
+            uint8_t nextIReg = allocateRegister();
+            emit(Opcode::ARITH, OperandsR{nextIReg, iReg, stepReg, 0});
+            emit(Opcode::ST_D, OperandsI{nextIReg, 30, static_cast<int16_t>(offset)});
+            freeRegister(iReg);
+            freeRegister(stepReg);
+            freeRegister(nextIReg);
+            emitJump(Opcode::JMP, 0, startLabel);
+            bindLabel(endLabel);
+        }
     } else if (auto forIn = dynamic_cast<const ast::ForInStatement*>(&stmt)) {
         uint8_t iterReg = visitExpression(forIn->getIterable());
         
@@ -1575,15 +1641,26 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emitCall(Opcode::CALL, "_F_array_length_v_p");
         emit(Opcode::MOV, OperandsR{lenReg, 1, 0, 0});
         
-        uint8_t iReg = emitConstant(0);
-        Label* startLabel = createLabel();
         Label* endLabel = createLabel();
-        Label* stepLabel = createLabel();
-        bindLabel(startLabel);
+        
+        // Check if length <= 0, if so, jump to endLabel
+        uint8_t zeroReg = emitConstant(0);
         uint8_t condReg = allocateRegister();
-        emit(Opcode::CMP, OperandsR{condReg, iReg, lenReg, 2});
+        emit(Opcode::CMP, OperandsR{condReg, zeroReg, lenReg, 2}); // lt (0 < lenReg)
+        freeRegister(zeroReg);
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
+        
+        // Loop counter setup
+        uint8_t iReg = emitConstant(0);
+        
+        // Emit LOOP_SET
+        size_t loopSetIdx = instructions_.size();
+        emit(Opcode::LOOP_SET, OperandsI{0, lenReg, 0});
+        
+        Label* startLabel = createLabel();
+        Label* stepLabel = createLabel();
+        bindLabel(startLabel);
         
         // Lowered: item = iter[i] via runtime call
         emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
@@ -1602,17 +1679,32 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         int32_t itemOffset = reserveLocal(forIn->getVariable(), forInElemTypeId);
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
+        
         controlFlowStack_.push({endLabel, stepLabel});
         visitStatement(forIn->getBody());
         controlFlowStack_.pop();
+        
         bindLabel(stepLabel);
+        // i = i + 1
         uint8_t oneReg = emitConstant(1);
         uint8_t nextIReg = allocateRegister();
         emit(Opcode::ARITH, OperandsR{nextIReg, iReg, oneReg, 0});
         emit(Opcode::MOV, OperandsR{iReg, nextIReg, 0, 0});
         freeRegister(oneReg);
         freeRegister(nextIReg);
-        emitJump(Opcode::JMP, 0, startLabel);
+        
+        // Emit LOOP_DECBR
+        uint32_t loopDecbrOffset = currentByteOffset_;
+        emitBranch(Opcode::LOOP_DECBR, 0, 0, startLabel);
+        
+        // Fixup LOOP_SET backedge displacement
+        auto& loopSetInst = instructions_[loopSetIdx];
+        auto ops = std::get<OperandsI>(loopSetInst.getOperands());
+        int32_t byteOffset = startLabel->targetByteOffset - static_cast<int32_t>(loopDecbrOffset);
+        int32_t wordOffset = byteOffset / 4;
+        ops.imm15 = static_cast<int16_t>(wordOffset);
+        loopSetInst.setOperands(ops);
+        
         bindLabel(endLabel);
         freeRegister(iterReg);
         freeRegister(lenReg);

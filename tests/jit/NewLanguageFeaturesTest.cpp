@@ -390,3 +390,37 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionChainedMethodCalls) {
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
     EXPECT_EQ(jit->run("_F_test_i8"), 30) << jit->getLastError();
 }
+
+TEST_F(NewLanguageFeaturesTest, HardwareLoopForRange) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var total: int64 = 0;
+            for i in 0..10 {
+                total += i;
+            }
+            return total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 45) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, HardwareLoopForIn) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var total: int64 = 0;
+            var arr = [10, 20, 30, 40, 50];
+            for val in arr {
+                total += val;
+            }
+            return total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 150) << jit->getLastError();
+}
+

@@ -148,8 +148,16 @@ TEST_F(HVMCodeGeneratorTest, ForRange) {
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    // Should have multiple LD_D/ST_D and jumps
     EXPECT_GE(insts.size(), 10);
+
+    bool foundLoopSet = false;
+    bool foundLoopDecbr = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::LOOP_SET) foundLoopSet = true;
+        if (inst.getOpcode() == Opcode::LOOP_DECBR) foundLoopDecbr = true;
+    }
+    EXPECT_TRUE(foundLoopSet);
+    EXPECT_TRUE(foundLoopDecbr);
 }
 
 TEST_F(HVMCodeGeneratorTest, ArrayLiteral) {

@@ -102,6 +102,8 @@ public:
         uint8_t* memory = nullptr;
         IOProvider* io = nullptr;
         bool trapHit = false;
+        int64_t loop_count = 0;
+        int64_t loop_backedge = 0;
     };
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};

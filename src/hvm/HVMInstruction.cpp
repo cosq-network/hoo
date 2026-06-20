@@ -595,6 +595,10 @@ InstructionRegistry::InstructionRegistry() {
     // Hardware/System
     reg("syscall",  Opcode::SYSCALL,  InstructionFormat::I);
     reg("break",    Opcode::BREAK,    InstructionFormat::R);
+    
+    // Hardware loop
+    reg("loop.set", Opcode::LOOP_SET, InstructionFormat::I);
+    reg("loop.decbr", Opcode::LOOP_DECBR, InstructionFormat::B);
 }
 
 void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcode opcode,

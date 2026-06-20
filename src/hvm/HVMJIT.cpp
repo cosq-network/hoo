@@ -5281,6 +5281,8 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::RELEASE:
         case hvm::Opcode::SYSCALL:
         case hvm::Opcode::BREAK:
+        case hvm::Opcode::LOOP_SET:
+        case hvm::Opcode::LOOP_DECBR:
             return true;
         case hvm::Opcode::ARITH:
             return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7;
@@ -6154,6 +6156,26 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 lastError_ = "BREAK trap encountered";
                 state.trapHit = true;
                 return -1;
+            case hvm::Opcode::LOOP_SET: {
+                auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                state.loop_count = readReg(o.rs);
+                state.loop_backedge = static_cast<int64_t>(o.imm15);
+                break;
+            }
+            case hvm::Opcode::LOOP_DECBR: {
+                auto o = std::get<hvm::OperandsB>(ins->getOperands());
+                state.loop_count--;
+                if (state.loop_count != 0) {
+                    if (static_cast<int64_t>(o.imm15) < 0 &&
+                        stopExecutionRequested_.load(std::memory_order_relaxed)) {
+                        lastError_ = "Execution stopped by inspector";
+                        return -1;
+                    }
+                    pc = static_cast<uint64_t>(static_cast<int64_t>(pc) + static_cast<int64_t>(o.imm15) * 4);
+                    jumped = true;
+                }
+                break;
+            }
             default:
                 lastError_ = "Unsupported opcode in interpreter: " + ins->getMnemonic();
                 return -1;
@@ -6536,7 +6558,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty()});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -6592,6 +6614,12 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             auto* regsArr = builder.CreateStructGEP(stateTy, stateArg, 0);
             auto* zero = builder.getInt64(0);
             return builder.CreateInBoundsGEP(llvm::ArrayType::get(i64, 32), regsArr, {zero, builder.getInt64(r)});
+        };
+        auto loopCountPtr = [&]() {
+            return builder.CreateStructGEP(stateTy, stateArg, 4);
+        };
+        auto loopBackedgePtr = [&]() {
+            return builder.CreateStructGEP(stateTy, stateArg, 5);
         };
         auto memBase = [&]() -> llvm::Value* {
             return builder.CreateLoad(i8Ptr, builder.CreateStructGEP(stateTy, stateArg, 1));
@@ -6796,7 +6824,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     continue;
                 }
                 if (op == hvm::Opcode::BEQ || op == hvm::Opcode::BNE ||
-                    op == hvm::Opcode::BLT || op == hvm::Opcode::BLE) {
+                    op == hvm::Opcode::BLT || op == hvm::Opcode::BLE ||
+                    op == hvm::Opcode::LOOP_DECBR) {
                     auto ob = std::get<hvm::OperandsB>(ins.getOperands());
                     uint64_t targetPc = static_cast<uint64_t>(
                         static_cast<int64_t>(curPc) + static_cast<int64_t>(ob.imm15) * 4);
@@ -6932,6 +6961,22 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 2) pred = builder.CreateFCmpOLE(a, b);
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, builder.CreateZExt(pred, i64));
+                } else if (op == hvm::Opcode::LOOP_SET) {
+                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                    builder.CreateStore(readReg(o.rs), loopCountPtr());
+                    builder.CreateStore(builder.getInt64(static_cast<int64_t>(o.imm15)), loopBackedgePtr());
+                } else if (op == hvm::Opcode::LOOP_DECBR) {
+                    auto o = std::get<hvm::OperandsB>(ins->getOperands());
+                    uint64_t tgt = static_cast<uint64_t>(static_cast<int64_t>(ipc) + static_cast<int64_t>(o.imm15) * 4);
+                    ensureBlock(tgt);
+                    ensureBlock(nextPc);
+                    if (!blockByPc.count(tgt) || !blockByPc.count(nextPc)) { builder.CreateRet(builder.getInt64(-1)); break; }
+                    llvm::Value* countVal = builder.CreateLoad(i64, loopCountPtr());
+                    llvm::Value* decVal = builder.CreateSub(countVal, builder.getInt64(1));
+                    builder.CreateStore(decVal, loopCountPtr());
+                    llvm::Value* cond = builder.CreateICmpNE(decVal, builder.getInt64(0));
+                    builder.CreateCondBr(cond, blockByPc[tgt], blockByPc[nextPc]);
+                    break;
                 } else if (op == hvm::Opcode::JMP) {
                     auto o = std::get<hvm::OperandsJ>(ins->getOperands());
                     uint64_t tgt = static_cast<uint64_t>(static_cast<int64_t>(ipc) + static_cast<int64_t>(o.offset) * 4);
