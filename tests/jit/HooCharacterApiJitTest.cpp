@@ -79,3 +79,16 @@ TEST_F(HooCharacterApiJitTest, CodepointAfterLength) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 128512);
 }
+
+TEST_F(HooCharacterApiJitTest, FromUtf8) {
+    const std::string source = R"(
+        import hoo.character;
+        func :int64 test() {
+            var ch = character_from_utf8("€");
+            return ch.codepoint();
+        }
+    )";
+
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0x20AC);
+}

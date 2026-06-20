@@ -311,6 +311,14 @@ static uint32_t uuidFreeFunctionReturnTypeId(const std::string& functionName) {
     return 1; // int64
 }
 
+static bool isCharacterFreeFunction(const std::string& functionName) {
+    return functionName == "character_from_utf8";
+}
+
+static uint32_t characterFreeFunctionReturnTypeId(const std::string& functionName) {
+    return 109; // Character type ID is 109
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
     return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
            isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) ||
@@ -318,7 +326,7 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
            isMathFreeFunction(functionName) || isHashingFreeFunction(functionName) ||
            isSystemFreeFunction(functionName) || isProcessFreeFunction(functionName) ||
            isRegexFreeFunction(functionName) || isThreadFreeFunction(functionName) ||
-           isUuidFreeFunction(functionName);
+           isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName);
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -406,6 +414,7 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isRegexFreeFunction(functionName)) return regexFreeFunctionReturnTypeId(functionName);
     if (isThreadFreeFunction(functionName)) return threadFreeFunctionReturnTypeId(functionName);
     if (isUuidFreeFunction(functionName)) return uuidFreeFunctionReturnTypeId(functionName);
+    if (isCharacterFreeFunction(functionName)) return characterFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 
@@ -1937,6 +1946,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (className == "Uuid" && argCount != 1) {
                 addError("Uuid constructor expects exactly one argument");
+                return 0;
+            }
+
+            if (className == "Character" && argCount != 1) {
+                addError("Character constructor expects exactly one argument");
                 return 0;
             }
 
@@ -3552,7 +3566,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         return 101;
                     }
                     if (clsName == "Character") {
-                        if (ma->getMember() == "new" || ma->getMember() == "fromUtf8") return 109;
+                        if (ma->getMember() == "new") return 109;
                         return 101;
                     }
                     if (clsName == "Buffer") {

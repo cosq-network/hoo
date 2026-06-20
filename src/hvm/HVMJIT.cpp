@@ -3565,7 +3565,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         // Character hoo-module-qualified symbols (codegen prefix-based dispatch)
         // Character instance-method symbols (no static methods — all instance calls)
         {"_F_M_hoo_E_character_new_v_p", reinterpret_cast<void*>(&jit_hoo_character_from_codepoint)},
-        {"_F_M_hoo_E_character_fromUtf8_v_p", reinterpret_cast<void*>(&jit_hoo_character_from_utf8_string)},
+        {"_F_M_hoo_E_character_from_utf8_p_p", reinterpret_cast<void*>(&jit_hoo_character_from_utf8_string)},
         {"_F_M_hoo_E_character_codepoint_v", reinterpret_cast<void*>(&jit_hoo_character_codepoint)},
         {"_F_M_hoo_E_character_length_v", reinterpret_cast<void*>(&jit_hoo_character_length)},
         {"_F_M_hoo_E_character_data_v", reinterpret_cast<void*>(&jit_hoo_character_data)},

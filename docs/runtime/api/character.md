@@ -1,13 +1,20 @@
 # Character API Reference (`Character`)
 
+**Import Requirement:**
+```hoo
+import hoo.character;
+```
+
 The `Character` class provides instance methods for Unicode character operations. Create a character with `new Character(codepoint)`, then call methods on the instance.
 
 ## Constructor
 
-`new Character(codepoint: int64) :ptr`
+### `new Character(codepoint: int64) :Character`
 Creates a character from its Unicode code point value. Returns a character handle.
 
-`Character.fromUtf8(string: string) :ptr`
+## Free Functions
+
+### `character_from_utf8(string: string) :Character`
 Creates a character from a UTF-8 encoded string. The string must contain exactly one Unicode scalar value.
 
 ## Instance Methods

@@ -204,12 +204,12 @@ String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStr
 
 ## [Character](character.md) — Class `Character`
 
-**Pattern:** Instance class + singleton static method
+**Pattern:** Instance class + free functions
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new Character` | `new Character(codepoint: int64) :ptr` |
-| Static | `Character.fromUtf8` | `Character.fromUtf8(string: string) :ptr` |
+| Constructor | `new Character` | `new Character(codepoint: int64) :Character` |
+| Free Function | `character_from_utf8` | `character_from_utf8(string: string) :Character` |
 | Instance | `ch.codepoint` | `codepoint() :int64` |
 | Instance | `ch.length` | `length() :int64` |
 | Instance | `ch.data` | `data() :string` |
