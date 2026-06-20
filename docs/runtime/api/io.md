@@ -1,31 +1,171 @@
-# I/O — Console Input and Output
+# I/O API Reference
 
-These global functions provide basic console I/O and are available without a class prefix.
+## Module
 
-## Functions
+`hoo.io`
 
-`print(str: string)`
-Prints the string to stdout.
-
-`println(str: string)`
-Prints the string followed by a newline to stdout.
-
-`readline() :string`
-Reads a line of text from stdin. Returns an empty string if EOF is reached immediately.
-
-`readchar() :int64`
-Reads a single character from stdin. Returns the character value (0-255), or -1 on EOF.
-
-## Example
+## Import Statement
 
 ```hoo
-print("Enter your name: ")
-let name = readline()
-println("Hello, " + name)
+import hoo.io;
+```
 
-print("Press any key...")
-let ch = readchar()
-if ch != -1 {
-    println("You pressed: " + ch)
+Alternatively, import all top-level modules:
+
+```hoo
+import hoo;
+```
+
+## Module Description
+
+The `hoo.io` module provides basic console input/output functions. These are global free functions that print to stdout/stderr or read from stdin. Strings are passed as native Hoo strings.
+
+## Free Functions
+
+### println(s: string) :void
+
+Prints the string `s` followed by a newline to stdout.
+
+**Syntax:**
+```hoo
+println(s: string) :void
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `s` | `string` | String to print (can be `null`, prints `"null"`) |
+
+- **Returns:** `void`
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    println("Hello, world!");
+}
+```
+
+### print(s: string) :void
+
+Prints the string `s` to stdout without a trailing newline.
+
+**Syntax:**
+```hoo
+print(s: string) :void
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `s` | `string` | String to print (can be `null`, prints `"null"`) |
+
+- **Returns:** `void`
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    print("Enter your name: ");
+}
+```
+
+### print_error(s: string) :void
+
+Prints the string `s` followed by a newline to stderr.
+
+**Syntax:**
+```hoo
+print_error(s: string) :void
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `s` | `string` | String to print to stderr |
+
+- **Returns:** `void`
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    print_error("An error occurred.");
+}
+```
+
+### readln() :string
+
+Reads a line of text from stdin. Reads until a newline or EOF is encountered.
+
+**Syntax:**
+```hoo
+readln() :string
+```
+
+- **Returns:** `string` — the line read (empty string if EOF is reached immediately).
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    var name = readln();
+    println("Hello, ".concat(name));
+}
+```
+
+### print_format(fmt: string, ...) :void
+
+Prints a formatted string to stdout, supporting printf-style format specifiers.
+
+**Syntax:**
+```hoo
+print_format(fmt: string, ...) :void
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `fmt` | `string` | Format string with printf-style placeholders |
+| `...` | variadic | Values to substitute into the format string |
+
+- **Returns:** `void`
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    var name = "Alice";
+    var age = 30;
+    print_format("Name: %s, Age: %d\n", name, age);
+}
+```
+
+## Usage Example
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    print("Enter your name: ");
+    var name = readln();
+
+    if (name.length() == 0) {
+        print_error("No input received.");
+        return 1;
+    }
+
+    print_format("Hello, %s!\n", name);
+    return 0;
 }
 ```

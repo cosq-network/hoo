@@ -1,309 +1,191 @@
-# JSON API Developer Reference
+# Json API Reference
 
-**Import Requirement:**
+## Module
+
+`hoo.json`
+
+## Import Statement
+
 ```hoo
 import hoo.json;
 ```
 
-The JSON runtime API is intentionally small and free-function based. There is
-no `Json` class, no instance API, and no opaque JSON document handle. Hoo code
-works with JSON through existing collection abstractions:
+## Module Description
 
-- `HashMap<integer, T>` for JSON objects. Numeric Hoo keys are serialized as
-  JSON object field names.
-- `AnyArray` for JSON arrays.
-- `string` for raw JSON text and formatted JSON output.
+The `json` module provides JSON parsing and serialization through the static `Json` class. It supports `null`, booleans, integers, floats, strings, objects, and arrays. All methods return `null` on error instead of throwing exceptions.
 
-Supported serialized/deserialized JSON values are `null`, booleans, integer
-numbers, floating-point numbers, strings, objects, and arrays. JSON objects map
-to `HashMap<int64, any>` during deserialization, so object field names must be
-valid `int64` text.
+## Class: Json
 
-All JSON APIs throw `RuntimeException` on invalid input, unsupported values,
-wrong root type, invalid object keys, non-finite floating-point values, or
-allocation failure.
-
-## `json_serialize_hashmap`
-
-### Description
-
-Serializes a Hoo `HashMap` into a JSON object string.
-
-The map key type must be an integer scalar supported by `HashMap` (`int64`,
-`int8`, or `byte`). Keys are written as JSON object field names. Supported map
-values are `int64`, `int8`, `byte`, `bool`, `f64`, `string`, nested `HashMap`,
-nested `AnyArray`, and `void`/null values carried through `any`.
-
-### Syntax
+### Declaration
 
 ```hoo
-json_serialize_hashmap(map: HashMap<integer, T>) :string
+class Json
 ```
 
-### Parameters
+`Json` is a static utility class with no constructor or instance methods.
 
-`map`
-The `HashMap` to serialize. Its keys become JSON object field names.
+### Public Class (Static) Functions
 
-### Return Type
+#### `parse`
 
-`string`
-A JSON object string. The returned string is a normal Hoo runtime string.
+Parses a JSON string into a Hoo value.
 
-### Errors
+**Syntax:**
 
-Throws `RuntimeException` if `map` is nil, if the map uses unsupported key or
-value types, if a nested value is invalid, or if a floating-point value is not
-finite.
+```hoo
+Json.parse(text: string): Any
+```
 
-### Complete Example
+**Parameters:**
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| `text`    | `string` | The JSON text to parse. |
+
+**Returns:** `Any` — The parsed value (can be `null`, `bool`, `int64`, `f64`, `string`, `HashMap<int64, any>`, or `AnyArray`), or `null` if the input is malformed.
+
+**Errors:** Returns `null` on parse error. No exceptions are thrown.
+
+**Complete Example:**
 
 ```hoo
 import hoo.json;
 
 func :int64 main() {
-    var user: HashMap<int64, string> = new HashMap<int64, string>();
-    user[1] = "Alice";
-    user[2] = "admin";
-
-    var json = json_serialize_hashmap(user);
-    println(json); // {"1":"Alice","2":"admin"}
-
-    return json.contains("\"1\":\"Alice\"");
+    var parsed = Json.parse("{\"1\":42,\"2\":\"hello\",\"3\":[true, false]}");
+    // parsed is HashMap<int64, any> with 3 entries
+    return 0;
 }
 ```
 
-## `json_serialize_anyarray`
+#### `stringify`
 
-### Description
+Converts a Hoo value to its JSON string representation.
 
-Serializes a Hoo `AnyArray` into a JSON array string.
-
-Supported element types are `int64`, `int8`, `byte`, `bool`, `f64`, `string`,
-nested `HashMap`, nested `AnyArray`, and `void`/null values.
-
-### Syntax
+**Syntax:**
 
 ```hoo
-json_serialize_anyarray(values: AnyArray) :string
+Json.stringify(value: Any): string
 ```
 
-### Parameters
+**Parameters:**
 
-`values`
-The `AnyArray` to serialize.
+| Parameter | Type  | Description                          |
+|-----------|-------|--------------------------------------|
+| `value`   | `Any` | The value to serialize to JSON. |
 
-### Return Type
+**Returns:** `string` — The JSON string, or `null` if the value cannot be serialized.
 
-`string`
-A JSON array string.
+**Errors:** Returns `null` if the value type is unsupported or contains non-finite floats. No exceptions are thrown.
 
-### Errors
-
-Throws `RuntimeException` if `values` is nil, if an element type is unsupported,
-if a nested value is invalid, or if a floating-point value is not finite.
-
-### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.json;
 
 func :int64 main() {
-    var values = [1, "two", true]any;
-
-    var json = json_serialize_anyarray(values);
-    println(json); // [1,"two",true]
-
-    return json.equals("[1,\"two\",true]");
+    var map = new HashMap<int64, any>();
+    map[1] = "Alice";
+    map[2] = 30;
+    var json = Json.stringify(map);
+    println(json); // {"1":"Alice","2":30}
+    return 0;
 }
 ```
 
-## `json_deserialize_hashmap`
+#### `pretty`
 
-### Description
+Converts a Hoo value to a pretty-printed JSON string with indentation.
 
-Parses a JSON object string into `HashMap<int64, any>`.
-
-The JSON root must be an object. Every object field name must be valid `int64`
-text because Hoo `HashMap` keys are integer scalars. Nested JSON objects become
-nested `HashMap<int64, any>` values. Nested JSON arrays become `AnyArray`
-values.
-
-Deserialized values map as follows:
-
-| JSON value | Hoo value |
-|------------|-----------|
-| `null` | `any` value with `void` type |
-| boolean | `bool` |
-| integer number | `int64` |
-| decimal/exponent number | `f64` |
-| string | `string` |
-| object | `HashMap<int64, any>` |
-| array | `AnyArray` |
-
-### Syntax
+**Syntax:**
 
 ```hoo
-json_deserialize_hashmap(json: string) :HashMap<int64, any>
+Json.pretty(value: Any): string
 ```
 
-### Parameters
+**Parameters:**
 
-`json`
-The JSON text to parse. It must contain a JSON object as the root value.
+| Parameter | Type  | Description                          |
+|-----------|-------|--------------------------------------|
+| `value`   | `Any` | The value to pretty-print to JSON. |
 
-### Return Type
+**Returns:** `string` — The formatted JSON string with newlines and 2-space indentation, or `null` on error.
 
-`HashMap<int64, any>`
-A new `HashMap` containing the parsed object values.
+**Errors:** Returns `null` if the value type is unsupported or contains non-finite floats. No exceptions are thrown.
 
-### Errors
-
-Throws `RuntimeException` if `json` is nil, malformed, not a JSON object, has
-object keys that are not valid `int64` keys, contains numbers outside supported
-runtime ranges, or cannot allocate the returned values.
-
-### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.json;
 
 func :int64 main() {
-    var user = json_deserialize_hashmap("{\"1\":42,\"2\":\"Alice\",\"3\":[7,true]}");
-
-    var count = user.count();
-    println(count); // 3
-
-    return count;
-}
-```
-
-## `json_deserialize_anyarray`
-
-### Description
-
-Parses a JSON array string into `AnyArray`.
-
-The JSON root must be an array. Nested JSON objects become
-`HashMap<int64, any>` values and nested JSON arrays become nested `AnyArray`
-values.
-
-### Syntax
-
-```hoo
-json_deserialize_anyarray(json: string) :AnyArray
-```
-
-### Parameters
-
-`json`
-The JSON text to parse. It must contain a JSON array as the root value.
-
-### Return Type
-
-`AnyArray`
-A new `AnyArray` containing the parsed values.
-
-### Errors
-
-Throws `RuntimeException` if `json` is nil, malformed, not a JSON array,
-contains an object with non-`int64` field names, contains numbers outside
-supported runtime ranges, or cannot allocate the returned values.
-
-### Complete Example
-
-```hoo
-import hoo.json;
-
-func :int64 main() {
-    var values = json_deserialize_anyarray("[1,\"two\",false,{\"7\":8}]");
-
-    var count = values.length();
-    println(count); // 4
-
-    return count;
-}
-```
-
-## `json_minify`
-
-### Description
-
-Validates a JSON string and returns a compact JSON representation with
-insignificant whitespace removed. Whitespace inside string literals is
-preserved.
-
-### Syntax
-
-```hoo
-json_minify(json: string) :string
-```
-
-### Parameters
-
-`json`
-The JSON text to validate and minify.
-
-### Return Type
-
-`string`
-A minified JSON string.
-
-### Errors
-
-Throws `RuntimeException` if `json` is nil or malformed.
-
-### Complete Example
-
-```hoo
-import hoo.json;
-
-func :int64 main() {
-    var compact = json_minify("{ \"items\" : [ 1, true, null ], \"name\" : \"A B\" }");
-
-    println(compact); // {"items":[1,true,null],"name":"A B"}
-
-    return compact.contains("\"items\":[1,true,null]");
-}
-```
-
-## `json_beautify`
-
-### Description
-
-Validates a JSON string and returns a pretty-printed JSON representation using
-2-space indentation.
-
-### Syntax
-
-```hoo
-json_beautify(json: string) :string
-```
-
-### Parameters
-
-`json`
-The JSON text to validate and pretty-print.
-
-### Return Type
-
-`string`
-A formatted JSON string with newlines and 2-space indentation.
-
-### Errors
-
-Throws `RuntimeException` if `json` is nil or malformed.
-
-### Complete Example
-
-```hoo
-import hoo.json;
-
-func :int64 main() {
-    var pretty = json_beautify("{\"name\":\"Alice\",\"roles\":[\"admin\",\"user\"]}");
-
+    var map = new HashMap<int64, any>();
+    map[1] = "Alice";
+    map[2] = [1, 2, 3]any;
+    var pretty = Json.pretty(map);
     println(pretty);
+    // {
+    //   "1": "Alice",
+    //   "2": [
+    //     1,
+    //     2,
+    //     3
+    //   ]
+    // }
+    return 0;
+}
+```
 
-    return pretty.contains("\n  \"name\": \"Alice\"");
+#### `free_string`
+
+Frees a string allocated by a `Json` method.
+
+**Syntax:**
+
+```hoo
+Json.free_string(str: string): void
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description                            |
+|-----------|----------|----------------------------------------|
+| `str`     | `string` | The string returned by a `Json` method to free. |
+
+**Returns:** `void`
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.json;
+
+func :int64 main() {
+    var json = Json.stringify(42);
+    println(json);
+    Json.free_string(json);
+    return 0;
+}
+```
+
+## Usage Example
+
+```hoo
+import hoo.json;
+
+func :int64 main() {
+    var raw = "{\"1\":\"world\",\"2\":[1,2,3]}";
+    var parsed = Json.parse(raw);
+
+    var str = Json.stringify(parsed);
+    println(str);
+    Json.free_string(str);
+
+    var pretty = Json.pretty(parsed);
+    println(pretty);
+    Json.free_string(pretty);
+
+    return 0;
 }
 ```

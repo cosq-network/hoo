@@ -12,32 +12,33 @@ mathematical operations, network communication, and system interactions.
 
 To prevent namespace pollution and avoid symbol ambiguity, hoo enforces compile-time verification of import statements when using standard library APIs:
 
-- **Core Module**: Elements belonging to the core namespace (such as `String`, `Array`, `Map`, `Exception`, `Console`) do not require submodule imports. Only `import hoo;` is sufficient (and primitive types are exempt entirely).
-- **Submodules**: Elements belonging to standard submodules (such as `Math`, `DateTime`, `Fs`, `Thread`, etc.) must be imported explicitly by their submodule path (e.g., `import hoo.math;`, `import hoo.datetime;`, `import hoo.io;`, `import hoo.thread;`). A generic `import hoo;` is NOT sufficient for submodules.
+- **Core types**: Types such as `String`, `Array`, `Map`, `Any`, `Exception`, `DateTime`, `Uuid`, `Regex`, `Args`, `Process`, and `Thread` are in the `hoo` core module — `import hoo;` is sufficient.
+- **Submodules**: Types in submodules such as `hoo.io`, `hoo.math`, `hoo.encoding`, `hoo.json`, `hoo.net`, `hoo.buffer`, `hoo.character`, `hoo.collections`, and `hoo.compression` require their specific import path.
 
 ## Usage Patterns
 
 hoo runtime APIs follow one of four patterns:
 
-- **Instance class** — create with `new ClassName()`, call methods on the variable
-- **Singleton class** — call methods directly on the class name (e.g. `Math.abs(x)`)
+- **Instance class** — create with `Class(args)`, call methods on the variable
+- **Static class** — call methods directly on the class name (e.g. `Math.abs(x)`)
 - **Free functions** — namespace-prefixed functions with no class wrapper
 - **Global functions** — available without any prefix
-
-Standard I/O (`print`, `println`, `readline`, `readchar`) are available globally.
 
 ---
 
 ## [Strings](string.md) — Class `String`
 
-**Pattern:** Instance class + singleton static methods
+**Import:** `import hoo;`
+
+**Pattern:** Instance class + static class
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new String` | `new String() :string` |
+| Constructor | `String` | `String()` |
 | Static | `String.repeat` | `String.repeat(ch: char, count: int64) :string` |
 | Static | `String.fromInt64` | `String.fromInt64(val: int64) :string` |
 | Static | `String.fromDouble` | `String.fromDouble(val: double) :string` |
+| Static | `String.join` | `String.join(parts: array) :string` |
 | Instance | `s.concat` | `s.concat(other: string) :string` |
 | Instance | `s.substring` | `s.substring(start: int64, length: int64) :string` |
 | Instance | `s.toUpper` | `s.toUpper() :string` |
@@ -46,541 +47,568 @@ Standard I/O (`print`, `println`, `readline`, `readchar`) are available globally
 | Instance | `s.replace` | `s.replace(old: string, replacement: string) :string` |
 | Instance | `s.split` | `s.split(delim: string) :array` |
 | Instance | `s.length` | `s.length() :int64` |
-| Instance | `s.byteAt` | `s.byteAt(index: int64) :byte` |
+| Instance | `s.byteAt` | `s.byteAt(index: int64) :int64` |
 | Instance | `s.indexOf` | `s.indexOf(needle: string) :int64` |
+| Instance | `s.lastIndexOf` | `s.lastIndexOf(needle: string) :int64` |
 | Instance | `s.contains` | `s.contains(needle: string) :int64` |
 | Instance | `s.startsWith` | `s.startsWith(prefix: string) :int64` |
+| Instance | `s.endsWith` | `s.endsWith(suffix: string) :int64` |
 | Instance | `s.compare` | `s.compare(other: string) :int64` |
 | Instance | `s.equals` | `s.equals(other: string) :int64` |
+| Instance | `s.equalsIgnoreCase` | `s.equalsIgnoreCase(other: string) :int64` |
 | Instance | `s.toInt64` | `s.toInt64() :int64` |
 | Instance | `s.toDouble` | `s.toDouble() :double` |
+| Instance | `s.is_empty` | `s.is_empty() :int64` |
+| Instance | `s.toCharacters` | `s.toCharacters() :array` |
 
 ---
 
 ## [Buffer](buffer.md) — Class `Buffer`
 
-**Pattern:** Instance class + free function
+**Import:** `import hoo.buffer;`
+
+**Pattern:** Instance class
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new Buffer` | `new Buffer() :Buffer` |
-| Free function | `buffer_fromBytes` | `buffer_fromBytes(data: string, len: int64) :Buffer` |
+| Constructor | `Buffer` | `Buffer(initial_capacity: int64 = 0) :Buffer` |
+| Instance | `buf.write` | `buf.write(data: string) :void` |
+| Instance | `buf.write_byte` | `buf.write_byte(byte: int64) :void` |
+| Instance | `buf.clear` | `buf.clear() :void` |
 | Instance | `buf.length` | `buf.length() :int64` |
-| Instance | `buf.capacity` | `buf.capacity() :int64` |
-| Instance | `buf.copy` | `buf.copy() :Buffer` |
-| Instance | `buf.byteAt` | `buf.byteAt(index: int64) :int64` |
-| Instance | `buf.setByte` | `buf.setByte(index: int64, value: int64) :int64` |
-| Instance | `buf.append` | `buf.append(data: string, len: int64) :Buffer` |
-| Instance | `buf.appendBuffer` | `buf.appendBuffer(other: Buffer) :Buffer` |
-| Instance | `buf.clear` | `buf.clear() :int64` |
-| Instance | `buf.slice` | `buf.slice(start: int64, end: int64) :Buffer` |
-
----
-
-## [Collections](collections.md) — Classes `Array`, `AnyArray`, `Map`, `HashMap`
-
-**Pattern:** Instance classes
-
-### Array
-
-| API | Signature |
-|-----|-----------|
-| `new Array` | `new Array() :array` |
-| `arr.length` | `arr.length() :int64` |
-| `arr.push` | `arr.push(val: int64)` / `arr.push(val: double)` / `arr.push(val: string)` |
-| `arr.getInt64` | `arr.getInt64(index: int64) :int64` |
-| `arr.getString` | `arr.getString(index: int64) :string` |
-| `arr.pop` | `arr.pop()` |
-| `arr.clear` | `arr.clear()` |
-
-### AnyArray (heterogeneous)
-
-| API | Signature |
-|-----|-----------|
-| `new AnyArray` | `new AnyArray() :AnyArray` / `new AnyArray(capacity: int64) :AnyArray` |
-| Literal syntax | `[expr, ...]any :AnyArray` |
-| `arr.length` | `arr.length() :int64` |
-| `arr.push` | `arr.push(value) :int64` |
-| Index get | `arr[index]` |
-| Index set | `arr[index] = value` |
-| `arr.clear` | `arr.clear()` |
-
-### Map (type-safe)
-
-| API | Signature |
-|-----|-----------|
-| `new Map` | `new Map(keyType: int64, valueType: int64) :map` |
-| `m.length` | `m.length() :int64` |
-| `m.empty` | `m.empty() :int64` |
-| `m.clear` | `m.clear()` |
-| `m.keyType` | `m.keyType() :int64` |
-| `m.valueType` | `m.valueType() :int64` |
-
-Int64 key operations: `m.containsInt64(key)`, `m.removeInt64(key)`, `m.setInt64Int64(key, val)`, `m.getInt64Int64(key)`, `m.setInt64Double(key, val)`, `m.getInt64Double(key)`, `m.setInt64String(key, val)`, `m.getInt64String(key)`, `m.setInt64Bool(key, val)`, `m.getInt64Bool(key)`
-
-String key operations: `m.containsString(key)`, `m.removeString(key)`, `m.setStringInt64(key, val)`, `m.getStringInt64(key)`, `m.setStringDouble(key, val)`, `m.getStringDouble(key)`, `m.setStringString(key, val)`, `m.getStringString(key)`, `m.setStringBool(key, val)`, `m.getStringBool(key)`
-
-### HashMap (intrinsic, `K` = `byte`/`int8`/`int64`, `V` = fixed or `any`)
-
-| API | Signature |
-|-----|-----------|
-| `new HashMap` | `new HashMap<K, V>() :HashMap` |
-| Index set | `m[key] = value` |
-| Index get | `m[key]` |
-| `m.count` | `m.count() :int64` |
-| `m.remove` | `m.remove(key) :int64` |
-| `m.clear` | `m.clear()` |
-
----
-
-## [Math](math.md) — `math` free functions + Class `Random`
-
-**Pattern:** Module free functions + instance class
-
-### Math — Constants
-
-`math_get_pi() :double`, `math_get_e() :double`, `math_get_tau() :double`,
-`math_get_inf() :double`, `math_get_neg_inf() :double`, `math_get_nan() :double`
-
-### Math — Basic Functions
-
-`math_abs(x)`, `math_sign(x)`, `math_min(a, b)`, `math_max(a, b)`,
-`math_clamp(val, min, max) :double`
-
-### Math — Power & Roots
-
-`math_pow(base, exp) :double`, `math_sqrt(x) :double`, `math_cbrt(x) :double`,
-`math_hypot(x, y) :double`
-
-### Math — Trigonometric
-
-`math_sin(x)`, `math_cos(x)`, `math_tan(x)`, `math_asin(x)`, `math_acos(x)`,
-`math_atan(x)`, `math_atan2(y, x)`, `math_sinh(x)`, `math_cosh(x)`,
-`math_tanh(x)` — all take/return `:double`
-
-### Math — Exponential & Logarithmic
-
-`math_exp(x)`, `math_exp2(x)`, `math_expm1(x)`, `math_log(x)`, `math_log10(x)`,
-`math_log2(x)`, `math_log1p(x)` — all take/return `:double`
-
-### Math — Rounding
-
-`math_floor(x)`, `math_ceil(x)`, `math_round(x)`, `math_trunc(x)`,
-`math_fract(x)` — all take/return `:double`
-
-### Math — Number Utilities
-
-`math_is_even(n: int64) :int64`, `math_is_odd(n: int64) :int64`,
-`math_is_prime(n: int64) :int64`, `math_gcd(a: int64, b: int64) :int64`,
-`math_lcm(a: int64, b: int64) :int64`,
-`math_factorial(n: int64) :int64`, `math_fibonacci(n: int64) :int64`
-
-### Random
-
-| API | Signature |
-|-----|-----------|
-| `new Random` | `new Random() :Random` / `new Random(seed: int64) :Random` |
-| `rng.nextInt` | `rng.nextInt() :int64` |
-| `rng.nextIntMax` | `rng.nextIntMax(max: int64) :int64` |
-| `rng.nextDouble` | `rng.nextDouble() :double` |
-| `rng.nextBool` | `rng.nextBool() :bool` |
-| `rng.nextBytes` | `rng.nextBytes(buffer: Buffer, count: int64) :int64` |
-| `rng.release` | `rng.release()` |
-
----
-
-## [I/O](io.md) — Global Free Functions
-
-**Pattern:** Global functions (no prefix)
-
-| API | Signature |
-|-----|-----------|
-| `print` | `print(str: string)` |
-| `println` | `println(str: string)` |
-| `readline` | `readline() :string` |
-| `readchar` | `readchar() :int64` |
+| Instance | `buf.to_string` | `buf.to_string() :string` |
+| Instance | `buf.retain` | `buf.retain() :Buffer` |
+| Instance | `buf.release` | `buf.release() :void` |
+| Instance | `buf.refcount` | `buf.refcount() :int64` |
 
 ---
 
 ## [Character](character.md) — Class `Character`
 
-**Pattern:** Instance class + free functions
+**Import:** `import hoo.character;`
+
+**Pattern:** Static class
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new Character` | `new Character(codepoint: int64) :Character` |
-| Free Function | `character_from_utf8` | `character_from_utf8(string: string) :Character` |
-| Instance | `ch.codepoint` | `codepoint() :int64` |
-| Instance | `ch.length` | `length() :int64` |
-| Instance | `ch.data` | `data() :string` |
-| Instance | `ch.print` | `print()` |
-| Instance | `ch.release` | `release()` |
+| Static | `Character.is_alpha` | `Character.is_alpha(c: char) :int64` |
+| Static | `Character.is_digit` | `Character.is_digit(c: char) :int64` |
+| Static | `Character.is_alnum` | `Character.is_alnum(c: char) :int64` |
+| Static | `Character.is_lower` | `Character.is_lower(c: char) :int64` |
+| Static | `Character.is_upper` | `Character.is_upper(c: char) :int64` |
+| Static | `Character.is_space` | `Character.is_space(c: char) :int64` |
+| Static | `Character.to_upper` | `Character.to_upper(c: char) :char` |
+| Static | `Character.to_lower` | `Character.to_lower(c: char) :char` |
+| Static | `Character.digit_to_int64` | `Character.digit_to_int64(c: char) :int64` |
+| Static | `Character.int64_to_digit` | `Character.int64_to_digit(val: int64) :char` |
 
 ---
 
-## [Regex](regex.md) — regular expressions
+## [I/O](io.md) — Global Free Functions
 
-**Pattern:** Instance class & free functions
+**Import:** `import hoo.io;` (available globally with `import hoo;`)
+
+**Pattern:** Global functions (no prefix)
 
 | API | Signature |
 |-----|-----------|
-| `new Regex` | `new Regex(pattern: string) :Regex` |
-| `re.match` | `re.match(subject: string) :int64` |
-| `re.search` | `re.search(subject: string) :int64` |
-| `re.find` | `re.find(subject: string) :string` |
-| `re.group` | `re.group(subject: string, group_index: int64) :string` |
-| `re.replace` | `re.replace(subject: string, replacement: string) :string` |
-| `re.split` | `re.split(subject: string) :array` |
-| `re.release` | `re.release()` |
-| `regex_match` | `regex_match(pattern: string, subject: string) :int64` |
-| `regex_search` | `regex_search(pattern: string, subject: string) :int64` |
-| `regex_replace` | `regex_replace(pattern: string, subject: string, replacement: string) :string` |
-| `regex_split` | `regex_split(pattern: string, subject: string) :array` |
+| `println` | `println(s: string) :void` |
+| `print` | `print(s: string) :void` |
+| `print_error` | `print_error(s: string) :void` |
+| `readln` | `readln() :string` |
+| `print_format` | `print_format(fmt: string, ...) :void` |
 
 ---
 
-## [DateTime](datetime.md) — Instance Class `DateTime` + Free Functions
+## [Math](math.md) — Free Functions + Class `Random`
 
-**Pattern:** Instance class + built-in class-qualified dispatch + free functions
+**Import:** `import hoo;`
 
-| Kind | API | Return Type |
-|------|-----|-------------|
-| Factory | `DateTime.now()` / `datetime_now()` | `DateTime` |
-| Factory | `DateTime.new(ts)` / `datetime_new(ts)` | `DateTime` |
-| Factory | `DateTime.parse(s,f)` / `datetime_parse(s,f)` | `DateTime` |
-| Factory | `DateTime.from_iso8601(s)` / `datetime_from_iso8601(s)` | `DateTime` |
-| Raw time | `DateTime.now_seconds()` / `datetime_now_seconds()` | `int64` |
-| Raw time | `DateTime.now_precise()` / `datetime_now_precise()` | `double` |
-| Accessor | `dt.getTimestamp()` | `int64` |
-| Format | `dt.format(f)` / `DateTime.format(dt,f)` / `datetime_format(dt,f)` | `string` |
-| Format | `dt.iso8601()` / `DateTime.iso8601(dt)` / `datetime_iso8601(dt)` | `string` |
-| Arithmetic | `dt.addDays(n)` / `DateTime.add_days(dt,n)` / `datetime_add_days(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addHours(n)` / `DateTime.add_hours(dt,n)` / `datetime_add_hours(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addMinutes(n)` / `DateTime.add_minutes(dt,n)` / `datetime_add_minutes(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addSeconds(n)` / `DateTime.add_seconds(dt,n)` / `datetime_add_seconds(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addMilliseconds(n)` / `DateTime.add_milliseconds(dt,n)` / `datetime_add_milliseconds(dt,n)` | `DateTime` |
-| Diff | `a.diffDays(b)` / `DateTime.diff_days(a,b)` / `datetime_diff_days(a,b)` | `int64` |
-| Diff | `a.diffHours(b)` / `DateTime.diff_hours(a,b)` / `datetime_diff_hours(a,b)` | `int64` |
-| Diff | `a.diffSeconds(b)` / `DateTime.diff_seconds(a,b)` / `datetime_diff_seconds(a,b)` | `double` |
-| Compare | `a.compare(b)` / `DateTime.compare(a,b)` / `datetime_compare(a,b)` | `int64` |
+**Pattern:** Free functions + instance class
 
----
+### Math — Basic Functions
 
-## [Uuid](uuid.md) — universally unique identifiers
+`math_abs(x: double) :double`, `math_min(a: double, b: double) :double`,
+`math_max(a: double, b: double) :double`, `math_clamp(val: double, min: double, max: double) :double`,
+`math_min_int64(a: int64, b: int64) :int64`, `math_max_int64(a: int64, b: int64) :int64`
 
-**Pattern:** Instance class & free functions
+### Math — Rounding
 
-| API | Signature |
-|-----|-----------|
-| `new Uuid` | `new Uuid(source: string) :Uuid` |
-| `uuid.toString` | `uuid.toString() :string` |
-| `uuid.isNil` | `uuid.isNil() :int64` |
-| `uuid.equals` | `uuid.equals(other: Uuid) :int64` |
-| `uuid.compare` | `uuid.compare(other: Uuid) :int64` |
-| `uuid.toBytes` | `uuid.toBytes() :buffer` |
-| `uuid.release` | `uuid.release()` |
-| `uuid_v4` | `uuid_v4() :string` |
-| `uuid_nil` | `uuid_nil() :string` |
-| `uuid_is_nil` | `uuid_is_nil(str: string) :int64` |
-| `uuid_from_bytes` | `uuid_from_bytes(buf: buffer) :Uuid` |
-| `uuid_to_bytes` | `uuid_to_bytes(str: string) :buffer` |
-| `uuid_equals` | `uuid_equals(a: string, b: string) :int64` |
-| `uuid_compare` | `uuid_compare(a: string, b: string) :int64` |
-| `uuid_to_string` | `uuid_to_string(id: Uuid) :string` |
+`math_floor(x: double) :double`, `math_ceil(x: double) :double`, `math_round(x: double) :double`
 
----
+### Math — Power & Roots
 
-## [Fs](fs.md) — Free Functions
+`math_sqrt(x: double) :double`, `math_pow(base: double, exp: double) :double`, `math_cbrt(x: double) :double`
 
-**Pattern:** Namespace-prefixed free functions
+### Math — Exponential & Logarithmic
 
-| API | Signature |
-|-----|-----------|
-| `fs_exists` | `fs_exists(path: string) :int64` |
-| `fs_is_file` | `fs_is_file(path: string) :int64` |
-| `fs_is_dir` | `fs_is_dir(path: string) :int64` |
-| `fs_size` | `fs_size(path: string) :int64` |
-| `fs_last_modified` | `fs_last_modified(path: string) :int64` |
-| `fs_read_text` | `fs_read_text(path: string) :string` |
-| `fs_write_text` | `fs_write_text(path: string, content: string) :int64` |
-| `fs_append_text` | `fs_append_text(path: string, content: string) :int64` |
-| `fs_read_bytes` | `fs_read_bytes(path: string) :buffer` |
-| `fs_write_bytes` | `fs_write_bytes(path: string, buf: buffer) :int64` |
-| `fs_delete` | `fs_delete(path: string) :int64` |
-| `fs_rename` | `fs_rename(oldPath: string, newPath: string) :int64` |
-| `fs_copy` | `fs_copy(src: string, dst: string) :int64` |
-| `fs_mkdir` | `fs_mkdir(path: string) :int64` |
-| `fs_mkdirs` | `fs_mkdirs(path: string) :int64` |
-| `fs_rmdir` | `fs_rmdir(path: string) :int64` |
-| `fs_list_dir` | `fs_list_dir(path: string) :array` |
-| `fs_temp_dir` | `fs_temp_dir() :string` |
-| `fs_create_temp_file` | `fs_create_temp_file(prefix: string) :string` |
+`math_log(x: double) :double`, `math_log10(x: double) :double`, `math_log2(x: double) :double`,
+`math_exp(x: double) :double`, `math_exp2(x: double) :double`
+
+### Math — Trigonometric
+
+`math_sin(x: double) :double`, `math_cos(x: double) :double`, `math_tan(x: double) :double`,
+`math_asin(x: double) :double`, `math_acos(x: double) :double`, `math_atan(x: double) :double`,
+`math_atan2(y: double, x: double) :double`, `math_sinh(x: double) :double`, `math_cosh(x: double) :double`,
+`math_tanh(x: double) :double`, `math_asinh(x: double) :double`, `math_acosh(x: double) :double`,
+`math_atanh(x: double) :double`
+
+### Math — Statistics
+
+`math_mean(data: array) :double`, `math_median(data: array) :double`,
+`math_variance(data: array) :double`, `math_stddev(data: array) :double`
+
+### Random
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Constructor | `Random` | `Random() :Random` |
+| Instance | `rng.next_int64` | `rng.next_int64(max: int64) :int64` |
+| Instance | `rng.next_double` | `rng.next_double() :double` |
+| Instance | `rng.retain` | `rng.retain() :Random` |
+| Instance | `rng.release` | `rng.release() :void` |
+| Instance | `rng.refcount` | `rng.refcount() :int64` |
 
 ---
 
-## [Path](path.md) — Singleton `Path`
+## [Collections](collections.md) — Classes `Array`, `Map`, `HashMap`, `Any`, `AnyArray`, `Tensor`
 
-**Pattern:** Singleton class
+**Import:** `import hoo;` for Array, Map, Any. `import hoo.collections;` for HashMap, AnyArray, Tensor.
 
-| API | Signature |
-|-----|-----------|
-| `Path.basename` | `Path.basename(p: string) :string` |
-| `Path.dirname` | `Path.dirname(p: string) :string` |
-| `Path.extension` | `Path.extension(p: string) :string` |
-| `Path.filename` | `Path.filename(p: string) :string` |
-| `Path.join` | `Path.join(parts: array) :string` |
-| `Path.absolute` | `Path.absolute(p: string) :string` |
-| `Path.separator` | `Path.separator() :string` |
-| `Path.is_absolute` | `Path.is_absolute(p: string) :int64` |
-| `Path.normalize` | `Path.normalize(p: string) :string` |
+**Pattern:** Instance classes
+
+### Array
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Array.new` | `Array.new(capacity: int64 = 0) :array` |
+| Static | `Array.new_int64` | `Array.new_int64(capacity: int64 = 0, default_value: int64 = 0) :array` |
+| Static | `Array.new_double` | `Array.new_double(capacity: int64 = 0, default_value: double = 0.0) :array` |
+| Static | `Array.new_string` | `Array.new_string(capacity: int64 = 0) :array` |
+| Instance | `arr.length` | `arr.length() :int64` |
+| Instance | `arr.push_int64` | `arr.push_int64(val: int64) :array` |
+| Instance | `arr.push_double` | `arr.push_double(val: double) :array` |
+| Instance | `arr.push_string` | `arr.push_string(val: string) :array` |
+| Instance | `arr.get_int64` | `arr.get_int64(index: int64) :int64` |
+| Instance | `arr.get_double` | `arr.get_double(index: int64) :double` |
+| Instance | `arr.get_string` | `arr.get_string(index: int64) :string` |
+| Instance | `arr.set_int64` | `arr.set_int64(index: int64, val: int64) :void` |
+| Instance | `arr.set_double` | `arr.set_double(index: int64, val: double) :void` |
+| Instance | `arr.set_string` | `arr.set_string(index: int64, val: string) :void` |
+| Instance | `arr.clear` | `arr.clear() :void` |
+| Instance | `arr.retain` / `arr.release` / `arr.refcount` | Reference counting |
+
+### Map
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Map.new` | `Map.new() :map` |
+| Instance | `m.length` | `m.length() :int64` |
+| Instance | `m.has` | `m.has(key) :int64` |
+| Instance | `m.remove` | `m.remove(key) :int64` |
+| Instance | `m.clear` | `m.clear() :void` |
+| Instance | `m.keys` | `m.keys() :array` |
+| Instance | `m.values` | `m.values() :array` |
+
+Key-specific operations (int64, string, char, byte): `m.put(key, value)`, `m.get(key)`, `m.has(key)`, `m.remove(key)`
+
+### HashMap
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `HashMap.new` | `HashMap.new(size: int64 = 16) :HashMap` |
+| Instance | `hm.put` | `hm.put(key, value) :void` |
+| Instance | `hm.get` | `hm.get(key)` |
+| Instance | `hm.has` | `hm.has(key) :int64` |
+| Instance | `hm.remove` | `hm.remove(key) :int64` |
+| Instance | `hm.clear` | `hm.clear() :void` |
+| Instance | `hm.length` | `hm.length() :int64` |
+| Instance | `hm.key_type` | `hm.key_type() :int64` |
+| Instance | `hm.value_type` | `hm.value_type() :int64` |
+| Instance | `hm.keys` | `hm.keys() :array` |
+| Instance | `hm.values` | `hm.values() :array` |
+| Instance | `hm.retain` / `hm.release` / `hm.refcount` | Reference counting |
+
+### Any
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Instance | `any.is_null` | `any.is_null() :int64` |
+| Instance | `any.is_array` | `any.is_array() :int64` |
+| Instance | `any.is_string` | `any.is_string() :int64` |
+| Instance | `any.is_int64` | `any.is_int64() :int64` |
+| Instance | `any.is_double` | `any.is_double() :int64` |
+| Instance | `any.is_bool` | `any.is_bool() :int64` |
+| Instance | `any.as_int64` | `any.as_int64() :int64` |
+| Instance | `any.as_double` | `any.as_double() :double` |
+| Instance | `any.as_string` | `any.as_string() :string` |
+| Instance | `any.as_bool` | `any.as_bool() :int64` |
+| Instance | `any.as_array` | `any.as_array() :array` |
+
+### AnyArray
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Instance | `arr.length` | `arr.length() :int64` |
+| Instance | `arr.push_back` | `arr.push_back(value) :void` |
+| Instance | `arr.get` | `arr.get(index: int64)` |
+| Instance | `arr.set` | `arr.set(index: int64, value) :void` |
+
+### Tensor
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Tensor.new` | `Tensor.new(dimensions: int64, ...) :Tensor` |
+| Instance | `t.rank` | `t.rank() :int64` |
+| Instance | `t.shape` | `t.shape() :array` |
+| Instance | `t.num_elements` | `t.num_elements() :int64` |
+| Instance | `t.get` | `t.get(indices: array) :double` |
+| Instance | `t.set` | `t.set(indices: array, val: double) :void` |
 
 ---
 
-## [Process](process.md) — `process` free functions
+## [DateTime](datetime.md) — Class `DateTime`
 
-**Pattern:** Module free functions
-
-| API | Signature |
-|-----|-----------|
-| `process_self_pid` | `process_self_pid() :int64` |
-| `process_capture` | `process_capture(command: string) :string` |
-| `process_kill` | `process_kill(pid: int64, signal: int64) :int64` |
-| `process_spawn` | `process_spawn(command: string, argv: array) :int64` |
-| `process_wait` | `process_wait(pid: int64) :int64` |
-
----
-
-## [System](system.md) — `system` free functions
-
-**Pattern:** Module free functions
-
-| API | Signature |
-|-----|-----------|
-| `system_get_env` | `system_get_env(name: string) :string` |
-| `system_set_env` | `system_set_env(name: string, value: string) :int64` |
-| `system_unset_env` | `system_unset_env(name: string) :int64` |
-| `system_hostname` | `system_hostname() :string` |
-| `system_os_name` | `system_os_name() :string` |
-| `system_os_version` | `system_os_version() :string` |
-| `system_cpu_count` | `system_cpu_count() :int64` |
-| `system_process_id` | `system_process_id() :int64` |
-| `system_uptime_ms` | `system_uptime_ms() :int64` |
-| `system_exit` | `system_exit(code: int64)` |
-| `system_exec` | `system_exec(command: string) :string` |
-| `system_exec_status` | `system_exec_status(command: string) :int64` |
-| `system_user_home` | `system_user_home() :string` |
-| `system_user_name` | `system_user_name() :string` |
-| `system_current_dir` | `system_current_dir() :string` |
-| `system_set_current_dir` | `system_set_current_dir(path: string) :int64` |
-| `system_total_memory` | `system_total_memory() :int64` |
-| `system_free_memory` | `system_free_memory() :int64` |
-
----
-
-## [Args](args.md) — Class `Args`
+**Import:** `import hoo;`
 
 **Pattern:** Instance class
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new Args` | `new Args() :Args` |
-| Instance | `args.count` | `args.count() :int64` |
-| Instance | `args.get` | `args.get(index: int64) :string` |
-| Instance | `args.has` | `args.has(name: string) :int64` |
-| Instance | `args.value` | `args.value(name: string) :string` |
-| Instance | `args.programName` | `args.programName() :string` |
-| Instance | `args.addString` | `args.addString(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: string)` |
-| Instance | `args.addInt` | `args.addInt(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: int64)` |
-| Instance | `args.addFlag` | `args.addFlag(name: string, shortOpt: string, longOpt: string, help: string)` |
-| Instance | `args.addFloat` | `args.addFloat(name: string, shortOpt: string, longOpt: string, help: string, defaultVal: f64)` |
-| Instance | `args.addPositional` | `args.addPositional(name: string, help: string)` |
-| Instance | `args.parse` | `args.parse() :int64` |
-| Instance | `args.getString` | `args.getString(name: string) :string` |
-| Instance | `args.getInt` | `args.getInt(name: string) :int64` |
-| Instance | `args.getBool` | `args.getBool(name: string) :int64` |
-| Instance | `args.getFloat` | `args.getFloat(name: string) :f64` |
-| Instance | `args.helpText` | `args.helpText() :string` |
-| Instance | `args.clear` | `args.clear()` |
+| Constructor | `DateTime` | `DateTime(year: int64, month: int64, day: int64, hour: int64, minute: int64, second: int64, millisecond: int64) :DateTime` |
+| Static | `DateTime.from_iso8601` | `DateTime.from_iso8601(str: string) :DateTime` |
+| Static | `DateTime.now` | `DateTime.now() :DateTime` |
+| Instance | `dt.to_iso8601` | `dt.to_iso8601() :string` |
+| Instance | `dt.to_string` | `dt.to_string() :string` |
+| Instance | `dt.year` / `dt.month` / `dt.day` | Field accessors: `() :int64` |
+| Instance | `dt.hour` / `dt.minute` / `dt.second` / `dt.millisecond` | Field accessors: `() :int64` |
+| Instance | `dt.time_since_epoch` | `dt.time_since_epoch() :int64` |
+| Instance | `dt.is_before` | `dt.is_before(other: DateTime) :int64` |
+| Instance | `dt.is_after` | `dt.is_after(other: DateTime) :int64` |
+| Instance | `dt.difference_in_milliseconds` | `dt.difference_in_milliseconds(other: DateTime) :int64` |
+| Instance | `dt.add_milliseconds` | `dt.add_milliseconds(ms: int64) :DateTime` |
+| Instance | `dt.subtract_milliseconds` | `dt.subtract_milliseconds(ms: int64) :DateTime` |
+| Instance | `dt.retain` / `dt.release` / `dt.refcount` | Reference counting |
+| Instance | `dt.free_string` | `dt.free_string(str: string) :void` |
 
 ---
 
-## [Net](net.md) — Classes `URL`, `HttpClient`, `HttpResponse`
+## [Regex](regex.md) — Class `Regex`
 
-**Pattern:** Instance classes
+**Import:** `import hoo;`
 
-### URL
-
-| Kind | API | Signature |
-|------|-----|-----------|
-| Constructor | `new URL` | `new URL(url: string) :ptr` |
-| Instance | `url.getScheme` | `url.getScheme() :string` |
-| Instance | `url.getHost` | `url.getHost() :string` |
-| Instance | `url.getPort` | `url.getPort() :int64` |
-| Instance | `url.getPath` | `url.getPath() :string` |
-| Instance | `url.getQuery` | `url.getQuery() :string` |
-| Instance | `url.getFragment` | `url.getFragment() :string` |
-| Instance | `url.toString` | `url.toString() :string` |
-| Instance | `url.release` | `url.release()` |
-
-### HttpClient
+**Pattern:** Instance class
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new HttpClient` | `new HttpClient() :HttpClient` |
-| Instance | `client.setHeader` | `client.setHeader(key: string, value: string) :int64` |
-| Instance | `client.setTimeout` | `client.setTimeout(ms: int64)` |
-| Instance | `client.get` | `client.get(url: string) :HttpResponse` |
-| Instance | `client.post` | `client.post(url: string, body: string) :HttpResponse` |
-| Instance | `client.put` | `client.put(url: string, body: string) :HttpResponse` |
-| Instance | `client.delete` | `client.delete(url: string) :HttpResponse` |
-| Instance | `client.release` | `client.release()` |
-
-### HttpResponse
-
-| API | Signature |
-|-----|-----------|
-| `resp.statusCode` | `resp.statusCode() :int64` |
-| `resp.getBody` | `resp.getBody() :string` |
-| `resp.isSuccess` | `resp.isSuccess() :int64` |
-| `resp.release` | `resp.release()` |
+| Constructor | `Regex` | `Regex(pattern: string) :Regex` |
+| Static | `Regex.with_flags` | `Regex.with_flags(pattern: string, flags: string) :Regex` |
+| Instance | `re.matches` | `re.matches(text: string) :int64` |
+| Instance | `re.is_match` | `re.is_match(text: string) :int64` |
+| Instance | `re.find_all` | `re.find_all(text: string) :array` |
+| Instance | `re.replace` | `re.replace(text: string, replacement: string) :string` |
+| Instance | `re.capture` | `re.capture(text: string) :array` |
+| Instance | `re.to_string` | `re.to_string() :string` |
+| Instance | `re.retain` / `re.release` / `re.refcount` | Reference counting |
+| Instance | `re.free_string` | `re.free_string(str: string) :void` |
 
 ---
 
-## [JSON](json.md) — Free Functions
+## [Uuid](uuid.md) — Class `Uuid`
+
+**Import:** `import hoo;`
+
+**Pattern:** Instance class
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Constructor | `Uuid` | `Uuid(value: string) :Uuid` |
+| Static | `Uuid.v4` | `Uuid.v4() :Uuid` |
+| Static | `Uuid.nil` | `Uuid.nil() :Uuid` |
+| Instance | `id.to_string` | `id.to_string() :string` |
+| Instance | `id.equals` | `id.equals(other: Uuid) :int64` |
+| Instance | `id.is_nil` | `id.is_nil() :int64` |
+| Instance | `id.retain` / `id.release` / `id.refcount` | Reference counting |
+| Instance | `id.free_string` | `id.free_string(str: string) :void` |
+
+---
+
+## [Fs](fs.md) — Class `Fs`
+
+**Import:** `import hoo.io;`
+
+**Pattern:** Static class
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Fs.read` | `Fs.read(path: string) :string` |
+| Static | `Fs.write` | `Fs.write(path: string, data: string) :void` |
+| Static | `Fs.append` | `Fs.append(path: string, data: string) :void` |
+| Static | `Fs.exists` | `Fs.exists(path: string) :int64` |
+| Static | `Fs.is_dir` | `Fs.is_dir(path: string) :int64` |
+| Static | `Fs.is_file` | `Fs.is_file(path: string) :int64` |
+| Static | `Fs.delete` | `Fs.delete(path: string) :int64` |
+| Static | `Fs.mkdir` | `Fs.mkdir(path: string) :int64` |
+| Static | `Fs.mkdirs` | `Fs.mkdirs(path: string) :int64` |
+| Static | `Fs.rmdir` | `Fs.rmdir(path: string) :int64` |
+| Static | `Fs.list` | `Fs.list(path: string) :array` |
+| Static | `Fs.cwd` | `Fs.cwd() :string` |
+| Static | `Fs.size` | `Fs.size(path: string) :int64` |
+| Static | `Fs.copy` | `Fs.copy(source: string, dest: string) :int64` |
+| Static | `Fs.move` | `Fs.move(source: string, dest: string) :int64` |
+| Static | `Fs.read_bytes` | `Fs.read_bytes(path: string) :array` |
+| Static | `Fs.read_bytes_buffer` | `Fs.read_bytes_buffer(path: string, buffer: Buffer, offset: int64, length: int64) :int64` |
+
+---
+
+## [Path](path.md) — Class `Path`
+
+**Import:** `import hoo.io;`
+
+**Pattern:** Static class
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Path.separator` | `Path.separator() :char` |
+| Static | `Path.join` | `Path.join(path1: string, path2: string) :string` |
+| Static | `Path.extension` | `Path.extension(path: string) :string` |
+| Static | `Path.stem` | `Path.stem(path: string) :string` |
+| Static | `Path.filename` | `Path.filename(path: string) :string` |
+| Static | `Path.parent` | `Path.parent(path: string) :string` |
+| Static | `Path.absolute` | `Path.absolute(path: string) :string` |
+| Static | `Path.normalize` | `Path.normalize(path: string) :string` |
+| Static | `Path.root` | `Path.root(path: string) :string` |
+| Static | `Path.relative` | `Path.relative(path: string, base: string) :string` |
+| Static | `Path.has_extension` | `Path.has_extension(path: string) :int64` |
+| Static | `Path.split` | `Path.split(path: string) :array` |
+
+---
+
+## [Process](process.md) — Class `Process`
+
+**Import:** `import hoo;`
+
+**Pattern:** Static class
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Process.execute` | `Process.execute(command: string) :string` |
+| Static | `Process.capture` | `Process.capture(command: string, input: string) :string` |
+| Static | `Process.capture_status` | `Process.capture_status(command: string, input: string) :array` |
+| Static | `Process.exit` | `Process.exit(exit_code: int64) :void` |
+| Static | `Process.pid` | `Process.pid() :int64` |
+
+---
+
+## [System](system.md) — Free Functions
+
+**Import:** `import hoo;`
 
 **Pattern:** Free functions
 
 | API | Signature |
 |-----|-----------|
-| `json_serialize_hashmap` | `json_serialize_hashmap(map: HashMap<integer, T>) :string` |
-| `json_serialize_anyarray` | `json_serialize_anyarray(values: AnyArray) :string` |
-| `json_deserialize_hashmap` | `json_deserialize_hashmap(json: string) :HashMap<int64, any>` |
-| `json_deserialize_anyarray` | `json_deserialize_anyarray(json: string) :AnyArray` |
-| `json_minify` | `json_minify(json: string) :string` |
-| `json_beautify` | `json_beautify(json: string) :string` |
+| `system_info` | `system_info() :string` |
+| `system_env` | `system_env(name: string) :string` |
+| `system_time_nanos` | `system_time_nanos() :int64` |
+| `system_env_set` | `system_env_set(name: string, value: string) :int64` |
+| `system_env_unset` | `system_env_unset(name: string) :int64` |
+| `system_free_string` | `system_free_string(str: string) :void` |
 
 ---
 
-## [Encoding](encoding.md) — Module `hoo.encoding`
+## [Thread](thread.md) — Class `Thread` + Class `Mutex`
 
-**Pattern:** Free Functions
+**Import:** `import hoo;`
 
-| API | Signature |
-|-----|-----------|
-| `encoding_base64_encode` | `encoding_base64_encode(data: string, len: int64) :string` |
-| `encoding_base64_decode` | `encoding_base64_decode(encoded: string) :string` |
-| `encoding_hex_encode` | `encoding_hex_encode(data: string, len: int64) :string` |
-| `encoding_hex_decode` | `encoding_hex_decode(hex: string) :string` |
-| `encoding_url_encode` | `encoding_url_encode(str: string) :string` |
-| `encoding_url_decode` | `encoding_url_decode(encoded: string) :string` |
+**Pattern:** Static class + instance class
 
-Buffer overloads: `encoding_base64_encode_buffer(buf: Buffer) :string`,
-`encoding_base64_decode_buffer(encoded: string) :Buffer`,
-`encoding_hex_encode_buffer(buf: Buffer) :string`,
-`encoding_hex_decode_buffer(hex: string) :Buffer`
+### Thread
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Thread.spawn` | `Thread.spawn(func: any) :int64` |
+| Static | `Thread.sleep` | `Thread.sleep(millis: int64) :void` |
+
+### Mutex
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Constructor | `Mutex` | `Mutex() :Mutex` |
+| Instance | `m.lock` | `m.lock() :void` |
+| Instance | `m.unlock` | `m.unlock() :void` |
+| Instance | `m.retain` / `m.release` / `m.refcount` | Reference counting |
 
 ---
 
-## [Hashing](hashing.md) — `hashing` free functions
+## [Exception](exception.md) — Class `Exception`
 
-**Pattern:** Module free functions
+**Import:** `import hoo;`
+
+**Pattern:** Instance class
+
+Exception types: `RuntimeException`, `NullPointerException`,
+`IndexOutOfBoundsException`, `DivisionByZeroException`, `InvalidCastException`,
+and custom subtypes.
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Constructor | `Exception` | `Exception(reason: string) :Exception` |
+| Static | `Exception.runtime` | `Exception.runtime(message: string) :Exception` |
+| Static | `Exception.nullPointer` | `Exception.nullPointer(message: string) :Exception` |
+| Static | `Exception.indexOutOfBounds` | `Exception.indexOutOfBounds(message: string) :Exception` |
+| Static | `Exception.divisionByZero` | `Exception.divisionByZero(message: string) :Exception` |
+| Static | `Exception.invalidCast` | `Exception.invalidCast(message: string) :Exception` |
+| Static | `Exception.custom` | `Exception.custom(typeName: string, message: string) :Exception` |
+| Instance | `e.reason` | `e.reason() :string` |
+| Instance | `e.typeId` | `e.typeId() :int64` |
+| Instance | `e.typeName` | `e.typeName() :string` |
+| Instance | `e.to_string` | `e.to_string() :string` |
+| Instance | `e.stackTrace` | `e.stackTrace() :string` |
+| Instance | `e.hasCause` | `e.hasCause() :int64` |
+| Instance | `e.cause` | `e.cause() :Exception` |
+| Instance | `e.frameCount` | `e.frameCount() :int64` |
+| Instance | `e.frame` | `e.frame(index: int64) :string` |
+| Instance | `e.print` | `e.print() :void` |
+| Instance | `e.equals` | `e.equals(other: Exception) :int64` |
+| Instance | `e.debug` | `e.debug() :string` |
+| Instance | `e.retain` / `e.release` / `e.refcount` | Reference counting |
+
+---
+
+## [Args](args.md) — Class `Args`
+
+**Import:** `import hoo;`
+
+**Pattern:** Static class
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Args.get` | `Args.get(index: int64) :string` |
+| Static | `Args.count` | `Args.count() :int64` |
+
+---
+
+## [Net](net.md) — Classes `Url`, `HttpClient`, `HttpResponse`
+
+**Import:** `import hoo.net;`
+
+**Pattern:** Instance classes
+
+### Url
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Constructor | `Url` | `Url(url: string) :Url` |
+| Instance | `url.to_string` | `url.to_string() :string` |
+| Instance | `url.retain` / `url.release` | Reference counting |
+| Instance | `url.free_string` | `url.free_string(str: string) :void` |
+
+### HttpClient
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Constructor | `HttpClient` | `HttpClient() :HttpClient` |
+| Instance | `client.get` | `client.get(url: Url) :HttpResponse` |
+| Instance | `client.post` | `client.post(url: Url, body: string) :HttpResponse` |
+| Instance | `client.retain` / `client.release` | Reference counting |
+
+### HttpResponse
 
 | API | Signature |
 |-----|-----------|
-| `hashing_sha256` | `hashing_sha256(data: string, len: int64) :string` |
-| `hashing_sha256_file` | `hashing_sha256_file(path: string) :string` |
-| `hashing_sha1` | `hashing_sha1(data: string, len: int64) :string` |
-| `hashing_md5` | `hashing_md5(data: string, len: int64) :string` |
-| `hashing_crc32` | `hashing_crc32(data: string, len: int64) :int64` |
-| `hashing_hmac_sha256` | `hashing_hmac_sha256(key: string, keyLen: int64, data: string, dataLen: int64) :string` |
+| `resp.status_code` | `resp.status_code() :int64` |
+| `resp.status_text` | `resp.status_text() :string` |
+| `resp.body` | `resp.body() :string` |
+| `resp.retain` / `resp.release` | Reference counting |
+| `resp.free_string` | `resp.free_string(str: string) :void` |
 
-Buffer-aware functions: `hashing_sha256_buffer(buf: Buffer)`, `hashing_sha1_buffer(buf: Buffer)`,
-`hashing_md5_buffer(buf: Buffer)`, `hashing_crc32_buffer(buf: Buffer)`,
-`hashing_hmac_sha256_buffer(key: Buffer, data: Buffer)` — return types same as string versions.
+---
+
+## [JSON](json.md) — Class `Json`
+
+**Import:** `import hoo.json;`
+
+**Pattern:** Static class
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Static | `Json.parse` | `Json.parse(text: string) :Any` |
+| Static | `Json.stringify` | `Json.stringify(value: Any) :string` |
+| Static | `Json.pretty` | `Json.pretty(value: Any) :string` |
+| Static | `Json.free_string` | `Json.free_string(str: string) :void` |
+
+---
+
+## [Encoding](encoding.md) — Free Functions
+
+**Import:** `import hoo.encoding;`
+
+**Pattern:** Free functions
+
+### Base64
+
+| API | Signature |
+|-----|-----------|
+| `base64_encode` | `base64_encode(data: string) :string` |
+| `base64_decode` | `base64_decode(data: string) :string` |
+| `base64_encode_bytes` | `base64_encode_bytes(data: array) :string` |
+| `base64_decode_bytes` | `base64_decode_bytes(data: string) :array` |
+
+### URL Encoding
+
+| API | Signature |
+|-----|-----------|
+| `uri_encode` | `uri_encode(data: string) :string` |
+| `uri_decode` | `uri_decode(data: string) :string` |
+
+### Hex
+
+| API | Signature |
+|-----|-----------|
+| `hex_encode` | `hex_encode(data: string) :string` |
+| `hex_decode` | `hex_decode(data: string) :string` |
+
+---
+
+## [Hashing](hashing.md) — Free Functions
+
+**Import:** `import hoo;`
+
+**Pattern:** Free functions
+
+| API | Signature |
+|-----|-----------|
+| `hashing_crc32` | `hashing_crc32(data: string) :int64` |
+| `hashing_md5` | `hashing_md5(data: string) :string` |
+| `hashing_sha1` | `hashing_sha1(data: string) :string` |
+| `hashing_sha256` | `hashing_sha256(data: string) :string` |
 
 ---
 
 ## [Compression](compression.md) — Class `Compression`
 
-**Pattern:** Instance class
+**Import:** `import hoo.compression;`
+
+**Pattern:** Static class
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new Compression` | `new Compression() :Compression` |
-| Instance | `c.release` | `c.release()` |
-| Instance | `c.gzipCompress` | `c.gzipCompress(data, len) :string` |
-| Instance | `c.gzipDecompress` | `c.gzipDecompress(data, len) :string` |
-| Instance | `c.deflateCompress` | `c.deflateCompress(data, len) :string` |
-| Instance | `c.deflateDecompress` | `c.deflateDecompress(data, len) :string` |
-
-Buffer overloads: `c.gzipCompress(buf: Buffer) :Buffer`,
-`c.gzipDecompress(buf: Buffer) :Buffer`,
-`c.deflateCompress(buf: Buffer) :Buffer`,
-`c.deflateDecompress(buf: Buffer) :Buffer`
+| Static | `Compression.compress` | `Compression.compress(data: string) :string` |
+| Static | `Compression.decompress` | `Compression.decompress(data: string) :string` |
+| Static | `Compression.compress_bytes` | `Compression.compress_bytes(data: array) :array` |
+| Static | `Compression.decompress_bytes` | `Compression.decompress_bytes(data: array) :array` |
 
 ---
 
-## [CSV](csv.md) — Class `Csv` + Free Function
+## [CSV](csv.md) — Class `CSV`
 
-**Pattern:** Instance class + free function
+**Import:** `import hoo.io;`
+
+**Pattern:** Static class (with instance ARC methods)
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Constructor | `new Csv` | `new Csv() :Csv` |
-| Free function | `csv_from_opts` | `csv_from_opts(delimiter: int64, quote: int64) :Csv` |
-| Instance | `csv.retain` | `csv.retain() :Csv` |
-| Instance | `csv.release` | `csv.release()` |
-| Instance | `csv.refcount` | `csv.refcount() :int64` |
-| Instance | `csv.parse` | `csv.parse(input: string) :array` |
-| Instance | `csv.parseAsMaps` | `csv.parseAsMaps(input: string) :array` |
-| Instance | `csv.generate` | `csv.generate(data: array) :string` |
-| Instance | `csv.readFile` | `csv.readFile(path: string) :array` |
-| Instance | `csv.readFileAsMaps` | `csv.readFileAsMaps(path: string) :array` |
-| Instance | `csv.writeFile` | `csv.writeFile(path: string, data: array) :int64` |
-| Instance | `csv.escape` | `csv.escape(c: int64) :int64` |
-| Instance | `csv.count` | `csv.count(data: array, column: string) :int64` |
-| Instance | `csv.sum` | `csv.sum(data: array, column: string) :int64` |
-| Instance | `csv.avg` | `csv.avg(data: array, column: string) :string` |
-| Instance | `csv.min` | `csv.min(data: array, column: string) :string` |
-| Instance | `csv.max` | `csv.max(data: array, column: string) :string` |
-| Instance | `csv.select` | `csv.select(data: array, columns: array) :array` |
-| Instance | `csv.filter` | `csv.filter(data: array, column: string, op: string, value: string) :array` |
-| Instance | `csv.sort` | `csv.sort(data: array, column: string, ascending: int64) :array` |
-| Instance | `csv.describe` | `csv.describe(data: array, column: string) :map` |
-
----
-
-## [Thread](thread.md) — concurrency and mutexes
-
-**Pattern:** Instance class & free functions
-
-| API | Signature |
-|-----|-----------|
-| `new Mutex` | `new Mutex() :Mutex` |
-| `mutex.lock` | `mutex.lock() :int64` |
-| `mutex.unlock` | `mutex.unlock() :int64` |
-| `mutex.release` | `mutex.release() :int64` |
-| `thread_self` | `thread_self() :int64` |
-| `thread_spawn` | `thread_spawn(func: ptr, arg: ptr) :int64` |
-| `thread_join` | `thread_join(thread_id: int64) :int64` |
-
----
-
-## [Exception](exception.md) — Exception Types
-
-**Pattern:** Instance methods on caught exceptions
-
-Exception types: `RuntimeException`, `NullPointerException`,
-`IndexOutOfBoundsException`, `DivisionByZeroException`, `InvalidCastException`,
-and custom subtypes of `RuntimeException`.
-
-| API | Signature |
-|-----|-----------|
-| `e.message` | `e.message() :string` |
-| `e.typeName` | `e.typeName() :string` |
-| `e.typeId` | `e.typeId() :int64` |
-| `e.stackTrace` | `e.stackTrace() :string` |
-| `e.hasCause` | `e.hasCause() :int64` |
-| `e.cause` | `e.cause() :Exception` |
-| `e.frameCount` | `e.frameCount() :int64` |
-| `e.frame` | `e.frame(index: int64) :string` |
+| Static | `CSV.parse` | `CSV.parse(text: string) :array` |
+| Static | `CSV.serialize` | `CSV.serialize(data: array) :string` |
+| Instance | `csv.retain` / `csv.release` / `csv.refcount` | Reference counting |

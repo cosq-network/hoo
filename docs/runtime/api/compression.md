@@ -1,124 +1,153 @@
-# Compression API Reference (`Compression`)
+# Compression API Reference
 
-The `Compression` class provides gzip and deflate compression and decompression utilities. Create an instance with `new Compression()` and release it with `release()`.
+## Compression
 
-## 1. Constructor / Destructor
+The Compression module belongs to the Hoo standard library.
 
-### `new Compression() :Compression`
-
-Creates a new Compression instance.
+## Import Statement
 
 ```hoo
-var c = new Compression()
+import hoo.compression;
 ```
 
-### `c.release()`
+## Module Description
 
-Releases the Compression instance and its resources.
+The Compression module provides static utility functions for compressing and decompressing data using the zlib library. It supports both string and raw byte-array compression via gzip and deflate algorithms.
+
+## Class: Compression
+
+A static utility class providing compression and decompression operations.
+
+### Declaration
 
 ```hoo
-c.release()
+class Compression
 ```
 
-## 2. Gzip
+### Public Fields
 
-### `c.gzipCompress(data, len) :string`
+None.
 
-Compresses `len` bytes from `data` using gzip compression.
+### Public Class (Static) Functions
 
-- **Parameters:**
-  - `data` — the raw byte data to compress.
-  - `len` — number of bytes to compress.
-- **Returns:** `string` — the gzip-compressed data.
+#### compress
+
+Compresses a string using zlib compression and returns the compressed data as a string.
 
 ```hoo
-var c = new Compression()
-var original = "Hello, Hoo!"
-var compressed = c.gzipCompress(original.data(), original.length())
+Compression.compress(data: string): string
 ```
+
+**Parameters:**
+
+| Parameter | Type     | Description               |
+|-----------|----------|---------------------------|
+| `data`    | `string` | The string to compress.   |
+
+**Returns:** `string` — The compressed data.
+
+**Errors:** Compression failure causes a runtime error.
 
 ---
 
-### `c.gzipDecompress(data, len) :string`
+#### decompress
 
-Decompresses `len` bytes of gzip-compressed data.
-
-- **Parameters:**
-  - `data` — the gzip-compressed data.
-  - `len` — number of bytes to decompress.
-- **Returns:** `string` — the decompressed original data.
+Decompresses zlib-compressed data back into the original string.
 
 ```hoo
-var c = new Compression()
-var original = "Hello, Hoo!"
-var compressed = c.gzipCompress(original.data(), original.length())
-var decompressed = c.gzipDecompress(compressed.data(), compressed.length())
-c.release()
+Compression.decompress(data: string): string
 ```
 
-## 3. Deflate
+**Parameters:**
 
-### `c.deflateCompress(data, len) :string`
+| Parameter | Type     | Description                 |
+|-----------|----------|-----------------------------|
+| `data`    | `string` | The compressed string data. |
 
-Compresses `len` bytes from `data` using the deflate algorithm.
+**Returns:** `string` — The decompressed original data.
 
-```hoo
-var c = new Compression()
-var original = "Hello, Hoo!"
-var compressed = c.deflateCompress(original.data(), original.length())
-```
+**Errors:** Decompression failure causes a runtime error.
 
 ---
 
-### `c.deflateDecompress(data, len) :string`
+#### compress_bytes
 
-Decompresses `len` bytes of deflate-compressed data.
-
-```hoo
-var c = new Compression()
-var original = "Hello, Hoo!"
-var compressed = c.deflateCompress(original.data(), original.length())
-var decompressed = c.deflateDecompress(compressed.data(), compressed.length())
-c.release()
-```
-
-### Buffer-Aware Overloads
-
-Each compression method also accepts a `Buffer` handle and returns a `Buffer`:
-
-- `c.gzipCompress(buf: buffer) :buffer` — gzip-compress a buffer.
-- `c.gzipDecompress(buf: buffer) :buffer` — gzip-decompress a buffer.
-- `c.deflateCompress(buf: buffer) :buffer` — deflate-compress a buffer.
-- `c.deflateDecompress(buf: buffer) :buffer` — deflate-decompress a buffer.
+Compresses a raw byte array using zlib and returns the compressed byte array.
 
 ```hoo
-var c = new Compression()
-var input = buffer_fromBytes("Hello, Hoo!", 12)
-var compressed = c.gzipCompress(input)
-var decompressed = c.gzipDecompress(compressed)
-c.release()
+Compression.compress_bytes(data: array): array
 ```
+
+**Parameters:**
+
+| Parameter | Type    | Description                   |
+|-----------|---------|-------------------------------|
+| `data`    | `array` | The raw byte array to compress. |
+
+**Returns:** `array` — The compressed byte array.
+
+**Errors:** Compression failure causes a runtime error.
+
+---
+
+#### decompress_bytes
+
+Decompresses a compressed byte array back into the original bytes.
+
+```hoo
+Compression.decompress_bytes(data: array): array
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description                       |
+|-----------|---------|-----------------------------------|
+| `data`    | `array` | The compressed byte array data.   |
+
+**Returns:** `array` — The decompressed original byte array.
+
+**Errors:** Decompression failure causes a runtime error.
+
+---
+
+#### free_bytes
+
+Frees memory allocated by a compressed or decompressed byte array operation.
+
+```hoo
+Compression.free_bytes(data: array): void
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description                               |
+|-----------|---------|-------------------------------------------|
+| `data`    | `array` | The byte array to free.                   |
+
+**Returns:** `void`
+
+---
 
 ## Usage Example
 
 ```hoo
-var c = new Compression()
-var text = "The quick brown fox jumps over the lazy dog. "
-var repeated = ""
-var i: int64 = 0
-while i < 100 {
-    repeated = repeated + text
-    i = i + 1
+import hoo.compression;
+
+func :int64 main() {
+    var original = "Hello, Hoo! This is a test string for compression.";
+
+    // Compress and decompress a string
+    var compressed = Compression.compress(original);
+    var decompressed = Compression.decompress(compressed);
+    println(decompressed);
+
+    // Compress and decompress raw bytes
+    var bytes = [72, 101, 108, 108, 111]any;
+    var comp = Compression.compress_bytes(bytes);
+    var decomp = Compression.decompress_bytes(comp);
+    Compression.free_bytes(comp);
+    Compression.free_bytes(decomp);
+
+    return 0;
 }
-
-var gzipped = c.gzipCompress(repeated.data(), repeated.length())
-var deflated = c.deflateCompress(repeated.data(), repeated.length())
-
-println("Original: " + repeated.length())
-println("Gzip: " + gzipped.length())
-println("Deflate: " + deflated.length())
-
-var restored = c.gzipDecompress(gzipped.data(), gzipped.length())
-println("Restored: " + restored.length())
-c.release()
 ```

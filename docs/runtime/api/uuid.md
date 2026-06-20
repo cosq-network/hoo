@@ -1,77 +1,434 @@
-# Uuid — Universally Unique Identifiers
+# UUID API Reference
 
-The `uuid` module provides a `Uuid` class and free functions for generating and manipulating UUIDs without exposing raw pointer handles.
+## Module Name
 
-## Uuid Class
+Part of the `hoo` module.
 
-### Constructor
-
-`new Uuid(source: string) :Uuid`
-Creates a Uuid. If `source` is empty, generates a random UUID version 4. If `source` is `"nil"`, creates a nil UUID. Otherwise, parses the UUID from its canonical string representation.
-
-### Methods
-
-`uuid.toString() :string`
-Converts the UUID to its canonical string representation.
-
-`uuid.isNil() :int64`
-Returns 1 if the UUID is the nil UUID, 0 otherwise.
-
-`uuid.equals(other: Uuid) :int64`
-Returns 1 if two UUIDs are equal, 0 otherwise.
-
-`uuid.compare(other: Uuid) :int64`
-Lexicographically compares two UUIDs. Returns -1 if `this` < `other`, 0 if they are equal, 1 if `this` > `other`.
-
-`uuid.toBytes() :buffer`
-Extracts the raw 16 bytes of the UUID into a new Buffer.
-
-`uuid.release()`
-Releases the UUID handle.
-
-## Free Functions
-
-`uuid_v4() :string`
-Returns a new random UUID version 4 as a string.
-
-`uuid_nil() :string`
-Returns the nil UUID string (`00000000-0000-0000-0000-000000000000`).
-
-`uuid_is_nil(str: string) :int64`
-Returns 1 if the UUID string is nil, 0 otherwise.
-
-`uuid_from_bytes(buf: buffer) :Uuid`
-Creates a Uuid instance from a 16-byte Buffer. Returns NULL if the buffer is not exactly 16 bytes.
-
-`uuid_to_bytes(str: string) :buffer`
-Converts a UUID string to a 16-byte Buffer.
-
-`uuid_equals(a: string, b: string) :int64`
-Returns 1 if the two UUID strings are equal, 0 otherwise.
-
-`uuid_compare(a: string, b: string) :int64`
-Compares two UUID strings. Returns -1, 0, or 1.
-
-`uuid_to_string(id: Uuid) :string`
-Returns the canonical string representation of the `Uuid` object.
-
-## Example
+## Import Statement
 
 ```hoo
-import hoo.uuid;
+import hoo;
+```
 
--- Object-oriented style
-let id = new Uuid("")
-let str = id.toString()
-println(str)  // e.g. "550e8400-e29b-41d4-a716-446655440000"
+## Module Description
 
-let nil = new Uuid("nil")
-let isNil = nil.isNil()  // 1
+The `Uuid` class provides generation, parsing, and manipulation of universally unique identifiers (UUIDs). The class supports creating random version 4 UUIDs, parsing UUIDs from their canonical string representation, and comparing UUIDs. UUID objects are reference-counted.
 
-id.release()
-nil.release()
+## Class: Uuid
 
--- Free functions style
-let simpleV4 = uuid_v4()
-println("V4 String: " + simpleV4)
+### Declaration
+
+```hoo
+class Uuid
+```
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+#### `v4`
+
+Generates a random version 4 UUID.
+
+**Syntax:**
+
+```hoo
+Uuid.v4() :Uuid
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`Uuid` — A new `Uuid` instance containing a random version 4 UUID.
+
+**Errors:**
+
+Returns a null handle if UUID generation fails.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    println(id.to_string());
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `nil`
+
+Returns the nil UUID (`00000000-0000-0000-0000-000000000000`).
+
+**Syntax:**
+
+```hoo
+Uuid.nil() :Uuid
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`Uuid` — A new `Uuid` instance set to the nil UUID.
+
+**Errors:**
+
+Returns a null handle if allocation fails.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var nil = Uuid.nil();
+    println(nil.to_string()); // 00000000-0000-0000-0000-000000000000
+    nil.release();
+    return 0;
+}
+```
+
+### Public Instance Functions
+
+#### Constructor: `Uuid`
+
+Parses a UUID from its canonical string representation (`xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`).
+
+**Syntax:**
+
+```hoo
+Uuid(value: string) :Uuid
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `value` | `string` | The UUID string to parse. |
+
+**Returns:**
+
+`Uuid` — A new `Uuid` instance parsed from the string.
+
+**Errors:**
+
+Returns a null handle if the string is not a valid UUID.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid("550e8400-e29b-41d4-a716-446655440000");
+    println(id.to_string());
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `to_string`
+
+Returns the canonical string representation of the UUID.
+
+**Syntax:**
+
+```hoo
+to_string() :string
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`string` — The UUID in `xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx` format.
+
+**Errors:**
+
+Returns an empty string for a null UUID handle.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    var s = id.to_string();
+    println(s);
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `equals`
+
+Checks whether two UUIDs are equal.
+
+**Syntax:**
+
+```hoo
+equals(other: Uuid) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `other` | `Uuid` | The UUID to compare against. |
+
+**Returns:**
+
+`int64` — `1` if the UUIDs are equal, `0` otherwise.
+
+**Errors:**
+
+No errors. Returns `0` if either handle is null.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var a = Uuid.nil();
+    var b = Uuid.nil();
+    println(a.equals(b)); // 1
+    a.release();
+    b.release();
+    return 0;
+}
+```
+
+---
+
+#### `is_nil`
+
+Checks whether this UUID is the nil UUID (`00000000-0000-0000-0000-000000000000`).
+
+**Syntax:**
+
+```hoo
+is_nil() :int64
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`int64` — `1` if this is the nil UUID, `0` otherwise.
+
+**Errors:**
+
+Returns `0` for a null UUID handle.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.nil();
+    println(id.is_nil()); // 1
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `retain`
+
+Increments the UUID's reference count by one.
+
+**Syntax:**
+
+```hoo
+retain() :void
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors. If called on a null UUID handle the operation is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    id.retain();
+    id.release();
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `release`
+
+Decrements the UUID's reference count by one. When the reference count reaches zero the UUID is deallocated.
+
+**Syntax:**
+
+```hoo
+release() :void
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors. Calling `release` on an already-freed or null UUID handle is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `refcount`
+
+Returns the current reference count of the UUID.
+
+**Syntax:**
+
+```hoo
+refcount() :int64
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`int64` — The current reference count.
+
+**Errors:**
+
+Returns `0` for a null UUID handle.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    id.retain();
+    var rc = id.refcount(); // 2
+    id.release();
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `free_string`
+
+Frees a string allocated by a UUID method. Use this to release memory returned by `to_string` when the string must be explicitly freed.
+
+**Syntax:**
+
+```hoo
+free_string(str: string) :void
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `str` | `string` | The string to free. |
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors. Passing a null or empty string is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    var s = id.to_string();
+    println(s);
+    id.free_string(s);
+    id.release();
+    return 0;
+}
+```
+
+## Usage Example
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var id = Uuid.v4();
+    var s = id.to_string();
+    println("UUID: " + s);
+    id.free_string(s);
+
+    var nil = Uuid.nil();
+    println("nil: " + nil.is_nil()); // 1
+
+    var parsed = Uuid("550e8400-e29b-41d4-a716-446655440000");
+    println(parsed.equals(id)); // 0
+
+    id.release();
+    nil.release();
+    parsed.release();
+    return 0;
+}
 ```

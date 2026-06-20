@@ -1,217 +1,1207 @@
 # Collections API Reference
 
-**Import Requirement:**
+## Collections
+
+The Collections module belongs to the Hoo standard library.
+
+## Import Statement
+
 ```hoo
 import hoo.collections;
 ```
 
-The hoo collections module provides managed data structures for storing and organizing data: **Arrays** and **Maps**.
+Some types (Array, Map, Any) are available via `import hoo;` — see each class for details.
 
-## 1. Arrays (`Array`)
+## Module Description
 
-Hoo arrays are dynamic, contiguous blocks capable of storing 64-bit values (integers, floats, or managed objects).
+The Collections module provides managed data structures for storing and organizing data: dynamic arrays (Array), heterogeneous arrays (AnyArray), associative maps (Map), native hash maps (HashMap), and multi-dimensional tensors (Tensor). All collection types use automatic reference counting (ARC) for memory management.
 
-### `new Array() :array`
-Creates a new, empty array with initial capacity.
+## Class: Array
 
-### `arr.length() :int64`
-Returns the number of elements currently stored in the array.
+A type-agnostic dynamic array that stores elements in contiguous memory. Elements are accessed via type-specific operations.
 
-### `arr.push(val: int64)`
-Appends an integer to the end of the array.
+### Declaration
 
-### `arr.push(val: double)`
-Appends a double-precision float to the end of the array.
+```hoo
+class Array
+```
 
-### `arr.push(val: string)`
-Appends a string to the end of the array.
+### Import
 
-### `arr.getInt64(index: int64) :int64`
-Retrieves the integer at the specified index.
-- **Note**: Ensure the index is within bounds (`0` to `length - 1`).
+```hoo
+import hoo;
+```
 
-### `arr.getString(index: int64) :string`
-Retrieves the string at the specified index.
+### Public Fields
 
-### `arr.pop()`
-Removes the last element from the array.
+None.
 
-### `arr.clear()`
+### Public Class (Static) Functions
+
+#### new
+
+Creates a new empty Array with an optional initial capacity hint.
+
+```hoo
+Array.new(capacity: int64 = 0): array
+```
+
+**Parameters:**
+
+| Parameter  | Type    | Description                     |
+|------------|---------|----------------------------------|
+| `capacity` | `int64` | Initial capacity hint (default 0). |
+
+**Returns:** `array` — A new Array handle.
+
+---
+
+#### new_int64
+
+Creates a new Array pre-filled with int64 values.
+
+```hoo
+Array.new_int64(capacity: int64 = 0, default_value: int64 = 0): array
+```
+
+**Parameters:**
+
+| Parameter      | Type    | Description                         |
+|----------------|---------|--------------------------------------|
+| `capacity`     | `int64` | Initial capacity (default 0).        |
+| `default_value`| `int64` | Default element value (default 0).   |
+
+**Returns:** `array`
+
+---
+
+#### new_double
+
+Creates a new Array pre-filled with double values.
+
+```hoo
+Array.new_double(capacity: int64 = 0, default_value: double = 0.0): array
+```
+
+**Parameters:**
+
+| Parameter      | Type    | Description                           |
+|----------------|---------|----------------------------------------|
+| `capacity`     | `int64` | Initial capacity (default 0).          |
+| `default_value`| `double`| Default element value (default 0.0).   |
+
+**Returns:** `array`
+
+---
+
+#### new_string
+
+Creates a new Array for storing strings.
+
+```hoo
+Array.new_string(capacity: int64 = 0): array
+```
+
+**Parameters:**
+
+| Parameter  | Type    | Description                     |
+|------------|---------|----------------------------------|
+| `capacity` | `int64` | Initial capacity (default 0).    |
+
+**Returns:** `array`
+
+---
+
+#### new_any
+
+Creates a new Array for storing heterogeneous (any) values.
+
+```hoo
+Array.new_any(capacity: int64 = 0): array
+```
+
+**Parameters:**
+
+| Parameter  | Type    | Description                     |
+|------------|---------|----------------------------------|
+| `capacity` | `int64` | Initial capacity (default 0).    |
+
+**Returns:** `array`
+
+### Public Instance Functions
+
+#### length
+
+Returns the number of elements in the array.
+
+```hoo
+arr.length(): int64
+```
+
+**Returns:** `int64` — The number of elements.
+
+---
+
+#### push
+
+Appends an element to the end of the array and returns the array itself for chaining.
+
+```hoo
+arr.push(val: int64): array
+arr.push_int64(val: int64): array
+arr.push_double(val: double): array
+arr.push_string(val: string): array
+arr.push_any(val): array
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| `val`     | *varied* | The value to append. |
+
+**Returns:** `array` — The array handle (may differ after reallocation).
+
+**Errors:** Out-of-memory may cause a runtime error.
+
+---
+
+#### get
+
+Retrieves the element at the specified index.
+
+```hoo
+arr.get(index: int64): value
+arr.get_int64(index: int64): int64
+arr.get_double(index: int64): double
+arr.get_string(index: int64): string
+arr.get_any(index: int64): any
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description               |
+|-----------|---------|---------------------------|
+| `index`   | `int64` | Zero-based element index. |
+
+**Returns:** The element at the given index.
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### set
+
+Sets the element at the specified index.
+
+```hoo
+arr.set(index: int64, val: int64)
+arr.set_int64(index: int64, val: int64)
+arr.set_double(index: int64, val: double)
+arr.set_string(index: int64, val: string)
+arr.set_any(index: int64, val)
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description               |
+|-----------|----------|---------------------------|
+| `index`   | `int64`  | Zero-based element index. |
+| `val`     | *varied* | The value to store.       |
+
+**Returns:** `void`
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### clear
+
 Removes all elements from the array.
 
----
+```hoo
+arr.clear(): void
+```
 
-## 1.5 Heterogeneous Arrays (`AnyArray`)
-
-`AnyArray` is an intrinsic managed collection whose element type is `any`.
-
-### `new AnyArray() :AnyArray`
-Creates an empty heterogeneous array.
-
-### `[expr, ...]any :AnyArray`
-Creates an `AnyArray` literal and packs each element as `(type_id, data)`.
-
-### `arr.length() :int64`
-Returns the number of elements.
-
-### `arr.push(value) :int64`
-Appends any primitive or managed value. Returns `1` on success.
-
-### `arr[index]`
-Returns the stored value payload for current expression lowering. The raw runtime getter returns a full tagged `HooAnyValue`.
-
-### `arr[index] = value`
-Replaces an existing element and updates ARC ownership for managed payloads.
-
-### `arr.clear()`
-Releases managed payloads and removes all elements.
+**Returns:** `void`
 
 ---
 
-## 2. Maps (`Map`)
+#### retain
 
-Hoo maps are type-safe dictionaries that map keys to values. Keys are restricted to specific types (int64, string, etc.) for efficient hashing, and value types can also be specified at creation.
+Increments the reference count.
 
-### `new Map(keyType: int64, valueType: int64) :map`
-Creates a new map bound to a specific key type and value type.
-- **Key Types** (`HooMapKeyType`):
-  - `0`: `byte`
-  - `1`: `int8`
-  - `2`: `int64`
-  - `3`: `char` (runtime only — no Hoo-level wrappers; use C API)
-  - `4`: `string`
-- **Value Types** (`HooMapValueType`):
-  - `0`: `any` (no enforcement)
-  - `1`: `int64`
-  - `2`: `double`
-  - `3`: `bool`
-  - `4`: `string`
-  - `5`: `object`
-### `m.length() :int64`
-Returns the number of entries in the map.
+```hoo
+arr.retain(): array
+```
 
-### `m.empty() :int64`
-Returns 1 if the map has no entries, 0 otherwise.
+**Returns:** `array` — The same array handle.
 
-### `m.clear()`
+---
+
+#### release
+
+Decrements the reference count. The array is freed when the count reaches zero.
+
+```hoo
+arr.release(): void
+```
+
+**Returns:** `void`
+
+---
+
+#### refcount
+
+Returns the current reference count.
+
+```hoo
+arr.refcount(): int64
+```
+
+**Returns:** `int64` — The reference count.
+
+---
+
+## Class: Map
+
+A type-safe associative dictionary that maps typed keys to typed values. Key and value types are specified at creation.
+
+### Declaration
+
+```hoo
+class Map
+```
+
+### Import
+
+```hoo
+import hoo;
+```
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+#### new
+
+Creates a new Map.
+
+```hoo
+Map.new(): map
+```
+
+**Returns:** `map` — A new Map handle.
+
+**Key Types:**
+
+| Value | Type     |
+|-------|----------|
+| 0     | `byte`   |
+| 1     | `int8`   |
+| 2     | `int64`  |
+| 3     | `char`   |
+| 4     | `string` |
+
+**Value Types:**
+
+| Value | Type      |
+|-------|-----------|
+| 0     | `any`     |
+| 1     | `int64`   |
+| 2     | `double`  |
+| 3     | `bool`    |
+| 4     | `string`  |
+| 5     | `object`  |
+
+### Public Instance Functions
+
+#### put
+
+Inserts or updates a key-value pair.
+
+```hoo
+m.put(key, value)
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description         |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to insert.   |
+| `value`   | *val* | The value to store.  |
+
+**Returns:** `void`
+
+---
+
+#### get
+
+Retrieves the value associated with a key.
+
+```hoo
+m.get(key): value
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description          |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to look up.  |
+
+**Returns:** The value if the key exists.
+
+**Errors:** Key not found causes a runtime error.
+
+---
+
+#### has
+
+Checks whether a key exists in the map.
+
+```hoo
+m.has(key): bool
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description          |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to check.    |
+
+**Returns:** `bool` — `true` if the key exists, `false` otherwise.
+
+---
+
+#### remove
+
+Removes the entry for the specified key.
+
+```hoo
+m.remove(key)
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description         |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to remove.   |
+
+**Returns:** `void`
+
+---
+
+#### clear
+
 Removes all entries from the map.
 
-### `m.keyType() :int64`
-Returns the key type of the map (HooMapKeyType value).
+```hoo
+m.clear()
+```
 
-### `m.valueType() :int64`
-Returns the value type of the map (HooMapValueType value).
-
-### Int64 Key Operations
-
-| Method | Signature |
-|--------|-----------|
-| `containsInt64` | `m.containsInt64(key: int64) :int64` |
-| `removeInt64` | `m.removeInt64(key: int64)` |
-| `setInt64Int64` | `m.setInt64Int64(key: int64, val: int64)` |
-| `getInt64Int64` | `m.getInt64Int64(key: int64) :int64` |
-| `setInt64Double` | `m.setInt64Double(key: int64, val: double)` |
-| `getInt64Double` | `m.getInt64Double(key: int64) :double` |
-| `setInt64String` | `m.setInt64String(key: int64, val: string)` |
-| `getInt64String` | `m.getInt64String(key: int64) :string` |
-| `setInt64Bool` | `m.setInt64Bool(key: int64, val: bool)` |
-| `getInt64Bool` | `m.getInt64Bool(key: int64) :bool` |
-
-### String Key Operations
-
-| Method | Signature |
-|--------|-----------|
-| `containsString` | `m.containsString(key: string) :int64` |
-| `removeString` | `m.removeString(key: string)` |
-| `setStringInt64` | `m.setStringInt64(key: string, val: int64)` |
-| `getStringInt64` | `m.getStringInt64(key: string) :int64` |
-| `setStringDouble` | `m.setStringDouble(key: string, val: double)` |
-| `getStringDouble` | `m.getStringDouble(key: string) :double` |
-| `setStringString` | `m.setStringString(key: string, val: string)` |
-| `getStringString` | `m.getStringString(key: string) :string` |
-| `setStringBool` | `m.setStringBool(key: string, val: bool)` |
-| `getStringBool` | `m.getStringBool(key: string) :bool` |
-
-### Int8 Key Operations
-
-| Method | Signature |
-|--------|-----------|
-| `containsInt8` | `m.containsInt8(key: int8) :int64` |
-| `removeInt8` | `m.removeInt8(key: int8)` |
-| `setInt8Int64` | `m.setInt8Int64(key: int8, val: int64)` |
-| `getInt8Int64` | `m.getInt8Int64(key: int8) :int64` |
-| `setInt8Double` | `m.setInt8Double(key: int8, val: double)` |
-| `getInt8Double` | `m.getInt8Double(key: int8) :double` |
-| `setInt8String` | `m.setInt8String(key: int8, val: string)` |
-| `getInt8String` | `m.getInt8String(key: int8) :string` |
-| `setInt8Bool` | `m.setInt8Bool(key: int8, val: bool)` |
-| `getInt8Bool` | `m.getInt8Bool(key: int8) :bool` |
+**Returns:** `void`
 
 ---
 
-## 3. Native Hash Maps (`HashMap`)
+#### keys
 
-`HashMap<K, V>` is an intrinsic hash map with `byte`, `int8`, or `int64` keys. `V` may be a fixed value type or `any`.
+Returns an array containing all keys in the map.
 
-### `new HashMap<int64, int64>() :HashMap`
-Creates a fixed-value native hash map.
+```hoo
+m.keys(): array
+```
 
-### `new HashMap<byte, any>() :HashMap`
-Creates a heterogeneous native hash map.
+**Returns:** `array` — An Array containing all keys.
 
-### `m[key] = value`
-Stores `value`. Fixed maps store the 64-bit payload directly. `HashMap<K, any>` stores the runtime type ID plus payload and retains managed values.
+---
 
-### `m[key]`
-Returns the stored value payload for current expression lowering. The raw runtime getter for `HashMap<K, any>` returns the full tagged `HooAnyValue`.
+#### values
 
-### `m.count() :int64`
-Returns the number of entries.
+Returns an array containing all values in the map.
 
-### `m.remove(key) :int64`
-Removes an entry and returns `1` if present.
+```hoo
+m.values(): array
+```
 
-### `m.clear()`
-Clears all entries and releases managed `any` payloads.
+**Returns:** `array` — An Array containing all values.
+
+---
+
+#### length
+
+Returns the number of entries in the map.
+
+```hoo
+m.length(): int64
+```
+
+**Returns:** `int64` — The entry count.
+
+---
+
+#### retain
+
+Increments the reference count.
+
+```hoo
+m.retain(): map
+```
+
+**Returns:** `map` — The same map handle.
+
+---
+
+#### release
+
+Decrements the reference count. The map is freed when the count reaches zero.
+
+```hoo
+m.release(): void
+```
+
+**Returns:** `void`
+
+---
+
+#### refcount
+
+Returns the current reference count.
+
+```hoo
+m.refcount(): int64
+```
+
+**Returns:** `int64` — The reference count.
+
+---
+
+## Class: HashMap
+
+A native hash map with fixed key and value types. Keys are restricted to `byte`, `int8`, or `int64`.
+
+### Declaration
+
+```hoo
+class HashMap
+```
+
+### Import
+
+```hoo
+import hoo.collections;
+```
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+#### new
+
+Creates a new HashMap with the specified initial bucket count.
+
+```hoo
+HashMap.new(size: int64 = 16): HashMap
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description                        |
+|-----------|---------|-------------------------------------|
+| `size`    | `int64` | Initial bucket count (default 16). |
+
+**Returns:** `HashMap`
+
+### Public Instance Functions
+
+#### put
+
+Inserts or updates a key-value pair.
+
+```hoo
+m.put(key, value)
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description         |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to insert.   |
+| `value`   | *val* | The value to store.  |
+
+**Returns:** `void`
+
+---
+
+#### get
+
+Retrieves the value associated with a key.
+
+```hoo
+m.get(key): value
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description          |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to look up.  |
+
+**Returns:** The value if the key exists.
+
+**Errors:** Key not found causes a runtime error.
+
+---
+
+#### has
+
+Checks whether a key exists in the map.
+
+```hoo
+m.has(key): bool
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description          |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to check.    |
+
+**Returns:** `bool` — `true` if the key exists, `false` otherwise.
+
+---
+
+#### remove
+
+Removes the entry for the specified key.
+
+```hoo
+m.remove(key)
+```
+
+**Parameters:**
+
+| Parameter | Type  | Description         |
+|-----------|-------|----------------------|
+| `key`     | *key* | The key to remove.   |
+
+**Returns:** `void`
+
+---
+
+#### clear
+
+Removes all entries from the map.
+
+```hoo
+m.clear()
+```
+
+**Returns:** `void`
+
+---
+
+#### length
+
+Returns the number of entries in the map.
+
+```hoo
+m.length(): int64
+```
+
+**Returns:** `int64` — The entry count.
+
+---
+
+#### keys
+
+Returns an array containing all keys in the map.
+
+```hoo
+m.keys(): array
+```
+
+**Returns:** `array`
+
+---
+
+#### values
+
+Returns an array containing all values in the map.
+
+```hoo
+m.values(): array
+```
+
+**Returns:** `array`
+
+---
+
+#### key_type
+
+Returns the key type identifier of the map.
+
+```hoo
+m.key_type(): int64
+```
+
+**Returns:** `int64` — The key type identifier.
+
+---
+
+#### value_type
+
+Returns the value type identifier of the map.
+
+```hoo
+m.value_type(): int64
+```
+
+**Returns:** `int64` — The value type identifier.
+
+---
+
+#### retain
+
+Increments the reference count.
+
+```hoo
+m.retain(): HashMap
+```
+
+**Returns:** `HashMap` — The same map handle.
+
+---
+
+#### release
+
+Decrements the reference count. Freed when count reaches zero.
+
+```hoo
+m.release(): void
+```
+
+**Returns:** `void`
+
+---
+
+#### refcount
+
+Returns the current reference count.
+
+```hoo
+m.refcount(): int64
+```
+
+**Returns:** `int64` — The reference count.
+
+---
+
+## Class: Any
+
+A tagged union type that can hold values of any type. The runtime representation pairs a type ID with a 64-bit data payload.
+
+### Declaration
+
+```hoo
+class Any
+```
+
+### Import
+
+```hoo
+import hoo;
+```
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+None.
+
+### Public Instance Functions
+
+#### is_null
+
+Checks whether the value is null.
+
+```hoo
+val.is_null(): bool
+```
+
+**Returns:** `bool`
+
+---
+
+#### is_array
+
+Checks whether the value is an array.
+
+```hoo
+val.is_array(): bool
+```
+
+**Returns:** `bool`
+
+---
+
+#### is_string
+
+Checks whether the value is a string.
+
+```hoo
+val.is_string(): bool
+```
+
+**Returns:** `bool`
+
+---
+
+#### is_int64
+
+Checks whether the value is an int64.
+
+```hoo
+val.is_int64(): bool
+```
+
+**Returns:** `bool`
+
+---
+
+#### is_double
+
+Checks whether the value is a double.
+
+```hoo
+val.is_double(): bool
+```
+
+**Returns:** `bool`
+
+---
+
+#### is_bool
+
+Checks whether the value is a bool.
+
+```hoo
+val.is_bool(): bool
+```
+
+**Returns:** `bool`
+
+---
+
+#### as_int64
+
+Extracts the value as an int64.
+
+```hoo
+val.as_int64(): int64
+```
+
+**Returns:** `int64`
+
+**Errors:** Type mismatch causes a runtime error.
+
+---
+
+#### as_double
+
+Extracts the value as a double.
+
+```hoo
+val.as_double(): double
+```
+
+**Returns:** `double`
+
+**Errors:** Type mismatch causes a runtime error.
+
+---
+
+#### as_string
+
+Extracts the value as a string.
+
+```hoo
+val.as_string(): string
+```
+
+**Returns:** `string`
+
+**Errors:** Type mismatch causes a runtime error.
+
+---
+
+#### as_bool
+
+Extracts the value as a bool.
+
+```hoo
+val.as_bool(): bool
+```
+
+**Returns:** `bool`
+
+**Errors:** Type mismatch causes a runtime error.
+
+---
+
+#### as_array
+
+Extracts the value as an array.
+
+```hoo
+val.as_array(): array
+```
+
+**Returns:** `array`
+
+**Errors:** Type mismatch causes a runtime error.
+
+---
+
+## Class: AnyArray
+
+A heterogeneous dynamic array whose elements are typed as `any`. Elements are stored as a tagged pair of type ID and data payload.
+
+### Declaration
+
+```hoo
+class AnyArray
+```
+
+### Import
+
+```hoo
+import hoo.collections;
+```
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+None.
+
+### Public Instance Functions
+
+#### length
+
+Returns the number of elements in the array.
+
+```hoo
+arr.length(): int64
+```
+
+**Returns:** `int64`
+
+---
+
+#### push_back
+
+Appends a value to the end of the array.
+
+```hoo
+arr.push_back(val)
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| `val`     | *varied* | The value to append. |
+
+**Returns:** `void`
+
+---
+
+#### get
+
+Retrieves the element at the specified index.
+
+```hoo
+arr.get(index: int64): any
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description               |
+|-----------|---------|---------------------------|
+| `index`   | `int64` | Zero-based element index. |
+
+**Returns:** `any`
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### set
+
+Sets the element at the specified index.
+
+```hoo
+arr.set(index: int64, val)
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description               |
+|-----------|----------|---------------------------|
+| `index`   | `int64`  | Zero-based element index. |
+| `val`     | *varied* | The value to store.       |
+
+**Returns:** `void`
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### retain
+
+Increments the reference count.
+
+```hoo
+arr.retain(): AnyArray
+```
+
+**Returns:** `AnyArray`
+
+---
+
+#### release
+
+Decrements the reference count. Freed when count reaches zero.
+
+```hoo
+arr.release(): void
+```
+
+**Returns:** `void`
+
+---
+
+#### refcount
+
+Returns the current reference count.
+
+```hoo
+arr.refcount(): int64
+```
+
+**Returns:** `int64`
+
+---
+
+## Class: Tensor
+
+A multi-dimensional array (tensor) supporting up to 3 dimensions with typed elements. Supports element-wise arithmetic, comparison, and logical operations.
+
+### Declaration
+
+```hoo
+class Tensor
+```
+
+### Import
+
+```hoo
+import hoo.collections;
+```
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+#### new
+
+Creates a new Tensor with the given dimension sizes.
+
+```hoo
+Tensor.new(dimensions: int64, ...): Tensor
+```
+
+**Parameters:**
+
+| Parameter    | Type    | Description                           |
+|--------------|---------|---------------------------------------|
+| `dimensions` | `int64` | One or more dimension sizes (1–3).    |
+
+**Returns:** `Tensor`
+
+**Example:**
+
+```hoo
+var t = Tensor.new(4, 4)       // 4x4 matrix
+var t3 = Tensor.new(2, 3, 4)   // 2x3x4 tensor
+```
+
+### Public Instance Functions
+
+#### rank
+
+Returns the number of dimensions.
+
+```hoo
+t.rank(): int64
+```
+
+**Returns:** `int64` — The rank (1, 2, or 3).
+
+---
+
+#### shape
+
+Returns the size of a specific dimension.
+
+```hoo
+t.shape(dim: int64): int64
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description                      |
+|-----------|---------|----------------------------------|
+| `dim`     | `int64` | The dimension axis (0-based).    |
+
+**Returns:** `int64` — The size of the specified dimension.
+
+---
+
+#### num_elements
+
+Returns the total number of elements in the tensor.
+
+```hoo
+t.num_elements(): int64
+```
+
+**Returns:** `int64`
+
+---
+
+#### get
+
+Retrieves an element at the specified linear index.
+
+```hoo
+t.get(index: int64): value
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description               |
+|-----------|---------|---------------------------|
+| `index`   | `int64` | Linear (flattened) index. |
+
+**Returns:** The element value.
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### set
+
+Sets an element at the specified linear index.
+
+```hoo
+t.set(index: int64, val)
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description                |
+|-----------|----------|----------------------------|
+| `index`   | `int64`  | Linear (flattened) index.  |
+| `val`     | *varied* | The value to store.        |
+
+**Returns:** `void`
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### retain
+
+Increments the reference count.
+
+```hoo
+t.retain(): Tensor
+```
+
+**Returns:** `Tensor`
+
+---
+
+#### release
+
+Decrements the reference count. Freed when count reaches zero.
+
+```hoo
+t.release(): void
+```
+
+**Returns:** `void`
+
+---
+
+#### refcount
+
+Returns the current reference count.
+
+```hoo
+t.refcount(): int64
+```
+
+**Returns:** `int64`
 
 ---
 
 ## Usage Example
 
 ```hoo
+import hoo;
 import hoo.collections;
 
 func :int64 main() {
-    // Array Example
-    var numbers = new Array();
-    numbers.push(10);
-    numbers.push(20);
-    numbers.push(30);
+    // Array example
+    var numbers = Array.new();
+    numbers.push_int64(10);
+    numbers.push_int64(20);
+    numbers.push_int64(30);
+    var first = numbers.get_int64(0);
 
-    var len = numbers.length();
-    var first = numbers.getInt64(0); // 10
-
-    // Map Example (string key, int64 value)
-    var config = new Map(4, 1); // 4 = string key, 1 = int64 value
-    config.setStringInt64("port", 8080);
-    config.setStringInt64("timeout", 30);
-
-    if (config.containsString("port")) {
-        var p = config.getStringInt64("port");
-        println("Port: ".concat(p.toString()));
+    // Map example
+    var config = Map.new();
+    config.put("port", 8080);
+    if config.has("port") {
+        var port = config.get("port");
     }
 
-    // Map Example (int64 key, string value)
-    var users = new Map(2, 4); // 2 = int64 key, 4 = string value
-    users.setInt64String(1001, "Alice");
-    users.setInt64String(1002, "Bob");
-    var name = users.getInt64String(1001);
+    // HashMap example
+    var hmap = HashMap.new();
+    hmap.put(1, "hello");
+    hmap.put(2, "world");
 
-    // Intrinsic heterogeneous collections
-    var values = [1, "two", 3]any;
-    var mixed: HashMap<byte, any> = new HashMap<byte, any>();
-    mixed[1] = values[0];
-    mixed[2] = "hello";
+    // AnyArray example
+    var anyarr = AnyArray.new();
+    anyarr.push_back(42);
+    anyarr.push_back("text");
+
+    // Tensor example
+    var tensor = Tensor.new(3, 3);
+    tensor.set(0, 1);
+    tensor.set(4, 2);
 
     return 0;
 }

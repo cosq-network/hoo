@@ -1,119 +1,357 @@
-# Encoding
+# Encoding API Reference
 
-The `hoo.encoding` module provides Base64, hex, and URL percent-encoding encode/decode with round-trip guarantees.
+## Encoding Module
 
-## Functions
+The `hoo.encoding` module provides Base64, hex, and URL percent-encoding encode/decode functions.
 
-### `encoding_base64_encode(data: string, len: int64) :string`
+## Import Statement
 
-Base64-encodes `len` bytes from `data`.
+```hoo
+import hoo.encoding;
+```
+
+## Module Description
+
+The encoding module offers encode/decode for three formats: Base64, hexadecimal, and URL percent-encoding. Functions accept strings and return strings. Byte-array variants accept and return `array` types for binary data. Buffer-aware overloads accept `Buffer` objects directly. All functions throw `RuntimeException` on nil input or encoding/decoding failure.
+
+## Base64 Functions
+
+### base64_encode
+
+#### Description
+
+Base64-encodes a string.
+
+#### Syntax
+
+```hoo
+base64_encode(data: string):string
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The string to encode. |
+
+#### Returns
+
+`string` — A Base64-encoded string.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil or encoding fails.
+
+#### Complete Example
 
 ```hoo
 import hoo.encoding;
 
-let encoded = encoding_base64_encode("Hello, World!", 13)
+let encoded = base64_encode("Hello, World!");
 // encoded == "SGVsbG8sIFdvcmxkIQ=="
 ```
 
-### `encoding_base64_decode(encoded: string) :string`
+### base64_decode
 
-Decodes a base64-encoded string.
+#### Description
+
+Decodes a Base64-encoded string back to the original string.
+
+#### Syntax
+
+```hoo
+base64_decode(data: string):string
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The Base64-encoded string to decode. |
+
+#### Returns
+
+`string` — The decoded string.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
+
+#### Complete Example
 
 ```hoo
 import hoo.encoding;
 
-let decoded = encoding_base64_decode("SGVsbG8sIFdvcmxkIQ==")
+let decoded = base64_decode("SGVsbG8sIFdvcmxkIQ==");
 // decoded == "Hello, World!"
 ```
 
-### `encoding_hex_encode(data: string, len: int64) :string`
+### base64_encode_bytes
 
-Hex-encodes `len` bytes from `data`.
+#### Description
+
+Base64-encodes a byte array.
+
+#### Syntax
 
 ```hoo
-import hoo.encoding;
-
-let hex = encoding_hex_encode("Hello", 5)
-// hex == "48656c6c6f"
+base64_encode_bytes(data: array):string
 ```
 
-### `encoding_hex_decode(hex: string) :string`
+#### Parameters
 
-Decodes a hex-encoded string.
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `array` | The byte array to encode. |
+
+#### Returns
+
+`string` — A Base64-encoded string.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil or encoding fails.
+
+#### Complete Example
 
 ```hoo
 import hoo.encoding;
 
-let bytes = encoding_hex_decode("48656c6c6f")
-// bytes == "Hello"
+let data = [72, 101, 108, 108, 111]byte;
+let encoded = base64_encode_bytes(data);
+// encoded == "SGVsbG8="
 ```
 
-### `encoding_url_encode(str: string) :string`
+### base64_decode_bytes
 
-Percent-encodes a string for safe use in URLs.
+#### Description
+
+Decodes a Base64-encoded string into a byte array.
+
+#### Syntax
+
+```hoo
+base64_decode_bytes(data: string):array
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The Base64-encoded string to decode. |
+
+#### Returns
+
+`array` — A byte array containing the decoded bytes.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
+
+#### Complete Example
 
 ```hoo
 import hoo.encoding;
 
-let encoded = encoding_url_encode("a b=c")
+let decoded = base64_decode_bytes("SGVsbG8=");
+// decoded == [72, 101, 108, 108, 111]byte
+```
+
+## Hex Functions
+
+### hex_encode
+
+#### Description
+
+Hex-encodes a string. Each byte is represented as two hexadecimal characters.
+
+#### Syntax
+
+```hoo
+hex_encode(data: string):string
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The string to encode. |
+
+#### Returns
+
+`string` — A hex-encoded string (lowercase).
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil or encoding fails.
+
+#### Complete Example
+
+```hoo
+import hoo.encoding;
+
+let encoded = hex_encode("Hello");
+// encoded == "48656c6c6f"
+```
+
+### hex_decode
+
+#### Description
+
+Decodes a hex-encoded string back to the original string.
+
+#### Syntax
+
+```hoo
+hex_decode(data: string):string
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The hex-encoded string to decode. |
+
+#### Returns
+
+`string` — The decoded string.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil, contains non-hex characters, has an odd length, or decoding fails.
+
+#### Complete Example
+
+```hoo
+import hoo.encoding;
+
+let decoded = hex_decode("48656c6c6f");
+// decoded == "Hello"
+```
+
+## URL Encoding Functions
+
+### uri_encode
+
+#### Description
+
+Percent-encodes a string for safe use in URLs. Reserved characters and non-ASCII bytes are encoded as `%XX` sequences.
+
+#### Syntax
+
+```hoo
+uri_encode(data: string):string
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The string to percent-encode. |
+
+#### Returns
+
+`string` — A percent-encoded URL string.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil or encoding fails.
+
+#### Complete Example
+
+```hoo
+import hoo.encoding;
+
+let encoded = uri_encode("a b=c");
 // encoded == "a%20b%3Dc"
 ```
 
-### `encoding_url_decode(encoded: string) :string`
+### uri_decode
 
-Decodes a percent-encoded URL string.
+#### Description
+
+Decodes a percent-encoded URL string back to the original string.
+
+#### Syntax
+
+```hoo
+uri_decode(data: string):string
+```
+
+#### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| data | `string` | The percent-encoded string to decode. |
+
+#### Returns
+
+`string` — The decoded string.
+
+#### Errors
+
+Throws `RuntimeException` if `data` is nil, contains malformed percent-encoding, or decoding fails.
+
+#### Complete Example
 
 ```hoo
 import hoo.encoding;
 
-let decoded = encoding_url_decode("a%20b%3Dc")
+let decoded = uri_decode("a%20b%3Dc");
 // decoded == "a b=c"
 ```
 
-### Buffer-Aware Overloads
+## Buffer-Aware Overloads
 
-The base64 and hex functions have buffer overloads (accepting `Buffer` directly and returning `Buffer` or `string` appropriately):
+The base64 and hex functions also accept and return `Buffer` objects directly:
 
-#### `encoding_base64_encode_buffer(buf: Buffer) :string`
-
-Base64-encodes the bytes in the buffer.
+| Function | Signature | Description |
+|----------|-----------|-------------|
+| base64_encode_buffer | `(buf: Buffer):string` | Base64-encodes buffer contents |
+| base64_decode_buffer | `(encoded: string):Buffer` | Decodes Base64 string to buffer |
+| hex_encode_buffer | `(buf: Buffer):string` | Hex-encodes buffer contents |
+| hex_decode_buffer | `(hex: string):Buffer` | Decodes hex string to buffer |
 
 ```hoo
-import hoo.encoding;
 import hoo.buffer;
+import hoo.encoding;
 
-let buf = buffer_fromBytes("Hello", 5)
-let b64 = encoding_base64_encode_buffer(buf)   // "SGVsbG8="
+let buf = buffer_fromBytes("Hello", 5);
+let b64 = base64_encode_buffer(buf);    // "SGVsbG8="
+let hex = hex_encode_buffer(buf);       // "48656c6c6f"
+
+let decoded = base64_decode_buffer(b64); // Buffer
+let fromHex = hex_decode_buffer(hex);   // Buffer
 ```
 
-#### `encoding_base64_decode_buffer(encoded: string) :Buffer`
-
-Decodes a base64-encoded string and returns a `Buffer`.
+## Usage Example
 
 ```hoo
 import hoo.encoding;
 
-let buf = encoding_base64_decode_buffer("SGVsbG8=")   // Buffer
-```
+func :int64 main() {
+    // Base64 round-trip
+    var b64 = base64_encode("Hello, World!");
+    var original = base64_decode(b64);
+    println(original == "Hello, World!"); // true
 
-#### `encoding_hex_encode_buffer(buf: Buffer) :string`
+    // Hex round-trip
+    var hex = hex_encode("Hello");
+    var fromHex = hex_decode(hex);
+    println(fromHex == "Hello"); // true
 
-Hex-encodes the bytes in the buffer.
+    // URL encoding
+    var url = uri_encode("a b=c/d?e=f");
+    println(url);  // "a%20b%3Dc%2Fd%3Fe%3Df"
+    var decoded = uri_decode(url);
+    println(decoded == "a b=c/d?e=f"); // true
 
-```hoo
-import hoo.encoding;
-import hoo.buffer;
+    // Byte array encoding
+    var bytes = [0, 1, 255]byte;
+    var b64bytes = base64_encode_bytes(bytes);
+    var decodedBytes = base64_decode_bytes(b64bytes);
+    println(decodedBytes[2] == 255); // true
 
-let buf = buffer_fromBytes("Hello", 5)
-let hex = encoding_hex_encode_buffer(buf)      // "48656c6c6f"
-```
-
-#### `encoding_hex_decode_buffer(hex: string) :Buffer`
-
-Decodes a hex-encoded string and returns a `Buffer`.
-
-```hoo
-import hoo.encoding;
-
-let buf = encoding_hex_decode_buffer("48656c6c6f")   // Buffer
+    return 0;
+}
 ```

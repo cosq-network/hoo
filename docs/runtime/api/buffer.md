@@ -1,523 +1,398 @@
-# Buffer API Developer Reference
+# Buffer API Reference
 
-**Import Requirement:**
+## Module Name
+
+Part of the `hoo.buffer` module.
+
+## Import Statement
+
 ```hoo
 import hoo.buffer;
 ```
 
-The `Buffer` runtime API provides a managed, mutable byte array for raw binary
-data. Buffers are ARC-managed runtime objects with type ID `113` and dynamic
-capacity growth.
+## Module Description
 
-Hoo supports only one constructor per class and does not support static class
-methods. The Buffer API therefore exposes `new Buffer()` as the only constructor
-and uses the free function `buffer_fromBytes(...)` for byte-source creation.
+The `Buffer` class provides a managed, mutable byte array for binary data operations. Buffers are reference-counted runtime objects with dynamic capacity growth, supporting arbitrary binary content that is not limited to valid text encodings. The buffer tracks both a current data length and an internal allocated capacity.
 
-Use `Buffer` when a runtime API needs binary-safe bytes instead of a text
-`string`. Several modules accept or return `Buffer` values, including `Fs`,
-`encoding`, `Uuid`, `hashing`, and `Compression`.
+## Class: Buffer
 
-## `new Buffer`
-
-### Description
-
-Creates an empty buffer. The runtime reserves an internal default capacity and
-grows the buffer as bytes are appended.
-
-### Syntax
+### Declaration
 
 ```hoo
-new Buffer() :Buffer
+class Buffer
 ```
 
-### Parameters
+### Public Fields
 
 None.
 
-### Return Type
+### Public Instance Functions
 
-`Buffer`
-A new empty buffer with length `0`.
+#### Constructor: `Buffer`
 
-### Errors
+Creates a new empty buffer. When `initial_capacity` is `0` (or omitted), the runtime selects a default internal capacity. The buffer grows automatically as data is written.
 
-Returns a null handle only if allocation fails.
+**Syntax:**
 
-### Complete Example
+```hoo
+Buffer(initial_capacity: int64 = 0) :Buffer
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `initial_capacity` | `int64` | Optional initial capacity in bytes; `0` selects a runtime default. |
+
+**Returns:**
+
+`Buffer` — A new empty buffer with length `0`.
+
+**Errors:**
+
+Returns a null handle if memory allocation fails.
+
+**Complete Example:**
 
 ```hoo
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = new Buffer();
+    var buf = Buffer();
     println("length: " + buf.length());
-    println("capacity: " + buf.capacity());
-    return buf.length();
+    return 0;
 }
 ```
 
-## `buffer_fromBytes`
+---
 
-### Description
+#### `write`
 
-Creates a buffer initialized with bytes from a string-like byte source.
-`buffer_fromBytes` is a free function, not a static `Buffer` method.
+Appends string data to the end of the buffer. The buffer may reallocate as it grows.
 
-### Syntax
+**Syntax:**
 
 ```hoo
-buffer_fromBytes(data: string, len: int64) :Buffer
+write(data: string) :void
 ```
 
-### Parameters
+**Parameters:**
 
-`data`
-Source bytes.
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `string` | The string whose contents are appended to the buffer. |
 
-`len`
-Number of bytes to copy from `data`.
+**Returns:**
 
-### Return Type
+`void`
 
-`Buffer`
-A new buffer containing the copied bytes. Length is `len`.
+**Errors:**
 
-### Errors
+No errors at the Hoo level. If called on a null buffer handle the operation is a no-op.
 
-If `data` is nil or `len` is `0`, the native runtime creates an empty buffer.
-Negative lengths or oversized lengths return null.
-
-### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = buffer_fromBytes("Hello", 5);
-    println(buf.length()); // 5
-    return buf.byteAt(0); // 72
+    var buf = Buffer();
+    buf.write("Hello");
+    buf.write(" World");
+    println(buf.to_string());
+    return 0;
 }
 ```
 
-## `length`
+---
 
-### Description
+#### `write_byte`
+
+Appends a single byte to the end of the buffer.
+
+**Syntax:**
+
+```hoo
+write_byte(byte: int64) :void
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `byte` | `int64` | The byte value to append. Only the low 8 bits are used; valid range is `0`–`255`. |
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors at the Hoo level. Values outside `0`–`255` are truncated to the low 8 bits.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer();
+    buf.write_byte(72);  // 'H'
+    buf.write_byte(105); // 'i'
+    println(buf.to_string());
+    return 0;
+}
+```
+
+---
+
+#### `clear`
+
+Resets the buffer position, discarding all stored data. The underlying allocated capacity is preserved for reuse.
+
+**Syntax:**
+
+```hoo
+clear() :void
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors. If called on a null buffer handle the operation is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer();
+    buf.write("data");
+    buf.clear();
+    println(buf.length()); // 0
+    return 0;
+}
+```
+
+---
+
+#### `length`
 
 Returns the number of bytes currently stored in the buffer.
 
-### Syntax
+**Syntax:**
 
 ```hoo
-buf.length() :int64
+length() :int64
 ```
 
-### Parameters
+**Parameters:**
 
 None.
 
-### Return Type
+**Returns:**
 
-`int64`
-The current byte length.
+`int64` — The current data length in bytes.
 
-### Errors
+**Errors:**
 
 Returns `0` for a null buffer handle.
 
-### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = buffer_fromBytes("abc", 3);
-    return buf.length();
+    var buf = Buffer();
+    buf.write("abc");
+    return buf.length(); // 3
 }
 ```
 
-## `capacity`
+---
 
-### Description
+#### `to_string`
 
-Returns the number of bytes currently allocated for the buffer payload.
+Extracts the buffer contents as a string. The buffer is not cleared; repeated calls return the same data.
 
-### Syntax
+**Syntax:**
 
 ```hoo
-buf.capacity() :int64
+to_string() :string
 ```
 
-### Parameters
+**Parameters:**
 
 None.
 
-### Return Type
+**Returns:**
 
-`int64`
-The current buffer capacity in bytes.
+`string` — A string containing the buffer's byte data.
 
-### Errors
+**Errors:**
+
+Returns an empty string for a null or empty buffer.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer();
+    buf.write("Hello");
+    var s: string = buf.to_string();
+    println(s);
+    return 0;
+}
+```
+
+---
+
+#### `retain`
+
+Increments the buffer's reference count by one. Use this to extend the lifetime of a buffer when the original handle is released.
+
+**Syntax:**
+
+```hoo
+retain() :void
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors. If called on a null buffer handle the operation is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer();
+    buf.write("shared");
+    buf.retain();
+    // Both `buf` and any retained reference must be released.
+    buf.release();
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+#### `release`
+
+Decrements the buffer's reference count by one. When the reference count reaches zero the buffer is deallocated.
+
+**Syntax:**
+
+```hoo
+release() :void
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors. Calling `release` on an already-freed or null buffer handle is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer();
+    buf.write("temp");
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+#### `refcount`
+
+Returns the current reference count of the buffer.
+
+**Syntax:**
+
+```hoo
+refcount() :int64
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`int64` — The current reference count.
+
+**Errors:**
 
 Returns `0` for a null buffer handle.
 
-### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = new Buffer();
-    return buf.capacity();
+    var buf = Buffer();
+    buf.retain();
+    var rc = buf.refcount(); // 2
+    buf.release();
+    buf.release();
+    return 0;
 }
 ```
 
-## `copy`
-
-### Description
-
-Creates an independent copy of the buffer with the same byte contents.
-
-### Syntax
-
-```hoo
-buf.copy() :Buffer
-```
-
-### Parameters
-
-None.
-
-### Return Type
-
-`Buffer`
-A new buffer containing the same bytes.
-
-### Errors
-
-Returns null if the source buffer is null or allocation fails.
-
-### Complete Example
+## Usage Example
 
 ```hoo
 import hoo.buffer;
 
 func :int64 main() {
-    var original = buffer_fromBytes("abc", 3);
-    var copy = original.copy();
+    var buf = Buffer();
+    buf.write("Hello, ");
+    buf.write_byte(87);  // 'W'
+    buf.write_byte(111); // 'o'
+    buf.write_byte(114); // 'r'
+    buf.write_byte(108); // 'l'
+    buf.write_byte(100); // 'd'
+    buf.write_byte(33);  // '!'
+
+    println(buf.to_string());  // Hello, World!
+    println("length: " + buf.length());
 
-    copy.setByte(0, 120); // 'x'
-    return original.byteAt(0); // still 97 ('a')
-}
-```
-
-## `byteAt`
-
-### Description
-
-Reads one byte by zero-based index.
-
-### Syntax
-
-```hoo
-buf.byteAt(index: int64) :int64
-```
-
-### Parameters
-
-`index`
-Zero-based byte index.
-
-### Return Type
-
-`int64`
-The byte value in the range `0..255`, or `-1` when `index` is out of bounds.
-
-### Errors
-
-Does not throw for out-of-bounds indexes.
-
-### Complete Example
-
-```hoo
-import hoo.buffer;
-
-func :int64 main() {
-    var buf = buffer_fromBytes("ABC", 3);
-    return buf.byteAt(1); // 66
-}
-```
-
-## `setByte`
-
-### Description
-
-Writes one byte at an existing index. The buffer length is not extended.
-
-### Syntax
-
-```hoo
-buf.setByte(index: int64, value: int64) :int64
-```
-
-### Parameters
-
-`index`
-Zero-based byte index.
-
-`value`
-Byte value to write. Only the low 8 bits are stored.
-
-### Return Type
-
-`int64`
-Returns the previous byte value on success. Returns `-1` when the index is out
-of bounds or the buffer is null.
-
-### Errors
-
-Does not throw for out-of-bounds indexes.
-
-### Complete Example
-
-```hoo
-import hoo.buffer;
-
-func :int64 main() {
-    var buf = buffer_fromBytes("abc", 3);
-    buf.setByte(0, 65); // 'A'
-    return buf.byteAt(0);
-}
-```
-
-## `append`
-
-### Description
-
-Appends bytes from a string-like byte source to the end of the buffer. The
-buffer may reallocate as it grows.
-
-### Syntax
-
-```hoo
-buf.append(data: string, len: int64) :Buffer
-```
-
-### Parameters
-
-`data`
-Source bytes to append.
-
-`len`
-Number of bytes to append.
-
-### Return Type
-
-`Buffer`
-The buffer handle after append. Use the returned value because the native buffer
-may be reallocated.
-
-### Errors
-
-Returns the original buffer when `data` is nil, `len` is `0`, `len` is negative,
-the requested length is too large, or allocation fails. Returns null only when
-`buf` is null.
-
-### Complete Example
-
-```hoo
-import hoo.buffer;
-
-func :int64 main() {
-    var buf = new Buffer();
-    buf = buf.append("ab", 2);
-    buf = buf.append("cd", 2);
-
-    println(buf.length()); // 4
-    return buf.byteAt(3); // 100
-}
-```
-
-## `appendBuffer`
-
-### Description
-
-Appends all bytes from another buffer.
-
-### Syntax
-
-```hoo
-buf.appendBuffer(other: Buffer) :Buffer
-```
-
-### Parameters
-
-`other`
-Buffer whose bytes should be appended.
-
-### Return Type
-
-`Buffer`
-The buffer handle after append. Use the returned value because the native buffer
-may be reallocated.
-
-### Errors
-
-Returns the original buffer when `other` is null or allocation fails. Returns
-null only when `buf` is null.
-
-### Complete Example
-
-```hoo
-import hoo.buffer;
-
-func :int64 main() {
-    var left = buffer_fromBytes("Hello", 5);
-    var right = buffer_fromBytes("!", 1);
-
-    left = left.appendBuffer(right);
-    return left.length(); // 6
-}
-```
-
-## `clear`
-
-### Description
-
-Removes all bytes from the buffer while preserving allocated capacity.
-
-### Syntax
-
-```hoo
-buf.clear() :int64
-```
-
-### Parameters
-
-None.
-
-### Return Type
-
-`int64`
-Returns `0` on success and `-1` for a null buffer.
-
-### Errors
-
-Does not throw.
-
-### Complete Example
-
-```hoo
-import hoo.buffer;
-
-func :int64 main() {
-    var buf = buffer_fromBytes("data", 4);
     buf.clear();
-    return buf.length();
+    println("after clear: " + buf.length()); // 0
+
+    return 0;
 }
 ```
-
-## `slice`
-
-### Description
-
-Creates a new buffer containing bytes from `start` inclusive to `end`
-exclusive.
-
-### Syntax
-
-```hoo
-buf.slice(start: int64, end: int64) :Buffer
-```
-
-### Parameters
-
-`start`
-Inclusive start index.
-
-`end`
-Exclusive end index.
-
-### Return Type
-
-`Buffer`
-A new buffer containing the selected byte range.
-
-### Errors
-
-Returns null when the source buffer is null, `start` is negative, `end` is
-smaller than `start`, `end` is greater than the source length, or allocation
-fails.
-
-### Complete Example
-
-```hoo
-import hoo.buffer;
-
-func :int64 main() {
-    var buf = buffer_fromBytes("abcdef", 6);
-    var mid = buf.slice(2, 5);
-
-    println(mid.length()); // 3
-    return mid.byteAt(0); // 99 ('c')
-}
-```
-
-## Buffer-Aware Runtime APIs
-
-Several modules accept or return `Buffer` handles:
-
-| Module | Function | Signature |
-|--------|----------|-----------|
-| Fs | `writeBytes` | `fs_write_bytes(path: string, buf: Buffer) :int64` |
-| Fs | `readBytes` | `fs_read_bytes(path: string) :Buffer` |
-| Encoding | `base64Encode` | `encoding_base64_encode_buffer(buf: Buffer) :string` |
-| Encoding | `base64Decode` | `encoding_base64_decode_buffer(encoded: string) :Buffer` |
-| Encoding | `hexEncode` | `encoding_hex_encode_buffer(buf: Buffer) :string` |
-| Encoding | `hexDecode` | `encoding_hex_decode_buffer(hex: string) :Buffer` |
-| Uuid | `fromBytes` | `Uuid.fromBytes(buf: Buffer) :uuid` |
-| Uuid | `toBytes` | `Uuid.toBytes(uuid: uuid) :Buffer` |
-| Hashing | `sha256` | `hashing_sha256_buffer(buf: Buffer) :string` |
-| Hashing | `sha1` | `hashing_sha1_buffer(buf: Buffer) :string` |
-| Hashing | `md5` | `hashing_md5_buffer(buf: Buffer) :string` |
-| Hashing | `crc32` | `hashing_crc32_buffer(buf: Buffer) :int64` |
-| Hashing | `hmacSha256` | `hashing_hmac_sha256_buffer(key: Buffer, data: Buffer) :string` |
-| Compression | `gzipCompress` | `Compression.gzipCompress(buf: Buffer) :Buffer` |
-| Compression | `gzipDecompress` | `Compression.gzipDecompress(buf: Buffer) :Buffer` |
-| Compression | `deflateCompress` | `Compression.deflateCompress(buf: Buffer) :Buffer` |
-| Compression | `deflateDecompress` | `Compression.deflateDecompress(buf: Buffer) :Buffer` |
-
-## Native C ABI
-
-The native runtime exposes C functions for host/runtime integration:
-
-```c
-HooBuffer hoo_buffer_new(int64_t initial_capacity);
-HooBuffer hoo_buffer_from_bytes(const uint8_t* data, int64_t length);
-HooBuffer hoo_buffer_copy(HooBuffer buf);
-int64_t hoo_buffer_length(HooBuffer buf);
-int64_t hoo_buffer_capacity(HooBuffer buf);
-const uint8_t* hoo_buffer_data(HooBuffer buf);
-int64_t hoo_buffer_byte_at(HooBuffer buf, int64_t index);
-int64_t hoo_buffer_set_byte(HooBuffer buf, int64_t index, int64_t byte_val);
-HooBuffer hoo_buffer_append(HooBuffer buf, const uint8_t* data, int64_t length);
-HooBuffer hoo_buffer_append_buffer(HooBuffer buf, HooBuffer other);
-int64_t hoo_buffer_clear(HooBuffer buf);
-HooBuffer hoo_buffer_slice(HooBuffer buf, int64_t start, int64_t end);
-```
-
-The native `hoo_buffer_new(initial_capacity)` parameter is for runtime and host
-code. It is not exposed as a second Hoo constructor.
-
-## Memory Layout
-
-```text
-[ARC header: 16 bytes (refcount + type_id=113)] [BufferImpl: length(8) + capacity(8)] [data...]
-                                                         ^-- handle points here
-```
-
-The handle returned by `new Buffer()` and `buffer_fromBytes(...)` points to the
-`BufferImpl` metadata immediately after the 16-byte ARC header. The byte payload
-is stored directly after that metadata. This is the same ARC ownership model
-used by other runtime-managed values, so `hoo_get_refcount()`,
-`hoo_get_type_id()`, `hoo_release()`, and `hoo_retain()` work without offset
-correction.

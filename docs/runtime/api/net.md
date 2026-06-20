@@ -1,138 +1,381 @@
-# Net — URL Parsing and HTTP Client
+# Net API Reference
 
-The `net` module provides URL parsing and HTTP client functionality through three classes: `URL`, `HttpClient`, and `HttpResponse`.
+## Module
 
----
+`hoo.net`
 
-## URL
+## Import Statement
 
-Parses and decomposes URLs.
+```hoo
+import hoo.net;
+```
+
+## Module Description
+
+The `net` module provides URL parsing and HTTP client functionality through three classes: `Url`, `HttpClient`, and `HttpResponse`. All string values returned by `Url` and `HttpResponse` methods must be freed with the corresponding `free_string` method.
+
+## Class: Url
+
+### Declaration
+
+```hoo
+class Url
+```
+
+Represents a parsed URL with access to its components.
 
 ### Constructor
 
-`new URL(url: string) :ptr`
-Creates a new URL from a string. Returns a URL handle.
-
-### Methods
-
-`url.getScheme() :string`
-Returns the scheme (protocol), e.g. `"https"`.
-
-`url.getHost() :string`
-Returns the host, e.g. `"example.com"`.
-
-`url.getPort() :int64`
-Returns the port number, or -1 if not specified.
-
-`url.getPath() :string`
-Returns the path component, e.g. `"/path"`.
-
-`url.getQuery() :string`
-Returns the query string, or empty string if none.
-
-`url.getFragment() :string`
-Returns the fragment, or empty string if none.
-
-`url.toString() :string`
-Returns the full URL string.
-
-`url.release()`
-Releases the URL handle.
-
-### Example
-
 ```hoo
-let url = new URL("https://example.com:8080/path?q=1#section")
-println(url.getScheme())    // "https"
-println(url.getHost())      // "example.com"
-println(url.getPort())      // 8080
-println(url.getPath())      // "/path"
-println(url.getQuery())     // "q=1"
-println(url.getFragment())  // "section"
-url.release()
+Url(url: string): Url
 ```
 
----
+Creates a new `Url` from a string.
 
-## HttpClient
+**Parameters:**
+
+| Parameter | Type     | Description         |
+|-----------|----------|---------------------|
+| `url`     | `string` | The URL string to parse. |
+
+**Returns:** `Url` — A new `Url` instance with reference count 1.
+
+**Errors:** Returns `null` if the URL string is malformed.
+
+### Public Instance Functions
+
+#### `to_string`
+
+Returns the full URL as a string.
+
+**Syntax:**
+
+```hoo
+url.to_string(): string
+```
+
+**Returns:** `string` — The URL string (must be freed with `free_string`).
+
+**Complete Example:**
+
+```hoo
+import hoo.net;
+
+func :int64 main() {
+    var url = new Url("https://example.com/path");
+    var s = url.to_string();
+    println(s);
+    url.free_string(s);
+    url.release();
+    return 0;
+}
+```
+
+#### `retain`
+
+Increments the reference count of the `Url`.
+
+**Syntax:**
+
+```hoo
+url.retain(): Url
+```
+
+**Returns:** `Url` — The same `Url` instance.
+
+#### `release`
+
+Decrements the reference count of the `Url`. The object is freed when the count reaches zero.
+
+**Syntax:**
+
+```hoo
+url.release(): void
+```
+
+**Returns:** `void`
+
+#### `free_string`
+
+Frees a string allocated by a `Url` method.
+
+**Syntax:**
+
+```hoo
+url.free_string(str: string): void
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description                              |
+|-----------|----------|------------------------------------------|
+| `str`     | `string` | The string returned by a `Url` method to free. |
+
+**Returns:** `void`
+
+## Class: HttpClient
+
+### Declaration
+
+```hoo
+class HttpClient
+```
 
 Performs HTTP requests.
 
 ### Constructor
 
-`new HttpClient() :HttpClient`
-Creates a new HTTP client.
-
-### Methods
-
-`client.setHeader(key: string, value: string) :int64`
-Sets a request header. Returns 1 on success.
-
-`client.setTimeout(ms: int64)`
-Sets the request timeout in milliseconds.
-
-`client.get(url: string) :HttpResponse`
-Performs a GET request.
-
-`client.post(url: string, body: string) :HttpResponse`
-Performs a POST request with the given body.
-
-`client.put(url: string, body: string) :HttpResponse`
-Performs a PUT request with the given body.
-
-`client.delete(url: string) :HttpResponse`
-Performs a DELETE request.
-
-`client.release()`
-Releases the HTTP client handle.
-
-### Example
-
 ```hoo
-let client = new HttpClient()
-client.setTimeout(5000)
-client.setHeader("Authorization", "Bearer token123")
-
-let resp = client.get("https://api.example.com/users")
-if resp.isSuccess() == 1 {
-    println(resp.getBody())
-}
-resp.release()
-client.release()
+HttpClient(): HttpClient
 ```
 
----
+Creates a new `HttpClient`.
 
-## HttpResponse
+**Returns:** `HttpClient` — A new `HttpClient` instance with reference count 1.
 
-Represents an HTTP response.
+### Public Instance Functions
 
-### Methods
+#### `get`
 
-`resp.statusCode() :int64`
-Returns the HTTP status code (e.g. 200, 404).
+Performs a GET request.
 
-`resp.getBody() :string`
-Returns the response body as a string.
-
-`resp.isSuccess() :int64`
-Returns 1 if the status code is in the 2xx range, 0 otherwise.
-
-`resp.release()`
-Releases the HTTP response handle.
-
-### Example
+**Syntax:**
 
 ```hoo
-let client = new HttpClient()
-let resp = client.post("https://api.example.com/data", "{\"key\":\"value\"}")
+client.get(url: Url): HttpResponse
+```
 
-if resp.isSuccess() == 1 {
-    println(resp.getBody())
-} else {
-    println("Error " + resp.statusCode())
+**Parameters:**
+
+| Parameter | Type | Description                   |
+|-----------|------|-------------------------------|
+| `url`     | `Url` | The target URL to request. |
+
+**Returns:** `HttpResponse` — The HTTP response (must be released by caller).
+
+**Errors:** Returns `null` on connection or request failure.
+
+**Complete Example:**
+
+```hoo
+import hoo.net;
+
+func :int64 main() {
+    var url = new Url("https://api.example.com/data");
+    var client = new HttpClient();
+    var resp = client.get(url);
+    if (resp != null) {
+        println(resp.status_code());
+        var body = resp.body();
+        println(body);
+        resp.free_string(body);
+        resp.release();
+    }
+    client.release();
+    url.release();
+    return 0;
 }
+```
 
-resp.release()
-client.release()
+#### `post`
+
+Performs a POST request with a body.
+
+**Syntax:**
+
+```hoo
+client.post(url: Url, body: string): HttpResponse
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description                   |
+|-----------|----------|-------------------------------|
+| `url`     | `Url`    | The target URL to request. |
+| `body`    | `string` | The request body. |
+
+**Returns:** `HttpResponse` — The HTTP response (must be released by caller).
+
+**Errors:** Returns `null` on connection or request failure.
+
+**Complete Example:**
+
+```hoo
+import hoo.net;
+
+func :int64 main() {
+    var url = new Url("https://api.example.com/data");
+    var client = new HttpClient();
+    var resp = client.post(url, "{\"key\":\"value\"}");
+    if (resp != null) {
+        println(resp.status_code());
+        resp.release();
+    }
+    client.release();
+    url.release();
+    return 0;
+}
+```
+
+#### `retain`
+
+Increments the reference count of the `HttpClient`.
+
+**Syntax:**
+
+```hoo
+client.retain(): HttpClient
+```
+
+**Returns:** `HttpClient` — The same `HttpClient` instance.
+
+#### `release`
+
+Decrements the reference count of the `HttpClient`. The object is freed when the count reaches zero.
+
+**Syntax:**
+
+```hoo
+client.release(): void
+```
+
+**Returns:** `void`
+
+## Class: HttpResponse
+
+### Declaration
+
+```hoo
+class HttpResponse
+```
+
+Represents an HTTP response with status code, status text, and body.
+
+### Public Instance Functions
+
+#### `status_code`
+
+Returns the HTTP status code.
+
+**Syntax:**
+
+```hoo
+resp.status_code(): int64
+```
+
+**Returns:** `int64` — The HTTP status code (e.g., `200`, `404`).
+
+**Complete Example:**
+
+```hoo
+import hoo.net;
+
+func :int64 main() {
+    var client = new HttpClient();
+    var url = new Url("https://api.example.com/data");
+    var resp = client.get(url);
+    if (resp != null) {
+        var code = resp.status_code();
+        println(code);
+        resp.release();
+    }
+    url.release();
+    client.release();
+    return 0;
+}
+```
+
+#### `status_text`
+
+Returns the HTTP status text.
+
+**Syntax:**
+
+```hoo
+resp.status_text(): string
+```
+
+**Returns:** `string` — The status text (e.g., `"OK"`, `"Not Found"`). Must be freed with `free_string`.
+
+#### `body`
+
+Returns the response body as a string.
+
+**Syntax:**
+
+```hoo
+resp.body(): string
+```
+
+**Returns:** `string` — The response body (must be freed with `free_string`).
+
+#### `retain`
+
+Increments the reference count of the `HttpResponse`.
+
+**Syntax:**
+
+```hoo
+resp.retain(): HttpResponse
+```
+
+**Returns:** `HttpResponse` — The same `HttpResponse` instance.
+
+#### `release`
+
+Decrements the reference count of the `HttpResponse`. The object is freed when the count reaches zero.
+
+**Syntax:**
+
+```hoo
+resp.release(): void
+```
+
+**Returns:** `void`
+
+#### `free_string`
+
+Frees a string allocated by an `HttpResponse` method.
+
+**Syntax:**
+
+```hoo
+resp.free_string(str: string): void
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description                                      |
+|-----------|----------|--------------------------------------------------|
+| `str`     | `string` | The string returned by an `HttpResponse` method to free. |
+
+**Returns:** `void`
+
+## Usage Example
+
+```hoo
+import hoo.net;
+
+func :int64 main() {
+    var url = new Url("https://jsonplaceholder.typicode.com/posts/1");
+    var client = new HttpClient();
+    var resp = client.get(url);
+
+    if (resp != null) {
+        var code = resp.status_code();
+        var text = resp.status_text();
+        var body = resp.body();
+
+        println("Status: " + code + " " + text);
+        println("Body: " + body);
+
+        resp.free_string(text);
+        resp.free_string(body);
+        resp.release();
+    }
+
+    client.release();
+    url.release();
+    return 0;
+}
 ```

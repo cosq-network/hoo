@@ -1,199 +1,93 @@
-# DateTime API Reference (`DateTime`)
+# DateTime API Reference
 
-**Import Requirement:**
+## Module
+
+`hoo`
+
+## Import Statement
+
 ```hoo
-import hoo.datetime;
+import hoo;
 ```
 
-The `DateTime` class (type ID 119) wraps a Unix epoch timestamp (milliseconds) as
-an ARC-managed heap object. Instances carry a single `timestamp: int64` field,
-making them directly compatible with the `serializable` modifier.
+## Module Description
 
-DateTime instances are **immutable** — all arithmetic methods return a **new**
-instance; the original is not modified.
+The `DateTime` class is an immutable wrapper around a Unix epoch timestamp (milliseconds) for representing and manipulating dates and times. All arithmetic and mutation operations return a new `DateTime` instance; the original is not modified. Instances are ARC-managed. The companion `DateTimeFields` structure provides decomposed date and time field access.
 
-> **Dispatch patterns (Hoo language):**
-> - Instance methods (`dt.format(fmt)`) — call a method on a DateTime variable.
-> - Module-level free functions (`datetime_now()`) — namespace-prefixed functions.
+## Class: DateTime
 
----
+### Declaration
 
-## 1. Factory Functions
+```hoo
+class DateTime
+```
 
-### `datetime_now()`
+### Public Fields
 
-Creates a DateTime instance representing the current system time (UTC).
+None. DateTime instances wrap a single `timestamp: int64` field (milliseconds since the Unix epoch).
+
+### Public Class (Static) Functions
+
+#### `DateTime`
+
+Creates a new `DateTime` instance from individual date and time components.
 
 **Syntax:**
+
 ```hoo
-var dt = datetime_now();
-```
-
-**Parameters:** None
-
-**Returns:** `DateTime` — a new DateTime instance at the current UTC time.
-
-**Errors:** None (always succeeds).
-
-**Example:**
-```hoo
-import hoo.datetime;
-
-func :void example() {
-    var dt = datetime_now();
-    println(dt.iso8601());
-}
-```
-
----
-
-### `datetime_now_seconds()`
-
-Returns the current system time as raw Unix epoch seconds.
-
-**Syntax:**
-```hoo
-var secs = datetime_now_seconds();
-```
-
-**Parameters:** None
-
-**Returns:** `int64` — the current time in seconds since the Unix epoch.
-
-**Errors:** None.
-
-**Example:**
-```hoo
-import hoo.datetime;
-
-func :void example() {
-    var secs = datetime_now_seconds();
-    println("Epoch seconds: ".concat(secs.toString()));
-}
-```
-
----
-
-### `datetime_now_precise()`
-
-Returns the current system time with sub-second precision.
-
-**Syntax:**
-```hoo
-var precise = datetime_now_precise();
-```
-
-**Parameters:** None
-
-**Returns:** `double` — the current time in seconds since the Unix epoch
-(e.g. `1705312200.456`).
-
-**Errors:** None.
-
-**Example:**
-```hoo
-import hoo.datetime;
-
-func :void example() {
-    var precise = datetime_now_precise();
-    println(precise.toString());
-}
-```
-
----
-
-### `datetime_new(timestamp)`
-
-Creates a DateTime instance from a raw Unix epoch timestamp.
-
-**Syntax:**
-```hoo
-var dt = datetime_new(1704067200000);
+DateTime(year: int64, month: int64, day: int64, hour: int64, minute: int64, second: int64, millisecond: int64) :DateTime
 ```
 
 **Parameters:**
-- `timestamp: int64` — milliseconds since the Unix epoch.
 
-**Returns:** `DateTime` — a new DateTime instance wrapping the given timestamp.
+| Parameter    | Type    | Description            |
+|--------------|---------|------------------------|
+| `year`       | `int64` | Year (e.g. 2024).     |
+| `month`      | `int64` | Month (1–12).          |
+| `day`        | `int64` | Day (1–31).            |
+| `hour`       | `int64` | Hour (0–23).           |
+| `minute`     | `int64` | Minute (0–59).         |
+| `second`     | `int64` | Second (0–59).         |
+| `millisecond`| `int64` | Millisecond (0–999).   |
 
-**Errors:** None (any `int64` value is accepted).
+**Returns:** `DateTime` — A new `DateTime` instance for the given date and time.
 
-**Example:**
+**Errors:** Returns `null` if the field values are out of range.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var epoch = datetime_new(0);
-    println(epoch.iso8601()); // "1970-01-01T00:00:00.000Z"
+func :int64 main() {
+    var dt = DateTime(2024, 6, 15, 10, 30, 0, 0);
+    println(dt.to_iso8601());
+    dt.release();
+    return 0;
 }
 ```
 
 ---
 
-### `datetime_parse(str, fmt)`
+#### `from_iso8601`
 
-Parses a date-time string according to the given format pattern.
+Parses an ISO 8601 date-time string and returns a `DateTime` instance.
 
 **Syntax:**
+
 ```hoo
-var dt = datetime_parse("2024-01-15", "%Y-%m-%d");
+DateTime.from_iso8601(str: string) :DateTime
 ```
 
 **Parameters:**
-- `str: string` — the date-time string to parse.
-- `fmt: string` — the expected format pattern (strftime-style specifiers).
 
-**Returns:** `DateTime` — a new DateTime instance on success, or `null` if the
-string cannot be parsed.
+| Parameter | Type     | Description                              |
+|-----------|----------|------------------------------------------|
+| `str`     | `string` | ISO 8601 string (e.g. `"2024-01-15T10:30:00Z"`). |
 
-**Errors:** Returns `null` on parse failure (no exception is thrown).
+**Returns:** `DateTime` — A new `DateTime` instance, or `null` on parse failure.
 
-**Supported format specifiers:**
-
-| Specifier | Meaning | Example |
-|-----------|---------|---------|
-| `%Y` | 4-digit year | `2024` |
-| `%m` | 2-digit month (01–12) | `01` |
-| `%d` | 2-digit day (01–31) | `15` |
-| `%H` | 2-digit hour (00–23) | `10` |
-| `%M` | 2-digit minute (00–59) | `30` |
-| `%S` | 2-digit second (00–59) | `45` |
-| `%f` | Milliseconds (1–6 digits) | `123` |
-| `%w` | Weekday number (0=Sun, 6=Sat) | `1` |
-| `%j` | Year day number (001–366) | `015` |
-
-**Example:**
-```hoo
-import hoo.datetime;
-
-func :void example() {
-    var dt = datetime_parse("2024-06-15 14:30:00", "%Y-%m-%d %H:%M:%S");
-    if (dt) {
-        println(dt.iso8601());
-    } else {
-        println("Parse failed");
-    }
-}
-```
-
----
-
-### `datetime_from_iso8601(str)`
-
-Parses an ISO 8601 date-time string.
-
-**Syntax:**
-```hoo
-var dt = datetime_from_iso8601("2024-01-15T10:30:00Z");
-```
-
-**Parameters:**
-- `str: string` — the ISO 8601 string (e.g. `"2024-01-15T10:30:00Z"`).
-
-**Returns:** `DateTime` — a new DateTime instance on success, or `null` on
-parse failure.
-
-**Errors:** Returns `null` on parse failure (no exception is thrown).
+**Errors:** Returns `null` if the string is not valid ISO 8601. No exception is thrown.
 
 **Supported ISO 8601 variants:**
 - `2024-01-15T10:30:00Z`
@@ -201,468 +95,593 @@ parse failure.
 - `2024-01-15T10:30:00+05:30`
 - `2024-01-15T10:30:00`
 
-**Example:**
-```hoo
-import hoo.datetime;
+**Complete Example:**
 
-func :void example() {
-    var dt = datetime_from_iso8601("2024-12-25T00:00:00Z");
+```hoo
+import hoo;
+
+func :int64 main() {
+    var dt = DateTime.from_iso8601("2024-12-25T00:00:00Z");
     if (dt) {
-        println("Christmas: ".concat(dt.iso8601()));
-    } else {
-        println("Invalid ISO 8601");
+        println(dt.to_iso8601());
+        dt.release();
     }
+    return 0;
 }
 ```
 
 ---
 
-## 2. Accessors
+#### `now`
 
-### `dt.getTimestamp()`
-
-Extracts the raw Unix epoch timestamp from a DateTime instance.
+Returns a `DateTime` instance representing the current system time (UTC).
 
 **Syntax:**
+
 ```hoo
-var ts = dt.getTimestamp();
-```
-
-**Parameters:** None
-
-**Returns:** `int64` — the timestamp in milliseconds since the Unix epoch.
-
-**Errors:** None.
-
-**Example:**
-```hoo
-import hoo.datetime;
-
-func :void example() {
-    var dt = datetime_now();
-    var ts = dt.getTimestamp();
-    println("Timestamp (ms): ".concat(ts.toString()));
-}
-```
-
----
-
-## 3. Formatting
-
-### `dt.format(fmt)` / `datetime_format(dt, fmt)`
-
-Formats a DateTime instance according to the given format pattern.
-
-**Syntax:**
-```hoo
-var str = dt.format("%Y-%m-%d");
-var str = datetime_format(dt, "%Y-%m-%d");
+DateTime.now() :DateTime
 ```
 
 **Parameters:**
-- `fmt: string` — the format pattern (strftime-style, see specifier table in
-  `datetime_parse`).
 
-**Returns:** `string` — the formatted date-time string (ARC-managed).
+None.
 
-**Errors:** None (the format string is matched literally or via known specifiers).
+**Returns:** `DateTime` — A new `DateTime` instance at the current UTC time.
 
-**Example:**
+**Errors:** None (always succeeds).
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_now();
-    var formatted = dt.format("%Y-%m-%d %H:%M:%S");
-    println(formatted);
+func :int64 main() {
+    var dt = DateTime.now();
+    println(dt.to_iso8601());
+    dt.release();
+    return 0;
 }
 ```
 
----
+### Public Instance Functions
 
-### `dt.iso8601()` / `datetime_iso8601(dt)`
+#### `to_iso8601`
 
-Formats a DateTime instance as an ISO 8601 string.
+Formats the DateTime as an ISO 8601 string.
 
 **Syntax:**
+
 ```hoo
-var str = dt.iso8601();
-var str = datetime_iso8601(dt);
+dt.to_iso8601() :string
 ```
 
-**Parameters:** None
+**Parameters:**
 
-**Returns:** `string` — the ISO 8601 formatted string (ARC-managed),
-e.g. `"2024-01-15T10:30:00.000Z"`.
+None.
 
-**Errors:** None.
+**Returns:** `string` — The ISO 8601 formatted string (e.g. `"2024-01-15T10:30:00.000Z"`).
 
-**Example:**
+**Errors:** Returns an empty string for a null DateTime handle.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_now();
-    var iso = dt.iso8601();
+func :int64 main() {
+    var dt = DateTime.now();
+    var iso = dt.to_iso8601();
     println(iso);
+    dt.release();
+    return 0;
 }
 ```
 
 ---
 
-## 4. Arithmetic
+#### `to_string`
 
-All arithmetic methods return a **new** DateTime instance; the original is
-not modified (immutable semantics).
-
-### `dt.addDays(n)` / `datetime_add_days(dt, n)`
-
-Adds a number of days.
+Returns a simple string representation of the DateTime.
 
 **Syntax:**
+
 ```hoo
-var result = dt.addDays(7);
-var result = datetime_add_days(dt, 7);
+dt.to_string() :string
 ```
 
 **Parameters:**
-- `n: int64` — the number of days to add (negative values subtract).
 
-**Returns:** `DateTime` — a new DateTime instance offset by `n` days.
+None.
 
-**Errors:** None (the underlying int64 arithmetic wraps per C++ semantics).
+**Returns:** `string` — A string representation of the DateTime (equivalent to `to_iso8601()`).
 
-**Example:**
+**Errors:** Returns an empty string for a null DateTime handle.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_parse("2024-01-01", "%Y-%m-%d");
-    var later = dt.addDays(7);
-    println(later.iso8601()); // "2024-01-08T00:00:00.000Z"
+func :int64 main() {
+    var dt = DateTime.now();
+    var s = dt.to_string();
+    println(s);
+    dt.release();
+    return 0;
 }
 ```
 
 ---
 
-### `dt.addHours(n)` / `datetime_add_hours(dt, n)`
+#### Field Accessors
 
-Adds a number of hours.
+Returns the individual date or time component of the DateTime.
 
 **Syntax:**
+
 ```hoo
-var result = dt.addHours(48);
-var result = datetime_add_hours(dt, 48);
+dt.year() :int64
+dt.month() :int64
+dt.day() :int64
+dt.hour() :int64
+dt.minute() :int64
+dt.second() :int64
+dt.millisecond() :int64
 ```
 
 **Parameters:**
-- `n: int64` — the number of hours to add (negative values subtract).
 
-**Returns:** `DateTime` — a new DateTime instance.
+None.
 
-**Errors:** None.
+**Returns:** `int64` — The requested field value. Ranges: year (full 4-digit), month (1–12), day (1–31), hour (0–23), minute (0–59), second (0–59), millisecond (0–999).
 
-**Example:**
+**Errors:** Returns `0` for each field if the DateTime handle is null.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_parse("2024-01-01", "%Y-%m-%d");
-    var later = dt.addHours(48);
-    println(later.iso8601()); // "2024-01-03T00:00:00.000Z"
+func :int64 main() {
+    var dt = DateTime(2024, 6, 15, 10, 30, 45, 123);
+    println(dt.year());  // 2024
+    println(dt.month()); // 6
+    println(dt.day());   // 15
+    println(dt.hour());  // 10
+    println(dt.minute());// 30
+    println(dt.second());// 45
+    println(dt.millisecond()); // 123
+    dt.release();
+    return 0;
 }
 ```
 
 ---
 
-### `dt.addMinutes(n)` / `datetime_add_minutes(dt, n)`
+#### `time_since_epoch`
 
-Adds a number of minutes.
+Returns the raw Unix epoch timestamp of the DateTime.
 
 **Syntax:**
+
 ```hoo
-var result = dt.addMinutes(90);
-var result = datetime_add_minutes(dt, 90);
+dt.time_since_epoch() :int64
 ```
 
 **Parameters:**
-- `n: int64` — the number of minutes to add (negative values subtract).
 
-**Returns:** `DateTime` — a new DateTime instance.
+None.
 
-**Errors:** None.
+**Returns:** `int64` — The timestamp in milliseconds since the Unix epoch.
 
-**Example:**
+**Errors:** Returns `0` for a null DateTime handle.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_parse("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%Sz");
-    var later = dt.addMinutes(90);
-    println(later.iso8601()); // "2024-01-01T01:30:00.000Z"
+func :int64 main() {
+    var dt = DateTime.now();
+    var ts = dt.time_since_epoch();
+    println(ts);
+    dt.release();
+    return 0;
 }
 ```
 
 ---
 
-### `dt.addSeconds(n)` / `datetime_add_seconds(dt, n)`
+#### `is_before`
 
-Adds a number of seconds.
+Checks whether this DateTime is earlier than another DateTime.
 
 **Syntax:**
+
 ```hoo
-var result = dt.addSeconds(3600);
-var result = datetime_add_seconds(dt, 3600);
+dt.is_before(other: DateTime) :int64
 ```
 
 **Parameters:**
-- `n: int64` — the number of seconds to add (negative values subtract).
 
-**Returns:** `DateTime` — a new DateTime instance.
+| Parameter | Type       | Description                  |
+|-----------|------------|------------------------------|
+| `other`   | `DateTime` | The DateTime to compare against. |
 
-**Errors:** None.
+**Returns:** `int64` — `1` if this DateTime is earlier than `other`, `0` otherwise.
 
-**Example:**
+**Errors:** Returns `0` if either handle is null.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_parse("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%Sz");
-    var later = dt.addSeconds(3600);
-    println(later.iso8601()); // "2024-01-01T01:00:00.000Z"
+func :int64 main() {
+    var a = DateTime.from_iso8601("2024-01-01T00:00:00Z");
+    var b = DateTime.from_iso8601("2024-06-15T00:00:00Z");
+    println(a.is_before(b)); // 1
+    a.release();
+    b.release();
+    return 0;
 }
 ```
 
 ---
 
-### `dt.addMilliseconds(ms)` / `datetime_add_milliseconds(dt, ms)`
+#### `is_after`
 
-Adds a number of milliseconds.
+Checks whether this DateTime is later than another DateTime.
 
 **Syntax:**
+
 ```hoo
-var result = dt.addMilliseconds(5000);
-var result = datetime_add_milliseconds(dt, 5000);
+dt.is_after(other: DateTime) :int64
 ```
 
 **Parameters:**
-- `ms: int64` — the number of milliseconds to add (negative values subtract).
 
-**Returns:** `DateTime` — a new DateTime instance.
+| Parameter | Type       | Description                  |
+|-----------|------------|------------------------------|
+| `other`   | `DateTime` | The DateTime to compare against. |
 
-**Errors:** None.
+**Returns:** `int64` — `1` if this DateTime is later than `other`, `0` otherwise.
 
-**Example:**
+**Errors:** Returns `0` if either handle is null.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var dt = datetime_parse("2024-01-01T00:00:00Z", "%Y-%m-%dT%H:%M:%Sz");
-    var later = dt.addMilliseconds(5000);
-    println(later.iso8601()); // "2024-01-01T00:00:05.000Z"
+func :int64 main() {
+    var a = DateTime.from_iso8601("2024-06-15T00:00:00Z");
+    var b = DateTime.from_iso8601("2024-01-01T00:00:00Z");
+    println(a.is_after(b)); // 1
+    a.release();
+    b.release();
+    return 0;
 }
 ```
 
 ---
 
-## 5. Differences
+#### `difference_in_milliseconds`
 
-### `a.diffDays(b)` / `datetime_diff_days(a, b)`
-
-Returns the difference between two DateTime instances in whole days.
+Returns the signed difference in milliseconds between two DateTime instances.
 
 **Syntax:**
+
 ```hoo
-var days = a.diffDays(b);
-var days = datetime_diff_days(a, b);
+dt.difference_in_milliseconds(other: DateTime) :int64
 ```
 
 **Parameters:**
-- `b: DateTime` — the other DateTime instance.
 
-**Returns:** `int64` — the number of whole days between `a` and `b`. The result
-is positive if `a > b`, negative if `a < b`, zero if equal.
+| Parameter | Type       | Description                  |
+|-----------|------------|------------------------------|
+| `other`   | `DateTime` | The DateTime to compare against. |
 
-**Errors:** None.
+**Returns:** `int64` — The difference in milliseconds (positive if `dt > other`, negative if `dt < other`, zero if equal).
 
-**Example:**
+**Errors:** Returns `0` if either handle is null.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var start = datetime_parse("2024-01-01", "%Y-%m-%d");
-    var end = datetime_parse("2024-01-10", "%Y-%m-%d");
-    var diff = start.diffDays(end);
-    println(diff.toString()); // "9"
+func :int64 main() {
+    var a = DateTime.from_iso8601("2024-01-01T00:00:00Z");
+    var b = DateTime.from_iso8601("2024-01-01T00:01:00Z");
+    var diff = a.difference_in_milliseconds(b);
+    println(diff); // -60000
+    a.release();
+    b.release();
+    return 0;
 }
 ```
 
 ---
 
-### `a.diffHours(b)` / `datetime_diff_hours(a, b)`
+#### `add_milliseconds`
 
-Returns the difference in whole hours.
+Returns a new DateTime offset by the given number of milliseconds. The original instance is not modified.
 
 **Syntax:**
+
 ```hoo
-var hours = a.diffHours(b);
-var hours = datetime_diff_hours(a, b);
+dt.add_milliseconds(ms: int64) :DateTime
 ```
 
 **Parameters:**
-- `b: DateTime` — the other DateTime instance.
 
-**Returns:** `int64` — the number of whole hours between the two instances.
+| Parameter | Type    | Description                                       |
+|-----------|---------|---------------------------------------------------|
+| `ms`      | `int64` | Milliseconds to add (negative values subtract). |
 
-**Errors:** None.
+**Returns:** `DateTime` — A new DateTime instance offset by `ms` milliseconds.
 
-**Example:**
+**Errors:** Returns `null` if `dt` is null or if allocation fails.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var start = datetime_parse("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
-    var end = datetime_parse("2024-01-02 12:00:00", "%Y-%m-%d %H:%M:%S");
-    var diff = start.diffHours(end);
-    println(diff.toString()); // "36"
+func :int64 main() {
+    var dt = DateTime.from_iso8601("2024-01-01T00:00:00Z");
+    var later = dt.add_milliseconds(5000);
+    println(later.to_iso8601()); // 2024-01-01T00:00:05.000Z
+    dt.release();
+    later.release();
+    return 0;
 }
 ```
 
 ---
 
-### `a.diffSeconds(b)` / `datetime_diff_seconds(a, b)`
+#### `subtract_milliseconds`
 
-Returns the difference in seconds with fractional precision.
+Returns a new DateTime offset backward by the given number of milliseconds. The original instance is not modified.
 
 **Syntax:**
+
 ```hoo
-var secs = a.diffSeconds(b);
-var secs = datetime_diff_seconds(a, b);
+dt.subtract_milliseconds(ms: int64) :DateTime
 ```
 
 **Parameters:**
-- `b: DateTime` — the other DateTime instance.
 
-**Returns:** `double` — the number of seconds (including fractional) between
-the two instances. Positive if `a > b`, negative if `a < b`.
+| Parameter | Type    | Description                                       |
+|-----------|---------|---------------------------------------------------|
+| `ms`      | `int64` | Milliseconds to subtract (negative values add). |
 
-**Errors:** None.
+**Returns:** `DateTime` — A new DateTime instance offset backward by `ms` milliseconds.
 
-**Example:**
+**Errors:** Returns `null` if `dt` is null or if allocation fails.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var start = datetime_parse("2024-01-01 00:00:00", "%Y-%m-%d %H:%M:%S");
-    var end = datetime_parse("2024-01-01 00:01:30", "%Y-%m-%d %H:%M:%S");
-    var diff = start.diffSeconds(end);
-    println(diff.toString()); // "90.0"
+func :int64 main() {
+    var dt = DateTime.from_iso8601("2024-01-01T00:00:05Z");
+    var earlier = dt.subtract_milliseconds(5000);
+    println(earlier.to_iso8601()); // 2024-01-01T00:00:00.000Z
+    dt.release();
+    earlier.release();
+    return 0;
 }
 ```
 
 ---
 
-## 6. Comparison
+#### `retain`
 
-### `a.compare(b)` / `datetime_compare(a, b)`
-
-Compares two DateTime instances.
+Increments the reference count of a DateTime instance.
 
 **Syntax:**
+
 ```hoo
-var cmp = a.compare(b);
-var cmp = datetime_compare(a, b);
+dt.retain()
 ```
 
 **Parameters:**
-- `b: DateTime` — the other DateTime instance.
 
-**Returns:** `int64` — `-1` if `a < b`, `0` if `a == b`, `1` if `a > b`.
+None.
 
-**Errors:** None.
+**Returns:** `void`
 
-**Example:**
+**Errors:** No-op if `dt` is null.
+
+**Complete Example:**
+
 ```hoo
-import hoo.datetime;
+import hoo;
 
-func :void example() {
-    var early = datetime_parse("2024-01-01", "%Y-%m-%d");
-    var late = datetime_parse("2024-06-15", "%Y-%m-%d");
-    var cmp = early.compare(late);
-    println(cmp.toString()); // "-1"
-
-    cmp = early.compare(early);
-    println(cmp.toString()); // "0"
+func :int64 main() {
+    var dt = DateTime.now();
+    dt.retain();
+    dt.release();
+    dt.release();
+    return 0;
 }
 ```
 
 ---
 
-## 7. Complete Example Program
+#### `release`
+
+Decrements the reference count of a DateTime instance. When the count reaches zero the instance is freed. After calling `release`, the handle must not be used again.
+
+**Syntax:**
 
 ```hoo
-import hoo.datetime;
+dt.release()
+```
 
-func :void main() {
+**Parameters:**
+
+None.
+
+**Returns:** `void`
+
+**Errors:** No-op if `dt` is null.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var dt = DateTime.now();
+    dt.release();
+    return 0;
+}
+```
+
+---
+
+#### `refcount`
+
+Returns the current reference count of a DateTime instance. Intended for debugging and testing.
+
+**Syntax:**
+
+```hoo
+dt.refcount() :int64
+```
+
+**Parameters:**
+
+None.
+
+**Returns:** `int64` — The current reference count.
+
+**Errors:** Returns `0` if `dt` is null.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var dt = DateTime.now();
+    dt.retain();
+    println(dt.refcount()); // 2
+    dt.release();
+    dt.release();
+    return 0;
+}
+```
+
+---
+
+#### `free_string`
+
+Frees a string returned by a DateTime method. Use this to release memory for strings that must be explicitly freed.
+
+**Syntax:**
+
+```hoo
+dt.free_string(str: string) :void
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description                               |
+|-----------|----------|-------------------------------------------|
+| `str`     | `string` | The string returned by a DateTime method to free. |
+
+**Returns:** `void`
+
+**Errors:** No-op if `str` is null or empty.
+
+**Complete Example:**
+
+```hoo
+import hoo;
+
+func :int64 main() {
+    var dt = DateTime.now();
+    var s = dt.to_iso8601();
+    println(s);
+    dt.free_string(s);
+    dt.release();
+    return 0;
+}
+```
+
+## Struct: DateTimeFields
+
+`DateTimeFields` is a value-type structure returned by the DateTime decompose operation. It contains the individual date and time fields broken out from the internal timestamp.
+
+### Declaration
+
+```hoo
+struct DateTimeFields {
+    year: int64,
+    month: int64,
+    day: int64,
+    hour: int64,
+    minute: int64,
+    second: int64,
+    millisecond: int64,
+    weekday: int64,
+    yearday: int64
+}
+```
+
+### Fields
+
+| Field         | Type    | Description                        |
+|---------------|---------|------------------------------------|
+| `year`        | `int64` | Full year (e.g. 2024).             |
+| `month`       | `int64` | Month (1–12).                      |
+| `day`         | `int64` | Day (1–31).                        |
+| `hour`        | `int64` | Hour (0–23).                       |
+| `minute`      | `int64` | Minute (0–59).                     |
+| `second`      | `int64` | Second (0–59).                     |
+| `millisecond` | `int64` | Millisecond (0–999).               |
+| `weekday`     | `int64` | Day of week (0=Sunday, 6=Saturday).|
+| `yearday`     | `int64` | Day of year (0–365).               |
+
+## Usage Example
+
+```hoo
+import hoo;
+
+func :int64 main() {
     // Current time
-    var now = datetime_now();
-    println("Now: ".concat(now.iso8601()));
+    var now = DateTime.now();
+    println(now.to_iso8601());
 
-    // Format with custom pattern
-    var formatted = now.format("%Y-%m-%d (%A)");
-    println("Formatted: ".concat(formatted));
-
-    // Arithmetic
-    var tomorrow = now.addDays(1);
-    println("Tomorrow: ".concat(tomorrow.iso8601()));
-
-    var nextWeek = now.addDays(7);
-    var weekDiff = now.diffDays(nextWeek);
-    println("Days between: ".concat(weekDiff.toString())); // "7"
-
-    // Parse from string
-    var christmas = datetime_parse("2024-12-25", "%Y-%m-%d");
+    // Parse ISO 8601
+    var christmas = DateTime.from_iso8601("2024-12-25T00:00:00Z");
     if (christmas) {
-        var untilChristmas = now.diffDays(christmas);
-        println("Days until Christmas 2024: ".concat(untilChristmas.toString()));
+        var diff = now.difference_in_milliseconds(christmas);
+        println("ms until Christmas: " + diff.toString());
+        christmas.release();
     }
+
+    // Construct from components
+    var dt = DateTime(2024, 1, 1, 0, 0, 0, 0);
+    var later = dt.add_milliseconds(86400000); // +1 day
+    println(later.to_iso8601()); // 2024-01-02T00:00:00.000Z
 
     // Comparison
-    var a = datetime_from_iso8601("2024-01-01T00:00:00Z");
-    var b = datetime_from_iso8601("2024-06-15T00:00:00Z");
-    var cmp = a.compare(b);
-    if (cmp < 0) {
-        println("January comes before June");
-    }
+    println(now.is_before(later)); // 1
 
-    // Free function syntax (equivalent)
-    var alsoNow = datetime_now();
-    println("Also now (free func): ".concat(alsoNow.iso8601()));
+    // Field accessors
+    println("Year: " + dt.year().toString());
 
-    var fromTs = datetime_new(1704067200000);
-    println("From timestamp: ".concat(fromTs.iso8601()));
+    // Cleanup
+    dt.release();
+    later.release();
+    now.release();
+
+    return 0;
 }
 ```
-
-## API Summary
-
-| Kind | API | Return Type |
-|------|-----|-------------|
-| Factory | `datetime_now()` | `DateTime` |
-| Factory | `datetime_new(ts)` | `DateTime` |
-| Factory | `datetime_parse(s,f)` | `DateTime` |
-| Factory | `datetime_from_iso8601(s)` | `DateTime` |
-| Raw time | `datetime_now_seconds()` | `int64` |
-| Raw time | `datetime_now_precise()` | `double` |
-| Accessor | `dt.getTimestamp()` | `int64` |
-| Format | `dt.format(f)` / `datetime_format(dt,f)` | `string` |
-| Format | `dt.iso8601()` / `datetime_iso8601(dt)` | `string` |
-| Arithmetic | `dt.addDays(n)` / `datetime_add_days(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addHours(n)` / `datetime_add_hours(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addMinutes(n)` / `datetime_add_minutes(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addSeconds(n)` / `datetime_add_seconds(dt,n)` | `DateTime` |
-| Arithmetic | `dt.addMilliseconds(n)` / `datetime_add_milliseconds(dt,n)` | `DateTime` |
-| Diff | `a.diffDays(b)` / `datetime_diff_days(a,b)` | `int64` |
-| Diff | `a.diffHours(b)` / `datetime_diff_hours(a,b)` | `int64` |
-| Diff | `a.diffSeconds(b)` / `datetime_diff_seconds(a,b)` | `double` |
-| Compare | `a.compare(b)` / `datetime_compare(a,b)` | `int64` |

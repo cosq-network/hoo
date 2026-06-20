@@ -1,1157 +1,1170 @@
-# Math API Reference (`hoo.math`)
+# Math API Reference
 
-**Import Requirement:**
+## Module
+
+`hoo.math`
+
+## Import Statement
+
 ```hoo
 import hoo.math;
 ```
 
-The `hoo.math` module provides constants, basic functions, power/root operations, trigonometry, exponentials, rounding, number utilities, and random number generation via the `Random` class. All math functions are free functions in the `hoo.math` module.
+## Module Description
 
----
+The `hoo.math` module provides double-precision mathematical functions (abs, min, max, clamp, floor, ceil, round, sqrt, pow, cbrt, log, log10, log2, exp, exp2, sin, cos, tan, asin, acos, atan, atan2, sinh, cosh, tanh, asinh, acosh, atanh, mean, median, variance, stddev), integer overloads for min and max, and a `Random` class for pseudo-random number generation. All free functions operate on `double` values unless otherwise noted.
 
-## 1. Constants
+## Constants
 
-### `math_get_pi() :double`
+### math_get_pi() :double
 
-Returns the value of π.
+Returns the value of &pi;.
 
-- **Parameters:** None
-- **Returns:** `double` — approximate value 3.14159.
+- **Returns:** `double` — 3.141592653589793.
 
 ```hoo
-import hoo.math;
-
-func :void example() {
-    var pi = math_get_pi();
-    println(pi.toString());
-}
+var pi = math_get_pi();
 ```
 
----
-
-### `math_get_e() :double`
+### math_get_e() :double
 
 Returns the value of e.
 
-- **Parameters:** None
-- **Returns:** `double` — approximate value 2.71828.
+- **Returns:** `double` — 2.718281828459045.
 
 ```hoo
-import hoo.math;
-
-func :void example() {
-    var e = math_get_e();
-    println(e.toString());
-}
+var e = math_get_e();
 ```
 
----
+### math_get_tau() :double
 
-### `math_get_tau() :double`
+Returns the value of &tau;.
 
-Returns the value of τ (tau).
-
-- **Parameters:** None
-- **Returns:** `double` — approximate value 6.28318.
+- **Returns:** `double` — 6.283185307179586.
 
 ```hoo
-import hoo.math;
-
-func :void example() {
-    var tau = math_get_tau();
-    println(tau.toString());
-}
+var tau = math_get_tau();
 ```
 
----
-
-### `math_get_inf() :double`
+### math_get_inf() :double
 
 Returns positive infinity.
 
-- **Parameters:** None
-- **Returns:** `double` — positive infinity.
+- **Returns:** `double` — +Infinity.
 
 ```hoo
-import hoo.math;
-
-func :void example() {
-    var inf = math_get_inf();
-    println(inf.toString());
-}
+var inf = math_get_inf();
 ```
 
----
-
-### `math_get_neg_inf() :double`
+### math_get_neg_inf() :double
 
 Returns negative infinity.
 
-- **Parameters:** None
-- **Returns:** `double` — negative infinity.
+- **Returns:** `double` — -Infinity.
 
 ```hoo
-import hoo.math;
-
-func :void example() {
-    var neg_inf = math_get_neg_inf();
-    println(neg_inf.toString());
-}
+var neg_inf = math_get_neg_inf();
 ```
 
----
-
-### `math_get_nan() :double`
+### math_get_nan() :double
 
 Returns Not-a-Number (NaN).
 
-- **Parameters:** None
 - **Returns:** `double` — NaN.
 
 ```hoo
+var nan = math_get_nan();
+```
+
+## Free Functions
+
+### abs(x: double) :double
+
+Returns the absolute value of `x`.
+
+**Syntax:**
+```hoo
+abs(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Input value |
+
+- **Returns:** `double` — the absolute value of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
 import hoo.math;
 
 func :void example() {
-    var nan = math_get_nan();
-    println(nan.toString());
+    var v = abs(-3.14);
+    println(v);  // 3.14
 }
 ```
 
----
-
-## 2. Basic Functions
-
-### `math_abs(x: int64) :int64`
-
-Returns the absolute value of an integer.
-
-- **Parameters:**
-  - `x: int64` — the input value.
-- **Returns:** `int64` — the absolute value of `x`.
-
-```hoo
-import hoo.math;
-
-func :int64 example() {
-    return math_abs(-42);
-}
-```
-
----
-
-### `math_abs(x: int8) :int8`
-
-Returns the absolute value of an 8-bit signed integer.
-
-- **Parameters:**
-  - `x: int8` — the input value.
-- **Returns:** `int8` — the absolute value of `x`.
-
----
-
-### `math_abs(x: byte) :byte`
-
-Returns the absolute value of an 8-bit unsigned byte.
-
-- **Parameters:**
-  - `x: byte` — the input value.
-- **Returns:** `byte` — the same value of `x`.
-
----
-
-### `math_abs(x: double) :double`
-
-Returns the absolute value of a double.
-
-- **Parameters:**
-  - `x: double` — the input value.
-- **Returns:** `double` — the absolute value of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_abs(-3.14);
-}
-```
-
----
-
-### `math_abs(x: f8) :double`
-
-Returns the absolute value of an f8 precision value (promoted to double).
-
-- **Parameters:**
-  - `x: f8` — the input value.
-- **Returns:** `double` — the absolute value of `x`.
-
----
-
-### `math_sign(x: int64) :int64`
-
-Returns the sign of an integer.
-
-- **Parameters:**
-  - `x: int64` — the input value.
-- **Returns:** `int64` — `-1` if `x < 0`, `0` if `x == 0`, `1` if `x > 0`.
-
-```hoo
-import hoo.math;
-
-func :int64 example() {
-    return math_sign(-7);
-}
-```
-
----
-
-### `math_sign(x: int8) :int8`
-
-Returns the sign of an 8-bit signed integer.
-
-- **Parameters:**
-  - `x: int8` — the input value.
-- **Returns:** `int8` — `-1` if `x < 0`, `0` if `x == 0`, `1` if `x > 0`.
-
----
-
-### `math_sign(x: byte) :byte`
-
-Returns the sign of an 8-bit unsigned byte.
-
-- **Parameters:**
-  - `x: byte` — the input value.
-- **Returns:** `byte` — `0` if `x == 0`, `1` if `x > 0`.
-
----
-
-### `math_sign(x: double) :double`
-
-Returns the sign of a double.
-
-- **Parameters:**
-  - `x: double` — the input value.
-- **Returns:** `double` — `-1.0` if `x < 0`, `0.0` if `x == 0`, `1.0` if `x > 0`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_sign(-3.14);
-}
-```
-
----
-
-### `math_sign(x: f8) :double`
-
-Returns the sign of an f8 precision value (promoted to double).
-
-- **Parameters:**
-  - `x: f8` — the input value.
-- **Returns:** `double` — `-1.0` if `x < 0`, `0.0` if `x == 0`, `1.0` if `x > 0`.
-
----
-
-### `math_min(a: int64, b: int64) :int64`
-
-Returns the smaller of two integers.
-
-- **Parameters:**
-  - `a: int64` — first value.
-  - `b: int64` — second value.
-- **Returns:** `int64` — the minimum of `a` and `b`.
-
-```hoo
-import hoo.math;
-
-func :int64 example() {
-    return math_min(10, 20);
-}
-```
-
----
-
-### `math_min(a: int8, b: int8) :int8`
-
-Returns the smaller of two 8-bit signed integers.
-
----
-
-### `math_min(a: byte, b: byte) :byte`
-
-Returns the smaller of two 8-bit unsigned bytes.
-
----
-
-### `math_min(a: double, b: double) :double`
+### min(x: double, y: double) :double
 
 Returns the smaller of two doubles.
 
-- **Parameters:**
-  - `a: double` — first value.
-  - `b: double` — second value.
-- **Returns:** `double` — the minimum of `a` and `b`.
+**Syntax:**
+```hoo
+min(x: double, y: double) :double
+```
 
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | First value |
+| `y` | `double` | Second value |
+
+- **Returns:** `double` — the minimum of `x` and `y`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_min(3.5, 2.8);
+func :void example() {
+    var v = min(3.5, 2.8);
+    println(v);  // 2.8
 }
 ```
 
----
-
-### `math_min(a: f8, b: f8) :double`
-
-Returns the smaller of two f8 values.
-
----
-
-### `math_max(a: int64, b: int64) :int64`
-
-Returns the larger of two integers.
-
-- **Parameters:**
-  - `a: int64` — first value.
-  - `b: int64` — second value.
-- **Returns:** `int64` — the maximum of `a` and `b`.
-
-```hoo
-import hoo.math;
-
-func :int64 example() {
-    return math_max(10, 20);
-}
-```
-
----
-
-### `math_max(a: int8, b: int8) :int8`
-
-Returns the larger of two 8-bit signed integers.
-
----
-
-### `math_max(a: byte, b: byte) :byte`
-
-Returns the larger of two 8-bit unsigned bytes.
-
----
-
-### `math_max(a: double, b: double) :double`
+### max(x: double, y: double) :double
 
 Returns the larger of two doubles.
 
-- **Parameters:**
-  - `a: double` — first value.
-  - `b: double` — second value.
-- **Returns:** `double` — the maximum of `a` and `b`.
+**Syntax:**
+```hoo
+max(x: double, y: double) :double
+```
 
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | First value |
+| `y` | `double` | Second value |
+
+- **Returns:** `double` — the maximum of `x` and `y`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_max(3.5, 2.8);
+func :void example() {
+    var v = max(3.5, 2.8);
+    println(v);  // 3.5
 }
 ```
 
----
+### clamp(val: double, min_val: double, max_val: double) :double
 
-### `math_max(a: f8, b: f8) :double`
+Clamps `val` within the inclusive range `[min_val, max_val]`.
 
-Returns the larger of two f8 values.
+**Syntax:**
+```hoo
+clamp(val: double, min_val: double, max_val: double) :double
+```
 
----
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `val` | `double` | Value to clamp |
+| `min_val` | `double` | Lower bound |
+| `max_val` | `double` | Upper bound |
 
-### `math_clamp(val: double, min: double, max: double) :double`
+- **Returns:** `double` — `val` if in range, `min_val` if `val < min_val`, `max_val` if `val > max_val`.
+- **Errors:** None.
 
-Clamps a value within the inclusive range `[min, max]`.
-
-- **Parameters:**
-  - `val: double` — the value to clamp.
-  - `min: double` — the lower bound.
-  - `max: double` — the upper bound.
-- **Returns:** `double` — `val` if within range, `min` if `val < min`, `max` if `val > max`.
-
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_clamp(15.0, 0.0, 10.0);
+func :void example() {
+    var v = clamp(15.0, 0.0, 10.0);
+    println(v);  // 10.0
 }
 ```
 
----
+### min_int64(a: int64, b: int64) :int64
 
-## 3. Power and Roots
+Returns the smaller of two 64-bit integers.
 
-### `math_pow(base: double, exp: double) :double`
+**Syntax:**
+```hoo
+min_int64(a: int64, b: int64) :int64
+```
 
-Returns `base` raised to the power of `exp`.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `a` | `int64` | First value |
+| `b` | `int64` | Second value |
 
-- **Parameters:**
-  - `base: double` — the base.
-  - `exp: double` — the exponent.
-- **Returns:** `double` — `base` raised to `exp`.
+- **Returns:** `int64` — the minimum of `a` and `b`.
+- **Errors:** None.
 
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_pow(2.0, 3.0);
+func :void example() {
+    var v = min_int64(10, 20);
+    println(v);  // 10
 }
 ```
 
----
+### max_int64(a: int64, b: int64) :int64
 
-### `math_sqrt(x: double) :double`
+Returns the larger of two 64-bit integers.
 
-Returns the square root of `x`.
+**Syntax:**
+```hoo
+max_int64(a: int64, b: int64) :int64
+```
 
-- **Parameters:**
-  - `x: double` — a non-negative number.
-- **Returns:** `double` — the square root of `x`.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `a` | `int64` | First value |
+| `b` | `int64` | Second value |
 
+- **Returns:** `int64` — the maximum of `a` and `b`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_sqrt(9.0);
+func :void example() {
+    var v = max_int64(10, 20);
+    println(v);  // 20
 }
 ```
 
----
-
-### `math_cbrt(x: double) :double`
-
-Returns the cube root of `x`.
-
-- **Parameters:**
-  - `x: double` — any number.
-- **Returns:** `double` — the cube root of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_cbrt(27.0);
-}
-```
-
----
-
-### `math_hypot(x: double, y: double) :double`
-
-Returns `sqrt(x * x + y * y)` without unnecessary overflow or underflow.
-
-- **Parameters:**
-  - `x: double` — first leg.
-  - `y: double` — second leg.
-- **Returns:** `double` — the length of the hypotenuse.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_hypot(3.0, 4.0);
-}
-```
-
----
-
-## 4. Trigonometric Functions
-
-### `math_sin(x: double) :double`
-
-Returns the sine of `x`.
-
-- **Parameters:**
-  - `x: double` — angle in radians.
-- **Returns:** `double` — the sine of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_sin(0.0);
-}
-```
-
----
-
-### `math_cos(x: double) :double`
-
-Returns the cosine of `x`.
-
-- **Parameters:**
-  - `x: double` — angle in radians.
-- **Returns:** `double` — the cosine of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_cos(0.0);
-}
-```
-
----
-
-### `math_tan(x: double) :double`
-
-Returns the tangent of `x`.
-
-- **Parameters:**
-  - `x: double` — angle in radians.
-- **Returns:** `double` — the tangent of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_tan(0.0);
-}
-```
-
----
-
-### `math_asin(x: double) :double`
-
-Returns the arc sine of `x` in radians.
-
-- **Parameters:**
-  - `x: double` — value in the range `[-1, 1]`.
-- **Returns:** `double` — the arc sine in `[-π/2, π/2]`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_asin(1.0);
-}
-```
-
----
-
-### `math_acos(x: double) :double`
-
-Returns the arc cosine of `x` in radians.
-
-- **Parameters:**
-  - `x: double` — value in the range `[-1, 1]`.
-- **Returns:** `double` — the arc cosine in `[0, π]`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_acos(0.0);
-}
-```
-
----
-
-### `math_atan(x: double) :double`
-
-Returns the arc tangent of `x` in radians.
-
-- **Parameters:**
-  - `x: double` — any number.
-- **Returns:** `double` — the arc tangent in `[-π/2, π/2]`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_atan(1.0);
-}
-```
-
----
-
-### `math_atan2(y: double, x: double) :double`
-
-Returns the arc tangent of `y / x` using the signs of both to determine the quadrant.
-
-- **Parameters:**
-  - `y: double` — the y-coordinate.
-  - `x: double` — the x-coordinate.
-- **Returns:** `double` — the angle in `[-π, π]`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_atan2(1.0, 0.0);
-}
-```
-
----
-
-### `math_sinh(x: double) :double`
-
-Returns the hyperbolic sine of `x`.
-
-- **Parameters:**
-  - `x: double` — any number.
-- **Returns:** `double` — the hyperbolic sine of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_sinh(0.0);
-}
-```
-
----
-
-### `math_cosh(x: double) :double`
-
-Returns the hyperbolic cosine of `x`.
-
-- **Parameters:**
-  - `x: double` — any number.
-- **Returns:** `double` — the hyperbolic cosine of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_cosh(0.0);
-}
-```
-
----
-
-### `math_tanh(x: double) :double`
-
-Returns the hyperbolic tangent of `x`.
-
-- **Parameters:**
-  - `x: double` — any number.
-- **Returns:** `double` — the hyperbolic tangent of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_tanh(0.5);
-}
-```
-
----
-
-## 5. Exponential and Logarithmic
-
-### `math_exp(x: double) :double`
-
-Returns `e` raised to the power of `x`.
-
-- **Parameters:**
-  - `x: double` — the exponent.
-- **Returns:** `double` — `e^x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_exp(1.0);
-}
-```
-
----
-
-### `math_exp2(x: double) :double`
-
-Returns 2 raised to the power of `x`.
-
-- **Parameters:**
-  - `x: double` — the exponent.
-- **Returns:** `double` — `2^x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_exp2(3.0);
-}
-```
-
----
-
-### `math_expm1(x: double) :double`
-
-Returns `e^x - 1` accurately even when `x` is near zero.
-
-- **Parameters:**
-  - `x: double` — the exponent.
-- **Returns:** `double` — `e^x - 1`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_expm1(0.001);
-}
-```
-
----
-
-### `math_log(x: double) :double`
-
-Returns the natural logarithm of `x`.
-
-- **Parameters:**
-  - `x: double` — a positive number.
-- **Returns:** `double` — the natural logarithm of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_log(2.71828);
-}
-```
-
----
-
-### `math_log10(x: double) :double`
-
-Returns the base-10 logarithm of `x`.
-
-- **Parameters:**
-  - `x: double` — a positive number.
-- **Returns:** `double` — the base-10 logarithm of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_log10(100.0);
-}
-```
-
----
-
-### `math_log2(x: double) :double`
-
-Returns the base-2 logarithm of `x`.
-
-- **Parameters:**
-  - `x: double` — a positive number.
-- **Returns:** `double` — the base-2 logarithm of `x`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_log2(8.0);
-}
-```
-
----
-
-### `math_log1p(x: double) :double`
-
-Returns the natural logarithm of `1 + x` accurately even when `x` is near zero.
-
-- **Parameters:**
-  - `x: double` — a number greater than `-1`.
-- **Returns:** `double` — `ln(1 + x)`.
-
-```hoo
-import hoo.math;
-
-func :double example() {
-    return math_log1p(0.001);
-}
-```
-
----
-
-## 6. Rounding Functions
-
-### `math_floor(x: double) :double`
+### floor(x: double) :double
 
 Returns the largest integer less than or equal to `x`.
 
-- **Parameters:**
-  - `x: double` — the input value.
-- **Returns:** `double` — the floor of `x`.
+**Syntax:**
+```hoo
+floor(x: double) :double
+```
 
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Input value |
+
+- **Returns:** `double` — the floor of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_floor(3.7);
+func :void example() {
+    var v = floor(3.7);
+    println(v);  // 3.0
 }
 ```
 
----
-
-### `math_ceil(x: double) :double`
+### ceil(x: double) :double
 
 Returns the smallest integer greater than or equal to `x`.
 
-- **Parameters:**
-  - `x: double` — the input value.
-- **Returns:** `double` — the ceiling of `x`.
+**Syntax:**
+```hoo
+ceil(x: double) :double
+```
 
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Input value |
+
+- **Returns:** `double` — the ceiling of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_ceil(3.2);
+func :void example() {
+    var v = ceil(3.2);
+    println(v);  // 4.0
 }
 ```
 
----
-
-### `math_round(x: double) :double`
+### round(x: double) :double
 
 Returns the nearest integer to `x`, rounding half away from zero.
 
-- **Parameters:**
-  - `x: double` — the input value.
+**Syntax:**
+```hoo
+round(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Input value |
+
 - **Returns:** `double` — the rounded value.
+- **Errors:** None.
 
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_round(3.5);
+func :void example() {
+    var v = round(3.5);
+    println(v);  // 4.0
 }
 ```
 
----
+### sqrt(x: double) :double
 
-### `math_trunc(x: double) :double`
+Returns the square root of `x`.
 
-Returns the integer part of `x`, discarding the fractional part (truncates toward zero).
+**Syntax:**
+```hoo
+sqrt(x: double) :double
+```
 
-- **Parameters:**
-  - `x: double` — the input value.
-- **Returns:** `double` — the truncated value.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Non-negative input |
 
+- **Returns:** `double` — the square root of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_trunc(3.7);
+func :void example() {
+    var v = sqrt(9.0);
+    println(v);  // 3.0
 }
 ```
 
----
+### pow(base: double, exp: double) :double
 
-### `math_fract(x: double) :double`
+Returns `base` raised to the power of `exp`.
 
-Returns the fractional part of `x`.
+**Syntax:**
+```hoo
+pow(base: double, exp: double) :double
+```
 
-- **Parameters:**
-  - `x: double` — the input value.
-- **Returns:** `double` — the fractional part of `x` (same sign as `x`).
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `base` | `double` | The base |
+| `exp` | `double` | The exponent |
 
+- **Returns:** `double` — `base^exp`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :double example() {
-    return math_fract(3.7);
+func :void example() {
+    var v = pow(2.0, 3.0);
+    println(v);  // 8.0
 }
 ```
 
----
+### cbrt(x: double) :double
 
-## 7. Number Utilities
+Returns the cube root of `x`.
 
-### `math_is_even(n: int64) :int64`
+**Syntax:**
+```hoo
+cbrt(x: double) :double
+```
 
-Returns 1 if `n` is even, 0 otherwise.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Input value |
 
-- **Parameters:**
-  - `n: int64` — the number to test.
-- **Returns:** `int64` — `1` if even, `0` if odd.
+- **Returns:** `double` — the cube root of `x`.
+- **Errors:** None.
 
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_is_even(42);
+func :void example() {
+    var v = cbrt(27.0);
+    println(v);  // 3.0
 }
 ```
 
----
+### log(x: double) :double
 
-### `math_is_odd(n: int64) :int64`
+Returns the natural logarithm (base e) of `x`.
 
-Returns 1 if `n` is odd, 0 otherwise.
+**Syntax:**
+```hoo
+log(x: double) :double
+```
 
-- **Parameters:**
-  - `n: int64` — the number to test.
-- **Returns:** `int64` — `1` if odd, `0` if even.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Positive input |
 
+- **Returns:** `double` — the natural logarithm of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_is_odd(43);
+func :void example() {
+    var v = log(2.71828);
+    println(v);  // ~1.0
 }
 ```
 
----
+### log10(x: double) :double
 
-### `math_is_prime(n: int64) :int64`
+Returns the base-10 logarithm of `x`.
 
-Returns 1 if `n` is prime, 0 otherwise.
+**Syntax:**
+```hoo
+log10(x: double) :double
+```
 
-- **Parameters:**
-  - `n: int64` — a non-negative integer.
-- **Returns:** `int64` — `1` if prime, `0` otherwise.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Positive input |
 
+- **Returns:** `double` — the base-10 logarithm of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_is_prime(17);
+func :void example() {
+    var v = log10(100.0);
+    println(v);  // 2.0
 }
 ```
 
----
+### log2(x: double) :double
 
-### `math_gcd(a: int64, b: int64) :int64`
+Returns the base-2 logarithm of `x`.
 
-Returns the greatest common divisor of `a` and `b`.
+**Syntax:**
+```hoo
+log2(x: double) :double
+```
 
-- **Parameters:**
-  - `a: int64` — first integer.
-  - `b: int64` — second integer.
-- **Returns:** `int64` — the GCD of `a` and `b`.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Positive input |
 
+- **Returns:** `double` — the base-2 logarithm of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_gcd(12, 18);
+func :void example() {
+    var v = log2(8.0);
+    println(v);  // 3.0
 }
 ```
 
----
+### exp(x: double) :double
 
-### `math_lcm(a: int64, b: int64) :int64`
+Returns e raised to the power of `x`.
 
-Returns the least common multiple of `a` and `b`.
+**Syntax:**
+```hoo
+exp(x: double) :double
+```
 
-- **Parameters:**
-  - `a: int64` — first integer.
-  - `b: int64` — second integer.
-- **Returns:** `int64` — the LCM of `a` and `b`.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | The exponent |
 
+- **Returns:** `double` — `e^x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_lcm(4, 6);
+func :void example() {
+    var v = exp(1.0);
+    println(v);  // ~2.71828
 }
 ```
 
----
+### exp2(x: double) :double
 
-### `math_factorial(n: int64) :int64`
+Returns 2 raised to the power of `x`.
 
-Returns `n!` (n factorial), the product of all positive integers up to `n`.
+**Syntax:**
+```hoo
+exp2(x: double) :double
+```
 
-- **Parameters:**
-  - `n: int64` — a non-negative integer.
-- **Returns:** `int64` — the factorial of `n`.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | The exponent |
 
+- **Returns:** `double` — `2^x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_factorial(5);
+func :void example() {
+    var v = exp2(3.0);
+    println(v);  // 8.0
 }
 ```
 
----
+### sin(x: double) :double
 
-### `math_fibonacci(n: int64) :int64`
+Returns the sine of `x`.
 
-Returns the `n`-th Fibonacci number (`F(0) = 0`, `F(1) = 1`).
+**Syntax:**
+```hoo
+sin(x: double) :double
+```
 
-- **Parameters:**
-  - `n: int64` — a non-negative integer.
-- **Returns:** `int64` — the `n`-th Fibonacci number.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Angle in radians |
 
+- **Returns:** `double` — the sine of `x`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
-    return math_fibonacci(10);
+func :void example() {
+    var v = sin(0.0);
+    println(v);  // 0.0
 }
 ```
 
----
+### cos(x: double) :double
 
-## 8. Random Number Generation (`Random`)
+Returns the cosine of `x`.
 
-Hoo random number generation uses a managed state object via the `Random` class. Create instances with the `new` keyword, then call methods on the instance.
+**Syntax:**
+```hoo
+cos(x: double) :double
+```
 
-### `new Random()`
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Angle in radians |
 
-Creates a new, auto-seeded random number generator.
+- **Returns:** `double` — the cosine of `x`.
+- **Errors:** None.
 
-- **Parameters:** None
-- **Returns:** a `Random` instance with a random seed.
-
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
+func :void example() {
+    var v = cos(0.0);
+    println(v);  // 1.0
+}
+```
+
+### tan(x: double) :double
+
+Returns the tangent of `x`.
+
+**Syntax:**
+```hoo
+tan(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Angle in radians |
+
+- **Returns:** `double` — the tangent of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = tan(0.0);
+    println(v);  // 0.0
+}
+```
+
+### asin(x: double) :double
+
+Returns the arc sine of `x` in radians.
+
+**Syntax:**
+```hoo
+asin(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Value in [-1, 1] |
+
+- **Returns:** `double` — the arc sine in [-&pi;/2, &pi;/2].
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = asin(1.0);
+    println(v);  // ~1.5708
+}
+```
+
+### acos(x: double) :double
+
+Returns the arc cosine of `x` in radians.
+
+**Syntax:**
+```hoo
+acos(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Value in [-1, 1] |
+
+- **Returns:** `double` — the arc cosine in [0, &pi;].
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = acos(0.0);
+    println(v);  // ~1.5708
+}
+```
+
+### atan(x: double) :double
+
+Returns the arc tangent of `x` in radians.
+
+**Syntax:**
+```hoo
+atan(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Any number |
+
+- **Returns:** `double` — the arc tangent in [-&pi;/2, &pi;/2].
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = atan(1.0);
+    println(v);  // ~0.7854
+}
+```
+
+### atan2(y: double, x: double) :double
+
+Returns the arc tangent of `y/x`, using the signs of both arguments to determine the quadrant.
+
+**Syntax:**
+```hoo
+atan2(y: double, x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `y` | `double` | y-coordinate |
+| `x` | `double` | x-coordinate |
+
+- **Returns:** `double` — the angle in [-&pi;, &pi;].
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = atan2(1.0, 0.0);
+    println(v);  // ~1.5708
+}
+```
+
+### sinh(x: double) :double
+
+Returns the hyperbolic sine of `x`.
+
+**Syntax:**
+```hoo
+sinh(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Any number |
+
+- **Returns:** `double` — the hyperbolic sine of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = sinh(0.0);
+    println(v);  // 0.0
+}
+```
+
+### cosh(x: double) :double
+
+Returns the hyperbolic cosine of `x`.
+
+**Syntax:**
+```hoo
+cosh(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Any number |
+
+- **Returns:** `double` — the hyperbolic cosine of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = cosh(0.0);
+    println(v);  // 1.0
+}
+```
+
+### tanh(x: double) :double
+
+Returns the hyperbolic tangent of `x`.
+
+**Syntax:**
+```hoo
+tanh(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Any number |
+
+- **Returns:** `double` — the hyperbolic tangent of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = tanh(0.5);
+    println(v);  // ~0.4621
+}
+```
+
+### asinh(x: double) :double
+
+Returns the inverse hyperbolic sine of `x`.
+
+**Syntax:**
+```hoo
+asinh(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | Any number |
+
+- **Returns:** `double` — the inverse hyperbolic sine of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = asinh(1.0);
+    println(v);  // ~0.8814
+}
+```
+
+### acosh(x: double) :double
+
+Returns the inverse hyperbolic cosine of `x`.
+
+**Syntax:**
+```hoo
+acosh(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | x >= 1 |
+
+- **Returns:** `double` — the inverse hyperbolic cosine of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = acosh(2.0);
+    println(v);  // ~1.3170
+}
+```
+
+### atanh(x: double) :double
+
+Returns the inverse hyperbolic tangent of `x`.
+
+**Syntax:**
+```hoo
+atanh(x: double) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | `double` | x in (-1, 1) |
+
+- **Returns:** `double` — the inverse hyperbolic tangent of `x`.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var v = atanh(0.5);
+    println(v);  // ~0.5493
+}
+```
+
+### mean(values: double[]) :double
+
+Returns the arithmetic mean of a double array.
+
+**Syntax:**
+```hoo
+mean(values: double[]) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `values` | `double[]` | Array of values |
+
+- **Returns:** `double` — the arithmetic mean.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var data = [1.0, 2.0, 3.0, 4.0, 5.0];
+    var m = mean(data);
+    println(m);  // 3.0
+}
+```
+
+### median(values: double[]) :double
+
+Returns the median of a double array.
+
+**Syntax:**
+```hoo
+median(values: double[]) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `values` | `double[]` | Array of values |
+
+- **Returns:** `double` — the median value.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var data = [1.0, 2.0, 3.0, 4.0, 5.0];
+    var m = median(data);
+    println(m);  // 3.0
+}
+```
+
+### variance(values: double[]) :double
+
+Returns the population variance of a double array.
+
+**Syntax:**
+```hoo
+variance(values: double[]) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `values` | `double[]` | Array of values |
+
+- **Returns:** `double` — the population variance.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var data = [1.0, 2.0, 3.0, 4.0, 5.0];
+    var v = variance(data);
+    println(v);  // 2.0
+}
+```
+
+### stddev(values: double[]) :double
+
+Returns the population standard deviation of a double array.
+
+**Syntax:**
+```hoo
+stddev(values: double[]) :double
+```
+
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `values` | `double[]` | Array of values |
+
+- **Returns:** `double` — the population standard deviation.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var data = [1.0, 2.0, 3.0, 4.0, 5.0];
+    var v = stddev(data);
+    println(v);  // ~1.4142
+}
+```
+
+## Class: Random
+
+### Declaration
+
+```hoo
+class Random
+```
+
+The `Random` class provides a pseudo-random number generator. Instances are created with `new Random()` or `new Random(seed)` and must be released with `.release()` when no longer needed.
+
+### Public Fields
+
+None.
+
+### Public Class (Static) Functions
+
+None.
+
+### Public Instance Functions
+
+#### Random() :Random
+
+Creates a new auto-seeded random number generator.
+
+**Syntax:**
+```hoo
+new Random() :Random
+```
+
+- **Returns:** `Random` — a new `Random` instance.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
     var rng = new Random();
-    var value = rng.nextInt();
+    // ...
     rng.release();
-    return value;
 }
 ```
 
----
+#### Random(seed: int64) :Random
 
-### `new Random(seed: int64)`
+Creates a new random number generator seeded with `seed`. Two generators with the same seed produce identical sequences.
 
-Creates a new random number generator seeded with `seed`. Two generators created with the same seed produce identical sequences.
+**Syntax:**
+```hoo
+new Random(seed: int64) :Random
+```
 
-- **Parameters:**
-  - `seed: int64` — the seed value.
-- **Returns:** a `Random` instance with the given seed.
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `seed` | `int64` | Seed value |
 
+- **Returns:** `Random` — a new `Random` instance.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
+func :void example() {
     var rng = new Random(42);
-    var value = rng.nextIntMax(100);
+    // ...
     rng.release();
-    return value;
 }
 ```
 
----
-
-### `state.nextInt() :int64`
+#### rng.next_int64() :int64
 
 Returns a random 64-bit integer from the full `int64` range.
 
-- **Parameters:** None
-- **Returns:** `int64` — a uniformly distributed random integer.
+**Syntax:**
+```hoo
+rng.next_int64() :int64
+```
 
+- **Returns:** `int64` — uniformly distributed random integer.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
+func :void example() {
     var rng = new Random();
-    var value = rng.nextInt();
+    var v = rng.next_int64();
     rng.release();
-    return value;
 }
 ```
 
----
-
-### `state.nextIntMax(max: int64) :int64`
+#### rng.next_int64(max: int64) :int64
 
 Returns a random integer uniformly distributed in `[0, max)`.
 
-- **Parameters:**
-  - `max: int64` — the exclusive upper bound.
-- **Returns:** `int64` — a random integer in `[0, max)`.
+**Syntax:**
+```hoo
+rng.next_int64(max: int64) :int64
+```
 
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `max` | `int64` | Exclusive upper bound |
+
+- **Returns:** `int64` — random integer in `[0, max)`.
+- **Errors:** None.
+
+**Example:**
 ```hoo
 import hoo.math;
 
-func :int64 example() {
+func :void example() {
     var rng = new Random();
-    var roll = rng.nextIntMax(6) + 1;
+    var roll = rng.next_int64(6) + 1;
     rng.release();
-    return roll;
 }
 ```
 
----
-
-### `state.nextDouble() :double`
+#### rng.next_double() :double
 
 Returns a random double uniformly distributed in `[0, 1)`.
 
-- **Parameters:** None
-- **Returns:** `double` — a random value in `[0, 1)`.
-
+**Syntax:**
 ```hoo
-import hoo.math;
-
-func :double example() {
-    var rng = new Random();
-    var value = rng.nextDouble();
-    rng.release();
-    return value;
-}
+rng.next_double() :double
 ```
 
----
+- **Returns:** `double` — random value in `[0, 1)`.
+- **Errors:** None.
 
-### `state.nextBool() :bool`
-
-Returns `true` or `false` with equal probability.
-
-- **Parameters:** None
-- **Returns:** `bool` — random boolean value.
-
+**Example:**
 ```hoo
 import hoo.math;
 
 func :void example() {
     var rng = new Random();
-    if (rng.nextBool()) {
-        println("Heads");
-    } else {
-        println("Tails");
-    }
+    var v = rng.next_double();
     rng.release();
 }
 ```
 
----
+#### rng.release() :void
 
-### `state.nextBytes(buffer: Buffer, count: int64) :int64`
+Releases the random generator handle.
 
-Fills the provided buffer with random bytes.
-
-- **Parameters:**
-  - `buffer: Buffer` — the destination buffer.
-  - `count: int64` — the number of bytes to write.
-- **Returns:** `int64` — the number of bytes successfully written.
-
+**Syntax:**
 ```hoo
-import hoo.math;
-
-func :void example() {
-    var rng = new Random();
-    var buf = new Buffer();
-    rng.nextBytes(buf, 10);
-    rng.release();
-}
+rng.release() :void
 ```
 
----
+- **Errors:** None.
 
-### `state.release() :void`
-
-Releases a random generator handle.
-
-- **Parameters:** None
-- **Returns:** Nothing.
-
+**Example:**
 ```hoo
 import hoo.math;
 
@@ -1160,8 +1173,6 @@ func :void example() {
     rng.release();
 }
 ```
-
----
 
 ## Usage Example
 
@@ -1170,14 +1181,14 @@ import hoo.math;
 
 func :int64 main() {
     var radius = 5.0;
-    var area = math_get_pi() * math_pow(radius, 2.0);
+    var area = math_get_pi() * pow(radius, 2.0);
 
-    if (math_is_even(math_round(area).toInt64())) {
+    if (floor(area).toInt64() % 2 == 0) {
         println("Rounded area is even.");
     }
 
     var rng = new Random(12345);
-    var roll = rng.nextIntMax(6) + 1;
+    var roll = rng.next_int64(6) + 1;
     rng.release();
     println("You rolled a ".concat(roll.toString()));
 
