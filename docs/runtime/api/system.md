@@ -1,20 +1,18 @@
 # System API Reference
 
-## Module Name
+## Module
 
-`System` — core module (no explicit import required beyond `import hoo;`)
+`hoo.system`
 
 ## Import Statement
 
 ```hoo
-import hoo;
+import hoo.system;
 ```
 
 ## Module Description
 
-The `System` module provides free functions for interacting with the operating system, including querying system information, reading and modifying environment variables, and accessing high-resolution timing. All functions are available with only `import hoo;`.
-
----
+The `system` module provides free functions for interacting with the operating system, including querying system information, reading and modifying environment variables, and accessing high-resolution timing.
 
 ## Free Functions
 
@@ -37,7 +35,7 @@ system_info() :string
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var info = system_info();
@@ -68,7 +66,7 @@ system_env(name: string) :string
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var path = system_env("PATH");
@@ -95,7 +93,7 @@ system_time_nanos() :int64
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var start = system_time_nanos();
@@ -129,7 +127,7 @@ system_env_set(name: string, value: string) :int64
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var status = system_env_set("MY_VAR", "hello");
@@ -162,7 +160,7 @@ system_env_unset(name: string) :int64
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var status = system_env_unset("MY_VAR");
@@ -195,7 +193,7 @@ system_free_string(str: string) :void
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var val = system_env("HOME");
@@ -204,12 +202,10 @@ func :void example() {
 }
 ```
 
----
-
 ## Usage Example
 
 ```hoo
-import hoo;
+import hoo.system;
 
 func :void example() {
     var path = system_env("PATH");

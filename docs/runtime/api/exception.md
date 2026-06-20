@@ -24,206 +24,53 @@ The `Exception` class is the base type for all throwable errors in Hoo. Built-in
 class Exception
 ```
 
-### Public Fields
-
-None.
-
 ### Constructor
 
 #### Exception
 
-##### Description
-
 Creates a new `RuntimeException` with the given error message. The returned exception has an initial reference count of 1.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 Exception(reason: string):Exception
 ```
 
-##### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | reason | `string` | The error message describing the exception. |
 
-##### Returns
+**Returns:** `Exception` — A new exception instance with refcount 1.
 
-`Exception` — A new exception instance with refcount 1.
+**Errors:** Throws `RuntimeException` if allocation fails.
 
-##### Errors
-
-Throws `RuntimeException` if allocation fails.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let err = Exception("Something went wrong");
 ```
 
-### Public Class (Static) Functions
-
-#### Exception.runtime
-
-##### Description
-
-Creates a new `RuntimeException`.
-
-##### Syntax
-
-```hoo
-Exception.runtime(message: string):Exception
-```
-
-##### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| message | `string` | The error message (may be empty). |
-
-##### Returns
-
-`Exception` — A new RuntimeException instance.
-
-#### Exception.nullPointer
-
-##### Description
-
-Creates a new `NullPointerException`.
-
-##### Syntax
-
-```hoo
-Exception.nullPointer(message: string):Exception
-```
-
-##### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| message | `string` | The error message (may be empty). |
-
-##### Returns
-
-`Exception` — A new NullPointerException instance.
-
-#### Exception.indexOutOfBounds
-
-##### Description
-
-Creates a new `IndexOutOfBoundsException`.
-
-##### Syntax
-
-```hoo
-Exception.indexOutOfBounds(message: string):Exception
-```
-
-##### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| message | `string` | The error message (may be empty). |
-
-##### Returns
-
-`Exception` — A new IndexOutOfBoundsException instance.
-
-#### Exception.divisionByZero
-
-##### Description
-
-Creates a new `DivisionByZeroException`.
-
-##### Syntax
-
-```hoo
-Exception.divisionByZero(message: string):Exception
-```
-
-##### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| message | `string` | The error message (may be empty). |
-
-##### Returns
-
-`Exception` — A new DivisionByZeroException instance.
-
-#### Exception.invalidCast
-
-##### Description
-
-Creates a new `InvalidCastException`.
-
-##### Syntax
-
-```hoo
-Exception.invalidCast(message: string):Exception
-```
-
-##### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| message | `string` | The error message (may be empty). |
-
-##### Returns
-
-`Exception` — A new InvalidCastException instance.
-
-#### Exception.custom
-
-##### Description
-
-Creates a custom exception with a user-defined type name.
-
-##### Syntax
-
-```hoo
-Exception.custom(typeName: string, message: string):Exception
-```
-
-##### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| typeName | `string` | The custom exception type name. |
-| message | `string` | The error message (may be empty). |
-
-##### Returns
-
-`Exception` — A new custom exception instance.
-
-### Public Instance Functions
+### Instance Methods
 
 #### reason
 
-##### Description
-
 Returns the human-readable error message carried by the exception.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 reason() :string
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `string` — The exception error message, or an empty string if no message was set.
 
-##### Returns
+**Errors:** None (returns empty string if exception is nil).
 
-`string` — The exception error message, or an empty string if no message was set.
-
-##### Errors
-
-None (returns empty string if exception is nil).
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("disk full");
@@ -233,61 +80,45 @@ let msg = e.reason();
 
 #### typeId
 
-##### Description
-
 Returns the numeric type identifier for the exception.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 typeId() :int64
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `int64` — The exception type ID (e.g., 0 for RuntimeException, 2 for IndexOutOfBoundsException).
 
-##### Returns
+**Errors:** None.
 
-`int64` — The exception type ID (e.g., 0 for RuntimeException, 2 for IndexOutOfBoundsException).
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
-let e = Exception.indexOutOfBounds("index out of range");
+let e = exception_index_out_of_bounds("index out of range");
 let id = e.typeId();
 // id == 2
 ```
 
 #### typeName
 
-##### Description
-
 Returns the fully qualified type name of the exception.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 typeName() :string
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `string` — The exception type name (e.g., "RuntimeException", "IndexOutOfBoundsException").
 
-##### Returns
+**Errors:** None.
 
-`string` — The exception type name (e.g., "RuntimeException", "IndexOutOfBoundsException").
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("error");
@@ -297,29 +128,21 @@ let name = e.typeName();
 
 #### to_string
 
-##### Description
-
 Returns a string representation of the exception including the type name, message, and stack trace.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 to_string() :string
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `string` — A formatted string describing the exception and its stack trace.
 
-##### Returns
+**Errors:** None.
 
-`string` — A formatted string describing the exception and its stack trace.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("test error");
@@ -328,29 +151,21 @@ let s = e.to_string();
 
 #### stackTrace
 
-##### Description
-
 Returns the full stack trace as a string.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 stackTrace() :string
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `string` — The exception stack trace including all chained causes.
 
-##### Returns
+**Errors:** None.
 
-`string` — The exception stack trace including all chained causes.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 try
@@ -362,29 +177,21 @@ end
 
 #### hasCause
 
-##### Description
-
 Checks whether the exception wraps a chained cause.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 hasCause() :int64
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `int64` — Nonzero (1) if the exception has a cause, zero (0) otherwise.
 
-##### Returns
+**Errors:** None.
 
-`int64` — Nonzero (1) if the exception has a cause, zero (0) otherwise.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 if e.hasCause() != 0
@@ -394,62 +201,45 @@ end
 
 #### cause
 
-##### Description
-
 Returns the wrapped cause exception, or nil if none.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 cause() :Exception
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `Exception` — The cause exception, or nil if no cause was set.
 
-##### Returns
+**Errors:** None.
 
-`Exception` — The cause exception, or nil if no cause was set.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let inner = Exception("inner error");
-let outer = Exception.withCause("outer error", inner);
+let outer = exception_runtime("outer error");
 let c = outer.cause();
-// c == inner
 ```
 
 #### frameCount
 
-##### Description
-
 Returns the number of stack frames captured in the exception trace.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 frameCount() :int64
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `int64` — The number of stack frames, or 0 if no trace is available.
 
-##### Returns
+**Errors:** None.
 
-`int64` — The number of stack frames, or 0 if no trace is available.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let count = e.frameCount();
@@ -458,31 +248,25 @@ let count = e.frameCount();
 
 #### frame
 
-##### Description
-
 Returns the stack frame at the given index (0-based).
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 frame(index: int64) :string
 ```
 
-##### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | index | `int64` | The 0-based frame index. |
 
-##### Returns
+**Returns:** `string` — The stack frame string, or nil if the index is out of range.
 
-`string` — The stack frame string, or nil if the index is out of range.
+**Errors:** None (returns nil for invalid index).
 
-##### Errors
-
-None (returns nil for invalid index).
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let top = e.frame(0);                      // topmost frame
@@ -491,29 +275,21 @@ let bottom = e.frame(e.frameCount() - 1);  // bottom frame
 
 #### print
 
-##### Description
-
 Prints the exception details (type, message, and stack trace) to stderr.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 print() :void
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `void`
 
-##### Returns
+**Errors:** None.
 
-`void` — Nothing.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("fatal error");
@@ -523,31 +299,25 @@ e.print();
 
 #### equals
 
-##### Description
-
 Compares two exceptions for equality. Two exceptions are equal if they have the same type ID and message.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 equals(other: Exception) :int64
 ```
 
-##### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | other | `Exception` | The exception to compare against. |
 
-##### Returns
+**Returns:** `int64` — 1 if equal, 0 otherwise.
 
-`int64` — 1 if equal, 0 otherwise.
+**Errors:** None.
 
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let a = Exception("error");
@@ -559,29 +329,21 @@ println(a.equals(c)); // 0
 
 #### debug
 
-##### Description
-
 Returns a detailed debug representation of the exception, including type, message, refcount, and stack trace.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 debug() :string
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `string` — A debug string with full exception details.
 
-##### Returns
+**Errors:** None.
 
-`string` — A debug string with full exception details.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("test");
@@ -590,29 +352,21 @@ let d = e.debug();
 
 #### retain
 
-##### Description
+Increments the exception's reference count.
 
-Increments the exception's reference count. Used when an exception is assigned to a new variable or passed as a parameter. Every `retain()` must be paired with a `release()`.
-
-##### Syntax
+**Syntax:**
 
 ```hoo
 retain() :void
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `void`
 
-##### Returns
+**Errors:** None.
 
-`void` — Nothing.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("shared");
@@ -623,29 +377,21 @@ e.release();
 
 #### release
 
-##### Description
+Decrements the exception's reference count. When the count reaches zero, the exception is freed.
 
-Decrements the exception's reference count. When the count reaches zero, the exception is freed. Called automatically when an exception variable goes out of scope.
-
-##### Syntax
+**Syntax:**
 
 ```hoo
 release() :void
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `void`
 
-##### Returns
+**Errors:** None.
 
-`void` — Nothing.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("temp");
@@ -654,35 +400,142 @@ e.release(); // explicit release
 
 #### refcount
 
-##### Description
-
 Returns the current reference count of the exception for debugging and testing purposes.
 
-##### Syntax
+**Syntax:**
 
 ```hoo
 refcount() :int64
 ```
 
-##### Parameters
+**Parameters:** None.
 
-None.
+**Returns:** `int64` — The current reference count, or 0 if the exception is nil.
 
-##### Returns
+**Errors:** None.
 
-`int64` — The current reference count, or 0 if the exception is nil.
-
-##### Errors
-
-None.
-
-##### Complete Example
+**Complete Example:**
 
 ```hoo
 let e = Exception("test");
 let rc = e.refcount();
 // rc == 1
 ```
+
+---
+
+## Free Functions
+
+### `exception_runtime`
+
+Creates a new `RuntimeException`.
+
+**Syntax:**
+
+```hoo
+exception_runtime(message: string):Exception
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| message | `string` | The error message (may be empty). |
+
+**Returns:** `Exception` — A new RuntimeException instance.
+
+### `exception_null_pointer`
+
+Creates a new `NullPointerException`.
+
+**Syntax:**
+
+```hoo
+exception_null_pointer(message: string):Exception
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| message | `string` | The error message (may be empty). |
+
+**Returns:** `Exception` — A new NullPointerException instance.
+
+### `exception_index_out_of_bounds`
+
+Creates a new `IndexOutOfBoundsException`.
+
+**Syntax:**
+
+```hoo
+exception_index_out_of_bounds(message: string):Exception
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| message | `string` | The error message (may be empty). |
+
+**Returns:** `Exception` — A new IndexOutOfBoundsException instance.
+
+### `exception_division_by_zero`
+
+Creates a new `DivisionByZeroException`.
+
+**Syntax:**
+
+```hoo
+exception_division_by_zero(message: string):Exception
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| message | `string` | The error message (may be empty). |
+
+**Returns:** `Exception` — A new DivisionByZeroException instance.
+
+### `exception_invalid_cast`
+
+Creates a new `InvalidCastException`.
+
+**Syntax:**
+
+```hoo
+exception_invalid_cast(message: string):Exception
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| message | `string` | The error message (may be empty). |
+
+**Returns:** `Exception` — A new InvalidCastException instance.
+
+### `exception_custom`
+
+Creates a custom exception with a user-defined type name.
+
+**Syntax:**
+
+```hoo
+exception_custom(type_name: string, message: string):Exception
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| type_name | `string` | The custom exception type name. |
+| message | `string` | The error message (may be empty). |
+
+**Returns:** `Exception` — A new custom exception instance.
+
+---
 
 ## Usage Example
 

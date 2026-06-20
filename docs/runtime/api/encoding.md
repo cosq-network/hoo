@@ -1,8 +1,8 @@
 # Encoding API Reference
 
-## Encoding Module
+## Module
 
-The `hoo.encoding` module provides Base64, hex, and URL percent-encoding encode/decode functions.
+`hoo.encoding`
 
 ## Import Statement
 
@@ -12,37 +12,31 @@ import hoo.encoding;
 
 ## Module Description
 
-The encoding module offers encode/decode for three formats: Base64, hexadecimal, and URL percent-encoding. Functions accept strings and return strings. Byte-array variants accept and return `array` types for binary data. Buffer-aware overloads accept `Buffer` objects directly. All functions throw `RuntimeException` on nil input or encoding/decoding failure.
+The encoding module provides Base64, hex, and URL percent-encoding encode/decode functions. Functions accept strings and return strings. Byte-array variants accept and return `array` types for binary data. Buffer-aware overloads accept `Buffer` objects directly. All functions throw `RuntimeException` on nil input or encoding/decoding failure.
 
 ## Base64 Functions
 
-### base64_encode
+### `base64_encode`
 
-#### Description
+Encodes a string to Base64.
 
-Base64-encodes a string.
-
-#### Syntax
+**Syntax:**
 
 ```hoo
-base64_encode(data: string):string
+base64_encode(data: string) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The string to encode. |
+| `data` | `string` | The string to encode. |
 
-#### Returns
+**Returns:** `string` — A Base64-encoded string.
 
-`string` — A Base64-encoded string.
+**Errors:** Throws `RuntimeException` if `data` is nil or encoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil or encoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -51,33 +45,29 @@ let encoded = base64_encode("Hello, World!");
 // encoded == "SGVsbG8sIFdvcmxkIQ=="
 ```
 
-### base64_decode
+---
 
-#### Description
+### `base64_decode`
 
 Decodes a Base64-encoded string back to the original string.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-base64_decode(data: string):string
+base64_decode(data: string) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The Base64-encoded string to decode. |
+| `data` | `string` | The Base64-encoded string to decode. |
 
-#### Returns
+**Returns:** `string` — The decoded string.
 
-`string` — The decoded string.
+**Errors:** Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -86,33 +76,29 @@ let decoded = base64_decode("SGVsbG8sIFdvcmxkIQ==");
 // decoded == "Hello, World!"
 ```
 
-### base64_encode_bytes
+---
 
-#### Description
+### `base64_encode_bytes`
 
 Base64-encodes a byte array.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-base64_encode_bytes(data: array):string
+base64_encode_bytes(data: array) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `array` | The byte array to encode. |
+| `data` | `array` | The byte array to encode. |
 
-#### Returns
+**Returns:** `string` — A Base64-encoded string.
 
-`string` — A Base64-encoded string.
+**Errors:** Throws `RuntimeException` if `data` is nil or encoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil or encoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -122,33 +108,29 @@ let encoded = base64_encode_bytes(data);
 // encoded == "SGVsbG8="
 ```
 
-### base64_decode_bytes
+---
 
-#### Description
+### `base64_decode_bytes`
 
 Decodes a Base64-encoded string into a byte array.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-base64_decode_bytes(data: string):array
+base64_decode_bytes(data: string) :array
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The Base64-encoded string to decode. |
+| `data` | `string` | The Base64-encoded string to decode. |
 
-#### Returns
+**Returns:** `array` — A byte array containing the decoded bytes.
 
-`array` — A byte array containing the decoded bytes.
+**Errors:** Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -159,33 +141,27 @@ let decoded = base64_decode_bytes("SGVsbG8=");
 
 ## Hex Functions
 
-### hex_encode
-
-#### Description
+### `hex_encode`
 
 Hex-encodes a string. Each byte is represented as two hexadecimal characters.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-hex_encode(data: string):string
+hex_encode(data: string) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The string to encode. |
+| `data` | `string` | The string to encode. |
 
-#### Returns
+**Returns:** `string` — A hex-encoded string (lowercase).
 
-`string` — A hex-encoded string (lowercase).
+**Errors:** Throws `RuntimeException` if `data` is nil or encoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil or encoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -194,33 +170,29 @@ let encoded = hex_encode("Hello");
 // encoded == "48656c6c6f"
 ```
 
-### hex_decode
+---
 
-#### Description
+### `hex_decode`
 
 Decodes a hex-encoded string back to the original string.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-hex_decode(data: string):string
+hex_decode(data: string) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The hex-encoded string to decode. |
+| `data` | `string` | The hex-encoded string to decode. |
 
-#### Returns
+**Returns:** `string` — The decoded string.
 
-`string` — The decoded string.
+**Errors:** Throws `RuntimeException` if `data` is nil, contains non-hex characters, has an odd length, or decoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil, contains non-hex characters, has an odd length, or decoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -231,33 +203,27 @@ let decoded = hex_decode("48656c6c6f");
 
 ## URL Encoding Functions
 
-### uri_encode
-
-#### Description
+### `uri_encode`
 
 Percent-encodes a string for safe use in URLs. Reserved characters and non-ASCII bytes are encoded as `%XX` sequences.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-uri_encode(data: string):string
+uri_encode(data: string) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The string to percent-encode. |
+| `data` | `string` | The string to percent-encode. |
 
-#### Returns
+**Returns:** `string` — A percent-encoded URL string.
 
-`string` — A percent-encoded URL string.
+**Errors:** Throws `RuntimeException` if `data` is nil or encoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil or encoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;
@@ -266,33 +232,29 @@ let encoded = uri_encode("a b=c");
 // encoded == "a%20b%3Dc"
 ```
 
-### uri_decode
+---
 
-#### Description
+### `uri_decode`
 
 Decodes a percent-encoded URL string back to the original string.
 
-#### Syntax
+**Syntax:**
 
 ```hoo
-uri_decode(data: string):string
+uri_decode(data: string) :string
 ```
 
-#### Parameters
+**Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| data | `string` | The percent-encoded string to decode. |
+| `data` | `string` | The percent-encoded string to decode. |
 
-#### Returns
+**Returns:** `string` — The decoded string.
 
-`string` — The decoded string.
+**Errors:** Throws `RuntimeException` if `data` is nil, contains malformed percent-encoding, or decoding fails.
 
-#### Errors
-
-Throws `RuntimeException` if `data` is nil, contains malformed percent-encoding, or decoding fails.
-
-#### Complete Example
+**Complete Example:**
 
 ```hoo
 import hoo.encoding;

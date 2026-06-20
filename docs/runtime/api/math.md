@@ -1016,17 +1016,13 @@ func :void example() {
 class Random
 ```
 
-The `Random` class provides a pseudo-random number generator. Instances are created with `new Random()` or `new Random(seed)` and must be released with `.release()` when no longer needed.
+The `Random` class provides a pseudo-random number generator. Instances are created with `new Random()` and must be released with `.release()` when no longer needed.
 
 ### Public Fields
 
 None.
 
-### Public Class (Static) Functions
-
-None.
-
-### Public Instance Functions
+### Constructor
 
 #### Random() :Random
 
@@ -1051,56 +1047,7 @@ func :void example() {
 }
 ```
 
-#### Random(seed: int64) :Random
-
-Creates a new random number generator seeded with `seed`. Two generators with the same seed produce identical sequences.
-
-**Syntax:**
-```hoo
-new Random(seed: int64) :Random
-```
-
-**Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `seed` | `int64` | Seed value |
-
-- **Returns:** `Random` — a new `Random` instance.
-- **Errors:** None.
-
-**Example:**
-```hoo
-import hoo.math;
-
-func :void example() {
-    var rng = new Random(42);
-    // ...
-    rng.release();
-}
-```
-
-#### rng.next_int64() :int64
-
-Returns a random 64-bit integer from the full `int64` range.
-
-**Syntax:**
-```hoo
-rng.next_int64() :int64
-```
-
-- **Returns:** `int64` — uniformly distributed random integer.
-- **Errors:** None.
-
-**Example:**
-```hoo
-import hoo.math;
-
-func :void example() {
-    var rng = new Random();
-    var v = rng.next_int64();
-    rng.release();
-}
-```
+### Public Instance Functions
 
 #### rng.next_int64(max: int64) :int64
 
@@ -1153,6 +1100,30 @@ func :void example() {
 }
 ```
 
+#### rng.retain() :Random
+
+Increments the reference count.
+
+**Syntax:**
+```hoo
+rng.retain() :Random
+```
+
+- **Returns:** `Random` — The same Random handle.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var rng = new Random();
+    var rng2 = rng.retain();
+    rng.release();
+    rng2.release();
+}
+```
+
 #### rng.release() :void
 
 Releases the random generator handle.
@@ -1169,7 +1140,30 @@ rng.release() :void
 import hoo.math;
 
 func :void example() {
-    var rng = new Random(42);
+    var rng = new Random();
+    rng.release();
+}
+```
+
+#### rng.refcount() :int64
+
+Returns the current reference count.
+
+**Syntax:**
+```hoo
+rng.refcount() :int64
+```
+
+- **Returns:** `int64` — The reference count.
+- **Errors:** None.
+
+**Example:**
+```hoo
+import hoo.math;
+
+func :void example() {
+    var rng = new Random();
+    var rc = rng.refcount();
     rng.release();
 }
 ```
@@ -1187,7 +1181,7 @@ func :int64 main() {
         println("Rounded area is even.");
     }
 
-    var rng = new Random(12345);
+    var rng = new Random();
     var roll = rng.next_int64(6) + 1;
     rng.release();
     println("You rolled a ".concat(roll.toString()));

@@ -30,95 +30,6 @@ No explicit modifiers; Strings are a built-in core type. The class has no user-a
 
 None — strings are opaque handles.
 
-### Public Class (Static) Functions
-
----
-
-### `String.repeat`
-
-**Description:** Creates a string by repeating a single character `count` times.
-
-**Syntax:**
-```hoo
-String.repeat(ch: char, count: int64) :string
-```
-
-**Parameters:**
-- `ch: char` — The character to repeat.
-- `count: int64` — The number of repetitions.
-
-**Returns:** `string` — A new string containing the repeated character.
-
-**Errors:** If `count` is 0 or negative, an empty string is returned.
-
-**Complete Example:**
-```hoo
-import hoo;
-
-func :void example() {
-    var stars = String.repeat('*', 10);
-    println(stars); // "**********"
-}
-```
-
----
-
-### `String.fromInt64`
-
-**Description:** Converts an integer to its string representation.
-
-**Syntax:**
-```hoo
-String.fromInt64(val: int64) :string
-```
-
-**Parameters:**
-- `val: int64` — The integer to convert.
-
-**Returns:** `string` — The string representation of the integer.
-
-**Errors:** None.
-
-**Complete Example:**
-```hoo
-import hoo;
-
-func :void example() {
-    var s = String.fromInt64(42);
-    println(s); // "42"
-}
-```
-
----
-
-### `String.fromDouble`
-
-**Description:** Converts a double-precision float to its string representation.
-
-**Syntax:**
-```hoo
-String.fromDouble(val: double) :string
-```
-
-**Parameters:**
-- `val: double` — The floating-point value to convert.
-
-**Returns:** `string` — The string representation of the value.
-
-**Errors:** None.
-
-**Complete Example:**
-```hoo
-import hoo;
-
-func :void example() {
-    var s = String.fromDouble(3.14);
-    println(s); // "3.14"
-}
-```
-
----
-
 ### Public Instance Functions
 
 ---
@@ -730,13 +641,100 @@ func :void example() {
 
 ---
 
-### `s.join`
+## Free Functions
+
+### `string_repeat`
+
+**Description:** Creates a string by repeating a single character `count` times.
+
+**Syntax:**
+```hoo
+string_repeat(ch: char, count: int64) :string
+```
+
+**Parameters:**
+- `ch: char` — The character to repeat.
+- `count: int64` — The number of repetitions.
+
+**Returns:** `string` — A new string containing the repeated character.
+
+**Errors:** If `count` is 0 or negative, an empty string is returned.
+
+**Complete Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    var stars = string_repeat('*', 10);
+    println(stars); // "**********"
+}
+```
+
+---
+
+### `string_from_int64`
+
+**Description:** Converts an integer to its string representation.
+
+**Syntax:**
+```hoo
+string_from_int64(val: int64) :string
+```
+
+**Parameters:**
+- `val: int64` — The integer to convert.
+
+**Returns:** `string` — The string representation of the integer.
+
+**Errors:** None.
+
+**Complete Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    var s = string_from_int64(42);
+    println(s); // "42"
+}
+```
+
+---
+
+### `string_from_double`
+
+**Description:** Converts a double-precision float to its string representation.
+
+**Syntax:**
+```hoo
+string_from_double(val: double) :string
+```
+
+**Parameters:**
+- `val: double` — The floating-point value to convert.
+
+**Returns:** `string` — The string representation of the value.
+
+**Errors:** None.
+
+**Complete Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    var s = string_from_double(3.14);
+    println(s); // "3.14"
+}
+```
+
+---
+
+### `string_join`
 
 **Description:** Joins an array of strings into a single string.
 
 **Syntax:**
 ```hoo
-s.join(parts: array) :string
+string_join(parts: array) :string
 ```
 
 **Parameters:**
@@ -752,7 +750,7 @@ import hoo;
 
 func :void example() {
     var parts = ["a", "b", "c"];
-    var result = String.join(parts);
+    var result = string_join(parts);
     println(result); // "abc"
 }
 ```

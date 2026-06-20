@@ -28,7 +28,7 @@ TEST_F(HooStandardLibraryJitTest, FsExists) {
         import hoo.io;
         func:int64 test() {
             // Check if current directory exists, should be true (1)
-            return Fs.exists(".");
+            return fs_exists(".");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -136,7 +136,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportDateTimeFunc) {
 TEST_F(HooStandardLibraryJitTest, MissingImportFs) {
     const std::string source = R"(
         func:int64 test() {
-            return Fs.exists(".");
+            return fs_exists(".");
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -186,7 +186,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportNet) {
 TEST_F(HooStandardLibraryJitTest, MissingImportPath) {
     const std::string source = R"(
         func:ptr test() {
-            return Path.absolute("a");
+            return path_absolute("a");
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
@@ -384,7 +384,7 @@ TEST_F(HooStandardLibraryJitTest, IncorrectImportForFs) {
     const std::string source = R"(
         import hoo.datetime;
         func:int64 test() {
-            return Fs.exists(".");
+            return fs_exists(".");
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));

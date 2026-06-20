@@ -2,12 +2,12 @@
 
 ## Module Name
 
-`Regex` — core module (no explicit import required beyond `import hoo;`)
+`hoo.regex`
 
 ## Import Statement
 
 ```hoo
-import hoo;
+import hoo.regex;
 ```
 
 ## Module Description
@@ -24,61 +24,16 @@ The `Regex` class provides compiled regular expression matching with support for
 class Regex
 ```
 
-No explicit modifiers; `Regex` is a core runtime type available with only `import hoo;`.
+No explicit modifiers; `Regex` is a core runtime type available with `import hoo.regex;`.
 
-### Public Fields
+### Constructor
 
-None — `Regex` instances are opaque handles.
+#### `Regex`
 
-### Public Class (Static) Functions
-
----
-
-### `Regex.with_flags`
-
-**Description:** Compiles a regular expression pattern with the specified flags and returns a new `Regex` instance.
+Compiles a regular expression pattern and returns a new `Regex` instance.
 
 **Syntax:**
-```hoo
-Regex.with_flags(pattern: string, flags: string) :Regex
-```
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `pattern` | `string` | The regular expression pattern to compile. |
-| `flags` | `string` | Flag characters: `i` for case-insensitive, `m` for multiline. |
-
-**Returns:** `Regex` — A new compiled `Regex` instance, or null if compilation fails.
-
-**Errors:** Returns null if the pattern is malformed.
-
-**Complete Example:**
-```hoo
-import hoo;
-
-func :void example() {
-    var re = Regex.with_flags("[a-z]+", "i");
-    if (re) {
-        var result = re.matches("HELLO");
-        println(result); // 1
-        re.release();
-    }
-}
-```
-
----
-
-### Public Instance Functions
-
----
-
-#### Constructor: `Regex`
-
-**Description:** Compiles a regular expression pattern and returns a new `Regex` instance.
-
-**Syntax:**
 ```hoo
 Regex(pattern: string) :Regex
 ```
@@ -94,8 +49,9 @@ Regex(pattern: string) :Regex
 **Errors:** Returns null if the pattern is malformed.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\d+");
@@ -107,13 +63,14 @@ func :void example() {
 }
 ```
 
----
+### Instance Methods
 
 #### `matches`
 
-**Description:** Checks whether the pattern matches anywhere in the given text.
+Checks whether the pattern matches anywhere in the given text.
 
 **Syntax:**
+
 ```hoo
 matches(text: string) :int64
 ```
@@ -129,8 +86,9 @@ matches(text: string) :int64
 **Errors:** Returns -1 if the regex evaluation fails.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\d+");
@@ -144,9 +102,10 @@ func :void example() {
 
 #### `is_match`
 
-**Description:** Checks whether the pattern matches the entire text from start to end.
+Checks whether the pattern matches the entire text from start to end.
 
 **Syntax:**
+
 ```hoo
 is_match(text: string) :int64
 ```
@@ -162,8 +121,9 @@ is_match(text: string) :int64
 **Errors:** Returns -1 if the regex evaluation fails.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\d+");
@@ -179,9 +139,10 @@ func :void example() {
 
 #### `find_all`
 
-**Description:** Finds all non-overlapping matches of the pattern in the given text.
+Finds all non-overlapping matches of the pattern in the given text.
 
 **Syntax:**
+
 ```hoo
 find_all(text: string) :array
 ```
@@ -197,8 +158,9 @@ find_all(text: string) :array
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\d+");
@@ -212,9 +174,10 @@ func :void example() {
 
 #### `replace`
 
-**Description:** Replaces all non-overlapping matches of the pattern in the text with the replacement string.
+Replaces all non-overlapping matches of the pattern in the text with the replacement string.
 
 **Syntax:**
+
 ```hoo
 replace(text: string, replacement: string) :string
 ```
@@ -231,8 +194,9 @@ replace(text: string, replacement: string) :string
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\d+");
@@ -246,9 +210,10 @@ func :void example() {
 
 #### `capture`
 
-**Description:** Returns the captured groups from the first match of the pattern in the given text. The first element (index 0) is the full match; subsequent elements are the captured groups.
+Returns the captured groups from the first match of the pattern in the given text. The first element (index 0) is the full match; subsequent elements are the captured groups.
 
 **Syntax:**
+
 ```hoo
 capture(text: string) :array
 ```
@@ -264,8 +229,9 @@ capture(text: string) :array
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("(\\w+)@(\\w+)");
@@ -283,9 +249,10 @@ func :void example() {
 
 #### `to_string`
 
-**Description:** Returns the original pattern string that was used to compile the regex.
+Returns the original pattern string that was used to compile the regex.
 
 **Syntax:**
+
 ```hoo
 to_string() :string
 ```
@@ -297,8 +264,9 @@ to_string() :string
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\d+\\.\\d+");
@@ -311,9 +279,10 @@ func :void example() {
 
 #### `retain`
 
-**Description:** Increments the regex's reference count by one. Use this to extend the lifetime of a `Regex` instance when the original handle is released.
+Increments the regex's reference count by one.
 
 **Syntax:**
+
 ```hoo
 retain() :void
 ```
@@ -325,8 +294,9 @@ retain() :void
 **Errors:** No errors. If called on a null handle the operation is a no-op.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("test");
@@ -341,9 +311,10 @@ func :void example() {
 
 #### `release`
 
-**Description:** Decrements the regex's reference count by one. When the reference count reaches zero, the compiled regex pattern is deallocated.
+Decrements the regex's reference count by one. When the reference count reaches zero, the compiled regex pattern is deallocated.
 
 **Syntax:**
+
 ```hoo
 release() :void
 ```
@@ -355,8 +326,9 @@ release() :void
 **Errors:** No errors. Calling `release` on an already-freed or null handle is a no-op.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("temp");
@@ -368,9 +340,10 @@ func :void example() {
 
 #### `refcount`
 
-**Description:** Returns the current reference count of the regex instance.
+Returns the current reference count of the regex instance.
 
 **Syntax:**
+
 ```hoo
 refcount() :int64
 ```
@@ -382,8 +355,9 @@ refcount() :int64
 **Errors:** Returns 0 for a null handle.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("count");
@@ -398,9 +372,10 @@ func :void example() {
 
 #### `free_string`
 
-**Description:** Frees a string allocated and returned by a regex method. Must be called for every string returned by regex operations to avoid memory leaks.
+Frees a string allocated and returned by a regex method.
 
 **Syntax:**
+
 ```hoo
 free_string(str: string) :void
 ```
@@ -416,8 +391,9 @@ free_string(str: string) :void
 **Errors:** No errors. Passing null is a no-op.
 
 **Complete Example:**
+
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("\\w+");
@@ -430,10 +406,50 @@ func :void example() {
 
 ---
 
+## Free Functions
+
+### `regex_with_flags`
+
+Compiles a regular expression pattern with the specified flags and returns a new `Regex` instance.
+
+**Syntax:**
+
+```hoo
+regex_with_flags(pattern: string, flags: string) :Regex
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `pattern` | `string` | The regular expression pattern to compile. |
+| `flags` | `string` | Flag characters: `i` for case-insensitive, `m` for multiline. |
+
+**Returns:** `Regex` — A new compiled `Regex` instance, or null if compilation fails.
+
+**Errors:** Returns null if the pattern is malformed.
+
+**Complete Example:**
+
+```hoo
+import hoo.regex;
+
+func :void example() {
+    var re = regex_with_flags("[a-z]+", "i");
+    if (re) {
+        var result = re.matches("HELLO");
+        println(result); // 1
+        re.release();
+    }
+}
+```
+
+---
+
 ## Usage Example
 
 ```hoo
-import hoo;
+import hoo.regex;
 
 func :void example() {
     var re = Regex("(\\w+)@(\\w+\\.\\w+)");

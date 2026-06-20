@@ -2,17 +2,17 @@
 
 ## Module
 
-`hoo.io`
+`hoo.csv`
 
 ## Import Statement
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 ```
 
 ## Module Description
 
-The `CSV` class provides static methods for parsing comma-separated values (CSV) text into two-dimensional arrays of strings and serializing arrays back into CSV text. Instance methods provide Automatic Reference Counting (ARC) for memory management of CSV handles.
+The `CSV` class provides instance methods for parsing comma-separated values (CSV) text into two-dimensional arrays of strings and serializing arrays back into CSV text. Instance methods provide Automatic Reference Counting (ARC) for memory management of CSV handles.
 
 ## Class: CSV
 
@@ -22,11 +22,15 @@ The `CSV` class provides static methods for parsing comma-separated values (CSV)
 class CSV
 ```
 
-### Public Fields
+### Constructor
 
-None.
+```hoo
+CSV() :CSV
+```
 
-### Public Class (Static) Functions
+Creates a new CSV instance.
+
+### Public Instance Functions
 
 #### `parse`
 
@@ -35,14 +39,14 @@ Parses a CSV-formatted string and returns a two-dimensional array of strings. Ea
 **Syntax:**
 
 ```hoo
-CSV.parse(text: string) :array
+csv.parse(text: string) :array
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description               |
-|-----------|----------|---------------------------|
-| `text`    | `string` | The raw CSV text to parse. |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `text` | `string` | The raw CSV text to parse. |
 
 **Returns:** `array` — A two-dimensional array (`array` of `array` of `string`). Returns `null` if the input is malformed.
 
@@ -51,11 +55,13 @@ CSV.parse(text: string) :array
 **Complete Example:**
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 
 func :int64 main() {
-    var rows = CSV.parse("name,age\nAlice,30\nBob,25");
+    var csv = CSV();
+    var rows = csv.parse("name,age\nAlice,30\nBob,25");
     println(rows.length()); // 3
+    csv.release();
     return 0;
 }
 ```
@@ -69,14 +75,14 @@ Serializes a two-dimensional array of strings into a CSV-formatted string. Field
 **Syntax:**
 
 ```hoo
-CSV.serialize(data: array) :string
+csv.serialize(data: array) :string
 ```
 
 **Parameters:**
 
-| Parameter | Type    | Description                                                |
-|-----------|---------|------------------------------------------------------------|
-| `data`    | `array` | A two-dimensional array (`array` of `array` of `string`). |
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `array` | A two-dimensional array (`array` of `array` of `string`). |
 
 **Returns:** `string` — The CSV-formatted string. Returns an empty string if `data` is null, empty, or contains only empty rows.
 
@@ -85,19 +91,19 @@ CSV.serialize(data: array) :string
 **Complete Example:**
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 
 func :int64 main() {
+    var csv = CSV();
     var data = [["a", "b"], ["1", "2"]];
-    var csv = CSV.serialize(data);
-    println(csv); // a,b\n1,2\n
+    var result = csv.serialize(data);
+    println(result); // a,b\n1,2\n
+    csv.release();
     return 0;
 }
 ```
 
-### Public Instance Functions
-
-A `CSV` instance is obtained through the class constructor (`new CSV()`). The following methods manage the instance reference count.
+---
 
 #### `retain`
 
@@ -120,10 +126,10 @@ None.
 **Complete Example:**
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 
 func :int64 main() {
-    var csv = new CSV();
+    var csv = CSV();
     var csv2 = csv.retain();
     csv.release();
     csv2.release();
@@ -154,10 +160,10 @@ None.
 **Complete Example:**
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 
 func :int64 main() {
-    var csv = new CSV();
+    var csv = CSV();
     csv.release();
     return 0;
 }
@@ -186,11 +192,48 @@ None.
 **Complete Example:**
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 
 func :int64 main() {
-    var csv = new CSV();
+    var csv = CSV();
     println(csv.refcount()); // 1
+    csv.release();
+    return 0;
+}
+```
+
+## Free Functions
+
+### `csv_new_with_opts`
+
+Creates a new CSV instance with custom delimiter and quote characters.
+
+**Syntax:**
+
+```hoo
+csv_new_with_opts(delimiter: int64, quote: int64) :CSV
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `delimiter` | `int64` | The delimiter character code. |
+| `quote` | `int64` | The quote character code. |
+
+**Returns:** `CSV` — A new CSV instance with the specified options.
+
+**Errors:** Returns `null` if parameters are invalid.
+
+**Complete Example:**
+
+```hoo
+import hoo.csv;
+
+func :int64 main() {
+    var csv = csv_new_with_opts(59, 34); // semicolon delimiter, double-quote
+    var rows = csv.parse("a;b\n1;2");
+    println(rows.length()); // 2
     csv.release();
     return 0;
 }
@@ -199,19 +242,19 @@ func :int64 main() {
 ## Usage Example
 
 ```hoo
-import hoo.io;
+import hoo.csv;
 
 func :int64 main() {
+    var csv = CSV();
+
     // Parse CSV text
-    var rows = CSV.parse("name,age\nAlice,30\nBob,25");
+    var rows = csv.parse("name,age\nAlice,30\nBob,25");
     println(rows.length()); // 3
 
     // Serialize data to CSV
-    var output = CSV.serialize([["x", "y"], ["1", "2"]]);
+    var output = csv.serialize([["x", "y"], ["1", "2"]]);
     println(output);
 
-    // Instance lifetime management
-    var csv = new CSV();
     csv.release();
     return 0;
 }

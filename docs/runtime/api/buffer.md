@@ -30,19 +30,19 @@ None.
 
 #### Constructor: `Buffer`
 
-Creates a new empty buffer. When `initial_capacity` is `0` (or omitted), the runtime selects a default internal capacity. The buffer grows automatically as data is written.
+Creates a new empty buffer with the specified initial capacity. The buffer grows automatically as data is written.
 
 **Syntax:**
 
 ```hoo
-Buffer(initial_capacity: int64 = 0) :Buffer
+Buffer(initial_capacity: int64) :Buffer
 ```
 
 **Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `initial_capacity` | `int64` | Optional initial capacity in bytes; `0` selects a runtime default. |
+| `initial_capacity` | `int64` | Initial capacity in bytes. |
 
 **Returns:**
 
@@ -58,7 +58,7 @@ Returns a null handle if memory allocation fails.
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     println("length: " + buf.length());
     return 0;
 }
@@ -96,7 +96,7 @@ No errors at the Hoo level. If called on a null buffer handle the operation is a
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("Hello");
     buf.write(" World");
     println(buf.to_string());
@@ -136,7 +136,7 @@ No errors at the Hoo level. Values outside `0`–`255` are truncated to the low 
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write_byte(72);  // 'H'
     buf.write_byte(105); // 'i'
     println(buf.to_string());
@@ -174,7 +174,7 @@ No errors. If called on a null buffer handle the operation is a no-op.
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("data");
     buf.clear();
     println(buf.length()); // 0
@@ -212,7 +212,7 @@ Returns `0` for a null buffer handle.
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("abc");
     return buf.length(); // 3
 }
@@ -248,7 +248,7 @@ Returns an empty string for a null or empty buffer.
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("Hello");
     var s: string = buf.to_string();
     println(s);
@@ -286,7 +286,7 @@ No errors. If called on a null buffer handle the operation is a no-op.
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("shared");
     buf.retain();
     // Both `buf` and any retained reference must be released.
@@ -326,7 +326,7 @@ No errors. Calling `release` on an already-freed or null buffer handle is a no-o
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("temp");
     buf.release();
     return 0;
@@ -363,7 +363,7 @@ Returns `0` for a null buffer handle.
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.retain();
     var rc = buf.refcount(); // 2
     buf.release();
@@ -378,7 +378,7 @@ func :int64 main() {
 import hoo.buffer;
 
 func :int64 main() {
-    var buf = Buffer();
+    var buf = Buffer(64);
     buf.write("Hello, ");
     buf.write_byte(87);  // 'W'
     buf.write_byte(111); // 'o'

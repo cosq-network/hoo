@@ -120,7 +120,7 @@ TEST_F(HooClassApiTest, StaticFsExists) {
     const std::string source = R"(
         import hoo.io;
         func :int64 test() {
-            return Fs.exists(".");
+            return fs_exists(".");
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

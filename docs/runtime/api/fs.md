@@ -12,30 +12,18 @@ import hoo.io;
 
 ## Module Description
 
-The `Fs` class provides static methods for filesystem operations including file reading and writing, directory management, path queries, and file metadata inspection. All methods are called as static members of the `Fs` class without creating an instance.
+The fs module provides filesystem operations including file reading and writing, directory management, path queries, and file metadata inspection. All functions are free functions in the `hoo.io` module.
 
-## Class: Fs
+## Functions
 
-### Declaration
-
-```hoo
-class Fs
-```
-
-### Public Fields
-
-None.
-
-### Public Class (Static) Functions
-
-#### `read`
+### `fs_read`
 
 Reads the entire contents of a text file as a string.
 
 **Syntax:**
 
 ```hoo
-Fs.read(path: string) :string
+fs_read(path: string) :string
 ```
 
 **Parameters:**
@@ -58,7 +46,7 @@ Returns `0` if `path` is nil, the file does not exist, cannot be read, or contai
 import hoo.io;
 
 func :int64 main() {
-    var content = Fs.read("/tmp/hello.txt");
+    var content = fs_read("/tmp/hello.txt");
     if content != 0 {
         println(content);
     }
@@ -68,14 +56,14 @@ func :int64 main() {
 
 ---
 
-#### `write`
+### `fs_write`
 
 Writes a string to a text file, overwriting any existing content. Creates the file if it does not exist.
 
 **Syntax:**
 
 ```hoo
-Fs.write(path: string, data: string) :void
+fs_write(path: string, data: string) :void
 ```
 
 **Parameters:**
@@ -99,21 +87,21 @@ No return value; if the file cannot be written the operation silently fails.
 import hoo.io;
 
 func :int64 main() {
-    Fs.write("/tmp/hello.txt", "Hello, world!");
+    fs_write("/tmp/hello.txt", "Hello, world!");
     return 0;
 }
 ```
 
 ---
 
-#### `append`
+### `fs_append`
 
 Appends a string to the end of a text file. Creates the file if it does not exist.
 
 **Syntax:**
 
 ```hoo
-Fs.append(path: string, data: string) :void
+fs_append(path: string, data: string) :void
 ```
 
 **Parameters:**
@@ -137,21 +125,21 @@ No return value; if the file cannot be written the operation silently fails.
 import hoo.io;
 
 func :int64 main() {
-    Fs.append("/tmp/log.txt", "new entry\n");
+    fs_append("/tmp/log.txt", "new entry\n");
     return 0;
 }
 ```
 
 ---
 
-#### `exists`
+### `fs_exists`
 
 Checks whether a file system path exists.
 
 **Syntax:**
 
 ```hoo
-Fs.exists(path: string) :int64
+fs_exists(path: string) :int64
 ```
 
 **Parameters:**
@@ -174,7 +162,7 @@ Returns `0` if `path` is nil.
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.exists("/tmp");
+    var ok = fs_exists("/tmp");
     println(ok); // 1
     return ok;
 }
@@ -182,14 +170,14 @@ func :int64 main() {
 
 ---
 
-#### `is_dir`
+### `fs_is_dir`
 
 Checks whether a path points to a directory.
 
 **Syntax:**
 
 ```hoo
-Fs.is_dir(path: string) :int64
+fs_is_dir(path: string) :int64
 ```
 
 **Parameters:**
@@ -212,7 +200,7 @@ Returns `0` if `path` is nil.
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.is_dir("/tmp");
+    var ok = fs_is_dir("/tmp");
     println(ok); // 1
     return ok;
 }
@@ -220,14 +208,14 @@ func :int64 main() {
 
 ---
 
-#### `is_file`
+### `fs_is_file`
 
 Checks whether a path points to a regular file.
 
 **Syntax:**
 
 ```hoo
-Fs.is_file(path: string) :int64
+fs_is_file(path: string) :int64
 ```
 
 **Parameters:**
@@ -250,7 +238,7 @@ Returns `0` if `path` is nil.
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.is_file("/tmp/data.txt");
+    var ok = fs_is_file("/tmp/data.txt");
     println(ok);
     return ok;
 }
@@ -258,14 +246,14 @@ func :int64 main() {
 
 ---
 
-#### `delete`
+### `fs_delete`
 
 Deletes a file or empty directory.
 
 **Syntax:**
 
 ```hoo
-Fs.delete(path: string) :int64
+fs_delete(path: string) :int64
 ```
 
 **Parameters:**
@@ -288,7 +276,7 @@ Returns a non-zero value if `path` is nil or the file cannot be deleted.
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.delete("/tmp/temp.txt");
+    var ok = fs_delete("/tmp/temp.txt");
     println(ok); // 0 on success
     return ok;
 }
@@ -296,14 +284,14 @@ func :int64 main() {
 
 ---
 
-#### `mkdir`
+### `fs_mkdir`
 
 Creates a single directory. The parent directory must already exist.
 
 **Syntax:**
 
 ```hoo
-Fs.mkdir(path: string) :int64
+fs_mkdir(path: string) :int64
 ```
 
 **Parameters:**
@@ -326,7 +314,7 @@ Returns a non-zero value if `path` is nil, the parent does not exist, or the dir
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.mkdir("/tmp/newdir");
+    var ok = fs_mkdir("/tmp/newdir");
     println(ok); // 0 on success
     return ok;
 }
@@ -334,14 +322,14 @@ func :int64 main() {
 
 ---
 
-#### `mkdirs`
+### `fs_mkdirs`
 
 Creates a directory and all missing parent directories (like `mkdir -p`). Does not fail if the directory already exists.
 
 **Syntax:**
 
 ```hoo
-Fs.mkdirs(path: string) :int64
+fs_mkdirs(path: string) :int64
 ```
 
 **Parameters:**
@@ -364,7 +352,7 @@ Returns a non-zero value if `path` is nil or the directory tree cannot be create
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.mkdirs("/tmp/a/b/c");
+    var ok = fs_mkdirs("/tmp/a/b/c");
     println(ok); // 0 on success
     return ok;
 }
@@ -372,14 +360,14 @@ func :int64 main() {
 
 ---
 
-#### `rmdir`
+### `fs_rmdir`
 
 Removes an empty directory.
 
 **Syntax:**
 
 ```hoo
-Fs.rmdir(path: string) :int64
+fs_rmdir(path: string) :int64
 ```
 
 **Parameters:**
@@ -402,7 +390,7 @@ Returns a non-zero value if `path` is nil, the directory is not empty, or the di
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.rmdir("/tmp/emptydir");
+    var ok = fs_rmdir("/tmp/emptydir");
     println(ok);
     return ok;
 }
@@ -410,14 +398,14 @@ func :int64 main() {
 
 ---
 
-#### `list`
+### `fs_list`
 
 Returns an array of filenames in a directory. The entries are the base names of files and subdirectories (not full paths).
 
 **Syntax:**
 
 ```hoo
-Fs.list(path: string) :array
+fs_list(path: string) :array
 ```
 
 **Parameters:**
@@ -440,7 +428,7 @@ Returns `0` if `path` is nil, the directory does not exist, is empty, or cannot 
 import hoo.io;
 
 func :int64 main() {
-    var entries = Fs.list("/tmp");
+    var entries = fs_list("/tmp");
     if entries != 0 {
         println(entries.length());
     }
@@ -450,14 +438,14 @@ func :int64 main() {
 
 ---
 
-#### `cwd`
+### `fs_cwd`
 
 Returns the current working directory.
 
 **Syntax:**
 
 ```hoo
-Fs.cwd() :string
+fs_cwd() :string
 ```
 
 **Parameters:**
@@ -478,7 +466,7 @@ Returns `0` if the current working directory cannot be determined.
 import hoo.io;
 
 func :int64 main() {
-    var dir = Fs.cwd();
+    var dir = fs_cwd();
     if dir != 0 {
         println(dir);
     }
@@ -488,14 +476,14 @@ func :int64 main() {
 
 ---
 
-#### `size`
+### `fs_size`
 
 Returns the size of a file in bytes.
 
 **Syntax:**
 
 ```hoo
-Fs.size(path: string) :int64
+fs_size(path: string) :int64
 ```
 
 **Parameters:**
@@ -518,7 +506,7 @@ Returns `-1` if `path` is nil or the file cannot be accessed.
 import hoo.io;
 
 func :int64 main() {
-    var sz = Fs.size("/tmp/data.txt");
+    var sz = fs_size("/tmp/data.txt");
     if sz >= 0 {
         println("size: " + sz);
     }
@@ -528,14 +516,14 @@ func :int64 main() {
 
 ---
 
-#### `copy`
+### `fs_copy`
 
 Copies a file from a source path to a destination path. Overwrites the destination if it already exists.
 
 **Syntax:**
 
 ```hoo
-Fs.copy(source: string, dest: string) :int64
+fs_copy(source: string, dest: string) :int64
 ```
 
 **Parameters:**
@@ -559,7 +547,7 @@ Returns a non-zero value if either path is nil or the copy fails.
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.copy("/tmp/source.txt", "/tmp/dest.txt");
+    var ok = fs_copy("/tmp/source.txt", "/tmp/dest.txt");
     println(ok);
     return ok;
 }
@@ -567,14 +555,14 @@ func :int64 main() {
 
 ---
 
-#### `move`
+### `fs_move`
 
 Moves or renames a file or directory.
 
 **Syntax:**
 
 ```hoo
-Fs.move(source: string, dest: string) :int64
+fs_move(source: string, dest: string) :int64
 ```
 
 **Parameters:**
@@ -598,7 +586,7 @@ Returns a non-zero value if either path is nil or the operation fails.
 import hoo.io;
 
 func :int64 main() {
-    var ok = Fs.move("/tmp/old.txt", "/tmp/new.txt");
+    var ok = fs_move("/tmp/old.txt", "/tmp/new.txt");
     println(ok);
     return ok;
 }
@@ -606,14 +594,14 @@ func :int64 main() {
 
 ---
 
-#### `read_bytes`
+### `fs_read_bytes`
 
 Reads the entire contents of a file into a byte array.
 
 **Syntax:**
 
 ```hoo
-Fs.read_bytes(path: string) :array
+fs_read_bytes(path: string) :array
 ```
 
 **Parameters:**
@@ -636,7 +624,7 @@ Returns `0` if `path` is nil, the file does not exist, cannot be read, or contai
 import hoo.io;
 
 func :int64 main() {
-    var bytes = Fs.read_bytes("/tmp/data.bin");
+    var bytes = fs_read_bytes("/tmp/data.bin");
     if bytes != 0 {
         println(bytes.length());
     }
@@ -646,14 +634,14 @@ func :int64 main() {
 
 ---
 
-#### `read_bytes_buffer`
+### `fs_read_bytes_buffer`
 
 Reads file content into an existing `Buffer` at the specified offset and length.
 
 **Syntax:**
 
 ```hoo
-Fs.read_bytes_buffer(path: string, buffer: Buffer, offset: int64, length: int64) :int64
+fs_read_bytes_buffer(path: string, buffer: Buffer, offset: int64, length: int64) :int64
 ```
 
 **Parameters:**
@@ -681,7 +669,7 @@ import hoo.buffer;
 
 func :int64 main() {
     var buf = Buffer();
-    var bytes_read = Fs.read_bytes_buffer("/tmp/data.bin", buf, 0, 1024);
+    var bytes_read = fs_read_bytes_buffer("/tmp/data.bin", buf, 0, 1024);
     if bytes_read > 0 {
         println("read " + bytes_read + " bytes");
     }
@@ -696,32 +684,32 @@ import hoo.io;
 
 func :int64 main() {
     // Write a file
-    Fs.write("/tmp/example.txt", "Hello, Hoo!");
-    
+    fs_write("/tmp/example.txt", "Hello, Hoo!");
+
     // Check it exists
-    if Fs.exists("/tmp/example.txt") == 1 {
+    if fs_exists("/tmp/example.txt") == 1 {
         println("file exists");
     }
-    
+
     // Read it back
-    var content = Fs.read("/tmp/example.txt");
+    var content = fs_read("/tmp/example.txt");
     if content != 0 {
         println(content);
     }
-    
+
     // Get file size
-    var sz = Fs.size("/tmp/example.txt");
+    var sz = fs_size("/tmp/example.txt");
     println("size: " + sz);
-    
+
     // List directory
-    var entries = Fs.list("/tmp");
+    var entries = fs_list("/tmp");
     if entries != 0 {
         println("entries: " + entries.length());
     }
-    
+
     // Clean up
-    Fs.delete("/tmp/example.txt");
-    
+    fs_delete("/tmp/example.txt");
+
     return 0;
 }
 ```

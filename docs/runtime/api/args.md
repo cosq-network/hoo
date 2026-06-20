@@ -2,42 +2,30 @@
 
 ## Module Name
 
-`Args` — part of the core `hoo` module.
+`args` — part of the core `hoo` module.
 
 ## Import Statement
 
 ```hoo
-import hoo;
+import hoo.args;
 ```
 
 ## Module Description
 
-The `Args` class provides access to command-line arguments passed to the program. The Hoo runtime internally calls `args_init` and `args_shutdown` to initialize and clean up the argument state; these functions are not user-facing.
+The `args` module provides free functions for accessing command-line arguments passed to the program. The Hoo runtime internally initializes and cleans up the argument state; these internals are not user-facing.
 
-## Class: `Args`
-
-### Declaration
-
-```hoo
-class Args
-```
-
-### Public Fields
-
-None — Args is an opaque class with only static methods.
-
-### Public Class (Static) Functions
+## Free Functions
 
 ---
 
-#### `Args.get`
+#### `args_get`
 
 **Description:** Returns the command-line argument at the given zero-based index. Index `0` returns the program name.
 
 **Syntax:**
 
 ```hoo
-Args.get(index: int64) :string
+args_get(index: int64) :string
 ```
 
 **Parameters:**
@@ -53,10 +41,10 @@ Args.get(index: int64) :string
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.args;
 
 func :int64 main() {
-    var name = Args.get(0);
+    var name = args_get(0);
     println(name);
     return name.length();
 }
@@ -64,14 +52,14 @@ func :int64 main() {
 
 ---
 
-#### `Args.count`
+#### `args_count`
 
 **Description:** Returns the total number of command-line arguments, including the program name.
 
 **Syntax:**
 
 ```hoo
-Args.count() :int64
+args_count() :int64
 ```
 
 **Parameters:** None.
@@ -83,10 +71,10 @@ Args.count() :int64
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.args;
 
 func :int64 main() {
-    var argc = Args.count();
+    var argc = args_count();
     println("arguments: " + argc);
     return argc;
 }
@@ -95,13 +83,13 @@ func :int64 main() {
 ## Usage Example
 
 ```hoo
-import hoo;
+import hoo.args;
 
 func :int64 main() {
-    var argc = Args.count();
+    var argc = args_count();
     var i: int64 = 0;
     while i < argc {
-        var arg = Args.get(i);
+        var arg = args_get(i);
         println(arg);
         i = i + 1;
     }

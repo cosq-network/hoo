@@ -7,12 +7,12 @@ Part of the `hoo` module.
 ## Import Statement
 
 ```hoo
-import hoo;
+import hoo.uuid;
 ```
 
 ## Module Description
 
-The `Uuid` class provides generation, parsing, and manipulation of universally unique identifiers (UUIDs). The class supports creating random version 4 UUIDs, parsing UUIDs from their canonical string representation, and comparing UUIDs. UUID objects are reference-counted.
+The `Uuid` class provides parsing and manipulation of universally unique identifiers (UUIDs). The module supports generating random version 4 UUIDs, parsing UUIDs from their canonical string representation, and comparing UUIDs. UUID objects are reference-counted.
 
 ## Class: Uuid
 
@@ -25,80 +25,6 @@ class Uuid
 ### Public Fields
 
 None.
-
-### Public Class (Static) Functions
-
-#### `v4`
-
-Generates a random version 4 UUID.
-
-**Syntax:**
-
-```hoo
-Uuid.v4() :Uuid
-```
-
-**Parameters:**
-
-None.
-
-**Returns:**
-
-`Uuid` — A new `Uuid` instance containing a random version 4 UUID.
-
-**Errors:**
-
-Returns a null handle if UUID generation fails.
-
-**Complete Example:**
-
-```hoo
-import hoo;
-
-func :int64 main() {
-    var id = Uuid.v4();
-    println(id.to_string());
-    id.release();
-    return 0;
-}
-```
-
----
-
-#### `nil`
-
-Returns the nil UUID (`00000000-0000-0000-0000-000000000000`).
-
-**Syntax:**
-
-```hoo
-Uuid.nil() :Uuid
-```
-
-**Parameters:**
-
-None.
-
-**Returns:**
-
-`Uuid` — A new `Uuid` instance set to the nil UUID.
-
-**Errors:**
-
-Returns a null handle if allocation fails.
-
-**Complete Example:**
-
-```hoo
-import hoo;
-
-func :int64 main() {
-    var nil = Uuid.nil();
-    println(nil.to_string()); // 00000000-0000-0000-0000-000000000000
-    nil.release();
-    return 0;
-}
-```
 
 ### Public Instance Functions
 
@@ -129,7 +55,7 @@ Returns a null handle if the string is not a valid UUID.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
     var id = Uuid("550e8400-e29b-41d4-a716-446655440000");
@@ -166,10 +92,10 @@ Returns an empty string for a null UUID handle.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.v4();
+    var id = uuid_v4();
     var s = id.to_string();
     println(s);
     id.release();
@@ -206,11 +132,11 @@ No errors. Returns `0` if either handle is null.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var a = Uuid.nil();
-    var b = Uuid.nil();
+    var a = uuid_nil();
+    var b = uuid_nil();
     println(a.equals(b)); // 1
     a.release();
     b.release();
@@ -245,10 +171,10 @@ Returns `0` for a null UUID handle.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.nil();
+    var id = uuid_nil();
     println(id.is_nil()); // 1
     id.release();
     return 0;
@@ -264,7 +190,7 @@ Increments the UUID's reference count by one.
 **Syntax:**
 
 ```hoo
-retain() :void
+retain() :Uuid
 ```
 
 **Parameters:**
@@ -273,7 +199,7 @@ None.
 
 **Returns:**
 
-`void`
+`Uuid` — The UUID with incremented reference count.
 
 **Errors:**
 
@@ -282,10 +208,10 @@ No errors. If called on a null UUID handle the operation is a no-op.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.v4();
+    var id = uuid_v4();
     id.retain();
     id.release();
     id.release();
@@ -320,10 +246,10 @@ No errors. Calling `release` on an already-freed or null UUID handle is a no-op.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.v4();
+    var id = uuid_v4();
     id.release();
     return 0;
 }
@@ -356,10 +282,10 @@ Returns `0` for a null UUID handle.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.v4();
+    var id = uuid_v4();
     id.retain();
     var rc = id.refcount(); // 2
     id.release();
@@ -397,10 +323,10 @@ No errors. Passing a null or empty string is a no-op.
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.v4();
+    var id = uuid_v4();
     var s = id.to_string();
     println(s);
     id.free_string(s);
@@ -409,18 +335,94 @@ func :int64 main() {
 }
 ```
 
+## Free Functions
+
+---
+
+#### `uuid_v4`
+
+Generates a random version 4 UUID.
+
+**Syntax:**
+
+```hoo
+uuid_v4() :Uuid
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`Uuid` — A new `Uuid` instance containing a random version 4 UUID.
+
+**Errors:**
+
+Returns a null handle if UUID generation fails.
+
+**Complete Example:**
+
+```hoo
+import hoo.uuid;
+
+func :int64 main() {
+    var id = uuid_v4();
+    println(id.to_string());
+    id.release();
+    return 0;
+}
+```
+
+---
+
+#### `uuid_nil`
+
+Returns the nil UUID (`00000000-0000-0000-0000-000000000000`).
+
+**Syntax:**
+
+```hoo
+uuid_nil() :Uuid
+```
+
+**Parameters:**
+
+None.
+
+**Returns:**
+
+`Uuid` — A new `Uuid` instance set to the nil UUID.
+
+**Errors:**
+
+Returns a null handle if allocation fails.
+
+**Complete Example:**
+
+```hoo
+import hoo.uuid;
+
+func :int64 main() {
+    var nil = uuid_nil();
+    println(nil.to_string()); // 00000000-0000-0000-0000-000000000000
+    nil.release();
+    return 0;
+}
+```
+
 ## Usage Example
 
 ```hoo
-import hoo;
+import hoo.uuid;
 
 func :int64 main() {
-    var id = Uuid.v4();
+    var id = uuid_v4();
     var s = id.to_string();
     println("UUID: " + s);
     id.free_string(s);
 
-    var nil = Uuid.nil();
+    var nil = uuid_nil();
     println("nil: " + nil.is_nil()); // 1
 
     var parsed = Uuid("550e8400-e29b-41d4-a716-446655440000");

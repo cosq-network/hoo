@@ -319,6 +319,47 @@ static uint32_t characterFreeFunctionReturnTypeId(const std::string& functionNam
     return 109; // Character type ID is 109
 }
 
+static bool isPathFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "path_separator", "path_join", "path_extension", "path_stem",
+        "path_filename", "path_parent", "path_absolute", "path_normalize",
+        "path_root", "path_relative", "path_has_extension", "path_split",
+        "path_dirname", "path_basename", "path_is_absolute", "path_is_relative",
+        "path_list_separator"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t pathFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "path_separator" || functionName == "path_list_separator") return 6; // byte/char
+    if (functionName == "path_is_absolute" || functionName == "path_is_relative" ||
+        functionName == "path_has_extension") return 1; // int64
+    return 101; // string
+}
+
+static bool isArgsFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "args_get", "args_count"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t argsFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "args_count") return 1; // int64
+    return 101; // string
+}
+
+static bool isStringFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "string_repeat", "string_from_int64", "string_from_double", "string_join"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t stringFreeFunctionReturnTypeId(const std::string& functionName) {
+    return 101; // string
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
     return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
            isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) ||
@@ -326,7 +367,9 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
            isMathFreeFunction(functionName) || isHashingFreeFunction(functionName) ||
            isSystemFreeFunction(functionName) || isProcessFreeFunction(functionName) ||
            isRegexFreeFunction(functionName) || isThreadFreeFunction(functionName) ||
-           isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName);
+           isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName) ||
+           isPathFreeFunction(functionName) || isArgsFreeFunction(functionName) ||
+           isStringFreeFunction(functionName);
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -415,6 +458,9 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isThreadFreeFunction(functionName)) return threadFreeFunctionReturnTypeId(functionName);
     if (isUuidFreeFunction(functionName)) return uuidFreeFunctionReturnTypeId(functionName);
     if (isCharacterFreeFunction(functionName)) return characterFreeFunctionReturnTypeId(functionName);
+    if (isPathFreeFunction(functionName)) return pathFreeFunctionReturnTypeId(functionName);
+    if (isArgsFreeFunction(functionName)) return argsFreeFunctionReturnTypeId(functionName);
+    if (isStringFreeFunction(functionName)) return stringFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 
@@ -537,6 +583,7 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name.rfind("character_", 0) == 0) return "hoo.character";
     if (name.rfind("system_", 0) == 0) return "hoo.system";
     if (name.rfind("regex_", 0) == 0) return "hoo.regex";
+    if (name.rfind("string_", 0) == 0) return "hoo";
 
     return "";
 }

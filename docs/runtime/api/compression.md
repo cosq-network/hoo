@@ -1,8 +1,8 @@
 # Compression API Reference
 
-## Compression
+## Module
 
-The Compression module belongs to the Hoo standard library.
+`hoo.compression`
 
 ## Import Statement
 
@@ -12,30 +12,20 @@ import hoo.compression;
 
 ## Module Description
 
-The Compression module provides static utility functions for compressing and decompressing data using the zlib library. It supports both string and raw byte-array compression via gzip and deflate algorithms.
+The Compression module provides free functions for compressing and decompressing data using the zlib library. It supports both string and raw byte-array compression via gzip and deflate algorithms.
 
-## Class: Compression
+## Free Functions
 
-A static utility class providing compression and decompression operations.
+---
 
-### Declaration
-
-```hoo
-class Compression
-```
-
-### Public Fields
-
-None.
-
-### Public Class (Static) Functions
-
-#### compress
+### `compression_compress`
 
 Compresses a string using zlib compression and returns the compressed data as a string.
 
+**Syntax:**
+
 ```hoo
-Compression.compress(data: string): string
+compression_compress(data: string): string
 ```
 
 **Parameters:**
@@ -50,12 +40,14 @@ Compression.compress(data: string): string
 
 ---
 
-#### decompress
+### `compression_decompress`
 
 Decompresses zlib-compressed data back into the original string.
 
+**Syntax:**
+
 ```hoo
-Compression.decompress(data: string): string
+compression_decompress(data: string): string
 ```
 
 **Parameters:**
@@ -70,12 +62,14 @@ Compression.decompress(data: string): string
 
 ---
 
-#### compress_bytes
+### `compression_compress_bytes`
 
 Compresses a raw byte array using zlib and returns the compressed byte array.
 
+**Syntax:**
+
 ```hoo
-Compression.compress_bytes(data: array): array
+compression_compress_bytes(data: array): array
 ```
 
 **Parameters:**
@@ -90,12 +84,14 @@ Compression.compress_bytes(data: array): array
 
 ---
 
-#### decompress_bytes
+### `compression_decompress_bytes`
 
 Decompresses a compressed byte array back into the original bytes.
 
+**Syntax:**
+
 ```hoo
-Compression.decompress_bytes(data: array): array
+compression_decompress_bytes(data: array): array
 ```
 
 **Parameters:**
@@ -108,26 +104,6 @@ Compression.decompress_bytes(data: array): array
 
 **Errors:** Decompression failure causes a runtime error.
 
----
-
-#### free_bytes
-
-Frees memory allocated by a compressed or decompressed byte array operation.
-
-```hoo
-Compression.free_bytes(data: array): void
-```
-
-**Parameters:**
-
-| Parameter | Type    | Description                               |
-|-----------|---------|-------------------------------------------|
-| `data`    | `array` | The byte array to free.                   |
-
-**Returns:** `void`
-
----
-
 ## Usage Example
 
 ```hoo
@@ -137,16 +113,14 @@ func :int64 main() {
     var original = "Hello, Hoo! This is a test string for compression.";
 
     // Compress and decompress a string
-    var compressed = Compression.compress(original);
-    var decompressed = Compression.decompress(compressed);
+    var compressed = compression_compress(original);
+    var decompressed = compression_decompress(compressed);
     println(decompressed);
 
     // Compress and decompress raw bytes
     var bytes = [72, 101, 108, 108, 111]any;
-    var comp = Compression.compress_bytes(bytes);
-    var decomp = Compression.decompress_bytes(comp);
-    Compression.free_bytes(comp);
-    Compression.free_bytes(decomp);
+    var comp = compression_compress_bytes(bytes);
+    var decomp = compression_decompress_bytes(comp);
 
     return 0;
 }

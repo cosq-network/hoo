@@ -12,28 +12,20 @@ import hoo.json;
 
 ## Module Description
 
-The `json` module provides JSON parsing and serialization through the static `Json` class. It supports `null`, booleans, integers, floats, strings, objects, and arrays. All methods return `null` on error instead of throwing exceptions.
+The `json` module provides JSON parsing and serialization through free functions. It supports `null`, booleans, integers, floats, strings, objects, and arrays. All functions return `null` on error instead of throwing exceptions.
 
-## Class: Json
+## Free Functions
 
-### Declaration
+---
 
-```hoo
-class Json
-```
-
-`Json` is a static utility class with no constructor or instance methods.
-
-### Public Class (Static) Functions
-
-#### `parse`
+### `json_parse`
 
 Parses a JSON string into a Hoo value.
 
 **Syntax:**
 
 ```hoo
-Json.parse(text: string): Any
+json_parse(text: string): Any
 ```
 
 **Parameters:**
@@ -52,20 +44,22 @@ Json.parse(text: string): Any
 import hoo.json;
 
 func :int64 main() {
-    var parsed = Json.parse("{\"1\":42,\"2\":\"hello\",\"3\":[true, false]}");
+    var parsed = json_parse("{\"1\":42,\"2\":\"hello\",\"3\":[true, false]}");
     // parsed is HashMap<int64, any> with 3 entries
     return 0;
 }
 ```
 
-#### `stringify`
+---
+
+### `json_stringify`
 
 Converts a Hoo value to its JSON string representation.
 
 **Syntax:**
 
 ```hoo
-Json.stringify(value: Any): string
+json_stringify(value: Any): string
 ```
 
 **Parameters:**
@@ -87,20 +81,22 @@ func :int64 main() {
     var map = new HashMap<int64, any>();
     map[1] = "Alice";
     map[2] = 30;
-    var json = Json.stringify(map);
+    var json = json_stringify(map);
     println(json); // {"1":"Alice","2":30}
     return 0;
 }
 ```
 
-#### `pretty`
+---
+
+### `json_pretty`
 
 Converts a Hoo value to a pretty-printed JSON string with indentation.
 
 **Syntax:**
 
 ```hoo
-Json.pretty(value: Any): string
+json_pretty(value: Any): string
 ```
 
 **Parameters:**
@@ -122,7 +118,7 @@ func :int64 main() {
     var map = new HashMap<int64, any>();
     map[1] = "Alice";
     map[2] = [1, 2, 3]any;
-    var pretty = Json.pretty(map);
+    var pretty = json_pretty(map);
     println(pretty);
     // {
     //   "1": "Alice",
@@ -136,21 +132,23 @@ func :int64 main() {
 }
 ```
 
-#### `free_string`
+---
 
-Frees a string allocated by a `Json` method.
+### `json_free_string`
+
+Frees a string allocated by a `json` function.
 
 **Syntax:**
 
 ```hoo
-Json.free_string(str: string): void
+json_free_string(str: string): void
 ```
 
 **Parameters:**
 
 | Parameter | Type     | Description                            |
 |-----------|----------|----------------------------------------|
-| `str`     | `string` | The string returned by a `Json` method to free. |
+| `str`     | `string` | The string returned by a `json` function to free. |
 
 **Returns:** `void`
 
@@ -162,9 +160,9 @@ Json.free_string(str: string): void
 import hoo.json;
 
 func :int64 main() {
-    var json = Json.stringify(42);
+    var json = json_stringify(42);
     println(json);
-    Json.free_string(json);
+    json_free_string(json);
     return 0;
 }
 ```
@@ -176,15 +174,15 @@ import hoo.json;
 
 func :int64 main() {
     var raw = "{\"1\":\"world\",\"2\":[1,2,3]}";
-    var parsed = Json.parse(raw);
+    var parsed = json_parse(raw);
 
-    var str = Json.stringify(parsed);
+    var str = json_stringify(parsed);
     println(str);
-    Json.free_string(str);
+    json_free_string(str);
 
-    var pretty = Json.pretty(parsed);
+    var pretty = json_pretty(parsed);
     println(pretty);
-    Json.free_string(pretty);
+    json_free_string(pretty);
 
     return 0;
 }

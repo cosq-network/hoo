@@ -2,12 +2,12 @@
 
 ## Module Name
 
-Part of the `hoo` module.
+`hoo.hashing`
 
 ## Import Statement
 
 ```hoo
-import hoo;
+import hoo.hashing;
 ```
 
 ## Module Description
@@ -32,18 +32,14 @@ hashing_crc32(data: string) :int64
 |-----------|------|-------------|
 | `data` | `string` | The input string to hash. |
 
-**Returns:**
+**Returns:** `int64` — The CRC-32 checksum as an unsigned 32-bit value (mapped to `int64` in Hoo). Returns `0` on error or null input.
 
-`int64` — The CRC-32 checksum as an unsigned 32-bit value (mapped to `int64` in Hoo). Returns `0` on error or null input.
-
-**Errors:**
-
-Returns `0` if `data` is nil.
+**Errors:** Returns `0` if `data` is nil.
 
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.hashing;
 
 func :int64 main() {
     var crc = hashing_crc32("Hello");
@@ -70,18 +66,14 @@ hashing_md5(data: string) :string
 |-----------|------|-------------|
 | `data` | `string` | The input string to hash. |
 
-**Returns:**
+**Returns:** `string` — The MD5 hex digest (32 hexadecimal characters). Returns `0` on error or null input.
 
-`string` — The MD5 hex digest (32 hexadecimal characters). Returns `0` on error or null input.
-
-**Errors:**
-
-Returns `0` if `data` is nil.
+**Errors:** Returns `0` if `data` is nil.
 
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.hashing;
 
 func :int64 main() {
     var hash = hashing_md5("Hello");
@@ -110,18 +102,14 @@ hashing_sha1(data: string) :string
 |-----------|------|-------------|
 | `data` | `string` | The input string to hash. |
 
-**Returns:**
+**Returns:** `string` — The SHA-1 hex digest (40 hexadecimal characters). Returns `0` on error or null input.
 
-`string` — The SHA-1 hex digest (40 hexadecimal characters). Returns `0` on error or null input.
-
-**Errors:**
-
-Returns `0` if `data` is nil.
+**Errors:** Returns `0` if `data` is nil.
 
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.hashing;
 
 func :int64 main() {
     var hash = hashing_sha1("Hello");
@@ -150,18 +138,14 @@ hashing_sha256(data: string) :string
 |-----------|------|-------------|
 | `data` | `string` | The input string to hash. |
 
-**Returns:**
+**Returns:** `string` — The SHA-256 hex digest (64 hexadecimal characters). Returns `0` on error or null input.
 
-`string` — The SHA-256 hex digest (64 hexadecimal characters). Returns `0` on error or null input.
-
-**Errors:**
-
-Returns `0` if `data` is nil.
+**Errors:** Returns `0` if `data` is nil.
 
 **Complete Example:**
 
 ```hoo
-import hoo;
+import hoo.hashing;
 
 func :int64 main() {
     var hash = hashing_sha256("Hello, World!");
@@ -175,7 +159,7 @@ func :int64 main() {
 ## Usage Example
 
 ```hoo
-import hoo;
+import hoo.hashing;
 
 func :int64 main() {
     var input = "Hello, Hoo!";

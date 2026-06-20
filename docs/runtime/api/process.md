@@ -2,45 +2,31 @@
 
 ## Module Name
 
-`Process` — `hoo` module
+`process` — part of the `hoo` module.
 
 ## Import Statement
 
 ```hoo
-import hoo;
+import hoo.process;
 ```
 
 ## Module Description
 
-The `Process` class provides static utility methods for process control and command execution, including spawning child processes, capturing command output, querying process identity, and terminating the current process.
+The `process` module provides free functions for process control and command execution, including spawning child processes, capturing command output, querying process identity, and terminating the current process.
 
 ---
 
-## Class: `Process`
-
-### Declaration
-
-```hoo
-class Process
-```
-
-`Process` is a static utility class. It has no constructor and cannot be instantiated — all operations are performed via class (static) methods.
-
-### Public Fields
-
-None — `Process` is a purely static utility class.
-
-### Public Class (Static) Functions
+## Free Functions
 
 ---
 
-### `Process.execute`
+#### `process_execute`
 
 **Description:** Executes a shell command and returns its standard output as a string.
 
 **Syntax:**
 ```hoo
-Process.execute(command: string) :string
+process_execute(command: string) :string
 ```
 
 **Parameters:**
@@ -52,23 +38,23 @@ Process.execute(command: string) :string
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.process;
 
 func :void example() {
-    var out = Process.execute("echo hello");
+    var out = process_execute("echo hello");
     println(out); // "hello\n"
 }
 ```
 
 ---
 
-### `Process.capture`
+#### `process_capture`
 
 **Description:** Executes a shell command with stdin input and returns its standard output as a string.
 
 **Syntax:**
 ```hoo
-Process.capture(command: string, input: string) :string
+process_capture(command: string, input: string) :string
 ```
 
 **Parameters:**
@@ -81,23 +67,23 @@ Process.capture(command: string, input: string) :string
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.process;
 
 func :void example() {
-    var out = Process.capture("wc -c", "hello");
+    var out = process_capture("wc -c", "hello");
     println(out); // "6\n"
 }
 ```
 
 ---
 
-### `Process.capture_status`
+#### `process_capture_status`
 
 **Description:** Executes a shell command with stdin input and returns an array containing the stdout, stderr, and exit code.
 
 **Syntax:**
 ```hoo
-Process.capture_status(command: string, input: string) :array
+process_capture_status(command: string, input: string) :array
 ```
 
 **Parameters:**
@@ -110,10 +96,10 @@ Process.capture_status(command: string, input: string) :array
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.process;
 
 func :void example() {
-    var result = Process.capture_status("grep foo", "hello\nworld");
+    var result = process_capture_status("grep foo", "hello\nworld");
     // result[0] = "hello\nworld"  (if both match) or "" (if neither matches)
     // result[1] = ""              (stderr, empty on success)
     // result[2] = 0               (exit code)
@@ -123,13 +109,13 @@ func :void example() {
 
 ---
 
-### `Process.exit`
+#### `process_exit`
 
 **Description:** Terminates the current process with the specified exit code.
 
 **Syntax:**
 ```hoo
-Process.exit(exit_code: int64) :void
+process_exit(exit_code: int64) :void
 ```
 
 **Parameters:**
@@ -141,23 +127,23 @@ Process.exit(exit_code: int64) :void
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.process;
 
 func :int64 main() {
-    Process.exit(0);
+    process_exit(0);
     return 0; // never reached
 }
 ```
 
 ---
 
-### `Process.pid`
+#### `process_pid`
 
 **Description:** Returns the process ID of the current process.
 
 **Syntax:**
 ```hoo
-Process.pid() :int64
+process_pid() :int64
 ```
 
 **Parameters:** None.
@@ -168,10 +154,10 @@ Process.pid() :int64
 
 **Complete Example:**
 ```hoo
-import hoo;
+import hoo.process;
 
 func :void example() {
-    var pid = Process.pid();
+    var pid = process_pid();
     println("Current PID: " + pid);
 }
 ```
@@ -181,16 +167,16 @@ func :void example() {
 ## Usage Example
 
 ```hoo
-import hoo;
+import hoo.process;
 
 func :int64 main() {
-    var pid = Process.pid();
+    var pid = process_pid();
     println("PID: " + pid);
 
-    var out = Process.execute("echo hello world");
+    var out = process_execute("echo hello world");
     println(out); // "hello world\n"
 
-    var result = Process.capture_status("cat", "line1\nline2");
+    var result = process_capture_status("cat", "line1\nline2");
     println(result.length()); // 3
 
     return 0;

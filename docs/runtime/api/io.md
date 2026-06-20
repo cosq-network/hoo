@@ -20,9 +20,11 @@ import hoo;
 
 The `hoo.io` module provides basic console input/output functions. These are global free functions that print to stdout/stderr or read from stdin. Strings are passed as native Hoo strings.
 
+---
+
 ## Free Functions
 
-### println(s: string) :void
+### `println`
 
 Prints the string `s` followed by a newline to stdout.
 
@@ -32,14 +34,16 @@ println(s: string) :void
 ```
 
 **Parameters:**
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `s` | `string` | String to print (can be `null`, prints `"null"`) |
 
-- **Returns:** `void`
-- **Errors:** None.
+**Returns:** `void`
 
-**Example:**
+**Errors:** None.
+
+**Complete Example:**
 ```hoo
 import hoo;
 
@@ -48,7 +52,9 @@ func :void example() {
 }
 ```
 
-### print(s: string) :void
+---
+
+### `print`
 
 Prints the string `s` to stdout without a trailing newline.
 
@@ -58,14 +64,16 @@ print(s: string) :void
 ```
 
 **Parameters:**
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `s` | `string` | String to print (can be `null`, prints `"null"`) |
 
-- **Returns:** `void`
-- **Errors:** None.
+**Returns:** `void`
 
-**Example:**
+**Errors:** None.
+
+**Complete Example:**
 ```hoo
 import hoo;
 
@@ -74,7 +82,9 @@ func :void example() {
 }
 ```
 
-### print_error(s: string) :void
+---
+
+### `print_error`
 
 Prints the string `s` followed by a newline to stderr.
 
@@ -84,14 +94,16 @@ print_error(s: string) :void
 ```
 
 **Parameters:**
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `s` | `string` | String to print to stderr |
 
-- **Returns:** `void`
-- **Errors:** None.
+**Returns:** `void`
 
-**Example:**
+**Errors:** None.
+
+**Complete Example:**
 ```hoo
 import hoo;
 
@@ -100,7 +112,9 @@ func :void example() {
 }
 ```
 
-### readln() :string
+---
+
+### `readln`
 
 Reads a line of text from stdin. Reads until a newline or EOF is encountered.
 
@@ -109,10 +123,13 @@ Reads a line of text from stdin. Reads until a newline or EOF is encountered.
 readln() :string
 ```
 
-- **Returns:** `string` — the line read (empty string if EOF is reached immediately).
-- **Errors:** None.
+**Parameters:** None.
 
-**Example:**
+**Returns:** `string` — the line read (empty string if EOF is reached immediately).
+
+**Errors:** None.
+
+**Complete Example:**
 ```hoo
 import hoo;
 
@@ -122,7 +139,9 @@ func :void example() {
 }
 ```
 
-### print_format(fmt: string, ...) :void
+---
+
+### `print_format`
 
 Prints a formatted string to stdout, supporting printf-style format specifiers.
 
@@ -132,15 +151,17 @@ print_format(fmt: string, ...) :void
 ```
 
 **Parameters:**
+
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `fmt` | `string` | Format string with printf-style placeholders |
 | `...` | variadic | Values to substitute into the format string |
 
-- **Returns:** `void`
-- **Errors:** None.
+**Returns:** `void`
 
-**Example:**
+**Errors:** None.
+
+**Complete Example:**
 ```hoo
 import hoo;
 
@@ -150,6 +171,8 @@ func :void example() {
     print_format("Name: %s, Age: %d\n", name, age);
 }
 ```
+
+---
 
 ## Usage Example
 

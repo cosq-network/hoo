@@ -36,95 +36,61 @@ import hoo;
 
 None.
 
-### Public Class (Static) Functions
+### Free Functions
 
-#### new
+#### array_new(capacity: int64) :array
 
-Creates a new empty Array with an optional initial capacity hint.
-
-```hoo
-Array.new(capacity: int64 = 0): array
-```
+Creates a new empty Array with the given initial capacity.
 
 **Parameters:**
 
 | Parameter  | Type    | Description                     |
 |------------|---------|----------------------------------|
-| `capacity` | `int64` | Initial capacity hint (default 0). |
+| `capacity` | `int64` | Initial capacity. |
 
 **Returns:** `array` — A new Array handle.
 
 ---
 
-#### new_int64
+#### array_new_int64(capacity: int64, default_value: int64) :array
 
 Creates a new Array pre-filled with int64 values.
-
-```hoo
-Array.new_int64(capacity: int64 = 0, default_value: int64 = 0): array
-```
 
 **Parameters:**
 
 | Parameter      | Type    | Description                         |
 |----------------|---------|--------------------------------------|
-| `capacity`     | `int64` | Initial capacity (default 0).        |
-| `default_value`| `int64` | Default element value (default 0).   |
+| `capacity`     | `int64` | Initial capacity. |
+| `default_value`| `int64` | Default element value. |
 
 **Returns:** `array`
 
 ---
 
-#### new_double
+#### array_new_double(capacity: int64, default_value: double) :array
 
 Creates a new Array pre-filled with double values.
-
-```hoo
-Array.new_double(capacity: int64 = 0, default_value: double = 0.0): array
-```
 
 **Parameters:**
 
 | Parameter      | Type    | Description                           |
 |----------------|---------|----------------------------------------|
-| `capacity`     | `int64` | Initial capacity (default 0).          |
-| `default_value`| `double`| Default element value (default 0.0).   |
+| `capacity`     | `int64` | Initial capacity. |
+| `default_value`| `double`| Default element value. |
 
 **Returns:** `array`
 
 ---
 
-#### new_string
+#### array_new_string(capacity: int64) :array
 
 Creates a new Array for storing strings.
 
-```hoo
-Array.new_string(capacity: int64 = 0): array
-```
-
 **Parameters:**
 
 | Parameter  | Type    | Description                     |
 |------------|---------|----------------------------------|
-| `capacity` | `int64` | Initial capacity (default 0).    |
-
-**Returns:** `array`
-
----
-
-#### new_any
-
-Creates a new Array for storing heterogeneous (any) values.
-
-```hoo
-Array.new_any(capacity: int64 = 0): array
-```
-
-**Parameters:**
-
-| Parameter  | Type    | Description                     |
-|------------|---------|----------------------------------|
-| `capacity` | `int64` | Initial capacity (default 0).    |
+| `capacity` | `int64` | Initial capacity. |
 
 **Returns:** `array`
 
@@ -142,23 +108,19 @@ arr.length(): int64
 
 ---
 
-#### push
+#### push_int64
 
-Appends an element to the end of the array and returns the array itself for chaining.
+Appends an int64 element to the end of the array and returns the array itself for chaining.
 
 ```hoo
-arr.push(val: int64): array
 arr.push_int64(val: int64): array
-arr.push_double(val: double): array
-arr.push_string(val: string): array
-arr.push_any(val): array
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description          |
-|-----------|----------|----------------------|
-| `val`     | *varied* | The value to append. |
+| Parameter | Type    | Description          |
+|-----------|---------|----------------------|
+| `val`     | `int64` | The value to append. |
 
 **Returns:** `array` — The array handle (may differ after reallocation).
 
@@ -166,16 +128,52 @@ arr.push_any(val): array
 
 ---
 
-#### get
+#### push_double
 
-Retrieves the element at the specified index.
+Appends a double element to the end of the array and returns the array itself for chaining.
 
 ```hoo
-arr.get(index: int64): value
+arr.push_double(val: double): array
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| `val`     | `double` | The value to append. |
+
+**Returns:** `array` — The array handle (may differ after reallocation).
+
+**Errors:** Out-of-memory may cause a runtime error.
+
+---
+
+#### push_string
+
+Appends a string element to the end of the array and returns the array itself for chaining.
+
+```hoo
+arr.push_string(val: string): array
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description          |
+|-----------|----------|----------------------|
+| `val`     | `string` | The value to append. |
+
+**Returns:** `array` — The array handle (may differ after reallocation).
+
+**Errors:** Out-of-memory may cause a runtime error.
+
+---
+
+#### get_int64
+
+Retrieves the int64 element at the specified index.
+
+```hoo
 arr.get_int64(index: int64): int64
-arr.get_double(index: int64): double
-arr.get_string(index: int64): string
-arr.get_any(index: int64): any
 ```
 
 **Parameters:**
@@ -184,22 +182,79 @@ arr.get_any(index: int64): any
 |-----------|---------|---------------------------|
 | `index`   | `int64` | Zero-based element index. |
 
-**Returns:** The element at the given index.
+**Returns:** `int64` — The int64 element at the given index.
 
 **Errors:** Index out of bounds causes a runtime error.
 
 ---
 
-#### set
+#### get_double
 
-Sets the element at the specified index.
+Retrieves the double element at the specified index.
 
 ```hoo
-arr.set(index: int64, val: int64)
+arr.get_double(index: int64): double
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description               |
+|-----------|---------|---------------------------|
+| `index`   | `int64` | Zero-based element index. |
+
+**Returns:** `double` — The double element at the given index.
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### get_string
+
+Retrieves the string element at the specified index.
+
+```hoo
+arr.get_string(index: int64): string
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description               |
+|-----------|---------|---------------------------|
+| `index`   | `int64` | Zero-based element index. |
+
+**Returns:** `string` — The string element at the given index.
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### set_int64
+
+Sets the int64 element at the specified index.
+
+```hoo
 arr.set_int64(index: int64, val: int64)
+```
+
+**Parameters:**
+
+| Parameter | Type    | Description               |
+|-----------|---------|---------------------------|
+| `index`   | `int64` | Zero-based element index. |
+| `val`     | `int64` | The value to store.       |
+
+**Returns:** `void`
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### set_double
+
+Sets the double element at the specified index.
+
+```hoo
 arr.set_double(index: int64, val: double)
-arr.set_string(index: int64, val: string)
-arr.set_any(index: int64, val)
 ```
 
 **Parameters:**
@@ -207,7 +262,28 @@ arr.set_any(index: int64, val)
 | Parameter | Type     | Description               |
 |-----------|----------|---------------------------|
 | `index`   | `int64`  | Zero-based element index. |
-| `val`     | *varied* | The value to store.       |
+| `val`     | `double` | The value to store.       |
+
+**Returns:** `void`
+
+**Errors:** Index out of bounds causes a runtime error.
+
+---
+
+#### set_string
+
+Sets the string element at the specified index.
+
+```hoo
+arr.set_string(index: int64, val: string)
+```
+
+**Parameters:**
+
+| Parameter | Type     | Description               |
+|-----------|----------|---------------------------|
+| `index`   | `int64`  | Zero-based element index. |
+| `val`     | `string` | The value to store.       |
 
 **Returns:** `void`
 
@@ -283,15 +359,11 @@ import hoo;
 
 None.
 
-### Public Class (Static) Functions
+### Free Functions
 
-#### new
+#### map_new() :map
 
 Creates a new Map.
-
-```hoo
-Map.new(): map
-```
 
 **Returns:** `map` — A new Map handle.
 
@@ -362,7 +434,7 @@ m.get(key): value
 Checks whether a key exists in the map.
 
 ```hoo
-m.has(key): bool
+m.has(key): int64
 ```
 
 **Parameters:**
@@ -371,7 +443,7 @@ m.has(key): bool
 |-----------|-------|----------------------|
 | `key`     | *key* | The key to check.    |
 
-**Returns:** `bool` — `true` if the key exists, `false` otherwise.
+**Returns:** `int64` — `1` if the key exists, `0` otherwise.
 
 ---
 
@@ -380,7 +452,7 @@ m.has(key): bool
 Removes the entry for the specified key.
 
 ```hoo
-m.remove(key)
+m.remove(key): int64
 ```
 
 **Parameters:**
@@ -389,7 +461,7 @@ m.remove(key)
 |-----------|-------|----------------------|
 | `key`     | *key* | The key to remove.   |
 
-**Returns:** `void`
+**Returns:** `int64` — `1` if the entry was removed, `0` if the key was not found.
 
 ---
 
@@ -497,21 +569,17 @@ import hoo.collections;
 
 None.
 
-### Public Class (Static) Functions
+### Constructor
 
-#### new
+#### HashMap(size: int64) :HashMap
 
 Creates a new HashMap with the specified initial bucket count.
-
-```hoo
-HashMap.new(size: int64 = 16): HashMap
-```
 
 **Parameters:**
 
 | Parameter | Type    | Description                        |
 |-----------|---------|-------------------------------------|
-| `size`    | `int64` | Initial bucket count (default 16). |
+| `size`    | `int64` | Initial bucket count. |
 
 **Returns:** `HashMap`
 
@@ -720,10 +788,6 @@ import hoo;
 
 None.
 
-### Public Class (Static) Functions
-
-None.
-
 ### Public Instance Functions
 
 #### is_null
@@ -888,9 +952,19 @@ import hoo.collections;
 
 None.
 
-### Public Class (Static) Functions
+### Constructor
 
-None.
+#### AnyArray(capacity: int64) :AnyArray
+
+Creates a new AnyArray with the given initial capacity.
+
+**Parameters:**
+
+| Parameter  | Type    | Description                     |
+|------------|---------|----------------------------------|
+| `capacity` | `int64` | Initial capacity. |
+
+**Returns:** `AnyArray`
 
 ### Public Instance Functions
 
@@ -1021,29 +1095,25 @@ import hoo.collections;
 
 None.
 
-### Public Class (Static) Functions
+### Constructor
 
-#### new
+#### Tensor(shape: array) :Tensor
 
 Creates a new Tensor with the given dimension sizes.
 
-```hoo
-Tensor.new(dimensions: int64, ...): Tensor
-```
-
 **Parameters:**
 
-| Parameter    | Type    | Description                           |
-|--------------|---------|---------------------------------------|
-| `dimensions` | `int64` | One or more dimension sizes (1–3).    |
+| Parameter | Type    | Description                           |
+|-----------|---------|---------------------------------------|
+| `shape`   | `array` | Array of int64 dimension sizes (1–3). |
 
 **Returns:** `Tensor`
 
 **Example:**
 
 ```hoo
-var t = Tensor.new(4, 4)       // 4x4 matrix
-var t3 = Tensor.new(2, 3, 4)   // 2x3x4 tensor
+var t = Tensor([4, 4])       // 4x4 matrix
+var t3 = Tensor([2, 3, 4])   // 2x3x4 tensor
 ```
 
 ### Public Instance Functions
@@ -1175,31 +1245,31 @@ import hoo.collections;
 
 func :int64 main() {
     // Array example
-    var numbers = Array.new();
+    var numbers = array_new(0);
     numbers.push_int64(10);
     numbers.push_int64(20);
     numbers.push_int64(30);
     var first = numbers.get_int64(0);
 
     // Map example
-    var config = Map.new();
+    var config = map_new();
     config.put("port", 8080);
     if config.has("port") {
         var port = config.get("port");
     }
 
     // HashMap example
-    var hmap = HashMap.new();
+    var hmap = HashMap(16);
     hmap.put(1, "hello");
     hmap.put(2, "world");
 
     // AnyArray example
-    var anyarr = AnyArray.new();
+    var anyarr = AnyArray(0);
     anyarr.push_back(42);
     anyarr.push_back("text");
 
     // Tensor example
-    var tensor = Tensor.new(3, 3);
+    var tensor = Tensor([3, 3]);
     tensor.set(0, 1);
     tensor.set(4, 2);
 

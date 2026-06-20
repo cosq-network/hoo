@@ -153,7 +153,7 @@ TEST_F(HooStringJitTest, Trim) {
 TEST_F(HooStringJitTest, Repeat) {
     const std::string source = R"(
         import hoo;
-        func :string test() { return String.repeat(65, 3); }
+        func :string test() { return string_repeat(65, 3); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     auto r = jit.run("_F_M_test_E_test_s");

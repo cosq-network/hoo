@@ -2,45 +2,28 @@
 
 ## Module Name
 
-`Path` — `hoo.io` module
+Part of the `hoo.path` module.
 
 ## Import Statement
 
 ```hoo
-import hoo.io;
+import hoo.path;
 ```
 
 ## Module Description
 
-The `Path` class provides static utility methods for manipulating filesystem paths in a platform-independent manner. It handles path parsing, composition, normalization, and conversion between relative and absolute forms.
+The path module provides utility functions for manipulating filesystem paths in a platform-independent manner. It handles path parsing, composition, normalization, and conversion between relative and absolute forms.
 
----
+## Functions
 
-## Class: `Path`
+### `path_separator`
 
-### Declaration
-
-```hoo
-class Path
-```
-
-`Path` is a static utility class. It has no constructor and cannot be instantiated — all operations are performed via class (static) methods.
-
-### Public Fields
-
-None — `Path` is a purely static utility class.
-
-### Public Class (Static) Functions
-
----
-
-### `Path.separator`
-
-**Description:** Returns the platform path separator character.
+Returns the platform path separator character.
 
 **Syntax:**
+
 ```hoo
-Path.separator() :char
+path_separator() :char
 ```
 
 **Parameters:** None.
@@ -50,358 +33,412 @@ Path.separator() :char
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var sep = Path.separator();
+    var sep = path_separator();
     println(sep); // "/"
 }
 ```
 
 ---
 
-### `Path.join`
+### `path_join`
 
-**Description:** Joins two path components into a single path using the platform separator.
+Joins two path components into a single path using the platform separator.
 
 **Syntax:**
+
 ```hoo
-Path.join(path1: string, path2: string) :string
+path_join(path1: string, path2: string) :string
 ```
 
 **Parameters:**
-- `path1: string` — The first path component.
-- `path2: string` — The second path component.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path1` | `string` | The first path component. |
+| `path2` | `string` | The second path component. |
 
 **Returns:** `string` — The joined path.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var full = Path.join("usr", "local");
+    var full = path_join("usr", "local");
     println(full); // "usr/local"
 }
 ```
 
 ---
 
-### `Path.extension`
+### `path_extension`
 
-**Description:** Returns the file extension including the leading dot (e.g., `".txt"`). Returns an empty string if the path has no extension.
+Returns the file extension including the leading dot (e.g., `".txt"`). Returns an empty string if the path has no extension.
 
 **Syntax:**
+
 ```hoo
-Path.extension(path: string) :string
+path_extension(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The file path to inspect.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The file path to inspect. |
 
 **Returns:** `string` — The file extension including the dot, or an empty string.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var ext = Path.extension("archive.tar.gz");
+    var ext = path_extension("archive.tar.gz");
     println(ext); // ".gz"
 
-    var noExt = Path.extension("Makefile");
+    var noExt = path_extension("Makefile");
     println(noExt); // ""
 }
 ```
 
 ---
 
-### `Path.stem`
+### `path_stem`
 
-**Description:** Returns the filename without its extension. For `"archive.tar.gz"` returns `"archive.tar"`.
+Returns the filename without its extension. For `"archive.tar.gz"` returns `"archive.tar"`.
 
 **Syntax:**
+
 ```hoo
-Path.stem(path: string) :string
+path_stem(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The file path to inspect.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The file path to inspect. |
 
 **Returns:** `string` — The filename without the extension.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var name = Path.stem("archive.tar.gz");
+    var name = path_stem("archive.tar.gz");
     println(name); // "archive.tar"
 }
 ```
 
 ---
 
-### `Path.filename`
+### `path_filename`
 
-**Description:** Returns the last component of the path (the filename). For `"/home/user/file.txt"` returns `"file.txt"`.
+Returns the last component of the path (the filename). For `"/home/user/file.txt"` returns `"file.txt"`.
 
 **Syntax:**
+
 ```hoo
-Path.filename(path: string) :string
+path_filename(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The path to extract the filename from.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to extract the filename from. |
 
 **Returns:** `string` — The last path component.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var name = Path.filename("/home/user/resume.pdf");
+    var name = path_filename("/home/user/resume.pdf");
     println(name); // "resume.pdf"
 }
 ```
 
 ---
 
-### `Path.parent`
+### `path_parent`
 
-**Description:** Returns the parent directory path. For `"/home/user/docs/file.txt"` returns `"/home/user/docs"`.
+Returns the parent directory path. For `"/home/user/docs/file.txt"` returns `"/home/user/docs"`.
 
 **Syntax:**
+
 ```hoo
-Path.parent(path: string) :string
+path_parent(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The path whose parent directory to extract.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path whose parent directory to extract. |
 
 **Returns:** `string` — The parent directory path.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var parent = Path.parent("/home/user/docs/file.txt");
+    var parent = path_parent("/home/user/docs/file.txt");
     println(parent); // "/home/user/docs"
 }
 ```
 
 ---
 
-### `Path.absolute`
+### `path_absolute`
 
-**Description:** Resolves a path to an absolute path by expanding relative paths against the current working directory.
+Resolves a path to an absolute path by expanding relative paths against the current working directory.
 
 **Syntax:**
+
 ```hoo
-Path.absolute(path: string) :string
+path_absolute(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The path to resolve.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to resolve. |
 
 **Returns:** `string` — The absolute path.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var abs = Path.absolute("doc/readme.md");
+    var abs = path_absolute("doc/readme.md");
     println(abs); // "/current/working/dir/doc/readme.md"
 }
 ```
 
 ---
 
-### `Path.normalize`
+### `path_normalize`
 
-**Description:** Normalizes a path by collapsing redundant separators and resolving `"."` and `".."` components.
+Normalizes a path by collapsing redundant separators and resolving `"."` and `".."` components.
 
 **Syntax:**
+
 ```hoo
-Path.normalize(path: string) :string
+path_normalize(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The path to normalize.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to normalize. |
 
 **Returns:** `string` — The normalized path.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var norm = Path.normalize("/home/user/docs/../file.txt");
+    var norm = path_normalize("/home/user/docs/../file.txt");
     println(norm); // "/home/user/file.txt"
 }
 ```
 
 ---
 
-### `Path.root`
+### `path_root`
 
-**Description:** Returns the root component of a path. On Unix returns `"/"`; on Windows returns the drive root such as `"C:\\"`.
+Returns the root component of a path. On Unix returns `"/"`; on Windows returns the drive root such as `"C:\\"`.
 
 **Syntax:**
+
 ```hoo
-Path.root(path: string) :string
+path_root(path: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The path to extract the root from.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to extract the root from. |
 
 **Returns:** `string` — The root component, or an empty string if the path is relative.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var r = Path.root("/home/user/file.txt");
+    var r = path_root("/home/user/file.txt");
     println(r); // "/"
 }
 ```
 
 ---
 
-### `Path.relative`
+### `path_relative`
 
-**Description:** Returns a relative path from `base` to `path`.
+Returns a relative path from `base` to `path`.
 
 **Syntax:**
+
 ```hoo
-Path.relative(path: string, base: string) :string
+path_relative(path: string, base: string) :string
 ```
 
 **Parameters:**
-- `path: string` — The target path.
-- `base: string` — The base path to make relative from.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The target path. |
+| `base` | `string` | The base path to make relative from. |
 
 **Returns:** `string` — The relative path.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var rel = Path.relative("/home/user/docs/file.txt", "/home/user");
+    var rel = path_relative("/home/user/docs/file.txt", "/home/user");
     println(rel); // "docs/file.txt"
 }
 ```
 
 ---
 
-### `Path.has_extension`
+### `path_has_extension`
 
-**Description:** Checks whether a path has a file extension.
+Checks whether a path has a file extension.
 
 **Syntax:**
+
 ```hoo
-Path.has_extension(path: string) :int64
+path_has_extension(path: string) :int64
 ```
 
 **Parameters:**
-- `path: string` — The path to check.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to check. |
 
 **Returns:** `int64` — `1` if the path has an extension, `0` otherwise.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var has = Path.has_extension("data.txt");
+    var has = path_has_extension("data.txt");
     println(has); // 1
 
-    var no = Path.has_extension("Makefile");
+    var no = path_has_extension("Makefile");
     println(no); // 0
 }
 ```
 
 ---
 
-### `Path.split`
+### `path_split`
 
-**Description:** Splits a path into its component parts.
+Splits a path into its component parts.
 
 **Syntax:**
+
 ```hoo
-Path.split(path: string) :array
+path_split(path: string) :array
 ```
 
 **Parameters:**
-- `path: string` — The path to split.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to split. |
 
 **Returns:** `array` — An array of path component strings.
 
 **Errors:** None.
 
 **Complete Example:**
+
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :void example() {
-    var parts = Path.split("/usr/local/bin");
+    var parts = path_split("/usr/local/bin");
     println(parts.length()); // 3
     // parts[0] == "usr", parts[1] == "local", parts[2] == "bin"
 }
 ```
 
----
-
 ## Usage Example
 
 ```hoo
-import hoo.io;
+import hoo.path;
 
 func :int64 main() {
     var p = "/home/user/docs/../file.txt";
 
-    println(Path.filename(p));      // "file.txt"
-    println(Path.parent(p));        // "/home/user/docs/.."
-    println(Path.extension(p));     // ".txt"
-    println(Path.stem(p));          // "file"
-    println(Path.normalize(p));     // "/home/user/file.txt"
-    println(Path.separator());      // "/"
-    println(Path.has_extension(p)); // 1
-    println(Path.root(p));          // "/"
+    println(path_filename(p));      // "file.txt"
+    println(path_parent(p));        // "/home/user/docs/.."
+    println(path_extension(p));     // ".txt"
+    println(path_stem(p));          // "file"
+    println(path_normalize(p));     // "/home/user/file.txt"
+    println(path_separator());      // "/"
+    println(path_has_extension(p)); // 1
+    println(path_root(p));          // "/"
 
-    var joined = Path.join("usr", "local");
+    var joined = path_join("usr", "local");
     println(joined);                // "usr/local"
 
-    var abs = Path.absolute("doc/readme.md");
+    var abs = path_absolute("doc/readme.md");
     println(abs);                   // /current/working/dir/doc/readme.md
 
-    var parts = Path.split("/usr/local/bin");
+    var parts = path_split("/usr/local/bin");
     println(parts.length());        // 3
 
     return 0;
