@@ -520,7 +520,7 @@ To introduce the **HVM-ARC** and **Fine-Grained Coherence (`ICACHE.RNG`)** speci
    ```
 
 2. **Register Mnemonics in `HVMInstruction.cpp`**:
-   Add registration logic inside the `InstructionRegistry` constructor:
+   Add registration logic inside the `InstructionRegistry::InstructionRegistry()` constructor to register the instruction mappings, layouts, and sub-opcodes:
    ```cpp
    InstructionRegistry::InstructionRegistry() {
        // ...
@@ -532,6 +532,13 @@ To introduce the **HVM-ARC** and **Fine-Grained Coherence (`ICACHE.RNG`)** speci
    ```
    *Since these logical opcodes are `< 0x80`, they automatically fall back to the 4-byte `Base32` instruction word encoding.*
 
+3. **Bitwise Encoding and Decoding Constraints**:
+   - **R-type Packing Layout**: The logical opcode, source, and destination registers are packed using the standard 32-bit layout:
+     $$\text{word} = (\text{opcode} \ \& \ 0\text{x}7\text{F}) \ll 25 \ | \ (\text{rd} \ \& \ 0\text{x}1\text{F}) \ll 20 \ | \ (\text{rs}1 \ \& \ 0\text{x}1\text{F}) \ll 15 \ | \ (\text{rs}2 \ \& \ 0\text{x}1\text{F}) \ll 10 \ | \ \text{func}$$
+   - **RETAIN rd, rs1**: Pack as an R-format instruction with `rs2 = 0` (registers mapping to `r0`), and `func = 0`.
+   - **RELEASE rd, rs1**: Pack as an R-format instruction with `rs2 = 0` (registers mapping to `r0`), and `func = 0`.
+   - **ICACHE.RNG rs1, rs2**: Pack as an R-format instruction with `rd = 0` (unused destination register), `rs1 = base address`, `rs2 = size register`, and `func = 0`.
+
 ---
 
 ### 10.2 Code Generation: [HVMCodeGenerator.cpp](file:///Users/benoybose/Projects/hoo/src/codegen/HVMCodeGenerator.cpp)
@@ -539,10 +546,10 @@ To introduce the **HVM-ARC** and **Fine-Grained Coherence (`ICACHE.RNG`)** speci
 The compiler must stop calling library functions for ARC lifecycle management and instead emit raw instructions.
 
 1. **Replace Retain Generation**:
-   Change references from generating a generic function call `_F_hoo_retain_p_p` to emitting a `RETAIN` opcode:
+   Change references from generating a generic function call `_F_hoo_retain_p_p` to emitting a `RETAIN` opcode directly:
    ```diff
    - emitCall(Opcode::CALL, "_F_hoo_retain_p_p");
-   + // Emit the retain instruction directly
+   + // Emit the retain instruction directly (rs2=r0, func=0)
    + emit(Opcode::RETAIN, OperandsR{destReg, srcReg, 0, 0});
    ```
 
@@ -550,12 +557,8 @@ The compiler must stop calling library functions for ARC lifecycle management an
    Change references from calling `_F_hoo_release_v_p` to generating a `RELEASE` instruction:
    ```diff
    - emitCall(Opcode::CALL, "_F_hoo_release_v_p");
-   + // Emit the release instruction. It writes 1 to tempFlagReg if refcount hits 0
-   + uint8_t tempFlagReg = allocateRegister();
+   + // Emit the release instruction directly (rs2=r0, func=0)
    + emit(Opcode::RELEASE, OperandsR{tempFlagReg, srcReg, 0, 0});
-   + // Conditional branch if object must be freed (refcount == 0)
-   + emit(Opcode::BNE, OperandsB{tempFlagReg, 0, freeOffset});
-   + freeRegister(tempFlagReg);
    ```
 
 ---
@@ -564,16 +567,18 @@ The compiler must stop calling library functions for ARC lifecycle management an
 
 The JIT compiler needs updates to parse the new opcodes and compile them to LLVM IR or interpret them:
 
-1. **Extend Interpreter simulation in `HVMJIT::simulate`**:
-   Add handlers for the simulated execution of the instructions:
+1. **Extend Interpreter simulation in `HVMJIT::executeFunction`**:
+   Add handlers for the simulated execution of the instructions within the main interpreter dispatch loop:
    ```cpp
    case hvm::Opcode::RETAIN: {
        auto o = std::get<hvm::OperandsR>(ins->getOperands());
        uint64_t addr = readReg(o.rs1);
        if (addr != 0) {
            uint64_t refVal = 0;
-           readU64(addr - 16, refVal);
-           storeU64(addr - 16, refVal + 1);
+           // Read and atomically increment the ARC refcount header at (addr - 16)
+           if (readU64(addr - 16, refVal)) {
+               storeU64(addr - 16, refVal + 1);
+           }
        }
        writeReg(o.rd, addr);
        break;
@@ -584,8 +589,8 @@ The JIT compiler needs updates to parse the new opcodes and compile them to LLVM
        uint64_t isZero = 0;
        if (addr != 0) {
            uint64_t refVal = 0;
-           readU64(addr - 16, refVal);
-           if (refVal > 0) {
+           // Read and decrement the reference count
+           if (readU64(addr - 16, refVal) && refVal > 0) {
                refVal--;
                storeU64(addr - 16, refVal);
                if (refVal == 0) isZero = 1;
@@ -595,11 +600,12 @@ The JIT compiler needs updates to parse the new opcodes and compile them to LLVM
        break;
    }
    case hvm::Opcode::ICACHE_RNG:
-       // Interpreter is a host C++ loop; instruction cache synchronization is a NOP here
+       // Interpreter is a host C++ loop; instruction cache synchronization is a virtual NOP
        break;
    ```
 
 2. **Add support check in `HVMJIT::isSupportedForIRLowering`**:
+   Ensure that the compilation path allows lowering these new operations directly:
    ```cpp
    case hvm::Opcode::RETAIN:
    case hvm::Opcode::RELEASE:
@@ -607,26 +613,27 @@ The JIT compiler needs updates to parse the new opcodes and compile them to LLVM
        return true;
    ```
 
-3. **Incorporate LLVM IR translation in `HVMJIT::compile`**:
-   Generate inline atomic operations or native calls under the opcode switch:
+3. **Incorporate LLVM IR translation in `HVMJIT::translateModule`**:
+   Generate inline atomic operations or native calls under the opcode switch loop:
    ```cpp
    } else if (op == hvm::Opcode::RETAIN) {
        auto o = std::get<hvm::OperandsR>(ins->getOperands());
        auto* val = readReg(o.rs1);
-       // Lower directly to a runtime check helper or an atomic fetch_add
+       // Lower directly to a runtime check helper for thread-safe retention
        builder.CreateCall(arcRetainCallee, {val});
        writeReg(o.rd, val);
    } else if (op == hvm::Opcode::RELEASE) {
        auto o = std::get<hvm::OperandsR>(ins->getOperands());
        auto* val = readReg(o.rs1);
-       // Calls hooc_hvm_arc_release_if_managed, returns 1 if destroyed, 0 otherwise
-       auto* destroyed = builder.CreateCall(arcReleaseCallee, {val});
-       writeReg(o.rd, destroyed);
+       // Calls hooc_hvm_arc_release_if_managed (returns void)
+       builder.CreateCall(arcReleaseCallee, {val});
+       // RETAIN/RELEASE R-format rd gets a zero placeholder
+       writeReg(o.rd, builder.getInt64(0));
    } else if (op == hvm::Opcode::ICACHE_RNG) {
        auto o = std::get<hvm::OperandsR>(ins->getOperands());
        auto* addr = readReg(o.rs1);
        auto* size = readReg(o.rs2);
-       // Invalidate instruction cache range using LLVM intrinsics / host OS fences
+       // Invalidate instruction cache range using host compiler builtin / clear_cache API
        auto* flushFn = module->getOrInsertFunction("__clear_cache", 
            llvm::FunctionType::get(builder.getVoidTy(), {i8Ptr, i8Ptr}, false));
        auto* endAddr = builder.CreateInBoundsGEP(builder.getInt8Ty(), addr, size);
