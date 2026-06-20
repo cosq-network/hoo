@@ -2663,11 +2663,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
         if (leftExprType == 104 || rightExprType == 104) {
             switch (binary->getOperator()) {
-                case ast::BinaryOperator::PLUS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_add_p_p_p");
-                case ast::BinaryOperator::MINUS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_sub_p_p_p");
+                case ast::BinaryOperator::PLUS: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 0);
+                case ast::BinaryOperator::MINUS: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 2);
                 case ast::BinaryOperator::MULTIPLY: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_matmul_p_p_p");
-                case ast::BinaryOperator::ELEMENT_MULTIPLY: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_elementMul_p_p_p");
-                case ast::BinaryOperator::ELEMENT_DIVIDE: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_elementDiv_p_p_p");
+                case ast::BinaryOperator::ELEMENT_MULTIPLY: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 4);
+                case ast::BinaryOperator::ELEMENT_DIVIDE: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 6);
                 case ast::BinaryOperator::EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_eq_p_p_p");
                 case ast::BinaryOperator::NOT_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_ne_p_p_p");
                 case ast::BinaryOperator::LESS: return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_lt_p_p_p");
@@ -3547,6 +3547,135 @@ uint8_t HVMCodeGenerator::emitTensorBinaryCall(const ast::BinaryExpression& bina
     emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
     freeRegister(left);
     freeRegister(right);
+    return dest;
+}
+
+uint8_t HVMCodeGenerator::emitTensorVectorArith(const ast::BinaryExpression& binary, hvm::Opcode vecOp, uint16_t func) {
+    uint8_t left = visitExpression(binary.getLeft());
+    uint8_t right = visitExpression(binary.getRight());
+    // elemTypeReg = _F_hoo_Tensor_elementType_i8_p(left)
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_elementType_i8_p");
+    uint8_t elemTypeReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{elemTypeReg, 1, 0, 0});
+
+    // rankReg = _F_hoo_Tensor_rank_i8_p(left)
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_rank_i8_p");
+    uint8_t rankReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{rankReg, 1, 0, 0});
+
+    // d0Reg = _F_hoo_Tensor_dim_i8_p_i8(left, 0)
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    uint8_t zeroReg = emitConstant(0);
+    emit(Opcode::MOV, OperandsR{2, zeroReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_dim_i8_p_i8");
+    uint8_t d0Reg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{d0Reg, 1, 0, 0});
+    freeRegister(zeroReg);
+
+    // d1Reg = _F_hoo_Tensor_dim_i8_p_i8(left, 1)
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    uint8_t oneReg = emitConstant(1);
+    emit(Opcode::MOV, OperandsR{2, oneReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_dim_i8_p_i8");
+    uint8_t d1Reg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{d1Reg, 1, 0, 0});
+    freeRegister(oneReg);
+
+    // d2Reg = _F_hoo_Tensor_dim_i8_p_i8(left, 2)
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    uint8_t twoReg = emitConstant(2);
+    emit(Opcode::MOV, OperandsR{2, twoReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_dim_i8_p_i8");
+    uint8_t d2Reg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{d2Reg, 1, 0, 0});
+    freeRegister(twoReg);
+    
+    emit(Opcode::MOV, OperandsR{argReg(1, 0), elemTypeReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{argReg(1, 1), rankReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{argReg(1, 2), d0Reg, 0, 0});
+    emit(Opcode::MOV, OperandsR{argReg(1, 3), d1Reg, 0, 0});
+    emit(Opcode::MOV, OperandsR{argReg(1, 4), d2Reg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_new_p_i8_i8_i8_i8_i8");
+    
+    uint8_t dest = allocateRegister();
+    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+    
+    freeRegister(rankReg);
+    freeRegister(d0Reg);
+    freeRegister(d1Reg);
+    freeRegister(d2Reg);
+    
+    // lenReg = _F_hoo_Tensor_length_i8_p(left)
+    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_length_i8_p");
+    uint8_t lenReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{lenReg, 1, 0, 0});
+    
+    uint8_t baseLeft = allocateRegister();
+    emit(Opcode::ADDI, OperandsI{baseLeft, left, 64});
+    uint8_t baseRight = allocateRegister();
+    emit(Opcode::ADDI, OperandsI{baseRight, right, 64});
+    uint8_t baseDest = allocateRegister();
+    emit(Opcode::ADDI, OperandsI{baseDest, dest, 64});
+    
+    Label* loopStart = createLabel();
+    bindLabel(loopStart);
+    
+    uint8_t vlReg = allocateRegister();
+    emit(Opcode::VSETVL, OperandsR{vlReg, lenReg, elemTypeReg, 0});
+    freeRegister(elemTypeReg);
+    
+    emit(Opcode::VECTOR_MEM, OperandsR{0, baseLeft, 0, 0}); 
+    emit(Opcode::VECTOR_MEM, OperandsR{1, baseRight, 0, 0}); 
+    
+    emit(vecOp, OperandsR{2, 0, 1, func}); 
+    
+    emit(Opcode::VECTOR_MEM, OperandsR{2, baseDest, 0, 1}); 
+    
+    uint8_t shiftReg = allocateRegister();
+    uint8_t threeReg = emitConstant(3);
+    emit(Opcode::SHIFT, OperandsR{shiftReg, vlReg, threeReg, 0}); // shl
+    freeRegister(threeReg);
+    
+    uint8_t tempLeft = allocateRegister();
+    emit(Opcode::ARITH, OperandsR{tempLeft, baseLeft, shiftReg, 0}); 
+    emit(Opcode::MOV, OperandsR{baseLeft, tempLeft, 0, 0});
+    freeRegister(tempLeft);
+    
+    uint8_t tempRight = allocateRegister();
+    emit(Opcode::ARITH, OperandsR{tempRight, baseRight, shiftReg, 0}); 
+    emit(Opcode::MOV, OperandsR{baseRight, tempRight, 0, 0});
+    freeRegister(tempRight);
+    
+    uint8_t tempDest = allocateRegister();
+    emit(Opcode::ARITH, OperandsR{tempDest, baseDest, shiftReg, 0}); 
+    emit(Opcode::MOV, OperandsR{baseDest, tempDest, 0, 0});
+    freeRegister(tempDest);
+    
+    uint8_t nextLenReg = allocateRegister();
+    emit(Opcode::ARITH, OperandsR{nextLenReg, lenReg, vlReg, 1}); 
+    emit(Opcode::MOV, OperandsR{lenReg, nextLenReg, 0, 0});
+    freeRegister(nextLenReg);
+    
+    freeRegister(shiftReg);
+    freeRegister(vlReg);
+    
+    uint8_t condReg = allocateRegister();
+    uint8_t zeroReg2 = emitConstant(0);
+    emit(Opcode::CMP, OperandsR{condReg, lenReg, zeroReg2, 1}); // cmpne
+    freeRegister(zeroReg2);
+    emitBranch(Opcode::BNE, condReg, 0, loopStart); 
+    freeRegister(condReg);
+    
+    freeRegister(lenReg);
+    freeRegister(baseLeft);
+    freeRegister(baseRight);
+    freeRegister(baseDest);
+    freeRegister(left);
+    freeRegister(right);
+    
     return dest;
 }
 

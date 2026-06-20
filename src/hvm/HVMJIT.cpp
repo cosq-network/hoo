@@ -951,6 +951,14 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_tensor_length(reinterpret_cast<void*>(state->regs[1])));
     }
+    uint64_t jit_tensor_rank(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_tensor_rank(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_tensor_element_type(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_tensor_element_type(reinterpret_cast<void*>(state->regs[1])));
+    }
     uint64_t jit_tensor_dim(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_tensor_dim(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
@@ -987,6 +995,11 @@ extern "C" {
     uint64_t jit_tensor_not(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_not(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_tensor_new(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_tensor_new(state->regs[1], state->regs[2], state->regs[3], state->regs[4], state->regs[5])));
     }
     // ── Map aliases (match codegen-generated _F_map_*_v_p names) ─────────────
     uint64_t jit_map_new_plain(void* state_ptr) {
@@ -3283,6 +3296,50 @@ extern "C" {
     extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_should_stop_state(void* state_ptr) {
         return shadow_should_stop_state(state_ptr);
     }
+    extern "C" void hooc_hvm_vector_load(void* state_ptr, uint64_t vd, uint64_t base) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        uint8_t* ptr = (base >= 1000000000ULL) ? reinterpret_cast<uint8_t*>(base) : (state->memory + base);
+        for (int64_t i = 0; i < state->vl; ++i) {
+            uint64_t val = 0;
+            std::memcpy(&val, ptr + i * 8, sizeof(val));
+            state->vregs[vd][i] = val;
+        }
+    }
+    extern "C" void hooc_hvm_vector_store(void* state_ptr, uint64_t vs, uint64_t base) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        uint8_t* ptr = (base >= 1000000000ULL) ? reinterpret_cast<uint8_t*>(base) : (state->memory + base);
+        for (int64_t i = 0; i < state->vl; ++i) {
+            uint64_t val = state->vregs[vs][i];
+            std::memcpy(ptr + i * 8, &val, sizeof(val));
+        }
+    }
+    extern "C" void hooc_hvm_vector_arith(void* state_ptr, uint64_t vd, uint64_t vs1, uint64_t vs2, uint64_t func) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        bool isFloat = (state->vtype == 2 || state->vtype == 9);
+        for (int64_t i = 0; i < state->vl; ++i) {
+            if (isFloat) {
+                double a = 0.0;
+                double b = 0.0;
+                std::memcpy(&a, &state->vregs[vs1][i], 8);
+                std::memcpy(&b, &state->vregs[vs2][i], 8);
+                double res = 0.0;
+                if (func == 0) res = a + b;
+                else if (func == 2) res = a - b;
+                else if (func == 4) res = a * b;
+                else if (func == 6) res = (b != 0.0) ? (a / b) : 0.0;
+                std::memcpy(&state->vregs[vd][i], &res, 8);
+            } else {
+                int64_t a = state->vregs[vs1][i];
+                int64_t b = state->vregs[vs2][i];
+                int64_t res = 0;
+                if (func == 0) res = a + b;
+                else if (func == 2) res = a - b;
+                else if (func == 4) res = a * b;
+                else if (func == 6) res = (b != 0) ? (a / b) : 0;
+                state->vregs[vd][i] = res;
+            }
+        }
+    }
 
     // ── Platform OS services (syscalls 12–23) ───────────────────────
     extern "C" uint64_t hooc_hvm_sys_thread_create(uint64_t entry, uint64_t arg) {
@@ -3626,8 +3683,11 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Tensor_new1_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_new1)},
         {"_F_hoo_Tensor_new2_p_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new2)},
         {"_F_hoo_Tensor_new3_p_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new3)},
+        {"_F_hoo_Tensor_new_p_i8_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new)},
         {"_F_hoo_Tensor_pushValue_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_push_value)},
         {"_F_hoo_Tensor_length_i8_p", reinterpret_cast<void*>(&jit_tensor_length)},
+        {"_F_hoo_Tensor_rank_i8_p", reinterpret_cast<void*>(&jit_tensor_rank)},
+        {"_F_hoo_Tensor_elementType_i8_p", reinterpret_cast<void*>(&jit_tensor_element_type)},
         {"_F_hoo_Tensor_dim_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_dim)},
         {"_F_hoo_Tensor_getInt64_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_get_int64)},
         {"_F_hoo_Tensor_getDouble_d_p_i8", reinterpret_cast<void*>(&jit_tensor_get_double)},
@@ -5283,6 +5343,12 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::BREAK:
         case hvm::Opcode::LOOP_SET:
         case hvm::Opcode::LOOP_DECBR:
+        case hvm::Opcode::ALLOC_BUMP:
+        case hvm::Opcode::CHK_B:
+        case hvm::Opcode::LD_D_NZ:
+        case hvm::Opcode::VSETVL:
+        case hvm::Opcode::VECTOR_MEM:
+        case hvm::Opcode::VECTOR_ARITH:
             return true;
         case hvm::Opcode::ARITH:
             return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7;
@@ -6176,6 +6242,95 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 }
                 break;
             }
+            case hvm::Opcode::ALLOC_BUMP: {
+                auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                writeReg(o.rd, hooc_hvm_sys_alloc(readReg(o.rs), o.imm15));
+                break;
+            }
+            case hvm::Opcode::CHK_B: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint64_t ptrVal = readReg(o.rs1);
+                const uint64_t boundVal = readReg(o.rs2);
+                if (ptrVal >= boundVal) {
+                    lastError_ = "Out of bounds trap";
+                    state.trapHit = true;
+                    return -1;
+                }
+                writeReg(o.rd, ptrVal);
+                break;
+            }
+            case hvm::Opcode::LD_D_NZ: {
+                auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                const uint64_t addr = readReg(o.rs);
+                if (addr == 0) {
+                    lastError_ = "Null pointer dereference trap";
+                    state.trapHit = true;
+                    return -1;
+                }
+                const uint64_t finalAddr = addr + static_cast<int64_t>(o.imm15);
+                uint64_t val = 0;
+                if (!loadU64(finalAddr, val)) {
+                    lastError_ = "Invalid memory load address";
+                    return -1;
+                }
+                writeReg(o.rd, val);
+                break;
+            }
+            case hvm::Opcode::VSETVL: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const int64_t avl = readReg(o.rs1);
+                const int64_t vtypeVal = readReg(o.rs2);
+                state.vl = avl < 8 ? avl : 8;
+                state.vtype = vtypeVal;
+                writeReg(o.rd, state.vl);
+                break;
+            }
+            case hvm::Opcode::VECTOR_MEM: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint64_t base = readReg(o.rs1);
+                uint8_t* ptr = (base >= 1000000000ULL) ? reinterpret_cast<uint8_t*>(base) : (state.memory + base);
+                if (o.func == 0) { // load
+                    for (int64_t i = 0; i < state.vl; ++i) {
+                        uint64_t val = 0;
+                        std::memcpy(&val, ptr + i * 8, sizeof(val));
+                        state.vregs[o.rd][i] = val;
+                    }
+                } else if (o.func == 1) { // store
+                    for (int64_t i = 0; i < state.vl; ++i) {
+                        uint64_t val = state.vregs[o.rd][i];
+                        std::memcpy(ptr + i * 8, &val, sizeof(val));
+                    }
+                }
+                break;
+            }
+            case hvm::Opcode::VECTOR_ARITH: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                bool isFloat = (state.vtype == 2 || state.vtype == 9);
+                for (int64_t i = 0; i < state.vl; ++i) {
+                    if (isFloat) {
+                        double a = 0.0;
+                        double b = 0.0;
+                        std::memcpy(&a, &state.vregs[o.rs1][i], 8);
+                        std::memcpy(&b, &state.vregs[o.rs2][i], 8);
+                        double res = 0.0;
+                        if (o.func == 0) res = a + b;
+                        else if (o.func == 2) res = a - b;
+                        else if (o.func == 4) res = a * b;
+                        else if (o.func == 6) res = (b != 0.0) ? (a / b) : 0.0;
+                        std::memcpy(&state.vregs[o.rd][i], &res, 8);
+                    } else {
+                        int64_t a = state.vregs[o.rs1][i];
+                        int64_t b = state.vregs[o.rs2][i];
+                        int64_t res = 0;
+                        if (o.func == 0) res = a + b;
+                        else if (o.func == 2) res = a - b;
+                        else if (o.func == 4) res = a * b;
+                        else if (o.func == 6) res = (b != 0) ? (a / b) : 0;
+                        state.vregs[o.rd][i] = res;
+                    }
+                }
+                break;
+            }
             default:
                 lastError_ = "Unsupported opcode in interpreter: " + ins->getMnemonic();
                 return -1;
@@ -6465,6 +6620,38 @@ bool HVMJIT::loadModule(std::unique_ptr<hvm::HOModule> module) {
     moduleCanonicalPathByName_[moduleName] = canonicalPath;
 
     std::shared_ptr<hvm::HOModule> owned(std::move(module));
+
+    // TEMPORARY DISASSEMBLY PRINT
+    if (owned->getName() == "test") {
+        auto* textSec = owned->getSection(".text");
+        if (textSec) {
+            printf("\n--- DISASSEMBLY OF MODULE 'test' ---\n");
+            for (const auto& sym : owned->getSymbols()) {
+                if (sym.type != hvm::Symbol::STT_FUNC) continue;
+                printf("Function %s at offset %llu:\n", sym.name.c_str(), (unsigned long long)sym.value);
+                uint64_t pc = sym.value;
+                while (pc < textSec->data.size()) {
+                    std::vector<uint8_t> slice;
+                    size_t maxRead = static_cast<size_t>(std::min<uint64_t>(8, textSec->data.size() - pc));
+                    slice.insert(slice.end(), textSec->data.begin() + static_cast<ptrdiff_t>(pc),
+                                 textSec->data.begin() + static_cast<ptrdiff_t>(pc + maxRead));
+                    size_t used = 0;
+                    auto ins = hvm::HVMInstruction::decode(slice, used);
+                    if (!ins || used == 0) {
+                        printf("  0x%04llx: <decode failed>\n", (unsigned long long)pc);
+                        break;
+                    }
+                    printf("  0x%04llx: %s\n", (unsigned long long)pc, ins->toAssembly().c_str());
+                    if (ins->getOpcode() == hvm::Opcode::RET) {
+                        break;
+                    }
+                    pc += used;
+                }
+            }
+            printf("------------------------------------\n\n");
+        }
+    }
+
     std::unordered_set<std::string> preExistingModules;
     for (const auto& [name, _] : loadedModules_) {
         preExistingModules.insert(name);
@@ -6558,7 +6745,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -6621,11 +6808,20 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
         auto loopBackedgePtr = [&]() {
             return builder.CreateStructGEP(stateTy, stateArg, 5);
         };
+        auto vlPtr = [&]() {
+            return builder.CreateStructGEP(stateTy, stateArg, 7);
+        };
+        auto vtypePtr = [&]() {
+            return builder.CreateStructGEP(stateTy, stateArg, 8);
+        };
         auto memBase = [&]() -> llvm::Value* {
             return builder.CreateLoad(i8Ptr, builder.CreateStructGEP(stateTy, stateArg, 1));
         };
         auto memAddr = [&](llvm::Value* addr64) -> llvm::Value* {
-            return builder.CreateInBoundsGEP(builder.getInt8Ty(), memBase(), addr64);
+            auto* isHost = builder.CreateICmpUGE(addr64, builder.getInt64(1000000000ULL));
+            auto* hostPtr = builder.CreateIntToPtr(addr64, i8Ptr);
+            auto* vmPtr = builder.CreateInBoundsGEP(builder.getInt8Ty(), memBase(), addr64);
+            return builder.CreateSelect(isHost, hostPtr, vmPtr);
         };
         auto readReg = [&](uint8_t r) -> llvm::Value* {
             if (r == 0) return builder.getInt64(0);
@@ -6661,6 +6857,12 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             "hooc_hvm_sys_string_data", llvm::FunctionType::get(i64, {i64}, false));
         auto shouldStopStateCallee = module->getOrInsertFunction(
             "hooc_hvm_sys_should_stop_state", llvm::FunctionType::get(i64, {statePtrTy}, false));
+        auto vectorLoadCallee = module->getOrInsertFunction(
+            "hooc_hvm_vector_load", llvm::FunctionType::get(builder.getVoidTy(), {statePtrTy, i64, i64}, false));
+        auto vectorStoreCallee = module->getOrInsertFunction(
+            "hooc_hvm_vector_store", llvm::FunctionType::get(builder.getVoidTy(), {statePtrTy, i64, i64}, false));
+        auto vectorArithCallee = module->getOrInsertFunction(
+            "hooc_hvm_vector_arith", llvm::FunctionType::get(builder.getVoidTy(), {statePtrTy, i64, i64, i64, i64}, false));
 
         // Platform OS services (syscalls 12–23)
         auto threadCreateCallee = module->getOrInsertFunction(
@@ -6977,6 +7179,72 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     llvm::Value* cond = builder.CreateICmpNE(decVal, builder.getInt64(0));
                     builder.CreateCondBr(cond, blockByPc[tgt], blockByPc[nextPc]);
                     break;
+                } else if (op == hvm::Opcode::ALLOC_BUMP) {
+                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                    auto* sizeVal = readReg(o.rs);
+                    auto* alignVal = builder.getInt64(static_cast<uint64_t>(o.imm15));
+                    auto* retVal = builder.CreateCall(allocCallee, {sizeVal, alignVal});
+                    writeReg(o.rd, retVal);
+                } else if (op == hvm::Opcode::CHK_B) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* ptrVal = readReg(o.rs1);
+                    auto* boundVal = readReg(o.rs2);
+                    auto* cond = builder.CreateICmpUGE(ptrVal, boundVal);
+                    auto* trapBB = llvm::BasicBlock::Create(*context, "bounds_trap", fn);
+                    auto* okBB = llvm::BasicBlock::Create(*context, "bounds_ok", fn);
+                    builder.CreateCondBr(cond, trapBB, okBB);
+                    builder.SetInsertPoint(trapBB);
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(okBB);
+                    writeReg(o.rd, ptrVal);
+                } else if (op == hvm::Opcode::LD_D_NZ) {
+                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                    auto* baseAddr = readReg(o.rs);
+                    auto* isNull = builder.CreateICmpEQ(baseAddr, builder.getInt64(0));
+                    auto* trapBB = llvm::BasicBlock::Create(*context, "lddnz_null", fn);
+                    auto* activeBB = llvm::BasicBlock::Create(*context, "lddnz_active", fn);
+                    builder.CreateCondBr(isNull, trapBB, activeBB);
+                    builder.SetInsertPoint(trapBB);
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(activeBB);
+                    auto* addr = builder.CreateAdd(baseAddr, builder.getInt64(static_cast<int64_t>(o.imm15)));
+                    auto* misaligned = builder.CreateICmpNE(builder.CreateAnd(addr, builder.getInt64(7)), builder.getInt64(0));
+                    auto* okBB = llvm::BasicBlock::Create(*context, "lddnz_ok", fn);
+                    auto* errBB = llvm::BasicBlock::Create(*context, "lddnz_err", fn);
+                    builder.CreateCondBr(misaligned, errBB, okBB);
+                    builder.SetInsertPoint(errBB);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(okBB);
+                    auto* ptr = builder.CreateBitCast(memAddr(addr), llvm::PointerType::get(*context, 0));
+                    auto* v = builder.CreateLoad(i64, ptr);
+                    writeReg(o.rd, v);
+                } else if (op == hvm::Opcode::VSETVL) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* avl = readReg(o.rs1);
+                    auto* vtypeVal = readReg(o.rs2);
+                    auto* tooLarge = builder.CreateICmpSGT(avl, builder.getInt64(8));
+                    auto* vlVal = builder.CreateSelect(tooLarge, builder.getInt64(8), avl);
+                    builder.CreateStore(vlVal, vlPtr());
+                    builder.CreateStore(vtypeVal, vtypePtr());
+                    writeReg(o.rd, vlVal);
+                } else if (op == hvm::Opcode::VECTOR_MEM) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* baseVal = readReg(o.rs1);
+                    auto* vdVal = builder.getInt64(static_cast<uint64_t>(o.rd));
+                    if (o.func == 0) { // load
+                        builder.CreateCall(vectorLoadCallee, {stateArg, vdVal, baseVal});
+                    } else if (o.func == 1) { // store
+                        builder.CreateCall(vectorStoreCallee, {stateArg, vdVal, baseVal});
+                    }
+                } else if (op == hvm::Opcode::VECTOR_ARITH) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* vdVal = builder.getInt64(static_cast<uint64_t>(o.rd));
+                    auto* vs1Val = builder.getInt64(static_cast<uint64_t>(o.rs1));
+                    auto* vs2Val = builder.getInt64(static_cast<uint64_t>(o.rs2));
+                    auto* funcVal = builder.getInt64(static_cast<uint64_t>(o.func));
+                    builder.CreateCall(vectorArithCallee, {stateArg, vdVal, vs1Val, vs2Val, funcVal});
                 } else if (op == hvm::Opcode::JMP) {
                     auto o = std::get<hvm::OperandsJ>(ins->getOperands());
                     uint64_t tgt = static_cast<uint64_t>(static_cast<int64_t>(ipc) + static_cast<int64_t>(o.offset) * 4);
