@@ -56,7 +56,7 @@
 #include <windows.h>
 #include <wincrypt.h>
 #else
-#include <unistd.h>
+#include "core/Platform.h"
 #include <pthread.h>
 #endif
 

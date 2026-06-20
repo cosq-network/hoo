@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 #include <windows.h>
 #include <process.h>
 #else
-#include <unistd.h>
+#include "core/Platform.h"
 #include <sys/utsname.h>
 #ifdef __APPLE__
 #include <sys/sysctl.h>

@@ -6,9 +6,8 @@
 #include <cstdlib>
 #include <iostream>
 #include <sstream>
-#include <unistd.h>
-#include <sys/select.h>
-#include <string>
+#include "core/Platform.h"
+#include <cstring>
 
 // ============================================================================
 // I/O Implementation
@@ -51,6 +50,14 @@ void* hoo_readline(void) {
 }
 
 char hoo_readchar(void) {
+#ifdef HOO_PLATFORM_WINDOWS
+    if (_kbhit()) {
+        int ch = _getch();
+        if (ch == EOF) return static_cast<char>(-1);
+        return static_cast<char>(ch);
+    }
+    return static_cast<char>(-1);
+#else
     int fd = fileno(stdin);
     fd_set set;
     FD_ZERO(&set);
@@ -65,4 +72,5 @@ char hoo_readchar(void) {
     }
     // No data available – indicate EOF/non‑blocking
     return static_cast<char>(-1);
+#endif
 }

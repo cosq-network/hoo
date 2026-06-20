@@ -16,6 +16,7 @@ set(ANTLR4_JAR_PATH "${CMAKE_SOURCE_DIR}/tools/antlr-4.13.2-complete.jar" CACHE 
 set(ANTLR4_GRAMMAR_FILE "${CMAKE_SOURCE_DIR}/src/parsing/Hooc.g4" CACHE FILEPATH "Path to the Hoo ANTLR4 grammar")
 set(ANTLR4_GENERATED_DIR "${CMAKE_BINARY_DIR}/generated/antlr4" CACHE PATH "Directory for generated ANTLR4 C++ files")
 
+include_directories(${CMAKE_SOURCE_DIR}/src)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

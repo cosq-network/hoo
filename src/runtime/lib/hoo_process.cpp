@@ -6,12 +6,11 @@
 #ifdef _WIN32
 #include <process.h>
 #include <windows.h>
-#include <string>
+#include <cstring>
 #define popen _popen
 #define pclose _pclose
 #else
-#include <unistd.h>
-#include <sys/wait.h>
+#include "core/Platform.h"
 #include <signal.h>
 #endif
 
