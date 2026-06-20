@@ -628,6 +628,16 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_any(state->regs[1], state->regs[2])));
     }
+    uint64_t jit_hoo_string_from_bytes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* data = reinterpret_cast<const char*>(state->memory + state->regs[1]);
+        int64_t length = state->regs[2];
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_bytes(data, length)));
+    }
+    uint64_t jit_hoo_string_from_bool(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_bool(state->regs[1])));
+    }
     uint64_t jit_hoo_character_from_utf8(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* bytes = reinterpret_cast<const char*>(state->memory + state->regs[1]);
