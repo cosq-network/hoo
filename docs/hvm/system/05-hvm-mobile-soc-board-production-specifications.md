@@ -190,4 +190,4 @@ Before shipment, the mobile platform requires regulatory planning for:
 - Qualcomm Snapdragon 8 Elite Mobile Platform: https://www.qualcomm.com/smartphones/products/8-series/snapdragon-8-elite-mobile-platform
 - Apple M4 chip announcement: https://www.apple.com/newsroom/2024/05/apple-introduces-m4-chip/
 - HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
-- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)
+- HVM green-compute spec: [HVM Green Compute and Performance Specification](./02-hvm-green-compute-specifications.md)

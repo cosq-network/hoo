@@ -36,6 +36,15 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 - [x] **Verification**: full preset test run passing (`1745 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
+## Recent Changes
+
+- Updated `docs/hvm/system` to replace all proposal references with final specification links.
+- Archived the green‑compute proposal and created `02-hvm-green-compute-specifications.md` as the single source of truth.
+- Cleaned up `docs/hvm/system/README.md` to point to the finalized spec.
+- Refactored server, robotics, and other system spec documents to remove speculative language.
+- Added comprehensive REPL integration and buffer/map API redesign.
+- Completed full test suite run: 1745 tests, 0 failures.
+
 
 ## 3. Build & Test
 

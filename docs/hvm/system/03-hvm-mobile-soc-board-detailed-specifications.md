@@ -1,4 +1,6 @@
-# HVM Mobile SoC and Board Specifications Manual (HVM-MB-Mobile v1.0)
+# HVM Mobile SoC and Board Specifications Manual (Specification Only)
+
+# HVM Mobile SoC and Board Specifications Manual
 
 This document details the hardware, packaging, system design, and board layout specifications for the **HVM Mobile SoC (`HVM-M1`)** and the **HVM-MB-Mobile v1.0 Reference Board**. The target envelope is optimized for smartphones, wearable computing, handheld gaming devices, and ultra-low-power edge nodes.
 

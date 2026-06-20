@@ -175,4 +175,4 @@ The `HVM-MB-D1` release package must include:
 - AMD Ryzen 9 9950X specifications: https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x.html
 - Intel Core Ultra 9 Processor 285K specifications: https://www.intel.com/content/www/us/en/products/sku/241060/intel-core-ultra-9-processor-285k-36m-cache-up-to-5-70-ghz/specifications.html
 - HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
-- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)
+- HVM green-compute spec: [HVM Green Compute and Performance Specification](./02-hvm-green-compute-specifications.md)

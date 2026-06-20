@@ -599,6 +599,18 @@ InstructionRegistry::InstructionRegistry() {
     // Hardware loop
     reg("loop.set", Opcode::LOOP_SET, InstructionFormat::I);
     reg("loop.decbr", Opcode::LOOP_DECBR, InstructionFormat::B);
+
+    // New HVM instruction sets
+    reg("alloc.bump", Opcode::ALLOC_BUMP, InstructionFormat::I);
+    reg("chk.b", Opcode::CHK_B, InstructionFormat::R);
+    reg("ld.d.nz", Opcode::LD_D_NZ, InstructionFormat::I);
+    reg("vsetvl", Opcode::VSETVL, InstructionFormat::R);
+    reg("vld.v", Opcode::VECTOR_MEM, InstructionFormat::R, 0);
+    reg("vst.v", Opcode::VECTOR_MEM, InstructionFormat::R, 1);
+    reg("vadd.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 0);
+    reg("vsub.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 2);
+    reg("vmul.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 4);
+    reg("vdiv.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 6);
 }
 
 void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcode opcode,

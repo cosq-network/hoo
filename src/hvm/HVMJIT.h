@@ -104,6 +104,9 @@ public:
         bool trapHit = false;
         int64_t loop_count = 0;
         int64_t loop_backedge = 0;
+        int64_t vregs[32][8]{};
+        int64_t vl = 0;
+        int64_t vtype = 0;
     };
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};

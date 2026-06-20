@@ -5,7 +5,7 @@ This directory contains the design notes for a new HVM-based processor stack.
 ## Documents
 
 - [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
-- [HVM Green Compute and Performance Enhancement Proposal](./02-hvm-green-compute-performance-proposal.md)
+- [HVM Green Compute and Performance Specification](./02-hvm-green-compute-specifications.md)
 - [HVM Mobile SoC and Board Specifications](./03-hvm-mobile-soc-board-detailed-specifications.md)
 - [HVM Lightweight System Simulator Design](./10-hvm-lightweight-system-simulator-design.md)
 

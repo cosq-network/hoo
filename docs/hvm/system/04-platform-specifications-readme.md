@@ -3,7 +3,7 @@
 This directory contains platform-specific HVM silicon and board specification manuals derived from:
 
 - [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
-- [HVM Green Compute and Performance Enhancement Proposal](./02-hvm-green-compute-performance-proposal.md)
+- [HVM Green Compute and Performance Specification](./02-hvm-green-compute-specifications.md)
 
 The documents split the HVM hardware family into deployable reference platforms:
 

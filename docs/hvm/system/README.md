@@ -7,7 +7,7 @@ This directory consolidates the former `docs/hvm/chip` and `docs/hvm/chips` docu
 ### Part I: Foundation
 
 1. [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
-2. [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)
+2. [HVM Green Compute Specification](./02-hvm-green-compute-specifications.md)
 
 ### Part II: SoC and Board Specifications
 

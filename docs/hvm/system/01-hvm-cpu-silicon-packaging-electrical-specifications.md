@@ -1,3 +1,5 @@
+# HVM CPU Silicon, Packaging, and Electrical Specifications Manual (Specification Only)
+
 # HVM CPU Silicon, Packaging, and Electrical Specifications Manual
 
 This document defines the physical hardware, silicon-level fabrication, packaging, LGA/BGA pinout configurations, and electrical specifications for the **Hoo Virtual Machine (HVM)** CPU family. These specifications are designed to enable tap-out and manufacturing using industry-standard silicon foundry processes and PCB fabrication technologies.

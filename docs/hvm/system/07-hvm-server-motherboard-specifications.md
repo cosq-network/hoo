@@ -170,4 +170,4 @@ The server board cannot enter PVT until the contract manufacturer has:
 - Supermicro H13SSL-NT server motherboard: https://www.supermicro.com/en/products/motherboard/h13ssl-nt
 - ASUS Pro WS WRX90E-SAGE SE motherboard: https://www.asus.com/motherboards-components/motherboards/workstation/pro-ws-wrx90e-sage-se/techspec/
 - HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
-- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)
+- HVM green-compute spec: [HVM Green Compute and Performance Specification](./02-hvm-green-compute-specifications.md)
