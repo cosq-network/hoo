@@ -3555,6 +3555,20 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                         if (member == "diffSeconds") return 2;
                         return 119;
                     }
+                    if (objectTypeId == 110) {
+                        if (member == "count" || member == "has" ||
+                            member == "parse" || member == "getInt" ||
+                            member == "getBool") return 1;
+                        if (member == "get" || member == "value" ||
+                            member == "programName" || member == "getString" ||
+                            member == "helpText") return 101;
+                        if (member == "getFloat") return 2;
+                        if (member == "addString" || member == "addInt" ||
+                            member == "addFlag" || member == "addFloat" ||
+                            member == "addPositional" || member == "clear") return 4;
+                        if (member == "new") return 110;
+                        return 100;
+                    }
                 }
             }
         }
@@ -3648,6 +3662,9 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "programName" || member == "getString" ||
                                 member == "helpText") return 101;
                             if (member == "getFloat") return 2;
+                            if (member == "addString" || member == "addInt" ||
+                                member == "addFlag" || member == "addFloat" ||
+                                member == "addPositional" || member == "clear") return 4;
                             return 100;
                         }
                         if (objTypeId == 112) {

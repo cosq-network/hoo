@@ -168,12 +168,12 @@ RISC CPU cores must remain simple and avoid complex GPU driver routines directly
 +------------------+                   +-------------------------+
 | HVM CPU Core     |                   | Industry GPU (e.g. NV)  |
 |                  |                   |                         |
-| [Shared Memory]  |=== PCIe ATS/PRI =>| [Sv39 Translations]     |
+| [Shared Memory]  |=== PCIe ATS/PRI =>| [HVM-39 Translations]   |
 | [Doorbell Instr] |=== MMIO Doorbell=>| [VRAM via ResizableBAR] |
 +------------------+                   +-------------------------+
 ```
 
-1. **Shared Address Space (SVM)**: CPU and GPU share virtual memory mappings. By using **PCIe ATS/PRI (Address Translation Services & Page Request Interface)**, industry-standard GPUs can directly query HVM's Sv39 page tables over the PCIe Gen 5.0 bus. This allows standard runtimes (like CUDA Unified Memory or AMD ROCm SVM) to execute without CPU memory copy overhead.
+1. **Shared Address Space (SVM)**: CPU and GPU share virtual memory mappings. By using **PCIe ATS/PRI (Address Translation Services & Page Request Interface)**, industry-standard GPUs can query HVM's three-level `HVM-39` page tables over the PCIe Gen 5.0 bus. This allows standard runtimes (like CUDA Unified Memory or AMD ROCm SVM) to execute without CPU memory copy overhead.
 2. **Resizable BAR (Base Address Registers)**: Maps the GPU's entire onboard VRAM (e.g., up to 24GB or more) directly into the CPU's 64-bit physical address space, allowing single-cycle DMA transfers and fast cache coherence.
 3. **Memory Ring Buffers**: The CPU writes GPU command packets directly into shared RAM, then signals the GPU.
 4. **Accelerator Doorbell Instruction**:
@@ -192,23 +192,23 @@ RISC CPU cores must remain simple and avoid complex GPU driver routines directly
 
 To enable physical prototyping and tape-out of HVM hardware components, this section defines the silicon fabrication limits and PCB layout parameters required for production.
 
-### 4.1 CPU Silicon Fabrication Specification (HVM-S1 Core & Multicore Cluster)
+### 4.1 CPU Silicon Fabrication Specification (HVM Core & Multicore Cluster)
 * **Process Node**: TSMC 4nm N4P FinFET CMOS technology.
 * **Multicore Topology & Die Geometry**:
-  - **Core Scalability**: Built on a modular chiplet and cluster-based design supporting configurations from **6-core clusters** (e.g., 2 Big high-throughput cores + 4 Little efficiency cores for Mobile/Embedded) up to **12-core clusters** (e.g., 12 Big cores for high-performance Desktop/Server environments).
-  - **Die Area**: $95 \text{ mm}^2$ (for the 6-core variant) scaling up to $138 \text{ mm}^2$ (for the 12-core variant), integrating execution units, shared caches, snoop controllers, and interface boundaries on a single monolithic or high-speed interposer-connected die.
-  - **Transistor Count**: Approximately 10.5 Billion transistors (6-core SoC configuration) to 15.5 Billion transistors (12-core high-performance configuration).
+  - **Core Scalability**: Built on a modular chiplet and cluster-based design supporting configurations from **6-core mobile clusters** (2 Big high-throughput cores + 4 Little efficiency cores), to **8-core desktop clusters**, to server sockets composed from multiple coherent clusters reaching **64-128 Big cores per socket**.
+  - **Die Area**: Approximately $95 \text{ mm}^2$ for the 6-core mobile SoC configuration and $120-138 \text{ mm}^2$ for the 8-core desktop compute die. Server SKUs use multiple chiplets plus an I/O die or interposer substrate rather than a single monolithic 128-core die.
+  - **Transistor Count**: Approximately 10.5 Billion transistors for the 6-core SoC configuration, 13-15.5 Billion transistors for the 8-core desktop compute die, and proportionally higher aggregate transistor counts for server multi-chiplet packages.
 * **Cache Coherency & Interconnect Fabric**:
   - **MOESI Protocol**: Full hardware implementation of the MOESI (Modified, Owner, Exclusive, Shared, Invalid) cache coherency protocol. This ensures low-latency synchronization of shared memory structures and pointer arrays across all core L1 Instruction/Data caches ($64 \text{ KB}$ per core) and private L2 caches ($512 \text{ KB}$ per core).
   - **Snoop Control Unit (SCU)**: A centralized hardware directory-based SCU managing snoop commands, resolving core tag access conflicts, and routing L2-to-L2 cache lines directly without using the main bus.
-  - **Coherent Interconnect**: A bidirectional, high-bandwidth coherent L2/L3 Ring Bus (upgraded to a dual-ring structure or 2D Mesh on 12-core variants) operating at the system bus frequency of $1.6 \text{ GHz}$ (`CLK_SYS`). It yields a bisection bandwidth of up to $512 \text{ GB/s}$ and connects all cores to a shared, high-associativity $24 \text{ MB}$ L3 cache.
+  - **Coherent Interconnect**: A bidirectional, high-bandwidth coherent L2/L3 Ring Bus (upgraded to a 2D mesh for server chiplets) operating at the system bus frequency of $1.6 \text{ GHz}$ (`CLK_SYS`). It yields a bisection bandwidth of up to $512 \text{ GB/s}$ per baseline cluster and connects cores to shared, high-associativity L3 cache slices.
 * **Inter-Core Coordination & Debugging**:
-  - **Hardware IPI Controller**: A high-efficiency Core-Local Interruptor (CLINT) providing memory-mapped hardware registers mapped directly to individual core interrupt lines. Operates at sub-microsecond latency to support rapid thread rescheduling, work-stealing loops, and parallel JIT tasks.
+  - **Hardware IPI Controller**: A high-efficiency HVM Local Interrupt Controller (HLIC) providing memory-mapped hardware registers mapped directly to individual core interrupt lines. Operates at sub-microsecond latency to support rapid thread rescheduling, work-stealing loops, and parallel JIT tasks.
   - **Independent Power Gating**: Dynamic VRM loops allow individual inactive cores within a 6-12 core cluster to enter deep sleep C-states independently without affecting the operation of active processing threads.
   - **Synchronous Run-Control Debugging**: Dual-tap JTAG interfaces connected to a central hardware cross-trigger unit allow simultaneous halting, breakpointing, and tracing of all active cores synchronously.
 * **Industry-Standard GPU Interoperability (AI/ML & Graphics)**:
   - **Physical Bus Connectivity**: Fully utilizes PCIe Gen 5.0 x16 lanes, enabling direct, high-bandwidth link throughput up to $63 \text{ GB/s}$ bi-directional.
-  - **Shared Virtual Memory (SVM)**: Out-of-the-box hardware integration with PCIe Address Translation Services (ATS) and Page Request Interface (PRI). Off-the-shelf industry GPUs (such as NVIDIA GeForce/RTX/Ampere/Ada Lovelace, AMD Radeon/Instinct, and Intel Arc/Xe) can directly query and page from the CPU's Sv39 virtual address translation page tables over PCIe, allowing zero-copy CUDA/ROCm/Sycl unified memory structures to run at native hardware speeds.
+  - **Shared Virtual Memory (SVM)**: Hardware integration with PCIe Address Translation Services (ATS) and Page Request Interface (PRI). Off-the-shelf industry GPUs (such as NVIDIA GeForce/RTX/Ampere/Ada Lovelace, AMD Radeon/Instinct, and Intel Arc/Xe) can query and page from the CPU's `HVM-39` virtual address translation page tables over PCIe, allowing zero-copy CUDA/ROCm/Sycl unified memory structures to run at native hardware speeds.
   - **Resizable BAR (Base Address Registers)**: Supports mapping the GPU's entire onboard VRAM (ranging from $8 \text{ GB}$ to $80 \text{ GB}$ or more on datacenter accelerators) directly into the CPU's 64-bit physical address space, facilitating rapid single-cycle DMA transfers and fast host-to-device memory accesses.
   - **Accelerator Command Submission**: Specialized memory-mapped I/O (MMIO) doorbell registers coupled with the `DOORBELL` instruction allow user-space threads to queue workloads directly into GPU hardware ring buffers without initiating a kernel-space context switch.
 * **Voltage Domains**:
@@ -217,13 +217,13 @@ To enable physical prototyping and tape-out of HVM hardware components, this sec
   - `VDD_IO` (Standard I/O pins): 1.8V (general interfaces) / 1.1V (DDR5 memory PHY boundary).
 * **Thermal Envelope**:
   - Maximum Junction Temperature ($T_{JMax}$): 105 °C.
-  - Thermal Design Power (TDP): Scalable from 15W (6-core Mobile Variant) to 125W (12-core Desktop Variant).
+  - Thermal Design Power (TDP): Scalable from 3W-15W for `HVM-M1`, 65W-125W for `HVM-D1`, and 250W-800W platform power for server boards using `HVM-S1` sockets.
   - Active cooling requirement: Thermal resistance ($\theta_{JC}$) $\le 0.08 \text{ °C/W}$.
 * **Clock Domains**:
   - Core Exec Clock (`CLK_CORE`): 2.4 GHz (base) to 4.2 GHz (turbo boost).
   - System Bus Clock (`CLK_SYS`): 1.6 GHz.
   - Memory Controller Clock (`CLK_MEM`): 3.2 GHz (driving DDR5-6400 physical interface).
-* **LGA Socket Pinout Mapping (LGA-1700)**:
+* **Desktop LGA Socket Pinout Mapping (`HVM-D1`, LGA-1700)**:
   - 650x Ground Pins (`VSS`)
   - 320x Core Power Pins (`VDD_Core` / `VDD_SRAM` distributed rails)
   - 280x Memory Controller DDR5 interface lines (DQ/DQS differential pairs)
@@ -234,7 +234,7 @@ To enable physical prototyping and tape-out of HVM hardware components, this sec
 ---
 
 ### 4.2 Motherboard PCB Layup & Routing Constraints (HVM-MB v1.0)
-* **PCB Stackup**: 10-Layer impedance-controlled layup using High-Tg FR4 material (Tg $\ge 170 \text{ °C}$, e.g. IT-180A) for structural stability under server heat loads.
+* **PCB Stackup**: 10-Layer impedance-controlled layup using High-Tg FR4 material (Tg $\ge 170 \text{ °C}$, e.g. IT-180A) for desktop and workstation thermal stability. Server boards should extend this baseline with higher layer counts and low-loss laminates as defined by the `HVM-MB-Server` profile.
 * **Layer Allocation**:
   ```
   [Layer 1]   Microstrip Signals (DDR5 / PCIe Gen 5) - Impedance-controlled
@@ -266,7 +266,7 @@ To enable physical prototyping and tape-out of HVM hardware components, this sec
 
 ## 5. HVM Reference Motherboard Specification (HVM-MB v1.0)
 
-To support the deployment of HVM-based RISC CPU cores in physical environments, we define a standard reference motherboard profile (**HVM-MB v1.0**). This design bridges the low-power requirements of edge servers and mobile platforms with standard desktop I/O connectivity.
+To support the deployment of HVM-based RISC CPU cores in physical environments, we define a standard desktop reference motherboard profile (**HVM-MB v1.0**). Mobile and server variants are split into dedicated profiles below.
 
 ```
 +-------------------------------------------------------------+
@@ -274,7 +274,7 @@ To support the deployment of HVM-based RISC CPU cores in physical environments, 
 |                                                             |
 |   +-----------+     +------------+      +---------------+   |
 |   | Socket    |==== | DDR5 (ECC) |====  | PCI-e Gen 5.0 |   |
-|   | HVM-S1    |     | Dual-Ch    |      | x16 Slot (GPU)|   |
+|   | HVM-D1    |     | Dual-Ch    |      | x16 Slot (GPU)|   |
 |   +-----------+     +------------+      +---------------+   |
 |         ||                                      ||          |
 |   +-----------+     +------------+              ||          |
@@ -294,15 +294,15 @@ To support the deployment of HVM-based RISC CPU cores in physical environments, 
 ```
 
 ### 5.1 Mechanical & Power Delivery
-* **Form Factor**: Micro-ATX (244 mm x 244 mm) for desktop/servers; Mini-ITX (170 mm x 170 mm) for low-power edge gateways.
-* **CPU Socket**: **Socket HVM-S1** (LGA-1700 pin array) for high-performance HVM multi-core processors.
+* **Form Factor**: Micro-ATX (244 mm x 244 mm) for desktop/workstation boards; Mini-ITX (170 mm x 170 mm) for low-power edge gateways.
+* **CPU Socket**: **Socket HVM-D1** (LGA-1700 pin array) for high-performance desktop HVM multi-core processors.
 * **Power Regulation**: 8+2 Phase Digital VRM to support voltage scaling dynamically from 0.75V (idle) to 1.25V (turbo load), minimizing system carbon output.
 
 ---
 
 ### 5.2 Firmware & System Boot Pipeline
-* **First Stage Bootloader (FSBL)**: Masked ROM integrated on the CPU core. Initiates processor startup, validates DDR5 parameters, and loads OpenSBI from the SPI flash.
-* **Motherboard Firmware**: OpenSBI-compatible firmware stored in a 32MB onboard SPI Flash. It provides supervisor-mode binary interface routines.
+* **First Stage Bootloader (FSBL)**: Masked ROM integrated on the CPU core. Initiates processor startup, validates DDR5 parameters, and loads HVM supervisor firmware from the SPI flash.
+* **Motherboard Firmware**: HVM supervisor firmware stored in a 32MB onboard SPI Flash. It exposes the HVM Supervisor Firmware Interface (HVM-SFI) for timers, IPIs, reset, and console services.
 * **Second Stage Bootloader**: Configurable to U-Boot or coreboot. Supports booting a Linux kernel directly from an NVMe drive or a network LAN location (PXE boot).
 
 ---
@@ -311,7 +311,7 @@ To support the deployment of HVM-based RISC CPU cores in physical environments, 
 * **System Memory**: 
   - Dual-channel DDR5 DIMM slots (supporting speeds up to 6400 MT/s).
   - Maximum capacity: 128 GB.
-  - Mandatory ECC (Error-Correcting Code) support for server profile, ensuring data integrity.
+  - ECC support is recommended for workstation validation boards and mandatory for the server profile.
 * **Storage Interfaces**:
   - **NVMe SSD**: 2x M.2 PCIe Gen 4.0 x4 slots for fast, direct-to-CPU storage.
   - **SATA III**: 4x SATA 6 Gb/s ports supporting legacy solid-state drives (SSD) and mechanical hard drives (HD) arrays.
@@ -358,7 +358,7 @@ Optimized for high-density layouts, low parasitics, thermal constraints, and max
 * **Form Factor**: Ultra-compact, multi-layered System-on-Module (SoM) layout (80 mm x 60 mm).
 * **Core Layout**: Soldered SoC featuring 2 Big HVM cores (VLA vector enabled) + 4 Little efficiency cores.
 * **Memory & Storage**: 
-  - Soldered **LPDDR5 memory** (up to 16 GB, running at 6400 MT/s) directly adjacent to SoC.
+  - Soldered **LPDDR5/LPDDR5X memory** (up to 16 GB in the baseline mobile reference, running at up to 6400 MT/s) directly adjacent to SoC or stacked with PoP.
   - **UFS 4.0 flash storage** (on-board, up to 1 TB) replacing large NVMe cards; 1x microSD card slot (optional).
 * **Peripherals & Displays**:
   - MIPI-DSI (Display Serial Interface) output routing directly to low-power OLED touchscreens.
@@ -371,7 +371,7 @@ Optimized for high-density layouts, low parasitics, thermal constraints, and max
 ### 6.2 HVM-MB-Server v1.0 (Datacenters & Compute Sleds)
 Optimized for maximal I/O scaling, dense memory throughput, and continuous hardware accessibility:
 * **Form Factor**: Extended ATX (E-ATX, 305 mm x 330 mm) or Open Compute Project (OCP) 1U/2U compute sled layout.
-* **Core Layout**: **Dual-Socket LGA-4096 (Socket HVM-S2)** supporting multi-threading, up to 128 physical cores per socket.
+* **Core Layout**: **Dual-Socket LGA-4096 (Socket HVM-S1)** supporting multi-threading, up to 128 physical cores per socket.
 * **Memory & Storage**:
   - 16x DDR5 RDIMM slots with 8-channel memory controller setups, supporting up to **4 TB of RAM**.
   - Advanced ECC, automatic memory scrubbing, and memory mirroring capabilities.
@@ -391,8 +391,8 @@ The table below contrasts the specific platform design deviations when transitio
 
 | Architectural Component | Baseline Desktop (`HVM-MB v1.0`) | Mobile Variant (`HVM-MB-Mobile v1.0`) | Server Variant (`HVM-MB-Server v1.0`) |
 | :--- | :--- | :--- | :--- |
-| **CPU Interface** | Socket HVM-S1 (LGA-1700, replaceable) | Soldered BGA SoC package (non-replaceable) | Dual Socket HVM-S2 (LGA-4096, high density) |
-| **Memory Technology** | Socketed DDR5 DIMM slots (Dual-channel) | Soldered LPDDR5 (Package-on-Package) | Registered DDR5 (RDIMM) slots (8-channel) |
+| **CPU Interface** | Socket HVM-D1 (LGA-1700, replaceable) | Soldered BGA SoC package (non-replaceable) | Dual Socket HVM-S1 (LGA-4096, high density) |
+| **Memory Technology** | Socketed DDR5 DIMM slots (Dual-channel) | Soldered LPDDR5/LPDDR5X (Package-on-Package) | Registered DDR5 (RDIMM) slots (8-channel) |
 | **Memory Features** | Optional standard ECC | Non-ECC (optimized for trace size/power) | Advanced ECC, Scrubbing, Mirroring |
 | **Primary Storage** | M.2 NVMe SSD + SATA III ports | Onboard UFS 4.0 flash storage | Hot-swappable U.2/U.3 PCIe Gen 5 NVMe arrays |
 | **PCIe Lane Budget** | 20x PCIe Gen 4.0 / 5.0 lanes | 4x PCIe Gen 4.0 lanes (modem/sensors) | 128x PCIe Gen 5.0 lanes (coprocessors) |
@@ -625,22 +625,22 @@ QEMU translates HVM machine instructions to host execution blocks on the fly usi
 
 ---
 
-### 10.2 Sv39 MMU Address Translation Walk (`target/hvm/helper.c`)
-To emulate virtual-memory-based operating systems like Linux, QEMU models the Sv39 Radix MMU:
-1. **Trigger**: On memory loads/stores in supervisor mode when `satp.MODE == 8`.
+### 10.2 HVM-39 MMU Address Translation Walk (`target/hvm/helper.c`)
+To emulate virtual-memory-based operating systems like Linux, QEMU models the HVM-39 Radix MMU:
+1. **Trigger**: On memory loads/stores in supervisor mode when `hvm_mmu.MODE == HVM39`.
 2. **Walk**:
-   - Fetches the root page table from physical page number (`satp.PPN * 4096`).
+   - Fetches the root page table from physical page number (`hvm_mmu.PPN * 4096`).
    - Translates virtual address `VA[38:0]` by parsing three 9-bit indexing offsets: `VPN[2]`, `VPN[1]`, and `VPN[0]`.
    - Loads the 8-byte Page Table Entry (PTE) at each level.
-3. **Exceptions**: Raises instruction page faults (`scause=0`), load page faults (`scause=1`), or store page faults (`scause=2`) if `PTE.V == 0` or if page access permissions (Read/Write/Execute/User) are violated.
+3. **Exceptions**: Raises HVM instruction page faults (`hcause=0`), load page faults (`hcause=1`), or store page faults (`hcause=2`) if `PTE.V == 0` or if page access permissions (Read/Write/Execute/User) are violated.
 4. **JIT Parity**: The virtual address walk matches the execution boundary checks performed by the host OS during JIT execution.
 
 ---
 
-### 10.3 Core Interrupts & I/O Routing (CLINT & PLIC)
-* **Core-Local Interruptor (CLINT)**: Models timer ticks and software interrupts. If cycle register `stime >= stimecmp`, CLINT raises a supervisor timer interrupt (`scause = 0x8000_0000_0000_0000`) in `env->pending_interrupts`.
-* **Platform-Level Interrupt Controller (PLIC)**: Routes hardware device interrupts (UART, NVMe, USB) to the execution cores:
-  - Devices write to PLIC MMIO registers (e.g. `0x0C00_0000`) to claim, set priority, or complete interrupts.
+### 10.3 Core Interrupts & I/O Routing (HLIC & HPIC)
+* **HVM Local Interrupt Controller (HLIC)**: Models timer ticks, software interrupts, and inter-processor interrupts. If the supervisor timer register `htime >= htimecmp`, HLIC raises a supervisor timer interrupt in `env->pending_interrupts`.
+* **HVM Platform Interrupt Controller (HPIC)**: Routes hardware device interrupts (UART, NVMe, USB) to the execution cores:
+  - Devices write to HPIC MMIO registers (e.g. `0x0C00_0000`) to claim, set priority, or complete interrupts.
 
 ---
 
@@ -660,7 +660,7 @@ QEMU registers the following virtual devices to implement reference motherboard 
 
 QEMU defines three guest machine targets:
 1. **`-M hvm-desktop`**: Models `HVM-MB v1.0`. Simulates an 8-core CPU config, 16GB RAM, NVMe storage controller, and a 16550A UART debug interface.
-2. **`-M hvm-mobile`**: Models `HVM-MB-Mobile v1.0`. Simulates a 6-core cluster (2 Big + 4 Little), LPDDR5 memory controller, PMIC low-power register controls, and VirtIO touchscreen display input events.
+2. **`-M hvm-mobile`**: Models `HVM-MB-Mobile v1.0`. Simulates a 6-core cluster (2 Big + 4 Little), LPDDR5/LPDDR5X memory controller, PMIC low-power register controls, and VirtIO touchscreen display input events.
 3. **`-M hvm-server`**: Models `HVM-MB-Server v1.0`. Emulates dual-socket multi-core configurations, 512GB ECC RAM, U.2 NVMe storage arrays, QSFP28 100G network cards, and an out-of-band ASPEED BMC console loop.
 
 ---

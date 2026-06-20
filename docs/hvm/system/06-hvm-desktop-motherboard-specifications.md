@@ -126,9 +126,53 @@ Thermal design must support:
 - HVM-V vector context save/restore passes OS scheduler stress tests.
 - Board passes suspend/resume, wake-on-LAN, USB4 hot-plug, and SPI recovery flows.
 
-## 11. References
+## 11. CPU Production Requirements
+
+The `HVM-D1` CPU is socketed, so production readiness depends on both silicon and package/socket discipline:
+
+- Tape-out requires clean RTL lint, CDC/RDC, formal equivalence, STA, DRC, LVS, antenna, IR-drop, electromigration, ESD, and latch-up signoff.
+- DFT must include scan compression, JTAG boundary scan, MBIST for cache/SRAM arrays, LBIST for core logic, PLL test modes, PCIe/DDR PHY loopback, and package-level continuity coverage.
+- Speed binning must define base clock, boost clock, voltage-frequency curves, leakage limits, AVX/vector-equivalent guardbands for HVM-V, and per-bin TDP.
+- Package design must include substrate stackup, land pattern, keepout zones, socket load specification, heatsink load limits, thermal resistance, and mechanical tolerances.
+- Final test must validate HVM-C decode, HVM-ARC atomics, HVM-V vector execution, `ICACHE.RNG`, DDR5 PHY margins, PCIe Gen 5 PHY margins, fuse programming, and debug lock.
+
+## 12. Desktop Board Production Package
+
+The `HVM-MB-D1` release package must include:
+
+- Schematic, PCB source database, fabrication notes, stackup drawing, impedance rules, Gerber/ODB++/IPC-2581, drill files, netlist, assembly drawing, pick-and-place files, paste masks, and 3D mechanical model.
+- Controlled BOM with manufacturer part numbers, approved alternates, lifecycle status, power/thermal derating, no-substitution parts, and firmware-loaded parts.
+- Test collateral including ICT fixture files, boundary-scan vectors, power-rail margin scripts, DDR5 memory validation matrix, PCIe compliance checklist, and final functional test image.
+- Manufacturing instructions for socket inspection, CPU retention hardware torque, VRM thermal pad placement, BIOS flash programming, MAC address programming, serial-number label placement, and packaging.
+
+## 13. Compliance and Safety
+
+| Area | Requirement |
+| :--- | :--- |
+| Electrical safety | IEC/UL 62368-1 planning for finished systems using the board |
+| EMC | FCC Part 15 Class B / CE EMC pre-scan and final test on representative chassis |
+| Environmental | RoHS, REACH, WEEE, conflict minerals, and halogen-free policy if required |
+| Interfaces | USB-IF, PCI-SIG, HDMI/DisplayPort, SATA-IO, and Wi-Fi modular compliance as populated |
+| Firmware security | Secure boot option, SPI write protection, TPM provisioning, rollback prevention, and recovery path |
+
+## 14. EVT, DVT, and PVT Exit Criteria
+
+| Gate | Exit Criteria |
+| :--- | :--- |
+| EVT | Board powers safely, CPU exits reset, SPI firmware boots, DDR5 trains, PCIe root ports enumerate, and debug access works |
+| DVT | SI/PI, thermal, memory, PCIe, USB4, suspend/resume, OS stress, and EMC pre-scan pass across process and temperature spread |
+| PVT | Factory programming, ICT, functional test, BIOS update, serialization, packaging, and pilot yield meet release thresholds |
+
+## 15. Open Production Gaps
+
+- Exact HVM-S1 socket mechanical drawing, load plate design, and heatsink keepout need to be frozen.
+- DDR5 QVL, VRM controller model, power-stage model, clock generator, retimer, LAN controller, audio codec, and USB4 controller selections need controlled BOM approval.
+- PCIe Gen 5 channel simulation and DDR5 timing simulation must be completed against the final PCB stackup.
+- A formal BIOS setup menu, ACPI table set, and OS certification plan remain to be specified.
+
+## 16. References
 
 - AMD Ryzen 9 9950X specifications: https://www.amd.com/en/products/processors/desktops/ryzen/9000-series/amd-ryzen-9-9950x.html
 - Intel Core Ultra 9 Processor 285K specifications: https://www.intel.com/content/www/us/en/products/sku/241060/intel-core-ultra-9-processor-285k-36m-cache-up-to-5-70-ghz/specifications.html
-- HVM CPU baseline: `docs/hvm/chip/hvm_cpu_specifications.md`
-- HVM green-compute proposal: `docs/hvm/chip/hvm_green_compute_proposal.md`
+- HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
+- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)

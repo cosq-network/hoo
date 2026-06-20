@@ -124,9 +124,68 @@ Low-power state requirements:
 - HVM-V vector context switch lazy-save behavior passes suspend/resume and multitasking tests.
 - MIPI display and camera links pass eye margin and EMI pre-scan.
 
-## 10. References
+## 10. Silicon Production Requirements
+
+The `HVM-M1` SoC must not be taped out until the silicon release package includes:
+
+- Foundry PDK version lock, standard-cell and SRAM compiler versions, IO library versions, and signoff corner list.
+- Complete RTL freeze with lint, clock-domain crossing, reset-domain crossing, formal equivalence, and low-power UPF/CPF checks.
+- DFT implementation covering scan, compression, JTAG, MBIST for all SRAM/cache arrays, LBIST for CPU clusters, PLL test modes, and repair fuse access for memories.
+- Secure lifecycle fuse map covering debug enable, secure boot root key hash, device identity, wafer lot, speed bin, and RMA unlock policy.
+- Static timing analysis across functional, scan, retention, and low-power modes with setup/hold closure at all process/voltage/temperature corners.
+- Power integrity signoff covering dynamic IR drop, electromigration, simultaneous switching noise, always-on island leakage, and inrush current during wake.
+- ESD, latch-up, antenna, DRC, LVS, and density signoff reports with zero open waivers for production mask generation.
+- ATE wafer-sort and final-test pattern sets for CPU, HVM-V, HVM-ARC atomics, LPDDR PHY, UFS PHY, MIPI DSI/CSI PHY, USB PHY, secure boot ROM, TRNG, and fuse programming.
+
+## 11. Package, Assembly, and Qualification
+
+| Item | Production Requirement |
+| :--- | :--- |
+| Assembly vendor | OSAT process qualified for 0.4 mm mobile BGA and PoP attach |
+| Moisture rating | MSL target documented with bake and floor-life controls |
+| Thermal qualification | Junction-to-case and junction-to-board thermal resistance measured on reference board |
+| Mechanical qualification | Drop, bend, vibration, solder joint fatigue, ball shear, and package warpage reports |
+| Reliability qualification | HTOL, temperature cycling, biased humidity, ESD HBM/CDM, and latch-up results |
+| Marking | Laser mark or equivalent with device family, revision, lot, date code, and traceability code |
+
+## 12. Board Production Package
+
+The mobile board release must include schematic, PCB database, Gerber or ODB++/IPC-2581, drill files, stackup, controlled impedance table, assembly drawing, pick-and-place files, paste mask, test-point map, and approved vendor list.
+
+Manufacturing requirements:
+
+- PCB fab must support HDI microvias, filled vias where required, impedance coupons, X-ray inspection for PoP/BGA attach, and serialized panel tracking.
+- PCBA line must support PoP assembly, underfill process control, board-level X-ray inspection, automated optical inspection, and selective rework rules.
+- BOM must list lifecycle status, second sources where allowed, no-substitution parts, moisture-sensitive parts, firmware-programmed parts, and exact approved memory/NAND vendors.
+- Factory programming must provision secure boot keys, serial number, calibration data, wireless-region configuration, MAC addresses where applicable, and production fuse locks.
+
+## 13. Compliance and Market Release
+
+Before shipment, the mobile platform requires regulatory planning for:
+
+- RoHS, REACH, WEEE, conflict minerals, and battery safety documentation for complete devices.
+- FCC/CE/UKCA EMC testing, plus radio modular certification for Wi-Fi, Bluetooth, UWB, GNSS, and cellular configurations.
+- USB-IF, MIPI interoperability, UFS compliance, and carrier acceptance testing when the modem is populated.
+- Security review for secure boot, debug lock, key injection, rollback prevention, and factory RMA unlock.
+
+## 14. Production Bring-Up and Test Flow
+
+1. Bare-board electrical test validates shorts, opens, controlled impedance coupons, and layer registration.
+2. PCBA smoke test checks rails, PMIC sequencing, reset, clocks, and JTAG chain continuity.
+3. Manufacturing firmware trains LPDDR, verifies UFS, enumerates USB/MIPI, reads fuses, and runs CPU/GPU/AI stress loops.
+4. Calibration writes thermal sensor trim, voltage droop tables, charger limits, camera/display parameters, and RF coexistence tables.
+5. Final test signs the device manifest, locks production fuses, stores traceability data, and records yield-bin classification.
+
+## 15. Open Production Gaps
+
+- Exact LPDDR5X vendor, density, and PoP ballout must be selected before PCB layout freeze.
+- UFS NAND vendor timing, power, and thermal limits must be locked before DVT.
+- Integrated GPU/AI accelerator block requires a separate programming model, driver ABI, and conformance test plan.
+- Radio certification depends on the final modem and RF front-end module selection.
+
+## 16. References
 
 - Qualcomm Snapdragon 8 Elite Mobile Platform: https://www.qualcomm.com/smartphones/products/8-series/snapdragon-8-elite-mobile-platform
 - Apple M4 chip announcement: https://www.apple.com/newsroom/2024/05/apple-introduces-m4-chip/
-- HVM CPU baseline: `docs/hvm/chip/hvm_cpu_specifications.md`
-- HVM green-compute proposal: `docs/hvm/chip/hvm_green_compute_proposal.md`
+- HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
+- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)

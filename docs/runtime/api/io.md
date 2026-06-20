@@ -173,6 +173,29 @@ func :void example() {
 ```
 
 ---
+### `readchar`
+
+Reads a single character from stdin. Blocks until a character is available.
+
+**Syntax:**
+```hoo
+readchar() :int64
+```
+**Parameters:** None.
+**Returns:** `int64` — The character code of the read character, or `-1` if EOF is reached.
+**Errors:** Returns `-1` on EOF or error.
+**Complete Example:**
+```hoo
+import hoo;
+
+func :void example() {
+    print("Press any key: ");
+    var ch = readchar();
+    println("You pressed: " + ch);
+}
+```
+
+---
 
 ## Usage Example
 

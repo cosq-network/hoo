@@ -415,6 +415,107 @@ func :void example() {
 }
 ```
 
+---
+
+### `path_is_absolute`
+
+Checks whether a path is absolute.
+
+**Syntax:**
+
+```hoo
+path_is_absolute(path: string) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to check. |
+
+**Returns:** `int64` — `1` if the path is absolute, `0` otherwise.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var a = path_is_absolute("/usr/local");
+    println(a); // 1
+    var b = path_is_absolute("relative/path");
+    println(b); // 0
+}
+```
+
+---
+
+### `path_is_relative`
+
+Checks whether a path is relative.
+
+**Syntax:**
+
+```hoo
+path_is_relative(path: string) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to check. |
+
+**Returns:** `int64` — `1` if the path is relative, `0` otherwise.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var r = path_is_relative("./docs");
+    println(r); // 1
+    var a = path_is_relative("/etc");
+    println(a); // 0
+}
+```
+
+---
+
+### `path_list_separator`
+
+Returns the platform path list separator character (used in PATH environment variables).
+
+**Syntax:**
+
+```hoo
+path_list_separator() :char
+```
+
+**Parameters:** None.
+
+**Returns:** `char` — `':'` on Unix-like systems, `';'` on Windows.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var sep = path_list_separator();
+    println(sep); // ":"
+}
+```
+
+---
+
 ## Usage Example
 
 ```hoo

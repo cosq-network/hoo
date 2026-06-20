@@ -12,97 +12,133 @@ import hoo.compression;
 
 ## Module Description
 
-The Compression module provides free functions for compressing and decompressing data using the zlib library. It supports both string and raw byte-array compression via gzip and deflate algorithms.
+The Compression module provides the `Compression` class for compressing and decompressing data using the zlib library. It supports both gzip and deflate algorithms.
 
-## Free Functions
+Instances are created with `new Compression()` and must be released with `release()` when no longer needed.
 
----
+## Compression Class
 
-### `compression_compress`
+### `new`
 
-Compresses a string using zlib compression and returns the compressed data as a string.
+Creates a new Compression instance.
 
 **Syntax:**
 
 ```hoo
-compression_compress(data: string): string
+new Compression()
+```
+
+**Returns:** `Compression` — A new Compression instance.
+
+---
+
+### `release`
+
+Releases the resources held by the Compression instance.
+
+**Syntax:**
+
+```hoo
+compression.release()
+```
+
+**Parameters:** None.
+
+**Returns:** `string` — An empty string.
+
+---
+
+### `gzipCompress`
+
+Compresses data using the gzip algorithm.
+
+**Syntax:**
+
+```hoo
+compression.gzipCompress(data: string, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description               |
-|-----------|----------|---------------------------|
-| `data`    | `string` | The string to compress.   |
+| Parameter | Type     | Description                      |
+|-----------|----------|----------------------------------|
+| `data`    | `string` | The data to compress.            |
+| `length`  | `int64`  | The number of bytes to compress. |
 
 **Returns:** `string` — The compressed data.
 
-**Errors:** Compression failure causes a runtime error.
+**Errors:** Compression failure returns an empty string.
 
 ---
 
-### `compression_decompress`
+### `gzipDecompress`
 
-Decompresses zlib-compressed data back into the original string.
+Decompresses gzip-compressed data.
 
 **Syntax:**
 
 ```hoo
-compression_decompress(data: string): string
+compression.gzipDecompress(data: string, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                 |
-|-----------|----------|-----------------------------|
-| `data`    | `string` | The compressed string data. |
+| Parameter | Type     | Description                        |
+|-----------|----------|------------------------------------|
+| `data`    | `string` | The gzip-compressed data.          |
+| `length`  | `int64`  | The number of bytes to decompress. |
 
 **Returns:** `string` — The decompressed original data.
 
-**Errors:** Decompression failure causes a runtime error.
+**Errors:** Decompression failure returns an empty string.
 
 ---
 
-### `compression_compress_bytes`
+### `deflateCompress`
 
-Compresses a raw byte array using zlib and returns the compressed byte array.
+Compresses data using the deflate algorithm (raw zlib format without gzip header).
 
 **Syntax:**
 
 ```hoo
-compression_compress_bytes(data: array): array
+compression.deflateCompress(data: string, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type    | Description                   |
-|-----------|---------|-------------------------------|
-| `data`    | `array` | The raw byte array to compress. |
+| Parameter | Type     | Description                      |
+|-----------|----------|----------------------------------|
+| `data`    | `string` | The data to compress.            |
+| `length`  | `int64`  | The number of bytes to compress. |
 
-**Returns:** `array` — The compressed byte array.
+**Returns:** `string` — The compressed data.
 
-**Errors:** Compression failure causes a runtime error.
+**Errors:** Compression failure returns an empty string.
 
 ---
 
-### `compression_decompress_bytes`
+### `deflateDecompress`
 
-Decompresses a compressed byte array back into the original bytes.
+Decompresses deflate-compressed data (raw zlib format without gzip header).
 
 **Syntax:**
 
 ```hoo
-compression_decompress_bytes(data: array): array
+compression.deflateDecompress(data: string, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type    | Description                       |
-|-----------|---------|-----------------------------------|
-| `data`    | `array` | The compressed byte array data.   |
+| Parameter | Type     | Description                          |
+|-----------|----------|--------------------------------------|
+| `data`    | `string` | The deflate-compressed data.         |
+| `length`  | `int64`  | The number of bytes to decompress.   |
 
-**Returns:** `array` — The decompressed original byte array.
+**Returns:** `string` — The decompressed original data.
 
-**Errors:** Decompression failure causes a runtime error.
+**Errors:** Decompression failure returns an empty string.
+
+---
 
 ## Usage Example
 
@@ -110,18 +146,18 @@ compression_decompress_bytes(data: array): array
 import hoo.compression;
 
 func :int64 main() {
+    var c = new Compression();
     var original = "Hello, Hoo! This is a test string for compression.";
 
-    // Compress and decompress a string
-    var compressed = compression_compress(original);
-    var decompressed = compression_decompress(compressed);
+    var compressed = c.gzipCompress(original.data(), original.length());
+    var decompressed = c.gzipDecompress(compressed.data(), compressed.length());
     println(decompressed);
 
-    // Compress and decompress raw bytes
-    var bytes = [72, 101, 108, 108, 111]any;
-    var comp = compression_compress_bytes(bytes);
-    var decomp = compression_decompress_bytes(comp);
+    var deflated = c.deflateCompress(original.data(), original.length());
+    var inflated = c.deflateDecompress(deflated.data(), deflated.length());
+    println(inflated);
 
+    c.release();
     return 0;
 }
 ```

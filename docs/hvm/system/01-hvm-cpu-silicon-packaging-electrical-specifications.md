@@ -32,12 +32,12 @@ The HVM CPU architecture is manufactured across four standard profiles optimized
 
 ### 1.1 Profile Matrix
 
-| Feature | Mobile (`HVM-M1`) | Desktop (`HVM-D1`) | Server (`HVM-S1-Server`) | Robotic / RT (`HVM-R1`) |
+| Feature | Mobile (`HVM-M1`) | Desktop (`HVM-D1`) | Server (`HVM-S1`) | Robotic / RT (`HVM-R1`) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Core Topology** | 2 Big (VLA) + 4 Little cores | 8 Big cores (VLA enabled) | Dual-socket, up to 128 Big cores | 2 Deterministic RT + 2 App cores |
+| **Core Topology** | 2 Big (VLA) + 4 Little cores | 8 Big cores (VLA enabled) | 64-128 Big cores per socket; dual-socket capable | 2 Deterministic RT + 2 App cores |
 | **Vector Width** | 128-bit `VLEN` | 256-bit `VLEN` | 512-bit `VLEN` (up to 2048) | 128-bit `VLEN` (deterministic execution) |
 | **Package Type** | BGA-1218 (ball grid array) | LGA-1700 (socketed) | LGA-4096 (multi-socketed) | LQFP-144 or BGA-256 (ruggedized) |
-| **Memory Interface**| LPDDR5 (PoP / soldered) | Dual-channel DDR5 DIMM | 8-channel DDR5 RDIMM (ECC) | Soldered LPDDR5 / SRAM |
+| **Memory Interface**| LPDDR5/LPDDR5X (PoP / soldered) | Dual-channel DDR5 DIMM | 8-channel DDR5 RDIMM (ECC) | Soldered LPDDR5/LPDDR5X / SRAM |
 | **Typical TDP** | 3W – 15W | 65W – 125W | 250W – 800W | 2W – 8W |
 | **Primary I/O** | MIPI-DSI, MIPI-CSI, USB 4 | PCIe Gen 5.0, USB 4, SATA | 128 PCIe Gen 5.0 lanes, BMC | CAN-FD, PWM, SPI, I2C, UART |
 | **Deployment** | Handhelds, Wearables, Edge | Workstations, Desktop PCs | Cloud Virtualization, HPC | Robotic Arms, Motor Controllers |
@@ -61,14 +61,14 @@ All HVM CPU profiles are fabricated on advanced commercial processes to balance 
 * **L2 Cache (Per Core)**:
   - Private, 512 KB, 8-way set-associative, unified Instruction/Data.
 * **L3 Cache (Shared Cluster)**:
-  - 24 MB, 16-way set-associative. Connected via a high-speed coherent L2/L3 Ring Bus operating at system bus frequency (`CLK_SYS` = 1.6 GHz), yielding up to 512 GB/s bisection bandwidth.
+  - Baseline desktop cluster: 24 MB, 16-way set-associative. Mobile variants scale this down for leakage and server variants replicate the cluster-level L3 across chiplets. Connected via a high-speed coherent L2/L3 Ring Bus or server mesh operating at system bus frequency (`CLK_SYS` = 1.6 GHz), yielding up to 512 GB/s bisection bandwidth per baseline cluster.
 * **Snoop Control Unit (SCU)**: Directory-based hardware unit to intercept cache line requests and route them directly between L2 caches, bypassing L3/DRAM reads.
 
 ---
 
 ## 3. Package Configurations & Pinout Mappings
 
-### 3.1 Socket HVM-S1 (LGA-1700) - Desktop Profile
+### 3.1 Socket HVM-D1 (LGA-1700) - Desktop Profile
 The desktop socketed processor maps to a standard LGA-1700 pad layout. The electrical pinout breakdown is structured to prevent electromagnetic interference (EMI) on high-speed DDR5 and PCIe Gen 5.0 traces.
 
 ```
@@ -94,7 +94,7 @@ The desktop socketed processor maps to a standard LGA-1700 pad layout. The elect
 
 ---
 
-### 3.2 Socket HVM-S2 (LGA-4096) - Server Profile
+### 3.2 Socket HVM-S1 (LGA-4096) - Server Profile
 Designed for multi-socket enterprise configurations. The 4096-pin matrix expands DDR5 memory channels to 8 channels and provides high-speed coherent inter-socket links.
 
 #### LGA-4096 Pin Interface Table
@@ -102,9 +102,9 @@ Designed for multi-socket enterprise configurations. The 4096-pin matrix expands
 | Signal Block | Pin Count | Direction | Impedance | Description |
 | :--- | :---: | :---: | :---: | :--- |
 | **VSS (Ground)** | 1500 | Power | 0 $\Omega$ | Massive ground return matrix to minimize bounce during simultaneous switching. |
-| **VDD_Core** | 850 | Power | - | Distributed VDD core power rails to support up to 125W–400W active draw per socket. |
+| **VDD_Core** | 850 | Power | - | Distributed VDD core power rails to support 250W-500W active draw per socket, depending on SKU and cooling envelope. |
 | **DDR5 Channels (A-H)**| 1120 | Bi-dir | 40 $\Omega$ | 8-Channel independent DDR5 RDIMM lanes (Data, Clocks, ECC, Command/Address). |
-| **PCIe Gen 5.0 (x128)** | 512 | Differential | 85 $\Omega$ | 128 physical differential pairs for expansion slots, storage sleds, and accelerator links. |
+| **PCIe Gen 5.0 (x128 lanes)** | 512 | Differential | 85 $\Omega$ | 128 PCIe lanes implemented as transmit/receive differential-pair groups for expansion slots, storage sleds, and accelerator links. |
 | **HVM-Link Coherent** | 64 | Differential | 85 $\Omega$ | High-speed cache-coherent socket-to-socket interconnect lines (MOESI-compliant). |
 | **System Management / BMC** | 50 | Input/Output| 50 $\Omega$ | Mapped lines to ASPEED AST2600 BMC, including I2C, SPI, UART, and IPMI interrupt pins. |
 
@@ -115,7 +115,7 @@ The mobile BGA package is optimized for z-height minimization, signal parasitics
 
 * **Pitch Size**: 0.4 mm ball pitch.
 * **Ball Material**: Lead-free SAC305 (Sn96.5/Ag3.0/Cu0.5) solder balls.
-* **Memory Architecture**: Supporting Package-on-Package (PoP) placement where LPDDR5 dies are stacked directly on top of the HVM SoC substrate to save PCB footprint.
+* **Memory Architecture**: Supporting Package-on-Package (PoP) placement where LPDDR5/LPDDR5X dies are stacked directly on top of the HVM SoC substrate to save PCB footprint.
 
 ---
 

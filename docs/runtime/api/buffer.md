@@ -220,6 +220,249 @@ func :int64 main() {
 
 ---
 
+#### `capacity`
+
+Returns the current allocated capacity of the buffer (may be larger than length).
+
+**Syntax:**
+
+```hoo
+capacity() :int64
+```
+
+**Parameters:** None.
+
+**Returns:**
+
+`int64` — The allocated capacity in bytes.
+
+**Errors:**
+
+Returns `0` for a null buffer handle.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(128);
+    println(buf.capacity()); // >= 128
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+#### `byteAt`
+
+Returns the byte at the specified index without modifying the buffer.
+
+**Syntax:**
+
+```hoo
+byteAt(index: int64) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `index` | `int64` | The zero-based index of the byte to read. |
+
+**Returns:**
+
+`int64` — The byte value (0–255) at the given index.
+
+**Errors:**
+
+Returns `0` if the index is out of bounds or the buffer handle is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("ABC");
+    var b = buf.byteAt(1);
+    println(b); // 66 ('B')
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+#### `setByte`
+
+Sets the byte at the specified index to the given value.
+
+**Syntax:**
+
+```hoo
+setByte(index: int64, value: int64) :void
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `index` | `int64` | The zero-based index of the byte to set. |
+| `value` | `int64` | The byte value (0–255). Only the low 8 bits are used. |
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors at the Hoo level. If the index is out of bounds or the handle is null, the operation is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("ABC");
+    buf.setByte(1, 88); // 'X'
+    println(buf.to_string()); // "AXC"
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+#### `copy`
+
+Creates a new independent copy of the buffer with the same contents and capacity.
+
+**Syntax:**
+
+```hoo
+copy() :Buffer
+```
+
+**Parameters:** None.
+
+**Returns:**
+
+`Buffer` — A new Buffer containing a copy of the data. Returns `null` if allocation fails.
+
+**Errors:**
+
+Returns `null` if the source buffer handle is null or if memory allocation fails.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("Hello");
+    var dup = buf.copy();
+    println(dup.to_string()); // "Hello"
+    buf.release();
+    dup.release();
+    return 0;
+}
+```
+
+---
+
+#### `appendBuffer`
+
+Appends the contents of another buffer to the end of this buffer.
+
+**Syntax:**
+
+```hoo
+appendBuffer(other: Buffer) :void
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `other` | `Buffer` | The buffer whose contents are appended. |
+
+**Returns:**
+
+`void`
+
+**Errors:**
+
+No errors at the Hoo level. If either handle is null, the operation is a no-op.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var a = Buffer(64);
+    var b = Buffer(64);
+    a.write("Hello ");
+    b.write("World");
+    a.appendBuffer(b);
+    println(a.to_string()); // "Hello World"
+    a.release();
+    b.release();
+    return 0;
+}
+```
+
+---
+
+#### `slice`
+
+Returns a new buffer containing a copy of the bytes in the specified range.
+
+**Syntax:**
+
+```hoo
+slice(start: int64, end: int64) :Buffer
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `start` | `int64` | The zero-based start index (inclusive). |
+| `end` | `int64` | The zero-based end index (exclusive). |
+
+**Returns:**
+
+`Buffer` — A new Buffer containing the specified byte range. Returns `null` on error.
+
+**Errors:**
+
+Returns `null` if the range is invalid or the source handle is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("Hello, World!");
+    var sub = buf.slice(7, 12);
+    println(sub.to_string()); // "World"
+    buf.release();
+    sub.release();
+    return 0;
+}
+```
+
+---
+
 #### `to_string`
 
 Extracts the buffer contents as a string. The buffer is not cleared; repeated calls return the same data.

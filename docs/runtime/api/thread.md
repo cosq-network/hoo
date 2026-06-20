@@ -90,7 +90,7 @@ No errors at the Hoo level. If called on a null mutex handle the operation is a 
 ```hoo
 import hoo.thread;
 
-func worker(mtx: Mutex) :int64 {
+func :int64 worker(mtx: Mutex) {
     mtx.lock();
     // critical section
     mtx.unlock();
@@ -288,7 +288,7 @@ Returns a non-zero error code if thread creation fails.
 ```hoo
 import hoo.thread;
 
-func worker(arg: int64) :int64 {
+func :int64 worker(arg: int64) {
     println("hello from thread");
     return 0;
 }
@@ -342,7 +342,7 @@ func :int64 main() {
 ```hoo
 import hoo.thread;
 
-func worker(counter: Mutex) :int64 {
+func :int64 worker(counter: Mutex) {
     counter.lock();
     println("in thread");
     counter.unlock();

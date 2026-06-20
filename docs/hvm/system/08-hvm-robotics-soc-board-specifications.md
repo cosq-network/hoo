@@ -147,8 +147,53 @@ Thermal requirements:
 - Thermal cycling validates solder joints and connector retention.
 - EMI pre-scan passes with motors switching under realistic cable loads.
 
-## 11. References
+## 11. Robotics Silicon and Module Production Requirements
+
+The `HVM-R1` platform must be released as a safety-relevant industrial product, not only as a compute module:
+
+- Silicon signoff must include RTL lint, CDC/RDC, formal equivalence, low-power checks, STA, DRC/LVS, IR-drop, EM, ESD, latch-up, scan, MBIST, LBIST, and safety mechanism coverage.
+- Safety island DFT must allow lockstep comparator test, PWM kill-path test, ADC self-test, watchdog test, clock monitor test, voltage monitor test, ECC injection, and CAN message RAM fault injection.
+- Package qualification must cover industrial temperature, vibration, mechanical shock, thermal cycling, humidity, solder fatigue, and connector retention.
+- Safety documentation must include hazard analysis, failure mode effects analysis, diagnostic coverage estimates, safe-state definition, fault reaction timing, safety manual, and errata.
+- Security lifecycle must define production debug lock, RMA unlock, secure boot root keys, firmware rollback prevention, device identity, and field update policy.
+
+## 12. Carrier Board Production Package
+
+The robotics carrier board release must include:
+
+- Schematic, PCB database, Gerber/ODB++/IPC-2581, drill files, stackup, impedance plan, assembly drawing, pick-and-place, paste masks, conformal coating mask, controlled BOM, and mechanical enclosure model.
+- Isolation boundary drawings, creepage/clearance rules, surge/ESD protection ratings, connector pinout, cable harness drawings, and grounding strategy.
+- ICT/boundary-scan fixture files, motor-output safety test fixture, CAN/RS-485/Ethernet loopback fixtures, ADC calibration fixture, and final functional test firmware.
+- Factory provisioning flow for serial number, device certificate, safety firmware version, calibration constants, MAC addresses, and production debug lock.
+
+## 13. Functional Safety, Compliance, and Reliability
+
+| Area | Requirement |
+| :--- | :--- |
+| Functional safety | IEC 61508 / ISO 13849 planning for industrial use; ISO 26262 planning if automotive robots are targeted |
+| EMC and immunity | IEC 61000-4 ESD/EFT/surge/immunity, CISPR 11/32 emissions, and motor-load EMI testing |
+| Industrial environment | -40 C to 85 C operation, vibration, shock, humidity, conformal coating, and connector retention |
+| Fieldbus | CAN-FD interoperability, EtherCAT/TSN conformance where populated, IEEE 1588 timestamp validation |
+| Security | Secure boot, signed safety firmware, debug lock, key revocation, and authenticated field update |
+
+## 14. EVT, DVT, and PVT Exit Criteria
+
+| Gate | Exit Criteria |
+| :--- | :--- |
+| EVT | Board powers safely, RT cores boot first, PWM defaults safe, app cores boot, and fieldbus loopback passes |
+| DVT | Lockstep injection, brownout, watchdog, thermal, vibration, EMC pre-scan, motor-load, and deadline tests pass |
+| PVT | Factory calibration, safety test fixtures, serialization, conformal coating, enclosure assembly, and pilot yield pass |
+
+## 15. Open Production Gaps
+
+- The target safety integrity level must be selected before final silicon and board safety analysis.
+- Exact isolated transceivers, gate drivers, ADC front end, Ethernet PHYs, and connector system must be chosen for the production BOM.
+- High-AI module SKUs need a separate thermal design and accelerator software support matrix.
+- Motor-load EMC testing depends on representative cable lengths, drive stages, and enclosure grounding.
+- A safety manual and field-update policy must be completed before customer evaluation units.
+
+## 16. References
 
 - NVIDIA Jetson Thor robotics platform: https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-thor/
-- HVM CPU baseline: `docs/hvm/chip/hvm_cpu_specifications.md`
-- HVM green-compute proposal: `docs/hvm/chip/hvm_green_compute_proposal.md`
+- HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
+- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)

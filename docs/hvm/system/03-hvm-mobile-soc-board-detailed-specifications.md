@@ -10,7 +10,7 @@ To minimize the PCB trace length, reduce parasitic inductance, and shrink the ph
 
 ```
        +---------------------------------------------+
-       |   Stacked LPDDR5 Memory Die (Top Package)   |
+       | LPDDR5/LPDDR5X Memory Die Stack (Top Package)|
        +---------------------------------------------+
                             ||   SAC305 Balls (0.3mm Pitch)
        +---------------------------------------------+
@@ -29,11 +29,11 @@ To minimize the PCB trace length, reduce parasitic inductance, and shrink the ph
 * **Body Size**: 15.0 mm x 15.0 mm x 0.8 mm thickness.
 * **Underfill Requirement**: High-reliability epoxy underfill to prevent thermal solder fatigue under cyclic loading.
 
-### 1.2 Top Package Specifications (LPDDR5 Stacking)
+### 1.2 Top Package Specifications (LPDDR5/LPDDR5X Stacking)
 * **Package Profile**: BGA-496.
 * **Grid Layout**: Dual-channel perimeter ball matrix.
 * **Pitch**: 0.3 mm ball spacing.
-* **Memory Stacking**: 4x die stack of LPDDR5 (yielding up to 16 GB Capacity).
+* **Memory Stacking**: 4x die stack of LPDDR5/LPDDR5X (yielding up to 16 GB capacity for the baseline mobile reference; higher densities are board- and vendor-dependent).
 
 ---
 

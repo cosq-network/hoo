@@ -116,10 +116,57 @@ The board must keep CPU junction temperature at or below 95 C sustained in datac
 - HVM-ARC atomic stress passes under high core counts and NUMA migration.
 - Accelerator SVM tests validate ATS/PRI, Resizable BAR, and HVM-A doorbell ordering.
 
-## 12. References
+## 12. Server Silicon Production Requirements
+
+Server CPUs have a higher RAS and lifecycle bar than desktop parts. The `HVM-S1` production release must include:
+
+- Chiplet, interposer/substrate, and package co-design signoff covering HVM-Link, DDR5, PCIe, CXL, power delivery, and thermal gradients.
+- Scan, JTAG, MBIST, LBIST, SRAM repair, redundancy fuse, per-chiplet fuse, and package continuity coverage reports.
+- RAS design documentation for ECC, cache parity, poisoned data propagation, machine-check architecture, PCIe AER, memory patrol scrub, page retirement, clock fault handling, and thermal throttling.
+- Per-socket and 2P timing/coherency validation, including HVM-Link retry, lane degradation, error injection, and firmware recovery.
+- Speed bin and power bin tables with deterministic behavior under board-level power caps and datacenter inlet temperature limits.
+- ATE programs for wafer sort, known-good-die classification, package final test, high-temperature test, burn-in, and outgoing quality screening.
+
+## 13. Server Board Production Package
+
+The server board cannot enter PVT until the contract manufacturer has:
+
+- Full fabrication and assembly package: schematic, PCB database, ODB++/IPC-2581, drill, impedance, stackup, assembly drawings, pick-and-place, paste, controlled BOM, AVL, and mechanical chassis fit files.
+- ICT and boundary-scan coverage for CPU socket pins, DIMM slots, PCIe slots, BMC, SPI flash, CPLD, VRM telemetry, fan headers, and management LAN.
+- Manufacturing firmware for host boot, BMC provisioning, DIMM training, PCIe lane margining, MAC programming, UUID/serial provisioning, TPM ownership, and FRU EEPROM programming.
+- Riser, backplane, cable, and chassis compatibility matrix with insertion-loss budget and retimer firmware versions.
+- Factory data capture for yield, failing test step, BMC logs, VRM telemetry, DIMM population, CPU stepping, and firmware version.
+
+## 14. Compliance, RAS, and Datacenter Requirements
+
+| Area | Requirement |
+| :--- | :--- |
+| Safety and EMC | IEC/UL 62368-1, FCC/CE Class A, conducted/radiated emissions, ESD, EFT, and surge tests as system-integrated |
+| Environmental | RoHS, REACH, WEEE, data-center material declarations, and regional recycling requirements |
+| Manageability | Redfish, IPMI, serial-over-LAN, secure BMC update, audit logs, signed firmware, and recovery image |
+| RAS | ECC injection, PCIe AER, CXL error handling, CPU machine checks, thermal trip, watchdog reset, and crash dump capture |
+| Security | Secure boot, measured boot, TPM 2.0, BMC credential rotation, debug lockdown, key revocation, and supply-chain traceability |
+
+## 15. EVT, DVT, and PVT Exit Criteria
+
+| Gate | Exit Criteria |
+| :--- | :--- |
+| EVT | One socket boots, BMC controls power, DDR5 trains, PCIe enumerates, remote console works, and thermal sensors report |
+| DVT | Full DIMM population, all slots, hot-plug storage, 2P coherency, RAS injection, thermal stress, and compliance pre-scan pass |
+| PVT | Pilot line meets yield target, factory tests are stable, FRU/serial provisioning works, BMC update/recovery passes, and packaging survives shipping tests |
+
+## 16. Open Production Gaps
+
+- HVM-Link electrical specification, connector/socket pin allocation, retry protocol, and compliance test plan must be finalized.
+- Final DDR5 channel count, DIMM topology, and RDIMM/MRDIMM support matrix must be frozen before layout.
+- CXL support level needs to be split into required and optional SKUs with firmware table requirements.
+- BMC hardware root of trust, CPLD responsibilities, and firmware signing flow need complete ownership assignment.
+- Chassis airflow, heatsink vendor, riser vendor, and retimer firmware need qualification as a combined platform.
+
+## 17. References
 
 - AMD EPYC 9005 Series processors: https://www.amd.com/en/products/processors/server/epyc/9005-series.html
 - Supermicro H13SSL-NT server motherboard: https://www.supermicro.com/en/products/motherboard/h13ssl-nt
 - ASUS Pro WS WRX90E-SAGE SE motherboard: https://www.asus.com/motherboards-components/motherboards/workstation/pro-ws-wrx90e-sage-se/techspec/
-- HVM CPU baseline: `docs/hvm/chip/hvm_cpu_specifications.md`
-- HVM green-compute proposal: `docs/hvm/chip/hvm_green_compute_proposal.md`
+- HVM CPU baseline: [HVM CPU Silicon, Packaging, and Electrical Specifications](./01-hvm-cpu-silicon-packaging-electrical-specifications.md)
+- HVM green-compute proposal: [HVM Green Compute and Performance Proposal](./02-hvm-green-compute-performance-proposal.md)

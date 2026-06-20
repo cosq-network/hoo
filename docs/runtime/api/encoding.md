@@ -12,18 +12,18 @@ import hoo.encoding;
 
 ## Module Description
 
-The encoding module provides Base64, hex, and URL percent-encoding encode/decode functions. Functions accept strings and return strings. Byte-array variants accept and return `array` types for binary data. Buffer-aware overloads accept `Buffer` objects directly. All functions throw `RuntimeException` on nil input or encoding/decoding failure.
+The encoding module provides Base64, hex, and URL percent-encoding encode/decode functions. Functions accept strings and return strings. Buffer variants accept and return `Buffer` objects for binary data. All functions throw `RuntimeException` on nil input or encoding/decoding failure.
 
 ## Base64 Functions
 
-### `base64_encode`
+### `encoding_base64_encode`
 
 Encodes a string to Base64.
 
 **Syntax:**
 
 ```hoo
-base64_encode(data: string) :string
+encoding_base64_encode(data: string) :string
 ```
 
 **Parameters:**
@@ -41,20 +41,20 @@ base64_encode(data: string) :string
 ```hoo
 import hoo.encoding;
 
-let encoded = base64_encode("Hello, World!");
+let encoded = encoding_base64_encode("Hello, World!");
 // encoded == "SGVsbG8sIFdvcmxkIQ=="
 ```
 
 ---
 
-### `base64_decode`
+### `encoding_base64_decode`
 
 Decodes a Base64-encoded string back to the original string.
 
 **Syntax:**
 
 ```hoo
-base64_decode(data: string) :string
+encoding_base64_decode(data: string) :string
 ```
 
 **Parameters:**
@@ -72,27 +72,27 @@ base64_decode(data: string) :string
 ```hoo
 import hoo.encoding;
 
-let decoded = base64_decode("SGVsbG8sIFdvcmxkIQ==");
+let decoded = encoding_base64_decode("SGVsbG8sIFdvcmxkIQ==");
 // decoded == "Hello, World!"
 ```
 
 ---
 
-### `base64_encode_bytes`
+### `encoding_base64_encode_buffer`
 
-Base64-encodes a byte array.
+Base64-encodes a buffer's contents.
 
 **Syntax:**
 
 ```hoo
-base64_encode_bytes(data: array) :string
+encoding_base64_encode_buffer(buf: Buffer) :string
 ```
 
 **Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `data` | `array` | The byte array to encode. |
+| `buf` | `Buffer` | The buffer to encode. |
 
 **Returns:** `string` — A Base64-encoded string.
 
@@ -101,23 +101,24 @@ base64_encode_bytes(data: array) :string
 **Complete Example:**
 
 ```hoo
+import hoo.buffer;
 import hoo.encoding;
 
-let data = [72, 101, 108, 108, 111]byte;
-let encoded = base64_encode_bytes(data);
+let buf = buffer_fromBytes("Hello", 5);
+let encoded = encoding_base64_encode_buffer(buf);
 // encoded == "SGVsbG8="
 ```
 
 ---
 
-### `base64_decode_bytes`
+### `encoding_base64_decode_buffer`
 
-Decodes a Base64-encoded string into a byte array.
+Decodes a Base64-encoded string into a `Buffer`.
 
 **Syntax:**
 
 ```hoo
-base64_decode_bytes(data: string) :array
+encoding_base64_decode_buffer(data: string) :Buffer
 ```
 
 **Parameters:**
@@ -126,29 +127,29 @@ base64_decode_bytes(data: string) :array
 |-----------|------|-------------|
 | `data` | `string` | The Base64-encoded string to decode. |
 
-**Returns:** `array` — A byte array containing the decoded bytes.
+**Returns:** `Buffer` — A buffer containing the decoded bytes.
 
 **Errors:** Throws `RuntimeException` if `data` is nil, malformed Base64, or decoding fails.
 
 **Complete Example:**
 
 ```hoo
+import hoo.buffer;
 import hoo.encoding;
 
-let decoded = base64_decode_bytes("SGVsbG8=");
-// decoded == [72, 101, 108, 108, 111]byte
+let decoded = encoding_base64_decode_buffer("SGVsbG8=");
 ```
 
 ## Hex Functions
 
-### `hex_encode`
+### `encoding_hex_encode`
 
 Hex-encodes a string. Each byte is represented as two hexadecimal characters.
 
 **Syntax:**
 
 ```hoo
-hex_encode(data: string) :string
+encoding_hex_encode(data: string) :string
 ```
 
 **Parameters:**
@@ -166,20 +167,20 @@ hex_encode(data: string) :string
 ```hoo
 import hoo.encoding;
 
-let encoded = hex_encode("Hello");
+let encoded = encoding_hex_encode("Hello");
 // encoded == "48656c6c6f"
 ```
 
 ---
 
-### `hex_decode`
+### `encoding_hex_decode`
 
 Decodes a hex-encoded string back to the original string.
 
 **Syntax:**
 
 ```hoo
-hex_decode(data: string) :string
+encoding_hex_decode(data: string) :string
 ```
 
 **Parameters:**
@@ -197,20 +198,20 @@ hex_decode(data: string) :string
 ```hoo
 import hoo.encoding;
 
-let decoded = hex_decode("48656c6c6f");
+let decoded = encoding_hex_decode("48656c6c6f");
 // decoded == "Hello"
 ```
 
 ## URL Encoding Functions
 
-### `uri_encode`
+### `encoding_url_encode`
 
 Percent-encodes a string for safe use in URLs. Reserved characters and non-ASCII bytes are encoded as `%XX` sequences.
 
 **Syntax:**
 
 ```hoo
-uri_encode(data: string) :string
+encoding_url_encode(data: string) :string
 ```
 
 **Parameters:**
@@ -228,20 +229,20 @@ uri_encode(data: string) :string
 ```hoo
 import hoo.encoding;
 
-let encoded = uri_encode("a b=c");
+let encoded = encoding_url_encode("a b=c");
 // encoded == "a%20b%3Dc"
 ```
 
 ---
 
-### `uri_decode`
+### `encoding_url_decode`
 
 Decodes a percent-encoded URL string back to the original string.
 
 **Syntax:**
 
 ```hoo
-uri_decode(data: string) :string
+encoding_url_decode(data: string) :string
 ```
 
 **Parameters:**
@@ -259,60 +260,60 @@ uri_decode(data: string) :string
 ```hoo
 import hoo.encoding;
 
-let decoded = uri_decode("a%20b%3Dc");
+let decoded = encoding_url_decode("a%20b%3Dc");
 // decoded == "a b=c"
 ```
 
 ## Buffer-Aware Overloads
 
-The base64 and hex functions also accept and return `Buffer` objects directly:
+The base64 and hex functions also accept and return `Buffer` objects directly (requires `import hoo.buffer`):
 
 | Function | Signature | Description |
 |----------|-----------|-------------|
-| base64_encode_buffer | `(buf: Buffer):string` | Base64-encodes buffer contents |
-| base64_decode_buffer | `(encoded: string):Buffer` | Decodes Base64 string to buffer |
-| hex_encode_buffer | `(buf: Buffer):string` | Hex-encodes buffer contents |
-| hex_decode_buffer | `(hex: string):Buffer` | Decodes hex string to buffer |
+| encoding_base64_encode_buffer | `(buf: Buffer):string` | Base64-encodes buffer contents |
+| encoding_base64_decode_buffer | `(encoded: string):Buffer` | Decodes Base64 string to buffer |
+| encoding_hex_encode_buffer | `(buf: Buffer):string` | Hex-encodes buffer contents |
+| encoding_hex_decode_buffer | `(hex: string):Buffer` | Decodes hex string to buffer |
 
 ```hoo
 import hoo.buffer;
 import hoo.encoding;
 
 let buf = buffer_fromBytes("Hello", 5);
-let b64 = base64_encode_buffer(buf);    // "SGVsbG8="
-let hex = hex_encode_buffer(buf);       // "48656c6c6f"
+let b64 = encoding_base64_encode_buffer(buf);    // "SGVsbG8="
+let hex = encoding_hex_encode_buffer(buf);       // "48656c6c6f"
 
-let decoded = base64_decode_buffer(b64); // Buffer
-let fromHex = hex_decode_buffer(hex);   // Buffer
+let decoded = encoding_base64_decode_buffer(b64); // Buffer
+let fromHex = encoding_hex_decode_buffer(hex);   // Buffer
 ```
 
 ## Usage Example
 
 ```hoo
+import hoo.buffer;
 import hoo.encoding;
 
 func :int64 main() {
     // Base64 round-trip
-    var b64 = base64_encode("Hello, World!");
-    var original = base64_decode(b64);
+    var b64 = encoding_base64_encode("Hello, World!");
+    var original = encoding_base64_decode(b64);
     println(original == "Hello, World!"); // true
 
     // Hex round-trip
-    var hex = hex_encode("Hello");
-    var fromHex = hex_decode(hex);
+    var hex = encoding_hex_encode("Hello");
+    var fromHex = encoding_hex_decode(hex);
     println(fromHex == "Hello"); // true
 
     // URL encoding
-    var url = uri_encode("a b=c/d?e=f");
-    println(url);  // "a%20b%3Dc%2Fd%3Fe%3Df"
-    var decoded = uri_decode(url);
+    var url = encoding_url_encode("a b=c/d?e=f");
+    println(url);
+    var decoded = encoding_url_decode(url);
     println(decoded == "a b=c/d?e=f"); // true
 
-    // Byte array encoding
-    var bytes = [0, 1, 255]byte;
-    var b64bytes = base64_encode_bytes(bytes);
-    var decodedBytes = base64_decode_bytes(b64bytes);
-    println(decodedBytes[2] == 255); // true
+    // Buffer encoding
+    var buf = buffer_fromBytes("Hello", 5);
+    var b64buf = encoding_base64_encode_buffer(buf);
+    println(b64buf == "SGVsbG8="); // true
 
     return 0;
 }

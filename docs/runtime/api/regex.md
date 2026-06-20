@@ -408,26 +408,24 @@ func :void example() {
 
 ## Free Functions
 
-### `regex_with_flags`
+### `regex_match`
 
-Compiles a regular expression pattern with the specified flags and returns a new `Regex` instance.
+Compiles a pattern and checks if it matches the entire text.
 
 **Syntax:**
 
 ```hoo
-regex_with_flags(pattern: string, flags: string) :Regex
+regex_match(pattern: string, text: string) :int64
 ```
 
 **Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `pattern` | `string` | The regular expression pattern to compile. |
-| `flags` | `string` | Flag characters: `i` for case-insensitive, `m` for multiline. |
+| `pattern` | `string` | The regular expression pattern. |
+| `text` | `string` | The text to match against. |
 
-**Returns:** `Regex` — A new compiled `Regex` instance, or null if compilation fails.
-
-**Errors:** Returns null if the pattern is malformed.
+**Returns:** `int64` — 1 if the text matches the pattern, 0 otherwise.
 
 **Complete Example:**
 
@@ -435,12 +433,105 @@ regex_with_flags(pattern: string, flags: string) :Regex
 import hoo.regex;
 
 func :void example() {
-    var re = regex_with_flags("[a-z]+", "i");
-    if (re) {
-        var result = re.matches("HELLO");
-        println(result); // 1
-        re.release();
-    }
+    var found = regex_match("\\d+", "order 42");
+    println(found); // 0
+}
+```
+
+---
+
+### `regex_search`
+
+Compiles a pattern and searches for a match anywhere in the text.
+
+**Syntax:**
+
+```hoo
+regex_search(pattern: string, text: string) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `pattern` | `string` | The regular expression pattern. |
+| `text` | `string` | The text to search in. |
+
+**Returns:** `int64` — 1 if the pattern is found, 0 otherwise.
+
+**Complete Example:**
+
+```hoo
+import hoo.regex;
+
+func :void example() {
+    var found = regex_search("\\d+", "order 42");
+    println(found); // 1
+}
+```
+
+---
+
+### `regex_replace`
+
+Compiles a pattern and replaces all matches with a replacement string.
+
+**Syntax:**
+
+```hoo
+regex_replace(pattern: string, text: string, replacement: string) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `pattern` | `string` | The regular expression pattern. |
+| `text` | `string` | The text to search in. |
+| `replacement` | `string` | The replacement string. |
+
+**Returns:** `string` — The text with all matches replaced.
+
+**Complete Example:**
+
+```hoo
+import hoo.regex;
+
+func :void example() {
+    var result = regex_replace("\\d+", "order 42", "###");
+    println(result); // "order ###"
+}
+```
+
+---
+
+### `regex_split`
+
+Compiles a pattern and splits the text at each match.
+
+**Syntax:**
+
+```hoo
+regex_split(pattern: string, text: string) :array
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `pattern` | `string` | The regular expression pattern. |
+| `text` | `string` | The text to split. |
+
+**Returns:** `array` — An array of string parts.
+
+**Complete Example:**
+
+```hoo
+import hoo.regex;
+
+func :void example() {
+    var parts = regex_split("\\s+", "a b   c");
+    println(parts.length()); // 3
 }
 ```
 

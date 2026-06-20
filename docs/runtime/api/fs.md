@@ -677,6 +677,151 @@ func :int64 main() {
 }
 ```
 
+---
+
+### `fs_last_modified`
+
+Returns the last modification timestamp of a file in milliseconds since the Unix epoch.
+
+**Syntax:**
+```hoo
+fs_last_modified(path: string) :int64
+```
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The file system path. |
+**Returns:** `int64` — The modification timestamp in milliseconds since the Unix epoch. Returns `-1` on error.
+**Errors:** Returns `-1` if `path` is nil or the file cannot be accessed.
+**Complete Example:**
+```hoo
+import hoo.io;
+
+func :int64 main() {
+    var mtime = fs_last_modified("/tmp/data.txt");
+    if mtime >= 0 {
+        println("Last modified: " + mtime);
+    }
+    return mtime >= 0 ? 0 : 1;
+}
+```
+
+---
+
+### `fs_rename`
+
+Renames or moves a file or directory.
+
+**Syntax:**
+```hoo
+fs_rename(old_path: string, new_path: string) :int64
+```
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `old_path` | `string` | The current path. |
+| `new_path` | `string` | The new path. |
+**Returns:** `int64` — `0` on success, non-zero on failure.
+**Errors:** Returns non-zero if either path is nil or the rename fails.
+**Complete Example:**
+```hoo
+import hoo.io;
+
+func :int64 main() {
+    var ok = fs_rename("/tmp/old.txt", "/tmp/new.txt");
+    println(ok);
+    return ok;
+}
+```
+
+---
+
+### `fs_write_bytes_buffer`
+
+Writes the contents of a Buffer to a file, overwriting any existing content.
+
+**Syntax:**
+```hoo
+fs_write_bytes_buffer(path: string, buf: Buffer) :int64
+```
+**Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The file system path to write to. |
+| `buf` | `Buffer` | The buffer containing data to write. |
+**Returns:** `int64` — The number of bytes written. Returns `-1` on error.
+**Errors:** Returns `-1` if `path` is nil, `buf` is null, or the file cannot be written.
+**Complete Example:**
+```hoo
+import hoo.io;
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("binary data");
+    var written = fs_write_bytes_buffer("/tmp/data.bin", buf);
+    if written >= 0 {
+        println("wrote " + written + " bytes");
+    }
+    buf.release();
+    return written >= 0 ? 0 : 1;
+}
+```
+
+---
+
+### `fs_temp_dir`
+
+Returns the system's temporary directory path.
+
+**Syntax:**
+```hoo
+fs_temp_dir() :string
+```
+**Parameters:** None.
+**Returns:** `string` — The temporary directory path. Returns `0` on error.
+**Errors:** Returns `0` if the temp directory cannot be determined.
+**Complete Example:**
+```hoo
+import hoo.io;
+
+func :int64 main() {
+    var tmp = fs_temp_dir();
+    if tmp != 0 {
+        println("Temp dir: " + tmp);
+    }
+    return tmp != 0 ? 0 : 1;
+}
+```
+
+---
+
+### `fs_create_temp_file`
+
+Creates a temporary file and returns its path.
+
+**Syntax:**
+```hoo
+fs_create_temp_file() :string
+```
+**Parameters:** None.
+**Returns:** `string` — The path to the newly created temporary file. Returns `0` on error.
+**Errors:** Returns `0` if the temporary file cannot be created.
+**Complete Example:**
+```hoo
+import hoo.io;
+
+func :int64 main() {
+    var tmpfile = fs_create_temp_file();
+    if tmpfile != 0 {
+        println("Temp file: " + tmpfile);
+        // Use tmpfile, then delete it
+        fs_delete(tmpfile);
+    }
+    return tmpfile != 0 ? 0 : 1;
+}
+```
+
 ## Usage Example
 
 ```hoo

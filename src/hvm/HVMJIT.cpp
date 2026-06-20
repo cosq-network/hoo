@@ -2936,9 +2936,9 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
-        const char* default_val = hoo_string_data(reinterpret_cast<void*>(state->regs[7]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        const char* default_val = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
         hoo_args_add_string(handle, name, short_opt, long_opt, help, default_val);
         return 0;
     }
@@ -2947,9 +2947,9 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
-        int64_t default_val = state->regs[7];
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
+        int64_t default_val = state->regs[6];
         hoo_args_add_int(handle, name, short_opt, long_opt, help, default_val);
         return 0;
     }
@@ -2958,8 +2958,8 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
         hoo_args_add_flag(handle, name, short_opt, long_opt, help);
         return 0;
     }
@@ -2968,10 +2968,10 @@ extern "C" {
         void* handle = reinterpret_cast<void*>(state->regs[1]);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* short_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
-        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
-        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[6]));
+        const char* long_opt = hoo_string_data(reinterpret_cast<void*>(state->regs[4]));
+        const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[5]));
         double default_val;
-        std::memcpy(&default_val, &state->regs[7], sizeof(double));
+        std::memcpy(&default_val, &state->regs[6], sizeof(double));
         hoo_args_add_float(handle, name, short_opt, long_opt, help, default_val);
         return 0;
     }
