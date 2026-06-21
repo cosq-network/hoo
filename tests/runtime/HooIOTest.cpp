@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "runtime/lib/hoo_io.h"
 #include "runtime/lib/hoo_string.h"
+#include "runtime/lib/hoo_runtime.h"
 
 class HooIOTest : public ::testing::Test {
 };
@@ -16,9 +17,20 @@ TEST_F(HooIOTest, BasicPrint) {
     hoo_string_release(str);
 }
 
+#include "runtime/lib/hoo_character.h"
+
 TEST_F(HooIOTest, ReadChar) {
-    // Basic test to ensure it returns something (likely -1 if no input)
-    char ch = hoo_readchar();
-    // Since char may be signed or unsigned, we compare to static_cast<char>(-1)
-    EXPECT_TRUE(ch == static_cast<char>(-1) || ch >= 0);
+    // Basic test to ensure it returns a Character (or NULL if no input)
+    HooCharacter ch = hoo_readchar();
+    // If no input is available, the function returns NULL.
+    if (ch == NULL) {
+        SUCCEED();
+    } else {
+        // Ensure the returned object is a managed Character with correct type ID.
+        EXPECT_EQ(hoo_get_type_id(ch), HOO_TYPE_CHARACTER);
+        // Release the reference we obtained.
+        hoo_character_release(ch);
+    }
 }
+
+

@@ -11,7 +11,7 @@
     #include <io.h>
     #include <fcntl.h>
 #endif
-
+#include "hoo_character.h"
 // ============================================================================
 // I/O Implementation
 // ============================================================================
@@ -53,24 +53,25 @@ void* hoo_readline(void) {
     return hoo_string_from_cstr(line.c_str());
 }
 
-char hoo_readchar(void) {
+HooCharacter hoo_readchar(void) {
 #ifdef HOO_PLATFORM_WINDOWS
     // Detect whether stdin is a console (interactive) or redirected.
     if (_isatty(_fileno(stdin))) {
         // Interactive console – use _kbhit for non‑blocking check.
         if (_kbhit()) {
             int ch = _getch();
-            if (ch == EOF) return static_cast<char>(-1);
-            return static_cast<char>(ch);
+            if (ch == EOF) return NULL;
+            unsigned char byte = static_cast<unsigned char>(ch);
+            return hoo_character_from_utf8(reinterpret_cast<const char*>(&byte), 1);
         }
         // No key pressed yet.
-        return static_cast<char>(-1);
+        return NULL;
     } else {
         // Redirected input – perform a blocking read of a single byte.
         unsigned char ch;
         int ret = _read(_fileno(stdin), &ch, 1);
-        if (ret == 1) return static_cast<char>(ch);
-        return static_cast<char>(-1);
+        if (ret == 1) return hoo_character_from_utf8(reinterpret_cast<const char*>(&ch), 1);
+        return NULL;
     }
 #else
     int fd = fileno(stdin);
@@ -81,11 +82,13 @@ char hoo_readchar(void) {
     if (select(fd + 1, &set, nullptr, nullptr, &timeout) > 0) {
         int ch = std::getchar();
         if (ch == EOF) {
-            return static_cast<char>(-1);
+            return NULL;
         }
-        return static_cast<char>(ch);
+        unsigned char byte = static_cast<unsigned char>(ch);
+        return hoo_character_from_utf8(reinterpret_cast<const char*>(&byte), 1);
     }
     // No data available – indicate EOF/non‑blocking
-    return static_cast<char>(-1);
+    return NULL;
 #endif
 }
+

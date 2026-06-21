@@ -688,9 +688,11 @@ extern "C" {
     uint64_t jit_hoo_readline(void* /*state_ptr*/) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_readline()));
     }
-    uint64_t jit_hoo_readchar(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(hoo_readchar());
-    }
+    void* jit_hoo_readchar(void* /*state_ptr*/) {
+    return static_cast<void*>(hoo_readchar());
+}
+
+
     uint64_t jit_hoo_array_new(void* /*state_ptr*/) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_array_new()));
     }
@@ -4356,7 +4358,7 @@ bool validateRuntimeSymbolMap(const std::vector<RuntimeSymbolContract>& runtimeS
 }
 } // namespace
 
-HVMJIT::HVMJIT(IOProvider& io)
+hooc::HVMJIT::HVMJIT(IOProvider& io)
     : tsc_(std::make_unique<llvm::LLVMContext>())
     , io_(io)
     , sourceCompiler_(std::make_unique<HooCompiler>()) {
@@ -4365,7 +4367,7 @@ HVMJIT::HVMJIT(IOProvider& io)
     hvm_set_memory_base(memory_.data()); // expose base to extern "C" helpers
 }
 
-HVMJIT::~HVMJIT() {
+hooc::HVMJIT::~HVMJIT() {
     if (jit_ && jitDebugListener_) {
         if (auto* rtLayer = llvm::dyn_cast<llvm::orc::RTDyldObjectLinkingLayer>(&jit_->getObjLinkingLayer())) {
             rtLayer->unregisterJITEventListener(*jitDebugListener_);
@@ -4389,7 +4391,7 @@ std::string HVMJIT::canonicalizePath(const std::string& path) const {
     return abs.lexically_normal().string();
 }
 
-bool HVMJIT::setLoaderState(const std::string& moduleName, LoaderState state) {
+bool hooc::HVMJIT::setLoaderState(const std::string& moduleName, LoaderState state) {
     if (moduleName.empty()) {
         return false;
     }
@@ -4416,7 +4418,7 @@ void HVMJIT::setError(ErrorPhase phase, ErrorCode code, const std::string& messa
     lastErrorInfo_ = ErrorInfo{phase, code, moduleName, symbolName, path, message};
 }
 
-bool HVMJIT::ensureJIT() {
+bool hooc::HVMJIT::ensureJIT() {
     if (jit_) {
         return true;
     }
@@ -4461,11 +4463,11 @@ bool HVMJIT::ensureJIT() {
     return true;
 }
 
-bool HVMJIT::isSourcePath(const std::string& path) const {
+bool hooc::HVMJIT::isSourcePath(const std::string& path) const {
     return fs::path(path).extension() == ".hoo";
 }
 
-bool HVMJIT::isBytecodePath(const std::string& path) const {
+bool hooc::HVMJIT::isBytecodePath(const std::string& path) const {
     return fs::path(path).extension() == ".ho";
 }
 
@@ -4483,7 +4485,7 @@ std::string HVMJIT::moduleNameToPath(const std::string& moduleName) const {
     return p.generic_string();
 }
 
-bool HVMJIT::loadInput(const std::string& pathOrModuleName) {
+bool hooc::HVMJIT::loadInput(const std::string& pathOrModuleName) {
     clearError();
 
     if (isSourcePath(pathOrModuleName)) {
@@ -4510,7 +4512,7 @@ bool HVMJIT::loadInput(const std::string& pathOrModuleName) {
     return false;
 }
 
-bool HVMJIT::loadSource(const std::string& sourcePath) {
+bool hooc::HVMJIT::loadSource(const std::string& sourcePath) {
     clearError();
 
     const auto source = io_.readFile(sourcePath);
@@ -4524,7 +4526,7 @@ bool HVMJIT::loadSource(const std::string& sourcePath) {
     return loadSourceCode(moduleName, *source);
 }
 
-bool HVMJIT::loadSourceCode(const std::string& moduleName, const std::string& sourceCode) {
+bool hooc::HVMJIT::loadSourceCode(const std::string& moduleName, const std::string& sourceCode) {
     clearError();
 
     if (sourceCode.empty()) {
@@ -4544,7 +4546,7 @@ bool HVMJIT::loadSourceCode(const std::string& moduleName, const std::string& so
     return loadModule(std::move(module));
 }
 
-bool HVMJIT::parseAndLoadModuleFromPath(const std::string& path, std::shared_ptr<hvm::HOModule>& outModule) {
+bool hooc::HVMJIT::parseAndLoadModuleFromPath(const std::string& path, std::shared_ptr<hvm::HOModule>& outModule) {
     const std::string canonicalPath = canonicalizePath(path);
     const auto bytes = io_.readBinaryFile(path);
     if (!bytes.has_value()) {
@@ -4571,7 +4573,7 @@ bool HVMJIT::parseAndLoadModuleFromPath(const std::string& path, std::shared_ptr
     return true;
 }
 
-bool HVMJIT::loadBytecode(const std::string& modulePath) {
+bool hooc::HVMJIT::loadBytecode(const std::string& modulePath) {
     clearError();
     std::shared_ptr<hvm::HOModule> parsed;
     if (!parseAndLoadModuleFromPath(modulePath, parsed)) {
@@ -4583,7 +4585,7 @@ bool HVMJIT::loadBytecode(const std::string& modulePath) {
     return loadModule(std::unique_ptr<hvm::HOModule>(new hvm::HOModule(*parsed)));
 }
 
-bool HVMJIT::validateModule(const hvm::HOModule& module, const std::string& sourcePath) {
+bool hooc::HVMJIT::validateModule(const hvm::HOModule& module, const std::string& sourcePath) {
     if (module.getMagic() != hvm::HOModule::MAGIC ||
         module.getVersionMajor() != hvm::HOModule::VERSION_MAJOR ||
         module.getVersionMinor() != hvm::HOModule::VERSION_MINOR) {
@@ -4721,7 +4723,7 @@ std::optional<std::string> HVMJIT::resolveImportModulePath(
     return std::nullopt;
 }
 
-void HVMJIT::buildModuleRegistryEntry(const std::shared_ptr<hvm::HOModule>& module) {
+void hooc::HVMJIT::buildModuleRegistryEntry(const std::shared_ptr<hvm::HOModule>& module) {
     if (!module) {
         return;
     }
@@ -4739,7 +4741,7 @@ void HVMJIT::buildModuleRegistryEntry(const std::shared_ptr<hvm::HOModule>& modu
     moduleRegistry_[module->getName()] = std::move(entry);
 }
 
-bool HVMJIT::registerModuleInBundle(const std::shared_ptr<hvm::HOModule>& module) {
+bool hooc::HVMJIT::registerModuleInBundle(const std::shared_ptr<hvm::HOModule>& module) {
     if (!module) {
         setError(ErrorPhase::Resolve, ErrorCode::InvalidMetadata,
                  "Cannot register null module");
@@ -4781,7 +4783,7 @@ bool HVMJIT::registerModuleInBundle(const std::shared_ptr<hvm::HOModule>& module
     return true;
 }
 
-bool HVMJIT::resolveAndLoadDependencies(const hvm::HOModule& root) {
+bool hooc::HVMJIT::resolveAndLoadDependencies(const hvm::HOModule& root) {
     std::unordered_set<std::string> visiting;
     std::unordered_set<std::string> visited;
     std::vector<std::string> visitPath;
@@ -4880,7 +4882,7 @@ bool HVMJIT::resolveAndLoadDependencies(const hvm::HOModule& root) {
     return visit(rootIt->second);
 }
 
-bool HVMJIT::initializeDependencyGraphPostOrder() {
+bool hooc::HVMJIT::initializeDependencyGraphPostOrder() {
     auto ordered = bundle_.resolveDependencyOrder();
     std::vector<std::shared_ptr<hvm::HOModuleBase>> allModules;
     allModules.reserve(ordered.size());

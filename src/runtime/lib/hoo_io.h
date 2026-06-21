@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "hoo_character.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,9 +44,9 @@ void* hoo_readline(void);
  * Read a single character from stdin.
  * Blocks until a character is available.
  *
- * @return The character value as int64_t (0-255 for valid chars, -1 for EOF)
+ * @return HooCharacter instance for the character, or NULL on EOF
  */
-char hoo_readchar(void);
+HooCharacter hoo_readchar(void);
 
 #ifdef __cplusplus
 }
