@@ -1,0 +1,200 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.2.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  # ------------------------------------------------------------------
+  # Build binaries for each platform
+  # ------------------------------------------------------------------
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: Linux x86_64
+            artifact_name: hoo-linux-x86_64.tar.gz
+            artifact_key: linux-x86_64
+
+          - os: macos-latest
+            name: macOS arm64
+            artifact_name: hoo-macos-arm64.tar.gz
+            artifact_key: macos-arm64
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # needed for changelog generation
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      # ---- Linux setup ----
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential ninja-build cmake pkg-config wget xz-utils libuv1-dev libgtest-dev
+
+      - name: Cache LLVM (Linux)
+        if: runner.os == 'Linux'
+        id: cache-llvm-linux
+        uses: actions/cache@v4
+        with:
+          path: /opt/llvm
+          key: llvm-22-linux-x64
+
+      - name: Download LLVM (Linux)
+        if: runner.os == 'Linux' && steps.cache-llvm-linux.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+          sudo mkdir -p /opt/llvm
+          sudo tar -xf clang+llvm-22.1.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz --strip-components=1 -C /opt/llvm
+          rm clang+llvm-22.1.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+
+      - name: Add LLVM to PATH (Linux)
+        if: runner.os == 'Linux'
+        run: echo "/opt/llvm/bin" >> $GITHUB_PATH
+
+      - name: Install ANTLR4 runtime (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          wget -q https://www.antlr.org/download/antlr4-cpp-runtime-4.13.2-source.zip
+          unzip -q antlr4-cpp-runtime-4.13.2-source.zip -d antlr4-src
+          cmake -S antlr4-src/runtime/Cpp -B antlr4-src/build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DWITH_DEMO=OFF -DANTLR_BUILD_CPP_TESTS=OFF
+          sudo cmake --build antlr4-src/build --target install
+          rm -rf antlr4-src antlr4-cpp-runtime-4.13.2-source.zip
+
+      # ---- macOS setup ----
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake ninja llvm antlr4-cpp-runtime googletest libuv
+
+      # ---- Configure & Build ----
+      - name: Configure CMake (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_C_COMPILER=/opt/llvm/bin/clang \
+            -DCMAKE_CXX_COMPILER=/opt/llvm/bin/clang++ \
+            -DLLVM_DIR=/opt/llvm/lib/cmake/llvm \
+            -DHOO_BUILD_TESTS=ON
+
+      - name: Configure CMake (macOS)
+        if: runner.os == 'macOS'
+        run: cmake --preset macos-homebrew-ninja
+
+      - name: Build all targets
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            cmake --build build/macos-homebrew-ninja --parallel $(sysctl -n hw.logicalcpu)
+          else
+            cmake --build build --parallel $(nproc)
+          fi
+
+      - name: Run tests
+        run: |
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            ctest --preset macos-homebrew-ninja --output-on-failure
+          else
+            cd build && ctest --output-on-failure --parallel $(nproc)
+          fi
+
+      - name: Validate binary
+        run: |
+          BIN_PATH=build/hoo
+          [ "$RUNNER_OS" = "macOS" ] && BIN_PATH=build/macos-homebrew-ninja/hoo
+          test -f "$BIN_PATH" || (echo "ERROR: hoo binary not found!" && exit 1)
+          $BIN_PATH --version || true
+          echo "Binary validation passed."
+
+      - name: Package artifact
+        run: |
+          mkdir -p package/bin package/lib
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            BUILD_DIR=build/macos-homebrew-ninja
+          else
+            BUILD_DIR=build
+          fi
+          cp $BUILD_DIR/hoo package/bin/
+          cp $BUILD_DIR/libhoo-core.a  package/lib/ 2>/dev/null || true
+          cp $BUILD_DIR/libhoo-parser.a package/lib/ 2>/dev/null || true
+          cp $BUILD_DIR/libhoort.a      package/lib/ 2>/dev/null || true
+          tar -czf ${{ matrix.artifact_name }} -C package .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_key }}
+          path: ${{ matrix.artifact_name }}
+
+  # ------------------------------------------------------------------
+  # Create GitHub Release with all artifacts + generated changelog
+  # ------------------------------------------------------------------
+  create-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: List downloaded artifacts
+        run: find ./artifacts -type f | sort
+
+      - name: Generate release notes
+        run: |
+          python scripts/generate_changelog.py ${{ steps.tag.outputs.tag }} > RELEASE_NOTES.md
+          cat RELEASE_NOTES.md
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: "Hoo ${{ steps.tag.outputs.tag }}"
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          files: |
+            ./artifacts/**/*.tar.gz
+            ./artifacts/**/*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

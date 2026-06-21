@@ -1,0 +1,131 @@
+name: Linux Build & Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    name: Build Linux (${{ matrix.build-type }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [Debug, Release]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            ninja-build \
+            cmake \
+            pkg-config \
+            wget \
+            xz-utils \
+            libuv1-dev
+
+      - name: Cache LLVM
+        id: cache-llvm
+        uses: actions/cache@v4
+        with:
+          path: /opt/llvm
+          key: llvm-22-linux-x64
+
+      - name: Download and install LLVM 22
+        if: steps.cache-llvm.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://github.com/llvm/llvm-project/releases/download/llvmorg-22.1.4/clang+llvm-22.1.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+          sudo mkdir -p /opt/llvm
+          sudo tar -xf clang+llvm-22.1.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz --strip-components=1 -C /opt/llvm
+          rm clang+llvm-22.1.4-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+
+      - name: Add LLVM to PATH
+        run: echo "/opt/llvm/bin" >> $GITHUB_PATH
+
+      - name: Install ANTLR4 runtime
+        run: |
+          ANTLR_VERSION=4.13.2
+          wget -q https://www.antlr.org/download/antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip
+          unzip -q antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip -d antlr4-src
+          cmake -S antlr4-src/runtime/Cpp \
+                -B antlr4-src/build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_INSTALL_PREFIX=/usr/local \
+                -DWITH_DEMO=OFF \
+                -DANTLR_BUILD_CPP_TESTS=OFF
+          sudo cmake --build antlr4-src/build --target install
+          rm -rf antlr4-src antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip
+
+      - name: Cache GoogleTest
+        id: cache-gtest
+        uses: actions/cache@v4
+        with:
+          path: /usr/local/lib/libgtest*
+          key: gtest-linux
+
+      - name: Install GoogleTest
+        if: steps.cache-gtest.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get install -y libgtest-dev
+          cd /usr/src/gtest
+          sudo cmake . -DCMAKE_BUILD_TYPE=Release
+          sudo make -j$(nproc)
+          sudo cp lib/*.a /usr/local/lib/
+
+      - name: Configure CMake
+        run: |
+          cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
+            -DCMAKE_C_COMPILER=/opt/llvm/bin/clang \
+            -DCMAKE_CXX_COMPILER=/opt/llvm/bin/clang++ \
+            -DLLVM_DIR=/opt/llvm/lib/cmake/llvm \
+            -DHOO_BUILD_TESTS=ON
+
+      - name: Build all targets
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Verify hoo binary
+        run: |
+          test -f build/hoo || (echo "ERROR: hoo binary not found!" && exit 1)
+          build/hoo --version || true
+          echo "Binary verification passed."
+
+      - name: Run all tests
+        run: |
+          cd build
+          ctest --output-on-failure --parallel $(nproc)
+
+      - name: Package artifacts (Release only)
+        if: matrix.build-type == 'Release'
+        run: |
+          mkdir -p package/bin package/lib
+          cp build/hoo package/bin/
+          cp build/libhoo-core.a package/lib/ 2>/dev/null || true
+          cp build/libhoo-parser.a package/lib/ 2>/dev/null || true
+          cp build/libhoort.a package/lib/ 2>/dev/null || true
+          tar -czf hoo-linux-x86_64.tar.gz -C package .
+
+      - name: Upload Linux artifact
+        if: matrix.build-type == 'Release'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hoo-linux-x86_64
+          path: hoo-linux-x86_64.tar.gz
+          retention-days: 30
