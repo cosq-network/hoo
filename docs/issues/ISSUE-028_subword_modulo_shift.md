@@ -22,3 +22,4 @@ Similarly, for `SHIFT`:
 - **Date**: 2026-06-16
 - **Status**: **PROPOSED**
 - **Priority**: Medium (Correctness issue for low-precision types)
+- **Audit 2026-06-21**: No type-dispatched sub-word modulo or shift lowering was found; modulo still uses the generic function code and shifts are not specialized by `bit`/`f8` width.

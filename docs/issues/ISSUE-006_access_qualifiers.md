@@ -20,8 +20,9 @@ There are three critical failures in the current implementation:
 
 ## 4. Status
 - **Date**: 2026-05-28
-- **Status**: **IMPLEMENTED**
+- **Status**: **IMPLEMENTED (SOURCE-LEVEL), LINKER BINDING GAP REMAINS**
 - **Priority**: Medium
+- **Audit 2026-06-21**: Source-level private/protected access checks remain present, but HVM symbol binding does not yet enforce private visibility at the module/linker boundary.
 
 ## 5. Implementation Notes
 - **Fields**: `isPrivate()`/`isPublic()` is read for every field during class layout; all read and write access sites are checked against `fieldAccess` and emit a compile error on violation.

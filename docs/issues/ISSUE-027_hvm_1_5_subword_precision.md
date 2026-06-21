@@ -115,5 +115,6 @@ This allows larger AI models (Transformers, LLMs) to fit entirely within the CPU
 
 ## 6. Status
 - **Date**: 2026-06-16
-- **Status**: **PROPOSED**
+- **Status**: **PARTIALLY IMPLEMENTED - LANGUAGE TYPES PRESENT, NATIVE SUB-WORD ISA NOT IMPLEMENTED**
 - **Priority**: **HIGH** (Prerequisite for high-performance AI/ML support)
+- **Audit 2026-06-21**: `f8` and `bit` are present in grammar, mangling, inference, runtime, and tests, but the proposed native sub-word opcodes such as `ARITH_B`, `FLOAT_ARITH_B`, and `LOGIC_B` are not in the HVM instruction set.

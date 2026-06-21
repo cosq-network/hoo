@@ -22,3 +22,4 @@ Scope-level release from this issue applies to local variables whose declared/in
 - **Date**: 2026-05-24 (opened), 2026-06-10 (fixed)
 - **Status**: **FIXED** (scope-level release in Block visitor)
 - **Priority**: Low
+- **Audit 2026-06-21**: Verified block-scope managed-local release is still implemented in `HVMCodeGenerator` block handling. Remaining ownership gaps are still tracked under ISSUE-007 and ISSUE-012.

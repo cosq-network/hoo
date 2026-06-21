@@ -213,3 +213,8 @@ bool REPLSession::eval(const std::string& input, std::string& outResult, std::st
   - `ReplIncrementalDeclarations`: Inputs a function declaration `func :int64 doubleVal(int64 x) { return x * 2; }` followed by an execution call `doubleVal(21)`, asserting that it returns `42` across the session.
   - `ReplCompileErrorRecovery`: Asserts that an invalid statement (e.g. `Math.invalid()`) correctly fails JIT compilation and sets an error description, but leaves the session alive so that a subsequent valid input (e.g. `Math.abs(-5)`) still compiles and executes successfully.
 
+## 5. Status
+- **Date**: 2026-06-21
+- **Status**: **IMPLEMENTED - CORE REPL SESSION, CLI FLAG, AND TEST COVERAGE PRESENT**
+- **Priority**: Medium
+- **Audit 2026-06-21**: `REPLSession` exists, the CLI exposes `--repl`, CMake includes REPL sources/tests, and REPL tests cover basic and advanced flows. The implementation still relies on accumulated declarations and recompilation rather than a full incremental compiler state.

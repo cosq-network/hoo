@@ -664,8 +664,9 @@ serializable class Bad extends Plain {
 
 ## 9. Status
 - **Date**: 2026-06-19
-- **Status**: **PROPOSED (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY IMPLEMENTED - COMPILER VALIDATION AND GENERATED METHODS PRESENT**
 - **Priority**: **MEDIUM** (Feature enhancement — no correctness impact on existing code)
+- **Audit 2026-06-21**: Grammar, AST builder, symbol mangling, codegen validation, cycle checks, and generated serialize/deserialize methods are present. Full runtime-quality JSON semantics and broader end-to-end coverage still need verification before marking complete.
 
 ### Open Questions
 1. Should tensors be serialized as flattened arrays or preserved with shape metadata? Recommendation: serialize as JSON object `{"data": [...], "dims": [d0, d1]}` to enable faithful round-trip.

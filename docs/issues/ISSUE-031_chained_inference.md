@@ -16,5 +16,6 @@ In `HVMCodeGenerator.cpp`, the `inferExpressionTypeId` logic for `MemberAccess` 
 
 ## 4. Status
 - **Date**: 2026-06-16
-- **Status**: **PROPOSED**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: Medium (Affects code ergonomics and dispatch safety)
+- **Audit 2026-06-21**: Recursive receiver inference and method return maps now cover basic chained calls, but dispatch is still limited by method-name-only class lookup and lack of overload-aware signatures.

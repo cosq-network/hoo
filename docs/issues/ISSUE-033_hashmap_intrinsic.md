@@ -312,6 +312,7 @@ Before marking this issue implemented:
 - **Date**: 2026-06-19
 - **Status**: **IMPLEMENTED - CORE RUNTIME, GRAMMAR, AST, CODEGEN, JIT BRIDGE, AND TEST COVERAGE**
 - **Priority**: **HIGH** (Fundamental heterogeneous collection and type expansion)
+- **Audit 2026-06-21**: Verified `HashMap`, `AnyArray`, and `any` support are present across grammar, AST, runtime, codegen, JIT bridge, and tests. Future polish can refine ABI documentation, but the core feature is implemented.
 
 Implemented files include:
 - Grammar/AST: `src/parsing/Hooc.g4`, `src/ast/Type.h`, `src/ast/Expression.h`, `src/ast/SimpleASTBuilder.cpp`.

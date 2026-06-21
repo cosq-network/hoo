@@ -51,3 +51,4 @@ The issue is visible in the test comments for `tests/hvm/HVMModuleBundleTest.cpp
 - **Date**: 2026-06-19
 - **Status**: **PROPOSED**
 - **Priority**: Medium (graph correctness and linker behavior)
+- **Audit 2026-06-21**: Verified `HOModuleBase::resolveDependencyOrder` still resolves dependency names through the current module lookup path, and the bundle test still documents the known unresolved dependency-order bug.

@@ -58,3 +58,4 @@ case 'v': result += '\v'; break;
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Verified string escape handling still supports only the basic escape set and falls through on `\u`, `\x`, `\0`, and `\v`; char literals handle `\0` separately.

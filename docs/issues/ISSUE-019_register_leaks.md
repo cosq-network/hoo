@@ -40,3 +40,4 @@ Approach 3 is cleanest — treat each loop body as a register scope, and free al
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **MEDIUM**
+- **Audit 2026-06-21**: Verified `break` and `continue` still emit direct jumps to loop labels without unwinding scoped registers or managed locals allocated inside the loop body.

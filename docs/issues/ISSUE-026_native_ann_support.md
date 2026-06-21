@@ -81,3 +81,4 @@ The JIT translator (`HVMJIT`) will be updated to:
 - **Date**: 2026-06-16
 - **Status**: **PROPOSED**
 - **Priority**: **CRITICAL** (Core differentiator for the Hoo ecosystem)
+- **Audit 2026-06-21**: No `grad`, `hoo.nn`, model/layer runtime, or autograd implementation was found. This remains a proposal layered on top of the tensor core.

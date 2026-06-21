@@ -16,6 +16,7 @@ The HVM backend currently treats all variables as opaque 64-bit values. It does 
 - **Date**: 2026-05-24
 - **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: Medium
+- **Audit 2026-06-21**: Current code preserves more language type metadata through mangling/inference for `f8`, `bit`, tensor, `HashMap`, `AnyArray`, `any`, and serializable classes, but there is still no complete `SHT_TYPE` emission path or full native sub-word storage model.
 
 ## 5. Updates
 - **Update 2026-06-17**: The type system has been significantly expanded to support `f8`, `bit`, and `tensor` data types. 

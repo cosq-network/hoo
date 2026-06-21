@@ -138,5 +138,6 @@ var inverted = !mask1;         // Result: [0b, 1b, 0b]t
 
 ## 5. Status
 - **Date**: 2026-06-16
-- **Status**: **PROPOSED**
+- **Status**: **PARTIALLY IMPLEMENTED - CORE TENSOR TYPE, RUNTIME, CODEGEN, JIT, AND TESTS PRESENT**
 - **Priority**: **HIGH** (for AI/ML target workloads)
+- **Audit 2026-06-21**: Parser, AST, runtime, codegen, JIT bridge, and tests for tensor support are present. Tensor-scalar arithmetic and higher ANN/autograd functionality remain separate open work under ISSUE-030 and ISSUE-026.

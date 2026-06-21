@@ -50,3 +50,4 @@ emit(Opcode::RET, ...);
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **MEDIUM**
+- **Audit 2026-06-21**: Verified codegen still does not track whether non-void functions definitely return; the epilogue is still emitted without a missing-return diagnostic.

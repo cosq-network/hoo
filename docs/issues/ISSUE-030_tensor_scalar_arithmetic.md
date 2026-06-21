@@ -18,3 +18,4 @@ Current `HVMCodeGenerator::visitBinaryExpression` handles tensors by checking if
 - **Date**: 2026-06-16
 - **Status**: **PROPOSED**
 - **Priority**: Medium (Essential for training loops/optimizers)
+- **Audit 2026-06-21**: Tensor binary expressions still route to tensor-vector/tensor-binary helper paths when either operand is tensor; scalar broadcasting helpers are not implemented.

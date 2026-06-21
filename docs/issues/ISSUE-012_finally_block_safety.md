@@ -42,3 +42,4 @@ Use a nested try-catch approach:
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Verified `try`/`catch` lowering still jumps around the emitted `finally` block on normal and catch paths, so `finally` is not guaranteed to execute.

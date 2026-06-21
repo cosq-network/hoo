@@ -56,3 +56,4 @@ When a `CharacterLiteral` (`'A'`) is used as an argument to a function that expe
 - **Date**: 2026-06-11
 - **Status**: **FIXED** (char key support removed from Hoo language layer)
 - **Priority**: **LOW**
+- **Audit 2026-06-21**: Verified char-keyed map/JIT wrapper paths remain removed from the active implementation; no raw-char argument mismatch path was found.

@@ -41,4 +41,5 @@ The grammar defines eight class modifiers (`singleton`, `immutable`, `factory`, 
 - **Date**: 2026-06-08
 - **Status**: **PARTIALLY FIXED**
 - **Priority**: **LOW**
+- **Audit 2026-06-21**: Grammar pruning for class modifiers remains in place, with `serializable` intentionally added later. Dead parser/builder remnants still exist, including the unused interpolated-string grammar rule and unused AST-builder helpers.
 - **Update 2026-06-11**: Sub-issue 2.1 (removed modifiers in grammar) is now **FIXED** — `FACTORY`, `OBSERVABLE`, `STRATEGY`, `ACTOR` have been removed from the `classModifier` rule. Sub-issues 2.2 (dead `interpolatedString` rule), 2.3 (unimplemented `getBinaryOperator`), and 2.4 (unused `getBoolValue`) remain open.

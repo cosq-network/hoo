@@ -39,3 +39,4 @@ Requires either runtime type checks or compile-time type inference to determine 
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Verified binary `+` still lowers through arithmetic opcodes without a string-type branch. String concatenation support remains limited to the interpolated-string helper path.

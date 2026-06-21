@@ -30,6 +30,7 @@ To achieve "Hardware Purity" and full language support, the code generator must 
 - **Date**: 2026-05-28
 - **Status**: **IMPLEMENTED**
 - **Priority**: Medium
+- **Audit 2026-06-21**: Verified current grammar/codegen support the retained modifiers `singleton`, `immutable`, `service`, and `final`. `serializable` is now accepted separately and tracked in ISSUE-035; pruned modifiers remain absent from the grammar.
 
 ## 5. Implementation Notes
 - `singleton`: validated (no-arg constructor required); a `.data` slot is reserved for the single instance pointer and initialised in the module-init function.

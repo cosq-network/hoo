@@ -32,5 +32,6 @@ The HVMCodeGenerator emits `hoo_retain`/`hoo_release` calls for string interpola
 
 ## 6. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Scope release, return-value retain, and new-object retain paths now exist. String literal ownership, reassignment release of old managed values, and abnormal exits through `return`/`break`/`continue`/exceptions still leave ARC incomplete.

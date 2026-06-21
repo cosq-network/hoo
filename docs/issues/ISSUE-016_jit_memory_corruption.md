@@ -49,3 +49,4 @@ rv = executeFunction(module, calleeName, state); // Recursive call, no depth lim
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Verified JIT helpers still depend on the global `g_hvm_memory` raw pointer and recursive `executeFunction` paths still lack an explicit depth guard or stack budget.

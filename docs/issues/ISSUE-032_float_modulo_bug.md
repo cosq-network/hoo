@@ -27,3 +27,4 @@ There is no `FREM` (Floating Point Remainder) in the HVM ISA.
 - **Date**: 2026-06-16
 - **Status**: **PROPOSED**
 - **Priority**: Medium (Bug in mathematical correctness)
+- **Audit 2026-06-21**: Float modulo still lowers through the generic modulo function code rather than an `fmod`/floating helper path; this remains open.

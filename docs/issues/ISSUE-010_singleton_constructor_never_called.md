@@ -39,4 +39,5 @@ The load path in the user code's `new` expression should still just load the poi
 - **Date**: 2026-06-08 (opened), 2026-06-10 (fixed)
 - **Status**: **FIXED**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Verified singleton constructor lowering remains implemented through module initialization/new-object handling; no regression was found in the reviewed code paths.
 - **Fix**: `emitModuleInit` now emits `MOV r1, instanceReg` + `CALL <mangled_ctor_name>` after allocating and storing the singleton instance. Uses the same `MangledFunctionParams` pattern as the regular `new` expression path. Singletons are validated to have 0 constructor parameters at class definition (lines 288-294).

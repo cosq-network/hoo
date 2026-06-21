@@ -44,3 +44,4 @@ This gap is separate from the higher-level URL/HTTP APIs already described in th
 - **Date**: 2026-06-19
 - **Status**: **PROPOSED**
 - **Priority**: Medium (runtime capability gap)
+- **Audit 2026-06-21**: URL parsing and HTTP-oriented runtime pieces exist, but the runtime header still marks full socket support as planned. Raw socket APIs remain unimplemented.

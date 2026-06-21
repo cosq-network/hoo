@@ -34,3 +34,4 @@ falseLabel/trueLabel:
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **HIGH**
+- **Audit 2026-06-21**: Verified `LogicalAnd` and `LogicalOr` still evaluate both operands before emitting a `LOGIC` instruction or tensor helper call; no branch-based short-circuit lowering is present.

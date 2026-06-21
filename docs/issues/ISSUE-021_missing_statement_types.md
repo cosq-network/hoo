@@ -53,3 +53,4 @@ The Hoo language grammar and codegen are missing several common statement types 
 - **Date**: 2026-06-08
 - **Status**: **TODO (UNIMPLEMENTED)**
 - **Priority**: **MEDIUM**
+- **Audit 2026-06-21**: Grammar still lacks `do`, `switch`, and explicit `scope` statements. `for-in` remains array/helper-oriented and `finally` execution remains unsafe under ISSUE-012.

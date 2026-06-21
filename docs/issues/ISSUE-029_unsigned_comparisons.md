@@ -20,3 +20,4 @@ When the Hoo compiler encounters `byte a < byte b`, it generates a `CMPLT` instr
 - **Date**: 2026-06-16
 - **Status**: **PROPOSED**
 - **Priority**: High (Crucial for `byte` type correctness)
+- **Audit 2026-06-21**: No unsigned comparison opcodes or LLVM unsigned integer comparisons were found for byte/sub-word comparisons; this remains unimplemented.
