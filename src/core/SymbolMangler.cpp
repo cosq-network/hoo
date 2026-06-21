@@ -172,6 +172,19 @@ std::string decodeComponent(const std::string& encoded) {
 
 std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& params) {
     std::ostringstream oss;
+    
+    if (params.isOverload) {
+        // New mangling format: <name>__<param_type_ids>
+        if (!params.className.empty()) {
+            oss << encodeComponent(params.className) << "_";
+        }
+        oss << encodeComponent(params.functionName) << "__";
+        for (const auto& param : params.parameterTypes) {
+            oss << SymbolMangler::mangleType(param);
+        }
+        return oss.str();
+    }
+    
     oss << "_F_";
     
     // 1. Module Path (Unambiguous marking)

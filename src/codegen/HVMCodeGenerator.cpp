@@ -695,6 +695,19 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             } else {
                 functionReturnTypes_[funcDecl->getName()] = 4;
             }
+        } else if (auto overList = dynamic_cast<const ast::OverloadList*>(decl.get())) {
+            for (const auto& funcDecl : overList->getFunctions()) {
+                isOverloadedFunction_[funcDecl->getName()] = true;
+                if (funcDecl->getReturnType()) {
+                    std::string clsName;
+                    functionReturnTypes_[funcDecl->getName()] = typeIdFromDeclaredType(funcDecl->getReturnType(), &clsName);
+                    if (!clsName.empty()) {
+                        functionReturnClass_[funcDecl->getName()] = clsName;
+                    }
+                } else {
+                    functionReturnTypes_[funcDecl->getName()] = 4;
+                }
+            }
         }
     }
 
@@ -851,6 +864,15 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                             layout.methodReturnTypes[fn->getName()] = typeIdFromDeclaredType(fn->getReturnType());
                         } else {
                             layout.methodReturnTypes[fn->getName()] = 4; // void
+                        }
+                    } else if (auto overList = dynamic_cast<const ast::OverloadList*>(declMember)) {
+                        for (const auto& fn : overList->getFunctions()) {
+                            isOverloadedMethod_[layout.name][fn->getName()] = true;
+                            if (fn->getReturnType()) {
+                                layout.methodReturnTypes[fn->getName()] = typeIdFromDeclaredType(fn->getReturnType());
+                            } else {
+                                layout.methodReturnTypes[fn->getName()] = 4;
+                            }
                         }
                     }
                 }
@@ -1032,6 +1054,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (decl) {
         mp.functionName = decl->getName();
+        if (isMethod && currentClass_) {
+            mp.isOverload = isOverloadedMethod_[currentClass_->name][decl->getName()];
+        } else {
+            mp.isOverload = isOverloadedFunction_[decl->getName()];
+        }
         if (isMethod) {
             mp.returnType = "ptr";
         } else if (decl->getReturnType()) {
@@ -1043,7 +1070,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     auto addParamTypes = [&](const auto& params) {
         for (const auto& param : params) {
-            mp.parameterTypes.push_back("ptr");
+            if (mp.isOverload) {
+                mp.parameterTypes.push_back(typeIdToMangleType(typeIdFromDeclaredType(&param->getType(), nullptr)));
+            } else {
+                mp.parameterTypes.push_back("ptr");
+            }
         }
     };
 
@@ -1053,7 +1084,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         addParamTypes(ctorDecl->getParameters());
     }
 
-    bool shouldMangle = !modulePath_.empty() || currentClass_ != nullptr;
+    bool shouldMangle = !modulePath_.empty() || currentClass_ != nullptr || mp.isOverload;
     if (isConstructor) {
         info.mangledName = shouldMangle ? SymbolMangler::mangleFunctionName(mp) : "constructor";
     } else if (decl) {
@@ -2464,7 +2495,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 } else if (methodName == "remove") {
                     emitCall(Opcode::CALL, "_F_hoo_hashmap_remove_i8_p_i8");
                 } else if (methodName == "release") {
-                    emitCall(Opcode::CALL, "_F_M_hoo_E_hashmap_release_v");
+                    emitCall(Opcode::CALL, "_F_hoo_hashmap_release_v");
                 } else {
                     addError("Unsupported HashMap method '" + methodName + "'");
                 }
@@ -2502,6 +2533,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             mp.modulePath = (resolvedClass.empty() || !isBuiltinClassName(resolvedClass))
                             ? modulePath_ : std::vector<std::string>{"hoo"};
             mp.functionName = methodName;
+            mp.isOverload = isOverloadedMethod_[resolvedClass][methodName];
 
             if (!resolvedClass.empty() && isBuiltinClassName(resolvedClass)) {
                 if (isClassMethodJitClass(resolvedClass)) {
@@ -2575,14 +2607,22 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 mp.functionName = methodName;
                 mp.returnType = "ptr";
                 if (funcCall->getArguments()) {
-                    for (size_t i = 0; i < funcCall->getArguments()->getArguments().size(); ++i) {
-                        mp.parameterTypes.push_back("ptr");
+                    for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                        if (mp.isOverload) {
+                            mp.parameterTypes.push_back(typeIdToMangleType(inferExpressionTypeId(*arg)));
+                        } else {
+                            mp.parameterTypes.push_back("ptr");
+                        }
                     }
                 }
             }
 
             std::string mangledName = SymbolMangler::mangleFunctionName(mp);
-            emitCall(Opcode::CALL, mangledName);
+            if (mp.isOverload) {
+                emitCall(Opcode::CALL_OVERLOADED, mangledName);
+            } else {
+                emitCall(Opcode::CALL, mangledName);
+            }
 
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
@@ -2605,6 +2645,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
+                mp.isOverload = isOverloadedFunction_[functionName];
                 mp.modulePath = isHooModuleFreeFunction(functionName)
                                     ? std::vector<std::string>{"hoo"}
                                     : modulePath_;
@@ -2642,12 +2683,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
-                         mp.parameterTypes.push_back("ptr");
+                        if (mp.isOverload) {
+                            mp.parameterTypes.push_back(typeIdToMangleType(inferExpressionTypeId(*arg)));
+                        } else {
+                            mp.parameterTypes.push_back("ptr");
+                        }
                     }
                 }
                 
                 std::string mangledName = SymbolMangler::mangleFunctionName(mp);
-                emitCall(Opcode::CALL, mangledName); 
+                if (mp.isOverload) {
+                    emitCall(Opcode::CALL_OVERLOADED, mangledName);
+                } else {
+                    emitCall(Opcode::CALL, mangledName); 
+                }
                 
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});

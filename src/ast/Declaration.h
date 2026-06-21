@@ -47,12 +47,37 @@ public:
         return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PRIVATE) != modifiers_.end();
     }
 
+    bool isOverload() const { return is_overload_; }
+    void setOverload(bool val) { is_overload_ = val; }
+
 private:
     std::string name_;
     std::vector<std::unique_ptr<Parameter>> parameters_;
     std::unique_ptr<Type> returnType_;
     std::unique_ptr<Block> body_;
     std::vector<FunctionModifier> modifiers_;
+    bool is_overload_ = false;
+};
+
+// Overload list
+class OverloadList : public Declaration {
+public:
+    OverloadList(std::vector<std::unique_ptr<FunctionDeclaration>> functions)
+        : functions_(std::move(functions)) {}
+
+    std::string toString() const override {
+        std::string res = "OverloadList {\n";
+        for (const auto& func : functions_) {
+            res += func->toString() + "\n";
+        }
+        res += "}";
+        return res;
+    }
+
+    const std::vector<std::unique_ptr<FunctionDeclaration>>& getFunctions() const { return functions_; }
+
+private:
+    std::vector<std::unique_ptr<FunctionDeclaration>> functions_;
 };
 
 // Variable declaration

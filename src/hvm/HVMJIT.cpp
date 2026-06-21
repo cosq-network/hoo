@@ -28,6 +28,7 @@
 #include "runtime/lib/hoo_regex.h"
 #include "runtime/lib/hoo_uuid.h"
 #include "runtime/lib/hoo_encoding.h"
+#include "runtime/lib/hoo_overload.h"
 #include "runtime/lib/hoo_thread.h"
 #include "runtime/lib/hoo_csv.h"
 #include "runtime/lib/hoo_datetime.h"
@@ -271,7 +272,7 @@ ARCUseDefGraph buildARCUseDefGraph(const hvm::Section& text, uint64_t entryPc) {
         return oi.imm15 == kSysRetain || oi.imm15 == kSysRelease;
     };
     auto isControlBarrier = [](hvm::Opcode op) -> bool {
-        return op == hvm::Opcode::RET || op == hvm::Opcode::CALL ||
+        return op == hvm::Opcode::RET || op == hvm::Opcode::CALL || op == hvm::Opcode::CALL_OVERLOADED ||
                op == hvm::Opcode::TAILCALL || op == hvm::Opcode::JAL ||
                op == hvm::Opcode::JALR;
     };
@@ -286,7 +287,7 @@ ARCUseDefGraph buildARCUseDefGraph(const hvm::Section& text, uint64_t entryPc) {
                 succ[i].push_back(it->second);
             }
         };
-        if (op == hvm::Opcode::RET || op == hvm::Opcode::CALL ||
+        if (op == hvm::Opcode::RET || op == hvm::Opcode::CALL || op == hvm::Opcode::CALL_OVERLOADED ||
             op == hvm::Opcode::TAILCALL || op == hvm::Opcode::JAL ||
             op == hvm::Opcode::JALR) {
             continue;
@@ -5348,6 +5349,7 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::POP:
         case hvm::Opcode::LDA:
         case hvm::Opcode::CALL:
+        case hvm::Opcode::CALL_OVERLOADED:
         case hvm::Opcode::TAILCALL:
         case hvm::Opcode::RETAIN:
         case hvm::Opcode::RELEASE:
@@ -5782,7 +5784,8 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 break;
             }
             case hvm::Opcode::JAL:
-            case hvm::Opcode::CALL: {
+            case hvm::Opcode::CALL:
+            case hvm::Opcode::CALL_OVERLOADED: {
                 if (stopExecutionRequested_.load(std::memory_order_relaxed)) {
                     lastError_ = "Execution stopped by inspector";
                     return -1;
@@ -7023,7 +7026,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     nextLive = false;
                 }
 
-                if (live && (op == hvm::Opcode::CALL || op == hvm::Opcode::TAILCALL ||
+                if (live && (op == hvm::Opcode::CALL || op == hvm::Opcode::CALL_OVERLOADED || op == hvm::Opcode::TAILCALL ||
                              op == hvm::Opcode::JAL || op == hvm::Opcode::JALR)) {
                     return true;
                 }
@@ -7298,7 +7301,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.SetInsertPoint(errBB);
                     builder.CreateRet(builder.getInt64(-1));
                     break;
-                } else if (op == hvm::Opcode::CALL) {
+                } else if (op == hvm::Opcode::CALL || op == hvm::Opcode::CALL_OVERLOADED) {
                     auto o = std::get<hvm::OperandsJ>(ins->getOperands());
                     uint64_t tgt = static_cast<uint64_t>(static_cast<int64_t>(ipc) + static_cast<int64_t>(o.offset) * 4);
                     auto fnNameIt = functionNameByOffset_[hvmModule.getName()].find(tgt);
@@ -7319,6 +7322,64 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     if (calleeName.empty()) {
                         builder.CreateRet(builder.getInt64(-1));
                         break;
+                    }
+
+                    if (op == hvm::Opcode::CALL_OVERLOADED) {
+                        // Parse calleeName, e.g., 4Math_3abs__i8 or 3abs__i8
+                        std::string clsName;
+                        std::string funcName;
+                        std::vector<int64_t> argTypeIds;
+                        
+                        size_t delim = calleeName.find("__");
+                        if (delim != std::string::npos) {
+                            std::string left = calleeName.substr(0, delim);
+                            std::string right = calleeName.substr(delim + 2);
+                            
+                            // Left part can be class_func or func
+                            size_t underscore = left.find('_');
+                            if (underscore != std::string::npos) {
+                                clsName = left.substr(0, underscore);
+                                funcName = left.substr(underscore + 1);
+                            } else {
+                                funcName = left;
+                            }
+                            
+                            // Decode length-prefixed strings (if they exist)
+                            auto decodeLen = [](const std::string& s) {
+                                size_t i = 0;
+                                while (i < s.size() && std::isdigit(s[i])) i++;
+                                return s.substr(i); // skip digits
+                            };
+                            if (!clsName.empty()) clsName = decodeLen(clsName);
+                            funcName = decodeLen(funcName);
+                            
+                            // Parse types
+                            size_t i = 0;
+                            while (i < right.size()) {
+                                char c = right[i++];
+                                if (c == 'i' || c == 'u') {
+                                    if (i < right.size()) i++;
+                                    argTypeIds.push_back(1); // INT64
+                                } else if (c == 'd' || c == 'f') argTypeIds.push_back(2);
+                                else if (c == 's') argTypeIds.push_back(3);
+                                else if (c == 'b') argTypeIds.push_back(5);
+                                else if (c == 'p') argTypeIds.push_back(100); // OBJECT
+                                else argTypeIds.push_back(100);
+                            }
+                            
+                            // Invoke resolution
+                            const char* resolved = hoo_resolve_overload(
+                                funcName.c_str(),
+                                clsName.empty() ? nullptr : clsName.c_str(),
+                                clsName.empty() ? HOO_OVERLOAD_FREE_FUNCTION : HOO_OVERLOAD_STATIC_METHOD,
+                                argTypeIds.data(),
+                                argTypeIds.size()
+                            );
+                            
+                            if (resolved && resolved != HOO_OVERLOAD_AMBIGUOUS) {
+                                calleeName = resolved;
+                            }
+                        }
                     }
 
                     llvm::Function* callee = module->getFunction(calleeName);

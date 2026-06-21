@@ -20,6 +20,7 @@ struct DemangledSymbol {
     bool isDestructor = false;
     bool isStatic = false;
     bool isVirtual = false;
+    bool isOverload = false;
 };
 
 struct MangledFunctionParams {
@@ -35,6 +36,7 @@ struct MangledFunctionParams {
     bool isDestructor = false;
     bool isStatic = false;
     bool isVirtual = false;
+    bool isOverload = false;
 };
 
 const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap();

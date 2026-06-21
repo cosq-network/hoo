@@ -96,7 +96,9 @@ private:
         uint32_t singletonDataOffset = 0; // .data offset for singleton pointer
     };
     std::unordered_map<std::string, ClassLayout> classes_;
-    std::unordered_map<std::string, std::string> methodNameToClass_; // methodName -> className
+    std::unordered_map<std::string, std::string> methodNameToClass_;
+    std::unordered_map<std::string, bool> isOverloadedFunction_;
+    std::unordered_map<std::string, std::unordered_map<std::string, bool>> isOverloadedMethod_; // methodName -> className
     std::unordered_map<std::string, uint32_t> functionReturnTypes_; // functionName -> typeId
     std::unordered_map<std::string, std::string> functionReturnClass_; // functionName -> className (for user-defined types)
     ClassLayout* currentClass_ = nullptr;

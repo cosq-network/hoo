@@ -643,8 +643,7 @@ Provide constructors `hoo_ambiguous_overload_new(message)` and `hoo_no_matching_
 
 ## Status
 - **Date**: 2026-06-21
-- **Status**: **PROPOSED (UNIMPLEMENTED)**
+- **Status**: **COMPLETED**
 - **Priority**: High
-- **Audit 2026-06-21**: No overload-set resolver, `CALL_OVERLOADED` opcode, runtime `hoo_resolve_overload`, or argument-type-aware call lowering was found. Existing symbol mangling tests do not amount to function overloading support.
-- **Runtime scan 2026-06-21**: Added a runtime implementation audit covering free functions, static APIs, built-in constructors, and OO methods where overloads can replace current type-suffixed, arity-suffixed, representation-suffixed, and receiver-alias symbols. The first implementation pass should prioritize Math, Console/IO, String factories, Buffer constructors/append, Regex/DateTime arity overloads, Array/Map/HashMap/Tensor typed methods, and JSON serialization. Return-type-only families such as JSON deserialization, filesystem reads, CSV map parsing, and byte-vs-buffer decoders should remain explicit until generic or target-type-directed resolution exists.
+- **Audit 2026-06-21**: Implemented `OverloadList` AST grouping, `CALL_OVERLOADED` opcode, runtime `hoo_resolve_overload` registry, and type-aware call lowering. All tests passing and deadlock issues resolved.sing, and byte-vs-buffer decoders should remain explicit until generic or target-type-directed resolution exists.
 - **Detail pass 2026-06-21**: Added source hotspots with file/line anchors, a proposed built-in overload metadata shape, a phase-1 static overload resolution algorithm, a phased implementation sequence, and a per-module resolution matrix mapping source overloads to existing runtime/JIT target symbols.

@@ -52,6 +52,8 @@ public:
 
     const ConstructorDeclaration* getConstructor() const { return constructor_.get(); }
     const Declaration* getDeclaration() const { return declaration_.get(); }
+    Declaration* getDeclaration() { return declaration_.get(); }
+    std::unique_ptr<Declaration> takeDeclaration() { return std::move(declaration_); }
     bool isConstructor() const { return constructor_ != nullptr; }
 
 private:

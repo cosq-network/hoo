@@ -24,13 +24,51 @@ std::unique_ptr<CompilationUnit> SimpleASTBuilder::buildAST(HoocParser::Compilat
     std::vector<std::unique_ptr<Declaration>> declarations;
     for (auto* child : ctx->children) {
         if (auto* declCtx = dynamic_cast<HoocParser::DeclarationContext*>(child)) {
-            auto decl = buildDeclaration(declCtx);
-            if (decl) {
-                declarations.push_back(std::move(decl));
-            }
+           if (auto decl = buildDeclaration(declCtx)) {
+            declarations.push_back(std::move(decl));
         }
     }
-    return std::make_unique<CompilationUnit>(std::move(imports), std::move(declarations));
+    }
+    
+    // Group overloaded free functions
+    std::vector<std::unique_ptr<Declaration>> groupedDeclarations;
+    for (size_t i = 0; i < declarations.size(); ) {
+        auto funcDecl = dynamic_cast<FunctionDeclaration*>(declarations[i].get());
+        if (funcDecl) {
+            std::string name = funcDecl->getName();
+            std::vector<std::unique_ptr<FunctionDeclaration>> overloads;
+            
+            size_t j = i;
+            while (j < declarations.size()) {
+                auto nextFunc = dynamic_cast<FunctionDeclaration*>(declarations[j].get());
+                if (nextFunc && nextFunc->getName() == name) {
+                    nextFunc->setOverload(true);
+                    // We must release from unique_ptr to move it, but it's held in declarations array.
+                    // We can move it out.
+                    overloads.push_back(std::unique_ptr<FunctionDeclaration>(
+                        static_cast<FunctionDeclaration*>(declarations[j].release())
+                    ));
+                    j++;
+                } else {
+                    break;
+                }
+            }
+            
+            if (overloads.size() > 1) {
+                groupedDeclarations.push_back(std::make_unique<OverloadList>(std::move(overloads)));
+            } else {
+                // Not actually overloaded if there's only 1
+                overloads[0]->setOverload(false);
+                groupedDeclarations.push_back(std::move(overloads[0]));
+            }
+            i = j;
+        } else {
+            groupedDeclarations.push_back(std::move(declarations[i]));
+            i++;
+        }
+    }
+
+    return std::make_unique<CompilationUnit>(std::move(imports), std::move(groupedDeclarations));
 }
 
 
@@ -1038,7 +1076,43 @@ std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBod
             members.push_back(std::move(member));
         }
     }
-    return std::make_unique<ClassBody>(std::move(members));
+    
+    // Group overloaded methods
+    std::vector<std::unique_ptr<ClassMember>> groupedMembers;
+    for (size_t i = 0; i < members.size(); ) {
+        auto funcDecl = dynamic_cast<FunctionDeclaration*>(members[i]->getDeclaration());
+        if (funcDecl) {
+            std::string name = funcDecl->getName();
+            std::vector<std::unique_ptr<FunctionDeclaration>> overloads;
+            
+            size_t j = i;
+            while (j < members.size()) {
+                auto nextFunc = dynamic_cast<FunctionDeclaration*>(members[j]->getDeclaration());
+                if (nextFunc && nextFunc->getName() == name) {
+                    nextFunc->setOverload(true);
+                    overloads.push_back(std::unique_ptr<FunctionDeclaration>(
+                        static_cast<FunctionDeclaration*>(members[j]->takeDeclaration().release())
+                    ));
+                    j++;
+                } else {
+                    break;
+                }
+            }
+            
+            if (overloads.size() > 1) {
+                groupedMembers.push_back(std::make_unique<ClassMember>(std::make_unique<OverloadList>(std::move(overloads))));
+            } else {
+                overloads[0]->setOverload(false);
+                groupedMembers.push_back(std::make_unique<ClassMember>(std::move(overloads[0])));
+            }
+            i = j;
+        } else {
+            groupedMembers.push_back(std::move(members[i]));
+            i++;
+        }
+    }
+    
+    return std::make_unique<ClassBody>(std::move(groupedMembers));
 }
 
 std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::ClassMemberContext* ctx) {

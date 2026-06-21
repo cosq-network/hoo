@@ -61,6 +61,7 @@ enum class Opcode : uint16_t {
     ADJSP    = 0x82,
     FRAME    = 0x83,
     CALL     = 0xB4,
+    CALL_OVERLOADED = 0xB5,
     TAILCALL = 0xB6,
     SYSCALL  = 0xC0,
     BREAK    = 0xC1,

@@ -590,6 +590,7 @@ InstructionRegistry::InstructionRegistry() {
     
     // Calls
     reg("call",     Opcode::CALL,     InstructionFormat::J);
+    reg("call_overloaded", Opcode::CALL_OVERLOADED, InstructionFormat::J);
     reg("tailcall", Opcode::TAILCALL, InstructionFormat::J);
     
     // Hardware/System
