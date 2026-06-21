@@ -1,6 +1,11 @@
 # Hoo
 
-Last Updated: 2026-06-19
+[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v0.1.0)
+[![macOS Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
+[![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml)
+[![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
+
+Last Updated: 2026-06-21
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 

@@ -4,7 +4,18 @@ if(POLICY CMP0091)
     cmake_policy(SET CMP0091 NEW)
 endif()
 
-project(Hoo LANGUAGES C CXX)
+project(Hoo
+    VERSION 0.2.0
+    DESCRIPTION "Hoo – a high-performance statically-typed systems programming language"
+    LANGUAGES C CXX
+)
+
+# Semantic version components also available as individual variables
+set(HOO_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
+set(HOO_VERSION_MINOR ${PROJECT_VERSION_MINOR})
+set(HOO_VERSION_PATCH ${PROJECT_VERSION_PATCH})
+set(HOO_VERSION       "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_PATCH}")
+
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 option(HOO_BUILD_TESTS "Build Hoo unit tests" OFF)
