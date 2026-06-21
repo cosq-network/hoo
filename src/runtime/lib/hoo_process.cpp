@@ -2,7 +2,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdio>
-
+#include <string>
 #ifdef _WIN32
 #include <process.h>
 #include <windows.h>

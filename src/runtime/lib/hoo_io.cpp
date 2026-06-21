@@ -7,7 +7,10 @@
 #include <iostream>
 #include <sstream>
 #include "core/Platform.h"
-#include <cstring>
+#ifdef HOO_PLATFORM_WINDOWS
+    #include <io.h>
+    #include <fcntl.h>
+#endif
 
 // ============================================================================
 // I/O Implementation
@@ -32,7 +35,8 @@ void hoo_print(void* str) {
     print_impl(str, "");
 }
 
-void hoo_println(void* str) {
+void
+hoo_println(void* str) {
     print_impl(str, "\n");
 }
 
@@ -51,12 +55,23 @@ void* hoo_readline(void) {
 
 char hoo_readchar(void) {
 #ifdef HOO_PLATFORM_WINDOWS
-    if (_kbhit()) {
-        int ch = _getch();
-        if (ch == EOF) return static_cast<char>(-1);
-        return static_cast<char>(ch);
+    // Detect whether stdin is a console (interactive) or redirected.
+    if (_isatty(_fileno(stdin))) {
+        // Interactive console – use _kbhit for non‑blocking check.
+        if (_kbhit()) {
+            int ch = _getch();
+            if (ch == EOF) return static_cast<char>(-1);
+            return static_cast<char>(ch);
+        }
+        // No key pressed yet.
+        return static_cast<char>(-1);
+    } else {
+        // Redirected input – perform a blocking read of a single byte.
+        unsigned char ch;
+        int ret = _read(_fileno(stdin), &ch, 1);
+        if (ret == 1) return static_cast<char>(ch);
+        return static_cast<char>(-1);
     }
-    return static_cast<char>(-1);
 #else
     int fd = fileno(stdin);
     fd_set set;
