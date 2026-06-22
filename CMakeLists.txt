@@ -93,32 +93,57 @@ if(WIN32 AND NOT ANTLR4_ROOT)
     endif()
     message(STATUS "ANTLR4 built from source (static)")
 else()
-    find_path(ANTLR4_INCLUDE_DIR
-        NAMES antlr4-runtime.h
-        HINTS
-            "${ANTLR4_ROOT}/include/antlr4-runtime"
-            "$ENV{ANTLR4_ROOT}/include/antlr4-runtime"
-        PATH_SUFFIXES
-            include/antlr4-runtime
-            antlr4-runtime
-    )
+    # Try finding ANTLR4 via CMake config first (vcpkg provides antlr4::antlr4)
+    find_package(antlr4 CONFIG QUIET)
 
-    find_library(ANTLR4_LIBRARY
-        NAMES antlr4-runtime
-        HINTS
-            "${ANTLR4_ROOT}"
-            "$ENV{ANTLR4_ROOT}"
-        PATH_SUFFIXES
-            lib
-            lib64
-    )
-
-    if(NOT ANTLR4_INCLUDE_DIR OR NOT ANTLR4_LIBRARY)
-        message(FATAL_ERROR
-            "ANTLR4 C++ runtime not found. Install it with a package manager or pass "
-            "-DANTLR4_ROOT=/path/to/antlr4, or pass -DANTLR4_INCLUDE_DIR=... "
-            "and -DANTLR4_LIBRARY=..."
+    if(antlr4_FOUND)
+        message(STATUS "Found ANTLR4 via CMake config (vcpkg)")
+        set(ANTLR4_INCLUDE_DIR "${antlr4_INCLUDE_DIRS}")
+        if(NOT ANTLR4_INCLUDE_DIR)
+            set(ANTLR4_INCLUDE_DIR "${antlr4_INCLUDE_DIR}")
+        endif()
+        if(NOT ANTLR4_INCLUDE_DIR)
+            find_path(ANTLR4_INCLUDE_DIR antlr4-runtime.h PATH_SUFFIXES antlr4-runtime)
+        endif()
+        if(TARGET antlr4::antlr4)
+            set(ANTLR4_LIBRARY antlr4::antlr4)
+        elseif(TARGET antlr4_static)
+            set(ANTLR4_LIBRARY antlr4_static)
+        elseif(TARGET antlr4_runtime)
+            set(ANTLR4_LIBRARY antlr4_runtime)
+        else()
+            message(FATAL_ERROR "ANTLR4 found via config but no known target exists")
+        endif()
+    else()
+        find_path(ANTLR4_INCLUDE_DIR
+            NAMES antlr4-runtime.h
+            HINTS
+                "${ANTLR4_ROOT}/include/antlr4-runtime"
+                "$ENV{ANTLR4_ROOT}/include/antlr4-runtime"
+                "$ENV{VCPKG_ROOT}/installed/$ENV{VCPKG_TARGET_TRIPLET}/include/antlr4-runtime"
+            PATH_SUFFIXES
+                include/antlr4-runtime
+                antlr4-runtime
         )
+
+        find_library(ANTLR4_LIBRARY
+            NAMES antlr4-runtime
+            HINTS
+                "${ANTLR4_ROOT}"
+                "$ENV{ANTLR4_ROOT}"
+                "$ENV{VCPKG_ROOT}/installed/$ENV{VCPKG_TARGET_TRIPLET}/lib"
+            PATH_SUFFIXES
+                lib
+                lib64
+        )
+
+        if(NOT ANTLR4_INCLUDE_DIR OR NOT ANTLR4_LIBRARY)
+            message(FATAL_ERROR
+                "ANTLR4 C++ runtime not found. Install it with a package manager or pass "
+                "-DANTLR4_ROOT=/path/to/antlr4, or pass -DANTLR4_INCLUDE_DIR=... "
+                "and -DANTLR4_LIBRARY=..."
+            )
+        endif()
     endif()
 endif()
 

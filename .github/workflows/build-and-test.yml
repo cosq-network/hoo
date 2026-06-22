@@ -121,20 +121,13 @@ jobs:
       - name: Add LLVM to PATH
         run: echo "/opt/llvm/bin" >> $GITHUB_PATH
 
-      - name: Install ANTLR4 runtime
+      - name: Setup vcpkg
+        uses: vcpkg/actions/setup-vcpkg@v1
+
+      - name: Install ANTLR4 via vcpkg
         run: |
-          ANTLR_VERSION=4.13.2
-          wget -q https://www.antlr.org/download/antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip
-          unzip -q antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip -d antlr4-src
-          cmake -S antlr4-src/runtime/Cpp \
-                -B antlr4-src/build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_INSTALL_PREFIX=/usr/local \
-                -DWITH_DEMO=OFF \
-                -DANTLR_BUILD_CPP_TESTS=OFF
-          sudo cmake --build antlr4-src/build --target install
-          rm -rf antlr4-src antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip
+          vcpkg install antlr4 --triplet x64-linux
+          echo "VCPKG_DIR=${VCPKG_ROOT}/installed/x64-linux" >> $GITHUB_ENV
 
       - name: Cache GoogleTest
         id: cache-gtest
@@ -160,7 +153,8 @@ jobs:
             -DCMAKE_C_COMPILER=/opt/llvm/bin/clang \
             -DCMAKE_CXX_COMPILER=/opt/llvm/bin/clang++ \
             -DLLVM_DIR=/opt/llvm/lib/cmake/llvm \
-            -DHOO_BUILD_TESTS=ON
+            -DHOO_BUILD_TESTS=ON \
+            -DCMAKE_PREFIX_PATH=$VCPKG_DIR
 
       - name: Build all targets
         run: cmake --build build --parallel $(nproc)
