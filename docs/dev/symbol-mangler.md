@@ -4,6 +4,104 @@
 
 `SymbolMangler` converts Hoo identifiers into unique linker-visible symbol names. The mangler and demangler must always be symmetric — any change to one requires a corresponding change to the other.
 
+## What Mangling Means
+
+Symbol mangling is the process of turning a source-level name into a linker-safe name that carries extra information. In Hoo, that extra information includes:
+
+- module path
+- class name and base class
+- function modifiers
+- return type
+- parameter types
+- special cases such as constructors and destructors
+
+Demangling is the reverse process: it takes the encoded symbol name and reconstructs the human-readable parts.
+
+Hoo needs its own mangling scheme because plain source names are not enough once the compiler supports:
+
+- overloaded functions and methods
+- module-qualified names
+- constructors and destructors
+- runtime intrinsic dispatch
+- cross-module linking
+
+Without mangling, two different Hoo declarations could collapse to the same linker symbol. That would make the compiler unable to distinguish overloads or even separate functions with the same name in different scopes.
+
+## Why Compilation Needs It
+
+The compiler emits symbols that must survive several stages:
+
+1. AST construction and semantic analysis
+2. bytecode generation
+3. module serialization
+4. JIT lookup or native linking
+
+At those stages the compiler needs a stable string key. The mangled name is that key. It gives the compiler and runtime a way to:
+
+- look up a concrete function implementation
+- resolve overloads by type signature
+- find module-level globals and type descriptors
+- compare emitted names across build units
+
+Demangling is mainly for diagnostics, reflection, debugging, and reverse lookup during JIT symbol resolution.
+
+## How This Relates to C and C++
+
+### C
+
+C generally uses the source identifier as the external symbol name. That is simple, but it does not encode overloads, namespaces, or class methods. For Hoo, that is not enough:
+
+- `foo(int64)` and `foo(string)` would collide if they exported the same name
+- `math.abs`, `String.length`, and `Foo.bar` need to remain distinct
+
+That is why Hoo adds its own encoding around C-compatible runtime entry points.
+
+### C++
+
+C++ compilers mangle names automatically to encode function signatures, namespaces, classes, templates, and const/ref qualifiers. That solves the same broad problem, but each compiler uses its own ABI-specific encoding. MSVC, Itanium ABI compilers, and other toolchains do not produce the same mangled strings.
+
+Hoo cannot rely on compiler-generated C++ mangling because the JIT, module serializer, and runtime symbol tables all need the exact same names across platforms and toolchains. Instead, Hoo uses a project-defined scheme in `SymbolMangler`.
+
+### `extern "C"`
+
+The runtime bridge functions are declared with `extern "C"` so that the C++ compiler does not apply its own name mangling to them. That gives Hoo a stable ABI surface for `jit_hoo_*` entry points and other runtime helpers.
+
+The pattern is:
+
+- Hoo source symbol gets Hoo mangling
+- runtime bridge function uses `extern "C"` for a stable exported name
+- the JIT or loader resolves that symbol by the exact string emitted by the compiler
+
+## Platform Notes
+
+### Windows
+
+On Windows, exported symbols live in the PE/COFF world. Symbols are typically exposed through:
+
+- `__declspec(dllexport)` / `__declspec(dllimport)`
+- linker export tables
+- import libraries (`.lib`) used by consumers
+
+This repo defines `HOO_API` in `src/core/Platform.h` so shared-library exports can be marked consistently. The important point is that the exported symbol name must still match the mangled name the compiler expects, and `extern "C"` is what prevents the C++ compiler from altering that name.
+
+Windows also has stricter behavior around CRT compatibility and DLL boundaries, so a stable project-defined mangling scheme avoids depending on compiler-specific C++ ABI details.
+
+### Linux
+
+On Linux, symbols are usually resolved through ELF shared objects (`.so`) and the dynamic loader. Visibility defaults can differ by toolchain and build flags, so exported symbols are commonly marked with default visibility and resolved through the dynamic symbol table.
+
+The same Hoo mangled name must work whether the symbol is:
+
+- linked from a native executable
+- loaded from a shared library
+- resolved dynamically by the JIT
+
+Using a project-defined mangling scheme keeps that stable across compiler versions and distribution toolchains.
+
+### Practical consequence
+
+The same Hoo declaration must produce the same logical mangled name on Windows and Linux even though the host platform’s native C++ ABI differs. That is the main reason this system exists instead of reusing compiler-generated C++ names.
+
 ## Public API
 
 ```cpp

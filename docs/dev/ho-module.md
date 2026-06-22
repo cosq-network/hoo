@@ -4,6 +4,55 @@
 
 `HOModule` is the binary container format for compiled bytecode. It supports serialization to/from a binary representation with LE (little-endian) encoding.
 
+## Relation To ELF
+
+`HOModule` is not an ELF file. ELF is a general-purpose executable/object/shared-library format used by operating systems and native toolchains. `HOModule` is a Hoo-specific container for bytecode, metadata, relocations, exports, imports, and runtime-facing symbol records.
+
+The two formats are similar in structure, but they solve different problems:
+
+- ELF is a native ABI container for machine code and dynamic linking.
+- HOModule is a language/runtime container for HVM bytecode and module loading.
+
+### What They Have In Common
+
+Both formats use a section-oriented layout:
+
+- a header identifies the file and declares basic properties
+- section tables describe payloads by type, size, offset, and flags
+- symbol and relocation metadata support linking across compilation units
+- string tables store names indirectly through offsets
+- little-endian encoding is common in the current Hoo toolchain
+
+That similarity is intentional. It makes HOModule familiar to anyone who has worked with object files, and it gives the loader a clean way to reason about code, data, and metadata separately.
+
+### What Is Different
+
+ELF supports features that HOModule does not try to model directly:
+
+- program headers for OS loader segments
+- native CPU machine code and CPU-specific relocations
+- shared-library ABI conventions
+- dynamic loader metadata such as GOT/PLT machinery
+- platform-defined entry behavior for executable binaries
+
+HOModule instead focuses on the Hoo compilation pipeline:
+
+- `.text` contains HVM bytecode, not native instructions
+- relocations refer to Hoo symbols and module sections, not OS loader segments
+- exports/imports are resolved by the Hoo compiler and JIT, not by a system dynamic loader
+- metadata such as `SHT_FUNCMETA` and `SHT_TYPES` exists because the runtime needs language-level information that ELF does not carry
+
+### Why Not Use ELF Directly?
+
+ELF is a good fit for native object code, but Hoo needs a format that stays stable across the HVM toolchain:
+
+- the same module must be loadable as source-compiled bytecode or prebuilt bytecode
+- the JIT must be able to inspect module metadata without depending on host linker internals
+- the runtime needs language-specific records such as function metadata and type descriptors
+- the format must remain readable by the HVM loader even when no native linker is involved
+
+So HOModule borrows the general shape of an object file without depending on ELF as the actual runtime container.
+
 ## Section types
 
 | Constant | Purpose |

@@ -4,7 +4,7 @@
 
 **Q: How do I add a new keyword to the language?**
 
-A: Add the token in `hoo_lexer.g4`, add production rules in `hoo_parser.g4`, regenerate the parser, then add a `build*` or `visit*` method in `SimpleASTBuilder`. Finally, add codegen support in `HVMCodeGenerator`.
+A: Add the token and production rules in `src/parsing/Hooc.g4`, regenerate the parser, then add a `build*` or `visit*` method in `SimpleASTBuilder`. Finally, add codegen support in `HVMCodeGenerator`.
 
 **Q: Where does type checking happen?**
 
@@ -105,7 +105,7 @@ A:
 A: Use `HooCompiler` directly:
 ```cpp
 auto compiler = std::make_unique<HooCompiler>();
-auto module = compiler_->compile("test", sourceCode);
+auto module = compiler->compile("test", sourceCode);
 ```
 For parser-only tests, use `HooParserWrapper`:
 ```cpp

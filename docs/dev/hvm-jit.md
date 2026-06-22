@@ -2,7 +2,29 @@
 
 **File:** `src/hvm/HVMJIT.h` / `.cpp` (~8224 lines)
 
-`HVMJIT` is the LLVM ORC-based JIT execution engine. It loads compiled `HOModule` bytecode, translates it to LLVM IR, and executes it natively via the LLVM ORC JIT. It also supports running modules via an interpreted fallback. With ~100+ `jit_hoo_*` runtime wrappers, it bridges Hoo built-in functions to C runtime implementations.
+`HVMJIT` is the LLVM ORC-based JIT execution engine. It loads compiled `HOModule` bytecode, translates it to LLVM IR, and executes it natively via LLVM ORC JIT. It also supports running modules via an interpreted fallback. With ~100+ `jit_hoo_*` runtime wrappers, it bridges Hoo built-in functions to C runtime implementations.
+
+## What LLVM ORC Does
+
+LLVM ORC is LLVM’s in-process, on-demand compilation and linking framework. In this codebase it provides three jobs:
+
+1. Turn translated LLVM IR into native machine code.
+2. Resolve symbols across multiple modules and runtime libraries.
+3. Keep the JIT isolated from platform-specific linker details.
+
+`HVMJIT` uses ORC instead of a direct static linker because Hoo modules are loaded dynamically. The runtime does not know up front which source files, runtime intrinsics, or imported modules will be available. ORC lets the engine compile pieces independently and link them lazily through a symbol table.
+
+## Core ORC Objects
+
+The JIT uses a small set of ORC types repeatedly:
+
+- `llvm::orc::LLJIT`: the top-level JIT container
+- `llvm::orc::JITDylib`: a named symbol namespace
+- `llvm::orc::ThreadSafeContext`: shared LLVM context wrapper
+- `llvm::orc::ThreadSafeModule`: a module plus owning context, safe to move across threads
+- `llvm::orc::MangleAndInterner`: converts a symbol name into ORC’s internal lookup form
+
+The important practical detail is that Hoo keeps separate `JITDylib` instances for modules and for runtime exports. That avoids accidental symbol collisions and makes lookup order explicit.
 
 ## Architecture
 
@@ -107,6 +129,18 @@ materializeModulesToJIT() — translates all modules to LLVM IR
 runPostLoadInitializers() — runs module_init functions
 ```
 
+### ORC translation flow
+
+Once a module reaches the materialization phase, the pipeline is:
+
+1. Build an LLVM `Module` from HVM bytecode.
+2. Wrap it in a `ThreadSafeModule`.
+3. Add it to the correct module `JITDylib`.
+4. Let ORC materialize the object lazily or immediately depending on lookup demand.
+5. Resolve external calls through the runtime JITDylib.
+
+That means codegen does not emit native code directly. It emits LLVM IR, and ORC becomes the linker and object manager.
+
 ### Symbol lookup
 
 `getSymbolAddress(mangledName)` looks up a symbol across all loaded modules using `buildLookupCandidates()`:
@@ -126,6 +160,25 @@ std::vector<std::string> buildLookupCandidates(const std::string& symbolName,
 
 This handles the mismatch between legacy test names and modern module-qualified names.
 
+### How lookup works in practice
+
+Symbol resolution in `HVMJIT` typically proceeds in this order:
+
+1. Try the exact mangled symbol requested by codegen.
+2. Try names reconstructed from demangling, including module-qualified and member-qualified variants.
+3. Look in the primary module `JITDylib`.
+4. Fall back to the main `JITDylib`.
+5. Fall back to the runtime plain-symbol map for core helpers such as allocation and string utilities.
+
+This layered lookup is needed because Hoo can produce:
+
+- plain source-level calls
+- module-qualified symbols
+- built-in runtime calls
+- legacy interpreter-era names
+
+The lookup order preserves compatibility without forcing all call sites to use the same spelling.
+
 ## JIT compilation pipeline
 
 ### translateModule
@@ -136,6 +189,17 @@ The private `translateModule(hvm::HOModule&)` is the core JIT compiler. It:
 3. Translates each function from HVM bytecode to LLVM IR
 4. Sets up debug info if `HOOC_ENABLE_DWARF=1`
 5. Returns a `ThreadSafeModule` for ORC
+
+The returned `ThreadSafeModule` matters because ORC may materialize code on a worker thread. The context must remain valid while ORC owns or compiles the module, so `ThreadSafeModule` keeps the LLVM context and module paired together safely.
+
+### JITDylibs and visibility
+
+`HVMJIT` creates separate `JITDylib` instances for modules and for the shared `hoo` runtime namespace. This is important for two reasons:
+
+- module-local symbols should not unintentionally shadow runtime helpers
+- runtime helpers should remain visible to all loaded modules
+
+In ORC, symbol resolution is scoped by `JITDylib` search order. `HVMJIT` uses that to make the runtime namespace visible while still keeping module ownership explicit.
 
 ### Runtime symbol table
 
@@ -149,9 +213,19 @@ uint64_t jit_hoo_<name>(void* state_ptr) {
 }
 ```
 
+`registerRuntimeSymbolsInJITDylib()` uses ORC’s symbol registration APIs to publish these wrappers into the `hoo` namespace. The code generator then emits mangled `CALL` targets that resolve against that namespace at runtime.
+
 ### IR lowering support
 
 `isSupportedForIRLowering(op, func)` determines whether a given opcode can be lowered to native LLVM IR vs needing a runtime call. Most simple arithmetic, memory, and control flow ops are lowered directly.
+
+The division of labor is:
+
+- lower simple arithmetic and control-flow to LLVM IR when the semantics match directly
+- call runtime wrappers for operations that depend on Hoo library behavior, object layout, or ARC
+- fall back to the interpreter if ORC cannot materialize a function or the platform disables a lowering path
+
+That is why the JIT can still execute a module even when part of the runtime surface is only available through a fallback path.
 
 ## ARC Use-Def optimization
 
@@ -253,6 +327,17 @@ The `jit_hoo_*` wrappers span ~25+ runtime library domains. Each reads arguments
 | Overload | Overload dispatch (`hoo_overload.h`) —
 | Net | Networking functions (`hoo_net.h`) —
 | Object | Field access (`jit_object_get_field`, `jit_object_set_field`) — `hoo_runtime.h` |
+
+## C, C++, and Platform Boundaries
+
+The JIT-facing runtime wrappers are declared `extern "C"` so ORC looks up stable unmangled names. The C++ compiler still compiles the wrapper bodies, but the exported symbol names stay predictable.
+
+That stability matters for both Windows and Linux:
+
+- On Windows, ORC resolves against PE/COFF exports and import libraries.
+- On Linux, ORC resolves against ELF dynamic symbols and shared objects.
+
+Hoo keeps the bridge layer in C ABI form even when the underlying implementation is C++, because ORC only needs a symbol name and an address. The wrapper itself can call C++ runtime classes or helper methods internally.
 
 ## System call interface
 
