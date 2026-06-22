@@ -26,13 +26,13 @@ Hoo reserves the following keywords for language constructs:
 | `true`, `false`, `null` | Literals. |
 | `try`, `catch`, `finally` | Exception handling. |
 | `throw`, `rethrow` | Raising exceptions. |
-| `map` | Built-in dictionary type. |
+| `map`, `HashMap`, `AnyArray`, `any`, `tensor` | Built-in collection and data types. |
 | `function` | Function pointer type. |
 | `__hoo_init` | Reserved module initialization marker. |
 
 ### Class Modifiers
 Hoo supports advanced class-level modifiers:
-`singleton`, `immutable`, `factory`, `observable`, `service`, `strategy`, `actor`, `final`.
+`singleton`, `immutable`, `service`, `final`, `serializable`.
 
 ## 2. Literals
 
@@ -59,7 +59,7 @@ Identifiers must start with a letter or underscore, followed by any number of le
 ## 4. Delimiters & Operators
 
 - **Delimiters**: `;`, `,`, `.`, `:`, `(`, `)`, `{`, `}`, `[`, `]`.
-- **Operators**: `+`, `-`, `*`, `/`, `%`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `++`, `--`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `!`, `?`, `..`.
+- **Operators**: `+`, `-`, `*`, `/`, `%`, `.*`, `./`, `=`, `+=`, `-=`, `*=`, `/=`, `%=`, `<<=`, `>>=`, `++`, `--`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `!`, `?`, `..`.
 
 ## 5. Comments & Whitespace
 

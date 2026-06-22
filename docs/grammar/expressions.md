@@ -19,7 +19,7 @@ Hoo supports several types of literals:
 | 1 | `(expr)`, `new`, `this` | Primary / Grouping |
 | 2 | `.`, `[idx]`, `(args)`, `++`, `--` | Postfix |
 | 3 | `-`, `!` | Unary (Prefix) |
-| 4 | `*`, `/`, `%` | Multiplicative |
+| 4 | `*`, `/`, `%`, `.*`, `./` | Multiplicative |
 | 5 | `+`, `-` | Additive |
 | 6 | `==`, `!=`, `<`, `<=`, `>`, `>=` | Relational / Equality |
 | 7 | `&&` | Logical AND |

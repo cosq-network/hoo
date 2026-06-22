@@ -33,12 +33,9 @@ Hoo supports several advanced modifiers to enforce architectural patterns:
 | :--- | :--- |
 | `singleton` | Ensures only one instance of the class can exist. |
 | `immutable` | All fields are constant after initialization. |
-| `factory` | Class is designed to produce other objects. |
-| `observable` | Built-in support for observer patterns. |
 | `service` | Represents a stateless singleton or utility group. |
-| `strategy` | Part of a strategy pattern implementation. |
-| `actor` | Isolated state for concurrent execution (future phase). |
 | `final` | Class cannot be extended. |
+| `serializable` | Marks the class as capable of being serialized. |
 
 ## 4. Class Members
 A class body can contain:
