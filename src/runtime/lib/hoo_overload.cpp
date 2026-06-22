@@ -28,7 +28,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <climits>
-#include <inttypes.h>
+#include <cinttypes>
 
 /* ═══════════════════════════════════════════════════════════════════════════
    Internal Registry
@@ -70,7 +70,6 @@ static int scoreArgument(int64_t actual, int64_t expected) {
 
     // Object / any fallback
     if (expected == HOO_TYPE_OBJECT) return 3;
-    if (expected == HOO_TYPE_OBJECT)  return 3;
 
     // any type fallback (type id 0 represents any/unknown)
     if (expected == 0) return 20;
