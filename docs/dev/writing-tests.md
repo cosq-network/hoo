@@ -1,170 +1,196 @@
-# How to Write New Unit Tests
+# How To Write New Unit Tests
 
-The project uses **Google Test** (gtest) as the test framework. Tests are located in `tests/` with subdirectories mirroring `src/`:
+The project uses **Google Test** (`gtest`) for unit tests. The C++ test binary is `hoo-tests`, built from the sources listed in `CMakeLists.txt` under `tests/`.
 
-```
+## Test layout
+
+The test tree is organized by subsystem, not by `src/` mirroring:
+
+```text
 tests/
-  ast/               — AST node tests
-  codegen/           — Bytecode generation tests (HVMCodeGeneratorTest.cpp, ...ComprehensiveTest.cpp)
-  core/              — Core tests (SymbolManglerTest.cpp, HooCompilerTest.cpp, HooCLITest.cpp)
-  examples/          — End-to-end example tests
-  hvm/               — HVM runtime tests
-  jit/               — JIT execution tests (28 test files: math, string, array, class, etc.)
-  parsing/           — Parser & AST builder tests (26 test files)
-  repl/              — REPL tests
-  runtime/           — Runtime library tests
-  test_main.cpp      — Main entry (LLVM init + gtest runner)
+  ast/        - AST node tests
+  codegen/    - Bytecode generation tests
+  core/       - Compiler, CLI, and symbol mangling tests
+  hvm/        - HVM and module format tests
+  jit/        - End-to-end JIT tests
+  parsing/    - Parser and AST builder tests
+  repl/       - REPL tests
+  runtime/    - Runtime library tests
+  test_main.cpp
 ```
 
-## Test framework setup
+`tests/examples/` contains standalone example source files. They are useful as fixtures or manual smoke tests, but they are not compiled into `hoo-tests`.
 
-`tests/test_main.cpp` initializes LLVM targets before running tests:
+## Test entry point
+
+`tests/test_main.cpp` is the single entry point for the test binary. It initializes LLVM before running the suite:
 
 ```cpp
 int main(int argc, char **argv) {
-    if (llvm::InitializeNativeTarget()) {
-        std::cerr << "ERROR: Failed to initialize native target" << std::endl;
-    }
-    if (llvm::InitializeNativeTargetAsmPrinter()) { ... }
-    if (llvm::InitializeNativeTargetAsmParser()) { ... }
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+
     ::testing::InitGoogleTest(&argc, argv);
     int result = RUN_ALL_TESTS();
     std::quick_exit(result);
 }
 ```
 
-## Adding a test to an existing suite
+That setup matters for any test that touches `HVMJIT`, code generation, or LLVM-backed loading.
 
-### SymbolMangler tests (gtest class style)
+## Build and run
+
+Configure tests with:
+
+```sh
+cmake -DHOO_BUILD_TESTS=ON -S . -B build
+cmake --build build --target hoo-tests
+ctest --test-dir build --output-on-failure
+```
+
+You can also run the binary directly:
+
+```sh
+./build/hoo-tests
+```
+
+## Common test patterns
+
+### Parser tests
+
+Parser tests usually exercise `HooParserWrapper` and verify that the parse tree is non-null and error-free.
 
 ```cpp
 #include <gtest/gtest.h>
-#include "src/core/SymbolMangler.h"
+#include <memory>
 
-class SymbolManglerTest : public ::testing::Test {
+#include "src/parsing/HooParserWrapper.h"
+#include "HoocParser.h"
+
+using namespace hooc;
+
+class HooParserWrapperTest : public ::testing::Test {
 protected:
-    MangledFunctionParams makeParams() {
-        MangledFunctionParams p;
-        p.className = ""; p.functionName = "";
-        p.returnType = ""; p.parameterTypes = {};
-        p.isConstructor = false; p.isDestructor = false;
-        p.isStatic = false; p.isVirtual = false;
-        return p;
+    void SetUp() override {
+        parser = std::make_unique<HooParserWrapper>();
     }
+
+    std::unique_ptr<HooParserWrapper> parser;
 };
 
-TEST_F(SymbolManglerTest, SimpleFunctionMangling) {
-    auto params = makeParams();
-    params.functionName = "foo";
-    params.returnType = "int64";
-    params.parameterTypes = {"int64"};
-    std::string mangled = SymbolMangler::mangleFunctionName(params);
-    EXPECT_EQ(mangled, "_F_foo_i8_i8");
+TEST_F(HooParserWrapperTest, ParseValidFunction) {
+    auto *parseTree = parser->parseForAST("func test() { return; }");
+    ASSERT_NE(parseTree, nullptr);
+    EXPECT_TRUE(parser->getLastError().empty());
 }
 ```
 
-### Codegen tests (compile + inspect bytecode)
+If you need to inspect expressions rather than full compilation units, use `parseExpression()` instead of `parseForAST()`.
+
+### AST builder tests
+
+`SimpleASTBuilder` consumes `HoocParser::CompilationUnitContext` and produces AST nodes:
 
 ```cpp
 #include <gtest/gtest.h>
-#include "core/HooCompiler.h"
-#include "codegen/HVMCodeGenerator.h"
-#include "hvm/HOModule.h"
+#include <memory>
+
+#include "src/ast/SimpleASTBuilder.h"
+#include "src/parsing/HooParserWrapper.h"
+#include "HoocParser.h"
+
+using namespace hooc;
+using namespace hooc::ast;
+
+TEST(SimpleASTBuilder, BuildSingleFunctionDeclaration) {
+    HooParserWrapper parser;
+    SimpleASTBuilder builder;
+
+    auto *parseTree = parser.parseForAST("func test() { return; }");
+    ASSERT_NE(parseTree, nullptr);
+
+    auto *ctx = dynamic_cast<HoocParser::CompilationUnitContext *>(parseTree);
+    ASSERT_NE(ctx, nullptr);
+
+    auto ast = builder.buildAST(ctx);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_NE(ast->toString().find("CompilationUnit"), std::string::npos);
+}
+```
+
+That is the same shape used by `tests/parsing/SimpleASTBuilderTest.cpp`.
+
+### Code generation tests
+
+Codegen tests typically compile Hoo source through `HooCompiler`, then inspect the resulting module or encoded instructions.
+
+```cpp
+#include <gtest/gtest.h>
+#include <memory>
+
+#include "src/core/HooCompiler.h"
+
+using namespace hooc;
 
 class HVMCodeGeneratorTest : public ::testing::Test {
 protected:
-    std::unique_ptr<HooCompiler> compiler_;
     void SetUp() override {
         compiler_ = std::make_unique<HooCompiler>();
     }
+
+    std::unique_ptr<HooCompiler> compiler_;
 };
 
 TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
-    std::string code = R"(
+    auto module = compiler_->compile("test", R"(
         func:int64 add(a: int64, b: int64) {
             return a + b;
         }
-    )";
-    auto module = compiler_->compile("test", code);
-    ASSERT_NE(module, nullptr);
-    auto insts = module->decodeInstructions(
-        module->getSection(".text")->data);
-    ASSERT_GE(insts.size(), 4);
-}
-```
-
-### JIT execution tests (full pipeline)
-
-Files in `tests/jit/` test the full compile→JIT→execute pipeline:
-
-```cpp
-// Pattern used in tests/jit/HooMathJitTest.cpp, HooStringJitTest.cpp, etc.
-// (Each JIT test file compiles Hoo source, JIT-compiles it, calls the function,
-//  and asserts return values.)
-```
-
-## Creating a new test suite
-
-1. Create a new `.cpp` file in the appropriate `tests/` subdirectory.
-2. Include the necessary headers.
-3. Define a test fixture or use free-standing `TEST()` macros.
-4. Add the file to `CMakeLists.txt` in the tests directory.
-5. Rebuild and run.
-
-## Testing the full pipeline
-
-```cpp
-TEST(CompileAndRun) {
-    auto module = compiler_->compile("test", R"(
-        func:int64 main() {
-            return 42;
-        }
     )");
+
     ASSERT_NE(module, nullptr);
-    
-    // Option 1: Decode and inspect bytecode
-    auto insts = module->decodeInstructions(
-        module->getSection(".text")->data);
-    
-    // Option 2: JIT-compile and execute (see JIT tests)
-    // (HVMJIT lifecycle tests show this pattern)
+    ASSERT_NE(module->getSection(".text"), nullptr);
 }
 ```
 
-## JIT test pattern
+### JIT tests
 
-JIT tests (in `tests/jit/`) typically:
-1. Compile Hoo source via `HooCompiler`
-2. Set up an `HVMJIT` instance
-3. Load the compiled module
-4. Look up a function symbol
-5. Call it via the JIT trampoline
-6. Assert return values
+JIT tests use `HVMJIT` with a `DefaultIOProvider` and usually load source code directly:
 
 ```cpp
-// Approximate pattern from HVMJITLifecycleTest.cpp / HooMathJitTest.cpp
-TEST_F(HooMathJitTest, Sqrt) {
-    auto module = compileModule(R"(
-        func:double sqrtTest(v: double) {
-            return Math.sqrt(v);
-        }
-    )");
-    jit_->loadModule(*module);
-    auto func = jit_->findFunction("sqrtTest");
-    double result = func.call<double(double)>(4.0);
-    EXPECT_DOUBLE_EQ(result, 2.0);
+#include <gtest/gtest.h>
+#include <memory>
+
+#include "src/core/DefaultIOProvider.h"
+#include "src/hvm/HVMJIT.h"
+
+using namespace hooc;
+
+TEST(HVMJITLifecycleTest, LoadSourceCodeThenDestroy) {
+    auto io = std::make_unique<DefaultIOProvider>();
+    auto jit = std::make_unique<HVMJIT>(*io);
+
+    ASSERT_TRUE(jit->loadSourceCode("test", "func :int64 test() { return 42; }"))
+        << jit->getLastError();
 }
 ```
 
-## Best practices
+The full JIT suites in `tests/jit/` follow the same pattern, but extend it with function lookup and execution checks.
 
-- **One assertion per test** where possible — makes failures easier to diagnose.
-- **Arrange / Act / Assert** — Keep the structure clear.
-- **Test error paths** — Compile invalid code and check `hasErrors()` or inspect error messages.
-- **Round-trip tests** — Mangle then demangle; serialize then deserialize; compile + decode.
-- **Edge cases** — Empty strings, large values, deeply nested types, unicode, special characters.
-- **Use raw string literals** (`R"(...)"`) for multi-line Hoo source code.
-- **Fixture `SetUp()`** — Use `SetUp()` to initialize shared resources (compiler, JIT, parser).
-- **Unique mangling verification** — When testing overloads, assert `EXPECT_NE(m1, m2)` to confirm distinct mangled names.
-- **Whitespace independence** — Test that mangled types are identical with and without whitespace (verified via `mangleType`).
-- **Invalid input handling** — Test that malformed inputs produce expected fallbacks (e.g., `demangleType("M")` returns `"unknown"`).
+## Adding a new test
+
+1. Put the new test file under the appropriate `tests/<area>/` directory.
+2. Use `gtest` macros such as `TEST()` or `TEST_F()`.
+3. Include headers from `src/` directly, plus any generated parser headers such as `HoocParser.h` when needed.
+4. Add the file to the `hoo-tests` source list in `CMakeLists.txt`.
+5. Reconfigure and rebuild `hoo-tests`.
+
+## Writing good tests
+
+- Prefer one behavior per test when possible.
+- Use raw string literals for multi-line Hoo source.
+- Check both success and failure paths.
+- Keep parser tests focused on the parse tree, AST tests focused on AST shape, and JIT tests focused on runtime behavior.
+- For mangling and demangling, verify round trips and collisions, not only a single expected string.
+- Avoid relying on brittle formatting unless the formatting is the thing under test.
