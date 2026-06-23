@@ -122,3 +122,120 @@ TEST_F(HooArrayJitTest, PushGetBool) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
+
+TEST_F(HooArrayJitTest, ArraySortInt64) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.pushInt64(a, 5);
+            Array.pushInt64(a, 3);
+            Array.pushInt64(a, 9);
+            Array.pushInt64(a, 1);
+            Array.sort(a);
+            var r = 1;
+            if (Array.getInt64(a, 0) != 1) { r = 0; }
+            if (Array.getInt64(a, 1) != 3) { r = 0; }
+            if (Array.getInt64(a, 2) != 5) { r = 0; }
+            if (Array.getInt64(a, 3) != 9) { r = 0; }
+            return r;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooArrayJitTest, ArraySortEmpty) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.sort(a);
+            return Array.length(a);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooArrayJitTest, ArraySortSingle) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.pushInt64(a, 42);
+            Array.sort(a);
+            return Array.getInt64(a, 0);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 42);
+}
+
+TEST_F(HooArrayJitTest, ArraySortReverse) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.pushInt64(a, 10);
+            Array.pushInt64(a, 20);
+            Array.pushInt64(a, 30);
+            Array.sort(a);
+            Array.reverse(a);
+            var r = 1;
+            if (Array.getInt64(a, 0) != 30) { r = 0; }
+            if (Array.getInt64(a, 1) != 20) { r = 0; }
+            if (Array.getInt64(a, 2) != 10) { r = 0; }
+            return r;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooArrayJitTest, ArrayReverseInt64) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.pushInt64(a, 1);
+            Array.pushInt64(a, 2);
+            Array.pushInt64(a, 3);
+            Array.reverse(a);
+            var r = 1;
+            if (Array.getInt64(a, 0) != 3) { r = 0; }
+            if (Array.getInt64(a, 1) != 2) { r = 0; }
+            if (Array.getInt64(a, 2) != 1) { r = 0; }
+            return r;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooArrayJitTest, ArrayReverseEmpty) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.reverse(a);
+            return Array.length(a);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooArrayJitTest, ArrayReverseSingle) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.pushInt64(a, 99);
+            Array.reverse(a);
+            return Array.getInt64(a, 0);
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 99);
+}

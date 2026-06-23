@@ -700,3 +700,296 @@ TEST_F(HooArrayPhase7Test, NestedArrayLifecycle) {
     hoo_array_release(inner1);
     hoo_array_release(inner2);
 }
+
+// ============================================================================
+// Sort & Reverse Tests
+// ============================================================================
+
+TEST_F(HooArrayPhase7Test, SortEmptyArray) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_sort(arr);
+    EXPECT_EQ(hoo_array_length(arr), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortSingleElement) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 42);
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_sort(arr);
+    EXPECT_EQ(hoo_array_length(arr), 1);
+    int64_t val = 0;
+    EXPECT_TRUE(hoo_array_get_int64(arr, 0, &val));
+    EXPECT_EQ(val, 42);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortInt64Ascending) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    int64_t input[] = {5, 3, 9, 1, 7, -2, 0, 42, -10};
+    for (int64_t v : input) {
+        arr = hoo_array_push_int64(arr, v);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    EXPECT_EQ(hoo_array_length(arr), 9);
+    int64_t prev = INT64_MIN;
+    for (int64_t i = 0; i < 9; i++) {
+        int64_t val = 0;
+        EXPECT_TRUE(hoo_array_get_int64(arr, i, &val));
+        EXPECT_GE(val, prev);
+        prev = val;
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortInt64AlreadySorted) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    for (int64_t i = 0; i < 10; i++) {
+        arr = hoo_array_push_int64(arr, i);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    EXPECT_EQ(hoo_array_length(arr), 10);
+    for (int64_t i = 0; i < 10; i++) {
+        int64_t val = 0;
+        EXPECT_TRUE(hoo_array_get_int64(arr, i, &val));
+        EXPECT_EQ(val, i);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortInt64Descending) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    for (int64_t i = 9; i >= 0; i--) {
+        arr = hoo_array_push_int64(arr, i);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    for (int64_t i = 0; i < 10; i++) {
+        int64_t val = 0;
+        EXPECT_TRUE(hoo_array_get_int64(arr, i, &val));
+        EXPECT_EQ(val, i);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortInt64Duplicates) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    int64_t input[] = {7, 3, 7, 1, 3, 7, 1, 1, 3};
+    for (int64_t v : input) {
+        arr = hoo_array_push_int64(arr, v);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    int64_t prev = INT64_MIN;
+    for (int64_t i = 0; i < 9; i++) {
+        int64_t val = 0;
+        EXPECT_TRUE(hoo_array_get_int64(arr, i, &val));
+        EXPECT_GE(val, prev);
+        prev = val;
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortDoubleAscending) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    double input[] = {3.14, -1.5, 2.71, 0.0, -0.5, 100.0, -100.0, 0.001};
+    for (double v : input) {
+        arr = hoo_array_push_double(arr, v);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    double prev = -INFINITY;
+    for (int64_t i = 0; i < 8; i++) {
+        double val = 0;
+        EXPECT_TRUE(hoo_array_get_double(arr, i, &val));
+        EXPECT_GE(val, prev);
+        prev = val;
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortDoubleNegativeValues) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    double input[] = {-5.0, -1.0, -10.0, -0.5, -100.0, -0.001};
+    for (double v : input) {
+        arr = hoo_array_push_double(arr, v);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    double prev = -INFINITY;
+    for (int64_t i = 0; i < 6; i++) {
+        double val = 0;
+        EXPECT_TRUE(hoo_array_get_double(arr, i, &val));
+        EXPECT_GE(val, prev) << "at index " << i;
+        prev = val;
+    }
+    // Verify ordering: -100, -10, -5, -1, -0.5, -0.001
+    double expected[] = {-100.0, -10.0, -5.0, -1.0, -0.5, -0.001};
+    for (int64_t i = 0; i < 6; i++) {
+        double val = 0;
+        EXPECT_TRUE(hoo_array_get_double(arr, i, &val));
+        EXPECT_DOUBLE_EQ(val, expected[i]);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortDoubleMixedSign) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    double input[] = {0.0, -1.0, 1.0, -0.0, 3.14, -3.14, 2.71, -2.71};
+    for (double v : input) {
+        arr = hoo_array_push_double(arr, v);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    double prev = -INFINITY;
+    for (int64_t i = 0; i < 8; i++) {
+        double val = 0;
+        EXPECT_TRUE(hoo_array_get_double(arr, i, &val));
+        EXPECT_GE(val, prev) << "at index " << i;
+        prev = val;
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortNullReturnsNull) {
+    EXPECT_EQ(hoo_array_sort(nullptr), nullptr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseEmptyArray) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_reverse(arr);
+    EXPECT_EQ(hoo_array_length(arr), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseSingleElement) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 99);
+    arr = hoo_array_reverse(arr);
+    EXPECT_EQ(hoo_array_length(arr), 1);
+    int64_t val = 0;
+    EXPECT_TRUE(hoo_array_get_int64(arr, 0, &val));
+    EXPECT_EQ(val, 99);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseTwoElements) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 1);
+    arr = hoo_array_push_int64(arr, 2);
+    arr = hoo_array_reverse(arr);
+    EXPECT_EQ(hoo_array_length(arr), 2);
+    int64_t v0 = 0, v1 = 0;
+    EXPECT_TRUE(hoo_array_get_int64(arr, 0, &v0));
+    EXPECT_TRUE(hoo_array_get_int64(arr, 1, &v1));
+    EXPECT_EQ(v0, 2);
+    EXPECT_EQ(v1, 1);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseManyElements) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    const int64_t N = 100;
+    for (int64_t i = 1; i <= N; i++) {
+        arr = hoo_array_push_int64(arr, i);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_reverse(arr);
+    for (int64_t i = 0; i < N; i++) {
+        int64_t val = 0;
+        EXPECT_TRUE(hoo_array_get_int64(arr, i, &val));
+        EXPECT_EQ(val, N - i);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseDoubleArray) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_double(arr, 1.5);
+    arr = hoo_array_push_double(arr, 2.5);
+    arr = hoo_array_push_double(arr, 3.5);
+    arr = hoo_array_reverse(arr);
+    double v0 = 0, v2 = 0;
+    EXPECT_TRUE(hoo_array_get_double(arr, 0, &v0));
+    EXPECT_TRUE(hoo_array_get_double(arr, 2, &v2));
+    EXPECT_DOUBLE_EQ(v0, 3.5);
+    EXPECT_DOUBLE_EQ(v2, 1.5);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReversePreservesElementType) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 10);
+    arr = hoo_array_push_int64(arr, 20);
+    arr = hoo_array_reverse(arr);
+    int64_t val = 0;
+    EXPECT_TRUE(hoo_array_get_int64(arr, 0, &val));
+    EXPECT_EQ(val, 20);
+    EXPECT_TRUE(hoo_array_get_int64(arr, 1, &val));
+    EXPECT_EQ(val, 10);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseNullReturnsNull) {
+    EXPECT_EQ(hoo_array_reverse(nullptr), nullptr);
+}
+
+TEST_F(HooArrayPhase7Test, SortReverseChained) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    int64_t input[] = {3, 1, 4, 1, 5, 9, 2, 6};
+    for (int64_t v : input) {
+        arr = hoo_array_push_int64(arr, v);
+        ASSERT_NE(arr, nullptr);
+    }
+    arr = hoo_array_sort(arr);
+    arr = hoo_array_reverse(arr);
+    // Should be descending
+    int64_t prev = INT64_MAX;
+    for (int64_t i = 0; i < 8; i++) {
+        int64_t val = 0;
+        EXPECT_TRUE(hoo_array_get_int64(arr, i, &val));
+        EXPECT_LE(val, prev);
+        prev = val;
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortDoesNotReleaseArray) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 2);
+    arr = hoo_array_push_int64(arr, 1);
+    int64_t rc_before = hoo_array_refcount(arr);
+    arr = hoo_array_sort(arr);
+    EXPECT_EQ(hoo_array_refcount(arr), rc_before);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ReverseDoesNotReleaseArray) {
+    HooArray arr = hoo_array_new();
+    ASSERT_NE(arr, nullptr);
+    arr = hoo_array_push_int64(arr, 1);
+    arr = hoo_array_push_int64(arr, 2);
+    int64_t rc_before = hoo_array_refcount(arr);
+    arr = hoo_array_reverse(arr);
+    EXPECT_EQ(hoo_array_refcount(arr), rc_before);
+    hoo_array_release(arr);
+}
