@@ -313,6 +313,52 @@ int64_t hoo_array_refcount(HooArray arr) {
     return hoo_get_refcount(arr);
 }
 
+static int compareInt64(const void* a, const void* b) {
+    int64_t va = *(const int64_t*)a;
+    int64_t vb = *(const int64_t*)b;
+    if (va < vb) return -1;
+    if (va > vb) return 1;
+    return 0;
+}
+
+static int compareDouble(const void* a, const void* b) {
+    double va, vb;
+    std::memcpy(&va, a, sizeof(double));
+    std::memcpy(&vb, b, sizeof(double));
+    if (va < vb) return -1;
+    if (va > vb) return 1;
+    return 0;
+}
+
+HooArray hoo_array_sort(HooArray arr) {
+    if (!arr) return nullptr;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    if (len <= 1) return arr;
+    int64_t elemType = raw[2];
+    int64_t* elements = raw + ARRAY_HEADER_WORDS;
+    if (elemType == TYPE_ID_DOUBLE) {
+        qsort(elements, (size_t)len, 8, compareDouble);
+    } else {
+        qsort(elements, (size_t)len, 8, compareInt64);
+    }
+    return arr;
+}
+
+HooArray hoo_array_reverse(HooArray arr) {
+    if (!arr) return nullptr;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    if (len <= 1) return arr;
+    int64_t* elements = raw + ARRAY_HEADER_WORDS;
+    for (int64_t i = 0, j = len - 1; i < j; i++, j--) {
+        int64_t tmp = elements[i];
+        elements[i] = elements[j];
+        elements[j] = tmp;
+    }
+    return arr;
+}
+
 const char* hoo_array_element_type(HooArray arr) {
     if (!arr) return nullptr;
     int64_t elem_type = ((int64_t*)arr)[2];

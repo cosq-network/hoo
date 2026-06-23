@@ -274,6 +274,28 @@ int64_t hoo_array_get_object(HooArray arr, int64_t index, void** dest);
 int64_t hoo_array_get_array(HooArray arr, int64_t index, HooArray* dest);
 
 // ============================================================================
+// Ordering Operations
+// ============================================================================
+
+/**
+ * Sort array elements in-place.
+ * For int64 element arrays: uses numeric int64 comparison.
+ * For double element arrays: uses IEEE 754 double comparison.
+ * For all other types (bool, char, string, object): uses bitwise integer
+ * comparison of the 64-bit storage slots (pointer ordering for strings/objects).
+ * @param arr Array handle
+ * @return The array handle (same as input)
+ */
+HooArray hoo_array_sort(HooArray arr);
+
+/**
+ * Reverse array elements in-place.
+ * @param arr Array handle
+ * @return The array handle (same as input)
+ */
+HooArray hoo_array_reverse(HooArray arr);
+
+// ============================================================================
 // Reference Counting
 // ============================================================================
 
