@@ -110,13 +110,13 @@ TEST_F(HooCLIIntegrationTest, ShortHelpFlag) {
 TEST_F(HooCLIIntegrationTest, VersionFlag) {
     auto r = runHoo("--version");
     EXPECT_EQ(r.exitCode, 0);
-    EXPECT_NE(r.output.find("hoo version"), std::string::npos);
+    EXPECT_NE(r.output.find("hoo - Hoo v"), std::string::npos);
 }
 
 TEST_F(HooCLIIntegrationTest, ShortVersionFlag) {
     auto r = runHoo("-v");
     EXPECT_EQ(r.exitCode, 0);
-    EXPECT_NE(r.output.find("hoo version"), std::string::npos);
+    EXPECT_NE(r.output.find("hoo - Hoo v"), std::string::npos);
 }
 
 TEST_F(HooCLIIntegrationTest, UnknownOption) {
@@ -154,15 +154,16 @@ TEST_F(HooCLIIntegrationTest, CompileAndRunSource) {
     EXPECT_NE(r.output.find("42"), std::string::npos);
 }
 
-TEST_F(HooCLIIntegrationTest, CompileOnly) {
+TEST_F(HooCLIIntegrationTest, RunSourceFile) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
-    auto r = runHoo("-c " + src);
+    auto r = runHoo(src);
     EXPECT_EQ(r.exitCode, 0);
+    EXPECT_NE(r.output.find("42"), std::string::npos);
 }
 
-TEST_F(HooCLIIntegrationTest, CompileSyntaxError) {
+TEST_F(HooCLIIntegrationTest, RunFailsOnSyntaxError) {
     std::string src = createTempFile("func :int64 main() { syntax error }\n");
-    auto r = runHoo("-c " + src);
+    auto r = runHoo(src);
     EXPECT_NE(r.exitCode, 0);
     EXPECT_NE(r.output.find("Compilation failed"), std::string::npos);
 }
@@ -183,13 +184,16 @@ TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecode) {
     EXPECT_GT(st.st_size, 0);
 }
 
-TEST_F(HooCLIIntegrationTest, CompileOnlyWithBytecodeFile) {
+TEST_F(HooCLIIntegrationTest, GeneratedBytecodeRunnable) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
     std::string outPath = tempDir + "/hoo_cli_out2_" + std::to_string(std::time(nullptr)) + ".ho";
-    runHoo("-o " + outPath + " " + src);
-    auto r = runHoo("-c " + outPath);
-    EXPECT_NE(r.exitCode, 0);
-    EXPECT_NE(r.output.find("Cannot use compilation flags"), std::string::npos);
+    auto r1 = runHoo("-o " + outPath + " " + src);
+    EXPECT_EQ(r1.exitCode, 0);
+    EXPECT_NE(r1.output.find("bytecode saved"), std::string::npos);
+
+    auto r2 = runHoo(outPath);
+    EXPECT_EQ(r2.exitCode, 0);
+    EXPECT_NE(r2.output.find("42"), std::string::npos);
 }
 
 TEST_F(HooCLIIntegrationTest, RunBytecodeFile) {

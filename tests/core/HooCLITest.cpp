@@ -156,7 +156,7 @@ TEST_F(HooCLITest, ShowsVersion) {
 
     EXPECT_EQ(result, 0);
     EXPECT_FALSE(cli->getIOProvider()->getStdout().empty());
-    EXPECT_TRUE(cli->getIOProvider()->getStdout().find("hoo version") != std::string::npos);
+    EXPECT_TRUE(cli->getIOProvider()->getStdout().find("hoo - Hoo v") != std::string::npos);
 }
 
 TEST_F(HooCLITest, ShowsHelp) {
@@ -204,7 +204,7 @@ TEST_F(HooCLITest, ReturnsErrorOnInvalidExtension) {
     EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Invalid file extension") != std::string::npos);
 }
 
-TEST_F(HooCLITest, ReturnsErrorOnBytecodeWithCompileFlags) {
+TEST_F(HooCLITest, ReturnsErrorOnUnknownCompileFlag) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
@@ -216,24 +216,23 @@ TEST_F(HooCLITest, ReturnsErrorOnBytecodeWithCompileFlags) {
     int result = cli->run(3, args.data());
 
     EXPECT_EQ(result, 1);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Cannot use compilation flags") != std::string::npos);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Unknown option") != std::string::npos);
 }
 
-TEST_F(HooCLITest, CompileOnlyMode) {
+TEST_F(HooCLITest, RejectsStdinCompileFlag) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     fakeIO->setFile("test.hoo", "func main() {}");
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
     args.push_back(const_cast<char*>("hoo"));
-    args.push_back(const_cast<char*>("--verbose"));
     args.push_back(const_cast<char*>("-c"));
     args.push_back(const_cast<char*>("test.hoo"));
 
-    int result = cli->run(4, args.data());
+    int result = cli->run(3, args.data());
 
-    EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Compile-only mode") != std::string::npos);
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Unknown option") != std::string::npos);
 }
 
 TEST_F(HooCLITest, OutputOptionProducesBytecode) {

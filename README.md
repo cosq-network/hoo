@@ -1,6 +1,6 @@
 # Hoo
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v0.1.0)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v1.4.0)
 [![macOS Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
 [![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml)
 [![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
@@ -44,12 +44,11 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 
 ## Recent Changes
 
-- Updated `docs/hvm/system` to replace all proposal references with final specification links.
-- Archived the green‑compute proposal and created `02-hvm-green-compute-specifications.md` as the single source of truth.
-- Cleaned up `docs/hvm/system/README.md` to point to the finalized spec.
-- Refactored server, robotics, and other system spec documents to remove speculative language.
-- Added comprehensive REPL integration and buffer/map API redesign.
-- Completed full test suite run: 1745 tests, 0 failures.
+- Updated `hoo --version` output to include tool name, brand name, version, and license information.
+- Removed `--compile` / `-c` from the CLI; unknown flags now return a clear error.
+- Improved REPL ergonomics so `--repl` no longer requires an input file, while still accepting one when provided.
+- Updated CLI usage text and documentation to match the new flags and behavior.
+- Completed full test suite run: `hoo-tests` passes after the CLI updates.
 
 
 ## 3. Build & Test

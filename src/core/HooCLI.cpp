@@ -32,7 +32,7 @@ IOProvider* HooCLI::getIOProvider() const {
 
 std::string HooCLI::getUsage(std::string_view programName) const {
     std::string usage;
-    usage += "Usage: " + std::string(programName) + " [options] <input_file>\n";
+    usage += "Usage: " + std::string(programName) + " [options] [<input_file>]\n";
     usage += "\n";
     usage += "Input File:\n";
     usage += "  <file>.hoo      Source file for HVMJIT execution or AOT compilation\n";
@@ -41,21 +41,21 @@ std::string HooCLI::getUsage(std::string_view programName) const {
     usage += "Options:\n";
     usage += "  -h, --help      Display this help message\n";
     usage += "  -v, --version   Display version information\n";
-    usage += "  -c, --compile   Compile only, do not execute (valid only for .hoo)\n";
-    usage += "  -o, --output    Specify output .ho file path (valid only for .hoo, implies -c)\n";
+    usage += "  -o, --output    Specify output .ho file path (valid only for .hoo, implies compilation-only mode)\n";
     usage += "  --repl          Enter interactive REPL mode\n";
     usage += "  --verbose       Enable verbose logging\n";
     usage += "\n";
     usage += "Examples:\n";
     usage += "  " + std::string(programName) + " script.hoo           # Compile and run via HVMJIT\n";
-    usage += "  " + std::string(programName) + " script.hoo -c        # Compile and validate source\n";
     usage += "  " + std::string(programName) + " script.hoo -o out.ho # Build AOT HVM bytecode\n";
     usage += "  " + std::string(programName) + " out.ho               # Execute AOT bytecode\n";
     return usage;
 }
 
 std::string HooCLI::getVersion() const {
-    return std::string(COMPILER_NAME) + " version " + VERSION + " (HVM v1.4 Physical)\n";
+    return std::string(COMPILER_NAME) + " - " + std::string("Hoo") + " v" + VERSION +
+           "\n" + "HVM v1.4 Physical" +
+           "\n" + "Licensed under the Apache License, Version 2.0\n";
 }
 
 HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
@@ -69,9 +69,6 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
         }
         else if (arg == "-v" || arg == "--version") {
             opts.showVersion = true;
-        }
-        else if (arg == "-c" || arg == "--compile") {
-            opts.compileOnly = true;
         }
         else if (arg == "-o" || arg == "--output") {
             if (i + 1 < argc) {

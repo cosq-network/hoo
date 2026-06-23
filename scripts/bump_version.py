@@ -184,6 +184,46 @@ def update_readme(new_ver):
         f.write(updated)
 
 
+def update_vcpkg(new_ver):
+    path = os.path.join(ROOT, "vcpkg.json")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        content = f.read()
+    old_str = ".".join(str(x) for x in new_ver)
+    ver_str = old_str
+    updated = re.sub(
+        r'( "version-string"\s*:\s*")([^"]+)(")',
+        lambda m: f'{m.group(1)}{ver_str}{m.group(3)}',
+        content,
+    )
+    if updated != content:
+        with open(path, "w") as f:
+            f.write(updated)
+        print(f"  vcpkg.json      updated version-string → {ver_str}")
+    else:
+        print(f"  vcpkg.json      version-string unchanged")
+
+
+def update_hvm_module_version(new_ver):
+    path = os.path.join(ROOT, "src", "hvm", "HOModule.h")
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        content = f.read()
+    updated = re.sub(
+        r'(static constexpr uint16_t VERSION_MINOR = )(\d+);',
+        lambda m: f'{m.group(1)}{new_ver[1]};',
+        content,
+    )
+    if updated != content:
+        with open(path, "w") as f:
+            f.write(updated)
+        print(f"  HOModule.h      updated VERSION_MINOR → {new_ver[1]}")
+    else:
+        print(f"  HOModule.h      VERSION_MINOR unchanged")
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -207,10 +247,12 @@ def main():
     update_cmake(old_ver, new_ver)
     update_changelog(new_ver, commits)
     update_readme(new_ver)
+    update_vcpkg(new_ver)
+    update_hvm_module_version(new_ver)
 
     # Stage and commit
-    git("add", "CMakeLists.txt", "docs/CHANGELOG.md", "README.md")
-    git("commit", "-m", f"chore: bump version to {ver_str}")
+    git("add", "CMakeLists.txt", "docs/CHANGELOG.md", "README.md", "vcpkg.json", "src/hvm/HOModule.h")
+    git("commit", "-m", f"chore: bump version to {ver_str} [skip ci]")
     git("tag", f"v{ver_str}")
 
     print(f"\n✓ Version bumped to {ver_str} and tagged as v{ver_str}")
