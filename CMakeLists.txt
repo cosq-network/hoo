@@ -57,6 +57,7 @@ if(MSVC)
     endforeach()
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /D_ITERATOR_DEBUG_LEVEL=0")
     add_compile_options(/wd4624)
+    add_compile_options(/EHa)
 
     function(hoo_use_static_msvc_runtime target_name)
         set_property(TARGET ${target_name} PROPERTY

@@ -221,14 +221,13 @@ static void registerRegexOverloads() {
 
 static void registerDateTimeOverloads() {
     // Constructors
-    static const int64_t ctor0_params[] = {};
     static const int64_t ctor1_params[] = {HOO_TYPE_INT64};  // epochMs
     // DateTime.parse
     static const int64_t parse1_params[] = {HOO_TYPE_STRING};
     static const int64_t parse2_params[] = {HOO_TYPE_STRING, HOO_TYPE_STRING}; // text, format
 
     static const HooOverloadCandidate datetime[] = {
-        {HOO_OVERLOAD_CONSTRUCTOR, "new", "DateTime", ctor0_params,  0, HOO_TYPE_DATETIME, "hoo_datetime_new_now",      0, 0},
+        {HOO_OVERLOAD_CONSTRUCTOR, "new", "DateTime", nullptr,  0, HOO_TYPE_DATETIME, "hoo_datetime_new_now",      0, 0},
         {HOO_OVERLOAD_CONSTRUCTOR, "new", "DateTime", ctor1_params,  1, HOO_TYPE_DATETIME, "hoo_datetime_new",          0, 0},
         {HOO_OVERLOAD_STATIC_METHOD, "parse", "DateTime", parse1_params, 1, HOO_TYPE_DATETIME, "hoo_datetime_from_iso8601", 0, 0},
         {HOO_OVERLOAD_STATIC_METHOD, "parse", "DateTime", parse2_params, 2, HOO_TYPE_DATETIME, "hoo_datetime_parse",        0, 0},
@@ -238,11 +237,10 @@ static void registerDateTimeOverloads() {
 }
 
 static void registerBufferOverloads() {
-    static const int64_t ctor0_params[] = {};
     static const int64_t ctor1_params[] = {HOO_TYPE_INT64};  // capacity
 
     static const HooOverloadCandidate buffer[] = {
-        {HOO_OVERLOAD_CONSTRUCTOR, "new", "Buffer", ctor0_params, 0, HOO_TYPE_BUFFER, "hoo_buffer_new_empty", 0, 0},
+        {HOO_OVERLOAD_CONSTRUCTOR, "new", "Buffer", nullptr, 0, HOO_TYPE_BUFFER, "hoo_buffer_new_empty", 0, 0},
         {HOO_OVERLOAD_CONSTRUCTOR, "new", "Buffer", ctor1_params, 1, HOO_TYPE_BUFFER, "hoo_buffer_new",       0, 0},
         {(HooOverloadKind)0, nullptr, nullptr, nullptr, 0, 0, nullptr, 0, 0}
     };
