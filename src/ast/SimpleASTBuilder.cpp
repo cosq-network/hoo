@@ -1198,6 +1198,44 @@ std::string SimpleASTBuilder::getStringValue(antlr4::tree::TerminalNode* node) {
                     case 't': result += '\t'; break;
                     case 'b': result += '\b'; break;
                     case 'f': result += '\f'; break;
+                    case 'u': {
+                        if (i + 4 >= inner.size()) {
+                            result += inner[i];
+                            break;
+                        }
+                        std::string hex = inner.substr(i + 1, 4);
+                        char32_t cp = static_cast<char32_t>(std::stoul(hex, nullptr, 16));
+                        if (cp < 0x80) {
+                            result += static_cast<char>(cp);
+                        } else if (cp < 0x800) {
+                            result += static_cast<char>(0xC0 | (cp >> 6));
+                            result += static_cast<char>(0x80 | (cp & 0x3F));
+                        } else if (cp < 0x10000) {
+                            result += static_cast<char>(0xE0 | (cp >> 12));
+                            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                            result += static_cast<char>(0x80 | (cp & 0x3F));
+                        } else {
+                            result += static_cast<char>(0xF0 | (cp >> 18));
+                            result += static_cast<char>(0x80 | ((cp >> 12) & 0x3F));
+                            result += static_cast<char>(0x80 | ((cp >> 6) & 0x3F));
+                            result += static_cast<char>(0x80 | (cp & 0x3F));
+                        }
+                        i += 4;
+                        break;
+                    }
+                    case 'x': {
+                        if (i + 2 >= inner.size()) {
+                            result += inner[i];
+                            break;
+                        }
+                        std::string hex = inner.substr(i + 1, 2);
+                        char byte = static_cast<char>(std::stoul(hex, nullptr, 16));
+                        result += byte;
+                        i += 2;
+                        break;
+                    }
+                    case '0': result += '\0'; break;
+                    case 'v': result += '\v'; break;
                     default: result += inner[i]; break;
                 }
             } else {

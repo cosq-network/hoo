@@ -1,5 +1,4 @@
-#ifndef HOO_COMPILER_H
-#define HOO_COMPILER_H
+#pragma once
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @file HooCompiler.h
@@ -139,5 +138,3 @@ private:
 };
 
 }  // namespace hooc
-
-#endif  // HOO_COMPILER_H

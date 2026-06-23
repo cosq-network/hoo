@@ -41,8 +41,10 @@
 #include "runtime/lib/hoo_json.h"
 
 #include <fcntl.h>
+#ifndef _WIN32
 #include <sys/stat.h>
 #include <time.h>
+#endif
 
 #ifdef _WIN32
 #define HVM_RUNTIME_EXPORT __declspec(dllexport)
@@ -3253,8 +3255,15 @@ extern "C" {
     // but POSIX syscalls need real virtual addresses.  This global lets the
     // extern "C" helpers below compute real addresses at runtime.
     static uint8_t* g_hvm_memory = nullptr;
+    static uint64_t g_hvm_memory_size = 0;
+    static uint8_t* g_hvm_memory_end = nullptr;
     void hvm_set_memory_base(uint8_t* base) { g_hvm_memory = base; }
+    void hvm_set_memory_size(uint64_t size) { g_hvm_memory_size = size; g_hvm_memory_end = g_hvm_memory + size; }
     uint8_t* hvm_get_memory_base() { return g_hvm_memory; }
+    uint64_t hvm_get_memory_size() { return g_hvm_memory_size; }
+    bool hvm_validate_offset(uint64_t offset, uint64_t access_size) {
+        return offset < g_hvm_memory_size && access_size <= g_hvm_memory_size - offset;
+    }
 
     // HVM internal sys calls (for interpreter)
     extern "C" uint64_t hooc_hvm_sys_alloc(uint64_t size, uint64_t typeId) {
@@ -3412,6 +3421,7 @@ extern "C" {
 #endif
     }
     extern "C" uint64_t hooc_hvm_sys_open(uint64_t path, uint64_t flags, uint64_t mode) {
+        if (g_hvm_memory && !hvm_validate_offset(path, 1)) return static_cast<uint64_t>(-1);
         const char* realPath = g_hvm_memory
             ? reinterpret_cast<const char*>(g_hvm_memory + path)
             : reinterpret_cast<const char*>(path);
@@ -4380,6 +4390,7 @@ hooc::HVMJIT::HVMJIT(IOProvider& io)
     memory_.resize(16 * 1024 * 1024, 0); // 16 MB initial virtual memory.
     memoryTop_ = 0x10000;                // keep low page unmapped-like.
     hvm_set_memory_base(memory_.data()); // expose base to extern "C" helpers
+    hvm_set_memory_size(memory_.size()); // expose size for bounds validation
 }
 
 hooc::HVMJIT::~HVMJIT() {
@@ -5387,7 +5398,7 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::LOGIC:
             return func <= 2;
         case hvm::Opcode::CMP:
-            return func <= 3;
+            return func <= 5;
         case hvm::Opcode::FCMP:
             return func <= 2;
         default:
@@ -5478,7 +5489,7 @@ bool HVMJIT::mapModuleSections(const std::shared_ptr<hvm::HOModule>& module) {
 
         memoryTop_ = alignUp(memoryTop_, std::max<uint64_t>(16, sec->alignment));
         base = memoryTop_;
-        if (base + size >= memory_.size()) {
+        if (size > memory_.size() || base > memory_.size() - size) {
             lastError_ = "Out of virtual memory while mapping section " + std::string(secName) +
                          " of module " + name;
             return false;
@@ -5526,11 +5537,15 @@ bool HVMJIT::invokeStateAbiSymbol(const std::string& symbolName, HVMState& state
     return false;
 }
 
+static thread_local uint32_t tls_callDepth = 0;
 int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, const std::string& functionName, HVMState& state) {
-    if (!module) {
-        lastError_ = "Null module in executeFunction";
+    if (tls_callDepth >= kMaxCallDepth) {
+        lastError_ = "Call depth exceeded " + std::to_string(kMaxCallDepth) + " in " + functionName;
         return -1;
     }
+    ++tls_callDepth;
+    struct DepthGuard { ~DepthGuard() { --tls_callDepth; } } dg;
+
     auto layoutIt = moduleLayouts_.find(module->getName());
     if (layoutIt == moduleLayouts_.end()) {
         lastError_ = "Module layout not found for " + module->getName();
@@ -5719,13 +5734,15 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             }
             case hvm::Opcode::CMP: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
-                const int64_t a = static_cast<int64_t>(readReg(o.rs1));
-                const int64_t b = static_cast<int64_t>(readReg(o.rs2));
+                const uint64_t a = readReg(o.rs1);
+                const uint64_t b = readReg(o.rs2);
                 switch (o.func) {
                     case 0: writeReg(o.rd, a == b ? 1 : 0); break;
                     case 1: writeReg(o.rd, a != b ? 1 : 0); break;
-                    case 2: writeReg(o.rd, a < b ? 1 : 0); break;
-                    case 3: writeReg(o.rd, a <= b ? 1 : 0); break;
+                    case 2: writeReg(o.rd, static_cast<int64_t>(a) < static_cast<int64_t>(b) ? 1 : 0); break;
+                    case 3: writeReg(o.rd, static_cast<int64_t>(a) <= static_cast<int64_t>(b) ? 1 : 0); break;
+                    case 4: writeReg(o.rd, a < b ? 1 : 0); break;
+                    case 5: writeReg(o.rd, a <= b ? 1 : 0); break;
                     default:
                         lastError_ = "Unsupported CMP func: " + std::to_string(o.func);
                         return -1;
@@ -7169,6 +7186,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 1) pred = builder.CreateICmpNE(readReg(o.rs1), readReg(o.rs2));
                     else if (o.func == 2) pred = builder.CreateICmpSLT(readReg(o.rs1), readReg(o.rs2));
                     else if (o.func == 3) pred = builder.CreateICmpSLE(readReg(o.rs1), readReg(o.rs2));
+                    else if (o.func == 4) pred = builder.CreateICmpULT(readReg(o.rs1), readReg(o.rs2));
+                    else if (o.func == 5) pred = builder.CreateICmpULE(readReg(o.rs1), readReg(o.rs2));
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, builder.CreateZExt(pred, i64));
                 } else if (op == hvm::Opcode::FLOAT_ARITH) {
@@ -7831,7 +7850,7 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
             size_t used = 0;
             auto ins = hvm::HVMInstruction::decode(slice, used);
             if (!ins || used == 0) {
-                fprintf(stderr, "DEBUG: decode failed at PC %llu in module %s\n", (unsigned long long)pc, module->getName().c_str());
+                lastError_ = "Instruction decode failed at PC " + std::to_string(pc) + " in module " + module->getName();
                 return false;
             }
             uint16_t func = 0;
@@ -7840,8 +7859,9 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
             }
 
             if (!isSupportedForIRLowering(ins->getOpcode(), func)) {
-                fprintf(stderr, "DEBUG: unsupported instruction: opcode %d mnemonic %s func %d at PC %llu in module %s\n",
-                        (int)ins->getOpcode(), ins->getMnemonic().c_str(), (int)func, (unsigned long long)pc, module->getName().c_str());
+                lastError_ = "Unsupported instruction: opcode " + std::to_string((int)ins->getOpcode())
+                    + " mnemonic " + ins->getMnemonic() + " func " + std::to_string((int)func)
+                    + " at PC " + std::to_string(pc) + " in module " + module->getName();
                 return false;
             }
             if (ins->getOpcode() == hvm::Opcode::RET) break;

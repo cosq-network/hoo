@@ -1743,6 +1743,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         freeRegister(iReg);
     } else if (auto tryCatch = dynamic_cast<const ast::TryCatchStatement*>(&stmt)) {
         Label* catchStartLabel = createLabel();
+        Label* finallyLabel = createLabel();
         Label* endLabel = createLabel();
         
         // 1. Register handler: CALL hoo_push_handler(catchStartLabel)
@@ -1752,22 +1753,25 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         uint32_t ldaOff = currentByteOffset_ - instructions_.back().getSize();
         
         emit(Opcode::MOV, OperandsR{1, handlerAddrReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_hoo_push_handler_v_p"); // Correct mangled name
+        emitCall(Opcode::CALL, "_F_hoo_push_handler_v_p");
         freeRegister(handlerAddrReg);
 
         visitStatement(tryCatch->getTryBlock());
         
-        // 2. Unregister handler
+        // 2. Normal path: pop handler and go to finally
         emitCall(Opcode::CALL, "_F_hoo_pop_handler_v");
-        emitJump(Opcode::JMP, 0, endLabel);
+        emitJump(Opcode::JMP, 0, finallyLabel);
 
         bindLabel(catchStartLabel);
-        // Fixup LDA
+        // Fixup LDA to point to catch handler
         int32_t catchOffset = catchStartLabel->targetByteOffset - static_cast<int32_t>(ldaOff);
         auto ldaOps = instructions_[ldaIdx].getOperands();
         auto& ldaOpsI = std::get<OperandsI>(ldaOps);
         ldaOpsI.imm15 = static_cast<int16_t>(catchOffset);
         instructions_[ldaIdx].setOperands(ldaOpsI);
+
+        // 3. Exception path: pop handler and run catch clauses
+        emitCall(Opcode::CALL, "_F_hoo_pop_handler_v");
 
         for (const auto& clause : tryCatch->getCatchClauses()) {
             uint8_t excReg = allocateRegister();
@@ -1778,8 +1782,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emit(Opcode::ST_D, OperandsI{excReg, 30, static_cast<int16_t>(itemOffset)});
             freeRegister(excReg);
             visitStatement(*clause.block);
-            emitJump(Opcode::JMP, 0, endLabel);
+            emitJump(Opcode::JMP, 0, finallyLabel);
         }
+
+        // 4. Finally block — executed on both normal and catch paths
+        bindLabel(finallyLabel);
         if (tryCatch->getFinallyBlock()) {
             visitStatement(*tryCatch->getFinallyBlock());
         }
@@ -2205,7 +2212,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-    emit(Opcode::RETAIN, OperandsR{dest, dest, 0, 0}); // ARC retain for new object
+        // New objects start with refcount=1 from hoo_alloc — RETAIN not needed
         freeRegister(sizeReg);
         freeRegister(typeReg);
 
@@ -2733,12 +2740,52 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             addError("Expression of type 'any' cannot be used in a binary expression");
             return 0;
         }
-        uint8_t left = visitExpression(binary->getLeft());
-        uint8_t right = visitExpression(binary->getRight());
-        uint8_t dest = allocateRegister();
         const uint32_t leftType = leftExprType;
         const uint32_t rightType = rightExprType;
         const bool isFloatExpr = leftType == 2 || leftType == 9 || rightType == 2 || rightType == 9;
+        const bool isUnsigned = leftType == 6 || rightType == 6;
+        const bool isStringConcat = binary->getOperator() == ast::BinaryOperator::PLUS
+            && (leftType == 101 || rightType == 101);
+        const bool isAnd = binary->getOperator() == ast::BinaryOperator::AND;
+        const bool isOr = binary->getOperator() == ast::BinaryOperator::OR;
+
+        if (isStringConcat) {
+            uint8_t left = visitExpression(binary->getLeft());
+            uint8_t right = visitExpression(binary->getRight());
+            emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+            emit(Opcode::MOV, OperandsR{2, right, 0, 0});
+            emitCall(Opcode::CALL, "_F_M_hoo_E_String_concat_p_p");
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            freeRegister(left);
+            freeRegister(right);
+            return dest;
+        }
+
+        if (isAnd || isOr) {
+            uint8_t left = visitExpression(binary->getLeft());
+            Label* skipLabel = createLabel();
+            Label* endLabel = createLabel();
+            uint8_t dest = allocateRegister();
+            if (isAnd) {
+                emitBranch(Opcode::BEQ, left, 0, skipLabel);
+            } else {
+                emitBranch(Opcode::BNE, left, 0, skipLabel);
+            }
+            uint8_t right = visitExpression(binary->getRight());
+            emit(Opcode::MOV, OperandsR{dest, right, 0, 0});
+            freeRegister(right);
+            emitJump(Opcode::JMP, 0, endLabel);
+            bindLabel(skipLabel);
+            emit(Opcode::MOV, OperandsR{dest, left, 0, 0});
+            bindLabel(endLabel);
+            freeRegister(left);
+            return dest;
+        }
+
+        uint8_t left = visitExpression(binary->getLeft());
+        uint8_t right = visitExpression(binary->getRight());
+        uint8_t dest = allocateRegister();
         Opcode op = Opcode::ARITH;
         uint16_t func = 0;
         switch (binary->getOperator()) {
@@ -2749,17 +2796,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             case ast::BinaryOperator::MODULO: func = 7; break;
             case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = 0; break;
             case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
-            case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : 2; break;
-            case ast::BinaryOperator::LESS_EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 2 : 3; break;
+            case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2); break;
+            case ast::BinaryOperator::LESS_EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 2 : (isUnsigned ? 5 : 3); break;
             case ast::BinaryOperator::GREATER: {
                 op = isFloatExpr ? Opcode::FCMP : Opcode::CMP;
-                func = isFloatExpr ? 1 : 2;
+                func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2);
                 std::swap(left, right);
                 break;
             }
             case ast::BinaryOperator::GREATER_EQUALS: {
                 op = isFloatExpr ? Opcode::FCMP : Opcode::CMP;
-                func = isFloatExpr ? 2 : 3;
+                func = isFloatExpr ? 2 : (isUnsigned ? 5 : 3);
                 std::swap(left, right);
                 break;
             }
@@ -2781,18 +2828,27 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return 0;
         }
         uint8_t left = visitExpression(logicAnd->getLeft());
-        uint8_t right = visitExpression(logicAnd->getRight());
         uint8_t dest = allocateRegister();
         if (leftType == 104 || rightType == 104) {
+            uint8_t right = visitExpression(logicAnd->getRight());
             emit(Opcode::MOV, OperandsR{1, left, 0, 0});
             emit(Opcode::MOV, OperandsR{2, right, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Tensor_and_p_p_p");
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            freeRegister(right);
         } else {
-            emit(Opcode::LOGIC, OperandsR{dest, left, right, 0});
+            Label* skipLabel = createLabel();
+            Label* endLabel = createLabel();
+            emitBranch(Opcode::BEQ, left, 0, skipLabel);
+            uint8_t right = visitExpression(logicAnd->getRight());
+            emit(Opcode::MOV, OperandsR{dest, right, 0, 0});
+            freeRegister(right);
+            emitJump(Opcode::JMP, 0, endLabel);
+            bindLabel(skipLabel);
+            emit(Opcode::MOVZ, OperandsI{dest, 0, 0});
+            bindLabel(endLabel);
         }
         freeRegister(left);
-        freeRegister(right);
         return dest;
     }
     if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
@@ -2803,18 +2859,27 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return 0;
         }
         uint8_t left = visitExpression(logicOr->getLeft());
-        uint8_t right = visitExpression(logicOr->getRight());
         uint8_t dest = allocateRegister();
         if (leftType == 104 || rightType == 104) {
+            uint8_t right = visitExpression(logicOr->getRight());
             emit(Opcode::MOV, OperandsR{1, left, 0, 0});
             emit(Opcode::MOV, OperandsR{2, right, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Tensor_or_p_p_p");
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            freeRegister(right);
         } else {
-            emit(Opcode::LOGIC, OperandsR{dest, left, right, 1});
+            Label* skipLabel = createLabel();
+            Label* endLabel = createLabel();
+            emitBranch(Opcode::BNE, left, 0, skipLabel);
+            uint8_t right = visitExpression(logicOr->getRight());
+            emit(Opcode::MOV, OperandsR{dest, right, 0, 0});
+            freeRegister(right);
+            emitJump(Opcode::JMP, 0, endLabel);
+            bindLabel(skipLabel);
+            emit(Opcode::MOV, OperandsR{dest, left, 0, 0});
+            bindLabel(endLabel);
         }
         freeRegister(left);
-        freeRegister(right);
         return dest;
     }
 
@@ -4438,20 +4503,55 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
                 if (fieldIt == layout.fieldOffsets.end()) continue;
                 int32_t fieldOffset = fieldIt->second;
 
+                // Determine original field type for deserialization conversion
+                uint32_t origFieldType = getTypeId(var->getType(), nullptr, nullptr);
+                const ast::Type* fieldType = var->getType();
+                uint32_t serializedType = fieldType ? serializeFieldTypeId(*fieldType) : 0;
+
                 // Extract value from HashMap by field index
-                // hoo_hashmap_get_any_i8(map, key, &out) — returns HooAnyValue
-                // JIT bridge: get_any_data returns value.data
                 emit(Opcode::MOV, OperandsR{1, mapReg, 0, 0});
                 uint8_t keyReg = emitConstant(fieldIndex);
                 emit(Opcode::MOV, OperandsR{2, keyReg, 0, 0});
                 emitCall(Opcode::CALL, "_F_hoo_hashmap_get_any_data_i8_p_i8");
                 freeRegister(keyReg);
 
-                // r1 now has the value.data — store to field
-                // Reload instance from stack
+                // r1 now has the value.data — reverse type promotion if needed
+                if (serializedType != origFieldType && serializedType != 0) {
+                    if (origFieldType == 5 || origFieldType == 6) {
+                        // INT8/BYTE promoted to INT64: truncate to 8 bits
+                        uint8_t maskReg = emitConstant(0xFF);
+                        emit(Opcode::MOV, OperandsR{2, maskReg, 0, 0});
+                        emit(Opcode::LOGIC, OperandsR{1, 1, 2, 0}); // AND
+                        freeRegister(maskReg);
+                        if (origFieldType == 5) {
+                            // INT8: sign-extend from 8 bits
+                            uint8_t shiftReg = emitConstant(56);
+                            emit(Opcode::MOV, OperandsR{2, shiftReg, 0, 0});
+                            emit(Opcode::SHIFT, OperandsR{1, 1, 2, 0}); // SHL by 56
+                            uint8_t shiftReg2 = emitConstant(56);
+                            emit(Opcode::MOV, OperandsR{2, shiftReg2, 0, 0});
+                            emit(Opcode::SHIFT, OperandsR{1, 1, 2, 2}); // SAR by 56
+                            freeRegister(shiftReg2);
+                            freeRegister(shiftReg);
+                        }
+                    } else if (origFieldType == 8) {
+                        // BIT promoted to BOOL: mask down to 0/1
+                        uint8_t maskReg = emitConstant(1);
+                        emit(Opcode::MOV, OperandsR{2, maskReg, 0, 0});
+                        emit(Opcode::LOGIC, OperandsR{1, 1, 2, 0}); // AND
+                        freeRegister(maskReg);
+                    } else if (origFieldType == 9) {
+                        // F8 promoted to FLOAT64: call f8 conversion
+                        emitCall(Opcode::CALL, "_F_M_hoo_E_F8_fromDouble_d_d");
+                    } else if (origFieldType == 113) {
+                        // BUFFER promoted to STRING: call base64 decode
+                        emitCall(Opcode::CALL, "_F_M_hoo_E_Buffer_fromBase64_p_p");
+                    }
+                }
+
+                // Store the extracted value into the field
                 uint8_t instReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{instReg, 30, static_cast<int16_t>(instanceTempOffset)});
-                // Store the extracted value into the field
                 emit(Opcode::ST_D, OperandsI{1, instReg, static_cast<int16_t>(fieldOffset)});
                 freeRegister(instReg);
 

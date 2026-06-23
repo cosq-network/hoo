@@ -215,6 +215,8 @@ private:
     std::string lastError_;
     std::vector<uint8_t> memory_;
     uint64_t memoryTop_ = 0;
+    uint32_t callDepth_ = 0;
+    static constexpr uint32_t kMaxCallDepth = 1024;
     bool modulesInitialized_ = false;
     std::optional<ErrorInfo> lastErrorInfo_;
     bool lastRunUsedJIT_ = false;

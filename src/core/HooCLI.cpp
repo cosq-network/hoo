@@ -1,5 +1,6 @@
 #include "core/HooCLI.h"
 #include "core/HooCompiler.h"
+#include "core/SymbolMangler.h"
 #include "hvm/HOModule.h"
 #include "hvm/HVMJIT.h"
 #include "runtime/lib/hoo_args.h"
@@ -18,7 +19,7 @@ using namespace hooc;
 namespace fs = std::filesystem;
 
 constexpr const char* COMPILER_NAME = "hoo";
-constexpr const char* VERSION = "1.4.0"; // Aligned with HVM 1.4
+constexpr const char* VERSION = HOO_VERSION;
 
 HooCLI::HooCLI(std::unique_ptr<IOProvider> ioProvider)
     : ioProvider_(std::move(ioProvider)) {}
@@ -162,7 +163,11 @@ int HooCLI::compileAndExecute(const Options& opts,
         }
         
         verboseLog(opts, "Executing main function...");
-        std::string entryPoint = "_F_M_" + moduleName + "_E_main_i8";
+        MangledFunctionParams mp;
+        mp.modulePath = {moduleName};
+        mp.functionName = "main";
+        mp.returnType = "int64";
+        std::string entryPoint = SymbolMangler::mangleFunctionName(mp);
         int64_t result = jit.run(entryPoint);
         if (jit.hasError()) {
             // Fallback: try legacy bare name for interpreter path
@@ -216,7 +221,11 @@ int HooCLI::compileAndExecute(const Options& opts,
     }
 
     verboseLog(opts, "Executing main function...");
-    std::string entryPoint = "_F_M_" + moduleName + "_E_main_i8";
+    MangledFunctionParams mp;
+    mp.modulePath = {moduleName};
+    mp.functionName = "main";
+    mp.returnType = "int64";
+    std::string entryPoint = SymbolMangler::mangleFunctionName(mp);
     int64_t result = jit.run(entryPoint);
     if (jit.hasError()) {
         // Fallback: try legacy bare name for interpreter path
@@ -238,6 +247,7 @@ int HooCLI::compileAndExecute(const Options& opts,
 
 int HooCLI::run(int argc, char* argv[]) {
     hoo_args_init(argc, (const char* const*)argv);
+    struct ArgsCleanup { ~ArgsCleanup() { hoo_args_shutdown(); } } argsCleanup;
 
     Options opts = parseArguments(argc, argv);
 

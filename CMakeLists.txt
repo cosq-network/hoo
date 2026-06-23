@@ -5,7 +5,7 @@ if(POLICY CMP0091)
 endif()
 
 project(Hoo
-    VERSION 0.2.0
+    VERSION 1.4.0
     DESCRIPTION "Hoo – a high-performance statically-typed systems programming language"
     LANGUAGES C CXX
 )
@@ -358,6 +358,8 @@ target_include_directories(hoo-core PUBLIC
     ${ANTLR4_GENERATED_DIR}
 )
 
+target_compile_definitions(hoo-core PRIVATE HOO_VERSION="${PROJECT_VERSION}")
+
 target_link_libraries(hoo-core PUBLIC
     hoort
     hoo-parser
@@ -540,6 +542,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/FloatingLiteralTest.cpp
         tests/jit/LowPrecisionTypesTest.cpp
         tests/jit/InterpolatedStringTest.cpp
+        tests/jit/BugFixVerificationTest.cpp
         tests/jit/HVMJITLifecycleTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
