@@ -106,10 +106,27 @@ TEST(HooReplTest, ReplCompileErrorRecovery) {
     std::string errStr = err.str();
     // The first one should have failed compilation
     EXPECT_NE(errStr.find("Error:"), std::string::npos);
-    
+
     // The second function declaration should compile successfully.
-    // The error stream shouldn't contain a second failure.
-    // Let's verify that the output did not report a second error for getVal()
+    // Count error occurrences — should be exactly 1 (only the first fails)
+    size_t firstErr = errStr.find("Error:");
+    size_t secondErr = errStr.find("Error:", firstErr + 1);
+    EXPECT_EQ(secondErr, std::string::npos);
+}
+
+TEST(HooReplTest, ReplErrorThenValidRecovery) {
+    std::stringstream in("invalid syntax\n42;\n/exit\n");
+    std::stringstream out;
+    std::stringstream err;
+
+    REPLSession session(in, out, err);
+    session.run();
+
+    // First line fails with compilation error
+    EXPECT_NE(err.str().find("Error:"), std::string::npos);
+    // Second line should still evaluate and produce output
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("42"), std::string::npos);
 }
 
 TEST(HooReplTest, ReplStatementWrapping) {
@@ -120,7 +137,49 @@ TEST(HooReplTest, ReplStatementWrapping) {
     REPLSession session(in, out, err);
     session.run();
 
-    // 1 + 2; is a statement, so it should be wrapped in func __repl_line_1 and compiled successfully
+    // 1 + 2; should evaluate to 3
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("3"), std::string::npos);
+    EXPECT_EQ(err.str(), "");
+}
+
+TEST(HooReplTest, ReplExpressionResult) {
+    std::stringstream in("42;\n/exit\n");
+    std::stringstream out;
+    std::stringstream err;
+
+    REPLSession session(in, out, err);
+    session.run();
+
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("42"), std::string::npos);
+    EXPECT_EQ(err.str(), "");
+}
+
+TEST(HooReplTest, ReplMultipleExpressions) {
+    std::stringstream in("1 + 2;\n3 * 4;\n/exit\n");
+    std::stringstream out;
+    std::stringstream err;
+
+    REPLSession session(in, out, err);
+    session.run();
+
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("3"), std::string::npos);
+    EXPECT_NE(outStr.find("12"), std::string::npos);
+    EXPECT_EQ(err.str(), "");
+}
+
+TEST(HooReplTest, ReplMathExpression) {
+    std::stringstream in("(10 + 5) * 2;\n/exit\n");
+    std::stringstream out;
+    std::stringstream err;
+
+    REPLSession session(in, out, err);
+    session.run();
+
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("30"), std::string::npos);
     EXPECT_EQ(err.str(), "");
 }
 
@@ -132,6 +191,46 @@ TEST(HooReplTest, ReplDeclarationAndUse) {
     REPLSession session(in, out, err);
     session.run();
 
-    // Both lines should compile cleanly
+    // Both lines should compile cleanly, getTen() should return 10
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("10"), std::string::npos);
     EXPECT_EQ(err.str(), "");
 }
+
+TEST(HooReplTest, ReplIncrementalDeclarations) {
+    std::stringstream in(
+        "func :int64 doubleVal(x: int64) { return x * 2; }\n"
+        "doubleVal(21);\n"
+        "/exit\n");
+    std::stringstream out;
+    std::stringstream err;
+
+    REPLSession session(in, out, err);
+    session.run();
+
+    // doubleVal(21) should return 42
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("42"), std::string::npos);
+    EXPECT_EQ(err.str(), "");
+}
+
+TEST(HooReplTest, ReplMultiLineString) {
+    std::stringstream in(
+        "func :any test() {\n"
+        "    return 99;\n"
+        "}\n"
+        "test();\n"
+        "/exit\n");
+    std::stringstream out;
+    std::stringstream err;
+
+    REPLSession session(in, out, err);
+    session.run();
+
+    std::string outStr = out.str();
+    EXPECT_NE(outStr.find("99"), std::string::npos);
+    EXPECT_EQ(err.str(), "");
+}
+
+
+

@@ -556,6 +556,8 @@ if(HOO_BUILD_TESTS)
         tests/ast/ASTExpressionTest.cpp
         tests/ast/ASTStatementTest.cpp
         tests/repl/HooReplTest.cpp
+        tests/repl/HooReplAdvancedTest.cpp
+        tests/repl/HooReplDebugTest.cpp
     )
     if(MSVC)
         hoo_use_static_msvc_runtime(hoo-tests)

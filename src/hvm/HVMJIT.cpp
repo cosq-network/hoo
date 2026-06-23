@@ -7950,6 +7950,10 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
     }
     const int64_t rv = fn(&state);
     {
+        std::lock_guard<std::mutex> lk(lastRegistersMu_);
+        for (size_t i = 0; i < 32; ++i) lastRegisters_[i] = state.regs[i];
+    }
+    {
         std::lock_guard<std::mutex> lk(gStateOwnerMu);
         gStateOwnerByPtr.erase(&state);
     }

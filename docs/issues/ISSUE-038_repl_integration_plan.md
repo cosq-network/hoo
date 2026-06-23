@@ -136,7 +136,8 @@ The transient wrapper is **not** appended to `accumulatedDeclarations_` to preve
 ##### Symbol Name Mangling
 The compiler mangles functions according to the layout `_F_M_<module_name>_E_<func_name>_<arg_types>`.
 For the function `func :any __repl_line_N()` inside the module `__repl_session`, the target JIT entry symbol is:
-`_F_M___repl_session_E___repl_line_N_any` or `_F_M___repl_session_E___repl_line_N_v` (where `any`/`v` corresponds to the mangled return type).
+`_F_M___repl_session_E___repl_line_N_y` (where `y` is the mangled type code for `any`).
+(The plan originally listed `_any` as suffix; the actual mangler uses single-letter type codes per `SymbolMangler::typeNameToCode`, e.g. `y` → `any`, `v` → `void`, `i8` → `int64`.)
 
 #### 4.3 Detailed Execution Pseudocode
 Below is the execution flow to be implemented in `REPLSession::eval`:
@@ -159,9 +160,15 @@ bool REPLSession::eval(const std::string& input, std::string& outResult, std::st
         fullSource = accumulatedDeclarations_ + "\n" + wrapper;
         
         // Target mangled symbol name to execute
+        // Uses SymbolMangler::mangleFunctionName() which produces:
+        //   _F_M___repl_session_E___repl_line_N_y  (for return type "any", code "y")
         std::string funcName = "__repl_line_" + std::to_string(lineCounter_);
-        targetSymbol = "_F_M___repl_session_E_" + funcName + "_any"; 
-        // Note: Fallback to _F_M___repl_session_E_ + funcName + "_v" if type matches void/int.
+        MangledFunctionParams mp;
+        mp.modulePath = {"__repl_session"};
+        mp.functionName = funcName;
+        mp.returnType = "any";
+        targetSymbol = SymbolMangler::mangleFunctionName(mp);
+        // Note: Fallback with return type "void" (code "v") if the wrapper emits no return value.
     }
 
     // 1. Compile the temporary module
@@ -205,16 +212,27 @@ bool REPLSession::eval(const std::string& input, std::string& outResult, std::st
 }
 ```
 
-### Phase 5: Test Infrastructure & CI Verification - [In Progress]
+### Phase 5: Test Infrastructure & CI Verification - [Completed]
 - **Unit Test Target Setup**:
   - Add `tests/repl/HooReplTest.cpp` to `CMakeLists.txt` inside the `hoo-tests` build target.
 - **Verification Tests**:
   - `ReplExitCommands`: Simulates inputting `/exit` or `/quit` and asserts that the REPL session ends cleanly.
-  - `ReplIncrementalDeclarations`: Inputs a function declaration `func :int64 doubleVal(int64 x) { return x * 2; }` followed by an execution call `doubleVal(21)`, asserting that it returns `42` across the session.
+  - `ReplIncrementalDeclarations`: Inputs a function declaration `func :int64 doubleVal(x: int64) { return x * 2; }` followed by an execution call `doubleVal(21)`, asserting that it returns `42` across the session.
   - `ReplCompileErrorRecovery`: Asserts that an invalid statement (e.g. `Math.invalid()`) correctly fails JIT compilation and sets an error description, but leaves the session alive so that a subsequent valid input (e.g. `Math.abs(-5)`) still compiles and executes successfully.
 
 ## 5. Status
-- **Date**: 2026-06-21
-- **Status**: **IMPLEMENTED - CORE REPL SESSION, CLI FLAG, AND TEST COVERAGE PRESENT**
+- **Date**: 2026-06-23
+- **Status**: **COMPLETED - ALL PHASES IMPLEMENTED AND TESTED**
 - **Priority**: Medium
-- **Audit 2026-06-21**: `REPLSession` exists, the CLI exposes `--repl`, CMake includes REPL sources/tests, and REPL tests cover basic and advanced flows. The implementation still relies on accumulated declarations and recompilation rather than a full incremental compiler state.
+- **Audit 2026-06-23**: All five phases are complete.
+  - Phase 1 (REPL Static Library): `REPLSession` class with `run()` and `eval()` methods.
+  - Phase 2 (CLI Integration): `--repl` flag handled in `HooCLI::run()` at `src/core/HooCLI.cpp:262`.
+  - Phase 3 (Shell Console Loop): Multi-line input, `/exit`, `/quit`, `/help`, `/reset`, `/unknown` commands, Ctrl+C handling.
+  - Phase 4 (Incremental Execution): Statements wrapped in `__repl_line_N()` functions with correct mangled symbol lookup via `SymbolMangler::mangleFunctionName()` instead of hardcoded names.
+  - Phase 5 (Tests): 28+ tests across `HooReplTest.cpp` and `HooReplAdvancedTest.cpp` covering commands, expressions, declarations, incremental definition + use, error recovery (compilation errors don't terminate session), multi-line blocks, deeply nested braces, block comments with braces inside, string literals containing braces, `var`/`const` persistence, `/reset` state clearing, and sequential stateful operations.
+- **Fixes applied 2026-06-23**:
+  - Corrected mangled symbol targets: replaced hardcoded `_any`/`_v` suffixes with `SymbolMangler::mangleFunctionName()`.
+  - Added `const` to `isDeclaration()` check.
+  - Reset quote/comment parser state variables after each block evaluation.
+  - Added `HooReplAdvancedTest.cpp` to CMakeLists.txt test target (was missing).
+- **Known limitations**: Still uses full recompilation of accumulated declarations rather than incremental compiler state. This is acceptable for the interactive REPL use case given current codebase architecture.

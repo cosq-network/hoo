@@ -781,6 +781,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             sym.binding = Symbol::STB_GLOBAL;
             sym.section_index = 0; 
             module_->addSymbol(sym);
+
         } else if (auto classDecl = dynamic_cast<const ast::ClassDeclaration*>(decl.get())) {
             ClassLayout layout;
             layout.name = classDecl->getName();

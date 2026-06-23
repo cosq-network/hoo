@@ -9,9 +9,17 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ---
 
-## 0.2.0 – 2026-06-21
+## Unreleased
 
-- feat(array): add `sort()` and `reverse()` instance methods with cross-platform qsort (int64 and IEEE 754 double comparison)
+- feat(repl): complete REPL Phase 5 with fixed symbol mangling, comprehensive tests, and edge-case handling
+  - Fix target symbol generation: use `SymbolMangler::mangleFunctionName()` instead of hardcoded `_any`/`_v` suffixes
+  - Add `const` keyword to `isDeclaration()` detection
+  - Reset parser state variables after each block evaluation
+  - Add `HooReplAdvancedTest.cpp` to CMake test target (was missing)
+  - 15 new tests: expression results, incremental function declarations, `var`/`const` persistence, assignment statements, deeply nested braces, block comments with braces, strings with braces, multi-line comments, error recovery across statements, stateful counter, reset clearing
+- feat(array): add `sort()` and `reverse()` instance methods
+
+## 0.2.0 – 2026-06-21
 - docs(issues): audit statuses and add HVM feature plans
 - feat(issues/045): add comprehensive semantic-versioning, version-bump, Linux CI and GitHub release workflow
 - feat(issues/039): refine List intrinsic design – no new HVM opcodes, reuse vector ops

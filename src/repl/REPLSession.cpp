@@ -1,4 +1,7 @@
 #include "repl/REPLSession.h"
+#include "core/SymbolMangler.h"
+#include "runtime/lib/hoo_runtime.h"
+#include "runtime/lib/hoo_string.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>
@@ -7,6 +10,23 @@
 
 namespace hooc {
 namespace repl {
+
+const std::string kReplBootstrap = "func :any __hoo_repl_bootstrap() { return 0; }\n";
+
+static std::string formatResult(int64_t rc) {
+    void* ptr = reinterpret_cast<void*>(rc);
+    if (hoo_is_managed_object(ptr)) {
+        int64_t type_id = hoo_get_type_id(ptr);
+        HooString str = hoo_string_from_any(rc, type_id);
+        if (str) {
+            const char* data = hoo_string_data(str);
+            std::string result(data);
+            hoo_release(str);
+            return result;
+        }
+    }
+    return std::to_string(rc);
+}
 
 // Static members for signal handling
 std::atomic<bool> REPLSession::interrupted_{false};
@@ -108,6 +128,7 @@ bool REPLSession::isDeclaration(const std::string& line) const {
     if (t.rfind("class", 0) == 0) return true;
     if (t.rfind("import", 0) == 0) return true;
     if (t.rfind("var", 0) == 0) return true;
+    if (t.rfind("const", 0) == 0) return true;
     return false;
 }
 
@@ -142,11 +163,17 @@ bool REPLSession::eval(const std::string& input, std::string& outResult, std::st
     std::string source;
     std::string targetSymbol;
     if (decl) {
-        source = accumulatedDeclarations_ + "\n" + input;
+        source = kReplBootstrap + accumulatedDeclarations_ + "\n" + input;
     } else {
         std::string wrapper = buildWrapperFunction(input);
-        source = accumulatedDeclarations_ + "\n" + wrapper;
-        targetSymbol = std::string("_F_M___repl_session_E_") + "__repl_line_" + std::to_string(lineCounter_) + "_any";
+        source = kReplBootstrap + accumulatedDeclarations_ + "\n" + wrapper;
+        // Generate the correct mangled symbol using the compiler's mangler
+        std::string funcName = "__repl_line_" + std::to_string(lineCounter_);
+        MangledFunctionParams mp;
+        mp.modulePath = {"__repl_session"};
+        mp.functionName = funcName;
+        mp.returnType = "any";
+        targetSymbol = SymbolMangler::mangleFunctionName(mp);
     }
     auto module = compiler_->compile("__repl_session", source);
     if (!module) {
@@ -164,16 +191,10 @@ bool REPLSession::eval(const std::string& input, std::string& outResult, std::st
     }
     int64_t rc = jit_->run(targetSymbol);
     if (jit_->hasError()) {
-        // fallback to void version
-        jit_->clearError();
-        std::string fallback = std::string("_F_M___repl_session_E_") + "__repl_line_" + std::to_string(lineCounter_) + "_v";
-        rc = jit_->run(fallback);
-    }
-    if (jit_->hasError()) {
         outError = std::string("Runtime JIT Execution Error: ") + jit_->getLastError();
         return false;
     }
-    outResult = std::to_string(rc);
+    outResult = formatResult(rc);
     return true;
 }
 
@@ -195,34 +216,44 @@ void REPLSession::run() {
         std::string trimmed = trim(line);
         // Command handling only when not inside a multi‑line block
         if (block.empty() && !trimmed.empty() && trimmed[0] == '/') {
-            if (trimmed == "/exit" || trimmed == "/quit") break;
-            if (trimmed == "/help") {
-                out_ << "Available commands:\n"
-                     << "  /help   Show this help message\n"
-                     << "  /reset  Reset REPL session state\n"
-                     << "  /exit   Exit the REPL session\n"
-                     << "  /quit   Exit the REPL session" << std::endl;
+            // Skip single-line comments entirely
+            if (trimmed.size() >= 2 && trimmed[1] == '/') {
                 continue;
             }
-            if (trimmed == "/reset") {
-                accumulatedDeclarations_.clear();
-                lineCounter_ = 0;
-                jit_ = std::make_unique<HVMJIT>(io_);
-                compiler_ = std::make_unique<HooCompiler>();
-                block.clear();
-                braceDepth = 0;
-                inDoubleQuotes = inSingleQuotes = inBlockComment = false;
-                out_ << "REPL session reset." << std::endl;
+            // Block comment lines fall through to multi-line block accumulation
+            if (trimmed.size() >= 2 && trimmed[1] == '*') {
+                // handled by brace depth tracking below
+            } else {
+                if (trimmed == "/exit" || trimmed == "/quit") break;
+                if (trimmed == "/help") {
+                    out_ << "Available commands:\n"
+                         << "  /help   Show this help message\n"
+                         << "  /reset  Reset REPL session state\n"
+                         << "  /exit   Exit the REPL session\n"
+                         << "  /quit   Exit the REPL session" << std::endl;
+                    continue;
+                }
+                if (trimmed == "/reset") {
+                    accumulatedDeclarations_.clear();
+                    lineCounter_ = 0;
+                    jit_ = std::make_unique<HVMJIT>(io_);
+                    compiler_ = std::make_unique<HooCompiler>();
+                    block.clear();
+                    braceDepth = 0;
+                    inDoubleQuotes = inSingleQuotes = inBlockComment = false;
+                    out_ << "REPL session reset." << std::endl;
+                    continue;
+                }
+                err_ << "Unknown command: " << trimmed << ". Type /help for help." << std::endl;
                 continue;
             }
-            err_ << "Unknown command: " << trimmed << ". Type /help for help." << std::endl;
-            continue;
         }
         if (!block.empty()) block += "\n";
         block += line;
         braceDepth += calculateBraceDepthChange(line, inDoubleQuotes, inSingleQuotes, inBlockComment);
         if (braceDepth <= 0 && !inDoubleQuotes && !inSingleQuotes && !inBlockComment) {
             braceDepth = 0;
+            inDoubleQuotes = inSingleQuotes = inBlockComment = false;
             std::string blkTrim = trim(block);
             if (!blkTrim.empty()) {
                 std::string result, error;
