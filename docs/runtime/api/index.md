@@ -194,6 +194,8 @@ hoo runtime APIs follow one of three patterns:
 | Instance | `arr.set_int64` | `arr.set_int64(index: int64, val: int64) :void` |
 | Instance | `arr.set_double` | `arr.set_double(index: int64, val: double) :void` |
 | Instance | `arr.set_string` | `arr.set_string(index: int64, val: string) :void` |
+| Instance | `arr.sort` | `arr.sort() :array` |
+| Instance | `arr.reverse` | `arr.reverse() :array` |
 | Instance | `arr.clear` | `arr.clear() :void` |
 | Instance | `arr.retain` / `arr.release` / `arr.refcount` | Reference counting |
 

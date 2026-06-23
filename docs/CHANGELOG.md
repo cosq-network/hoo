@@ -11,6 +11,7 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## 0.2.0 – 2026-06-21
 
+- feat(array): add `sort()` and `reverse()` instance methods with cross-platform qsort (int64 and IEEE 754 double comparison)
 - docs(issues): audit statuses and add HVM feature plans
 - feat(issues/045): add comprehensive semantic-versioning, version-bump, Linux CI and GitHub release workflow
 - feat(issues/039): refine List intrinsic design – no new HVM opcodes, reuse vector ops

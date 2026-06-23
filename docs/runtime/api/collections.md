@@ -326,6 +326,53 @@ arr.clear(): void
 
 ---
 
+#### sort
+
+Sorts the array elements in-place in ascending order.
+
+```hoo
+arr.sort(): array
+```
+
+**Type-specific behavior:**
+
+| Element Type | Comparison |
+|-------------|------------|
+| `int64` | Numeric ascending |
+| `double` | IEEE 754 ascending |
+| `bool` | `false` (0) before `true` (1) |
+| `char`, `string`, `object` | Bitwise/pointer ordering |
+
+**Returns:** `array` — The same array handle (sorted in-place).
+
+**Notes:** This is an in-place operation. The element type is detected at runtime:
+- `int64` arrays use `qsort` with numeric comparison.
+- `double` arrays use `qsort` with IEEE 754 double comparison (correct for negative values).
+- All other types use bitwise comparison of the 64-bit storage slot.
+
+---
+
+#### reverse
+
+Reverses the array elements in-place.
+
+```hoo
+arr.reverse(): array
+```
+
+**Returns:** `array` — The same array handle (reversed in-place).
+
+**Example:**
+```hoo
+var a = new Array();
+Array.pushInt64(a, 1);
+Array.pushInt64(a, 2);
+Array.pushInt64(a, 3);
+a.reverse();  // a is now [3, 2, 1]
+```
+
+---
+
 ## Example Programs
 
 ```hoo
