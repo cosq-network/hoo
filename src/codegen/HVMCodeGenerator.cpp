@@ -3849,6 +3849,11 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
 
                     const uint32_t objectTypeId = getLocalTypeId(className);
                     const std::string& member = memberAccess->getMember();
+                    if (objectTypeId == 102) {
+                        if (member == "length" || member == "empty") return 1;
+                        if (member == "sort" || member == "reverse") return 102;
+                        return 100;
+                    }
                     if (objectTypeId == 105) {
                         if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return 1;
                         if (member == "nextBool") return 3;

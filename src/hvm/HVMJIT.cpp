@@ -896,6 +896,14 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_array_empty(reinterpret_cast<void*>(state->regs[1])));
     }
+    uint64_t jit_array_sort(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_array_sort(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_array_reverse(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_array_reverse(reinterpret_cast<void*>(state->regs[1])));
+    }
     // ── Object field access helpers ──────────────────────────────────────
     uint64_t jit_object_get_field(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -3693,6 +3701,8 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_array_get_bool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         {"_F_array_set_v_p_i8_p", reinterpret_cast<void*>(&jit_array_set_int64)},
+        {"_F_array_sort_v_p", reinterpret_cast<void*>(&jit_array_sort)},
+        {"_F_array_reverse_v_p", reinterpret_cast<void*>(&jit_array_reverse)},
         {"_F_hoo_Tensor_new1_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_new1)},
         {"_F_hoo_Tensor_new2_p_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new2)},
         {"_F_hoo_Tensor_new3_p_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new3)},
@@ -3775,6 +3785,10 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_length_v_p", reinterpret_cast<void*>(&jit_array_length)},
         {"_F_M_hoo_E_array_clear_v_p", reinterpret_cast<void*>(&jit_array_clear)},
         {"_F_M_hoo_E_array_empty_v_p", reinterpret_cast<void*>(&jit_array_empty)},
+        {"_F_M_hoo_E_array_sort_v_p", reinterpret_cast<void*>(&jit_array_sort)},
+        {"_F_M_hoo_E_array_sort_v", reinterpret_cast<void*>(&jit_array_sort)},
+        {"_F_M_hoo_E_array_reverse_v_p", reinterpret_cast<void*>(&jit_array_reverse)},
+        {"_F_M_hoo_E_array_reverse_v", reinterpret_cast<void*>(&jit_array_reverse)},
         {"_F_M_hoo_E_array_push_string_v_p_p", reinterpret_cast<void*>(&jit_array_push_string)},
         {"_F_M_hoo_E_array_get_string_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
         {"_F_M_hoo_E_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
