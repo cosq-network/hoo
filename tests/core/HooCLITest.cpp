@@ -293,3 +293,47 @@ TEST_F(HooCLITest, ExecuteBytecodeFile) {
     EXPECT_EQ(result, 0);
     EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Execution completed successfully") != std::string::npos);
 }
+
+TEST_F(HooCLITest, ReplFlagDoesNotRequireInputFile) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--repl"));
+
+    int result = cli->run(2, args.data());
+
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().empty());
+    EXPECT_TRUE(cli->getIOProvider()->getStdout().empty());
+}
+
+TEST_F(HooCLITest, ReplFlagCombinedWithInputFileAcceptsInput) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("script.hoo", "func :int64 main() { return 7; }");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--repl"));
+    args.push_back(const_cast<char*>("script.hoo"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 0);
+}
+
+TEST_F(HooCLITest, ReplFlagWithoutInputFileDoesNotShowUsageError) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--repl"));
+
+    int result = cli->run(2, args.data());
+
+    EXPECT_EQ(result, 0);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("No input file specified") == std::string::npos);
+}

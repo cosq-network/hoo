@@ -109,9 +109,11 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
     }
 
     if (!opts.inputFile.has_value()) {
-        opts.hasError = true;
-        opts.errorMessage = "Error: No input file specified\n";
-        return opts;
+        if (!opts.repl) {
+            opts.hasError = true;
+            opts.errorMessage = "Error: No input file specified\n";
+            return opts;
+        }
     }
 
     const std::string& filename = opts.inputFile.value();

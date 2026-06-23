@@ -11,6 +11,9 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(cli): allow `--repl` mode without an input file；add unit tests and update docs
+  - `hoo --repl` now skips the required input_file validation
+  - Add 3 CLI tests: accepts `--repl` alone, accepts it with a file, and ensures no missing-file error message
 - feat(repl): complete REPL Phase 5 with fixed symbol mangling, comprehensive tests, and edge-case handling
   - Fix target symbol generation: use `SymbolMangler::mangleFunctionName()` instead of hardcoded `_any`/`_v` suffixes
   - Add `const` keyword to `isDeclaration()` detection
