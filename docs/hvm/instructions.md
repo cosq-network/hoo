@@ -58,6 +58,12 @@ Tooling must encode and decode instructions using this 8-byte layout for any opc
 - `ADD` `SUB` `MUL` `DIV` `DIVU` `REM`
 - `SHL` `SHR` `SAR`
 
+Overflow behavior (signed operations):
+- `ADD`, `SUB`, `MUL`: overflow traps, function returns `-1` and VM enters error state.
+- `DIV`, `REM`: additionally trap on `INT64_MIN / -1` and `INT64_MIN % -1`.
+- `DIV`, `REM`: trap on division by zero.
+- `DIVU`, `SHL`, `SHR`, `SAR`: no overflow path (unsigned or shift operations).
+
 ### 4.3 Bitwise/logical
 - `AND` `OR` `XOR` `NOT`
 

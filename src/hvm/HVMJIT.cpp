@@ -69,6 +69,7 @@
 #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
 #include "llvm/ExecutionEngine/JITEventListener.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Module.h"
@@ -1466,6 +1467,15 @@ extern "C" {
     }
     uint64_t jit_math_get_nan(void* /*state_ptr*/) {
         double result = hoo_math_get_nan();
+        uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_math_fmod(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double x, y;
+        std::memcpy(&x, &state->regs[1], sizeof(double));
+        std::memcpy(&y, &state->regs[2], sizeof(double));
+        double result = hoo_math_fmod(x, y);
         uint64_t bits; std::memcpy(&bits, &result, sizeof(double));
         return bits;
     }
@@ -3915,6 +3925,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_math_get_inf_d", reinterpret_cast<void*>(&jit_math_get_inf)},
         {"_F_M_hoo_E_math_get_neg_inf_d", reinterpret_cast<void*>(&jit_math_get_neg_inf)},
         {"_F_M_hoo_E_math_get_nan_d", reinterpret_cast<void*>(&jit_math_get_nan)},
+        {"_F_M_hoo_E_math_fmod_d_p_p", reinterpret_cast<void*>(&jit_math_fmod)},
         {"_F_M_hoo_E_math_pow_d_p_p", reinterpret_cast<void*>(&jit_math_pow)},
         {"_F_M_hoo_E_math_cbrt_d_p", reinterpret_cast<void*>(&jit_math_cbrt)},
         {"_F_M_hoo_E_math_hypot_d_p_p", reinterpret_cast<void*>(&jit_math_hypot)},
@@ -5685,11 +5696,32 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 const int64_t a = static_cast<int64_t>(readReg(o.rs1));
                 const int64_t b = static_cast<int64_t>(readReg(o.rs2));
                 switch (o.func) {
-                    case 0: writeReg(o.rd, static_cast<uint64_t>(a + b)); break;
-                    case 1: writeReg(o.rd, static_cast<uint64_t>(a - b)); break;
-                    case 2: writeReg(o.rd, static_cast<uint64_t>(a * b)); break;
+                    case 0:
+                        if ((b > 0 && a > INT64_MAX - b) || (b < 0 && a < INT64_MIN - b)) {
+                            lastError_ = "Integer overflow: add"; return -1;
+                        }
+                        writeReg(o.rd, static_cast<uint64_t>(a + b)); break;
+                    case 1:
+                        if ((b < 0 && a > INT64_MAX + b) || (b > 0 && a < INT64_MIN + b)) {
+                            lastError_ = "Integer overflow: sub"; return -1;
+                        }
+                        writeReg(o.rd, static_cast<uint64_t>(a - b)); break;
+                    case 2:
+                        if (a != 0 && b != 0) {
+                            if (a == -1) { if (b == INT64_MIN) { lastError_ = "Integer overflow: mul"; return -1; } }
+                            else if (b == -1) { if (a == INT64_MIN) { lastError_ = "Integer overflow: mul"; return -1; } }
+                            else if (a > 0) {
+                                if (b > 0) { if (a > INT64_MAX / b) { lastError_ = "Integer overflow: mul"; return -1; } }
+                                else { if (b < INT64_MIN / a) { lastError_ = "Integer overflow: mul"; return -1; } }
+                            } else {
+                                if (b > 0) { if (a < INT64_MIN / b) { lastError_ = "Integer overflow: mul"; return -1; } }
+                                else { if (a < INT64_MAX / b) { lastError_ = "Integer overflow: mul"; return -1; } }
+                            }
+                        }
+                        writeReg(o.rd, static_cast<uint64_t>(a * b)); break;
                     case 5:
                         if (b == 0) { lastError_ = "Division by zero"; return -1; }
+                        if (a == INT64_MIN && b == -1) { lastError_ = "Integer overflow: div"; return -1; }
                         writeReg(o.rd, static_cast<uint64_t>(a / b)); break;
                     case 6: {
                         const uint64_t ua = readReg(o.rs1), ub = readReg(o.rs2);
@@ -5698,6 +5730,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     }
                     case 7:
                         if (b == 0) { lastError_ = "Modulo by zero"; return -1; }
+                        if (a == INT64_MIN && b == -1) { lastError_ = "Integer overflow: mod"; return -1; }
                         writeReg(o.rd, static_cast<uint64_t>(a % b)); break;
                     default:
                         lastError_ = "Unsupported ARITH func: " + std::to_string(o.func);
@@ -7144,11 +7177,47 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto a = readReg(o.rs1);
                     auto b = readReg(o.rs2);
                     llvm::Value* out = nullptr;
-                    if (o.func == 0) out = builder.CreateAdd(a, b);
-                    else if (o.func == 1) out = builder.CreateSub(a, b);
-                    else if (o.func == 2) out = builder.CreateMul(a, b);
+                    auto* zero = builder.getInt64(0);
+                    if (o.func == 0) {
+                        auto* intrFn = llvm::Intrinsic::getOrInsertDeclaration(module.get(), llvm::Intrinsic::sadd_with_overflow, {i64});
+                        auto* result = builder.CreateCall(intrFn, {a, b});
+                        auto* sum = builder.CreateExtractValue(result, 0);
+                        auto* overflow = builder.CreateExtractValue(result, 1);
+                        auto* okBB = llvm::BasicBlock::Create(*context, "add_ok", fn);
+                        auto* errBB = llvm::BasicBlock::Create(*context, "add_err", fn);
+                        builder.CreateCondBr(overflow, errBB, okBB);
+                        builder.SetInsertPoint(errBB);
+                        builder.CreateRet(builder.getInt64(-1));
+                        builder.SetInsertPoint(okBB);
+                        out = sum;
+                    }
+                    else if (o.func == 1) {
+                        auto* intrFn = llvm::Intrinsic::getOrInsertDeclaration(module.get(), llvm::Intrinsic::ssub_with_overflow, {i64});
+                        auto* result = builder.CreateCall(intrFn, {a, b});
+                        auto* diff = builder.CreateExtractValue(result, 0);
+                        auto* overflow = builder.CreateExtractValue(result, 1);
+                        auto* okBB = llvm::BasicBlock::Create(*context, "sub_ok", fn);
+                        auto* errBB = llvm::BasicBlock::Create(*context, "sub_err", fn);
+                        builder.CreateCondBr(overflow, errBB, okBB);
+                        builder.SetInsertPoint(errBB);
+                        builder.CreateRet(builder.getInt64(-1));
+                        builder.SetInsertPoint(okBB);
+                        out = diff;
+                    }
+                    else if (o.func == 2) {
+                        auto* intrFn = llvm::Intrinsic::getOrInsertDeclaration(module.get(), llvm::Intrinsic::smul_with_overflow, {i64});
+                        auto* result = builder.CreateCall(intrFn, {a, b});
+                        auto* prod = builder.CreateExtractValue(result, 0);
+                        auto* overflow = builder.CreateExtractValue(result, 1);
+                        auto* okBB = llvm::BasicBlock::Create(*context, "mul_ok", fn);
+                        auto* errBB = llvm::BasicBlock::Create(*context, "mul_err", fn);
+                        builder.CreateCondBr(overflow, errBB, okBB);
+                        builder.SetInsertPoint(errBB);
+                        builder.CreateRet(builder.getInt64(-1));
+                        builder.SetInsertPoint(okBB);
+                        out = prod;
+                    }
                     else if (o.func == 5 || o.func == 6 || o.func == 7) {
-                        auto* zero = builder.getInt64(0);
                         auto* isZero = builder.CreateICmpEQ(b, zero);
                         auto* okBB = llvm::BasicBlock::Create(*context, "arith_ok", fn);
                         auto* errBB = llvm::BasicBlock::Create(*context, "arith_err", fn);
@@ -7156,9 +7225,23 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                         builder.SetInsertPoint(errBB);
                         builder.CreateRet(builder.getInt64(-1));
                         builder.SetInsertPoint(okBB);
-                        if (o.func == 5) out = builder.CreateSDiv(a, b);
-                        else if (o.func == 6) out = builder.CreateUDiv(a, b);
-                        else out = builder.CreateSRem(a, b);
+                        if (o.func == 5 || o.func == 7) {
+                            auto* minInt = builder.getInt64(INT64_MIN);
+                            auto* negOne = builder.getInt64(-1);
+                            auto* isMinInt = builder.CreateICmpEQ(a, minInt);
+                            auto* isNegOne = builder.CreateICmpEQ(b, negOne);
+                            auto* isOv = builder.CreateAnd(isMinInt, isNegOne);
+                            auto* okBB2 = llvm::BasicBlock::Create(*context, "arith_ok2", fn);
+                            auto* errBB2 = llvm::BasicBlock::Create(*context, "arith_err2", fn);
+                            builder.CreateCondBr(isOv, errBB2, okBB2);
+                            builder.SetInsertPoint(errBB2);
+                            builder.CreateRet(builder.getInt64(-1));
+                            builder.SetInsertPoint(okBB2);
+                            if (o.func == 5) out = builder.CreateSDiv(a, b);
+                            else out = builder.CreateSRem(a, b);
+                        } else {
+                            out = builder.CreateUDiv(a, b);
+                        }
                     }
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, out);

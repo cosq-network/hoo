@@ -21,6 +21,10 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
   - Add `HooReplAdvancedTest.cpp` to CMake test target (was missing)
   - 15 new tests: expression results, incremental function declarations, `var`/`const` persistence, assignment statements, deeply nested braces, block comments with braces, strings with braces, multi-line comments, error recovery across statements, stateful counter, reset clearing
 - feat(array): add `sort()` and `reverse()` instance methods
+- fix(hvm): add integer overflow checking for ARITH add/sub/mul/div/rem (ISSUE-051)
+  - Interpreter: manual overflow checks for ADD/SUB/MUL, INT64_MIN/-1 guard for DIV/REM
+  - JIT compiler: use LLVM sadd/ssub/smul_with_overflow intrinsics, guarded DIV/REM
+  - 5 new tests covering all overflow edge cases
 
 ## 0.2.0 – 2026-06-21
 - docs(issues): audit statuses and add HVM feature plans

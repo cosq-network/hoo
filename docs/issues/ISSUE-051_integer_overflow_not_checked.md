@@ -19,7 +19,28 @@ The JIT emits native LLVM arithmetic instructions (add, sub, mul, div) without o
 3. For debug builds: always use checked arithmetic; for release, support configurable policy.
 4. Add overflow tests for all arithmetic operations.
 
-## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+## 5. Resolution
+
+### Fix Applied
+- **Interpreter** (`HVMJIT.cpp` interpreter loop, line ~5693): Added manual overflow checks for ADD (func 0), SUB (func 1), MUL (func 2), SDIV (func 5), and REM (func 7). Uses safe multiplication check via `hoo_math::multiplyWouldOverflow` for MUL; direct comparison for INT64_MIN / -1 for SDIV/REM.
+- **JIT Compiler** (`HVMJIT.cpp` JIT codegen, line ~7180): Replaced bare `CreateAdd`/`CreateSub`/`CreateMul` with LLVM `sadd_with_overflow`/`ssub_with_overflow`/`smul_with_overflow` intrinsics. Added INT64_MIN / -1 guard for SDIV and REM (matching the div-by-zero split-block pattern). On overflow, emits `ret i64 -1` to signal error to the runtime.
+
+### Tests Added
+5 new test cases in `tests/hvm/HVMJITInstructionSemanticsTest.cpp`:
+- `AddOverflowReportsError` — INT64_MAX + 1
+- `SubOverflowReportsError` — INT64_MIN - 1
+- `MulOverflowReportsError` — INT64_MAX * 2
+- `DivOverflowReportsError` — INT64_MIN / -1
+- `ModOverflowReportsError` — INT64_MIN % -1
+
+All 1845 tests pass (1840 existing + 5 new).
+
+### Files Changed
+- `src/hvm/HVMJIT.cpp` — Added `#include "llvm/IR/Intrinsics.h"`, fixed interpreter and JIT ARITH paths.
+- `tests/hvm/HVMJITInstructionSemanticsTest.cpp` — Added 5 overflow test cases.
+- `docs/issues/ISSUE-051_integer_overflow_not_checked.md` — Updated status.
+
+## 6. Status
+- **Date**: 2026-06-24
+- **Status**: **RESOLVED**
 - **Priority**: **MEDIUM**

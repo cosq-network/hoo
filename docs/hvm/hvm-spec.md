@@ -61,6 +61,10 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 
 - Data movement: `NOP`, `MOV`, `MOVZ`, `LUI`, `ADDI`
 - Integer arithmetic: `ADD`, `SUB`, `MUL`, `DIV`, `DIVU`, `REM`, `SHL`, `SHR`, `SAR`
+  - Signed integer overflow (`ADD`, `SUB`, `MUL`) traps with return value `-1` and sets the VM error state.
+  - `DIV` and `REM` additionally trap on `INT64_MIN / -1` and `INT64_MIN % -1` (the only signed-divide overflow case).
+  - `DIV` and `REM` also trap on division by zero; `DIVU` traps on unsigned division by zero.
+  - Unsigned operations (`DIVU`) have no overflow path.
 - Bitwise/logical: `AND`, `OR`, `XOR`, `NOT`
 - Floating-point: `FADD`, `FSUB`, `FMUL`, `FDIV`
 - Comparisons: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`, `FCMPEQ`, `FCMPLT`, `FCMPLE`

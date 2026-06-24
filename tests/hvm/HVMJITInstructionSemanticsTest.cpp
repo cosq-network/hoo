@@ -730,6 +730,98 @@ TEST_F(HVMJITInstructionSemanticsTest, DivisionByZeroReportsError) {
     EXPECT_NE(jit.getLastError().find("Division by zero"), std::string::npos);
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, AddOverflowReportsError) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeI(Opcode::LUI, OperandsI{2, 2, 0x4000}),     // r2 = INT64_MIN
+        makeR(Opcode::NOT, OperandsR{3, 2, 0, 0}),        // r3 = INT64_MAX
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 1}),          // r4 = 1
+        makeR(Opcode::ARITH, OperandsR{1, 3, 4, 0}),      // r1 = INT64_MAX + 1 → overflow
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["add_overflow.ho"] = buildModuleBytes("add_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("add_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Integer overflow: add"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SubOverflowReportsError) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeI(Opcode::LUI, OperandsI{2, 2, 0x4000}),     // r2 = INT64_MIN
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 1}),          // r4 = 1
+        makeR(Opcode::ARITH, OperandsR{1, 2, 4, 1}),      // r1 = INT64_MIN - 1 → overflow
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sub_overflow.ho"] = buildModuleBytes("sub_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sub_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Integer overflow: sub"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, MulOverflowReportsError) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeI(Opcode::LUI, OperandsI{2, 2, 0x4000}),     // r2 = INT64_MIN
+        makeR(Opcode::NOT, OperandsR{3, 2, 0, 0}),        // r3 = INT64_MAX
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 2}),          // r5 = 2
+        makeR(Opcode::ARITH, OperandsR{1, 3, 5, 2}),      // r1 = INT64_MAX * 2 → overflow
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["mul_overflow.ho"] = buildModuleBytes("mul_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("mul_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Integer overflow: mul"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, DivOverflowReportsError) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeI(Opcode::LUI, OperandsI{2, 2, 0x4000}),     // r2 = INT64_MIN
+        makeR(Opcode::NOT, OperandsR{7, 0, 0, 0}),        // r7 = -1
+        makeR(Opcode::ARITH, OperandsR{1, 2, 7, 5}),      // r1 = INT64_MIN / -1 → overflow
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["div_overflow.ho"] = buildModuleBytes("div_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("div_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Integer overflow: div"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ModOverflowReportsError) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),
+        makeI(Opcode::LUI, OperandsI{2, 2, 0x4000}),     // r2 = INT64_MIN
+        makeR(Opcode::NOT, OperandsR{7, 0, 0, 0}),        // r7 = -1
+        makeR(Opcode::ARITH, OperandsR{1, 2, 7, 7}),      // r1 = INT64_MIN % -1 → overflow
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["mod_overflow.ho"] = buildModuleBytes("mod_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("mod_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Integer overflow: mod"), std::string::npos);
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, InvalidStoreAddressReportsError) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),
