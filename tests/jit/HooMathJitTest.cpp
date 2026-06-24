@@ -210,6 +210,39 @@ TEST_F(HooMathJitTest, Sin) {
     EXPECT_NEAR(val, 0.0, 0.0001);
 }
 
+TEST_F(HooMathJitTest, Fmod) {
+    const std::string source = R"(
+        func :double test() { return 7.5 % 2.5; }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_d");
+    double val;
+    std::memcpy(&val, &result, sizeof(double));
+    EXPECT_NEAR(val, 0.0, 0.0001);
+}
+
+TEST_F(HooMathJitTest, FmodNonZero) {
+    const std::string source = R"(
+        func :double test() { return 10.0 % 3.0; }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_d");
+    double val;
+    std::memcpy(&val, &result, sizeof(double));
+    EXPECT_NEAR(val, 1.0, 0.0001);
+}
+
+TEST_F(HooMathJitTest, FmodNegative) {
+    const std::string source = R"(
+        func :double test() { return -10.0 % 3.0; }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    int64_t result = jit.run("_F_M_test_E_test_d");
+    double val;
+    std::memcpy(&val, &result, sizeof(double));
+    EXPECT_NEAR(val, -1.0, 0.0001);
+}
+
 TEST_F(HooMathJitTest, DocumentedDoubleMathFunctions) {
     const std::string source = R"(
         import hoo.math;

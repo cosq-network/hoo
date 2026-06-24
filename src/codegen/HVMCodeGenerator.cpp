@@ -1011,6 +1011,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     const ast::ConstructorDeclaration* ctorDecl,
     bool isMethod, bool isConstructor)
 {
+    currentFunctionHasReturn_ = false;
     FunctionPrologueInfo info;
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
@@ -1041,6 +1042,10 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     } else if (ctorDecl) {
         mapParams(ctorDecl->getParameters());
         visitStatement(ctorDecl->getBody());
+    }
+
+    if (decl && decl->getReturnType() && typeIdFromDeclaredType(decl->getReturnType()) != 4 && !currentFunctionHasReturn_) {
+        addError("Non-void function '" + decl->getName() + "' has no return statement");
     }
 
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
@@ -1404,6 +1409,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         }
         scopeStack_.pop_back();
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
+        currentFunctionHasReturn_ = true;
         if (ret->hasExpression()) {
             uint8_t reg = visitExpression(*ret->getExpression());
             emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
@@ -2793,7 +2799,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             case ast::BinaryOperator::MINUS: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 1; break;
             case ast::BinaryOperator::MULTIPLY: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 2; break;
             case ast::BinaryOperator::DIVIDE: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = isFloatExpr ? 3 : 5; break;
-            case ast::BinaryOperator::MODULO: func = 7; break;
+            case ast::BinaryOperator::MODULO:
+                if (isFloatExpr) {
+                    emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+                    emit(Opcode::MOV, OperandsR{2, right, 0, 0});
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_math_fmod_d_p_p");
+                    uint8_t fmodDest = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{fmodDest, 1, 0, 0});
+                    freeRegister(left);
+                    freeRegister(right);
+                    return fmodDest;
+                }
+                func = 7; break;
             case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = 0; break;
             case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
             case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2); break;
@@ -2966,7 +2983,32 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 case ast::CompoundAssignmentOperator::MINUS_ASSIGN: func = 1; break;
                 case ast::CompoundAssignmentOperator::MULTIPLY_ASSIGN: func = 2; break;
                 case ast::CompoundAssignmentOperator::DIVIDE_ASSIGN: func = 5; break;
-                case ast::CompoundAssignmentOperator::MODULO_ASSIGN: func = 7; break;
+                case ast::CompoundAssignmentOperator::MODULO_ASSIGN:
+                    {
+                        const uint32_t lhsType = inferExpressionTypeId(compoundAssign->getLeft());
+                        if (lhsType == 2 || lhsType == 9) {
+                            emit(Opcode::MOV, OperandsR{1, lhsReg, 0, 0});
+                            emit(Opcode::MOV, OperandsR{2, rhsReg, 0, 0});
+                            emitCall(Opcode::CALL, "_F_M_hoo_E_math_fmod_d_p_p");
+                            emit(Opcode::MOV, OperandsR{resultReg, 1, 0, 0});
+                            freeRegister(lhsReg);
+                            freeRegister(rhsReg);
+                            if (isMember) {
+                                uint8_t setOffsetReg = emitConstant(static_cast<int64_t>(offset));
+                                emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
+                                emit(Opcode::MOV, OperandsR{2, setOffsetReg, 0, 0});
+                                emit(Opcode::MOV, OperandsR{3, resultReg, 0, 0});
+                                emitCall(Opcode::CALL, "_F_object_set_field_v_p_i8_p");
+                                freeRegister(setOffsetReg);
+                                freeRegister(objReg);
+                            } else {
+                                emit(Opcode::ST_D, OperandsI{resultReg, 30, static_cast<int16_t>(offset)});
+                            }
+                            return resultReg;
+                        }
+                        func = 7;
+                    }
+                    break;
                 case ast::CompoundAssignmentOperator::LEFT_SHIFT_ASSIGN: op = Opcode::SHIFT; func = 0; break;
                 case ast::CompoundAssignmentOperator::RIGHT_SHIFT_ASSIGN: op = Opcode::SHIFT; func = 1; break;
                 default: addError("Unsupported compound assignment");

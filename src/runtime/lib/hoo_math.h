@@ -229,11 +229,19 @@ double hoo_math_sign_f8(double x);
 // ============================================================================
 
 /**
- * Power function (base^exponent)
- * @param base Base value
- * @param exponent Exponent
- * @return base raised to the power of exponent
- */
+  * Floating-point remainder (fmod) — for the MODULO (%) operator on float types
+  * @param x Dividend
+  * @param y Divisor
+  * @return Remainder of x / y
+  */
+double hoo_math_fmod(double x, double y);
+
+/**
+  * Power function (base^exponent)
+  * @param base Base value
+  * @param exponent Exponent
+  * @return base raised to the power of exponent
+  */
 double hoo_math_pow(double base, double exponent);
 
 /**

@@ -91,6 +91,7 @@ double hoo_math_sign_f8(double x) {
 // Power and Roots
 // ============================================================================
 
+double hoo_math_fmod(double x, double y) { return std::fmod(x, y); }
 double hoo_math_pow(double base, double exponent) { return std::pow(base, exponent); }
 double hoo_math_sqrt(double x) { return std::sqrt(x); }
 double hoo_math_cbrt(double x) { return std::cbrt(x); }

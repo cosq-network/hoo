@@ -103,6 +103,7 @@ private:
     std::unordered_map<std::string, std::string> functionReturnClass_; // functionName -> className (for user-defined types)
     ClassLayout* currentClass_ = nullptr;
     bool inConstructor_ = false;
+    bool currentFunctionHasReturn_ = false;
     std::vector<std::pair<std::string, uint32_t>> pendingSingletons_; // className, .data offset
     
     // Serializable class adjacency for cycle detection: className -> ser. dependency class names

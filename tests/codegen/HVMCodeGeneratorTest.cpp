@@ -325,6 +325,61 @@ TEST_F(HVMCodeGeneratorTest, SerializableClassSymbolsHaveCorrectAttributes) {
     }
 }
 
+TEST_F(HVMCodeGeneratorTest, NonVoidFunctionMissingReturn) {
+    std::string code = R"(
+        func:int64 missingReturn() {
+            var x = 42;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("has no return statement") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorTest, NonVoidFunctionWithReturn) {
+    std::string code = R"(
+        func:int64 hasReturn() {
+            return 42;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorTest, VoidFunctionWithoutReturn) {
+    std::string code = R"(
+        func:void voidFunc() {
+            var x: int64 = 1;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorTest, FloatModuloEmitsFmodCall) {
+    std::string code = R"(
+        func:double test(a: double, b: double) {
+            return a % b;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundFmodCall = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundFmodCall = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundFmodCall);
+}
+
 TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     std::string code = R"(
         import hoo.io;
