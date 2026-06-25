@@ -41,13 +41,16 @@ std::string HooCLI::getUsage(std::string_view programName) const {
     usage += "Options:\n";
     usage += "  -h, --help      Display this help message\n";
     usage += "  -v, --version   Display version information\n";
-    usage += "  -o, --output    Specify output .ho file path (valid only for .hoo, implies compilation-only mode)\n";
+    usage += "  -o, --output <file>\n";
+    usage += "                  Specify output .ho file path (valid only for .hoo, implies compilation-only mode)\n";
     usage += "  --repl          Enter interactive REPL mode\n";
     usage += "  --verbose       Enable verbose logging\n";
+    usage += "  --              End hoo options; remaining arguments are passed to the Hoo program\n";
     usage += "\n";
     usage += "Examples:\n";
     usage += "  " + std::string(programName) + " script.hoo           # Compile and run via HVMJIT\n";
     usage += "  " + std::string(programName) + " script.hoo -o out.ho # Build AOT HVM bytecode\n";
+    usage += "  " + std::string(programName) + " script.hoo -- arg    # Pass arg to the Hoo program\n";
     usage += "  " + std::string(programName) + " out.ho               # Execute AOT bytecode\n";
     return usage;
 }
@@ -64,7 +67,33 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
     for (int i = 1; i < argc; ++i) {
         std::string_view arg = argv[i];
 
-        if (arg == "-h" || arg == "--help") {
+        if (arg == "--") {
+            for (++i; i < argc; ++i) {
+                opts.programArgs.emplace_back(argv[i]);
+            }
+            break;
+        }
+        else if (arg.rfind("--output=", 0) == 0) {
+            std::string value = std::string(arg.substr(std::string_view("--output=").size()));
+            if (value.empty()) {
+                opts.hasError = true;
+                opts.errorMessage = "Error: --output option requires an output file path\n";
+                return opts;
+            }
+            opts.outputFile = std::move(value);
+            opts.compileOnly = true;
+        }
+        else if (arg.rfind("-o=", 0) == 0) {
+            std::string value = std::string(arg.substr(std::string_view("-o=").size()));
+            if (value.empty()) {
+                opts.hasError = true;
+                opts.errorMessage = "Error: -o option requires an output file path\n";
+                return opts;
+            }
+            opts.outputFile = std::move(value);
+            opts.compileOnly = true;
+        }
+        else if (arg == "-h" || arg == "--help") {
             opts.showHelp = true;
         }
         else if (arg == "-v" || arg == "--version") {
@@ -72,11 +101,17 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
         }
         else if (arg == "-o" || arg == "--output") {
             if (i + 1 < argc) {
+                std::string_view value = argv[i + 1];
+                if (value == "--" || (!value.empty() && value[0] == '-')) {
+                    opts.hasError = true;
+                    opts.errorMessage = "Error: " + std::string(arg) + " option requires an output file path\n";
+                    return opts;
+                }
                 opts.outputFile = argv[++i];
                 opts.compileOnly = true;
             } else {
                 opts.hasError = true;
-                opts.errorMessage = "Error: -o option requires an output file path\n";
+                opts.errorMessage = "Error: " + std::string(arg) + " option requires an output file path\n";
                 return opts;
             }
         }
@@ -101,16 +136,17 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
         }
     }
 
-    if (opts.showHelp || opts.showVersion || opts.repl) {
+    if (opts.showHelp || opts.showVersion) {
         return opts;
     }
 
     if (!opts.inputFile.has_value()) {
-        if (!opts.repl) {
-            opts.hasError = true;
-            opts.errorMessage = "Error: No input file specified\n";
+        if (opts.repl) {
             return opts;
         }
+        opts.hasError = true;
+        opts.errorMessage = "Error: No input file specified\n";
+        return opts;
     }
 
     const std::string& filename = opts.inputFile.value();
@@ -118,6 +154,11 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
     std::string ext = filePath.extension().string();
 
     if (ext == ".ho") {
+        if (opts.repl) {
+            opts.hasError = true;
+            opts.errorMessage = "Error: REPL preload input must be a .hoo source file\n";
+            return opts;
+        }
         opts.isBytecode = true;
         if (opts.compileOnly) {
             opts.hasError = true;
@@ -245,9 +286,6 @@ int HooCLI::compileAndExecute(const Options& opts,
 }
 
 int HooCLI::run(int argc, char* argv[]) {
-    hoo_args_init(argc, (const char* const*)argv);
-    struct ArgsCleanup { ~ArgsCleanup() { hoo_args_shutdown(); } } argsCleanup;
-
     Options opts = parseArguments(argc, argv);
 
     if (opts.hasError) {
@@ -268,8 +306,38 @@ int HooCLI::run(int argc, char* argv[]) {
         return 0;
     }
 
+    std::vector<std::string> runtimeArgStorage;
+    runtimeArgStorage.push_back(opts.inputFile.value_or(argv[0]));
+    runtimeArgStorage.insert(runtimeArgStorage.end(), opts.programArgs.begin(), opts.programArgs.end());
+    std::vector<const char*> runtimeArgv;
+    runtimeArgv.reserve(runtimeArgStorage.size());
+    for (const std::string& arg : runtimeArgStorage) {
+        runtimeArgv.push_back(arg.c_str());
+    }
+    hoo_args_init(static_cast<int64_t>(runtimeArgv.size()), runtimeArgv.data());
+    struct ArgsCleanup { ~ArgsCleanup() { hoo_args_shutdown(); } } argsCleanup;
+
     if (opts.repl) {
         hooc::repl::REPLSession session;
+        if (opts.inputFile.has_value()) {
+            const std::string& filename = opts.inputFile.value();
+            verboseLog(opts, "Preloading REPL source file: " + filename);
+            std::optional<std::string> sourceOpt = ioProvider_->readFile(filename);
+            if (!sourceOpt.has_value()) {
+                ioProvider_->writeStderr("Error: Cannot open file '" + filename + "'\n");
+                return 1;
+            }
+            if (sourceOpt->empty()) {
+                ioProvider_->writeStderr("Error: File is empty\n");
+                return 1;
+            }
+            std::string error;
+            if (!session.loadSource(*sourceOpt, error)) {
+                ioProvider_->writeStderr("Error: Failed to preload REPL source: " + error + "\n");
+                return 1;
+            }
+            verboseLog(opts, "REPL source preloaded.");
+        }
         session.run();
         return 0;
     }

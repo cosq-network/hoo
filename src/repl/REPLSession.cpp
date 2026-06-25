@@ -198,6 +198,21 @@ bool REPLSession::eval(const std::string& input, std::string& outResult, std::st
     return true;
 }
 
+bool REPLSession::loadSource(const std::string& source, std::string& outError) {
+    outError.clear();
+    auto module = compiler_->compile("__repl_session", kReplBootstrap + accumulatedDeclarations_ + "\n" + source);
+    if (!module) {
+        outError = compiler_->getLastError();
+        return false;
+    }
+    if (!jit_->loadModule(std::move(module))) {
+        outError = jit_->getLastError();
+        return false;
+    }
+    accumulatedDeclarations_ += "\n" + source;
+    return true;
+}
+
 void REPLSession::run() {
     out_ << "Welcome to the Hoo REPL!" << std::endl;
     out_ << "Type /help for help, or /exit to quit." << std::endl;

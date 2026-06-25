@@ -46,8 +46,8 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 
 - Updated `hoo --version` output to include tool name, brand name, version, and license information.
 - Removed `--compile` / `-c` from the CLI; unknown flags now return a clear error.
-- Improved REPL ergonomics so `--repl` no longer requires an input file, while still accepting one when provided.
-- Updated CLI usage text and documentation to match the new flags and behavior.
+- Improved REPL ergonomics so `--repl` no longer requires an input file, and preloads a `.hoo` file when provided.
+- Updated CLI usage text and documentation to match the new flags, `--` program-argument delimiter, and behavior.
 - Completed full test suite run: `hoo-tests` passes after the CLI updates.
 
 

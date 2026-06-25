@@ -5,6 +5,7 @@
 #include <string>
 #include <string_view>
 #include <optional>
+#include <vector>
 
 namespace hooc {
 
@@ -26,6 +27,7 @@ private:
         bool repl = false;
         std::optional<std::string> inputFile;
         std::optional<std::string> outputFile;
+        std::vector<std::string> programArgs;
         
         bool isBytecode = false;
         bool hasError = false;

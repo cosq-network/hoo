@@ -254,6 +254,40 @@ TEST_F(HooCLITest, OutputOptionProducesBytecode) {
     EXPECT_FALSE(binary->empty());
 }
 
+TEST_F(HooCLITest, LongOutputEqualsOptionProducesBytecode) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("test.hoo", "func main() {}");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--output=out.ho"));
+    args.push_back(const_cast<char*>("test.hoo"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 0);
+    auto* binary = static_cast<FakeIOProvider*>(cli->getIOProvider())->getWrittenBinaryFile("out.ho");
+    EXPECT_NE(binary, nullptr);
+    EXPECT_FALSE(binary->empty());
+}
+
+TEST_F(HooCLITest, RejectsOptionAsOutputPath) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("-o"));
+    args.push_back(const_cast<char*>("--verbose"));
+    args.push_back(const_cast<char*>("test.hoo"));
+
+    int result = cli->run(4, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("requires an output file path") != std::string::npos);
+}
+
 TEST_F(HooCLITest, ExecuteBytecodeFile) {
     // Generate valid bytecode first
     hvm::HOModule mod("test");
@@ -321,6 +355,21 @@ TEST_F(HooCLITest, ReplFlagCombinedWithInputFileAcceptsInput) {
     int result = cli->run(3, args.data());
 
     EXPECT_EQ(result, 0);
+}
+
+TEST_F(HooCLITest, ReplFlagWithMissingInputFileReturnsError) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--repl"));
+    args.push_back(const_cast<char*>("missing.hoo"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Cannot open file") != std::string::npos);
 }
 
 TEST_F(HooCLITest, ReplFlagWithoutInputFileDoesNotShowUsageError) {

@@ -184,6 +184,38 @@ TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecode) {
     EXPECT_GT(st.st_size, 0);
 }
 
+TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecodeWithEqualsSyntax) {
+    std::string src = createTempFile("func :int64 main() { return 42; }\n");
+    std::string outPath = tempDir + "/hoo_cli_out_eq_" + std::to_string(std::time(nullptr)) + ".ho";
+    auto r = runHoo("--output=" + outPath + " " + src);
+    EXPECT_EQ(r.exitCode, 0);
+    EXPECT_NE(r.output.find("bytecode saved"), std::string::npos);
+#ifdef _WIN32
+    struct _stat st;
+    EXPECT_EQ(_stat(outPath.c_str(), &st), 0);
+#else
+    struct stat st;
+    EXPECT_EQ(stat(outPath.c_str(), &st), 0);
+#endif
+    EXPECT_GT(st.st_size, 0);
+}
+
+TEST_F(HooCLIIntegrationTest, RejectsOptionAsOutputPath) {
+    std::string src = createTempFile("func :int64 main() { return 42; }\n");
+    auto r = runHoo("-o --verbose " + src);
+    EXPECT_NE(r.exitCode, 0);
+    EXPECT_NE(r.output.find("requires an output file path"), std::string::npos);
+}
+
+TEST_F(HooCLIIntegrationTest, PassesArgumentsAfterDoubleDashToProgram) {
+    std::string src = createTempFile(
+        "import hoo.args;\n"
+        "func :int64 main() { return args_count(); }\n");
+    auto r = runHoo(src + " -- first second");
+    EXPECT_EQ(r.exitCode, 0);
+    EXPECT_NE(r.output.find("2"), std::string::npos);
+}
+
 TEST_F(HooCLIIntegrationTest, GeneratedBytecodeRunnable) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
     std::string outPath = tempDir + "/hoo_cli_out2_" + std::to_string(std::time(nullptr)) + ".ho";
