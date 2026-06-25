@@ -113,7 +113,13 @@ std::string AnyArrayType::toString() const {
 std::string PrimitiveType::toString() const {
     return "PrimitiveType";
 }
-
+std::string DecimalType::toString() const {
+    return "Decimal<" +
+           std::to_string(precision_) +
+           "," +
+           std::to_string(scale_) +
+           ">";
+}
 std::string BaseType::toString() const {
     std::stringstream ss;
     ss << "BaseType";
@@ -339,6 +345,10 @@ std::string F8Literal::toString() const {
     return "F8Literal";
 }
 
+std::string DecimalLiteral::toString() const {
+    return "DecimalLiteral(" + value_ + ")";
+}
+
 std::string BitLiteral::toString() const {
     return "BitLiteral";
 }
@@ -370,6 +380,7 @@ std::string hooc::ast::primitiveTypeToString(PrimitiveTypeKind kind) {
         case PrimitiveTypeKind::STRING: return "string";
         case PrimitiveTypeKind::BUFFER: return "buffer";
         case PrimitiveTypeKind::VOID: return "void";
+        case PrimitiveTypeKind::DECIMAL: return "decimal";
         default: return "unknown";
     }
 }

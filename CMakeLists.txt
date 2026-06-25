@@ -465,6 +465,7 @@ if(HOO_BUILD_TESTS)
         tests/parsing/FunctionCallParsingTest.cpp
         tests/parsing/NullableTypeParsingTest.cpp
         tests/parsing/LowPrecisionTypeParsingTest.cpp
+        tests/parsing/DecimalTypeParsingTest.cpp
         tests/parsing/TensorTypeParsingTest.cpp
         tests/parsing/VariableDeclarationParseTest.cpp
         tests/parsing/IfElseIfParsingTest.cpp
