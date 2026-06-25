@@ -29,6 +29,6 @@ Use this constant in both the codegen emitters and the JIT interpreter. Document
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **PARTIALLY FIXED**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **MEDIUM**
 - **Audit 2026-06-21**: Current code and spec use the corrected 49-bit shift semantics for `LUI`, but the shared named constant/documentation synchronization work remains incomplete.

@@ -429,6 +429,8 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildIfStatement(ctx->ifStatement());
     } else if (ctx->whileStatement()) {
         return buildWhileStatement(ctx->whileStatement());
+    } else if (ctx->doWhileStatement()) {
+        return buildDoWhileStatement(ctx->doWhileStatement());
     } else if (ctx->forStatement()) {
         auto forCtx = ctx->forStatement();
         // Check if it's a for-range loop (has RANGE ..) or for-in loop (has 1 expression)
@@ -439,6 +441,8 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
             // for-in: for item in iterable { }
             return buildForInStatement(forCtx);
         }
+    } else if (ctx->switchStatement()) {
+        return buildSwitchStatement(ctx->switchStatement());
     } else if (ctx->breakStatement()) {
         return std::make_unique<BreakStatement>();
     } else if (ctx->continueStatement()) {
@@ -472,6 +476,41 @@ std::unique_ptr<WhileStatement> SimpleASTBuilder::buildWhileStatement(HoocParser
     auto condition = buildExpression(ctx->expression());
     auto body = buildBlock(ctx->block());
     return std::make_unique<WhileStatement>(std::move(condition), std::move(body));
+}
+
+std::unique_ptr<DoWhileStatement> SimpleASTBuilder::buildDoWhileStatement(HoocParser::DoWhileStatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("DoWhileStatementContext is null");
+    }
+    auto body = buildBlock(ctx->block());
+    auto condition = buildExpression(ctx->expression());
+    return std::make_unique<DoWhileStatement>(std::move(body), std::move(condition));
+}
+
+std::unique_ptr<SwitchStatement> SimpleASTBuilder::buildSwitchStatement(HoocParser::SwitchStatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("SwitchStatementContext is null");
+    }
+    auto discriminant = buildExpression(ctx->expression());
+
+    std::vector<SwitchStatement::CaseClause> cases;
+    for (auto caseCtx : ctx->switchCase()) {
+        SwitchStatement::CaseClause clause;
+        clause.value = buildExpression(caseCtx->expression());
+        for (auto stmtCtx : caseCtx->statement()) {
+            clause.statements.push_back(buildStatement(stmtCtx));
+        }
+        cases.push_back(std::move(clause));
+    }
+
+    std::vector<std::unique_ptr<Statement>> defaultStatements;
+    if (ctx->switchDefault()) {
+        for (auto stmtCtx : ctx->switchDefault()->statement()) {
+            defaultStatements.push_back(buildStatement(stmtCtx));
+        }
+    }
+
+    return std::make_unique<SwitchStatement>(std::move(discriminant), std::move(cases), std::move(defaultStatements));
 }
 
 std::unique_ptr<TryCatchStatement> SimpleASTBuilder::buildTryCatchStatement(HoocParser::TryCatchStatementContext* ctx) {

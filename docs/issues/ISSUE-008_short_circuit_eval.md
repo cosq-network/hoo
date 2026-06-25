@@ -30,8 +30,11 @@ falseLabel/trueLabel:
   mov dest, r1
 ```
 
-## 5. Status
+## 5. Resolution
+Short-circuit evaluation for `&&` and `||` is now implemented in `HVMCodeGenerator.cpp` (lines 2840–2901) using conditional `BEQ`/`BNE` branches that skip the right operand evaluation based on the truthiness of the left operand.
+
+## 6. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **IMPLEMENTED**
 - **Priority**: **HIGH**
-- **Audit 2026-06-21**: Verified `LogicalAnd` and `LogicalOr` still evaluate both operands before emitting a `LOGIC` instruction or tensor helper call; no branch-based short-circuit lowering is present.
+- **Audit 2026-06-24**: Short-circuit evaluation confirmed working. `LogicalAnd` emits `BEQ left, 0, skipLabel` to skip right evaluation when left is falsy; `LogicalOr` emits `BNE left, 0, skipLabel` to skip right evaluation when left is truthy.

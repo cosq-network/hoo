@@ -50,5 +50,5 @@ emit(Opcode::RET, ...);
 - **Date**: 2026-06-08
 - **Status**: **FIXED**
 - **Priority**: **MEDIUM**
-- **Audit 2026-06-21**: Verified codegen still does not track whether non-void functions definitely return; the epilogue is still emitted without a missing-return diagnostic.
+- **Audit 2026-06-24**: Missing return check implemented. `currentFunctionHasReturn_` flag tracked in `visitStatement(ReturnStatement)`. Error emitted in `beginFunction` for non-void functions lacking a return statement. Verified by `NonVoidFunctionMissingReturn` and `NonVoidFunctionWithReturn` tests.
 - **Fix 2026-06-24**: Added `currentFunctionHasReturn_` member to `HVMCodeGenerator`, tracked across return statements, and enforced in `beginFunction` via `addError()` for non-void functions missing a return. Tested with `NonVoidFunctionMissingReturn`, `NonVoidFunctionWithReturn`, and `VoidFunctionWithoutReturn`.

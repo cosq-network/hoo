@@ -35,8 +35,10 @@ case BinaryOperator::PLUS: {
 
 Requires either runtime type checks or compile-time type inference to determine operand types at the `+` point.
 
-## 5. Status
+## 5. Resolution
+String concatenation via `+` is now implemented in `HVMCodeGenerator.cpp` (lines 2753–2768). The codegen detects `isStringConcat` via type inference (leftType/rightType == 101) and emits `CALL _F_M_hoo_E_String_concat_p_p` instead of `ARITH ADD`.
+
+## 6. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **IMPLEMENTED**
 - **Priority**: **HIGH**
-- **Audit 2026-06-21**: Verified binary `+` still lowers through arithmetic opcodes without a string-type branch. String concatenation support remains limited to the interpolated-string helper path.

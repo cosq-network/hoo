@@ -424,3 +424,312 @@ TEST_F(NewLanguageFeaturesTest, HardwareLoopForIn) {
     EXPECT_EQ(jit->run("_F_test_i8"), 150) << jit->getLastError();
 }
 
+// ============================================================================
+// DO-WHILE LOOP TESTS
+// ============================================================================
+
+TEST_F(NewLanguageFeaturesTest, DoWhileBasic) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 0;
+            do {
+                x = x + 1;
+            } while (x < 10);
+            return x;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 10) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, DoWhileBodyExecutesOnce) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 0;
+            do {
+                x = x + 1;
+            } while (false);
+            return x;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, DoWhileWithBreak) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 0;
+            do {
+                x = x + 1;
+                if (x == 5) { break; }
+            } while (true);
+            return x;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 5) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, DoWhileWithContinue) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 0;
+            var total: int64 = 0;
+            do {
+                x = x + 1;
+                if (x == 3) { continue; }
+                total = total + x;
+            } while (x < 5);
+            return total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    // x: 1..5, skip 3 => total = 1+2+4+5 = 12
+    EXPECT_EQ(jit->run("_F_test_i8"), 12) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, DoWhileContinueChecksCondition) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 0;
+            do {
+                x = x + 1;
+                continue;
+            } while (false);
+            return x;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
+}
+
+// ============================================================================
+// SWITCH STATEMENT TESTS
+// ============================================================================
+
+TEST_F(NewLanguageFeaturesTest, SwitchBasic) {
+    // Use separate functions for each case value since run() has no argument support
+    std::string code = R"(
+        import hoo;
+        func :int64 test1() {
+            var x: int64 = 1;
+            switch (x) {
+                case 1: return 10;
+                case 2: return 20;
+                case 3: return 30;
+                default: return 0;
+            }
+        }
+        func :int64 test3() {
+            var x: int64 = 3;
+            switch (x) {
+                case 1: return 10;
+                case 2: return 20;
+                case 3: return 30;
+                default: return 0;
+            }
+        }
+        func :int64 testDefault() {
+            var x: int64 = 99;
+            switch (x) {
+                case 1: return 10;
+                case 2: return 20;
+                case 3: return 30;
+                default: return 0;
+            }
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test1_i8"), 10) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test3_i8"), 30) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_testDefault_i8"), 0) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, SwitchFallThrough) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 1;
+            var result: int64 = 0;
+            switch (x) {
+                case 1: result = 100;
+                case 2: result = 200;
+                default: result = result + 1;
+            }
+            return result;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    // case 1 sets result=100, falls through to case2: result=200, falls through to default: result=201
+    EXPECT_EQ(jit->run("_F_test_i8"), 201) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, SwitchWithBreak) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x: int64 = 2;
+            var result: int64 = 0;
+            switch (x) {
+                case 1: result = 10; break;
+                case 2: result = 20; break;
+                default: result = 30;
+            }
+            return result;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 20) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, SwitchInLoop) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var total: int64 = 0;
+            for i in 1 .. 6 {
+                switch (i) {
+                    case 1: total = total + 1; break;
+                    case 2: total = total + 2; break;
+                    default: total = total + i;
+                }
+            }
+            return total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    // 1: 1, 2: 2, 3: 3, 4: 4, 5: 5 = 15
+    EXPECT_EQ(jit->run("_F_test_i8"), 15) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, SwitchContinueTargetsEnclosingLoop) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var total: int64 = 0;
+            for i in 1 .. 6 {
+                switch (i) {
+                    case 2: continue;
+                    case 4: continue;
+                    default: total = total + i;
+                }
+            }
+            return total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 9) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, SwitchRejectsStringDiscriminant) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var x = "a";
+            switch (x) {
+                case "a": return 1;
+                default: return 0;
+            }
+        }
+    )";
+
+    ASSERT_FALSE(jit->loadSourceCode("test", code));
+    EXPECT_NE(jit->getLastError().find("switch only supports integer-like discriminants"), std::string::npos);
+}
+
+// ============================================================================
+// FOR-IN STRING TEST
+// ============================================================================
+
+TEST_F(NewLanguageFeaturesTest, ForInString) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = "abc";
+            var count: int64 = 0;
+            for ch in s {
+                count = count + 1;
+            }
+            return count;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 3) << jit->getLastError();
+}
+
+// ============================================================================
+// FOR-IN MAP TEST
+// ============================================================================
+
+TEST_F(NewLanguageFeaturesTest, ForInMap) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var m = new Map(2, 1);
+            m.setInt64Int64(10, 100);
+            m.setInt64Int64(20, 200);
+            m.setInt64Int64(30, 300);
+            var total: int64 = 0;
+            for key in m {
+                total = total + key;
+            }
+            return total;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 60) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, ForInMapRejectsStringKeys) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var m: map<string, int64> = new Map(4, 1);
+            m.setStringInt64("a", 1);
+            var count: int64 = 0;
+            for key in m {
+                count = count + 1;
+            }
+            return count;
+        }
+    )";
+
+    ASSERT_FALSE(jit->loadSourceCode("test", code));
+    EXPECT_NE(jit->getLastError().find("for-in over maps currently supports only numeric and char keys"), std::string::npos);
+}
+
+TEST_F(NewLanguageFeaturesTest, ForInMapRejectsUntypedStringKeys) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var m = new Map(4, 1);
+            m.setStringInt64("a", 1);
+            var count: int64 = 0;
+            for key in m {
+                count = count + 1;
+            }
+            return count;
+        }
+    )";
+
+    ASSERT_FALSE(jit->loadSourceCode("test", code));
+    EXPECT_NE(jit->getLastError().find("for-in over maps currently supports only numeric and char keys"), std::string::npos);
+}

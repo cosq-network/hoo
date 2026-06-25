@@ -423,6 +423,142 @@ TEST_F(WhileLoopParsingTest, WhileLoopWithFunctionCall) {
     EXPECT_EQ(ast->getDeclarations().size(), 2);
 }
 
+// Do-while loop parsing tests
+TEST_F(WhileLoopParsingTest, SimpleDoWhileLoop) {
+    std::string code = R"(
+        func test() {
+            var x = 0;
+            do {
+                x = x + 1;
+            } while (x < 10);
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto* func = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    auto& stmts = func->getBody().getStatements();
+    auto* doWhile = dynamic_cast<const DoWhileStatement*>(stmts[1].get());
+
+    ASSERT_NE(doWhile, nullptr);
+}
+
+TEST_F(WhileLoopParsingTest, DoWhileLoopImmediateExecutesBody) {
+    std::string code = R"(
+        func test() {
+            var x = 0;
+            do {
+                x = x + 1;
+            } while (false);
+            return x;
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1);
+}
+
+TEST_F(WhileLoopParsingTest, DoWhileLoopNestedInWhile) {
+    std::string code = R"(
+        func test() {
+            var x = 0;
+            var y = 0;
+            while (x < 5) {
+                do {
+                    y = y + 1;
+                } while (y < 3);
+                x = x + 1;
+            }
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1);
+}
+
+// Switch statement parsing tests
+TEST_F(WhileLoopParsingTest, SimpleSwitchStatement) {
+    std::string code = R"(
+        func test(x: int64) {
+            switch (x) {
+                case 1: return 10;
+                case 2: return 20;
+                default: return 0;
+            }
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto* func = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    auto& stmts = func->getBody().getStatements();
+    auto* switchStmt = dynamic_cast<const SwitchStatement*>(stmts[0].get());
+
+    ASSERT_NE(switchStmt, nullptr);
+    EXPECT_EQ(switchStmt->getCases().size(), 2);
+    EXPECT_TRUE(switchStmt->hasDefault());
+}
+
+TEST_F(WhileLoopParsingTest, SwitchWithoutDefault) {
+    std::string code = R"(
+        func test(x: int64) {
+            switch (x) {
+                case 10: return 100;
+                case 20: return 200;
+            }
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+
+    auto* func = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    auto& stmts = func->getBody().getStatements();
+    auto* switchStmt = dynamic_cast<const SwitchStatement*>(stmts[0].get());
+
+    ASSERT_NE(switchStmt, nullptr);
+    EXPECT_EQ(switchStmt->getCases().size(), 2);
+    EXPECT_FALSE(switchStmt->hasDefault());
+}
+
+TEST_F(WhileLoopParsingTest, SwitchWithBreak) {
+    std::string code = R"(
+        func test(x: int64) {
+            switch (x) {
+                case 1: break;
+                case 2: break;
+                default: break;
+            }
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1);
+}
+
+TEST_F(WhileLoopParsingTest, SwitchNestedInLoop) {
+    std::string code = R"(
+        func test() {
+            var x = 0;
+            while (x < 10) {
+                switch (x) {
+                    case 5: break;
+                    default: x = x + 1;
+                }
+            }
+        }
+    )";
+
+    auto ast = parseAndBuildAST(code);
+    ASSERT_NE(ast, nullptr);
+    EXPECT_EQ(ast->getDeclarations().size(), 1);
+}
+
 // Empty and minimal loops
 TEST_F(WhileLoopParsingTest, EmptyWhileLoop) {
     std::string code = R"(

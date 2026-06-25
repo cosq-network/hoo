@@ -46,6 +46,9 @@ static uint8_t argReg(uint8_t first, size_t i) {
 
 
 static uint32_t hashMapKeyTypeId(const ast::HashMapType& type);
+static uint32_t mapKeyTypeId(const ast::MapType& type);
+static uint32_t mapConstructorKeyTypeId(const ast::NewObjectExpression& expr);
+static uint32_t mapConstructorValueTypeId(const ast::NewObjectExpression& expr);
 
 // Built-in classes that support class.method mangling in JIT symbols.
 static bool isClassMethodJitClass(const std::string& className) {
@@ -1432,6 +1435,9 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             } else if (auto hashMapType = dynamic_cast<const ast::HashMapType*>(decl.getType())) {
                 keyTypeId = hashMapKeyTypeId(*hashMapType);
                 elemTypeId = typeIdFromDeclaredType(&hashMapType->getValueType());
+            } else if (auto mapType = dynamic_cast<const ast::MapType*>(decl.getType())) {
+                keyTypeId = mapKeyTypeId(*mapType);
+                elemTypeId = typeIdFromDeclaredType(&mapType->getValueType());
             } else if (dynamic_cast<const ast::AnyArrayType*>(decl.getType())) {
                 elemTypeId = 0;
             }
@@ -1439,6 +1445,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(decl.getInitializer())) {
                 keyTypeId = hashMapKeyTypeId(newHash->getHashMapType());
                 elemTypeId = typeIdFromDeclaredType(&newHash->getHashMapType().getValueType());
+            } else if (auto newObj = dynamic_cast<const ast::NewObjectExpression*>(decl.getInitializer())) {
+                if (newObj->getClassName() == "Map") {
+                    keyTypeId = mapConstructorKeyTypeId(*newObj);
+                    elemTypeId = mapConstructorValueTypeId(*newObj);
+                }
             } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
                 if (arrLit->isAnyArray()) {
                     elemTypeId = 0;
@@ -1559,17 +1570,97 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         controlFlowStack_.pop();
         emitJump(Opcode::JMP, 0, startLabel);
         bindLabel(endLabel);
+    } else if (auto doWhile = dynamic_cast<const ast::DoWhileStatement*>(&stmt)) {
+        Label* startLabel = createLabel();
+        Label* conditionLabel = createLabel();
+        Label* endLabel = createLabel();
+        bindLabel(startLabel);
+        controlFlowStack_.push({endLabel, conditionLabel});
+        visitStatement(doWhile->getBody());
+        controlFlowStack_.pop();
+        bindLabel(conditionLabel);
+        uint8_t condReg = visitExpression(doWhile->getCondition());
+        emitBranch(Opcode::BEQ, condReg, 0, endLabel);
+        freeRegister(condReg);
+        emitJump(Opcode::JMP, 0, startLabel);
+        bindLabel(endLabel);
+    } else if (auto switchStmt = dynamic_cast<const ast::SwitchStatement*>(&stmt)) {
+        auto supportsSwitchCompare = [](uint32_t typeId) {
+            return typeId == 0 || typeId == 1 || typeId == 3 || typeId == 5 ||
+                   typeId == 6 || typeId == 7 || typeId == 8;
+        };
+        uint32_t discriminantType = inferExpressionTypeId(switchStmt->getDiscriminant());
+        if (!supportsSwitchCompare(discriminantType)) {
+            addError("switch only supports integer-like discriminants");
+        }
+        uint8_t discReg = visitExpression(switchStmt->getDiscriminant());
+        Label* endLabel = createLabel();
+        std::vector<Label*> caseLabels;
+        for (size_t i = 0; i < switchStmt->getCases().size(); i++) {
+            caseLabels.push_back(createLabel());
+        }
+        Label* defaultLabel = createLabel();
+
+        for (size_t i = 0; i < switchStmt->getCases().size(); i++) {
+            const auto& caseClause = switchStmt->getCases()[i];
+            uint32_t caseType = inferExpressionTypeId(*caseClause.value);
+            if (!supportsSwitchCompare(caseType)) {
+                addError("switch case values must be integer-like");
+            }
+            uint8_t valReg = visitExpression(*caseClause.value);
+            uint8_t cmpReg = allocateRegister();
+            emit(Opcode::CMP, OperandsR{cmpReg, discReg, valReg, 0}); // eq
+            freeRegister(valReg);
+            emitBranch(Opcode::BNE, cmpReg, 0, caseLabels[i]); // if match, jump to case body
+            freeRegister(cmpReg);
+        }
+
+        if (switchStmt->hasDefault()) {
+            emitJump(Opcode::JMP, 0, defaultLabel);
+        } else {
+            emitJump(Opcode::JMP, 0, endLabel);
+        }
+
+        controlFlowStack_.push({endLabel, nullptr});
+
+        for (size_t i = 0; i < switchStmt->getCases().size(); i++) {
+            bindLabel(caseLabels[i]);
+            const auto& caseClause = switchStmt->getCases()[i];
+            for (const auto& s : caseClause.statements) {
+                visitStatement(*s);
+            }
+        }
+
+        if (switchStmt->hasDefault()) {
+            bindLabel(defaultLabel);
+            for (const auto& s : switchStmt->getDefaultStatements()) {
+                visitStatement(*s);
+            }
+        }
+
+        controlFlowStack_.pop();
+        bindLabel(endLabel);
+        freeRegister(discReg);
     } else if (auto breakStmt = dynamic_cast<const ast::BreakStatement*>(&stmt)) {
-        if (controlFlowStack_.empty()) {
+        if (controlFlowStack_.empty() || !controlFlowStack_.top().breakLabel) {
             addError("break statement outside of loop");
         } else {
             emitJump(Opcode::JMP, 0, controlFlowStack_.top().breakLabel);
         }
     } else if (auto continueStmt = dynamic_cast<const ast::ContinueStatement*>(&stmt)) {
-        if (controlFlowStack_.empty()) {
+        Label* continueLabel = nullptr;
+        auto scopes = controlFlowStack_;
+        while (!scopes.empty()) {
+            if (scopes.top().continueLabel) {
+                continueLabel = scopes.top().continueLabel;
+                break;
+            }
+            scopes.pop();
+        }
+        if (!continueLabel) {
             addError("continue statement outside of loop");
         } else {
-            emitJump(Opcode::JMP, 0, controlFlowStack_.top().continueLabel);
+            emitJump(Opcode::JMP, 0, continueLabel);
         }
     } else if (auto forRange = dynamic_cast<const ast::ForRangeStatement*>(&stmt)) {
         int32_t offset = reserveLocal(forRange->getVariable(), 1);
@@ -1673,6 +1764,33 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
     } else if (auto forIn = dynamic_cast<const ast::ForInStatement*>(&stmt)) {
         uint8_t iterReg = visitExpression(forIn->getIterable());
         
+        // Convert string to character array, or map to key array
+        uint32_t forInTypeId = inferExpressionTypeId(forIn->getIterable());
+        if (forInTypeId == 101) { // String
+            uint8_t oldReg = iterReg;
+            emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_String_to_characters_p_p");
+            iterReg = allocateRegister();
+            emit(Opcode::MOV, OperandsR{iterReg, 1, 0, 0});
+            freeRegister(oldReg);
+        } else if (forInTypeId == 103) { // Map
+            uint32_t mapKeyTypeId = 0;
+            if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
+                if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
+                    mapKeyTypeId = getLocalKeyTypeId(id->getName());
+                }
+            }
+            if (mapKeyTypeId == 101) {
+                addError("for-in over maps currently supports only numeric and char keys");
+            }
+            uint8_t oldReg = iterReg;
+            emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_Map_keys_p");
+            iterReg = allocateRegister();
+            emit(Opcode::MOV, OperandsR{iterReg, 1, 0, 0});
+            freeRegister(oldReg);
+        }
+
         // Lowered: Get length via runtime call
         uint8_t lenReg = allocateRegister();
         emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
@@ -1710,7 +1828,9 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         uint32_t forInElemTypeId = 100;
         if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
-                uint32_t et = getLocalElementTypeId(id->getName());
+                uint32_t et = forInTypeId == 103
+                    ? getLocalKeyTypeId(id->getName())
+                    : getLocalElementTypeId(id->getName());
                 if (et != 0) forInElemTypeId = et;
             }
         }
@@ -3325,6 +3445,55 @@ static uint32_t hashMapKeyTypeId(const ast::HashMapType& type) {
         case ast::HashMapKeyType::BYTE: return 6;
     }
     return 1;
+}
+
+static uint32_t mapKeyTypeId(const ast::MapType& type) {
+    switch (type.getKeyType()) {
+        case ast::MapKeyType::INT64: return 1;
+        case ast::MapKeyType::INT8: return 5;
+        case ast::MapKeyType::BYTE: return 6;
+        case ast::MapKeyType::CHAR: return 7;
+        case ast::MapKeyType::STRING: return 101;
+    }
+    return 0;
+}
+
+static int64_t integerLiteralValue(const ast::Expression& expr, int64_t fallback) {
+    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
+        if (auto il = dynamic_cast<const ast::IntegerLiteral*>(&pe->getPrimary())) {
+            return il->getValue();
+        }
+    }
+    return fallback;
+}
+
+static uint32_t mapConstructorKeyTypeId(const ast::NewObjectExpression& expr) {
+    const auto* args = expr.getArguments();
+    if (!args || args->getArguments().empty()) return 0;
+    switch (integerLiteralValue(*args->getArguments()[0], -1)) {
+        case 0: return 6;   // HOO_MAP_KEY_BYTE
+        case 1: return 5;   // HOO_MAP_KEY_INT8
+        case 2: return 1;   // HOO_MAP_KEY_INT64
+        case 3: return 7;   // HOO_MAP_KEY_CHAR
+        case 4: return 101; // HOO_MAP_KEY_STRING
+        default: return 0;
+    }
+}
+
+static uint32_t mapConstructorValueTypeId(const ast::NewObjectExpression& expr) {
+    const auto* args = expr.getArguments();
+    if (!args || args->getArguments().size() < 2) return 0;
+    switch (integerLiteralValue(*args->getArguments()[1], -1)) {
+        case 0: return 100; // HOO_MAP_VAL_ANY
+        case 1: return 1;   // HOO_MAP_VAL_INT64
+        case 2: return 2;   // HOO_MAP_VAL_DOUBLE
+        case 3: return 3;   // HOO_MAP_VAL_BOOL
+        case 4: return 101; // HOO_MAP_VAL_STRING
+        case 5: return 100; // HOO_MAP_VAL_OBJECT
+        case 6: return 5;   // HOO_MAP_VAL_INT8
+        case 7: return 7;   // HOO_MAP_VAL_CHAR
+        default: return 0;
+    }
 }
 
 int32_t HVMCodeGenerator::getLocalOffset(const std::string& name) {

@@ -49,7 +49,7 @@ When a `var` variable has typeId 100 (Object), instance method calls on it use `
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **PARTIALLY FIXED**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **MEDIUM**
 - **Audit 2026-06-21**: Function, method, class, array, tensor, `HashMap`, `AnyArray`, and literal inference paths are broader than when this was opened. Remaining limits are mostly chained/ambiguous dispatch and overload-related cases tracked by ISSUE-031, ISSUE-015, and ISSUE-041.
 - **Update 2026-06-11 (a)**: Inference extended to cover instance method return types on `Args` (typeId 110), `Character` (typeId 109), and `Map` (typeId 103) objects. Method calls on these types now correctly infer int64, double, and String return types.

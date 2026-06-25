@@ -27,5 +27,5 @@ There is no `FREM` (Floating Point Remainder) in the HVM ISA.
 - **Date**: 2026-06-16
 - **Status**: **FIXED**
 - **Priority**: Medium (Bug in mathematical correctness)
-- **Audit 2026-06-21**: Float modulo still lowers through the generic modulo function code rather than an `fmod`/floating helper path; this remains open.
+- **Audit 2026-06-24**: Float modulo implemented via `hoo_math_fmod(double, double)` wrapping `std::fmod`. Emits `CALL _F_M_hoo_E_math_fmod_d_p_p` for float `%` in binary expressions and `%=` in compound assignments. Verified by `FloatModuloEmitsFmodCall`, `Fmod`, `FmodNonZero`, `FmodNegative` tests.
 - **Fix 2026-06-24**: Implemented `hoo_math_fmod(double, double)` in `hoort`, registered `jit_math_fmod` JIT bridge, and updated codegen `MODULO` and `MODULO_ASSIGN` cases to emit a `CALL` to `_F_M_hoo_E_math_fmod_d_p_p` when operands are float types (`double`/`f8`). Tested with `FloatModuloEmitsFmodCall` (codegen) and `Fmod`, `FmodNonZero`, `FmodNegative` (JIT).

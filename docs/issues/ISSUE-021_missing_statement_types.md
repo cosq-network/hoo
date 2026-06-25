@@ -51,6 +51,6 @@ The Hoo language grammar and codegen are missing several common statement types 
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **MEDIUM**
-- **Audit 2026-06-21**: Grammar still lacks `do`, `switch`, and explicit `scope` statements. `for-in` remains array/helper-oriented and `finally` execution remains unsafe under ISSUE-012.
+- **Audit 2026-06-24**: `do-while`, `switch`, and `for-in` support for strings/maps are in progress in the pending language-feature changes. Explicit `scope` statements remain absent. C-style `for(;;)` is not in the language by design — only `for-in` and `for-range` exist.
