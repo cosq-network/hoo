@@ -157,10 +157,10 @@ std::vector<std::shared_ptr<HOModuleBase>> HVMModuleBundle::resolveDependencyOrd
 
             recursion_stack.insert(name);
 
-            for (const auto& dep_name : module->getDependencyOrder()) {
-                auto dep_module = getModule(dep_name);
-                if (dep_module) {
-                    visit(dep_module);
+            for (const auto& dep : module->getDependencies()) {
+                auto dep_it = modules_by_name_.find(dep.module_name);
+                if (dep_it != modules_by_name_.end() && dep_it->second.module) {
+                    visit(dep_it->second.module);
                 }
             }
 

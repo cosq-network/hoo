@@ -130,20 +130,27 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
     std::unordered_set<std::string> temp_visited;
 
     std::function<void(const std::string&)> visit = [&](const std::string& name) {
+        if (visited.find(name) != visited.end()) {
+            return;
+        }
+
         if (temp_visited.find(name) != temp_visited.end()) {
             has_circular_dependency_ = true;
             return;
         }
 
-        if (visited.find(name) != visited.end()) {
+        auto module_it = module_map.find(name);
+        if (module_it == module_map.end() || !module_it->second) {
             return;
         }
 
         temp_visited.insert(name);
 
-        auto dep = findDependency(name);
-        if (dep) {
-            visit(dep->module_name);
+        for (const auto& dep : module_it->second->getDependencies()) {
+            auto dep_it = module_map.find(dep.module_name);
+            if (dep_it != module_map.end() && dep_it->second) {
+                visit(dep.module_name);
+            }
         }
 
         temp_visited.erase(name);
@@ -156,8 +163,6 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
             visit(dep.module_name);
         }
     }
-
-    dependency_order_.insert(dependency_order_.begin(), module_name_);
 }
 
 void HOModuleBase::checkCircularDependencies(const std::string& module_name,
