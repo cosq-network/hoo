@@ -247,4 +247,8 @@ This comprehensive description ensures that every component—from source syntax
 
 ---
 
+## Status
+- **Date**: 2026-06-21
+- **Status**: **PROPOSED**
+
 *Prepared by Antigravity AI – 2026‑06‑21*

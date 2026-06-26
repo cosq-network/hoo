@@ -99,6 +99,6 @@ All functions set `errno` accordingly (`EINVAL`, `ERANGE`, `ENOSPC`).  Language 
 
 ## Status
 - **Date**: 2026-06-21
-- **Status**: **PROPOSED (UNIMPLEMENTED)**
+- **Status**: **PROPOSED**
 - **Priority**: Medium
 - **Audit 2026-06-21**: No `hoo_list` runtime, `HOO_TYPE_LIST`, `ListLiteral` AST node, list grammar, list bytecodes, or list JIT bridge was found. This remains a design proposal.

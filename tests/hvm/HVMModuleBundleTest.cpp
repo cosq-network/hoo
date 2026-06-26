@@ -201,7 +201,9 @@ TEST_F(HVMModuleBundleTest, AddDependencies) {
     bundle.addModule(module3);
     
     auto depOrder = bundle.getModuleDependencyOrder("module1");
-    EXPECT_GE(depOrder.size(), 1);
+    ASSERT_EQ(depOrder.size(), 2);
+    EXPECT_EQ(depOrder[0], "module2");
+    EXPECT_EQ(depOrder[1], "module3");
 }
 
 TEST_F(HVMModuleBundleTest, GetAllModulesThatDependOn) {
@@ -401,9 +403,50 @@ TEST_F(HVMModuleBundleTest, ResolveDependencyOrder) {
     }
 }
 
-// Note: HOModuleBase::resolveDependencyOrder has a known issue with cycle detection
-// that causes false positives for simple dependency chains. These tests use self-dependencies
-// to test the HVMModuleBundle wrapper methods without triggering the HOModuleBase bug.
+TEST_F(HVMModuleBundleTest, ResolveDependencyOrderTransitiveChain) {
+    HVMModuleBundle bundle;
+
+    auto moduleA = std::make_shared<HOModuleBase>(ModuleType::Compiled, "A");
+    moduleA->addDependency("B", ModuleType::Compiled);
+    auto moduleB = std::make_shared<HOModuleBase>(ModuleType::Compiled, "B");
+    moduleB->addDependency("C", ModuleType::Compiled);
+    auto moduleC = std::make_shared<HOModuleBase>(ModuleType::Compiled, "C");
+
+    bundle.addModule(moduleA);
+    bundle.addModule(moduleB);
+    bundle.addModule(moduleC);
+
+    auto order = bundle.resolveDependencyOrder();
+    ASSERT_EQ(order.size(), 3);
+    EXPECT_EQ(order[0]->getName(), "C");
+    EXPECT_EQ(order[1]->getName(), "B");
+    EXPECT_EQ(order[2]->getName(), "A");
+
+    auto depOrder = bundle.getModuleDependencyOrder("A");
+    ASSERT_EQ(depOrder.size(), 2);
+    EXPECT_EQ(depOrder[0], "C");
+    EXPECT_EQ(depOrder[1], "B");
+}
+
+TEST_F(HVMModuleBundleTest, HasCircularDependencyThreeModuleCycle) {
+    HVMModuleBundle bundle;
+
+    auto moduleA = std::make_shared<HOModuleBase>(ModuleType::Compiled, "A");
+    moduleA->addDependency("B", ModuleType::Compiled);
+    auto moduleB = std::make_shared<HOModuleBase>(ModuleType::Compiled, "B");
+    moduleB->addDependency("C", ModuleType::Compiled);
+    auto moduleC = std::make_shared<HOModuleBase>(ModuleType::Compiled, "C");
+    moduleC->addDependency("A", ModuleType::Compiled);
+
+    bundle.addModule(moduleA);
+    bundle.addModule(moduleB);
+    bundle.addModule(moduleC);
+
+    EXPECT_TRUE(bundle.hasCircularDependency("A"));
+    EXPECT_TRUE(bundle.hasCircularDependency("B"));
+    EXPECT_TRUE(bundle.hasCircularDependency("C"));
+    EXPECT_TRUE(bundle.hasCircularDependency());
+}
 
 TEST_F(HVMModuleBundleTest, HasCircularDependencySelfDependency) {
     HVMModuleBundle bundle;

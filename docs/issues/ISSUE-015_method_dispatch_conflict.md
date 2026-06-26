@@ -41,7 +41,7 @@ When resolving, if a method name has multiple candidate classes, emit a runtime 
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **PARTIALLY MITIGATED**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **HIGH**
 - **Audit 2026-06-21**: Verified method-return inference reduces some ambiguity, but `methodNameToClass_` remains keyed only by method name, so same-name methods across classes can still collide.
 - **Update 2026-06-11**: Type inference improvements (see ISSUE-022) now resolve many `var` declarations to precise typeIds (int64, double, string, etc.) instead of falling back to 100 (Object). This reduces the impact of the `methodNameToClass_` conflict for variables with inferrable types. 

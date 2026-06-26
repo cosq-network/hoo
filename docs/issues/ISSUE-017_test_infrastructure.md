@@ -55,7 +55,7 @@ The CMake build configuration and test suite have several bugs and gaps that sil
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **PARTIALLY FIXED**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **HIGH**
 - **Audit 2026-06-21**: Test coverage has expanded, but CMake still lists `HooNetTest.cpp` twice, debug `printf` calls remain in JIT tests, and some tests still write to hardcoded `/tmp` paths.
 - **Update 2026-06-11**: Sub-issue 2.2 (`HooCompilerTest.cpp` excluded) is now **FIXED** — the file is included at CMakeLists.txt line 410 and all 19 tests run as part of the suite.

@@ -35,6 +35,10 @@ THIS: 'this';
 TRUE: 'true';
 FALSE: 'false';
 NULL: 'null';
+DO: 'do';
+SWITCH: 'switch';
+CASE: 'case';
+DEFAULT: 'default';
 TRY: 'try';
 CATCH: 'catch';
 FINALLY: 'finally';
@@ -226,12 +230,22 @@ statement
     | returnStatement
     | ifStatement
     | whileStatement
+    | doWhileStatement
     | forStatement
+    | switchStatement
     | breakStatement
     | continueStatement
     | tryCatchStatement
     | throwStatement
     ;
+
+doWhileStatement: DO block WHILE expression SEMICOLON;
+
+switchStatement: SWITCH expression LBRACE switchCase* switchDefault? RBRACE;
+
+switchCase: CASE expression COLON statement*;
+
+switchDefault: DEFAULT COLON statement*;
 
 tryCatchStatement
     : TRY block (CATCH LPAREN IDENTIFIER COLON type RPAREN block)* (FINALLY block)?

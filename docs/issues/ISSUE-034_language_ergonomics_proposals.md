@@ -642,7 +642,7 @@ For dense integer ranges with 4+ cases, the compiler may emit a jump table:
 
 ## 9. Status
 - **Date**: 2026-06-19
-- **Status**: **PROPOSED (UNIMPLEMENTED)**
+- **Status**: **PROPOSED**
 - **Priority**: **MEDIUM** (Ergonomics enhancement — no correctness bugs but significant developer experience improvement)
 - **Audit 2026-06-21**: No implementation was found for the proposed ergonomics set such as `Result`, pattern matching, defer, lambdas, multi-return, pipelines, ranges, or package aliases.
 

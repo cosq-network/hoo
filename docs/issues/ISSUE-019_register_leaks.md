@@ -38,6 +38,6 @@ Approach 3 is cleanest — treat each loop body as a register scope, and free al
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **MEDIUM**
-- **Audit 2026-06-21**: Verified `break` and `continue` still emit direct jumps to loop labels without unwinding scoped registers or managed locals allocated inside the loop body.
+- **Audit 2026-06-24**: Register allocator uses paired alloc/free pattern across 90+ call sites. Break/continue paths may still skip freeRegister for loop-body temporaries. No spilling support — limited to 12 temporary registers (r9–r20).

@@ -131,6 +131,50 @@ private:
     std::unique_ptr<Block> body_;
 };
 
+// Do-While statement
+class DoWhileStatement : public Statement {
+public:
+    DoWhileStatement(std::unique_ptr<Block> body,
+                    std::unique_ptr<Expression> condition)
+        : body_(std::move(body)), condition_(std::move(condition)) {}
+
+    std::string toString() const override;
+
+    const Block& getBody() const { return *body_; }
+    const Expression& getCondition() const { return *condition_; }
+
+private:
+    std::unique_ptr<Block> body_;
+    std::unique_ptr<Expression> condition_;
+};
+
+// Switch statement
+class SwitchStatement : public Statement {
+public:
+    struct CaseClause {
+        std::unique_ptr<Expression> value;
+        std::vector<std::unique_ptr<Statement>> statements;
+    };
+
+    SwitchStatement(std::unique_ptr<Expression> discriminant,
+                   std::vector<CaseClause> cases,
+                   std::vector<std::unique_ptr<Statement>> defaultStatements)
+        : discriminant_(std::move(discriminant)), cases_(std::move(cases)),
+          defaultStatements_(std::move(defaultStatements)) {}
+
+    std::string toString() const override;
+
+    const Expression& getDiscriminant() const { return *discriminant_; }
+    const std::vector<CaseClause>& getCases() const { return cases_; }
+    const std::vector<std::unique_ptr<Statement>>& getDefaultStatements() const { return defaultStatements_; }
+    bool hasDefault() const { return !defaultStatements_.empty(); }
+
+private:
+    std::unique_ptr<Expression> discriminant_;
+    std::vector<CaseClause> cases_;
+    std::vector<std::unique_ptr<Statement>> defaultStatements_;
+};
+
 // Return statement
 class ReturnStatement : public Statement {
 public:

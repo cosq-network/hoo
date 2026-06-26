@@ -28,7 +28,7 @@ The generic Array runtime implements `push`, `get`, `set`, `insert`, `remove`, `
 
 ## 5. Status
 - **Date**: 2026-06-23
-- **Status**: **PARTIALLY FIXED**
+- **Status**: **PARTIALLY IMPLEMENTED**
 - **Priority**: **LOW**
 - **Sort**: `Array.sort()` — implemented in `hoo_generic_array.cpp:330-344` with type-aware `qsort` (int64 and IEEE 754 double comparison), registered in JIT as `_F_M_hoo_E_array_sort_v(_p)` (HVMJIT.cpp:3788-3789), supported in codegen type inference (HVMCodeGenerator.cpp:3854 returns 102/Array)
 - **Reverse**: `Array.reverse()` — implemented in `hoo_generic_array.cpp:346-362` as in-place element swap, registered in JIT as `_F_M_hoo_E_array_reverse_v(_p)` (HVMJIT.cpp:3790-3791), supported in codegen type inference (HVMCodeGenerator.cpp:3854 returns 102/Array)

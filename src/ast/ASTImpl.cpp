@@ -176,6 +176,14 @@ std::string WhileStatement::toString() const {
     return "WhileStatement";
 }
 
+std::string DoWhileStatement::toString() const {
+    return "DoWhileStatement";
+}
+
+std::string SwitchStatement::toString() const {
+    return "SwitchStatement";
+}
+
 std::string ReturnStatement::toString() const {
     return "ReturnStatement";
 }

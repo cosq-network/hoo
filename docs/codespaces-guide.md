@@ -12,12 +12,13 @@ This guide walks you through setting up and using GitHub Codespaces to develop t
 2. Click the green **Code** button → **Codespaces** tab → **Create codespace on main**
 3. Click **Create codespace**
 
-The Codespace will build the container image using `.devcontainer/devcontainer.json` (which references `Dockerfile`):
+The Codespace will build the container image using `.devcontainer/devcontainer.json` and `.devcontainer/Dockerfile`:
 - Downloads pre-built LLVM 22.1.4 binaries (~30 s)
 - Builds ANTLR4 4.13.2 C++ runtime from source (~1–2 min)
-- Installs all development tools (`cmake`, `ninja`, `clang`, `lldb`, `jdk`, etc.)
+- Installs the required C++ build dependencies (`cmake`, `ninja`, Java runtime, GoogleTest, curl, OpenSSL, zlib, etc.)
+- Enables GitHub Copilot, Copilot Chat, C/C++, and CMake Tools in VS Code
 
-After creation finishes, you will have a full VS Code environment in your browser with a `zsh` terminal.
+After creation finishes, you will have a VS Code environment in your browser with a `zsh` terminal running as the non-root `vscode` user.
 
 ### 1.2. Verify the Environment
 
@@ -25,9 +26,9 @@ After creation finishes, you will have a full VS Code environment in your browse
 clang++ --version         # LLVM 22.1.4
 lldb --version            # LLDB 22.1.4
 llvm-config --version     # 22.1.4
-cmake --version           # 3.28+
+cmake --version           # 3.20+
 ninja --version           # 1.11+
-java -version             # JDK 21+
+java -version             # Java 17+
 echo $LLVM_DIR            # /opt/llvm/lib/cmake/llvm
 echo $ANTLR4_ROOT         # /opt/antlr
 ```
@@ -89,7 +90,7 @@ The `ninja-relwithdebinfo` preset sets: Ninja generator, `RelWithDebInfo` build 
 
 ### 2.3. Pre-installed Packages
 
-The container includes: `build-essential`, `cmake`, `ninja-build`, `default-jdk`, `libgtest-dev`, `libcurl4-openssl-dev`, `uuid-dev`, `git`, `zsh`, `python3`, `libedit-dev`, `libncurses-dev`, `libxml2-dev`, `libzstd-dev`.
+The devcontainer uses the Microsoft C++ Dev Containers base image and adds the project-specific packages: `cmake`, `ninja-build`, `default-jre-headless`, `libgtest-dev`, `libcurl4-openssl-dev`, `uuid-dev`, `libedit-dev`, `libncurses-dev`, `libxml2-dev`, `libzstd-dev`, `libssl-dev`, and `zlib1g-dev`.
 
 ---
 
@@ -120,10 +121,10 @@ cmake --build --preset ninja-relwithdebinfo
 
 ### 3.4. Install Additional Packages
 
-The Codespace runs as root. Install Ubuntu packages with `apt`:
+The Codespace runs as the `vscode` user. Install Ubuntu packages with `sudo apt`:
 
 ```bash
-apt update && apt install -y <package>
+sudo apt update && sudo apt install -y <package>
 ```
 
 ### 3.5. Using Git in Codespaces
@@ -260,9 +261,10 @@ The default extensions are defined in `.devcontainer/devcontainer.json`:
 
 ```json
 "extensions": [
+    "GitHub.copilot",
+    "GitHub.copilot-chat",
     "ms-vscode.cpptools",
-    "ms-vscode.cmake-tools",
-    "ms-vscode.vscode-typescript-next"
+    "ms-vscode.cmake-tools"
 ]
 ```
 
@@ -274,7 +276,9 @@ To set Codespace-specific VS Code settings, add to the `settings` block in `.dev
 
 ```json
 "settings": {
-    "cmake.preset": "ninja-relwithdebinfo",
+    "cmake.useCMakePresets": "always",
+    "cmake.configurePreset": "ninja-relwithdebinfo",
+    "cmake.buildPreset": "ninja-relwithdebinfo",
     "editor.fontSize": 14,
     "files.autoSave": "onFocusChange"
 }

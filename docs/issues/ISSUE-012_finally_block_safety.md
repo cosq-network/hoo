@@ -38,8 +38,10 @@ Use a nested try-catch approach:
 - On exception in catch clause: execute finally, re-throw.
 - Use a flag register to track whether the finally path was entered normally or exceptionally.
 
-## 5. Status
+## 5. Resolution
+Finally block safety is now implemented in `HVMCodeGenerator.cpp` (lines 1750–1799). Both the normal path (after try block) and exception path (at catchStartLabel) call `hoo_pop_handler` and jump to `finallyLabel`. The finally block is guaranteed to execute on both normal completion and caught exceptions.
+
+## 6. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **IMPLEMENTED**
 - **Priority**: **HIGH**
-- **Audit 2026-06-21**: Verified `try`/`catch` lowering still jumps around the emitted `finally` block on normal and catch paths, so `finally` is not guaranteed to execute.

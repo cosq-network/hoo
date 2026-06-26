@@ -1,19 +1,38 @@
 {
-  "name": "hooc-dev",
-  "dockerFile": "../Dockerfile",
+  "name": "Hoo C++ Dev",
+  "dockerFile": "Dockerfile",
   "context": "..",
-  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
-  "workspaceFolder": "/workspace",
-  "remoteUser": "root",
+  "workspaceFolder": "/workspaces/hoo",
+  "remoteUser": "vscode",
+  "containerEnv": {
+    "LLVM_DIR": "/opt/llvm/lib/cmake/llvm",
+    "ANTLR4_ROOT": "/opt/antlr",
+    "ANTLR4_JAR_PATH": "/opt/antlr/antlr-4.13.2-complete.jar",
+    "CMAKE_PREFIX_PATH": "/opt/llvm:/opt/antlr",
+    "LD_LIBRARY_PATH": "/opt/llvm/lib:/opt/antlr/lib"
+  },
   "customizations": {
     "vscode": {
       "settings": {
-        "terminal.integrated.defaultProfile.linux": "zsh"
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "cmake.configureOnOpen": true,
+        "cmake.useCMakePresets": "always",
+        "cmake.configurePreset": "ninja-relwithdebinfo",
+        "cmake.buildPreset": "ninja-relwithdebinfo",
+        "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
+        "github.copilot.enable": {
+          "*": true,
+          "cpp": true,
+          "c": true,
+          "cmake": true,
+          "markdown": true
+        }
       },
       "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
         "ms-vscode.cpptools",
-        "ms-vscode.cmake-tools",
-        "ms-vscode.vscode-typescript-next"
+        "ms-vscode.cmake-tools"
       ]
     }
   }

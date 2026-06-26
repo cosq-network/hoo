@@ -127,7 +127,7 @@ java -version             # Must be 17+
 
 #### Dev Container (Docker) & GitHub Codespaces
 
-A multi-stage `Dockerfile` at the repo root provides a ready-to-use environment for both local Docker development and GitHub Codespaces. It downloads **pre-built LLVM 22.1.4 binaries** and builds the ANTLR4 4.13.2 C++ runtime from source. The `.devcontainer/devcontainer.json` configuration enables VS Code to auto-detect and open the project inside the container.
+The `.devcontainer/` configuration provides a ready-to-use VS Code Dev Container and GitHub Codespaces environment. It downloads **pre-built LLVM 22.1.4 binaries**, builds the ANTLR4 4.13.2 C++ runtime from source, installs the C/C++ build dependencies, and enables GitHub Copilot, Copilot Chat, C/C++, and CMake Tools extensions.
 
 **Local Docker:**
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) and VS Code with the **Dev Containers** extension (`ms-vscode-remote.remote-containers`)

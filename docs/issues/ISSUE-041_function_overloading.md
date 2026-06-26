@@ -643,7 +643,7 @@ Provide constructors `hoo_ambiguous_overload_new(message)` and `hoo_no_matching_
 
 ## Status
 - **Date**: 2026-06-21
-- **Status**: **COMPLETED**
+- **Status**: **IMPLEMENTED**
 - **Priority**: High
 - **Audit 2026-06-21**: Implemented `OverloadList` AST grouping, `CALL_OVERLOADED` opcode, runtime `hoo_resolve_overload` registry, and type-aware call lowering. All tests passing and deadlock issues resolved.sing, and byte-vs-buffer decoders should remain explicit until generic or target-type-directed resolution exists.
 - **Detail pass 2026-06-21**: Added source hotspots with file/line anchors, a proposed built-in overload metadata shape, a phase-1 static overload resolution algorithm, a phased implementation sequence, and a per-module resolution matrix mapping source overloads to existing runtime/JIT target symbols.

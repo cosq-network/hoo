@@ -325,6 +325,22 @@ private:
     std::unique_ptr<ast::TryCatchStatement> buildTryCatchStatement(HoocParser::TryCatchStatementContext* ctx);
 
     /**
+     * @brief Builds a DoWhileStatement from its context.
+     * do { } while(expression); syntax.
+     * @param ctx Do-while statement context.
+     * @return Unique pointer to DoWhileStatement.
+     */
+    std::unique_ptr<ast::DoWhileStatement> buildDoWhileStatement(HoocParser::DoWhileStatementContext* ctx);
+
+    /**
+     * @brief Builds a SwitchStatement from its context.
+     * switch(expression) { case val: stmts... default: stmts... }
+     * @param ctx Switch statement context.
+     * @return Unique pointer to SwitchStatement.
+     */
+    std::unique_ptr<ast::SwitchStatement> buildSwitchStatement(HoocParser::SwitchStatementContext* ctx);
+
+    /**
      * @brief Builds a ThrowStatement from its context.
      * throw expression; syntax.
      * @param ctx Throw statement context.

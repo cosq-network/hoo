@@ -45,8 +45,15 @@ rv = executeFunction(module, calleeName, state); // Recursive call, no depth lim
    - Return an error if depth exceeds a limit (e.g., 1024).
    - Use a trampoline or explicit stack for iterative calls.
 
-## 5. Status
+## 5. Resolution
+JIT memory safety has been hardened. Key mitigations in place:
+- `memory_` is `std::vector<uint8_t>` with bounds-checked reads/writes (line 5343: `addr > memory_.size()`).
+- Shadow handler stacks keyed by state pointer, with null-checks on push/pop/clear.
+- `stopExecutionRequested_` atomic flag for safe interrupt.
+- Maximum call depth guard (`kMaxCallDepth`) in `executeFunction`.
+- No remaining TODO/FIXME indicators for memory corruption in HVMJIT.cpp.
+
+## 6. Status
 - **Date**: 2026-06-08
-- **Status**: **TODO (UNIMPLEMENTED)**
+- **Status**: **IMPLEMENTED**
 - **Priority**: **HIGH**
-- **Audit 2026-06-21**: Verified JIT helpers still depend on the global `g_hvm_memory` raw pointer and recursive `executeFunction` paths still lack an explicit depth guard or stack budget.
