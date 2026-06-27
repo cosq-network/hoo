@@ -99,6 +99,11 @@ This document provides a high-level overview of the current status of all tracke
   - **Status**: COMPLETED
   - **Priority**: HIGH
 
+- **[ISSUE-054_array_sort_missing.md](issues/ISSUE-054_array_sort_missing.md)**
+  - **Title**: # ISSUE-054: No Sort/Ordering Support for Generic Array
+  - **Status**: COMPLETED
+  - **Priority**: LOW
+
 ## Partially Implemented
 
 - **[ISSUE-004_type_metadata.md](issues/ISSUE-004_type_metadata.md)**
@@ -171,10 +176,6 @@ This document provides a high-level overview of the current status of all tracke
   - **Status**: PARTIALLY IMPLEMENTED - COMPILER VALIDATION AND GENERATED METHODS PRESENT
   - **Priority**: MEDIUM** (Feature enhancement — no correctness impact on existing code)
 
-- **[ISSUE-054_array_sort_missing.md](issues/ISSUE-054_array_sort_missing.md)**
-  - **Title**: # ISSUE-054: No Sort/Ordering Support for Generic Array
-  - **Status**: PARTIALLY IMPLEMENTED
-  - **Priority**: LOW
 
 ## Proposed / Open / Backlog
 
