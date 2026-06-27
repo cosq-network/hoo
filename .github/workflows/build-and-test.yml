@@ -323,6 +323,28 @@ jobs:
           retention-days: 90
 
   # =====================================================================
+  # Version Bump (push to main only)
+  # =====================================================================
+  bump-version:
+    name: Bump Version
+    runs-on: ubuntu-latest
+    needs: [build-macos, build-linux, build-windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'skip ci')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Bump Version
+        run: python3 scripts/bump_version.py auto
+      - name: Push
+        run: git push origin main --tags
+
+  # =====================================================================
   # GitHub Release (tag push or manual dispatch)
   # =====================================================================
   create-release:

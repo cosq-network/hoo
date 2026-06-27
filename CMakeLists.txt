@@ -413,6 +413,15 @@ target_link_libraries(hoo hoo-core hoorepl)
 target_include_directories(hoo PRIVATE ${CMAKE_SOURCE_DIR}/src)
 
 # =============================================================================
+# Versioning for all components
+# =============================================================================
+set_target_properties(hoo-parser PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoort PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoo-core PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoorepl PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoo PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+
+# =============================================================================
 # Install
 # =============================================================================
 
@@ -697,7 +706,7 @@ if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
 endif()
 
 set(CPACK_PACKAGE_NAME "Hoo")
-set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_VERSION "${HOO_VERSION}")
 set(CPACK_PACKAGE_VENDOR "Hoo Project")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hoo Programming Language Compiler")
 
