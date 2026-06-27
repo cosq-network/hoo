@@ -295,6 +295,38 @@ HooArray hoo_array_sort(HooArray arr);
  */
 HooArray hoo_array_reverse(HooArray arr);
 
+/**
+ * Shuffle array elements in-place randomly.
+ * @param arr Array handle
+ * @return The array handle (same as input)
+ */
+HooArray hoo_array_shuffle(HooArray arr);
+
+/**
+ * Sort a sub-range of array elements in-place.
+ * @param arr Array handle
+ * @param start Start index (inclusive)
+ * @param end End index (exclusive)
+ * @return The array handle (same as input)
+ */
+HooArray hoo_array_sort_range(HooArray arr, int64_t start, int64_t end);
+
+/**
+ * Binary search for int64 value. Array must be sorted.
+ * @param arr Array handle
+ * @param value Value to search for
+ * @return Index if found, -1 if not found
+ */
+int64_t hoo_array_binary_search_int64(HooArray arr, int64_t value);
+
+/**
+ * Binary search for double value. Array must be sorted.
+ * @param arr Array handle
+ * @param value Value to search for
+ * @return Index if found, -1 if not found
+ */
+int64_t hoo_array_binary_search_double(HooArray arr, double value);
+
 // ============================================================================
 // Reference Counting
 // ============================================================================

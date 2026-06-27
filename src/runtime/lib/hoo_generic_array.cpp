@@ -2,6 +2,8 @@
 #include "hoo_runtime.h"
 #include <cstring>
 #include <cstdlib>
+#include <random>
+#include <algorithm>
 
 // ============================================================================
 // Low-level HooArray Implementation (Hardware Ready)
@@ -357,6 +359,86 @@ HooArray hoo_array_reverse(HooArray arr) {
         elements[j] = tmp;
     }
     return arr;
+}
+
+HooArray hoo_array_shuffle(HooArray arr) {
+    if (!arr) return nullptr;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    if (len <= 1) return arr;
+    int64_t* elements = raw + ARRAY_HEADER_WORDS;
+    
+    // Simple Fisher-Yates shuffle using rand()
+    for (int64_t i = len - 1; i > 0; i--) {
+        int64_t j = std::rand() % (i + 1);
+        int64_t tmp = elements[i];
+        elements[i] = elements[j];
+        elements[j] = tmp;
+    }
+    return arr;
+}
+
+HooArray hoo_array_sort_range(HooArray arr, int64_t start, int64_t end) {
+    if (!arr) return nullptr;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    if (len <= 1) return arr;
+    
+    if (start < 0) start = 0;
+    if (end > len) end = len;
+    if (start >= end) return arr;
+    
+    int64_t elemType = raw[2];
+    int64_t* elements = raw + ARRAY_HEADER_WORDS + start;
+    int64_t count = end - start;
+    
+    if (elemType == TYPE_ID_DOUBLE) {
+        qsort(elements, (size_t)count, 8, compareDouble);
+    } else {
+        qsort(elements, (size_t)count, 8, compareInt64);
+    }
+    return arr;
+}
+
+int64_t hoo_array_binary_search_int64(HooArray arr, int64_t value) {
+    if (!arr) return -1;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    if (len == 0) return -1;
+    
+    int64_t* elements = raw + ARRAY_HEADER_WORDS;
+    int64_t low = 0;
+    int64_t high = len - 1;
+    
+    while (low <= high) {
+        int64_t mid = low + (high - low) / 2;
+        int64_t midVal = elements[mid];
+        if (midVal == value) return mid;
+        if (midVal < value) low = mid + 1;
+        else high = mid - 1;
+    }
+    return -1;
+}
+
+int64_t hoo_array_binary_search_double(HooArray arr, double value) {
+    if (!arr) return -1;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    if (len == 0) return -1;
+    
+    int64_t* elements = raw + ARRAY_HEADER_WORDS;
+    int64_t low = 0;
+    int64_t high = len - 1;
+    
+    while (low <= high) {
+        int64_t mid = low + (high - low) / 2;
+        double midVal;
+        std::memcpy(&midVal, &elements[mid], sizeof(double));
+        if (midVal == value) return mid;
+        if (midVal < value) low = mid + 1;
+        else high = mid - 1;
+    }
+    return -1;
 }
 
 const char* hoo_array_element_type(HooArray arr) {

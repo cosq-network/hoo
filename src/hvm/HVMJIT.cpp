@@ -907,6 +907,24 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return reinterpret_cast<uint64_t>(hoo_array_reverse(reinterpret_cast<void*>(state->regs[1])));
     }
+    uint64_t jit_array_shuffle(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_array_shuffle(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_array_sort_range(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_array_sort_range(reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3]));
+    }
+    uint64_t jit_array_binary_search_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_array_binary_search_int64(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_array_binary_search_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double val;
+        std::memcpy(&val, &state->regs[2], sizeof(double));
+        return static_cast<uint64_t>(hoo_array_binary_search_double(reinterpret_cast<void*>(state->regs[1]), val));
+    }
     // ── Object field access helpers ──────────────────────────────────────
     uint64_t jit_object_get_field(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -3753,6 +3771,9 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_array_set_v_p_i8_p", reinterpret_cast<void*>(&jit_array_set_int64)},
         {"_F_array_sort_v_p", reinterpret_cast<void*>(&jit_array_sort)},
         {"_F_array_reverse_v_p", reinterpret_cast<void*>(&jit_array_reverse)},
+        {"_F_array_shuffle_v_p", reinterpret_cast<void*>(&jit_array_shuffle)},
+        {"_F_array_sortRange_v_p_p_p", reinterpret_cast<void*>(&jit_array_sort_range)},
+        {"_F_array_binarySearch_v_p_p", reinterpret_cast<void*>(&jit_array_binary_search_int64)},
         {"_F_hoo_Tensor_new1_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_new1)},
         {"_F_hoo_Tensor_new2_p_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new2)},
         {"_F_hoo_Tensor_new3_p_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new3)},
@@ -3839,6 +3860,10 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_sort_v", reinterpret_cast<void*>(&jit_array_sort)},
         {"_F_M_hoo_E_array_reverse_v_p", reinterpret_cast<void*>(&jit_array_reverse)},
         {"_F_M_hoo_E_array_reverse_v", reinterpret_cast<void*>(&jit_array_reverse)},
+        {"_F_M_hoo_E_array_shuffle_v_p", reinterpret_cast<void*>(&jit_array_shuffle)},
+        {"_F_M_hoo_E_array_shuffle_v", reinterpret_cast<void*>(&jit_array_shuffle)},
+        {"_F_M_hoo_E_array_sortRange_v_p_p_p", reinterpret_cast<void*>(&jit_array_sort_range)},
+        {"_F_M_hoo_E_array_binarySearch_v_p_p", reinterpret_cast<void*>(&jit_array_binary_search_int64)},
         {"_F_M_hoo_E_array_push_string_v_p_p", reinterpret_cast<void*>(&jit_array_push_string)},
         {"_F_M_hoo_E_array_get_string_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
         {"_F_M_hoo_E_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},

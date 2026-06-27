@@ -28,10 +28,13 @@ The generic Array runtime implements `push`, `get`, `set`, `insert`, `remove`, `
 
 ## 5. Status
 - **Date**: 2026-06-23
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Status**: **COMPLETED**
 - **Priority**: **LOW**
 - **Sort**: `Array.sort()` — implemented in `hoo_generic_array.cpp:330-344` with type-aware `qsort` (int64 and IEEE 754 double comparison), registered in JIT as `_F_M_hoo_E_array_sort_v(_p)` (HVMJIT.cpp:3788-3789), supported in codegen type inference (HVMCodeGenerator.cpp:3854 returns 102/Array)
 - **Reverse**: `Array.reverse()` — implemented in `hoo_generic_array.cpp:346-362` as in-place element swap, registered in JIT as `_F_M_hoo_E_array_reverse_v(_p)` (HVMJIT.cpp:3790-3791), supported in codegen type inference (HVMCodeGenerator.cpp:3854 returns 102/Array)
-- **Tests**: Runtime tests in `tests/runtime/HooArrayPhase7Test.cpp` (SortEmptyArray through ReverseDoesNotReleaseArray); JIT tests in `tests/jit/HooArrayJitTest.cpp` (ArraySortInt64 through ArrayReverseSingle)
+- **Shuffle**: `Array.shuffle()` — implemented in `hoo_generic_array.cpp` with Fisher-Yates shuffle, registered in JIT as `_F_M_hoo_E_array_shuffle_v_p`.
+- **Sort Range**: `Array.sortRange(start, end)` — implemented in `hoo_generic_array.cpp` using bounds-checked sub-array sorting, registered in JIT as `_F_M_hoo_E_array_sortRange_v_p_p_p`.
+- **Binary Search**: `Array.binarySearch(value)` — implemented in `hoo_generic_array.cpp` with int64 and double variants, registered in JIT as `_F_M_hoo_E_array_binarySearch_v_p_p`.
+- **Tests**: Runtime tests in `tests/runtime/HooArrayPhase7Test.cpp` (SortEmptyArray through ReverseDoesNotReleaseArray, plus new SortRange, Shuffle, BinarySearch tests); JIT tests in `tests/jit/HooArrayJitTest.cpp` (ArraySortInt64 through ArrayReverseSingle, plus ArrayShuffle, ArraySortRange, ArrayBinarySearch).
 - **API docs**: Updated in `docs/runtime/api/collections.md` and `docs/runtime/api/index.md`
-- **Still missing**: `shuffle()`, `orderBy(keyFn)`, `binarySearch()`, `sortRange(start, end)`, comparator callback support
+- **Still missing**: `orderBy(keyFn)` and comparator callback support (requires closure or function pointer types in Hoo, deferred to future runtime enhancements).
