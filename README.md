@@ -44,11 +44,12 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 
 ## Recent Changes
 
+- **Cross-File Local Imports & `.ha` Archives (Phase 14)**: Added native support for cross-file local imports, resolving and compiling local dependencies automatically. The CLI now outputs `.ha` (Hoo Archive) files, a ZIP-compatible, Zstd-compressed container with `manifest.json`, replacing the intermediate `.ho` files.
+- **Archive Loading & CLI Updates**: Added `HooArchiveLoader` to seamlessly load multi-module `.ha` archives into the JIT. Introduced `--exec` to directly execute `.hoo` source files after building.
 - Updated `hoo --version` output to include tool name, brand name, version, and license information.
 - Removed `--compile` / `-c` from the CLI; unknown flags now return a clear error.
 - Improved REPL ergonomics so `--repl` no longer requires an input file, and preloads a `.hoo` file when provided.
 - Updated CLI usage text and documentation to match the new flags, `--` program-argument delimiter, and behavior.
-- Completed full test suite run: `hoo-tests` passes after the CLI updates.
 
 
 ## 3. Build & Test

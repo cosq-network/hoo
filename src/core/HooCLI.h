@@ -23,13 +23,13 @@ private:
         bool verbose = false;
         bool showHelp = false;
         bool showVersion = false;
-        bool compileOnly = false;
+        bool exec = false;
         bool repl = false;
         std::optional<std::string> inputFile;
         std::optional<std::string> outputFile;
         std::vector<std::string> programArgs;
         
-        bool isBytecode = false;
+        bool isArchive = false;
         bool hasError = false;
         std::string errorMessage;
     };

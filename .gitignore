@@ -80,5 +80,6 @@ vcpkg_installed/
 build-asan/
 .ho
 *.ho
+*.ha
 
 .codex-tmp/

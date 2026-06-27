@@ -1,9 +1,21 @@
 # ISSUE-057: Cross-File Local Imports and Hoo Archive (`.ha`) Format
 
 ## Status
-- **Date**: 2026-06-25
-- **Status**: **PROPOSED**
+- **Date**: 2026-06-27
+- **Status**: **COMPLETED**
 - **Priority**: **HIGH**
+
+---
+
+## Implementation Progress (2026-06-27)
+- [x] Integrate `libzip`, `zstd`, and `nlohmann-json` via CMake.
+- [x] Create `HAManifest`, `HAArchive`, and `HAArchiveBuilder`.
+- [x] Implement local import resolution and circular dependency detection (`LocalImportResolver`).
+- [x] Implement `HooArchiveCompiler` to build the full dependency graph and compile everything into `.ha` payloads.
+- [x] Refactor `HooCLI` to build `.ha` files and run `.ha` archives natively, deprecating `.ho`.
+- [x] Pass CLI integration tests handling `--exec` and proper module execution.
+- [x] Add automated unit and integration test coverage for all of the above.
+- **Status:** All acceptance criteria met. Implementation complete.
 
 ---
 

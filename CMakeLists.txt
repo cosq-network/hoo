@@ -158,6 +158,9 @@ if(NOT APPLE)
 endif()
 
 find_package(CURL REQUIRED)
+find_package(libzip REQUIRED)
+find_package(zstd REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 find_package(LLVM QUIET CONFIG)
 if(NOT LLVM_FOUND)
@@ -343,6 +346,13 @@ add_library(hoo-core
     src/hvm/HVMInstruction.cpp
     src/hvm/HVMModuleBundle.cpp
     src/hvm/HVMJIT.cpp
+    # Archive
+    src/archive/HAManifest.cpp
+    src/archive/LocalImportResolver.cpp
+    src/archive/HAArchiveBuilder.cpp
+    src/archive/HAArchive.cpp
+    src/archive/HooArchiveCompiler.cpp
+    src/archive/HooArchiveLoader.cpp
     # Module system (reserved for future use)
     # Parsing (manual wrapper)
     src/parsing/HooParserWrapper.cpp
@@ -365,6 +375,10 @@ target_link_libraries(hoo-core PUBLIC
     hoo-parser
     ${llvm_libs}
     CURL::libcurl
+    libzip::zip
+    $<TARGET_NAME_IF_EXISTS:zstd::libzstd_shared>
+    $<TARGET_NAME_IF_EXISTS:zstd::libzstd_static>
+    nlohmann_json::nlohmann_json
 )
 
 if(WIN32)
@@ -551,6 +565,8 @@ if(HOO_BUILD_TESTS)
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
         tests/hvm/HVMModuleBundleTest.cpp
+        tests/archive/HAManifestTest.cpp
+        tests/archive/HAArchiveTest.cpp
         tests/hvm/HVMJITLoaderTest.cpp
         tests/hvm/HVMJITInstructionSemanticsTest.cpp
         tests/ast/CompilationUnitTest.cpp

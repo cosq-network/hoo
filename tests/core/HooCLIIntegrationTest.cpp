@@ -149,14 +149,14 @@ TEST_F(HooCLIIntegrationTest, InvalidExtension) {
 
 TEST_F(HooCLIIntegrationTest, CompileAndRunSource) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
-    auto r = runHoo(src);
+    auto r = runHoo("--exec " + src);
     EXPECT_EQ(r.exitCode, 0);
     EXPECT_NE(r.output.find("42"), std::string::npos);
 }
 
 TEST_F(HooCLIIntegrationTest, RunSourceFile) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
-    auto r = runHoo(src);
+    auto r = runHoo("--exec " + src);
     EXPECT_EQ(r.exitCode, 0);
     EXPECT_NE(r.output.find("42"), std::string::npos);
 }
@@ -165,15 +165,15 @@ TEST_F(HooCLIIntegrationTest, RunFailsOnSyntaxError) {
     std::string src = createTempFile("func :int64 main() { syntax error }\n");
     auto r = runHoo(src);
     EXPECT_NE(r.exitCode, 0);
-    EXPECT_NE(r.output.find("Compilation failed"), std::string::npos);
+    EXPECT_NE(r.output.find("Build planning failed"), std::string::npos);
 }
 
-TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecode) {
+TEST_F(HooCLIIntegrationTest, CompileAndOutputArchive) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
-    std::string outPath = tempDir + "/hoo_cli_out_" + std::to_string(std::time(nullptr)) + ".ho";
+    std::string outPath = tempDir + "/hoo_cli_out_" + std::to_string(std::time(nullptr)) + ".ha";
     auto r = runHoo("-o " + outPath + " " + src);
     EXPECT_EQ(r.exitCode, 0);
-    EXPECT_NE(r.output.find("bytecode saved"), std::string::npos);
+    EXPECT_NE(r.output.find("successfully built"), std::string::npos);
 #ifdef _WIN32
     struct _stat st;
     EXPECT_EQ(_stat(outPath.c_str(), &st), 0);
@@ -184,12 +184,12 @@ TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecode) {
     EXPECT_GT(st.st_size, 0);
 }
 
-TEST_F(HooCLIIntegrationTest, CompileAndOutputBytecodeWithEqualsSyntax) {
+TEST_F(HooCLIIntegrationTest, CompileAndOutputArchiveWithEqualsSyntax) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
-    std::string outPath = tempDir + "/hoo_cli_out_eq_" + std::to_string(std::time(nullptr)) + ".ho";
+    std::string outPath = tempDir + "/hoo_cli_out_eq_" + std::to_string(std::time(nullptr)) + ".ha";
     auto r = runHoo("--output=" + outPath + " " + src);
     EXPECT_EQ(r.exitCode, 0);
-    EXPECT_NE(r.output.find("bytecode saved"), std::string::npos);
+    EXPECT_NE(r.output.find("successfully built"), std::string::npos);
 #ifdef _WIN32
     struct _stat st;
     EXPECT_EQ(_stat(outPath.c_str(), &st), 0);
@@ -211,26 +211,26 @@ TEST_F(HooCLIIntegrationTest, PassesArgumentsAfterDoubleDashToProgram) {
     std::string src = createTempFile(
         "import hoo.args;\n"
         "func :int64 main() { return args_count(); }\n");
-    auto r = runHoo(src + " -- first second");
+    auto r = runHoo("--exec " + src + " -- first second");
     EXPECT_EQ(r.exitCode, 0);
     EXPECT_NE(r.output.find("2"), std::string::npos);
 }
 
-TEST_F(HooCLIIntegrationTest, GeneratedBytecodeRunnable) {
+TEST_F(HooCLIIntegrationTest, GeneratedArchiveRunnable) {
     std::string src = createTempFile("func :int64 main() { return 42; }\n");
-    std::string outPath = tempDir + "/hoo_cli_out2_" + std::to_string(std::time(nullptr)) + ".ho";
+    std::string outPath = tempDir + "/hoo_cli_out2_" + std::to_string(std::time(nullptr)) + ".ha";
     auto r1 = runHoo("-o " + outPath + " " + src);
     EXPECT_EQ(r1.exitCode, 0);
-    EXPECT_NE(r1.output.find("bytecode saved"), std::string::npos);
+    EXPECT_NE(r1.output.find("successfully built"), std::string::npos);
 
     auto r2 = runHoo(outPath);
     EXPECT_EQ(r2.exitCode, 0);
     EXPECT_NE(r2.output.find("42"), std::string::npos);
 }
 
-TEST_F(HooCLIIntegrationTest, RunBytecodeFile) {
+TEST_F(HooCLIIntegrationTest, RunArchiveFile) {
     std::string src = createTempFile("func :int64 main() { return 7; }\n");
-    std::string outPath = tempDir + "/hoo_cli_out3_" + std::to_string(std::time(nullptr)) + ".ho";
+    std::string outPath = tempDir + "/hoo_cli_out3_" + std::to_string(std::time(nullptr)) + ".ha";
     runHoo("-o " + outPath + " " + src);
     auto r = runHoo(outPath);
     EXPECT_EQ(r.exitCode, 0);
@@ -251,4 +251,33 @@ TEST_F(HooCLIIntegrationTest, VerboseFlag) {
     EXPECT_EQ(r.exitCode, 0);
     EXPECT_NE(r.output.find("VERBOSE"), std::string::npos);
     EXPECT_NE(r.output.find("Module name:"), std::string::npos);
+}
+
+TEST_F(HooCLIIntegrationTest, CrossFileLocalImports) {
+    std::string b_src = createTempFile("func :int64 get_value() { return 100; }\n");
+    
+    // b_src is named something like /tmp/hoo_cli_int_1234_1.hoo
+    // We need to import it by its normalized name.
+    // However, the test framework creates temp files with arbitrary names.
+    // So let's create a specific directory structure for this test.
+    std::string testDir = tempDir + "/cross_file_test_" + std::to_string(std::time(nullptr));
+    std::filesystem::create_directory(testDir);
+    
+    std::string a_path = testDir + "/a.hoo";
+    std::string b_path = testDir + "/b.hoo";
+    
+    std::ofstream fb(b_path);
+    fb << "func :int64 get_value() { return 100; }\n";
+    fb.close();
+    
+    std::ofstream fa(a_path);
+    fa << "import b;\n"
+       << "func :int64 main() { return 100; }\n";
+    fa.close();
+    
+    auto r = runHoo("--exec " + a_path);
+    EXPECT_EQ(r.exitCode, 0);
+    EXPECT_NE(r.output.find("100"), std::string::npos);
+    
+    std::filesystem::remove_all(testDir);
 }
