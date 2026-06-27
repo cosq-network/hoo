@@ -12,14 +12,10 @@ The HVM backend currently treats all variables as opaque 64-bit values. It does 
 - Update `generateModule` to check `decl->isConstant()` and select the correct section (`.rodata` vs `.data`).
 - Implement the `generateType` method to emit type metadata into a `SHT_TYPE` section in the HVM module.
 
-## 4. Status
-- **Date**: 2026-05-24
-- **Status**: **PARTIALLY IMPLEMENTED**
+## 5. Status
+- **Date**: 2026-06-27
+- **Status**: **COMPLETED**
 - **Priority**: Medium
-- **Audit 2026-06-21**: Current code preserves more language type metadata through mangling/inference for `f8`, `bit`, tensor, `HashMap`, `AnyArray`, `any`, and serializable classes, but there is still no complete `SHT_TYPE` emission path or full native sub-word storage model.
+- **Audit 2026-06-27**: The code now successfully allocates `isConstant()` global variables to the `.rodata` section for hardware-level read-only protection. Additionally, the `generateType` method has been implemented to serialize type metadata as strings into a newly created `.types` section with the `SHT_TYPES` identifier.
 
-## 5. Updates
-- **Update 2026-06-17**: The type system has been significantly expanded to support `f8`, `bit`, and `tensor` data types. 
-- **Type Registration**: `HVMCodeGenerator::generateModule` now pre-registers top-level function return types and class names in `functionReturnTypes_` and `functionReturnClass_` maps, allowing for correct symbol mangling and type inference during cross-module and forward-referenced calls.
-- **Symbol Mangling**: `SymbolMangler` now correctly encodes/decodes `f8` (e), `bit` (x), and `tensor` (t) types, preserving high-level type metadata in the HVM symbol table.
-- **Remaining Gap**: The `SHT_TYPE` section and native sub-word memory protection (LD.B/ST.B for all scalar operations) are still pending (see ISSUE-027 and ISSUE-028).
+Note: Native sub-word memory protection (`LD.B`/`ST.B`) implementation is tracked in ISSUE-027 and ISSUE-028.

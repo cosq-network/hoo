@@ -104,12 +104,12 @@ This document provides a high-level overview of the current status of all tracke
   - **Status**: COMPLETED
   - **Priority**: LOW
 
-## Partially Implemented
-
 - **[ISSUE-004_type_metadata.md](issues/ISSUE-004_type_metadata.md)**
   - **Title**: # ISSUE-004: Incomplete Type Metadata and Section Management
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: COMPLETED
   - **Priority**: Medium
+
+## Partially Implemented
 
 - **[ISSUE-007_memory_leaks.md](issues/ISSUE-007_memory_leaks.md)**
   - **Title**: # ISSUE-007: ARC Memory Leaks in Generated Code

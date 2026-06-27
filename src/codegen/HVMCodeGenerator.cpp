@@ -758,20 +758,24 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         } else if (auto varDecl = dynamic_cast<const ast::VariableDeclaration*>(decl.get())) {
             // Allocate space for global variable
             uint32_t dataOffset = 0;
-            Section* dataSec = module_->getSection(".data");
-            if (!dataSec) {
+            std::string secName = varDecl->isConstant() ? ".rodata" : ".data";
+            SectionType secType = varDecl->isConstant() ? SectionType::SHT_RODATA : SectionType::SHT_DATA;
+            uint32_t secFlags = varDecl->isConstant() ? SectionFlags::ALLOC : (SectionFlags::ALLOC | SectionFlags::WRITE);
+            
+            Section* sec = module_->getSection(secName);
+            if (!sec) {
                 Section s;
-                s.name = ".data";
-                s.type = SectionType::SHT_DATA;
-                s.flags = SectionFlags::ALLOC | SectionFlags::WRITE;
+                s.name = secName;
+                s.type = secType;
+                s.flags = secFlags;
                 module_->addSection(std::move(s));
-                dataSec = module_->getSection(".data");
+                sec = module_->getSection(secName);
             }
             
-            dataOffset = static_cast<uint32_t>(dataSec->data.size());
+            dataOffset = static_cast<uint32_t>(sec->data.size());
             // Reserve 8 bytes (all globals 64-bit for now)
-            for (int i = 0; i < 8; ++i) dataSec->data.push_back(0);
-            dataSec->virtual_size = dataSec->data.size();
+            for (int i = 0; i < 8; ++i) sec->data.push_back(0);
+            sec->virtual_size = sec->data.size();
 
             Symbol sym;
             if (!modulePath_.empty()) {
@@ -1001,7 +1005,24 @@ void HVMCodeGenerator::generateStatement(const ast::Statement& stmt) {
     visitStatement(stmt);
 }
 
-std::unique_ptr<GeneratedType> HVMCodeGenerator::generateType(const ast::Type& /*type*/) {
+std::unique_ptr<GeneratedType> HVMCodeGenerator::generateType(const ast::Type& type) {
+    Section* typesSec = module_->getSection(".types");
+    if (!typesSec) {
+        Section s;
+        s.name = ".types";
+        s.type = SectionType::SHT_TYPES;
+        s.flags = SectionFlags::ALLOC;
+        module_->addSection(std::move(s));
+        typesSec = module_->getSection(".types");
+    }
+
+    std::string typeStr = type.toString();
+    for (char c : typeStr) {
+        typesSec->data.push_back(static_cast<uint8_t>(c));
+    }
+    typesSec->data.push_back(0); // Null terminator
+    typesSec->virtual_size = typesSec->data.size();
+
     return std::make_unique<HVMGeneratedType>(0);
 }
 
