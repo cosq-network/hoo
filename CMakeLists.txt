@@ -368,7 +368,7 @@ target_include_directories(hoo-core PUBLIC
     ${ANTLR4_GENERATED_DIR}
 )
 
-target_compile_definitions(hoo-core PRIVATE HOO_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(hoo-core PUBLIC HOO_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(hoo-core PUBLIC
     hoort
@@ -587,6 +587,7 @@ if(HOO_BUILD_TESTS)
         tests/repl/HooReplAdvancedTest.cpp
         tests/repl/HooReplDebugTest.cpp
     )
+    set_target_properties(hoo-tests PROPERTIES VERSION ${HOO_VERSION})
     if(MSVC)
         hoo_use_static_msvc_runtime(hoo-tests)
     endif()

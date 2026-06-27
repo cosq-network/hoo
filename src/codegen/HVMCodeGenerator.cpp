@@ -613,6 +613,11 @@ void HVMCodeGenerator::setModuleContext(const std::string& moduleName) {
     pendingModuleName_ = moduleName;
 }
 
+void HVMCodeGenerator::setExternalFunctionImports(
+    const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions) {
+    externalFunctionImports_ = functions;
+}
+
 std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::CompilationUnit& compilationUnit) {
     // 1. Determine Module Name/Path
     static std::atomic<uint64_t> sSyntheticModuleCounter{0};
@@ -2801,9 +2806,21 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
                 mp.isOverload = isOverloadedFunction_[functionName];
-                mp.modulePath = isHooModuleFreeFunction(functionName)
-                                    ? std::vector<std::string>{"hoo"}
-                                    : modulePath_;
+                auto externalIt = externalFunctionImports_.find(functionName);
+                if (isHooModuleFreeFunction(functionName)) {
+                    mp.modulePath = std::vector<std::string>{"hoo"};
+                } else if (externalIt != externalFunctionImports_.end() &&
+                           functionReturnTypes_.find(functionName) == functionReturnTypes_.end()) {
+                    std::stringstream ss(externalIt->second.first);
+                    std::string part;
+                    while (std::getline(ss, part, '.')) {
+                        if (!part.empty()) {
+                            mp.modulePath.push_back(part);
+                        }
+                    }
+                } else {
+                    mp.modulePath = modulePath_;
+                }
 
                 if (funcCall->getArguments()) {
                     auto& args = funcCall->getArguments()->getArguments();
@@ -2832,9 +2849,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                         mp.returnType = "ptr";
                     }
                 } else {
-                    mp.returnType = retIt != functionReturnTypes_.end()
-                                        ? typeIdToMangleType(retIt->second)
-                                        : "void";
+                    if (retIt != functionReturnTypes_.end()) {
+                        mp.returnType = typeIdToMangleType(retIt->second);
+                    } else if (externalIt != externalFunctionImports_.end()) {
+                        mp.returnType = externalIt->second.second.empty() ? "void" : externalIt->second.second;
+                    } else {
+                        mp.returnType = "void";
+                    }
                 }
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {

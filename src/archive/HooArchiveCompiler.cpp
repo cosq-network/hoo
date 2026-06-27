@@ -3,10 +3,51 @@
 #include "hvm/HOModule.h"
 #include "HAArchiveBuilder.h"
 #include "HAManifest.h"
+#include "core/SymbolMangler.h"
 #include <stdexcept>
+#include <sstream>
+#include <unordered_map>
 
 namespace hooc {
 namespace archive {
+
+namespace {
+std::string rawMangledFunctionStem(const std::string& symbolName) {
+    if (symbolName.rfind("_F_", 0) != 0) {
+        return symbolName;
+    }
+
+    std::string content = symbolName.substr(3);
+    if (content.rfind("M_", 0) == 0) {
+        const size_t moduleEnd = content.find("_E_");
+        if (moduleEnd != std::string::npos) {
+            content = content.substr(moduleEnd + 3);
+        }
+    }
+
+    std::vector<std::string> parts;
+    std::stringstream ss(content);
+    std::string part;
+    while (std::getline(ss, part, '_')) {
+        if (!part.empty()) {
+            parts.push_back(part);
+        }
+    }
+
+    while (!parts.empty() && SymbolMangler::demangleType(parts.back()) != "unknown") {
+        parts.pop_back();
+    }
+
+    std::string stem;
+    for (const auto& token : parts) {
+        if (!stem.empty()) {
+            stem += "_";
+        }
+        stem += token;
+    }
+    return stem;
+}
+}
 
 HooBuildPlanner::HooBuildPlanner(IOProvider& ioProvider) : ioProvider_(ioProvider) {}
 
@@ -20,6 +61,7 @@ HooArchiveCompiler::HooArchiveCompiler(IOProvider& ioProvider) : ioProvider_(ioP
 void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, const std::filesystem::path& outPath) {
     HAArchiveBuilder builder;
     HAManifest manifest;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> exportsByModule;
     
     for (const auto& modInfo : modules) {
         auto sourceCode = ioProvider_.readFile(modInfo.sourcePath.string());
@@ -28,6 +70,17 @@ void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, con
         }
 
         HooCompiler compiler;
+        std::unordered_map<std::string, std::pair<std::string, std::string>> visibleExternalFunctions;
+        for (const auto& importName : modInfo.localImports) {
+            auto exportIt = exportsByModule.find(importName);
+            if (exportIt == exportsByModule.end()) {
+                continue;
+            }
+            for (const auto& [functionName, returnType] : exportIt->second) {
+                visibleExternalFunctions.emplace(functionName, std::make_pair(importName, returnType));
+            }
+        }
+        compiler.setExternalFunctionImports(visibleExternalFunctions);
         auto hoModule = compiler.compile(modInfo.moduleName, *sourceCode);
         if (!hoModule) {
             throw std::runtime_error("Compile error in " + modInfo.sourcePath.string() + ": " + compiler.getLastError());
@@ -57,6 +110,16 @@ void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, con
                 sInfo.visibility = "public";
                 if (sym.type == hvm::Symbol::STT_FUNC) {
                     sInfo.kind = "function";
+                    auto demangled = SymbolMangler::demangleSymbol(sym.name);
+                    std::string functionName = rawMangledFunctionStem(sym.name);
+                    if (functionName.empty()) {
+                        functionName = demangled.functionName.empty()
+                            ? demangled.className
+                            : demangled.functionName;
+                    }
+                    if (!functionName.empty()) {
+                        exportsByModule[modInfo.moduleName][functionName] = demangled.returnType;
+                    }
                 }
                 hmInfo.symbols.push_back(sInfo);
             }

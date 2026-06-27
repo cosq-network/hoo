@@ -27,6 +27,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Read project version
+        id: version
+        run: |
+          python3 -c 'import pathlib,re; text=pathlib.Path("CMakeLists.txt").read_text(); print("version=" + re.search(r"project\s*\([^)]*?VERSION\s+(\d+\.\d+\.\d+)", text, re.S).group(1))' >> "$GITHUB_OUTPUT"
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -52,26 +57,26 @@ jobs:
 
       - name: Package artifacts
         run: |
-          mkdir -p package/bin
-          mkdir -p package/lib
-          cp build/macos-homebrew-ninja/hoo package/bin/
-          cp build/macos-homebrew-ninja/libhoo-core.a package/lib/ || true
-          cp build/macos-homebrew-ninja/libhoo-parser.a package/lib/ || true
-          cp build/macos-homebrew-ninja/libhoort.a package/lib/ || true
-          tar -czf hoo-macos-arm64.tar.gz -C package .
+          cmake --install build/macos-homebrew-ninja --prefix package
+          tar -czf "hoo-${{ steps.version.outputs.version }}-macos-arm64.tar.gz" -C package .
 
       - name: Verify package contents
         run: |
           ls -la package/bin/
           ls -la package/lib/
           test -f package/bin/hoo || (echo "ERROR: hoo binary missing!" && exit 1)
+          test -f package/lib/libhoo-core.a || (echo "ERROR: hoo-core library missing!" && exit 1)
+          test -f package/lib/libhoo-parser.a || (echo "ERROR: hoo-parser library missing!" && exit 1)
+          test -f package/lib/libhoort.a || (echo "ERROR: hoort library missing!" && exit 1)
+          test -f package/lib/libhoorepl.a || (echo "ERROR: hoorepl library missing!" && exit 1)
+          package/bin/hoo --version | grep "v${{ steps.version.outputs.version }}"
           echo "Package verification successful"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: hoo-macos-arm64
-          path: hoo-macos-arm64.tar.gz
+          path: hoo-${{ steps.version.outputs.version }}-macos-arm64.tar.gz
           retention-days: 30
 
   # =====================================================================
@@ -84,6 +89,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Read project version
+        id: version
+        run: |
+          python3 -c 'import pathlib,re; text=pathlib.Path("CMakeLists.txt").read_text(); print("version=" + re.search(r"project\s*\([^)]*?VERSION\s+(\d+\.\d+\.\d+)", text, re.S).group(1))' >> "$GITHUB_OUTPUT"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -168,7 +178,7 @@ jobs:
       - name: Verify hoo binary
         run: |
           test -f build/hoo || (echo "ERROR: hoo binary not found!" && exit 1)
-          build/hoo --version || true
+          build/hoo --version | grep "v${{ steps.version.outputs.version }}"
           echo "Binary verification passed."
 
       - name: Run all tests
@@ -178,18 +188,19 @@ jobs:
 
       - name: Package artifacts
         run: |
-          mkdir -p package/bin package/lib
-          cp build/hoo package/bin/
-          cp build/libhoo-core.a package/lib/ 2>/dev/null || true
-          cp build/libhoo-parser.a package/lib/ 2>/dev/null || true
-          cp build/libhoort.a package/lib/ 2>/dev/null || true
-          tar -czf hoo-linux-x86_64.tar.gz -C package .
+          cmake --install build --prefix package
+          test -f package/bin/hoo || (echo "ERROR: hoo binary missing!" && exit 1)
+          test -f package/lib/libhoo-core.a || (echo "ERROR: hoo-core library missing!" && exit 1)
+          test -f package/lib/libhoo-parser.a || (echo "ERROR: hoo-parser library missing!" && exit 1)
+          test -f package/lib/libhoort.a || (echo "ERROR: hoort library missing!" && exit 1)
+          test -f package/lib/libhoorepl.a || (echo "ERROR: hoorepl library missing!" && exit 1)
+          tar -czf "hoo-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz" -C package .
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
         with:
           name: hoo-linux-x86_64
-          path: hoo-linux-x86_64.tar.gz
+          path: hoo-${{ steps.version.outputs.version }}-linux-x86_64.tar.gz
           retention-days: 30
 
   # =====================================================================
@@ -205,6 +216,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Read project version
+        id: version
+        shell: pwsh
+        run: |
+          $text = Get-Content CMakeLists.txt -Raw
+          if ($text -notmatch 'project\s*\([^)]*?VERSION\s+(\d+\.\d+\.\d+)') {
+            throw "Unable to read project version from CMakeLists.txt"
+          }
+          "version=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -276,24 +297,26 @@ jobs:
       - name: Package artifacts
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path package\bin, package\lib | Out-Null
-          Copy-Item build\hoo.exe package\bin\
-          Copy-Item build\Release\hoo-core.lib package\lib\ -ErrorAction SilentlyContinue
-          Copy-Item build\Release\hoo-parser.lib package\lib\ -ErrorAction SilentlyContinue
-          Copy-Item build\Release\hoort.lib package\lib\ -ErrorAction SilentlyContinue
+          cmake --install build --config Release --prefix package
           # LLVM DLLs needed at runtime
           Copy-Item "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin\*.dll" package\bin\ -ErrorAction SilentlyContinue
           # vcpkg DLLs (libcurl, libcrypto, zlib)
           if (Test-Path vcpkg_installed\x64-windows\bin\*.dll) {
             Copy-Item vcpkg_installed\x64-windows\bin\*.dll package\bin\
           }
-          Compress-Archive -Path package\* -DestinationPath hoo-windows-x64.zip
+          foreach ($path in @("package\bin\hoo.exe", "package\lib\hoo-core.lib", "package\lib\hoo-parser.lib", "package\lib\hoort.lib", "package\lib\hoorepl.lib")) {
+            if (-not (Test-Path $path)) {
+              throw "Required package file missing: $path"
+            }
+          }
+          .\package\bin\hoo.exe --version | Select-String "v${{ steps.version.outputs.version }}"
+          Compress-Archive -Path package\* -DestinationPath "hoo-${{ steps.version.outputs.version }}-windows-x64.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: hoo-windows-x64
-          path: hoo-windows-x64.zip
+          path: hoo-${{ steps.version.outputs.version }}-windows-x64.zip
           retention-days: 30
 
   # =====================================================================
@@ -314,12 +337,10 @@ jobs:
       - name: Create combined archive
         run: |
           mkdir -p release
-          cp artifacts/hoo-macos-arm64/hoo-macos-arm64.tar.gz release/
-          cp artifacts/hoo-linux-x86_64/hoo-linux-x86_64.tar.gz release/
-          cp artifacts/hoo-windows-x64/hoo-windows-x64.zip release/
+          find artifacts -type f \( -name 'hoo-*-macos-arm64.tar.gz' -o -name 'hoo-*-linux-x86_64.tar.gz' -o -name 'hoo-*-windows-x64.zip' \) -exec cp {} release/ \;
 
           cd release
-          tar -czf hoo-all-platforms.tar.gz *.tar.gz *.zip
+          tar -czf hoo-all-platforms.tar.gz hoo-*
 
       - name: Upload combined bundle
         uses: actions/upload-artifact@v4

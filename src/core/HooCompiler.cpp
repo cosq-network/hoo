@@ -20,6 +20,14 @@ HooCompiler::HooCompiler()
 
 HooCompiler::~HooCompiler() = default;
 
+void HooCompiler::setExternalFunctionImports(
+    const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions) {
+    auto* hvmCodeGen = dynamic_cast<HVMCodeGenerator*>(codeGenerator_.get());
+    if (hvmCodeGen) {
+        hvmCodeGen->setExternalFunctionImports(functions);
+    }
+}
+
 // ============================================================================
 // Compilation API
 // ============================================================================

@@ -117,6 +117,77 @@ std::string extractLegacyBaseFunctionName(const std::string& symbolName) {
     return symbolName.substr(start, end - start);
 }
 
+std::string symbolFunctionName(const std::string& symbolName) {
+    const auto demangled = SymbolMangler::demangleSymbol(symbolName);
+    if (!demangled.functionName.empty()) {
+        return demangled.functionName;
+    }
+    if (!demangled.className.empty()) {
+        return demangled.className;
+    }
+    return extractLegacyBaseFunctionName(symbolName);
+}
+
+std::string rawMangledFunctionStem(const std::string& symbolName) {
+    if (symbolName.rfind("_F_", 0) != 0) {
+        return symbolName;
+    }
+
+    std::string content = symbolName.substr(3);
+    if (content.rfind("M_", 0) == 0) {
+        const size_t moduleEnd = content.find("_E_");
+        if (moduleEnd != std::string::npos) {
+            content = content.substr(moduleEnd + 3);
+        }
+    }
+
+    std::vector<std::string> parts;
+    std::stringstream ss(content);
+    std::string part;
+    while (std::getline(ss, part, '_')) {
+        if (!part.empty()) {
+            parts.push_back(part);
+        }
+    }
+
+    auto isSuffixToken = [](const std::string& token) {
+        return token == "static" || token == "virtual" || token == "Pb" || token == "Pv" ||
+               SymbolMangler::demangleType(token) != "unknown";
+    };
+
+    while (!parts.empty() && isSuffixToken(parts.back())) {
+        parts.pop_back();
+    }
+
+    std::string stem;
+    for (const auto& token : parts) {
+        if (!stem.empty()) {
+            stem += "_";
+        }
+        stem += token;
+    }
+    return stem.empty() ? symbolFunctionName(symbolName) : stem;
+}
+
+bool symbolSignatureCompatible(const std::string& requested, const std::string& candidate) {
+    const auto requestedDemangled = SymbolMangler::demangleSymbol(requested);
+    const auto candidateDemangled = SymbolMangler::demangleSymbol(candidate);
+
+    if (!requestedDemangled.parameterTypes.empty() &&
+        requestedDemangled.parameterTypes != candidateDemangled.parameterTypes) {
+        return false;
+    }
+
+    if (!requestedDemangled.returnType.empty() &&
+        requestedDemangled.returnType != "void" &&
+        !candidateDemangled.returnType.empty() &&
+        requestedDemangled.returnType != candidateDemangled.returnType) {
+        return false;
+    }
+
+    return true;
+}
+
 std::vector<std::string> buildLookupCandidates(const std::string& symbolName,
                                                const std::string& moduleName) {
     std::vector<std::string> candidates;
@@ -5484,7 +5555,9 @@ bool HVMJIT::storeU64(uint64_t addr, uint64_t value) {
 
 const hvm::Symbol* HVMJIT::findFunctionSymbol(const hvm::HOModule& module, const std::string& functionName) const {
     const auto& symbols = module.getSymbols();
-    auto isFunc = [](const hvm::Symbol& s) { return s.type == hvm::Symbol::STT_FUNC; };
+    auto isFunc = [](const hvm::Symbol& s) {
+        return s.type == hvm::Symbol::STT_FUNC || s.type == hvm::Symbol::STT_NOTYPE;
+    };
     const auto candidates = buildLookupCandidates(functionName, module.getName());
 
     // 1. Exact match.
@@ -5511,10 +5584,16 @@ const hvm::Symbol* HVMJIT::findFunctionSymbol(const hvm::HOModule& module, const
         }
     }
 
-    // 3. Fuzzy containment fallback.
-    const std::string baseName = extractLegacyBaseFunctionName(functionName);
+    // 3. Demangled function-name fallback. This handles imported undefined
+    // symbols that were emitted with the caller's module path before archive
+    // loading resolves them against a dependency module.
+    const std::string baseName = symbolFunctionName(functionName);
+    const std::string rawBaseName = rawMangledFunctionStem(functionName);
     for (const auto& sym : symbols) {
-        if (isFunc(sym) && sym.name.find(baseName) != std::string::npos && sym.section_index != -1) {
+        if (isFunc(sym) && sym.section_index != -1 &&
+            (symbolFunctionName(sym.name) == baseName ||
+             rawMangledFunctionStem(sym.name) == rawBaseName) &&
+            symbolSignatureCompatible(functionName, sym.name)) {
             return &sym;
         }
     }

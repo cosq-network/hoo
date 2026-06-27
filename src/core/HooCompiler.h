@@ -39,6 +39,8 @@
 
 #include <string>
 #include <memory>
+#include <unordered_map>
+#include <utility>
 
 
 namespace hvm {
@@ -88,6 +90,8 @@ public:
      */
     std::unique_ptr<hvm::HOModule> compile(const std::string& moduleName,
                                           const std::string& sourceCode);
+
+    void setExternalFunctionImports(const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions);
 
     /// @brief Get error message from last failed compilation
     /// @return Error message string

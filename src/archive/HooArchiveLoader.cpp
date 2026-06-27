@@ -19,6 +19,9 @@ bool HooArchiveLoader::load(const std::filesystem::path& archivePath) {
                 error_ = "Failed to parse module " + mod.moduleName + " from archive payload.";
                 return false;
             }
+            if (hoModule->getName().empty() || hoModule->getName() == "unnamed_module") {
+                hoModule->setName(mod.moduleName);
+            }
             if (!jit_.loadModule(std::move(hoModule))) {
                 error_ = "HVMJIT load failed for " + mod.moduleName + ": " + jit_.getLastError();
                 return false;

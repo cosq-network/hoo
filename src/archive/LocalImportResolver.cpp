@@ -102,7 +102,7 @@ void LocalImportResolver::resolveRecursive(const std::filesystem::path& rootDir,
         std::filesystem::path targetSource = rootDir / relPathStr;
         
         if (std::filesystem::exists(targetSource)) {
-            rm.localImports.push_back(impName);
+            rm.localImports.push_back(deriveModuleName(rootDir, targetSource));
             resolveRecursive(rootDir, targetSource);
         }
     }

@@ -23,6 +23,7 @@ public:
     HVMCodeGenerator();
     virtual ~HVMCodeGenerator() = default;
     void setModuleContext(const std::string& moduleName);
+    void setExternalFunctionImports(const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions);
 
     /**
      * Main entry point: translates a full AST unit into a bytecode module.
@@ -54,6 +55,7 @@ private:
     std::vector<std::string> errors_;
     std::unordered_set<std::string> importedModules_;
     std::unordered_map<std::string, std::string> importedSymbols_;
+    std::unordered_map<std::string, std::pair<std::string, std::string>> externalFunctionImports_;
 
     bool isModuleImported(const std::string& moduleName) const;
     bool isSymbolImported(const std::string& name, const std::string& requiredModule) const;

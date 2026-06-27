@@ -7,9 +7,13 @@ namespace archive {
 
 using json = nlohmann::json;
 
+#ifndef HOO_VERSION
+#define HOO_VERSION "0.0.0"
+#endif
+
 HAManifest::HAManifest() : format("hoo-archive"), formatVersion(1) {
     createdBy.tool = "hoo";
-    createdBy.version = "1.4.0"; // Should be populated from PROJECT_VERSION or macro
+    createdBy.version = HOO_VERSION;
 }
 
 std::string HAManifest::toJson() const {

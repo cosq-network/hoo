@@ -272,7 +272,7 @@ TEST_F(HooCLIIntegrationTest, CrossFileLocalImports) {
     
     std::ofstream fa(a_path);
     fa << "import b;\n"
-       << "func :int64 main() { return 100; }\n";
+       << "func :int64 main() { return get_value(); }\n";
     fa.close();
     
     auto r = runHoo("--exec " + a_path);
