@@ -31,7 +31,12 @@ The HVMCodeGenerator emits `hoo_retain`/`hoo_release` calls for string interpola
 - ISSUE-022: No ARC/release for new object expressions (merged into this issue)
 
 ## 6. Status
-- **Date**: 2026-06-08
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-06-29
+- **Status**: **IMPLEMENTED** (All three remaining gaps closed)
 - **Priority**: **HIGH**
-- **Audit 2026-06-21**: Scope release, return-value retain, and new-object retain paths now exist. String literal ownership, reassignment release of old managed values, and abnormal exits through `return`/`break`/`continue`/exceptions still leave ARC incomplete.
+- **Audit 2026-06-29**: 
+  - **String literal ownership**: Added `isManagedTemporary()` helper to identify freshly allocated temporaries (StringLiteral, InterpolatedString, NewObjectExpression, NewHashMapExpression, ArrayLiteral, TensorLiteral). Expression statements now emit `hoo_release` for these temporaries after evaluation. Binary string concat also releases fresh operand temporaries after `String_concat`.
+  - **Reassignment release**: `AssignmentExpression` for local variables now loads and releases the old managed value via `hoo_release` before `ST_D`. Increment/decrement for local variables also releases the old managed value before storing the result.
+  - **Abnormal exit cleanup**: Added `emitScopeCleanup(from, to)` helper that walks `scopeStack_` and emits `hoo_release` for managed locals. Called from `visitReturn` (all scopes), `visitBreak`/`visitContinue` (scopes from current depth to loop entry depth), and `beginFunction` (implicit return path). `ControlFlowScope` now tracks `scopeDepth` for precise cleanup.
+  - **Type inference**: Added `InterpolatedString` to `inferExpressionTypeId()` returning typeId 101, ensuring expression statement cleanup catches interpolated strings.
+- **Test Verification 2026-06-29**: Added 5 new unit tests in `HVMCodeGeneratorTest.cpp`: `StringLiteralExprStmt_EmitsRelease`, `AssignmentToManagedLocal_ReleasesOldValue`, `ReturnFromBlock_CleansUpManagedLocals`, `LoopBreak_CleansUpManagedLocals`, `InterpolatedStringExprStmt_EmitsRelease`. Full codegen test suite passes (138 tests: 18 + 120).

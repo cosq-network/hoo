@@ -165,6 +165,18 @@ private:
     uint32_t getLocalKeyTypeId(const std::string& name) const;
 
     /**
+     * Emit hoo_release for managed locals in scopes [to, from).
+     */
+    void emitScopeCleanup(size_t from, size_t to);
+
+    /**
+     * Check whether an expression evaluates to a freshly allocated managed
+     * temporary (string literal, interpolated string, new object/map, array/tensor literal).
+     * These temporaries are not tracked in locals and must be released at the point of discard.
+     */
+    bool isManagedTemporary(const ast::Expression& expr);
+
+    /**
      * Convert a declared AST type to a runtime typeId.
      */
     uint32_t typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName = nullptr) const;
@@ -210,6 +222,7 @@ private:
     struct ControlFlowScope {
         Label* breakLabel;
         Label* continueLabel;
+        size_t scopeDepth;
     };
     std::stack<ControlFlowScope> controlFlowStack_;
     std::vector<std::unique_ptr<Label>> allLabels_;

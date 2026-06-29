@@ -1078,6 +1078,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     }
 
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
+        emitScopeCleanup(scopeStack_.size(), 0);
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     }
@@ -1127,6 +1128,38 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     }
 
     return info;
+}
+
+void HVMCodeGenerator::emitScopeCleanup(size_t from, size_t to) {
+    for (size_t i = from; i > to; --i) {
+        auto& scope = scopeStack_[i - 1];
+        for (const auto& [name, local] : scope) {
+            if (local.typeId >= 100) {
+                emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
+                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+            }
+        }
+    }
+}
+
+bool HVMCodeGenerator::isManagedTemporary(const ast::Expression& expr) {
+    const ast::ASTNode* current = &expr;
+    while (true) {
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(current)) {
+            current = &pe->getPrimary();
+        } else if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(current)) {
+            current = &paren->getExpression();
+        } else {
+            break;
+        }
+    }
+    if (dynamic_cast<const ast::StringLiteral*>(current)) return true;
+    if (dynamic_cast<const ast::InterpolatedString*>(current)) return true;
+    if (dynamic_cast<const ast::NewObjectExpression*>(current)) return true;
+    if (dynamic_cast<const ast::NewHashMapExpression*>(current)) return true;
+    if (dynamic_cast<const ast::ArrayLiteral*>(current)) return true;
+    if (dynamic_cast<const ast::TensorLiteral*>(current)) return true;
+    return false;
 }
 
 void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
@@ -1426,25 +1459,17 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         for (const auto& s : block->getStatements()) {
             visitStatement(*s);
         }
-        // Release managed objects (strings, arrays, maps, class instances) in this scope
-        if (!scopeStack_.empty()) {
-            auto& scope = scopeStack_.back();
-            for (const auto& [name, local] : scope) {
-                if (local.typeId >= 100) {
-                    emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
-                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
-                }
-            }
-        }
+        emitScopeCleanup(scopeStack_.size(), scopeStack_.size() - 1);
         scopeStack_.pop_back();
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
         currentFunctionHasReturn_ = true;
         if (ret->hasExpression()) {
             uint8_t reg = visitExpression(*ret->getExpression());
             emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
-        emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
+            emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
             freeRegister(reg);
         }
+        emitScopeCleanup(scopeStack_.size(), 0);
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
@@ -1570,6 +1595,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         }
     } else if (auto exprStmt = dynamic_cast<const ast::ExpressionStatement*>(&stmt)) {
         uint8_t reg = visitExpression(exprStmt->getExpression());
+        if (isManagedTemporary(exprStmt->getExpression())) {
+            emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+        }
         freeRegister(reg);
     } else if (auto ifStmt = dynamic_cast<const ast::IfStatement*>(&stmt)) {
         Label* elseLabel = createLabel();
@@ -1591,7 +1620,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         uint8_t condReg = visitExpression(whileStmt->getCondition());
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
-        controlFlowStack_.push({endLabel, startLabel});
+        controlFlowStack_.push({endLabel, startLabel, scopeStack_.size()});
         visitStatement(whileStmt->getBody());
         controlFlowStack_.pop();
         emitJump(Opcode::JMP, 0, startLabel);
@@ -1601,7 +1630,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         Label* conditionLabel = createLabel();
         Label* endLabel = createLabel();
         bindLabel(startLabel);
-        controlFlowStack_.push({endLabel, conditionLabel});
+        controlFlowStack_.push({endLabel, conditionLabel, scopeStack_.size()});
         visitStatement(doWhile->getBody());
         controlFlowStack_.pop();
         bindLabel(conditionLabel);
@@ -1647,7 +1676,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, endLabel);
         }
 
-        controlFlowStack_.push({endLabel, nullptr});
+        controlFlowStack_.push({endLabel, nullptr, scopeStack_.size()});
 
         for (size_t i = 0; i < switchStmt->getCases().size(); i++) {
             bindLabel(caseLabels[i]);
@@ -1671,14 +1700,17 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (controlFlowStack_.empty() || !controlFlowStack_.top().breakLabel) {
             addError("break statement outside of loop");
         } else {
+            emitScopeCleanup(scopeStack_.size(), controlFlowStack_.top().scopeDepth);
             emitJump(Opcode::JMP, 0, controlFlowStack_.top().breakLabel);
         }
     } else if (auto continueStmt = dynamic_cast<const ast::ContinueStatement*>(&stmt)) {
         Label* continueLabel = nullptr;
+        size_t continueScopeDepth = 0;
         auto scopes = controlFlowStack_;
         while (!scopes.empty()) {
             if (scopes.top().continueLabel) {
                 continueLabel = scopes.top().continueLabel;
+                continueScopeDepth = scopes.top().scopeDepth;
                 break;
             }
             scopes.pop();
@@ -1686,6 +1718,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (!continueLabel) {
             addError("continue statement outside of loop");
         } else {
+            emitScopeCleanup(scopeStack_.size(), continueScopeDepth);
             emitJump(Opcode::JMP, 0, continueLabel);
         }
     } else if (auto forRange = dynamic_cast<const ast::ForRangeStatement*>(&stmt)) {
@@ -1728,7 +1761,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             Label* stepLabel = createLabel();
             bindLabel(startLabel);
             
-            controlFlowStack_.push({endLabel, stepLabel});
+            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
             visitStatement(forRange->getBody());
             controlFlowStack_.pop();
             
@@ -1771,7 +1804,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(iReg);
             freeRegister(endReg);
             freeRegister(condReg);
-            controlFlowStack_.push({endLabel, stepLabel});
+            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
             visitStatement(forRange->getBody());
             controlFlowStack_.pop();
             bindLabel(stepLabel);
@@ -1864,7 +1897,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
         
-        controlFlowStack_.push({endLabel, stepLabel});
+        controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
         visitStatement(forIn->getBody());
         controlFlowStack_.pop();
         
@@ -2925,8 +2958,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emitCall(Opcode::CALL, "_F_M_hoo_E_String_concat_p_p");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-            freeRegister(left);
-            freeRegister(right);
+            if (isManagedTemporary(binary->getLeft())) {
+                emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                freeRegister(left);
+            } else {
+                freeRegister(left);
+            }
+            if (isManagedTemporary(binary->getRight())) {
+                emit(Opcode::MOV, OperandsR{1, right, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                freeRegister(right);
+            } else {
+                freeRegister(right);
+            }
             return dest;
         }
 
@@ -3202,10 +3247,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         int32_t offset = 0;
         uint8_t objReg = 0;
         bool isMember = false;
+        std::string varName;
 
         if (auto leftPrimary = dynamic_cast<const ast::PrimaryExpression*>(&incDec->getOperand())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
-                offset = getLocalOffset(id->getName());
+                varName = id->getName();
+                offset = getLocalOffset(varName);
                 lhsReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{lhsReg, 30, static_cast<int16_t>(offset)});
             }
@@ -3276,6 +3323,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (auto leftPrimary = dynamic_cast<const ast::PrimaryExpression*>(&assign->getLeft())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
                 int32_t offset = getLocalOffset(id->getName());
+                uint32_t oldTypeId = getLocalTypeId(id->getName());
+                if (oldTypeId >= 100) {
+                    emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(offset)});
+                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                }
                 emit(Opcode::ST_D, OperandsI{valueReg, 30, static_cast<int16_t>(offset)});
                 return valueReg;
             }
@@ -4057,6 +4109,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         if (dynamic_cast<const ast::F8Literal*>(&primary)) return 9;
         if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
+        if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return 101;
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isAnyArray() ? 118 : 102;
         if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
@@ -4219,6 +4272,8 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
             }
         }
     }
+
+    if (dynamic_cast<const ast::InterpolatedString*>(&expr)) return 101;
 
     return 100;
 }
