@@ -5525,6 +5525,27 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
         case hvm::Opcode::VSETVL:
         case hvm::Opcode::VECTOR_MEM:
         case hvm::Opcode::VECTOR_ARITH:
+        case hvm::Opcode::VECTOR_FMA:
+        case hvm::Opcode::VECTOR_MASK:
+        case hvm::Opcode::VECTOR_REDUCE:
+        case hvm::Opcode::VECTOR_SHIFT:
+        case hvm::Opcode::VECTOR_BITWISE:
+        case hvm::Opcode::ICACHE_RNG:
+        case hvm::Opcode::LD_P:
+        case hvm::Opcode::ST_P:
+        case hvm::Opcode::ECALL:
+        case hvm::Opcode::TRAPRET:
+        case hvm::Opcode::LR_D:
+        case hvm::Opcode::SC_D:
+        case hvm::Opcode::CSRRW:
+        case hvm::Opcode::SFENCE_VMA:
+        case hvm::Opcode::PREFETCH_R:
+        case hvm::Opcode::PREFETCH_W:
+        case hvm::Opcode::PREFETCH_NTA:
+        case hvm::Opcode::MEMZERO_HINT:
+        case hvm::Opcode::RDPROF:
+        case hvm::Opcode::BR_HINT:
+        case hvm::Opcode::DOORBELL:
             return true;
         case hvm::Opcode::ARITH:
             return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7;
@@ -6544,6 +6565,75 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 }
                 break;
             }
+            case hvm::Opcode::ICACHE_RNG:
+                // No-op in interpreter (no JIT cache to invalidate)
+                break;
+            case hvm::Opcode::LD_P: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint64_t addr = readReg(o.rs2);
+                uint64_t val1 = 0, val2 = 0;
+                if (!loadU64(addr, val1) || !loadU64(addr + 8, val2)) {
+                    lastError_ = "Invalid memory load address in LD.P";
+                    return -1;
+                }
+                writeReg(o.rd, val1);
+                writeReg(static_cast<uint8_t>((o.rs1 + 1) & 0x1F), val2);
+                break;
+            }
+            case hvm::Opcode::ST_P: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint64_t addr = readReg(o.rs2);
+                if (!storeU64(addr, readReg(o.rd)) || !storeU64(addr + 8, readReg(o.rs1))) {
+                    lastError_ = "Invalid memory store address in ST.P";
+                    return -1;
+                }
+                break;
+            }
+            case hvm::Opcode::ECALL:
+                lastError_ = "ECALL not supported in user mode";
+                state.trapHit = true;
+                return -1;
+            case hvm::Opcode::TRAPRET:
+                lastError_ = "TRAPRET not supported in user mode";
+                state.trapHit = true;
+                return -1;
+            case hvm::Opcode::LR_D:
+                lastError_ = "LR.D not implemented";
+                state.trapHit = true;
+                return -1;
+            case hvm::Opcode::SC_D:
+                lastError_ = "SC.D not implemented";
+                state.trapHit = true;
+                return -1;
+            case hvm::Opcode::CSRRW:
+                lastError_ = "CSRRW not implemented";
+                state.trapHit = true;
+                return -1;
+            case hvm::Opcode::SFENCE_VMA:
+                // No-op in interpreter (no TLB to flush)
+                break;
+            case hvm::Opcode::PREFETCH_R:
+            case hvm::Opcode::PREFETCH_W:
+            case hvm::Opcode::PREFETCH_NTA:
+            case hvm::Opcode::MEMZERO_HINT:
+            case hvm::Opcode::BR_HINT:
+                // Advisory no-ops per HVM 1.5 spec
+                break;
+            case hvm::Opcode::RDPROF:
+                writeReg(std::get<hvm::OperandsI>(ins->getOperands()).rd, 0);
+                break;
+            case hvm::Opcode::DOORBELL:
+                lastError_ = "DOORBELL not implemented (HVM-A accelerator not available)";
+                state.trapHit = true;
+                return -1;
+            case hvm::Opcode::VECTOR_FMA:
+            case hvm::Opcode::VECTOR_MASK:
+            case hvm::Opcode::VECTOR_REDUCE:
+            case hvm::Opcode::VECTOR_SHIFT:
+            case hvm::Opcode::VECTOR_BITWISE:
+                lastError_ = "HVM-V instruction not implemented: " + ins->getMnemonic();
+                state.trapHit = true;
+                return -1;
             default:
                 lastError_ = "Unsupported opcode in interpreter: " + ins->getMnemonic();
                 return -1;
@@ -8016,6 +8106,60 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.CreateBr(syscallDone);
                     builder.SetInsertPoint(syscallDone);
                 } else if (op == hvm::Opcode::BREAK) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::ICACHE_RNG) {
+                } else if (op == hvm::Opcode::LD_P) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* addrVal = readReg(o.rs2);
+                    auto* ptr1 = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
+                    auto* val1 = builder.CreateLoad(i64, ptr1);
+                    auto* addr8 = builder.CreateAdd(addrVal, builder.getInt64(8));
+                    auto* ptr2 = builder.CreateBitCast(memAddr(addr8), llvm::PointerType::get(*context, 0));
+                    auto* val2 = builder.CreateLoad(i64, ptr2);
+                    writeReg(o.rd, val1);
+                    writeReg(static_cast<uint8_t>((o.rs1 + 1) & 0x1F), val2);
+                } else if (op == hvm::Opcode::ST_P) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* addrVal = readReg(o.rs2);
+                    auto* ptr1 = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
+                    builder.CreateStore(readReg(o.rd), ptr1);
+                    auto* addr8 = builder.CreateAdd(addrVal, builder.getInt64(8));
+                    auto* ptr2 = builder.CreateBitCast(memAddr(addr8), llvm::PointerType::get(*context, 0));
+                    builder.CreateStore(readReg(o.rs1), ptr2);
+                } else if (op == hvm::Opcode::ECALL) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::TRAPRET) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::LR_D) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::SC_D) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::CSRRW) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::SFENCE_VMA) {
+                } else if (op == hvm::Opcode::PREFETCH_R || op == hvm::Opcode::PREFETCH_W || op == hvm::Opcode::PREFETCH_NTA) {
+                } else if (op == hvm::Opcode::MEMZERO_HINT) {
+                } else if (op == hvm::Opcode::BR_HINT) {
+                } else if (op == hvm::Opcode::RDPROF) {
+                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                    writeReg(o.rd, builder.getInt64(0));
+                } else if (op == hvm::Opcode::DOORBELL) {
+                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateRet(builder.getInt64(-1));
+                    break;
+                } else if (op == hvm::Opcode::VECTOR_FMA || op == hvm::Opcode::VECTOR_MASK || op == hvm::Opcode::VECTOR_REDUCE || op == hvm::Opcode::VECTOR_SHIFT || op == hvm::Opcode::VECTOR_BITWISE) {
                     builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
                     builder.CreateRet(builder.getInt64(-1));
                     break;

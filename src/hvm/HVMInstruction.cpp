@@ -603,17 +603,75 @@ InstructionRegistry::InstructionRegistry() {
     reg("loop.set", Opcode::LOOP_SET, InstructionFormat::I);
     reg("loop.decbr", Opcode::LOOP_DECBR, InstructionFormat::B);
 
-    // New HVM instruction sets
+    // HVM 1.5 required CPU instructions
+    reg("icache.rng", Opcode::ICACHE_RNG, InstructionFormat::R);
+    reg("ld.p",  Opcode::LD_P,  InstructionFormat::R);
+    reg("st.p",  Opcode::ST_P,  InstructionFormat::R);
+
+    // Privileged/system profile
+    reg("ecall",   Opcode::ECALL,   InstructionFormat::R);
+    reg("trapret", Opcode::TRAPRET, InstructionFormat::R);
+    reg("lr.d",    Opcode::LR_D,    InstructionFormat::R);
+    reg("sc.d",    Opcode::SC_D,    InstructionFormat::R);
+    reg("csrrw",   Opcode::CSRRW,   InstructionFormat::I);
+    reg("sfence.vma", Opcode::SFENCE_VMA, InstructionFormat::R);
+
+    // Advisory/profile (no-op safe per spec)
+    reg("prefetch.r",   Opcode::PREFETCH_R,   InstructionFormat::I);
+    reg("prefetch.w",   Opcode::PREFETCH_W,   InstructionFormat::I);
+    reg("prefetch.nta", Opcode::PREFETCH_NTA, InstructionFormat::I);
+    reg("memzero.hint", Opcode::MEMZERO_HINT, InstructionFormat::R);
+    reg("rdprof", Opcode::RDPROF, InstructionFormat::I);
+    reg("br.hint",  Opcode::BR_HINT,  InstructionFormat::B);
+    reg("doorbell", Opcode::DOORBELL, InstructionFormat::R);
+
+    // HVM instruction sets (existing)
     reg("alloc.bump", Opcode::ALLOC_BUMP, InstructionFormat::I);
     reg("chk.b", Opcode::CHK_B, InstructionFormat::R);
     reg("ld.d.nz", Opcode::LD_D_NZ, InstructionFormat::I);
+
+    // HVM-V Vector extensions — memory variants
     reg("vsetvl", Opcode::VSETVL, InstructionFormat::R);
-    reg("vld.v", Opcode::VECTOR_MEM, InstructionFormat::R, 0);
-    reg("vst.v", Opcode::VECTOR_MEM, InstructionFormat::R, 1);
+    reg("vld.v",  Opcode::VECTOR_MEM, InstructionFormat::R, 0);
+    reg("vst.v",  Opcode::VECTOR_MEM, InstructionFormat::R, 1);
+    reg("vlds.v", Opcode::VECTOR_MEM, InstructionFormat::R, 2);
+    reg("vsts.v", Opcode::VECTOR_MEM, InstructionFormat::R, 3);
+    reg("vldx.v", Opcode::VECTOR_MEM, InstructionFormat::R, 4);
+    reg("vstx.v", Opcode::VECTOR_MEM, InstructionFormat::R, 5);
+
+    // HVM-V Vector arithmetic — scalar-vector variants
     reg("vadd.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 0);
+    reg("vadd.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 1);
     reg("vsub.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 2);
+    reg("vsub.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 3);
     reg("vmul.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 4);
+    reg("vmul.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 5);
     reg("vdiv.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 6);
+    reg("vdiv.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 7);
+
+    // HVM-V Vector FMA
+    reg("vfmacc.vv", Opcode::VECTOR_FMA, InstructionFormat::R, 0);
+    reg("vfmacc.vf", Opcode::VECTOR_FMA, InstructionFormat::R, 1);
+
+    // HVM-V Vector compare/mask
+    reg("vcomp.vv",  Opcode::VECTOR_MASK, InstructionFormat::R, 0);
+    reg("vcomp.vx",  Opcode::VECTOR_MASK, InstructionFormat::R, 1);
+    reg("vmerge.vvm", Opcode::VECTOR_MASK, InstructionFormat::R, 2);
+    reg("vfirst.m",  Opcode::VECTOR_MASK, InstructionFormat::R, 3);
+
+    // HVM-V Vector reductions
+    reg("vredadd.vs", Opcode::VECTOR_REDUCE, InstructionFormat::R, 0);
+    reg("vredmin.vs", Opcode::VECTOR_REDUCE, InstructionFormat::R, 1);
+    reg("vredmax.vs", Opcode::VECTOR_REDUCE, InstructionFormat::R, 2);
+
+    // HVM-V Vector shifts and bitwise
+    reg("vsll.vv",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 0);
+    reg("vsll.vx",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 1);
+    reg("vsrl.vv",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 2);
+    reg("vsrl.vx",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 3);
+    reg("vand.vv",  Opcode::VECTOR_BITWISE, InstructionFormat::R, 0);
+    reg("vor.vv",   Opcode::VECTOR_BITWISE, InstructionFormat::R, 1);
+    reg("vxor.vv",  Opcode::VECTOR_BITWISE, InstructionFormat::R, 2);
 }
 
 void InstructionRegistry::registerInstruction(const std::string& mnemonic, Opcode opcode,

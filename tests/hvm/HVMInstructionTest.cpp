@@ -528,3 +528,213 @@ TEST_F(HVMInstructionTest, ExtendedOpcodeRejectsMalformedEncoding) {
     EXPECT_EQ(dec3, nullptr);
     EXPECT_EQ(used, 0);
 }
+
+// CSV parity test: validates InstructionRegistry matches hvm_instruction_set.csv
+struct CsvRow {
+    const char* mnemonic;
+    Opcode opcode;
+    InstructionFormat format;
+    uint16_t func;
+};
+
+static const CsvRow kCsvRows[] = {
+    {"nop",   Opcode::NOP,   InstructionFormat::R, 0},
+    {"mov",   Opcode::MOV,   InstructionFormat::R, 0},
+    {"movz",  Opcode::MOVZ,  InstructionFormat::I, 0},
+    {"lui",   Opcode::LUI,   InstructionFormat::I, 0},
+    {"addi",  Opcode::ADDI,  InstructionFormat::I, 0},
+    {"retain", Opcode::RETAIN, InstructionFormat::R, 0},
+    {"release", Opcode::RELEASE, InstructionFormat::R, 0},
+    {"icache.rng", Opcode::ICACHE_RNG, InstructionFormat::R, 0},
+    {"add",   Opcode::ARITH, InstructionFormat::R, 0},
+    {"sub",   Opcode::ARITH, InstructionFormat::R, 1},
+    {"mul",   Opcode::ARITH, InstructionFormat::R, 2},
+    {"div",   Opcode::ARITH, InstructionFormat::R, 5},
+    {"divu",  Opcode::ARITH, InstructionFormat::R, 6},
+    {"rem",   Opcode::ARITH, InstructionFormat::R, 7},
+    {"shl",   Opcode::SHIFT, InstructionFormat::R, 0},
+    {"shr",   Opcode::SHIFT, InstructionFormat::R, 1},
+    {"sar",   Opcode::SHIFT, InstructionFormat::R, 2},
+    {"and",   Opcode::LOGIC, InstructionFormat::R, 0},
+    {"or",    Opcode::LOGIC, InstructionFormat::R, 1},
+    {"xor",   Opcode::LOGIC, InstructionFormat::R, 2},
+    {"not",   Opcode::NOT,   InstructionFormat::R, 0},
+    {"fadd",  Opcode::FLOAT_ARITH, InstructionFormat::R, 0},
+    {"fsub",  Opcode::FLOAT_ARITH, InstructionFormat::R, 1},
+    {"fmul",  Opcode::FLOAT_ARITH, InstructionFormat::R, 2},
+    {"fdiv",  Opcode::FLOAT_ARITH, InstructionFormat::R, 3},
+    {"cmpeq", Opcode::CMP,   InstructionFormat::R, 0},
+    {"cmpne", Opcode::CMP,   InstructionFormat::R, 1},
+    {"cmplt", Opcode::CMP,   InstructionFormat::R, 2},
+    {"cmple", Opcode::CMP,   InstructionFormat::R, 3},
+    {"fcmpeq", Opcode::FCMP, InstructionFormat::R, 0},
+    {"fcmplt", Opcode::FCMP, InstructionFormat::R, 1},
+    {"fcmple", Opcode::FCMP, InstructionFormat::R, 2},
+    {"beq",   Opcode::BEQ,   InstructionFormat::B, 0},
+    {"bne",   Opcode::BNE,   InstructionFormat::B, 0},
+    {"blt",   Opcode::BLT,   InstructionFormat::B, 0},
+    {"ble",   Opcode::BLE,   InstructionFormat::B, 0},
+    {"jmp",   Opcode::JMP,   InstructionFormat::J, 0},
+    {"jal",   Opcode::JAL,   InstructionFormat::J, 0},
+    {"jalr",  Opcode::JALR,  InstructionFormat::I, 0},
+    {"ret",   Opcode::RET,   InstructionFormat::R, 0},
+    {"ld.b",  Opcode::LD_B,  InstructionFormat::I, 0},
+    {"ld.bu", Opcode::LD_BU, InstructionFormat::I, 0},
+    {"ld.h",  Opcode::LD_H,  InstructionFormat::I, 0},
+    {"ld.hu", Opcode::LD_HU, InstructionFormat::I, 0},
+    {"ld.w",  Opcode::LD_W,  InstructionFormat::I, 0},
+    {"ld.wu", Opcode::LD_WU, InstructionFormat::I, 0},
+    {"ld.d",  Opcode::LD_D,  InstructionFormat::I, 0},
+    {"ld.p",  Opcode::LD_P,  InstructionFormat::R, 0},
+    {"st.b",  Opcode::ST_B,  InstructionFormat::I, 0},
+    {"st.h",  Opcode::ST_H,  InstructionFormat::I, 0},
+    {"st.w",  Opcode::ST_W,  InstructionFormat::I, 0},
+    {"st.d",  Opcode::ST_D,  InstructionFormat::I, 0},
+    {"st.p",  Opcode::ST_P,  InstructionFormat::R, 0},
+    {"lda",   Opcode::LDA,   InstructionFormat::I, 0},
+    {"push",  Opcode::PUSH,  InstructionFormat::R, 0},
+    {"pop",   Opcode::POP,   InstructionFormat::R, 0},
+    {"enter", Opcode::ENTER, InstructionFormat::I, 0},
+    {"leave", Opcode::LEAVE, InstructionFormat::R, 0},
+    {"adjsp", Opcode::ADJSP, InstructionFormat::I, 0},
+    {"frame", Opcode::FRAME, InstructionFormat::I, 0},
+    {"call",     Opcode::CALL,     InstructionFormat::J, 0},
+    {"tailcall", Opcode::TAILCALL, InstructionFormat::J, 0},
+    {"syscall",  Opcode::SYSCALL,  InstructionFormat::I, 0},
+    {"break",    Opcode::BREAK,    InstructionFormat::R, 0},
+    {"ecall",   Opcode::ECALL,   InstructionFormat::R, 0},
+    {"trapret", Opcode::TRAPRET, InstructionFormat::R, 0},
+    {"lr.d",    Opcode::LR_D,    InstructionFormat::R, 0},
+    {"sc.d",    Opcode::SC_D,    InstructionFormat::R, 0},
+    {"csrrw",   Opcode::CSRRW,   InstructionFormat::I, 0},
+    {"sfence.vma", Opcode::SFENCE_VMA, InstructionFormat::R, 0},
+    {"loop.set",   Opcode::LOOP_SET,   InstructionFormat::I, 0},
+    {"loop.decbr", Opcode::LOOP_DECBR, InstructionFormat::B, 0},
+    {"prefetch.r",   Opcode::PREFETCH_R,   InstructionFormat::I, 0},
+    {"prefetch.w",   Opcode::PREFETCH_W,   InstructionFormat::I, 0},
+    {"prefetch.nta", Opcode::PREFETCH_NTA, InstructionFormat::I, 0},
+    {"memzero.hint", Opcode::MEMZERO_HINT, InstructionFormat::R, 0},
+    {"alloc.bump", Opcode::ALLOC_BUMP, InstructionFormat::I, 0},
+    {"rdprof", Opcode::RDPROF, InstructionFormat::I, 0},
+    {"chk.b",  Opcode::CHK_B,  InstructionFormat::R, 0},
+    {"ld.d.nz", Opcode::LD_D_NZ, InstructionFormat::I, 0},
+    {"br.hint",  Opcode::BR_HINT,  InstructionFormat::B, 0},
+    {"doorbell", Opcode::DOORBELL, InstructionFormat::R, 0},
+    {"vsetvl",   Opcode::VSETVL,   InstructionFormat::R, 0},
+    {"vld.v",  Opcode::VECTOR_MEM, InstructionFormat::R, 0},
+    {"vst.v",  Opcode::VECTOR_MEM, InstructionFormat::R, 1},
+    {"vlds.v", Opcode::VECTOR_MEM, InstructionFormat::R, 2},
+    {"vsts.v", Opcode::VECTOR_MEM, InstructionFormat::R, 3},
+    {"vldx.v", Opcode::VECTOR_MEM, InstructionFormat::R, 4},
+    {"vstx.v", Opcode::VECTOR_MEM, InstructionFormat::R, 5},
+    {"vadd.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 0},
+    {"vadd.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 1},
+    {"vsub.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 2},
+    {"vsub.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 3},
+    {"vmul.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 4},
+    {"vmul.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 5},
+    {"vdiv.vv", Opcode::VECTOR_ARITH, InstructionFormat::R, 6},
+    {"vdiv.vx", Opcode::VECTOR_ARITH, InstructionFormat::R, 7},
+    {"vfmacc.vv", Opcode::VECTOR_FMA, InstructionFormat::R, 0},
+    {"vfmacc.vf", Opcode::VECTOR_FMA, InstructionFormat::R, 1},
+    {"vcomp.vv",  Opcode::VECTOR_MASK, InstructionFormat::R, 0},
+    {"vcomp.vx",  Opcode::VECTOR_MASK, InstructionFormat::R, 1},
+    {"vmerge.vvm", Opcode::VECTOR_MASK, InstructionFormat::R, 2},
+    {"vfirst.m",  Opcode::VECTOR_MASK, InstructionFormat::R, 3},
+    {"vredadd.vs", Opcode::VECTOR_REDUCE, InstructionFormat::R, 0},
+    {"vredmin.vs", Opcode::VECTOR_REDUCE, InstructionFormat::R, 1},
+    {"vredmax.vs", Opcode::VECTOR_REDUCE, InstructionFormat::R, 2},
+    {"vsll.vv",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 0},
+    {"vsll.vx",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 1},
+    {"vsrl.vv",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 2},
+    {"vsrl.vx",  Opcode::VECTOR_SHIFT,   InstructionFormat::R, 3},
+    {"vand.vv",  Opcode::VECTOR_BITWISE, InstructionFormat::R, 0},
+    {"vor.vv",   Opcode::VECTOR_BITWISE, InstructionFormat::R, 1},
+    {"vxor.vv",  Opcode::VECTOR_BITWISE, InstructionFormat::R, 2},
+};
+
+TEST_F(HVMInstructionTest, CsvParity_AllRowsRegistered) {
+    const auto& reg = InstructionRegistry::instance();
+    int missingCount = 0;
+    int mismatchCount = 0;
+    int totalRows = sizeof(kCsvRows) / sizeof(kCsvRows[0]);
+
+    for (int i = 0; i < totalRows; ++i) {
+        const auto& row = kCsvRows[i];
+        auto info = reg.getInfoByMnemonic(row.mnemonic);
+        if (!info) {
+            ADD_FAILURE() << "CSV row #" << i << ": mnemonic '" << row.mnemonic << "' not registered";
+            ++missingCount;
+            continue;
+        }
+        if (info->opcode != row.opcode) {
+            ADD_FAILURE() << "CSV row #" << i << ": '" << row.mnemonic
+                          << "' opcode mismatch: registry=" << static_cast<int>(info->opcode)
+                          << " csv=" << static_cast<int>(row.opcode);
+            ++mismatchCount;
+        }
+        if (info->format != row.format) {
+            ADD_FAILURE() << "CSV row #" << i << ": '" << row.mnemonic
+                          << "' format mismatch: registry=" << static_cast<int>(info->format)
+                          << " csv=" << static_cast<int>(row.format);
+            ++mismatchCount;
+        }
+        if (info->func != row.func) {
+            ADD_FAILURE() << "CSV row #" << i << ": '" << row.mnemonic
+                          << "' func mismatch: registry=" << info->func
+                          << " csv=" << row.func;
+            ++mismatchCount;
+        }
+    }
+
+    EXPECT_EQ(missingCount, 0) << missingCount << " CSV mnemonics missing from registry";
+    EXPECT_EQ(mismatchCount, 0) << mismatchCount << " registry entries differ from CSV";
+    EXPECT_EQ(totalRows, 113) << "CSV parity table has wrong row count";
+}
+
+TEST_F(HVMInstructionTest, CsvParity_StringToOpcodeResolvesAll) {
+    const auto& reg = InstructionRegistry::instance();
+    int failedCount = 0;
+    int totalRows = sizeof(kCsvRows) / sizeof(kCsvRows[0]);
+
+    for (int i = 0; i < totalRows; ++i) {
+        const auto& row = kCsvRows[i];
+        Opcode resolved = HVMInstruction::stringToOpcode(row.mnemonic);
+        if (resolved == Opcode::UNKNOWN) {
+            ADD_FAILURE() << "CSV row #" << i << ": stringToOpcode(\"" << row.mnemonic << "\") returned UNKNOWN";
+            ++failedCount;
+        }
+    }
+
+    EXPECT_EQ(failedCount, 0) << failedCount << " mnemonics not resolved by stringToOpcode";
+}
+
+TEST_F(HVMInstructionTest, CsvParity_EncodeDecodeRoundTrip) {
+    int failedCount = 0;
+    int totalRows = sizeof(kCsvRows) / sizeof(kCsvRows[0]);
+
+    for (int i = 0; i < totalRows; ++i) {
+        const auto& row = kCsvRows[i];
+        HVMInstruction orig(row.opcode);
+        if (row.func != 0 && std::holds_alternative<OperandsR>(orig.getOperands())) {
+            orig = HVMInstruction(row.opcode, OperandsR{1, 1, 1, row.func});
+        }
+        orig.setMnemonic(row.mnemonic);
+
+        auto encoded = orig.encode();
+        size_t used = 0;
+        auto decoded = HVMInstruction::decode(encoded, used);
+
+        if (!decoded) {
+            ADD_FAILURE() << "CSV row #" << i << ": '" << row.mnemonic
+                          << "' encode/decode round-trip failed";
+            ++failedCount;
+        } else if (decoded->getOpcode() != row.opcode) {
+            ADD_FAILURE() << "CSV row #" << i << ": '" << row.mnemonic
+                          << "' decode opcode=" << static_cast<int>(decoded->getOpcode());
+            ++failedCount;
+        }
+    }
+
+    EXPECT_EQ(failedCount, 0) << failedCount << " mnemonics failed encode/decode round-trip";
+}

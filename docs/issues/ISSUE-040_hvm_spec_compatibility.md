@@ -487,8 +487,10 @@ The current tests do not yet prove full HVM 1.5 compatibility because they do no
 
 ## 8. Status
 - **Date**: 2026-06-21
-- **Status**: **PROPOSED**
+- **Status**: **PARTIALLY IMPLEMENTED** (Phase 1 + Phase 2 complete)
 - **Priority**: High
 - **Audit 2026-06-21**: Rechecked against the reviewed HVM implementation files and documentation set. The documented instruction registry, CSV, JIT, and module-bundle compatibility gaps remain current.
 - **Test Verification 2026-06-21**: Issue-related GoogleTest filter passed `842` tests from `31` suites; full CTest passed `HooUnitTests`; full GoogleTest binary passed `1752` tests from `96` suites with `2` disabled tests. These passing tests validate existing implemented paths but do not close the CSV/spec compatibility gaps listed above.
+- **Phase 1 2026-06-29**: All 40 missing CSV mnemonics registered in `InstructionRegistry`. Added 3 CSV parity tests (`CsvParity_AllRowsRegistered`, `CsvParity_StringToOpcodeResolvesAll`, `CsvParity_EncodeDecodeRoundTrip`) that validate every CSV row against the registry. Registered mnemonics: `icache.rng`, `ld.p`, `st.p`, `ecall`, `trapret`, `lr.d`, `sc.d`, `csrrw`, `sfence.vma`, `prefetch.r`, `prefetch.w`, `prefetch.nta`, `memzero.hint`, `rdprof`, `br.hint`, `doorbell`, `vlds.v`, `vsts.v`, `vldx.v`, `vstx.v`, `vadd.vx`, `vsub.vx`, `vmul.vx`, `vdiv.vx`, `vfmacc.vv`, `vfmacc.vf`, `vcomp.vv`, `vcomp.vx`, `vmerge.vvm`, `vfirst.m`, `vredadd.vs`, `vredmin.vs`, `vredmax.vs`, `vsll.vv`, `vsll.vx`, `vsrl.vv`, `vsrl.vx`, `vand.vv`, `vor.vv`, `vxor.vv` (113/113 CSV rows now registered). Full test suite: 1885 tests, 0 failures.
+- **Phase 2 2026-06-29**: All new opcodes added to `isSupportedForIRLowering()`. JIT IR generation else-if blocks added for all Phase 2 instructions: `ICACHE.RNG` (no-op), `LD.P`/`ST.P` (full pair load/store via `memAddr`), `ECALL`/`TRAPRET`/`LR.D`/`SC.D`/`CSRRW`/`DOORBELL`/`VECTOR_FMA`/`VECTOR_MASK`/`VECTOR_REDUCE`/`VECTOR_SHIFT`/`VECTOR_BITWISE` (trap with `state.trapHit`), `SFENCE.VMA` (no-op), `PREFETCH_R`/`PREFETCH_W`/`PREFETCH_NTA` (advisory no-ops), `MEMZERO_HINT`/`BR_HINT` (advisory no-ops), `RDPROF` (returns 0 to rd). Full test suite: 1885 tests, 0 failures, 2 disabled.
 - **Scope**: HVM ISA compatibility, instruction metadata, decoder, module loading, and JIT/interpreter execution

@@ -56,6 +56,7 @@ case 'v': result += '\v'; break;
 
 ## 5. Status
 - **Date**: 2026-06-08
-- **Status**: **PROPOSED**
+- **Status**: **FIXED**
 - **Priority**: **HIGH**
 - **Audit 2026-06-21**: Verified string escape handling still supports only the basic escape set and falls through on `\u`, `\x`, `\0`, and `\v`; char literals handle `\0` separately.
+- **Fix 2026-06-29**: All missing escape sequences implemented in `SimpleASTBuilder::getStringValue()` (lines 1240-1277). `\uXXXX` parses 4 hex digits with full UTF-8 encoding, `\xXX` parses hex bytes, `\0` null, and `\v` vertical tab all handled.

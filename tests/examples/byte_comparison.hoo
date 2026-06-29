@@ -1,0 +1,57 @@
+import hoo;
+
+func :int64 main() {
+    var a: byte = 200;
+    var b: byte = 10;
+    var c: byte = 200;
+
+    // Unsigned comparison: 200 < 10 should be false
+    var lt1 = a < b;
+    if lt1 {
+        return 1; // fail
+    }
+
+    // Unsigned comparison: 10 < 200 should be true
+    var lt2 = b < a;
+    if !lt2 {
+        return 2; // fail
+    }
+
+    // Unsigned comparison: 200 <= 200 should be true
+    var le1 = a <= c;
+    if !le1 {
+        return 3; // fail
+    }
+
+    // Unsigned comparison: 200 <= 10 should be false
+    var le2 = a <= b;
+    if le2 {
+        return 4; // fail
+    }
+
+    // Unsigned comparison: 200 > 10 should be true
+    var gt1 = a > b;
+    if !gt1 {
+        return 5; // fail
+    }
+
+    // Unsigned comparison: 10 > 200 should be false
+    var gt2 = b > a;
+    if gt2 {
+        return 6; // fail
+    }
+
+    // Unsigned comparison: 200 >= 200 should be true
+    var ge1 = a >= c;
+    if !ge1 {
+        return 7; // fail
+    }
+
+    // Unsigned comparison: 200 >= 10 should be true
+    var ge2 = a >= b;
+    if !ge2 {
+        return 8; // fail
+    }
+
+    return 0; // all passed
+}

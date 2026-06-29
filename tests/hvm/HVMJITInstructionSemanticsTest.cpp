@@ -1136,3 +1136,71 @@ TEST_F(HVMJITInstructionSemanticsTest, SyscallFileIOWithDiskFile) {
     std::remove("t");
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessThan) {
+    // CMPULT (func=4): 200 < 10 should be false (0) for unsigned bytes
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 10}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 4}),   // r4 = (r2 <u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpult_lt.ho"] = buildModuleBytes("cmpult_lt", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpult_lt.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpGreater) {
+    // CMPULT (func=4) swapped: 10 < 200 should be true (1) for unsigned
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 200}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 4}),   // r4 = (r2 <u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpult_gt.ho"] = buildModuleBytes("cmpult_gt", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpult_gt.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessEqual) {
+    // CMPULE (func=5): 200 <= 200 should be true (1)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 200}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 5}),   // r4 = (r2 <=u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpule_eq.ho"] = buildModuleBytes("cmpule_eq", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpule_eq.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessEqualFalse) {
+    // CMPULE (func=5): 200 <= 10 should be false (0)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 10}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 5}),   // r4 = (r2 <=u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpule_false.ho"] = buildModuleBytes("cmpule_false", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpule_false.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+

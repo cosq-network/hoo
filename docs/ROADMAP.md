@@ -181,7 +181,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-013_unicode_escapes.md](issues/ISSUE-013_unicode_escapes.md)**
   - **Title**: # ISSUE-013: Missing Unicode and Hex Escape Sequences in String Literals
-  - **Status**: PROPOSED
+  - **Status**: FIXED
   - **Priority**: HIGH
 
 - **[ISSUE-026_native_ann_support.md](issues/ISSUE-026_native_ann_support.md)**
@@ -196,7 +196,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-029_unsigned_comparisons.md](issues/ISSUE-029_unsigned_comparisons.md)**
   - **Title**: # ISSUE-029: Missing Unsigned Comparison Instructions in HVM
-  - **Status**: PROPOSED
+  - **Status**: PARTIALLY IMPLEMENTED
   - **Priority**: High (Crucial for `byte` type correctness)
 
 - **[ISSUE-030_tensor_scalar_arithmetic.md](issues/ISSUE-030_tensor_scalar_arithmetic.md)**
@@ -226,7 +226,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-040_hvm_spec_compatibility.md](issues/ISSUE-040_hvm_spec_compatibility.md)**
   - **Title**: # ISSUE-040: HVM Implementation Is Not Fully Compatible With HVM 1.5 Specification
-  - **Status**: PROPOSED
+  - **Status**: PARTIALLY IMPLEMENTED (Phase 1 + Phase 2: CSV parity + JIT IR lowering for all new opcodes)
   - **Priority**: High
 
 - **[ISSUE-042_decimal_intrinsic.md](issues/ISSUE-042_decimal_intrinsic.md)**
