@@ -164,6 +164,7 @@ std::string defaultSectionName(SectionType type) {
         case SectionType::SHT_EXPORT: return ".export";
         case SectionType::SHT_IMPORT: return ".import";
         case SectionType::SHT_FUNCMETA: return ".funcmeta";
+        case SectionType::SHT_NOTE: return ".note";
         default: return "";
     }
 }
@@ -308,6 +309,31 @@ bool HOModule::serialize(std::vector<uint8_t>& output) const {
     buildTableSection(".export", SectionType::SHT_EXPORT, 8, export_data);
     buildTableSection(".import", SectionType::SHT_IMPORT, 8, import_data);
     buildTableSection(".funcmeta", SectionType::SHT_FUNCMETA, 8, funcmeta_data);
+
+    // Build .note section with HVM feature flags
+    Section note;
+    note.name = ".note";
+    note.type = SectionType::SHT_NOTE;
+    note.flags = SectionFlags::ALLOC;
+    note.alignment = 8;
+    note.virtual_size = 0;
+    note.data.clear();
+    if (requiredFeatures_ != 0) {
+        // NOTE format: namesz, descsz, type, name (padded), desc (padded)
+        // type = 1 (HVM feature flags), name = "HVM"
+        // desc = requiredFeatures_ (8 bytes, little-endian)
+        uint32_t nameSz = 4;  // "HVM\0"
+        uint32_t descSz = 8;
+        uint32_t noteType = 1;
+        note.data.resize(12 + 4 + 8, 0);  // header + padded name + desc
+        writeU32LE(note.data, 0, nameSz);
+        writeU32LE(note.data, 4, descSz);
+        writeU32LE(note.data, 8, noteType);
+        std::memcpy(note.data.data() + 12, "HVM\0", 4);
+        writeU64LE(note.data, 16, requiredFeatures_);
+        note.virtual_size = note.data.size();
+    }
+    effective_sections.push_back(std::move(note));
 
     std::string local_string_pool(1, '\0');
     std::vector<uint32_t> section_name_offsets;
@@ -1204,6 +1230,25 @@ std::unique_ptr<HOModule> HOModule::parse(const std::vector<uint8_t>& data) {
     if (const Section* funcmeta = findByType(SectionType::SHT_FUNCMETA)) {
         if (!module->parseFunctionMetadata(data, *funcmeta)) {
             return nullptr;
+        }
+    }
+
+    if (const Section* note = findByType(SectionType::SHT_NOTE)) {
+        if (note->data.size() >= 20) {
+            uint32_t nNamesz = 0, nDescsz = 0, nType = 0;
+            if (readU32LE(note->data, 0, nNamesz) &&
+                readU32LE(note->data, 4, nDescsz) &&
+                readU32LE(note->data, 8, nType) &&
+                nNamesz >= 4 && nDescsz >= 8 && nType == 1) {
+                size_t nameOff = 12;
+                if (nameOff + 4 <= note->data.size() &&
+                    std::memcmp(note->data.data() + nameOff, "HVM\0", 4) == 0) {
+                    size_t descOff = nameOff + ((nNamesz + 3) & ~3U);
+                    if (descOff + 8 <= note->data.size()) {
+                        readU64LE(note->data, descOff, module->requiredFeatures_);
+                    }
+                }
+            }
         }
     }
 

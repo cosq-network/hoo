@@ -55,6 +55,15 @@ enum class SectionType : uint32_t {
     SHT_GROUP = 0x17
 };
 
+enum class HVMFeature : uint64_t {
+    HVM_C     = 1ULL << 0,
+    HVM_V     = 1ULL << 1,
+    HVM_A     = 1ULL << 2,
+    HVM_Alloc = 1ULL << 3,
+    HVM_Prof  = 1ULL << 4,
+    HVM_NZ    = 1ULL << 5,
+};
+
 struct SectionFlags {
     static constexpr uint32_t TLS = 0x8000;
     static constexpr uint32_t ALLOC = 0x4000;
@@ -238,6 +247,12 @@ public:
     void setPIE(bool pie);
     void setOptimizationLevel(uint8_t level);
 
+    void setRequiredFeatures(uint64_t features) { requiredFeatures_ = features; }
+    uint64_t getRequiredFeatures() const { return requiredFeatures_; }
+    bool requiresFeature(HVMFeature feature) const {
+        return (requiredFeatures_ & static_cast<uint64_t>(feature)) != 0;
+    }
+
     std::vector<uint8_t> encodeInstructions(const std::vector<HVMInstruction>& instructions) const;
     std::vector<HVMInstruction> decodeInstructions(const std::vector<uint8_t>& data, bool extended = false) const;
 
@@ -278,6 +293,7 @@ private:
     uint64_t base_address_;
 
     std::vector<Section> sections_;
+    uint64_t requiredFeatures_ = 0;
     std::string string_pool_;
     std::vector<Symbol> symbols_;
     std::vector<Relocation> relocations_;

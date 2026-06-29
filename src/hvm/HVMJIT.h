@@ -48,6 +48,7 @@ public:
         CircularDependency,
         RuntimeBootstrapFailed,
         UnsupportedInstruction,
+        UnsupportedFeature,
         ExecutionFailed
     };
 

@@ -4863,6 +4863,33 @@ bool hooc::HVMJIT::validateModule(const hvm::HOModule& module, const std::string
         }
     }
 
+    // Validate HVM feature flags
+    {
+        static constexpr uint64_t kSupportedFeatures =
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_C) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_Alloc) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ);
+        uint64_t required = module.getRequiredFeatures();
+        uint64_t unsupported = required & ~kSupportedFeatures;
+        if (unsupported != 0) {
+            std::string unsupportedList;
+            auto appendFeature = [&](hvm::HVMFeature f, const char* name) {
+                if (unsupported & static_cast<uint64_t>(f)) {
+                    if (!unsupportedList.empty()) unsupportedList += ", ";
+                    unsupportedList += name;
+                }
+            };
+            appendFeature(hvm::HVMFeature::HVM_V, "HVM-V");
+            appendFeature(hvm::HVMFeature::HVM_A, "HVM-A");
+            appendFeature(hvm::HVMFeature::HVM_Prof, "HVM-Prof");
+            setError(ErrorPhase::Validate, ErrorCode::UnsupportedFeature,
+                     "Module requires unsupported HVM features: " + unsupportedList + " in " + sourcePath,
+                     module.getName(), "", sourcePath);
+            setLoaderState(module.getName(), LoaderState::Failed);
+            return false;
+        }
+    }
+
     return true;
 }
 
