@@ -500,7 +500,7 @@ TEST_F(HVMCodeGeneratorTest, LoopBreak_CleansUpManagedLocals) {
 TEST_F(HVMCodeGeneratorTest, InterpolatedStringExprStmt_EmitsRelease) {
     std::string code = R"(
         func:void test() {
-            `hello`;
+            "hello ${1}";
         }
     )";
 

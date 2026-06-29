@@ -1130,16 +1130,39 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     return info;
 }
 
+static bool isArcManagedTypeId(uint32_t typeId) {
+    // Types that participate in ARC and should be released by scope cleanup.
+    // Non-ARC types manage their own lifecycle via explicit _release() methods
+    // using free/delete, not hoo_release, so they must be excluded from scope cleanup.
+    // Unknown/default (100) is excluded because it may be assigned to raw pointers
+    // or primitive values that cannot be passed to hoo_release.
+    switch (typeId) {
+        case 100: // Unknown - could be raw pointer, int64, etc.
+        case 110: // Args - uses calloc, no hoo_release
+        case 111: // Compression - uses std::free
+        case 120: // Regex - uses delete with custom refcounting
+        case 121: // Mutex - uses delete
+        case 122: // Uuid - uses std::free with custom refcounting
+            return false;
+        default:
+            return typeId >= 100;
+    }
+}
+
 void HVMCodeGenerator::emitScopeCleanup(size_t from, size_t to) {
+    uint8_t saveReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{saveReg, 1, 0, 0});
     for (size_t i = from; i > to; --i) {
         auto& scope = scopeStack_[i - 1];
         for (const auto& [name, local] : scope) {
-            if (local.typeId >= 100) {
+            if (isArcManagedTypeId(local.typeId)) {
                 emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
                 emitCall(Opcode::CALL, "_F_hoo_release_v_p");
             }
         }
     }
+    emit(Opcode::MOV, OperandsR{1, saveReg, 0, 0});
+    freeRegister(saveReg);
 }
 
 bool HVMCodeGenerator::isManagedTemporary(const ast::Expression& expr) {
@@ -4219,7 +4242,22 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                         if (returnType == "void") return 4;
                     }
 
-                    const uint32_t objectTypeId = getLocalTypeId(className);
+                    uint32_t objectTypeId = getLocalTypeId(className);
+                    if (objectTypeId == 0) {
+                        static const std::unordered_map<std::string, uint32_t> builtinTypeIds = {
+                            {"Array", 102}, {"Tensor", 104}, {"String", 101},
+                            {"Map", 103}, {"Buffer", 113}, {"Character", 109},
+                            {"Random", 105}, {"DateTime", 119}, {"Args", 110},
+                            {"Compression", 111}, {"Csv", 112}, {"Path", 114},
+                            {"Http", 115}, {"Response", 116}, {"HashMap", 117},
+                            {"AnyArray", 118}, {"Regex", 120}, {"Mutex", 121},
+                            {"Uuid", 122}
+                        };
+                        auto it = builtinTypeIds.find(className);
+                        if (it != builtinTypeIds.end()) {
+                            objectTypeId = it->second;
+                        }
+                    }
                     const std::string& member = memberAccess->getMember();
                     if (objectTypeId == 102) {
                         if (member == "length" || member == "empty") return 1;
