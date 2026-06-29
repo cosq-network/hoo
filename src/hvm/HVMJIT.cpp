@@ -6485,7 +6485,17 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             }
             case hvm::Opcode::ALLOC_BUMP: {
                 auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                writeReg(o.rd, hooc_hvm_sys_alloc(readReg(o.rs), o.imm15));
+                const uint64_t size = readReg(o.rs);
+                const uint64_t align = static_cast<uint64_t>(std::max<int64_t>(1, o.imm15));
+                uint64_t cur = state.tlabStart;
+                uint64_t aligned = (cur + align - 1) & ~(align - 1);
+                uint64_t next = aligned + size;
+                if (next <= state.tlabEnd) {
+                    state.tlabStart = next;
+                    writeReg(o.rd, aligned);
+                } else {
+                    writeReg(o.rd, 0);
+                }
                 break;
             }
             case hvm::Opcode::CHK_B: {
@@ -6859,6 +6869,8 @@ bool HVMJIT::runModuleVTableInitializers(const std::shared_ptr<hvm::HOModule>& m
             state.io = &io_;
             state.memory = memory_.data();
             state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
+            state.tlabStart = tlabStart_;
+            state.tlabEnd = tlabEnd_;
             if (executeFunction(t.owner, t.symbolName, state) == -1 && !lastError_.empty()) {
                 err = "VTable init failed for " + t.owner->getName() + ": " + lastError_;
                 return false;
@@ -6898,6 +6910,8 @@ bool HVMJIT::runModuleInitializer(const std::shared_ptr<hvm::HOModule>& module) 
         state.io = &io_;
         state.memory = memory_.data();
         state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
+        state.tlabStart = tlabStart_;
+        state.tlabEnd = tlabEnd_;
         const auto* initSym = findFunctionSymbol(*module, "_F_module_init_v");
         if (!initSym) return;
         if (executeFunction(module, initSym->name, state) == -1 && !lastError_.empty()) {
@@ -7090,7 +7104,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64, i64, i64});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -7581,9 +7595,32 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                 } else if (op == hvm::Opcode::ALLOC_BUMP) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
                     auto* sizeVal = readReg(o.rs);
-                    auto* alignVal = builder.getInt64(static_cast<uint64_t>(o.imm15));
-                    auto* retVal = builder.CreateCall(allocCallee, {sizeVal, alignVal});
-                    writeReg(o.rd, retVal);
+                    auto* tlabStartPtr = builder.CreateStructGEP(stateTy, stateArg, 10);
+                    auto* tlabEndPtr = builder.CreateStructGEP(stateTy, stateArg, 11);
+                    auto* tlabStart = builder.CreateLoad(i64, tlabStartPtr);
+                    auto* tlabEnd = builder.CreateLoad(i64, tlabEndPtr);
+                    auto* alignVal = builder.getInt64(static_cast<uint64_t>(std::max<int64_t>(1, o.imm15)));
+                    // aligned = (tlabStart + align - 1) & ~(align - 1)
+                    auto* alignMask = builder.CreateSub(alignVal, builder.getInt64(1));
+                    auto* aligned = builder.CreateAdd(tlabStart, alignMask);
+                    aligned = builder.CreateAnd(aligned, builder.CreateNot(alignMask));
+                    auto* newTLAB = builder.CreateAdd(aligned, sizeVal);
+                    auto* hasRoom = builder.CreateICmpULE(newTLAB, tlabEnd);
+                    auto* tlabHitBB = llvm::BasicBlock::Create(*context, "tlab_hit", fn);
+                    auto* tlabMissBB = llvm::BasicBlock::Create(*context, "tlab_miss", fn);
+                    builder.CreateCondBr(hasRoom, tlabHitBB, tlabMissBB);
+                    builder.SetInsertPoint(tlabHitBB);
+                    builder.CreateStore(newTLAB, tlabStartPtr);
+                    writeReg(o.rd, aligned);
+                    ensureBlock(nextPc);
+                    if (!blockByPc.count(nextPc)) { builder.CreateRet(builder.getInt64(-1)); break; }
+                    builder.CreateBr(blockByPc[nextPc]);
+                    builder.SetInsertPoint(tlabMissBB);
+                    writeReg(o.rd, builder.getInt64(0));
+                    ensureBlock(nextPc);
+                    if (!blockByPc.count(nextPc)) { builder.CreateRet(builder.getInt64(-1)); break; }
+                    builder.CreateBr(blockByPc[nextPc]);
+                    break;
                 } else if (op == hvm::Opcode::CHK_B) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* ptrVal = readReg(o.rs1);
@@ -8436,6 +8473,8 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
+    state.tlabStart = tlabStart_;
+    state.tlabEnd = tlabEnd_;
     lastRunUsedJIT_ = true;
     {
         std::lock_guard<std::mutex> lk(gStateOwnerMu);
@@ -8506,6 +8545,8 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
+    state.tlabStart = tlabStart_;
+    state.tlabEnd = tlabEnd_;
     const int64_t rv = executeFunction(primary, entryPoint, state);
     if (rv == -1 && !jitError.empty()) {
         lastError_ = "[JIT] " + jitError + " | [Interp] " + lastError_;
@@ -8595,6 +8636,8 @@ int64_t HVMJIT::invokeInboundCallback(size_t slot, const std::vector<uint64_t>& 
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
+    state.tlabStart = tlabStart_;
+    state.tlabEnd = tlabEnd_;
     for (size_t i = 0; i < args.size() && i < 7; ++i) {
         state.regs[1 + i] = static_cast<int64_t>(args[i]);
     }
@@ -8639,6 +8682,8 @@ bool HVMJIT::buildInspectorTrace(const std::string& entryPoint) {
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
+    state.tlabStart = tlabStart_;
+    state.tlabEnd = tlabEnd_;
     inspectorCaptureEnabled_ = true;
     (void)executeFunction(primary, entryPoint, state);
     inspectorCaptureEnabled_ = false;

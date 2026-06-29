@@ -1411,3 +1411,69 @@ TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalValueWritten) {
     EXPECT_EQ(jit.run("_F_main_v"), 99) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpReturnsZeroNoTLAB) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_zero.ho"] = buildModuleBytes("allocbump_zero", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("allocbump_zero.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpTLABHit) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_hit.ho"] = buildModuleBytes("allocbump_hit", ins, syms);
+
+    HVMJIT jit(io);
+    jit.setTLAB(4096, 8192);
+    ASSERT_TRUE(jit.loadInput("allocbump_hit.ho")) << jit.getLastError();
+    int64_t result = jit.run("_F_main_v");
+    EXPECT_GT(result, 0) << jit.getLastError();
+    EXPECT_GE(result, 4096);
+    EXPECT_LT(result, 8192);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpAlignment) {
+    // With tlabStart at 4097 (misaligned), alignment=8 should round up to 4104
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_align.ho"] = buildModuleBytes("allocbump_align", ins, syms);
+
+    HVMJIT jit(io);
+    jit.setTLAB(4097, 8192);
+    ASSERT_TRUE(jit.loadInput("allocbump_align.ho")) << jit.getLastError();
+    int64_t result = jit.run("_F_main_v");
+    EXPECT_EQ(result, 4104);  // (4097 + 7) & ~7 = 4104
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpTLABExhausted) {
+    // Set TLAB to just 8 bytes — second ALLOC.BUMP should return 0
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{3, 2, 8}),  // first alloc: fits, returns non-zero
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),  // second alloc: TLAB exhausted, returns 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_exhaust.ho"] = buildModuleBytes("allocbump_exhaust", ins, syms);
+
+    HVMJIT jit(io);
+    jit.setTLAB(4096, 4112);  // Exactly 16 bytes of TLAB (fits one 16-byte alloc)
+    ASSERT_TRUE(jit.loadInput("allocbump_exhaust.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+

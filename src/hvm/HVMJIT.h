@@ -108,6 +108,8 @@ public:
         int64_t vl = 0;
         int64_t vtype = 0;
         uint64_t reservationAddr = UINT64_MAX;
+        uint64_t tlabStart = 0;
+        uint64_t tlabEnd = 0;
     };
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};
@@ -126,6 +128,11 @@ public:
     std::array<int64_t, 32> getRegisters() const;
     std::vector<uint8_t> readVirtualMemory(uint64_t addr, size_t size) const;
     bool getStopExecutionRequested() const { return stopExecutionRequested_.load(std::memory_order_relaxed); }
+
+    void setTLAB(uint64_t start, uint64_t end) {
+        tlabStart_ = start;
+        tlabEnd_ = end;
+    }
 
 private:
 
@@ -240,6 +247,8 @@ private:
     std::atomic<bool> stopExecutionRequested_{false};
     mutable std::mutex lastRegistersMu_;
     std::array<int64_t, 32> lastRegisters_{};
+    uint64_t tlabStart_ = 0;
+    uint64_t tlabEnd_ = 0;
 };
 
 } // namespace hooc
