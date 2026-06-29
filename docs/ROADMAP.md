@@ -109,11 +109,11 @@ This document provides a high-level overview of the current status of all tracke
   - **Status**: COMPLETED
   - **Priority**: Medium
 
-## Partially Implemented
+## Completed / Fixed / Implemented
 
 - **[ISSUE-007_memory_leaks.md](issues/ISSUE-007_memory_leaks.md)**
   - **Title**: # ISSUE-007: ARC Memory Leaks in Generated Code
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: IMPLEMENTED
   - **Priority**: HIGH
 
 - **[ISSUE-014_jit_exception_state_race.md](issues/ISSUE-014_jit_exception_state_race.md)**
