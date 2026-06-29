@@ -6621,14 +6621,32 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 lastError_ = "TRAPRET not supported in user mode";
                 state.trapHit = true;
                 return -1;
-            case hvm::Opcode::LR_D:
-                lastError_ = "LR.D not implemented";
-                state.trapHit = true;
-                return -1;
-            case hvm::Opcode::SC_D:
-                lastError_ = "SC.D not implemented";
-                state.trapHit = true;
-                return -1;
+            case hvm::Opcode::LR_D: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                uint64_t val = 0;
+                if (!loadU64(readReg(o.rs1), val)) {
+                    lastError_ = "Invalid memory address in LR.D";
+                    state.trapHit = true;
+                    return -1;
+                }
+                state.reservationAddr = readReg(o.rs1);
+                writeReg(o.rd, val);
+                break;
+            }
+            case hvm::Opcode::SC_D: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint64_t addr = readReg(o.rs1);
+                const uint64_t val = readReg(o.rs2);
+                uint64_t result = 1;
+                if (state.reservationAddr == addr) {
+                    if (storeU64(addr, val)) {
+                        result = 0;
+                    }
+                }
+                state.reservationAddr = UINT64_MAX;
+                writeReg(o.rd, result);
+                break;
+            }
             case hvm::Opcode::CSRRW:
                 lastError_ = "CSRRW not implemented";
                 state.trapHit = true;
@@ -7072,7 +7090,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -8207,12 +8225,36 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.CreateRet(builder.getInt64(-1));
                     break;
                 } else if (op == hvm::Opcode::LR_D) {
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
-                    builder.CreateRet(builder.getInt64(-1));
-                    break;
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* addrVal = readReg(o.rs1);
+                    auto* ptr = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
+                    auto* loaded = builder.CreateLoad(i64, ptr);
+                    builder.CreateStore(addrVal, builder.CreateStructGEP(stateTy, stateArg, 9));
+                    writeReg(o.rd, loaded);
                 } else if (op == hvm::Opcode::SC_D) {
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
-                    builder.CreateRet(builder.getInt64(-1));
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* addrVal = readReg(o.rs1);
+                    auto* storeVal = readReg(o.rs2);
+                    auto* resAddr = builder.CreateLoad(i64, builder.CreateStructGEP(stateTy, stateArg, 9));
+                    builder.CreateStore(builder.getInt64(UINT64_MAX), builder.CreateStructGEP(stateTy, stateArg, 9));
+                    auto* match = builder.CreateICmpEQ(addrVal, resAddr);
+                    ensureBlock(nextPc);
+                    if (!blockByPc.count(nextPc)) { builder.CreateRet(builder.getInt64(-1)); break; }
+                    auto* scOkBB = llvm::BasicBlock::Create(*context, "sc_ok", fn);
+                    auto* scFailBB = llvm::BasicBlock::Create(*context, "sc_fail", fn);
+                    builder.CreateCondBr(match, scOkBB, scFailBB);
+                    builder.SetInsertPoint(scOkBB);
+                    {
+                        auto* storePtr = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
+                        builder.CreateStore(storeVal, storePtr);
+                        writeReg(o.rd, builder.getInt64(0));
+                        builder.CreateBr(blockByPc[nextPc]);
+                    }
+                    builder.SetInsertPoint(scFailBB);
+                    {
+                        writeReg(o.rd, builder.getInt64(1));
+                        builder.CreateBr(blockByPc[nextPc]);
+                    }
                     break;
                 } else if (op == hvm::Opcode::CSRRW) {
                     builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));

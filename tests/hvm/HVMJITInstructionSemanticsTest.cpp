@@ -1323,3 +1323,91 @@ TEST_F(HVMJITInstructionSemanticsTest, ReleaseNonFinalReturnsZero) {
     EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, LoadReserveLoadsValue) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LR_D, OperandsR{5, 4, 0, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 5, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lr_load.ho"] = buildModuleBytes("lr_load", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lr_load.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 42) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalSuccess) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LR_D, OperandsR{5, 4, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 77}),
+        makeR(Opcode::SC_D, OperandsR{7, 4, 6, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 7, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sc_success.ho"] = buildModuleBytes("sc_success", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sc_success.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalFailsNoReservation) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        // No LR.D — reservation is UINT64_MAX, won't match r4
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 77}),
+        makeR(Opcode::SC_D, OperandsR{7, 4, 6, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 7, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sc_no_res.ho"] = buildModuleBytes("sc_no_res", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sc_no_res.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalValueWritten) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LR_D, OperandsR{5, 4, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 99}),
+        makeR(Opcode::SC_D, OperandsR{7, 4, 6, 0}),
+        // Now verify via LR.D that 99 was written
+        makeR(Opcode::LR_D, OperandsR{8, 4, 0, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 8, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sc_value.ho"] = buildModuleBytes("sc_value", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sc_value.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 99) << jit.getLastError();
+}
+

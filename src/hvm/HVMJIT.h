@@ -107,6 +107,7 @@ public:
         int64_t vregs[32][8]{};
         int64_t vl = 0;
         int64_t vtype = 0;
+        uint64_t reservationAddr = UINT64_MAX;
     };
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};
