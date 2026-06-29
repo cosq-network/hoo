@@ -1136,6 +1136,79 @@ TEST_F(HVMJITInstructionSemanticsTest, SyscallFileIOWithDiskFile) {
     std::remove("t");
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, LdStPairRoundTrip) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 66}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 4660}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 0}),
+        makeR(Opcode::LD_P, OperandsR{5, 5, 4, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 5, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ldstpair.ho"] = buildModuleBytes("ldstpair", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ldstpair.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 66) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdPairMisalignedAddress) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),
+        makeI(Opcode::LDA, OperandsI{3, 30, 0}),
+        makeR(Opcode::ARITH, OperandsR{4, 3, 2, 0}),
+        makeR(Opcode::LD_P, OperandsR{5, 5, 4, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ldp_malign.ho"] = buildModuleBytes("ldp_malign", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ldp_malign.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StPairMisalignedAddress) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),
+        makeI(Opcode::LDA, OperandsI{3, 30, 0}),
+        makeR(Opcode::ARITH, OperandsR{4, 3, 2, 0}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["stp_malign.ho"] = buildModuleBytes("stp_malign", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("stp_malign.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdPairPairOverflowRejected) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::LDA, OperandsI{2, 30, -16}),
+        makeR(Opcode::LD_P, OperandsR{3, 31, 2, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ldp_overflow.ho"] = buildModuleBytes("ldp_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ldp_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessThan) {
     // CMPULT (func=4): 200 < 10 should be false (0) for unsigned bytes
     std::vector<HVMInstruction> ins{
@@ -1201,6 +1274,52 @@ TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessEqualFalse) {
 
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("cmpule_false.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseNullReturnsZero) {
+    std::vector<HVMInstruction> ins{
+        makeR(Opcode::RELEASE, OperandsR{1, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_null.ho"] = buildModuleBytes("release_null", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_null.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseFinalReturnsOne) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),
+        makeR(Opcode::RELEASE, OperandsR{1, 4, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_final.ho"] = buildModuleBytes("release_final", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_final.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseNonFinalReturnsZero) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),
+        makeR(Opcode::RETAIN, OperandsR{5, 4, 0, 0}),
+        makeR(Opcode::RELEASE, OperandsR{1, 4, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_nonfinal.ho"] = buildModuleBytes("release_nonfinal", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_nonfinal.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
 }
 

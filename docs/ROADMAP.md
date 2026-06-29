@@ -226,7 +226,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-040_hvm_spec_compatibility.md](issues/ISSUE-040_hvm_spec_compatibility.md)**
   - **Title**: # ISSUE-040: HVM Implementation Is Not Fully Compatible With HVM 1.5 Specification
-  - **Status**: PARTIALLY IMPLEMENTED (Phase 1 + Phase 2: CSV parity + JIT IR lowering for all new opcodes)
+  - **Status**: PARTIALLY IMPLEMENTED (Phases 1-4: CSV parity + JIT IR lowering + LD.P/ST.P hardening + RELEASE zero-flag)
   - **Priority**: High
 
 - **[ISSUE-042_decimal_intrinsic.md](issues/ISSUE-042_decimal_intrinsic.md)**

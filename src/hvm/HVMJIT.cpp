@@ -3685,6 +3685,13 @@ extern "C" {
             hoo_release(ptr);
         }
     }
+    HVM_RUNTIME_EXPORT uint64_t hooc_hvm_arc_release_zero_flag(uint64_t obj) {
+        void* ptr = reinterpret_cast<void*>(obj);
+        if (!hoo_is_managed_object(ptr)) {
+            return 0;
+        }
+        return static_cast<uint64_t>(hoo_release_zero_flag(ptr));
+    }
 }
 
 using InboundTrampolineFn = uint64_t(*)(uint64_t);
@@ -6313,8 +6320,8 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             case hvm::Opcode::RELEASE: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
                 uint64_t val = readReg(o.rs1);
-                hooc_hvm_arc_release_if_managed(val);
-                writeReg(o.rd, 0);
+                uint64_t zeroFlag = hooc_hvm_arc_release_zero_flag(val);
+                writeReg(o.rd, zeroFlag);
                 break;
             }
             case hvm::Opcode::SYSCALL: {
@@ -6570,10 +6577,21 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 break;
             case hvm::Opcode::LD_P: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                if (o.rs1 == 31) {
+                    lastError_ = "LD.P second destination register overflows to r0";
+                    state.trapHit = true;
+                    return -1;
+                }
                 const uint64_t addr = readReg(o.rs2);
+                if ((addr & 7) != 0) {
+                    lastError_ = "Misaligned LD.P address";
+                    state.trapHit = true;
+                    return -1;
+                }
                 uint64_t val1 = 0, val2 = 0;
                 if (!loadU64(addr, val1) || !loadU64(addr + 8, val2)) {
                     lastError_ = "Invalid memory load address in LD.P";
+                    state.trapHit = true;
                     return -1;
                 }
                 writeReg(o.rd, val1);
@@ -6583,8 +6601,14 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             case hvm::Opcode::ST_P: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
                 const uint64_t addr = readReg(o.rs2);
+                if ((addr & 7) != 0) {
+                    lastError_ = "Misaligned ST.P address";
+                    state.trapHit = true;
+                    return -1;
+                }
                 if (!storeU64(addr, readReg(o.rd)) || !storeU64(addr + 8, readReg(o.rs1))) {
                     lastError_ = "Invalid memory store address in ST.P";
+                    state.trapHit = true;
                     return -1;
                 }
                 break;
@@ -7148,6 +7172,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             "hooc_hvm_arc_retain_if_managed", llvm::FunctionType::get(builder.getVoidTy(), {i64}, false));
         auto arcReleaseCallee = module->getOrInsertFunction(
             "hooc_hvm_arc_release_if_managed", llvm::FunctionType::get(builder.getVoidTy(), {i64}, false));
+        auto arcReleaseZeroFlagCallee = module->getOrInsertFunction(
+            "hooc_hvm_arc_release_zero_flag", llvm::FunctionType::get(i64, {i64}, false));
         auto pushHandlerStateCallee = module->getOrInsertFunction(
             "hooc_hvm_sys_push_handler_state", llvm::FunctionType::get(i64, {statePtrTy, i64}, false));
         auto popHandlerStateCallee = module->getOrInsertFunction(
@@ -7894,8 +7920,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                 } else if (op == hvm::Opcode::RELEASE) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* val = readReg(o.rs1);
-                    builder.CreateCall(arcReleaseCallee, {val});
-                    writeReg(o.rd, builder.getInt64(0));
+                    auto* zeroFlag = builder.CreateCall(arcReleaseZeroFlagCallee, {val});
+                    writeReg(o.rd, zeroFlag);
                 } else if (op == hvm::Opcode::SYSCALL) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
                     auto* syscallErr = llvm::BasicBlock::Create(*context, "sys_err", fn);
@@ -8112,10 +8138,35 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                 } else if (op == hvm::Opcode::ICACHE_RNG) {
                 } else if (op == hvm::Opcode::LD_P) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    if (o.rs1 == 31) {
+                        // Second destination register would overflow to r0
+                        builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                        builder.CreateRet(builder.getInt64(-1));
+                        break;
+                    }
                     auto* addrVal = readReg(o.rs2);
+                    auto* alignOk = llvm::BasicBlock::Create(*context, "ldp_align_ok", fn);
+                    auto* alignErr = llvm::BasicBlock::Create(*context, "ldp_align_err", fn);
+                    auto* misaligned = builder.CreateICmpNE(builder.CreateAnd(addrVal, builder.getInt64(7)), builder.getInt64(0));
+                    builder.CreateCondBr(misaligned, alignErr, alignOk);
+                    builder.SetInsertPoint(alignErr);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(alignOk);
+                    auto* addr8 = builder.CreateAdd(addrVal, builder.getInt64(8));
+                    auto* isVM = builder.CreateICmpULT(addrVal, builder.getInt64(1000000000ULL));
+                    auto* memSize = builder.getInt64(static_cast<uint64_t>(memory_.size()));
+                    auto* oob1 = builder.CreateICmpUGE(addrVal, memSize);
+                    auto* oob2 = builder.CreateICmpUGE(addr8, memSize);
+                    auto* oob = builder.CreateOr(oob1, oob2);
+                    auto* badAddr = builder.CreateAnd(isVM, oob);
+                    auto* boundsOk = llvm::BasicBlock::Create(*context, "ldp_bounds_ok", fn);
+                    auto* boundsErr = llvm::BasicBlock::Create(*context, "ldp_bounds_err", fn);
+                    builder.CreateCondBr(badAddr, boundsErr, boundsOk);
+                    builder.SetInsertPoint(boundsErr);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(boundsOk);
                     auto* ptr1 = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
                     auto* val1 = builder.CreateLoad(i64, ptr1);
-                    auto* addr8 = builder.CreateAdd(addrVal, builder.getInt64(8));
                     auto* ptr2 = builder.CreateBitCast(memAddr(addr8), llvm::PointerType::get(*context, 0));
                     auto* val2 = builder.CreateLoad(i64, ptr2);
                     writeReg(o.rd, val1);
@@ -8123,9 +8174,28 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                 } else if (op == hvm::Opcode::ST_P) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* addrVal = readReg(o.rs2);
+                    auto* alignOk = llvm::BasicBlock::Create(*context, "stp_align_ok", fn);
+                    auto* alignErr = llvm::BasicBlock::Create(*context, "stp_align_err", fn);
+                    auto* misaligned = builder.CreateICmpNE(builder.CreateAnd(addrVal, builder.getInt64(7)), builder.getInt64(0));
+                    builder.CreateCondBr(misaligned, alignErr, alignOk);
+                    builder.SetInsertPoint(alignErr);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(alignOk);
+                    auto* addr8 = builder.CreateAdd(addrVal, builder.getInt64(8));
+                    auto* isVM = builder.CreateICmpULT(addrVal, builder.getInt64(1000000000ULL));
+                    auto* memSize = builder.getInt64(static_cast<uint64_t>(memory_.size()));
+                    auto* oob1 = builder.CreateICmpUGE(addrVal, memSize);
+                    auto* oob2 = builder.CreateICmpUGE(addr8, memSize);
+                    auto* oob = builder.CreateOr(oob1, oob2);
+                    auto* badAddr = builder.CreateAnd(isVM, oob);
+                    auto* boundsOk = llvm::BasicBlock::Create(*context, "stp_bounds_ok", fn);
+                    auto* boundsErr = llvm::BasicBlock::Create(*context, "stp_bounds_err", fn);
+                    builder.CreateCondBr(badAddr, boundsErr, boundsOk);
+                    builder.SetInsertPoint(boundsErr);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(boundsOk);
                     auto* ptr1 = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
                     builder.CreateStore(readReg(o.rd), ptr1);
-                    auto* addr8 = builder.CreateAdd(addrVal, builder.getInt64(8));
                     auto* ptr2 = builder.CreateBitCast(memAddr(addr8), llvm::PointerType::get(*context, 0));
                     builder.CreateStore(readReg(o.rs1), ptr2);
                 } else if (op == hvm::Opcode::ECALL) {

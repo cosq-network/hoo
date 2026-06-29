@@ -282,6 +282,51 @@ void* hoo_retain(void* obj) {
     return obj;
 }
 
+static void hoo_release_finalize(void* obj, HooObjectHeader* header) {
+#ifdef HOO_DEBUG_MEMORY
+    fprintf(stderr, "[FREE] obj=%p type=%lld\n",
+            obj, (long long)header->type_id);
+#endif
+
+    atomic_thread_fence(memory_order_acquire);
+
+    // Call registered destructor before freeing
+    int64_t type_id = header->type_id;
+    if (type_id >= 0 && type_id < HOO_DESTRUCTOR_TABLE_SIZE) {
+        HooDestructor dtor = g_destructors[type_id];
+        if (dtor) {
+            dtor(obj);
+        }
+    }
+
+    managed_unregister(obj);
+
+    memory_stats.total_deallocations++;
+    memory_stats.current_live_objects--;
+
+    bool is_tlab_obj = false;
+    TLABObjNode* prev = NULL;
+    TLABObjNode* it = g_tlab_objects;
+    while (it) {
+        if (it->obj == obj) {
+            is_tlab_obj = true;
+            if (prev) {
+                prev->next = it->next;
+            } else {
+                g_tlab_objects = it->next;
+            }
+            free(it);
+            break;
+        }
+        prev = it;
+        it = it->next;
+    }
+
+    if (!is_tlab_obj) {
+        free(header);
+    }
+}
+
 void hoo_release(void* obj) {
     if (!obj) {
         return;
@@ -303,49 +348,35 @@ void hoo_release(void* obj) {
     }
 
     if (old_count == 1) {
+        hoo_release_finalize(obj, header);
+    }
+}
+
+int64_t hoo_release_zero_flag(void* obj) {
+    if (!obj) {
+        return 0;
+    }
+
+    HooObjectHeader* header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
+
+    int64_t old_count = atomic_fetch_sub_explicit(&header->refcount, 1, memory_order_release);
+
 #ifdef HOO_DEBUG_MEMORY
-        fprintf(stderr, "[FREE] obj=%p type=%lld\n",
-                obj, (long long)header->type_id);
+    fprintf(stderr, "[RELEASE_ZF] obj=%p type=%lld refcount=%lld\n",
+            obj, (long long)header->type_id, (long long)old_count - 1);
 #endif
 
-        atomic_thread_fence(memory_order_acquire);
-
-        // Call registered destructor before freeing
-        int64_t type_id = header->type_id;
-        if (type_id >= 0 && type_id < HOO_DESTRUCTOR_TABLE_SIZE) {
-            HooDestructor dtor = g_destructors[type_id];
-            if (dtor) {
-                dtor(obj);
-            }
-        }
-
-        managed_unregister(obj);
-
-        memory_stats.total_deallocations++;
-        memory_stats.current_live_objects--;
-
-        bool is_tlab_obj = false;
-        TLABObjNode* prev = NULL;
-        TLABObjNode* it = g_tlab_objects;
-        while (it) {
-            if (it->obj == obj) {
-                is_tlab_obj = true;
-                if (prev) {
-                    prev->next = it->next;
-                } else {
-                    g_tlab_objects = it->next;
-                }
-                free(it);
-                break;
-            }
-            prev = it;
-            it = it->next;
-        }
-
-        if (!is_tlab_obj) {
-            free(header);
-        }
+    if (old_count <= 0) {
+        fprintf(stderr, "FATAL: Double-release or negative refcount for object %p (type %lld)\n",
+                obj, (long long)header->type_id);
+        exit(1);
     }
+
+    if (old_count == 1) {
+        hoo_release_finalize(obj, header);
+        return 1;
+    }
+    return 0;
 }
 
 int64_t hoo_get_refcount(void* obj) {
