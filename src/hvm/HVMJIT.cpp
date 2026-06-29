@@ -5023,6 +5023,7 @@ bool hooc::HVMJIT::validateModule(const hvm::HOModule& module, const std::string
     {
         static constexpr uint64_t kSupportedFeatures =
             static_cast<uint64_t>(hvm::HVMFeature::HVM_C) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_V) |
             static_cast<uint64_t>(hvm::HVMFeature::HVM_Alloc) |
             static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ);
         uint64_t required = module.getRequiredFeatures();
@@ -5035,7 +5036,6 @@ bool hooc::HVMJIT::validateModule(const hvm::HOModule& module, const std::string
                     unsupportedList += name;
                 }
             };
-            appendFeature(hvm::HVMFeature::HVM_V, "HVM-V");
             appendFeature(hvm::HVMFeature::HVM_A, "HVM-A");
             appendFeature(hvm::HVMFeature::HVM_Prof, "HVM-Prof");
             setError(ErrorPhase::Validate, ErrorCode::UnsupportedFeature,

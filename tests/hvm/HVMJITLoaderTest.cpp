@@ -1355,13 +1355,41 @@ TEST_F(HVMJITLoaderTest, ImportSymbolValidationRejectsMissingDependencySymbol) {
     EXPECT_EQ(info->code, HVMJIT::ErrorCode::MissingDependency);
 }
 
-TEST_F(HVMJITLoaderTest, ValidationRejectsUnsupportedFeatureV) {
+TEST_F(HVMJITLoaderTest, ValidationRejectsUnsupportedFeatureA) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{1, 0, 1}),
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
     };
-    auto module = HOModule::create("needshvmv");
-    module->setName("needshvmv");
+    auto module = HOModule::create("needshvma");
+    module->setName("needshvma");
+    module->setRequiredFeatures(static_cast<uint64_t>(HVMFeature::HVM_A));
+    Section text;
+    text.name = ".text";
+    text.type = SectionType::SHT_TEXT;
+    text.flags = SectionFlags::ALLOC | SectionFlags::EXECUTE;
+    text.data = module->encodeInstructions(ins);
+    text.virtual_size = text.data.size();
+    module->addSection(std::move(text));
+    module->addSymbol(funcSym("_F_main_v", 0));
+    std::vector<uint8_t> bytes;
+    ASSERT_TRUE(module->serialize(bytes));
+    io.binaryFiles["needshvma.ho"] = bytes;
+
+    HVMJIT jit(io);
+    EXPECT_FALSE(jit.loadInput("needshvma.ho"));
+    auto info = jit.getLastErrorInfo();
+    ASSERT_TRUE(info.has_value());
+    EXPECT_EQ(info->phase, HVMJIT::ErrorPhase::Validate);
+    EXPECT_EQ(info->code, HVMJIT::ErrorCode::UnsupportedFeature);
+}
+
+TEST_F(HVMJITLoaderTest, SupportedFeatureVAllowsLoad) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 42}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    auto module = HOModule::create("feathvmv");
+    module->setName("feathvmv");
     module->setRequiredFeatures(static_cast<uint64_t>(HVMFeature::HVM_V));
     Section text;
     text.name = ".text";
@@ -1373,14 +1401,11 @@ TEST_F(HVMJITLoaderTest, ValidationRejectsUnsupportedFeatureV) {
     module->addSymbol(funcSym("_F_main_v", 0));
     std::vector<uint8_t> bytes;
     ASSERT_TRUE(module->serialize(bytes));
-    io.binaryFiles["needshvmv.ho"] = bytes;
+    io.binaryFiles["feathvmv.ho"] = bytes;
 
     HVMJIT jit(io);
-    EXPECT_FALSE(jit.loadInput("needshvmv.ho"));
-    auto info = jit.getLastErrorInfo();
-    ASSERT_TRUE(info.has_value());
-    EXPECT_EQ(info->phase, HVMJIT::ErrorPhase::Validate);
-    EXPECT_EQ(info->code, HVMJIT::ErrorCode::UnsupportedFeature);
+    EXPECT_TRUE(jit.loadInput("feathvmv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 42);
 }
 
 TEST_F(HVMJITLoaderTest, SupportedFeatureAllowsLoad) {
