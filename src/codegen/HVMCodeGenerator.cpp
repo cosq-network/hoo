@@ -147,6 +147,7 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"Regex", 120},
         {"Mutex", 121},
         {"Uuid", 122},
+        {"Decimal", 123},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -2081,6 +2082,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             freeRegister(addrReg);
             return dest;
         }
+    if (auto decimalLit = dynamic_cast<const ast::DecimalLiteral*>(&primary)) {
+    std::string value = decimalLit->getValue();
+
+  
+    if (!value.empty() && (value.back() == 'm' || value.back() == 'M')) {
+        value.pop_back();
+    }
+    }
         if (auto charLit = dynamic_cast<const ast::CharacterLiteral*>(&primary)) {
             uint8_t cpReg = emitConstant(static_cast<int64_t>(charLit->getValue()));
             emit(Opcode::MOV, OperandsR{1, cpReg, 0, 0});
@@ -2942,6 +2951,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
         const uint32_t leftExprType = inferExpressionTypeId(binary->getLeft());
         const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
+      
+
+    if (leftExprType == 123|| rightExprType == 123) {
+    if (leftExprType != rightExprType) {
+        addError("Decimal operands must have matching precision and scale");
+        return 0;
+    }
+    
+    return emitDecimalBinaryOp(*binary);
+    }
         if (leftExprType == 104 || rightExprType == 104) {
             switch (binary->getOperator()) {
                 case ast::BinaryOperator::PLUS: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 0);
@@ -4121,7 +4140,44 @@ uint8_t HVMCodeGenerator::emitTensorVectorArith(const ast::BinaryExpression& bin
     
     return dest;
 }
+uint8_t HVMCodeGenerator::emitDecimalBinaryOp(const ast::BinaryExpression& binary) {
+    uint8_t lhs = visitExpression(binary.getLeft());
+    uint8_t rhs = visitExpression(binary.getRight());
 
+    const char* symbol = nullptr;
+
+    switch (binary.getOperator()) {
+        case ast::BinaryOperator::PLUS: symbol = "_F_hoo_Decimal_add_p_p_p"; break;
+           
+
+        case ast::BinaryOperator::MINUS: symbol = "_F_hoo_Decimal_sub_p_p_p"; break;
+
+        case ast::BinaryOperator::MULTIPLY: symbol = "_F_hoo_Decimal_mul_p_p_p"; break;
+
+        case ast::BinaryOperator::DIVIDE: symbol = "_F_hoo_Decimal_div_p_p_p"; break;
+
+        case ast::BinaryOperator::MODULO:  symbol = "_F_hoo_Decimal_mod_p_p_p"; break;
+
+        default:
+            addError("Unsupported decimal operator");
+            freeRegister(lhs);
+            freeRegister(rhs);
+            return 0;
+    }
+
+    emit(Opcode::MOV, OperandsR{1, lhs, 0, 0});
+    emit(Opcode::MOV, OperandsR{2, rhs, 0, 0});
+
+    emitCall(Opcode::CALL, symbol);
+
+    uint8_t dest = allocateRegister();
+    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+
+    freeRegister(lhs);
+    freeRegister(rhs);
+
+    return dest;
+}
 uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
     if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
         const ast::ASTNode& primary = primaryExpr->getPrimary();
@@ -4133,6 +4189,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
         if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return 101;
+        if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) return 123;
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isAnyArray() ? 118 : 102;
         if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
@@ -4166,6 +4223,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         uint32_t left = inferExpressionTypeId(binary->getLeft());
         uint32_t right = inferExpressionTypeId(binary->getRight());
         if (left == 104 || right == 104) return 104;
+        if (left == 123 || right == 123) return 123;
         switch (binary->getOperator()) {
             case ast::BinaryOperator::LESS:
             case ast::BinaryOperator::LESS_EQUALS:

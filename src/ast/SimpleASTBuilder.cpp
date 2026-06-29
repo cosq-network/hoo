@@ -947,11 +947,7 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         double value = getDoubleValue(ctx->FLOATING_LITERAL());
         auto floatingLiteral = std::make_unique<FloatingLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(floatingLiteral));
-    } else if (ctx->DECIMAL_LITERAL()) {
-        std::string value = ctx->DECIMAL_LITERAL()->getText();
-        auto decimalLiteral = std::make_unique<DecimalLiteral>(std::move(value));
-        return std::make_unique<PrimaryExpression>(std::move(decimalLiteral));
-    } else if (ctx->STRING_LITERAL()) {
+    }else if (ctx->STRING_LITERAL()) {
         std::string value = getStringValue(ctx->STRING_LITERAL());
         if (isInterpolatedString(ctx->STRING_LITERAL())) {
             auto parts = parseInterpolatedString(value);
