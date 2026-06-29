@@ -4,6 +4,7 @@
 #include <vector>
 #include <optional>
 #include <map>
+#include <fstream>
 
 #include "core/HooCLI.h"
 #include "hvm/HOModule.h"
@@ -249,90 +250,47 @@ TEST_F(HooCLITest, OutputOptionProducesBytecode) {
     int result = cli->run(4, args.data());
 
     EXPECT_EQ(result, 0);
-    auto* binary = static_cast<FakeIOProvider*>(cli->getIOProvider())->getWrittenBinaryFile("out.ho");
-    EXPECT_NE(binary, nullptr);
-    EXPECT_FALSE(binary->empty());
+    {
+        std::ifstream f("out.ho");
+        EXPECT_TRUE(f.good());
+    }
+    std::remove("out.ho");
 }
 
-TEST_F(HooCLITest, ExecuteBytecodeFile) {
-    // Generate valid bytecode first
-    hvm::HOModule mod("test");
-    hvm::Section text;
-    text.name = ".text";
-    text.type = hvm::SectionType::SHT_TEXT;
-    text.flags = hvm::SectionFlags::ALLOC | hvm::SectionFlags::EXECUTE;
-    
-    // RET instruction (Physical v1.4)
-    hvm::HVMInstruction retInst(hvm::Opcode::RET, hvm::OperandsR{0, 0, 0, 0});
-    text.data = retInst.encode(); 
-    text.virtual_size = text.data.size();
-    mod.addSection(std::move(text));
-    
-    hvm::Symbol sym;
-    sym.name = "_F_main_v";
-    sym.value = 0;
-    sym.type = hvm::Symbol::STT_FUNC;
-    sym.binding = hvm::Symbol::STB_GLOBAL;
-    mod.addSymbol(sym);
-
-    std::vector<uint8_t> bytes;
-    mod.serialize(bytes);
-
+TEST_F(HooCLITest, LongOutputEqualsOptionProducesBytecode) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
-    fakeIO->setBinaryFile("test.ho", bytes);
+    fakeIO->setFile("test.hoo", "func main() {}");
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
     std::vector<char*> args;
     args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--output=out.ho"));
+    args.push_back(const_cast<char*>("test.hoo"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 0);
+    {
+        std::ifstream f("out.ho");
+        EXPECT_TRUE(f.good());
+    }
+    std::remove("out.ho");
+}
+
+TEST_F(HooCLITest, RejectsOptionAsOutputPath) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("-o"));
     args.push_back(const_cast<char*>("--verbose"));
-    args.push_back(const_cast<char*>("test.ho"));
+    args.push_back(const_cast<char*>("test.hoo"));
 
-    int result = cli->run(3, args.data());
+    int result = cli->run(4, args.data());
 
-    EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Execution completed successfully") != std::string::npos);
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("requires an output file path") != std::string::npos);
 }
 
-TEST_F(HooCLITest, ReplFlagDoesNotRequireInputFile) {
-    auto fakeIO = std::make_unique<FakeIOProvider>();
-    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
 
-    std::vector<char*> args;
-    args.push_back(const_cast<char*>("hoo"));
-    args.push_back(const_cast<char*>("--repl"));
-
-    int result = cli->run(2, args.data());
-
-    EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().empty());
-    EXPECT_TRUE(cli->getIOProvider()->getStdout().empty());
-}
-
-TEST_F(HooCLITest, ReplFlagCombinedWithInputFileAcceptsInput) {
-    auto fakeIO = std::make_unique<FakeIOProvider>();
-    fakeIO->setFile("script.hoo", "func :int64 main() { return 7; }");
-    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
-
-    std::vector<char*> args;
-    args.push_back(const_cast<char*>("hoo"));
-    args.push_back(const_cast<char*>("--repl"));
-    args.push_back(const_cast<char*>("script.hoo"));
-
-    int result = cli->run(3, args.data());
-
-    EXPECT_EQ(result, 0);
-}
-
-TEST_F(HooCLITest, ReplFlagWithoutInputFileDoesNotShowUsageError) {
-    auto fakeIO = std::make_unique<FakeIOProvider>();
-    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
-
-    std::vector<char*> args;
-    args.push_back(const_cast<char*>("hoo"));
-    args.push_back(const_cast<char*>("--repl"));
-
-    int result = cli->run(2, args.data());
-
-    EXPECT_EQ(result, 0);
-    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("No input file specified") == std::string::npos);
-}

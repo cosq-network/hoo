@@ -85,6 +85,16 @@ void* hoo_retain(void* obj);
 void hoo_release(void* obj);
 
 /**
+ * Release an object and return whether the refcount reached zero.
+ * Performs the same decrement and optional destruction as hoo_release,
+ * but returns 1 if the object was freed (refcount hit zero), 0 otherwise.
+ *
+ * @param obj Pointer to object (can be NULL)
+ * @return 1 if object was freed (zero flag set), 0 otherwise
+ */
+int64_t hoo_release_zero_flag(void* obj);
+
+/**
  * Get the current reference count of an object (for debugging/testing).
  *
  * @param obj Pointer to object (can be NULL)

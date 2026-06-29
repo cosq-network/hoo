@@ -945,3 +945,58 @@ TEST_F(HOModuleTest, RoundTripInstructions) {
     EXPECT_EQ(decoded[0].getOpcode(), Opcode::ADDI);
     EXPECT_EQ(decoded[1].getOpcode(), Opcode::RET);
 }
+
+TEST_F(HOModuleTest, FeatureFlagsRoundTrip) {
+    auto module = HOModule::create("features");
+    module->setRequiredFeatures(
+        static_cast<uint64_t>(HVMFeature::HVM_C) |
+        static_cast<uint64_t>(HVMFeature::HVM_Alloc));
+    ASSERT_TRUE(module->requiresFeature(HVMFeature::HVM_C));
+    ASSERT_TRUE(module->requiresFeature(HVMFeature::HVM_Alloc));
+    ASSERT_FALSE(module->requiresFeature(HVMFeature::HVM_V));
+    ASSERT_FALSE(module->requiresFeature(HVMFeature::HVM_A));
+    ASSERT_FALSE(module->requiresFeature(HVMFeature::HVM_Prof));
+
+    std::vector<uint8_t> bytes;
+    ASSERT_TRUE(module->serialize(bytes));
+
+    auto parsed = HOModule::parse(bytes);
+    ASSERT_NE(parsed, nullptr);
+    EXPECT_TRUE(parsed->requiresFeature(HVMFeature::HVM_C));
+    EXPECT_TRUE(parsed->requiresFeature(HVMFeature::HVM_Alloc));
+    EXPECT_FALSE(parsed->requiresFeature(HVMFeature::HVM_V));
+    EXPECT_FALSE(parsed->requiresFeature(HVMFeature::HVM_A));
+    EXPECT_FALSE(parsed->requiresFeature(HVMFeature::HVM_Prof));
+    EXPECT_EQ(parsed->getRequiredFeatures(),
+              static_cast<uint64_t>(HVMFeature::HVM_C) |
+              static_cast<uint64_t>(HVMFeature::HVM_Alloc));
+}
+
+TEST_F(HOModuleTest, FeatureFlagsZeroDefault) {
+    auto module = HOModule::create("default");
+    EXPECT_EQ(module->getRequiredFeatures(), 0);
+    EXPECT_FALSE(module->requiresFeature(HVMFeature::HVM_C));
+
+    std::vector<uint8_t> bytes;
+    ASSERT_TRUE(module->serialize(bytes));
+
+    auto parsed = HOModule::parse(bytes);
+    ASSERT_NE(parsed, nullptr);
+    EXPECT_EQ(parsed->getRequiredFeatures(), 0);
+}
+
+TEST_F(HOModuleTest, FeatureFlagsNoteSectionSize) {
+    auto module = HOModule::create("featnote");
+    module->setRequiredFeatures(
+        static_cast<uint64_t>(HVMFeature::HVM_C) |
+        static_cast<uint64_t>(HVMFeature::HVM_NZ));
+
+    std::vector<uint8_t> bytes;
+    ASSERT_TRUE(module->serialize(bytes));
+
+    // Verify a NOTE section is present in the serialized output
+    auto parsed = HOModule::parse(bytes);
+    ASSERT_NE(parsed, nullptr);
+    EXPECT_TRUE(parsed->requiresFeature(HVMFeature::HVM_C));
+    EXPECT_TRUE(parsed->requiresFeature(HVMFeature::HVM_NZ));
+}

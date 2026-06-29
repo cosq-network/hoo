@@ -405,3 +405,117 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     EXPECT_TRUE(foundFs) << "Expected Fs.read_text() to produce _M_hoo_E_fs_read_text symbol";
 }
 
+TEST_F(HVMCodeGeneratorTest, StringLiteralExprStmt_EmitsRelease) {
+    std::string code = R"(
+        func:void test() {
+            "hello";
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundCallRelease = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCallRelease = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundCallRelease) << "Expected CALL to _F_hoo_release_v_p for string literal expression statement";
+}
+
+TEST_F(HVMCodeGeneratorTest, AssignmentToManagedLocal_ReleasesOldValue) {
+    std::string code = R"(
+        func:void test() {
+            var s = "first";
+            s = "second";
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    int callCount = 0;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            callCount++;
+        }
+    }
+    EXPECT_GE(callCount, 1) << "Expected at least one CALL (hoo_release) for managed reassignment";
+}
+
+TEST_F(HVMCodeGeneratorTest, ReturnFromBlock_CleansUpManagedLocals) {
+    std::string code = R"(
+        func:object test() {
+            var s = "hello";
+            return s;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundRelease = false;
+    bool foundRetain = false;
+    bool foundLeave = false;
+    bool foundRet = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::RETAIN) foundRetain = true;
+        if (inst.getOpcode() == Opcode::LEAVE) foundLeave = true;
+        if (inst.getOpcode() == Opcode::RET) foundRet = true;
+    }
+    EXPECT_TRUE(foundRetain) << "Expected RETAIN for return value";
+    EXPECT_TRUE(foundLeave) << "Expected LEAVE before RET";
+    EXPECT_TRUE(foundRet) << "Expected RET";
+}
+
+TEST_F(HVMCodeGeneratorTest, LoopBreak_CleansUpManagedLocals) {
+    std::string code = R"(
+        func:void test() {
+            while (true) {
+                var s = "hello";
+                break;
+            }
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundJmp = false;
+    bool foundCall = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::JMP) foundJmp = true;
+        if (inst.getOpcode() == Opcode::CALL) foundCall = true;
+    }
+    EXPECT_TRUE(foundJmp) << "Expected JMP for break";
+    EXPECT_TRUE(foundCall) << "Expected CALL for scope cleanup before break";
+}
+
+TEST_F(HVMCodeGeneratorTest, InterpolatedStringExprStmt_EmitsRelease) {
+    std::string code = R"(
+        func:void test() {
+            "hello ${1}";
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundCallRelease = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCallRelease = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundCallRelease) << "Expected CALL for interpolated string expression statement cleanup";
+}
+
+

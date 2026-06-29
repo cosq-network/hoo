@@ -23,6 +23,7 @@ public:
     HVMCodeGenerator();
     virtual ~HVMCodeGenerator() = default;
     void setModuleContext(const std::string& moduleName);
+    void setExternalFunctionImports(const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions);
 
     /**
      * Main entry point: translates a full AST unit into a bytecode module.
@@ -54,6 +55,7 @@ private:
     std::vector<std::string> errors_;
     std::unordered_set<std::string> importedModules_;
     std::unordered_map<std::string, std::string> importedSymbols_;
+    std::unordered_map<std::string, std::pair<std::string, std::string>> externalFunctionImports_;
 
     bool isModuleImported(const std::string& moduleName) const;
     bool isSymbolImported(const std::string& name, const std::string& requiredModule) const;
@@ -163,6 +165,18 @@ private:
     uint32_t getLocalKeyTypeId(const std::string& name) const;
 
     /**
+     * Emit hoo_release for managed locals in scopes [to, from).
+     */
+    void emitScopeCleanup(size_t from, size_t to);
+
+    /**
+     * Check whether an expression evaluates to a freshly allocated managed
+     * temporary (string literal, interpolated string, new object/map, array/tensor literal).
+     * These temporaries are not tracked in locals and must be released at the point of discard.
+     */
+    bool isManagedTemporary(const ast::Expression& expr);
+
+    /**
      * Convert a declared AST type to a runtime typeId.
      */
     uint32_t typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName = nullptr) const;
@@ -208,6 +222,7 @@ private:
     struct ControlFlowScope {
         Label* breakLabel;
         Label* continueLabel;
+        size_t scopeDepth;
     };
     std::stack<ControlFlowScope> controlFlowStack_;
     std::vector<std::unique_ptr<Label>> allLabels_;

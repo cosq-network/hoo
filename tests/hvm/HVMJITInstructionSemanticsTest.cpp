@@ -1136,3 +1136,1032 @@ TEST_F(HVMJITInstructionSemanticsTest, SyscallFileIOWithDiskFile) {
     std::remove("t");
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, LdStPairRoundTrip) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 66}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 4660}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 0}),
+        makeR(Opcode::LD_P, OperandsR{5, 5, 4, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 5, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ldstpair.ho"] = buildModuleBytes("ldstpair", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ldstpair.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 66) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdPairMisalignedAddress) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),
+        makeI(Opcode::LDA, OperandsI{3, 30, 0}),
+        makeR(Opcode::ARITH, OperandsR{4, 3, 2, 0}),
+        makeR(Opcode::LD_P, OperandsR{5, 5, 4, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ldp_malign.ho"] = buildModuleBytes("ldp_malign", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ldp_malign.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StPairMisalignedAddress) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),
+        makeI(Opcode::LDA, OperandsI{3, 30, 0}),
+        makeR(Opcode::ARITH, OperandsR{4, 3, 2, 0}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["stp_malign.ho"] = buildModuleBytes("stp_malign", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("stp_malign.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdPairPairOverflowRejected) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::LDA, OperandsI{2, 30, -16}),
+        makeR(Opcode::LD_P, OperandsR{3, 31, 2, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ldp_overflow.ho"] = buildModuleBytes("ldp_overflow", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ldp_overflow.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessThan) {
+    // CMPULT (func=4): 200 < 10 should be false (0) for unsigned bytes
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 10}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 4}),   // r4 = (r2 <u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpult_lt.ho"] = buildModuleBytes("cmpult_lt", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpult_lt.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpGreater) {
+    // CMPULT (func=4) swapped: 10 < 200 should be true (1) for unsigned
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 200}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 4}),   // r4 = (r2 <u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpult_gt.ho"] = buildModuleBytes("cmpult_gt", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpult_gt.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessEqual) {
+    // CMPULE (func=5): 200 <= 200 should be true (1)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 200}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 5}),   // r4 = (r2 <=u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpule_eq.ho"] = buildModuleBytes("cmpule_eq", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpule_eq.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessEqualFalse) {
+    // CMPULE (func=5): 200 <= 10 should be false (0)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 10}),
+        makeR(Opcode::CMP, OperandsR{4, 2, 3, 5}),   // r4 = (r2 <=u r3) unsigned
+        makeR(Opcode::ARITH, OperandsR{1, 4, 0, 0}),  // r1 = r4 + 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpule_false.ho"] = buildModuleBytes("cmpule_false", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpule_false.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseNullReturnsZero) {
+    std::vector<HVMInstruction> ins{
+        makeR(Opcode::RELEASE, OperandsR{1, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_null.ho"] = buildModuleBytes("release_null", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_null.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseFinalReturnsOne) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),
+        makeR(Opcode::RELEASE, OperandsR{1, 4, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_final.ho"] = buildModuleBytes("release_final", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_final.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseNonFinalReturnsZero) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 1}),
+        makeR(Opcode::RETAIN, OperandsR{5, 4, 0, 0}),
+        makeR(Opcode::RELEASE, OperandsR{1, 4, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_nonfinal.ho"] = buildModuleBytes("release_nonfinal", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_nonfinal.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LoadReserveLoadsValue) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LR_D, OperandsR{5, 4, 0, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 5, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lr_load.ho"] = buildModuleBytes("lr_load", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lr_load.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 42) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalSuccess) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LR_D, OperandsR{5, 4, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 77}),
+        makeR(Opcode::SC_D, OperandsR{7, 4, 6, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 7, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sc_success.ho"] = buildModuleBytes("sc_success", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sc_success.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalFailsNoReservation) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        // No LR.D — reservation is UINT64_MAX, won't match r4
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 77}),
+        makeR(Opcode::SC_D, OperandsR{7, 4, 6, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 7, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sc_no_res.ho"] = buildModuleBytes("sc_no_res", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sc_no_res.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalValueWritten) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeI(Opcode::LDA, OperandsI{4, 30, -16}),
+        makeR(Opcode::ST_P, OperandsR{2, 3, 4, 0}),
+        makeR(Opcode::LR_D, OperandsR{5, 4, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 99}),
+        makeR(Opcode::SC_D, OperandsR{7, 4, 6, 0}),
+        // Now verify via LR.D that 99 was written
+        makeR(Opcode::LR_D, OperandsR{8, 4, 0, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 8, 0, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sc_value.ho"] = buildModuleBytes("sc_value", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sc_value.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 99) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpReturnsZeroNoTLAB) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_zero.ho"] = buildModuleBytes("allocbump_zero", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("allocbump_zero.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpTLABHit) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_hit.ho"] = buildModuleBytes("allocbump_hit", ins, syms);
+
+    HVMJIT jit(io);
+    jit.setTLAB(4096, 8192);
+    ASSERT_TRUE(jit.loadInput("allocbump_hit.ho")) << jit.getLastError();
+    int64_t result = jit.run("_F_main_v");
+    EXPECT_GT(result, 0) << jit.getLastError();
+    EXPECT_GE(result, 4096);
+    EXPECT_LT(result, 8192);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpAlignment) {
+    // With tlabStart at 4097 (misaligned), alignment=8 should round up to 4104
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_align.ho"] = buildModuleBytes("allocbump_align", ins, syms);
+
+    HVMJIT jit(io);
+    jit.setTLAB(4097, 8192);
+    ASSERT_TRUE(jit.loadInput("allocbump_align.ho")) << jit.getLastError();
+    int64_t result = jit.run("_F_main_v");
+    EXPECT_EQ(result, 4104);  // (4097 + 7) & ~7 = 4104
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, AllocBumpTLABExhausted) {
+    // Set TLAB to just 8 bytes — second ALLOC.BUMP should return 0
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),
+        makeI(Opcode::ALLOC_BUMP, OperandsI{3, 2, 8}),  // first alloc: fits, returns non-zero
+        makeI(Opcode::ALLOC_BUMP, OperandsI{1, 2, 8}),  // second alloc: TLAB exhausted, returns 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["allocbump_exhaust.ho"] = buildModuleBytes("allocbump_exhaust", ins, syms);
+
+    HVMJIT jit(io);
+    jit.setTLAB(4096, 4112);  // Exactly 16 bytes of TLAB (fits one 16-byte alloc)
+    ASSERT_TRUE(jit.loadInput("allocbump_exhaust.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+// ── HVM-V Vector Extension Tests ─────────────────────────────────
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorSetvlReturnsMinOfAvlAndMaxvl) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    // r2 = 4 (AVL < MAXVL=8)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),    // r3 = 0 (vtype=int64)
+        makeR(Opcode::VSETVL, OperandsR{1, 2, 3, 0}), // r1 = vl = min(4,8) = 4
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vsetvl_basic.ho"] = buildModuleBytes("vsetvl_basic", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vsetvl_basic.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 4) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorSetvlCapsAtMaxvl) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 128}),  // r2 = 128 (AVL > MAXVL=8)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),    // r3 = 0
+        makeR(Opcode::VSETVL, OperandsR{1, 2, 3, 0}), // r1 = vl = min(128,8) = 8
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vsetvl_cap.ho"] = buildModuleBytes("vsetvl_cap", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vsetvl_cap.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 8) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorLoadStoreUnitStrideRoundtrip) {
+    // Store [10,20,30,40] starting at mem[0], load into v0, store to mem[64],
+    // then load scalar at mem[64] (should be 10) and mem[72] (should be 20).
+    // Return 10 + 20 = 30 to verify both positions.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),
+        makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),
+        makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),
+        makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),
+        makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),     // AVL=4
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),     // vtype=int64
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}), // vld.v v0, (r0) — load from addr 0
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 2, 0, 1}), // vst.v v0, (r2) — store to addr 64
+
+        makeI(Opcode::LD_D, OperandsI{3, 2, 0}),     // r3 = mem[64]
+        makeI(Opcode::LD_D, OperandsI{4, 2, 8}),     // r4 = mem[72]
+        makeR(Opcode::ARITH, OperandsR{1, 3, 4, 0}), // r1 = r3 + r4
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vload_store.ho"] = buildModuleBytes("vload_store", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vload_store.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 30) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorAddVV) {
+    // v0 = [10,20,30,40], v1 = [1,2,3,4], v2 = v0 + v1
+    // store v2 to mem[128], load element 0 (11) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    // AVL=4
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),    // vtype=int64
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = mem[0..31]
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),  // v1 = mem[32..63]
+        makeR(Opcode::VECTOR_ARITH, OperandsR{2, 0, 1, 0}), // v2 = v0 + v1 (func=0 = vv add)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),  // store v2 to mem[128]
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = mem[128] = 10+1 = 11
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vadd_vv.ho"] = buildModuleBytes("vadd_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vadd_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 11) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorAddVX) {
+    // v0 = [10,20,30,40], r5 = 100, v2 = v0 + r5 (vector-scalar)
+    // store v2 to mem[128], load element 0 (110) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 100}),  // r5 = 100 (scalar)
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    // AVL=4
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),    // vtype=int64
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = mem[0..31]
+        makeR(Opcode::VECTOR_ARITH, OperandsR{2, 0, 5, 1}), // v2 = v0 + r5 (func=1 = vx add)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),  // store v2 to mem[128]
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = mem[128] = 10+100 = 110
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vadd_vx.ho"] = buildModuleBytes("vadd_vx", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vadd_vx.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 110) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorMulVV) {
+    // v0 = [5,10,15,20], v1 = [2,3,4,5], v2 = v0 * v1
+    // store v2 to mem[128], load element 2 (15*4=60) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 5}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 15}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 5}),    makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_ARITH, OperandsR{2, 0, 1, 4}), // v2 = v0 * v1 (func=4 = vv mul)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 16}),   // r1 = mem[144] = 15*4 = 60
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vmul_vv.ho"] = buildModuleBytes("vmul_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vmul_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 60) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorFmaVV) {
+    // v0 = [1,2,3,4] (accumulator), v1 = [5,6,7,8], v2 = [2,3,4,5]
+    // v0 = v0 + v1 * v2 = [1+5*2, 2+6*3, 3+7*4, 4+8*5] = [11,20,31,44]
+    // store v0 to mem[128], load element 1 (20) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 5}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 6}),    makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),    makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 8}),    makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 64}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 72}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 80}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 5}),    makeI(Opcode::ST_D, OperandsI{2, 0, 88}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = accum
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),  // v1 = multiplicand
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 2, 0, 0}),  // v2 = multiplier
+        makeR(Opcode::VECTOR_FMA, OperandsR{0, 1, 2, 0}),  // v0 += v1 * v2 (func=0 = vv fma)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 8}),    // r1 = mem[136] = 2+6*3 = 20
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vfma_vv.ho"] = buildModuleBytes("vfma_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vfma_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 20) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorFmaVF) {
+    // v0 = [1,2,3,4] (accumulator), v1 = [5,6,7,8], r6 = 3 (scalar multiplier)
+    // v0 = v0 + v1 * 3 = [1+5*3, 2+6*3, 3+7*3, 4+8*3] = [16,20,24,28]
+    // load element 2 (24) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 5}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 6}),    makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),    makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 8}),    makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{6, 0, 3}),    // r6 = 3 (scalar)
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_FMA, OperandsR{0, 1, 6, 1}),  // v0 += v1 * r6 (func=1 = vf fma)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 16}),   // r1 = mem[144] = 3+7*3 = 24
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vfma_vf.ho"] = buildModuleBytes("vfma_vf", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vfma_vf.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 24) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorReduceSum) {
+    // v0 = [10,20,30,40], reduce-sum into v1[0] = 100
+    // store v1 to mem[64], load element 0 into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = [10,20,30,40]
+        makeR(Opcode::VECTOR_REDUCE, OperandsR{1, 0, 0, 0}), // v1[0] = sum(v0) (func=0)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = mem[64] = 100
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vred_sum.ho"] = buildModuleBytes("vred_sum", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vred_sum.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 100) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorReduceMin) {
+    // v0 = [42,7,99,2], reduce-min into v1[0] = 2
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 99}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_REDUCE, OperandsR{1, 0, 0, 1}), // v1[0] = min(v0) (func=1)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = 2
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vred_min.ho"] = buildModuleBytes("vred_min", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vred_min.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 2) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorReduceMax) {
+    // v0 = [42,7,99,2], reduce-max into v1[0] = 99
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 7}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 99}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_REDUCE, OperandsR{1, 0, 0, 2}), // v1[0] = max(v0) (func=2)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = 99
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vred_max.ho"] = buildModuleBytes("vred_max", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vred_max.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 99) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorShiftLeftVV) {
+    // v0 = [1,2,3,4], v1 = [1,2,3,4] (shift amounts)
+    // v2 = v0 << v1 = [2,8,24,64]
+    // load element 3 (4<<4 = 64) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_SHIFT, OperandsR{2, 0, 1, 0}), // v2 = v0 << v1 (func=0 = vv shift)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 24}),   // r1 = mem[152] = 4<<4 = 64
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vsll_vv.ho"] = buildModuleBytes("vsll_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vsll_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 64) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorShiftLeftVX) {
+    // v0 = [1,2,3,4], r5 = 2 (scalar shift amount)
+    // v2 = v0 << r5 = [4,8,12,16]
+    // load element 1 (2<<2 = 8) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 2}),    // r5 = 2 (shift amount)
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_SHIFT, OperandsR{2, 0, 5, 1}), // v2 = v0 << r5 (func=1 = vx shift)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 8}),    // r1 = mem[136] = 2<<2 = 8
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vsll_vx.ho"] = buildModuleBytes("vsll_vx", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vsll_vx.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 8) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorShiftRightLogicalVX) {
+    // v0 = [64,128,256,512], r5 = 2 (scalar shift)
+    // v2 = v0 >> r5 = [16,32,64,128]
+    // load element 2 (256>>2 = 64) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 128}),  makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 256}),  makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 512}),  makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 2}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_SHIFT, OperandsR{2, 0, 5, 3}), // v2 = v0 >> r5 (func=3 = vx srl)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 16}),   // r1 = 256>>2 = 64
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vsrl_vx.ho"] = buildModuleBytes("vsrl_vx", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vsrl_vx.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 64) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorBitwiseXorVV) {
+    // v0 = [0xFF, 0x0F, 0xAA, 0x55], v1 = [0x55, 0xF0, 0x55, 0xAA]
+    // v2 = v0 ^ v1 = [0xAA, 0xFF, 0xFF, 0xFF]
+    // load element 0 (0xFF ^ 0x55 = 0xAA = 170) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xFF}), makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x0F}), makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xAA}), makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xF0}), makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xAA}), makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_BITWISE, OperandsR{2, 0, 1, 2}), // v2 = v0 ^ v1 (func=2 = xor)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = 0xFF^0x55 = 0xAA = 170
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vxor_vv.ho"] = buildModuleBytes("vxor_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vxor_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 170) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorBitwiseAndVV) {
+    // v0 = [0xFF, 0x0F, 0xAA, 0x55], v1 = [0x55, 0xF0, 0x55, 0xAA]
+    // v2 = v0 & v1 = [0x55, 0x00, 0x00, 0x00]
+    // load element 1 (0x0F & 0xF0 = 0) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xFF}), makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x0F}), makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xAA}), makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xF0}), makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xAA}), makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_BITWISE, OperandsR{2, 0, 1, 0}), // v2 = v0 & v1 (func=0 = and)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 8}),    // r1 = 0x0F&0xF0 = 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vand_vv.ho"] = buildModuleBytes("vand_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vand_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorBitwiseOrVV) {
+    // v0 = [0xF0, 0x0F, 0xAA, 0x55], v1 = [0x0F, 0xF0, 0x55, 0xAA]
+    // v2 = v0 | v1 = [0xFF, 0xFF, 0xFF, 0xFF]
+    // load element 3 (0x55|0xAA = 0xFF = 255) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xF0}), makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x0F}), makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xAA}), makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x0F}), makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xF0}), makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x55}), makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xAA}), makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_BITWISE, OperandsR{2, 0, 1, 1}), // v2 = v0 | v1 (func=1 = or)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 24}),   // r1 = 0x55|0xAA = 0xFF = 255
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vor_vv.ho"] = buildModuleBytes("vor_vv", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vor_vv.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 255) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorCompareMask) {
+    // v0 = [1,2,3,4], v1 = [1,99,3,77]
+    // vcomp.vv -> v2 = [1,0,1,0]
+    // store v2 to mem[128], load element 1 (0) and element 2 (1), return them combined
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 99}),   makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 77}),   makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::VECTOR_MASK, OperandsR{2, 0, 1, 0}), // v2 = v0 == v1 (func=0 = vcomp.vv)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{4, 3, 8}),    // r4 = mem[136] = elem 1 = 0
+        makeI(Opcode::LD_D, OperandsI{5, 3, 16}),   // r5 = mem[144] = elem 2 = 1
+        makeR(Opcode::ARITH, OperandsR{1, 4, 5, 0}), // r1 = 0 + 1 = 1
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vcomp_mask.ho"] = buildModuleBytes("vcomp_mask", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vcomp_mask.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorCompareVX) {
+    // v0 = [10,20,30,40], r5 = 30
+    // vcomp.vx -> v2 = [0,0,1,0]
+    // load element 2 (1) into r1
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 30}),   // r5 = 30
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_MASK, OperandsR{2, 0, 5, 1}), // v2 = v0 == r5 (func=1 = vcomp.vx)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 16}),   // r1 = mem[144] = elem 2 = 1
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vcomp_vx.ho"] = buildModuleBytes("vcomp_vx", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vcomp_vx.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorMergeVvm) {
+    // v0 = [1,2,3,4] (mask), v1 = [10,20,30,40] (true vals), v2 = [99,88,77,66] (false vals - stored in vd)
+    // vmerge: for each i where mask[i]!=0, vd[i]=v1[i], else vd[i]=v2[i]
+    // mask = [1,2,3,4], all non-zero -> result should be [10,20,30,40]
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 2}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 99}),   makeI(Opcode::ST_D, OperandsI{2, 0, 64}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 88}),   makeI(Opcode::ST_D, OperandsI{2, 0, 72}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 77}),   makeI(Opcode::ST_D, OperandsI{2, 0, 80}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 66}),   makeI(Opcode::ST_D, OperandsI{2, 0, 88}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = mask
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),  // v1 = true vals
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 2, 0, 0}),  // v2 = false vals (vd)
+        makeR(Opcode::VECTOR_MASK, OperandsR{2, 1, 0, 2}), // vmerge: v2 = mask(v0) ? v1 : v2
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{2, 3, 0, 1}),
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = mem[128] = 10 (mask[0]=1)
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vmerge.ho"] = buildModuleBytes("vmerge", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vmerge.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 10) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorFirstSetBit) {
+    // v0 = [0,0,0,42], vfirst.m -> r1 = 3 (first non-zero element index)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_MASK, OperandsR{1, 0, 0, 3}), // vfirst.m r1, v0 (func=3)
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vfirst.ho"] = buildModuleBytes("vfirst", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vfirst.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorFirstSetBitAllZero) {
+    // v0 = [0,0,0,0], vfirst.m -> r1 = -1 (no non-zero element)
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::VECTOR_MASK, OperandsR{1, 0, 0, 3}), // vfirst.m r1, v0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vfirst_zero.ho"] = buildModuleBytes("vfirst_zero", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vfirst_zero.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorLoadStoreStrided) {
+    // Store values at addresses 0, 16, 32, 48 (stride=16) using ST_D at manual offsets
+    // Load with stride=16 into v0, verify by storing unit-stride to new area and checking
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 16}),   // r5 = 16 (stride)
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 5, 2}), // vlds.v v0, (r0), r5 (strided load)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 64}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 3, 0, 1}), // store v0 unit-stride to mem[64]
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = mem[64] = 10
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vlds.ho"] = buildModuleBytes("vlds", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vlds.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 10) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorLoadStoreIndexed) {
+    // Store values [10,20,30,40] at addresses 64, 72, 80, 88 (8-byte aligned)
+    // v0 = [0, 8, 16, 24] (offsets), base = 64
+    // vldx.v v1, (r5), v0 loads: addr=64+0, 64+8, 64+16, 64+24 = [10,20,30,40]
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 64}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 5, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 5, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 5, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 5, 24}),
+        // Store offset vector at mem[0]
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 8}),    makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 24}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = offsets from mem[0]
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 5, 0, 4}),  // vldx.v v1, (r5), v0 (func=4)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 128}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 3, 0, 1}),  // store v1 to mem[128]
+        makeI(Opcode::LD_D, OperandsI{1, 3, 0}),    // r1 = mem[128] = first gathered = 10
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vldx.ho"] = buildModuleBytes("vldx", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vldx.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 10) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorStoreIndexed) {
+    // v0 = [10,20,30,40], store via indexed store with offsets [0,8,16,24] at base=64
+    // then read back each element individually
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),   makeI(Opcode::ST_D, OperandsI{2, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),   makeI(Opcode::ST_D, OperandsI{2, 0, 8}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 30}),   makeI(Opcode::ST_D, OperandsI{2, 0, 16}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),   makeI(Opcode::ST_D, OperandsI{2, 0, 24}),
+        // offset vector v1 = [0,8,16,24] at mem[32]
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),    makeI(Opcode::ST_D, OperandsI{2, 0, 32}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 8}),    makeI(Opcode::ST_D, OperandsI{2, 0, 40}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 16}),   makeI(Opcode::ST_D, OperandsI{2, 0, 48}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 24}),   makeI(Opcode::ST_D, OperandsI{2, 0, 56}),
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 4}),    makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::VSETVL, OperandsR{4, 2, 3, 0}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 0, 0, 0}),  // v0 = [10,20,30,40]
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{1, 2, 0, 0}),  // v1 = [0,8,16,24]
+        makeI(Opcode::MOVZ, OperandsI{5, 0, 200}),
+        makeR(Opcode::VECTOR_MEM, OperandsR{0, 5, 1, 5}),  // vstx.v v0, (r5), v1 (func=5)
+        // read back: mem[200+0]=10, mem[200+8]=20, mem[200+16]=30, mem[200+24]=40
+        makeI(Opcode::LD_D, OperandsI{6, 5, 0}),    // r6 = mem[200] = 10
+        makeI(Opcode::LD_D, OperandsI{7, 5, 16}),   // r7 = mem[216] = 30
+        makeR(Opcode::ARITH, OperandsR{1, 6, 7, 0}), // r1 = 10 + 30 = 40
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vstx.ho"] = buildModuleBytes("vstx", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vstx.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 40) << jit.getLastError();
+}
+

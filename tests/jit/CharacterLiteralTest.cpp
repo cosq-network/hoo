@@ -25,14 +25,15 @@ TEST_F(CharacterLiteralTest, LowerCharacterLiteral) {
 
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     
-    // Mangled name: _F_M_test_E_getChar_o
+    // Mangled name: _F_M_test_E_getChar_p
     // _F_ : Function
     // M_test : Module test
     // E_getChar : Entry getChar
-    // _o : returns Object (Character class)
-    int64_t result = jit.run("_F_M_test_E_getChar_o");
+    // _p : returns pointer (Character object)
+    int64_t result = jit.run("_F_M_test_E_getChar_p");
     
-    ASSERT_NE(0, result) << jit.getLastError(); 
+    ASSERT_NE(-1, result) << jit.getLastError();
+    ASSERT_NE(0, result) << jit.getLastError();
     HooCharacter ch = (HooCharacter)result;
     
     EXPECT_EQ(65, hoo_character_codepoint(ch));
@@ -53,8 +54,9 @@ TEST_F(CharacterLiteralTest, LowerMultiByteCharacterLiteral) {
 
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     
-    int64_t result = jit.run("_F_M_test_E_getEuro_o");
+    int64_t result = jit.run("_F_M_test_E_getEuro_p");
     
+    ASSERT_NE(-1, result) << jit.getLastError();
     ASSERT_NE(0, result) << jit.getLastError();
     HooCharacter ch = (HooCharacter)result;
     

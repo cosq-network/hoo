@@ -158,6 +158,9 @@ if(NOT APPLE)
 endif()
 
 find_package(CURL REQUIRED)
+find_package(libzip REQUIRED)
+find_package(zstd REQUIRED)
+find_package(nlohmann_json REQUIRED)
 
 find_package(LLVM QUIET CONFIG)
 if(NOT LLVM_FOUND)
@@ -343,6 +346,13 @@ add_library(hoo-core
     src/hvm/HVMInstruction.cpp
     src/hvm/HVMModuleBundle.cpp
     src/hvm/HVMJIT.cpp
+    # Archive
+    src/archive/HAManifest.cpp
+    src/archive/LocalImportResolver.cpp
+    src/archive/HAArchiveBuilder.cpp
+    src/archive/HAArchive.cpp
+    src/archive/HooArchiveCompiler.cpp
+    src/archive/HooArchiveLoader.cpp
     # Module system (reserved for future use)
     # Parsing (manual wrapper)
     src/parsing/HooParserWrapper.cpp
@@ -358,13 +368,17 @@ target_include_directories(hoo-core PUBLIC
     ${ANTLR4_GENERATED_DIR}
 )
 
-target_compile_definitions(hoo-core PRIVATE HOO_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(hoo-core PUBLIC HOO_VERSION="${PROJECT_VERSION}")
 
 target_link_libraries(hoo-core PUBLIC
     hoort
     hoo-parser
     ${llvm_libs}
     CURL::libcurl
+    libzip::zip
+    $<TARGET_NAME_IF_EXISTS:zstd::libzstd_shared>
+    $<TARGET_NAME_IF_EXISTS:zstd::libzstd_static>
+    nlohmann_json::nlohmann_json
 )
 
 if(WIN32)
@@ -397,6 +411,15 @@ if(MSVC)
 endif()
 target_link_libraries(hoo hoo-core hoorepl)
 target_include_directories(hoo PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+# =============================================================================
+# Versioning for all components
+# =============================================================================
+set_target_properties(hoo-parser PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoort PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoo-core PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoorepl PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
+set_target_properties(hoo PROPERTIES VERSION ${HOO_VERSION} SOVERSION ${HOO_VERSION_MAJOR})
 
 # =============================================================================
 # Install
@@ -552,6 +575,8 @@ if(HOO_BUILD_TESTS)
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
         tests/hvm/HVMModuleBundleTest.cpp
+        tests/archive/HAManifestTest.cpp
+        tests/archive/HAArchiveTest.cpp
         tests/hvm/HVMJITLoaderTest.cpp
         tests/hvm/HVMJITInstructionSemanticsTest.cpp
         tests/ast/CompilationUnitTest.cpp
@@ -563,6 +588,7 @@ if(HOO_BUILD_TESTS)
         tests/repl/HooReplAdvancedTest.cpp
         tests/repl/HooReplDebugTest.cpp
     )
+    set_target_properties(hoo-tests PROPERTIES VERSION ${HOO_VERSION})
     if(MSVC)
         hoo_use_static_msvc_runtime(hoo-tests)
     endif()
@@ -682,7 +708,7 @@ if(WIN32 AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.21)
 endif()
 
 set(CPACK_PACKAGE_NAME "Hoo")
-set(CPACK_PACKAGE_VERSION "0.1.0")
+set(CPACK_PACKAGE_VERSION "${HOO_VERSION}")
 set(CPACK_PACKAGE_VENDOR "Hoo Project")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hoo Programming Language Compiler")
 

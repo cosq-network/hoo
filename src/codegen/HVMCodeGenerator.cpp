@@ -613,6 +613,11 @@ void HVMCodeGenerator::setModuleContext(const std::string& moduleName) {
     pendingModuleName_ = moduleName;
 }
 
+void HVMCodeGenerator::setExternalFunctionImports(
+    const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions) {
+    externalFunctionImports_ = functions;
+}
+
 std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::CompilationUnit& compilationUnit) {
     // 1. Determine Module Name/Path
     static std::atomic<uint64_t> sSyntheticModuleCounter{0};
@@ -758,20 +763,24 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         } else if (auto varDecl = dynamic_cast<const ast::VariableDeclaration*>(decl.get())) {
             // Allocate space for global variable
             uint32_t dataOffset = 0;
-            Section* dataSec = module_->getSection(".data");
-            if (!dataSec) {
+            std::string secName = varDecl->isConstant() ? ".rodata" : ".data";
+            SectionType secType = varDecl->isConstant() ? SectionType::SHT_RODATA : SectionType::SHT_DATA;
+            uint32_t secFlags = varDecl->isConstant() ? SectionFlags::ALLOC : (SectionFlags::ALLOC | SectionFlags::WRITE);
+            
+            Section* sec = module_->getSection(secName);
+            if (!sec) {
                 Section s;
-                s.name = ".data";
-                s.type = SectionType::SHT_DATA;
-                s.flags = SectionFlags::ALLOC | SectionFlags::WRITE;
+                s.name = secName;
+                s.type = secType;
+                s.flags = secFlags;
                 module_->addSection(std::move(s));
-                dataSec = module_->getSection(".data");
+                sec = module_->getSection(secName);
             }
             
-            dataOffset = static_cast<uint32_t>(dataSec->data.size());
+            dataOffset = static_cast<uint32_t>(sec->data.size());
             // Reserve 8 bytes (all globals 64-bit for now)
-            for (int i = 0; i < 8; ++i) dataSec->data.push_back(0);
-            dataSec->virtual_size = dataSec->data.size();
+            for (int i = 0; i < 8; ++i) sec->data.push_back(0);
+            sec->virtual_size = sec->data.size();
 
             Symbol sym;
             if (!modulePath_.empty()) {
@@ -1001,7 +1010,24 @@ void HVMCodeGenerator::generateStatement(const ast::Statement& stmt) {
     visitStatement(stmt);
 }
 
-std::unique_ptr<GeneratedType> HVMCodeGenerator::generateType(const ast::Type& /*type*/) {
+std::unique_ptr<GeneratedType> HVMCodeGenerator::generateType(const ast::Type& type) {
+    Section* typesSec = module_->getSection(".types");
+    if (!typesSec) {
+        Section s;
+        s.name = ".types";
+        s.type = SectionType::SHT_TYPES;
+        s.flags = SectionFlags::ALLOC;
+        module_->addSection(std::move(s));
+        typesSec = module_->getSection(".types");
+    }
+
+    std::string typeStr = type.toString();
+    for (char c : typeStr) {
+        typesSec->data.push_back(static_cast<uint8_t>(c));
+    }
+    typesSec->data.push_back(0); // Null terminator
+    typesSec->virtual_size = typesSec->data.size();
+
     return std::make_unique<HVMGeneratedType>(0);
 }
 
@@ -1052,6 +1078,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     }
 
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
+        emitScopeCleanup(scopeStack_.size(), 0);
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     }
@@ -1101,6 +1128,61 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     }
 
     return info;
+}
+
+static bool isArcManagedTypeId(uint32_t typeId) {
+    // Types that participate in ARC and should be released by scope cleanup.
+    // Non-ARC types manage their own lifecycle via explicit _release() methods
+    // using free/delete, not hoo_release, so they must be excluded from scope cleanup.
+    // Unknown/default (100) is excluded because it may be assigned to raw pointers
+    // or primitive values that cannot be passed to hoo_release.
+    switch (typeId) {
+        case 100: // Unknown - could be raw pointer, int64, etc.
+        case 110: // Args - uses calloc, no hoo_release
+        case 111: // Compression - uses std::free
+        case 120: // Regex - uses delete with custom refcounting
+        case 121: // Mutex - uses delete
+        case 122: // Uuid - uses std::free with custom refcounting
+            return false;
+        default:
+            return typeId >= 100;
+    }
+}
+
+void HVMCodeGenerator::emitScopeCleanup(size_t from, size_t to) {
+    uint8_t saveReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{saveReg, 1, 0, 0});
+    for (size_t i = from; i > to; --i) {
+        auto& scope = scopeStack_[i - 1];
+        for (const auto& [name, local] : scope) {
+            if (isArcManagedTypeId(local.typeId)) {
+                emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
+                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+            }
+        }
+    }
+    emit(Opcode::MOV, OperandsR{1, saveReg, 0, 0});
+    freeRegister(saveReg);
+}
+
+bool HVMCodeGenerator::isManagedTemporary(const ast::Expression& expr) {
+    const ast::ASTNode* current = &expr;
+    while (true) {
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(current)) {
+            current = &pe->getPrimary();
+        } else if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(current)) {
+            current = &paren->getExpression();
+        } else {
+            break;
+        }
+    }
+    if (dynamic_cast<const ast::StringLiteral*>(current)) return true;
+    if (dynamic_cast<const ast::InterpolatedString*>(current)) return true;
+    if (dynamic_cast<const ast::NewObjectExpression*>(current)) return true;
+    if (dynamic_cast<const ast::NewHashMapExpression*>(current)) return true;
+    if (dynamic_cast<const ast::ArrayLiteral*>(current)) return true;
+    if (dynamic_cast<const ast::TensorLiteral*>(current)) return true;
+    return false;
 }
 
 void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
@@ -1400,25 +1482,17 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         for (const auto& s : block->getStatements()) {
             visitStatement(*s);
         }
-        // Release managed objects (strings, arrays, maps, class instances) in this scope
-        if (!scopeStack_.empty()) {
-            auto& scope = scopeStack_.back();
-            for (const auto& [name, local] : scope) {
-                if (local.typeId >= 100) {
-                    emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
-                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
-                }
-            }
-        }
+        emitScopeCleanup(scopeStack_.size(), scopeStack_.size() - 1);
         scopeStack_.pop_back();
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
         currentFunctionHasReturn_ = true;
         if (ret->hasExpression()) {
             uint8_t reg = visitExpression(*ret->getExpression());
             emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
-        emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
+            emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
             freeRegister(reg);
         }
+        emitScopeCleanup(scopeStack_.size(), 0);
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
@@ -1544,6 +1618,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         }
     } else if (auto exprStmt = dynamic_cast<const ast::ExpressionStatement*>(&stmt)) {
         uint8_t reg = visitExpression(exprStmt->getExpression());
+        if (isManagedTemporary(exprStmt->getExpression())) {
+            emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+        }
         freeRegister(reg);
     } else if (auto ifStmt = dynamic_cast<const ast::IfStatement*>(&stmt)) {
         Label* elseLabel = createLabel();
@@ -1565,7 +1643,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         uint8_t condReg = visitExpression(whileStmt->getCondition());
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
-        controlFlowStack_.push({endLabel, startLabel});
+        controlFlowStack_.push({endLabel, startLabel, scopeStack_.size()});
         visitStatement(whileStmt->getBody());
         controlFlowStack_.pop();
         emitJump(Opcode::JMP, 0, startLabel);
@@ -1575,7 +1653,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         Label* conditionLabel = createLabel();
         Label* endLabel = createLabel();
         bindLabel(startLabel);
-        controlFlowStack_.push({endLabel, conditionLabel});
+        controlFlowStack_.push({endLabel, conditionLabel, scopeStack_.size()});
         visitStatement(doWhile->getBody());
         controlFlowStack_.pop();
         bindLabel(conditionLabel);
@@ -1621,7 +1699,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, endLabel);
         }
 
-        controlFlowStack_.push({endLabel, nullptr});
+        controlFlowStack_.push({endLabel, nullptr, scopeStack_.size()});
 
         for (size_t i = 0; i < switchStmt->getCases().size(); i++) {
             bindLabel(caseLabels[i]);
@@ -1645,14 +1723,17 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (controlFlowStack_.empty() || !controlFlowStack_.top().breakLabel) {
             addError("break statement outside of loop");
         } else {
+            emitScopeCleanup(scopeStack_.size(), controlFlowStack_.top().scopeDepth);
             emitJump(Opcode::JMP, 0, controlFlowStack_.top().breakLabel);
         }
     } else if (auto continueStmt = dynamic_cast<const ast::ContinueStatement*>(&stmt)) {
         Label* continueLabel = nullptr;
+        size_t continueScopeDepth = 0;
         auto scopes = controlFlowStack_;
         while (!scopes.empty()) {
             if (scopes.top().continueLabel) {
                 continueLabel = scopes.top().continueLabel;
+                continueScopeDepth = scopes.top().scopeDepth;
                 break;
             }
             scopes.pop();
@@ -1660,6 +1741,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (!continueLabel) {
             addError("continue statement outside of loop");
         } else {
+            emitScopeCleanup(scopeStack_.size(), continueScopeDepth);
             emitJump(Opcode::JMP, 0, continueLabel);
         }
     } else if (auto forRange = dynamic_cast<const ast::ForRangeStatement*>(&stmt)) {
@@ -1702,7 +1784,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             Label* stepLabel = createLabel();
             bindLabel(startLabel);
             
-            controlFlowStack_.push({endLabel, stepLabel});
+            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
             visitStatement(forRange->getBody());
             controlFlowStack_.pop();
             
@@ -1745,7 +1827,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(iReg);
             freeRegister(endReg);
             freeRegister(condReg);
-            controlFlowStack_.push({endLabel, stepLabel});
+            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
             visitStatement(forRange->getBody());
             controlFlowStack_.pop();
             bindLabel(stepLabel);
@@ -1838,7 +1920,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
         
-        controlFlowStack_.push({endLabel, stepLabel});
+        controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
         visitStatement(forIn->getBody());
         controlFlowStack_.pop();
         
@@ -2780,9 +2862,21 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 MangledFunctionParams mp;
                 mp.functionName = functionName;
                 mp.isOverload = isOverloadedFunction_[functionName];
-                mp.modulePath = isHooModuleFreeFunction(functionName)
-                                    ? std::vector<std::string>{"hoo"}
-                                    : modulePath_;
+                auto externalIt = externalFunctionImports_.find(functionName);
+                if (isHooModuleFreeFunction(functionName)) {
+                    mp.modulePath = std::vector<std::string>{"hoo"};
+                } else if (externalIt != externalFunctionImports_.end() &&
+                           functionReturnTypes_.find(functionName) == functionReturnTypes_.end()) {
+                    std::stringstream ss(externalIt->second.first);
+                    std::string part;
+                    while (std::getline(ss, part, '.')) {
+                        if (!part.empty()) {
+                            mp.modulePath.push_back(part);
+                        }
+                    }
+                } else {
+                    mp.modulePath = modulePath_;
+                }
 
                 if (funcCall->getArguments()) {
                     auto& args = funcCall->getArguments()->getArguments();
@@ -2811,9 +2905,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                         mp.returnType = "ptr";
                     }
                 } else {
-                    mp.returnType = retIt != functionReturnTypes_.end()
-                                        ? typeIdToMangleType(retIt->second)
-                                        : "void";
+                    if (retIt != functionReturnTypes_.end()) {
+                        mp.returnType = typeIdToMangleType(retIt->second);
+                    } else if (externalIt != externalFunctionImports_.end()) {
+                        mp.returnType = externalIt->second.second.empty() ? "void" : externalIt->second.second;
+                    } else {
+                        mp.returnType = "void";
+                    }
                 }
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
@@ -2883,8 +2981,20 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emitCall(Opcode::CALL, "_F_M_hoo_E_String_concat_p_p");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-            freeRegister(left);
-            freeRegister(right);
+            if (isManagedTemporary(binary->getLeft())) {
+                emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                freeRegister(left);
+            } else {
+                freeRegister(left);
+            }
+            if (isManagedTemporary(binary->getRight())) {
+                emit(Opcode::MOV, OperandsR{1, right, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                freeRegister(right);
+            } else {
+                freeRegister(right);
+            }
             return dest;
         }
 
@@ -3160,10 +3270,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         int32_t offset = 0;
         uint8_t objReg = 0;
         bool isMember = false;
+        std::string varName;
 
         if (auto leftPrimary = dynamic_cast<const ast::PrimaryExpression*>(&incDec->getOperand())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
-                offset = getLocalOffset(id->getName());
+                varName = id->getName();
+                offset = getLocalOffset(varName);
                 lhsReg = allocateRegister();
                 emit(Opcode::LD_D, OperandsI{lhsReg, 30, static_cast<int16_t>(offset)});
             }
@@ -3234,6 +3346,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (auto leftPrimary = dynamic_cast<const ast::PrimaryExpression*>(&assign->getLeft())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
                 int32_t offset = getLocalOffset(id->getName());
+                uint32_t oldTypeId = getLocalTypeId(id->getName());
+                if (oldTypeId >= 100) {
+                    emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(offset)});
+                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                }
                 emit(Opcode::ST_D, OperandsI{valueReg, 30, static_cast<int16_t>(offset)});
                 return valueReg;
             }
@@ -4015,6 +4132,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         if (dynamic_cast<const ast::F8Literal*>(&primary)) return 9;
         if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
+        if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return 101;
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isAnyArray() ? 118 : 102;
         if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
@@ -4124,11 +4242,27 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                         if (returnType == "void") return 4;
                     }
 
-                    const uint32_t objectTypeId = getLocalTypeId(className);
+                    uint32_t objectTypeId = getLocalTypeId(className);
+                    if (objectTypeId == 0) {
+                        static const std::unordered_map<std::string, uint32_t> builtinTypeIds = {
+                            {"Array", 102}, {"Tensor", 104}, {"String", 101},
+                            {"Map", 103}, {"Buffer", 113}, {"Character", 109},
+                            {"Random", 105}, {"DateTime", 119}, {"Args", 110},
+                            {"Compression", 111}, {"Csv", 112}, {"Path", 114},
+                            {"Http", 115}, {"Response", 116}, {"HashMap", 117},
+                            {"AnyArray", 118}, {"Regex", 120}, {"Mutex", 121},
+                            {"Uuid", 122}
+                        };
+                        auto it = builtinTypeIds.find(className);
+                        if (it != builtinTypeIds.end()) {
+                            objectTypeId = it->second;
+                        }
+                    }
                     const std::string& member = memberAccess->getMember();
                     if (objectTypeId == 102) {
                         if (member == "length" || member == "empty") return 1;
-                        if (member == "sort" || member == "reverse") return 102;
+                        if (member == "sort" || member == "reverse" || member == "shuffle" || member == "sortRange") return 102;
+                        if (member == "binarySearch") return 1;
                         return 100;
                     }
                     if (objectTypeId == 105) {
@@ -4176,6 +4310,8 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
             }
         }
     }
+
+    if (dynamic_cast<const ast::InterpolatedString*>(&expr)) return 101;
 
     return 100;
 }

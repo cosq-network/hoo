@@ -21,7 +21,9 @@ The `args` module provides two ways to access command-line arguments:
 
 ## Free Functions
 
-Simple positional argument access without creating a parser instance. Index `0` returns the program name.
+Simple positional argument access without creating a parser instance. When running through the `hoo` executable,
+pass program arguments after `--`, for example `hoo script.hoo -- input.txt --verbose`.
+Use `Args.programName()` to read the source or bytecode file path.
 
 ---
 
@@ -39,7 +41,7 @@ args_get(index: int64) :string
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `index` | `int64` | Zero-based argument index. `0` returns the program name. |
+| `index` | `int64` | Zero-based positional argument index. `0` returns the first program argument. |
 
 **Returns:** `string` — The argument value at the specified index.
 
@@ -61,7 +63,7 @@ func :int64 main() {
 
 #### `args_count`
 
-**Description:** Returns the total number of command-line arguments from the global argument list, including the program name.
+**Description:** Returns the total number of positional command-line arguments from the global argument list, excluding the program name.
 
 **Syntax:**
 

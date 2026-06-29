@@ -25,6 +25,8 @@ public:
     void run();
     // Evaluate a single line of input. Returns true on success; result or error is filled accordingly.
     bool eval(const std::string& input, std::string& outResult, std::string& outError);
+    // Load declarations/source into the persistent REPL session before the prompt starts.
+    bool loadSource(const std::string& source, std::string& outError);
 
 private:
     // IO provider abstracts stdin/stdout/stderr; default constructed uses std::cin/std::cout/std::cerr.

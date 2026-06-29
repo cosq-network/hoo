@@ -192,6 +192,65 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ComparisonOperators) {
     EXPECT_EQ(cmpCount, 6);
 }
 
+TEST_F(HVMCodeGeneratorComprehensiveTest, ByteComparisonOperators) {
+    std::string code = R"(
+        import hoo;
+        func : bool testByteCmp(a: byte, b: byte) {
+            var r1 = a < b;
+            var r2 = a <= b;
+            var r3 = a > b;
+            var r4 = a >= b;
+            return r1;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    int unsignedCmpCount = 0;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CMP) {
+            auto ops = inst.getOperands();
+            if (std::holds_alternative<OperandsR>(ops)) {
+                auto rOps = std::get<OperandsR>(ops);
+                if (rOps.func == 4 || rOps.func == 5) {
+                    unsignedCmpCount++;
+                }
+            }
+        }
+    }
+    EXPECT_EQ(unsignedCmpCount, 4);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ByteComparisonSignedVsUnsigned) {
+    // Verify byte comparisons use unsigned opcodes (func=4/5) not signed (func=2/3)
+    std::string code = R"(
+        import hoo;
+        func : bool testByteVsIntCmp(a: byte, b: int64) {
+            var r1 = a < b;
+            var r2 = b < a;
+            return r1;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CMP) {
+            auto ops = inst.getOperands();
+            if (std::holds_alternative<OperandsR>(ops)) {
+                auto rOps = std::get<OperandsR>(ops);
+                // func=2/3 are signed comparisons - should not be used when byte is involved
+                EXPECT_NE(rOps.func, 2) << "Found signed CMPLT for byte comparison";
+                EXPECT_NE(rOps.func, 3) << "Found signed CMPLE for byte comparison";
+            }
+        }
+    }
+}
+
 TEST_F(HVMCodeGeneratorComprehensiveTest, DivisionOperator) {
     std::string code = R"(
         import hoo;

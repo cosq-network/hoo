@@ -5,13 +5,13 @@
 [![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml)
 [![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
 
-Last Updated: 2026-06-21
+Last Updated: 2026-06-29
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
 ## 1. Architectural Vision: Hardware Purity
 
-The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
+The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
 
 - **ISA Purity**: No "magic" opcodes for objects or exceptions. The instruction set is limited to fundamental arithmetic, memory, and control-flow primitives.
 - **Aggressive Lowering**: The compiler (`hoo`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
@@ -39,16 +39,19 @@ The Hoo ecosystem is built around the **HVM v1.4 (Hardware Ready)** specificatio
 - [x] **Phase 11.3 (Serializable Class Modifier)**: Added `serializable` class modifier to grammar, AST, symbol mangling, and code generation. Implements field type validation (primitives, HashMap, AnyArray, tensor, serializable classes), constructor constraints (exactly one parameterless constructor), cycle detection via DFS, and auto-generated `serialize()`/`deserialize()` methods (lowering through existing HashMap+JSON runtime). 4 new tests (parsing, symbol mangling).
 - [x] **Phase 12 (REPL Integration)**: Added interactive REPL shell mode via `--repl` flag, with nested multiline brace matching, built-in commands (`/exit`, `/quit`, `/help`, `/reset`), static library target `hoorepl`, and complete unit testing coverage.
 - [x] **Phase 13 (Function Overloading)**: Implemented function and method overloading capabilities for both built-in core APIs and user-defined functions. Integrates name mangling strategies based on argument types, an `OverloadList` AST grouping node to gracefully handle multiple method declarations, and dynamic runtime dispatch leveraging `CALL_OVERLOADED` instructions directly into the LLVM ORC JIT. Includes robust ambiguity detection with `AmbiguousOverloadException`.
-- [x] **Verification**: full preset test run passing (`1745 tests`, 0 failures).
+- [x] **Phase 14 (Archive Loading)**: Cross-file local imports and `.ha` archive format with Zstd compression, manifest, and multi-module JIT loading.
+- [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity (113/113 mnemonics), all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion (25 new JIT semantics tests).
+- [x] **Verification**: full preset test run passing (`1930 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 ## Recent Changes
 
+- **Cross-File Local Imports & `.ha` Archives (Phase 14)**: Added native support for cross-file local imports, resolving and compiling local dependencies automatically. The CLI now outputs `.ha` (Hoo Archive) files, a ZIP-compatible, Zstd-compressed container with `manifest.json`, replacing the intermediate `.ho` files.
+- **Archive Loading & CLI Updates**: Added `HooArchiveLoader` to seamlessly load multi-module `.ha` archives into the JIT. Introduced `--exec` to directly execute `.hoo` source files after building.
 - Updated `hoo --version` output to include tool name, brand name, version, and license information.
 - Removed `--compile` / `-c` from the CLI; unknown flags now return a clear error.
-- Improved REPL ergonomics so `--repl` no longer requires an input file, while still accepting one when provided.
-- Updated CLI usage text and documentation to match the new flags and behavior.
-- Completed full test suite run: `hoo-tests` passes after the CLI updates.
+- Improved REPL ergonomics so `--repl` no longer requires an input file, and preloads a `.hoo` file when provided.
+- Updated CLI usage text and documentation to match the new flags, `--` program-argument delimiter, and behavior.
 
 
 ## 3. Build & Test
@@ -93,7 +96,7 @@ src/
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-tests/         Exhaustive unit and integration test suites (1745 tests in the current preset run).
+tests/         Exhaustive unit and integration test suites (1930 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
