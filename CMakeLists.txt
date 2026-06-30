@@ -370,6 +370,26 @@ target_include_directories(hoo-core PUBLIC
 
 target_compile_definitions(hoo-core PUBLIC HOO_VERSION="${PROJECT_VERSION}")
 
+if(WIN32)
+    set(_windows_sdk_root "C:/Program Files (x86)/Windows Kits/10")
+    set(_windows_sdk_version "")
+    if(EXISTS "${_windows_sdk_root}/Lib")
+        file(GLOB _windows_sdk_versions "${_windows_sdk_root}/Lib/*")
+        if(_windows_sdk_versions)
+            list(SORT _windows_sdk_versions)
+            list(GET _windows_sdk_versions -1 _windows_sdk_version)
+        endif()
+    endif()
+
+    if(_windows_sdk_version)
+        set(PSAPI_LIBRARY "${_windows_sdk_version}/um/x64/psapi.lib")
+        set(DBGHELP_LIBRARY "${_windows_sdk_version}/um/x64/dbghelp.lib")
+    else()
+        set(PSAPI_LIBRARY "")
+        set(DBGHELP_LIBRARY "")
+    endif()
+endif()
+
 target_link_libraries(hoo-core PUBLIC
     hoort
     hoo-parser
@@ -382,10 +402,16 @@ target_link_libraries(hoo-core PUBLIC
 )
 
 if(WIN32)
-    target_link_libraries(hoo-core PUBLIC
-        Psapi
-        Dbghelp
-    )
+    if(PSAPI_LIBRARY)
+        target_link_libraries(hoo-core PUBLIC ${PSAPI_LIBRARY})
+    else()
+        message(WARNING "Could not find psapi.lib; continuing without explicit link")
+    endif()
+    if(DBGHELP_LIBRARY)
+        target_link_libraries(hoo-core PUBLIC ${DBGHELP_LIBRARY})
+    else()
+        message(WARNING "Could not find dbghelp.lib; continuing without explicit link")
+    endif()
 endif()
 
 # Generated ANTLR4 parser files must exist before hoo-core sources can include them

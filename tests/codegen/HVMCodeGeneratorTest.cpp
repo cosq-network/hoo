@@ -564,3 +564,65 @@ TEST_F(HVMCodeGeneratorTest, EmitsDecimalAddCall) {
     auto* sym = module->getSymbol("_F_hoo_Decimal_add_p_p_p");
     EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_add_p_p_p symbol";
 }
+TEST_F(HVMCodeGeneratorTest, EmitsDecimalSubCall) {
+    std::string code = R"(
+        func:void test() {
+            var balance: Decimal<38,2> = 100.00m;
+            var withdrawal: Decimal<38,2> = 25.00m;
+            var remaining: Decimal<38,2> = balance - withdrawal;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto* sym = module->getSymbol("_F_hoo_Decimal_sub_p_p_p");
+    EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_sub_p_p_p symbol";
+}
+
+TEST_F(HVMCodeGeneratorTest, EmitsDecimalMulCall) {
+    std::string code = R"(
+        func:void test() {
+            var price: Decimal<38,2> = 19.99m;
+            var quantity: Decimal<38,2> = 3m;
+            var total: Decimal<38,2> = price * quantity;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto* sym = module->getSymbol("_F_hoo_Decimal_mul_p_p_p");
+    EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_mul_p_p_p symbol";
+}
+
+TEST_F(HVMCodeGeneratorTest, EmitsDecimalDivCall) {
+    std::string code = R"(
+        func:void test() {
+            var total: Decimal<38,2> = 100.00m;
+            var parts: Decimal<38,2> = 4m;
+            var share: Decimal<38,2> = total / parts;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto* sym = module->getSymbol("_F_hoo_Decimal_div_p_p_p");
+    EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_div_p_p_p symbol";
+}
+TEST_F(HVMCodeGeneratorTest, EmitsDecimalComparisonCall) {
+    std::string code = R"(
+        func:void test() {
+            var price: Decimal<38,2> = 19.99m;
+            var balance: Decimal<38,2> = 100.00m;
+            var isAffordable: bool = price < balance;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto* sym = module->getSymbol("_F_hoo_Decimal_lt_p_p_p");
+    EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_lt_p_p_p symbol";
+}

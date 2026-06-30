@@ -2082,14 +2082,40 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             freeRegister(addrReg);
             return dest;
         }
-    if (auto decimalLit = dynamic_cast<const ast::DecimalLiteral*>(&primary)) {
+   if (auto decimalLit = dynamic_cast<const ast::DecimalLiteral*>(&primary)) {
     std::string value = decimalLit->getValue();
-
-  
     if (!value.empty() && (value.back() == 'm' || value.back() == 'M')) {
         value.pop_back();
     }
+
+    Section* rodata = module_->getSection(".rodata");
+    if (!rodata) {
+        Section s;
+        s.name = ".rodata";
+        s.type = SectionType::SHT_RODATA;
+        s.flags = SectionFlags::ALLOC;
+        module_->addSection(std::move(s));
+        rodata = module_->getSection(".rodata");
     }
+    uint32_t offset = static_cast<uint32_t>(rodata->data.size());
+    for (char c : value) rodata->data.push_back(static_cast<uint8_t>(c));
+    rodata->data.push_back(0);
+    rodata->virtual_size = rodata->data.size();
+
+    uint8_t addrReg = emitRoDataAddress(offset);
+    uint8_t precReg = emitConstant(static_cast<int64_t>(38));
+    uint8_t scaleReg = emitConstant(static_cast<int64_t>(2));
+    emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{2, precReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{3, scaleReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_Decimal_from_literal_p_p_i8_i8");
+    freeRegister(addrReg);
+    freeRegister(precReg);
+    freeRegister(scaleReg);
+    uint8_t dest = allocateRegister();
+    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+    return dest;
+}
         if (auto charLit = dynamic_cast<const ast::CharacterLiteral*>(&primary)) {
             uint8_t cpReg = emitConstant(static_cast<int64_t>(charLit->getValue()));
             emit(Opcode::MOV, OperandsR{1, cpReg, 0, 0});
@@ -2953,14 +2979,22 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
       
 
-    if (leftExprType == 123|| rightExprType == 123) {
+     if (leftExprType == 123|| rightExprType == 123) {
     if (leftExprType != rightExprType) {
         addError("Decimal operands must have matching precision and scale");
         return 0;
     }
-    
-    return emitDecimalBinaryOp(*binary);
+    switch (binary->getOperator()) {
+        case ast::BinaryOperator::EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_eq_p_p_p");
+        case ast::BinaryOperator::NOT_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_ne_p_p_p");
+        case ast::BinaryOperator::LESS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_lt_p_p_p");
+        case ast::BinaryOperator::LESS_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_le_p_p_p");
+        case ast::BinaryOperator::GREATER: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_gt_p_p_p");
+        case ast::BinaryOperator::GREATER_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_ge_p_p_p");
+        default:
+            return emitDecimalBinaryOp(*binary);
     }
+}
         if (leftExprType == 104 || rightExprType == 104) {
             switch (binary->getOperator()) {
                 case ast::BinaryOperator::PLUS: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 0);
@@ -3838,6 +3872,10 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
         if (outClassName) *outClassName = "HashMap";
         return 117;
     }
+    if (dynamic_cast<const ast::DecimalType*>(type)) {
+    if (outClassName) *outClassName = "Decimal";
+    return 123;
+}
     if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
         if (bt->isPrimitive()) {
             switch (bt->getPrimitiveType()->getKind()) {
