@@ -404,22 +404,7 @@ TEST_F(HVMCodeGeneratorTest, SingletonBuiltinSymbol) {
     EXPECT_TRUE(foundUuid) << "Expected uuid_v4() to produce _M_hoo_E_uuid_v4 symbol";
     EXPECT_TRUE(foundFs) << "Expected Fs.read_text() to produce _M_hoo_E_fs_read_text symbol";
 }
-TEST_F(HVMCodeGeneratorTest, InfersDecimalLiteralType) {
-    std::string code = R"(
-        func:void test() {
-            var amount:<38,2> = 123.45m;
-        }
-    )";
-    auto module = compiler_->compile("test", code);
-    if (!module) {
-    std::cout << compiler_->getLastError() << std::endl;
-}
 
-    ASSERT_NE(module, nullptr);
-
-    auto sym = findSymbol(*module, "test");
-    ASSERT_NE(sym, nullptr);
-}
 
 
 TEST_F(HVMCodeGeneratorTest, StringLiteralExprStmt_EmitsRelease) {
@@ -534,5 +519,48 @@ TEST_F(HVMCodeGeneratorTest, InterpolatedStringExprStmt_EmitsRelease) {
     }
     EXPECT_TRUE(foundCallRelease) << "Expected CALL for interpolated string expression statement cleanup";
 }
+TEST_F(HVMCodeGeneratorTest, InfersDecimalLiteralType) {
+    std::string code = R"(
+        func:void test() {
+            var amount: Decimal<38,2> = 123.45m;
+        }
+    )";
 
+    auto module = compiler_->compile("test", code);
 
+    if (!module) {
+        std::cout << compiler_->getLastError() << std::endl;
+    }
+
+    ASSERT_NE(module, nullptr);
+
+    auto sym = findSymbol(*module, "test");
+    ASSERT_NE(sym, nullptr);
+}
+TEST_F(HVMCodeGeneratorTest, RejectsMixedDecimalAndDoubleArithmetic) {
+    std::string code = R"(
+        func:void test() {
+            var price: Decimal<38,2> = 19.99m;
+            var rate: double = 0.5;
+            var total: Decimal<38,2> = price * rate;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+}
+TEST_F(HVMCodeGeneratorTest, EmitsDecimalAddCall) {
+    std::string code = R"(
+        func:void test() {
+            var price: Decimal<38,2> = 19.99m;
+            var tax: Decimal<38,2> = 8m;
+            var total: Decimal<38,2> = price + tax;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto* sym = module->getSymbol("_F_hoo_Decimal_add_p_p_p");
+    EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_add_p_p_p symbol";
+}
