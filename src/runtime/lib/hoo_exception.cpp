@@ -253,31 +253,6 @@ HooException hoo_exception_retain(HooException exc) {
 }
 
 void hoo_exception_release(HooException exc) {
-    if (!exc) return;
-
-    bool doCleanup = false;
-    {
-        std::lock_guard<std::mutex> lk(gExceptionReleaseMu);
-        if (hoo_get_refcount(exc) == 1) {
-            doCleanup = true;
-        }
-    }
-
-    if (doCleanup) {
-        HooExceptionImpl* impl = get_impl(exc);
-        if (impl->message && impl->message[0] != '\0') {
-            std::free((void*)impl->message);
-        }
-        if (impl->typeName && impl->typeId >= 5) {
-            std::free((void*)impl->typeName);
-        }
-        for (int64_t i = 0; i < impl->frameCount; i++) {
-            std::free(impl->frames[i]);
-        }
-        if (impl->frames) std::free(impl->frames);
-        if (impl->cause) hoo_exception_release(impl->cause);
-    }
-
     hoo_release(exc);
 }
 
@@ -416,6 +391,29 @@ const char* hoo_exception_debug(HooException exc) {
 
     if (written < 0) return strdup("");
     return strndup(buffer, (size_t)written);
+}
+
+static void exception_destructor(void* obj) {
+    HooExceptionImpl* impl = (HooExceptionImpl*)obj;
+    if (impl->message && impl->message[0] != '\0') {
+        std::free((void*)impl->message);
+    }
+    if (impl->typeName && impl->typeId >= 5) {
+        std::free((void*)impl->typeName);
+    }
+    for (int64_t i = 0; i < impl->frameCount; i++) {
+        std::free(impl->frames[i]);
+    }
+    if (impl->frames) std::free(impl->frames);
+    if (impl->cause) hoo_release(impl->cause);
+}
+
+namespace {
+    struct ExceptionDestructorRegistrar {
+        ExceptionDestructorRegistrar() {
+            hoo_register_destructor(HOO_TYPE_EXCEPTION, exception_destructor);
+        }
+    } exc_registrar;
 }
 
 #ifdef __cplusplus

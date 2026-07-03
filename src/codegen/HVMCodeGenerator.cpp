@@ -135,11 +135,11 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"Character", 109},
         {"Args", 110},
         {"Compression", 111},
-        {"Csv", 112},
+        {"Csv", 114},
         {"Buffer", 113},
-        {"URL", 114},
-        {"HttpClient", 115},
-        {"HttpResponse", 116},
+        {"URL", 106},
+        {"HttpClient", 108},
+        {"HttpResponse", 107},
         {"Random", 105},
         {"HashMap", 117},
         {"AnyArray", 118},
@@ -459,7 +459,7 @@ static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) return 113;
-    if (isCsvFreeFunction(functionName)) return 112;
+    if (isCsvFreeFunction(functionName)) return 114;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
     if (isDatetimeFreeFunction(functionName)) return datetimeFreeFunctionReturnTypeId(functionName);
     if (isEncodingFreeFunction(functionName)) {
@@ -2585,11 +2585,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 109: resolvedClass = "Character"; break;
                     case 110: resolvedClass = "Args"; break;
                     case 111: resolvedClass = "Compression"; break;
-                    case 112: resolvedClass = "Csv"; break;
+                    case 114: resolvedClass = "Csv"; break;
                     case 113: resolvedClass = "Buffer"; break;
-                    case 114: resolvedClass = "URL"; break;
-                    case 115: resolvedClass = "HttpClient"; break;
-                    case 116: resolvedClass = "HttpResponse"; break;
+                    case 106: resolvedClass = "URL"; break;
+                    case 108: resolvedClass = "HttpClient"; break;
+                    case 107: resolvedClass = "HttpResponse"; break;
                     case 105: resolvedClass = "Random"; break;
                     case 117: resolvedClass = "HashMap"; break;
                     case 118: resolvedClass = "AnyArray"; break;
@@ -4248,8 +4248,9 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                             {"Array", 102}, {"Tensor", 104}, {"String", 101},
                             {"Map", 103}, {"Buffer", 113}, {"Character", 109},
                             {"Random", 105}, {"DateTime", 119}, {"Args", 110},
-                            {"Compression", 111}, {"Csv", 112}, {"Path", 114},
-                            {"Http", 115}, {"Response", 116}, {"HashMap", 117},
+                            {"Compression", 111}, {"Csv", 114}, {"Path", 114},
+                            {"URL", 106}, {"HttpClient", 108}, {"HttpResponse", 107},
+                            {"Http", 108}, {"Response", 107}, {"HashMap", 117},
                             {"AnyArray", 118}, {"Regex", 120}, {"Mutex", 121},
                             {"Uuid", 122}
                         };
@@ -4362,7 +4363,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     }
                     if (clsName == "Csv") {
                         if (ma->getMember() == "new" || ma->getMember() == "newWithOpts" ||
-                            ma->getMember() == "retain") return 112;
+                             ma->getMember() == "retain") return 114;
                         return 101;
                     }
                     if (clsName == "Character") {
@@ -4406,7 +4407,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "addPositional" || member == "clear") return 4;
                             return 100;
                         }
-                        if (objTypeId == 112) {
+                        if (objTypeId == 114) {
                             if (member == "parse" || member == "readFile" ||
                                 member == "parseAsMaps" || member == "readFileAsMaps" ||
                                 member == "select" || member == "filter" || member == "sort")
@@ -4457,7 +4458,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             if (member == "pop") return 0;
                             return 100;
                         }
-                        if (objTypeId == 114) {
+                        if (objTypeId == 106) {
                             if (member == "getPort") return 1;
                             if (member == "getScheme" || member == "getHost" ||
                                 member == "getPath" || member == "getQuery" ||
@@ -4465,14 +4466,14 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 return 101;
                             return 100;
                         }
-                        if (objTypeId == 115) {
+                        if (objTypeId == 108) {
                             if (member == "setHeader") return 1;
                             if (member == "get" || member == "post" ||
                                 member == "put" || member == "delete")
-                                return 116;
+                                return 107;
                             return 100;
                         }
-                        if (objTypeId == 116) {
+                        if (objTypeId == 107) {
                             if (member == "statusCode" || member == "getStatusCode" ||
                                 member == "isSuccess")
                                 return 1;
