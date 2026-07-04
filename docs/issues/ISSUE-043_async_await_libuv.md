@@ -227,7 +227,14 @@ If a future fails, the exception is stored in the future object and re-thrown in
 ---
 
 ## Status
-- **Date**: 2026-07-03
-- **Status**: **APPROVED**
+- **Date**: 2026-07-04
+- **Status**: **RESOLVED & IMPLEMENTED** 
+- **Details**: 
+  - Libuv event loop integration is complete (`hoo_event_loop.c/h`) and Thread runtimes modernized to use `uv_thread_create`.
+  - Coroutine continuations mapped inside `HooFutureImpl` via `hoo_future_set_continuation`.
+  - Stackless Coroutines fully supported in JIT via `LLJITBuilder` PassManager updates (`CoroEarlyPass`, `CoroSplitPass`, `CoroCleanupPass`).
+  - Code generation intrinsically emits `llvm.coro.id`, `llvm.coro.size`, `llvm.coro.begin`, `llvm.coro.suspend`, `llvm.coro.end`, `llvm.coro.free` appropriately for async modifiers and `await` yielding.
+  - Comprehensive coverage in `tests/jit/NewLanguageFeaturesTest.cpp`.
+  - Language docs added at `docs/language/async_await.md`.
 
-*Prepared by Antigravity AI – 2026‑07‑03*
+*Prepared by Antigravity AI – 2026-07-04*

@@ -78,6 +78,11 @@
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/DynamicLibrary.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/Coroutines/CoroEarly.h"
+#include "llvm/Transforms/Coroutines/CoroSplit.h"
+#include "llvm/Transforms/Coroutines/CoroCleanup.h"
+#include "llvm/Transforms/Coroutines/CoroConditionalWrapper.h"
 
 namespace fs = std::filesystem;
 
@@ -4764,6 +4769,36 @@ bool hooc::HVMJIT::ensureJIT() {
         return false;
     }
     jit_ = std::move(*jitExpected);
+
+    jit_->getIRTransformLayer().setTransform(
+        [](llvm::orc::ThreadSafeModule TSM,
+           const llvm::orc::MaterializationResponsibility &R) {
+            TSM.withModuleDo([](llvm::Module &M) {
+                llvm::LoopAnalysisManager LAM;
+                llvm::FunctionAnalysisManager FAM;
+                llvm::CGSCCAnalysisManager CGAM;
+                llvm::ModuleAnalysisManager MAM;
+
+                llvm::PassBuilder PB;
+                PB.registerModuleAnalyses(MAM);
+                PB.registerCGSCCAnalyses(CGAM);
+                PB.registerFunctionAnalyses(FAM);
+                PB.registerLoopAnalyses(LAM);
+                PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+                llvm::ModulePassManager MPM;
+                MPM.addPass(llvm::CoroEarlyPass());
+                
+                llvm::CGSCCPassManager CGPM;
+                CGPM.addPass(llvm::CoroSplitPass());
+                MPM.addPass(llvm::createModuleToPostOrderCGSCCPassAdaptor(std::move(CGPM)));
+                
+                MPM.addPass(llvm::CoroCleanupPass());
+
+                MPM.run(M, MAM);
+            });
+            return TSM;
+        });
 
     // Expose JITed symbols/objects to host debuggers when supported by the
     // underlying ORC object linking layer.

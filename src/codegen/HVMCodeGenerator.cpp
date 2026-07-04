@@ -1041,6 +1041,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     bool isMethod, bool isConstructor)
 {
     currentFunctionHasReturn_ = false;
+    currentFunctionIsAsync_ = decl && decl->isAsync();
     FunctionPrologueInfo info;
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
@@ -1067,6 +1068,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (decl) {
         mapParams(decl->getParameters());
+        if (decl->isAsync()) {
+            emitCall(Opcode::CALL, "llvm.coro.id");
+            emitCall(Opcode::CALL, "llvm.coro.size.i64");
+            emitCall(Opcode::CALL, "llvm.coro.begin");
+        }
         visitStatement(decl->getBody());
     } else if (ctorDecl) {
         mapParams(ctorDecl->getParameters());
@@ -1079,6 +1085,10 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
         emitScopeCleanup(scopeStack_.size(), 0);
+        if (decl && decl->isAsync()) {
+            emitCall(Opcode::CALL, "llvm.coro.end");
+            emitCall(Opcode::CALL, "llvm.coro.free");
+        }
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     }
@@ -1493,6 +1503,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(reg);
         }
         emitScopeCleanup(scopeStack_.size(), 0);
+        if (currentFunctionIsAsync_) {
+            emitCall(Opcode::CALL, "llvm.coro.end");
+            emitCall(Opcode::CALL, "llvm.coro.free");
+        }
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
@@ -2300,6 +2314,23 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             return resReg;
         }
+    }
+
+    if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
+        uint32_t futureTypeId = inferExpressionTypeId(awaitExpr->getFuture());
+        if (futureTypeId != 123 && futureTypeId != 100 && futureTypeId != 0) {
+            addError(std::string("await expression must be used with a Future type"));
+            return 0;
+        }
+        uint8_t futureReg = visitExpression(awaitExpr->getFuture());
+        emit(Opcode::MOV, OperandsR{1, futureReg, 0, 0});
+        emitCall(Opcode::CALL, "llvm.coro.suspend");
+        emitCall(Opcode::CALL, "_F_hoo_future_await_unwrap_p_p");
+        uint8_t dest = allocateRegister();
+        emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        emit(Opcode::RELEASE, OperandsR{futureReg, 0, 0, 0});
+        freeRegister(futureReg);
+        return dest;
     }
 
     if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
@@ -3848,6 +3879,10 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
         }
     }
     if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
+    if (dynamic_cast<const ast::FutureType*>(type)) {
+        if (outClassName) *outClassName = "Future";
+        return 123;
+    }
     if (dynamic_cast<const ast::MapType*>(type)) return 103;
     if (dynamic_cast<const ast::TensorType*>(type)) return 104;
     if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
@@ -3868,6 +3903,7 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 0: return "any";
         case 101: return "string";
         case 104: return "tensor";
+        case 123: return "Future";
         default: return "ptr";
     }
 }

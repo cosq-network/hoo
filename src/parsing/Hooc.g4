@@ -50,6 +50,9 @@ ANYARRAY: 'AnyArray';
 ANY: 'any';
 FUNCTION: 'function';
 TENSOR: 'tensor';
+ASYNC: 'async';
+AWAIT: 'await';
+FUTURE: 'Future';
 
 
 // Primitive Types
@@ -159,7 +162,7 @@ declaration
 
 // Function Declaration
 functionDeclaration
-    : FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN block
+    : ASYNC? FUNC (COLON type)? IDENTIFIER LPAREN parameterList? RPAREN block
     ;
 
 parameterList: parameter (COMMA parameter)*;
@@ -195,7 +198,7 @@ constantDeclaration
     ;
 
 // Types
-type: tensorType | hashMapType | mapType | anyType | anyArrayType | optionalType;
+type: futureType | tensorType | hashMapType | mapType | anyType | anyArrayType | optionalType;
 
 optionalType: arrayType QUESTION?;
 
@@ -211,6 +214,7 @@ hashMapType: HASHMAP LESS hashMapKeyType COMMA type GREATER;
 anyType: ANY;
 anyArrayType: ANYARRAY;
 tensorType: TENSOR LESS baseType GREATER LBRACKET INTEGER_LITERAL (COMMA INTEGER_LITERAL)* RBRACKET;
+futureType: FUTURE LESS type GREATER;
 
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 hashMapKeyType: BYTE | INT8 | INT64;
@@ -345,7 +349,13 @@ primary
     | NULL
     | LBRACKET expressionList? RBRACKET (IDENTIFIER | ANY)?
     | LPAREN expression RPAREN
+    | awaitExpression
     | newExpression
+    ;
+
+// Await expression
+awaitExpression
+    : AWAIT LPAREN expression RPAREN
     ;
 
 // Object creation expression

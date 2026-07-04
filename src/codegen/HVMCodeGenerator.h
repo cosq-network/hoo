@@ -247,6 +247,7 @@ private:
                                        const ast::ConstructorDeclaration* ctorDecl,
                                        bool isMethod, bool isConstructor);
     void endFunction(const FunctionPrologueInfo& info);
+    bool currentFunctionIsAsync_ = false;
 
     // Serializable class validation
     void validateSerializableClass(const ast::ClassDeclaration& classDecl,

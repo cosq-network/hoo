@@ -9,7 +9,8 @@
     "curl",
     "libzip",
     "zstd",
-    "nlohmann-json"
+    "nlohmann-json",
+    "libuv"
   ],
-  "builtin-baseline": "aa40adda5352e87655b8583cfb2451d5e9e276fd"
+  "builtin-baseline": "64e1fbee7d9f40eab5d112aaff648c4dcffe9e47"
 }

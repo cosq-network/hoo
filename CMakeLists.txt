@@ -160,7 +160,11 @@ endif()
 find_package(CURL REQUIRED)
 find_package(libzip REQUIRED)
 find_package(zstd REQUIRED)
+if(NOT TARGET zstd::libzstd_shared AND TARGET zstd::libzstd)
+    add_library(zstd::libzstd_shared ALIAS zstd::libzstd)
+endif()
 find_package(nlohmann_json REQUIRED)
+find_package(libuv CONFIG REQUIRED)
 
 find_package(LLVM QUIET CONFIG)
 if(NOT LLVM_FOUND)
@@ -278,6 +282,8 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_exception.cpp
     src/runtime/lib/hoo_math.cpp
     src/runtime/lib/hoo_net.cpp
+    src/runtime/lib/hoo_future.cpp
+    src/runtime/lib/hoo_event_loop.cpp
     src/runtime/lib/hoo_fs.cpp
     src/runtime/lib/hoo_datetime.cpp
     src/runtime/lib/hoo_encoding.cpp
@@ -310,6 +316,9 @@ if(NOT APPLE)
     target_link_libraries(hoort PUBLIC OpenSSL::Crypto)
 endif()
 target_link_libraries(hoort PUBLIC ZLIB::ZLIB)
+target_link_libraries(hoort PUBLIC $<TARGET_NAME_IF_EXISTS:libuv::uv>)
+target_link_libraries(hoort PUBLIC $<TARGET_NAME_IF_EXISTS:libuv::uv_a>)
+
 
 set_source_files_properties(
     src/runtime/lib/hoo_runtime.c

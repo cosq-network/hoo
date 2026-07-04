@@ -256,6 +256,13 @@ private:
     std::unique_ptr<ast::HashMapType> buildHashMapType(HoocParser::HashMapTypeContext* ctx);
 
     /**
+     * @brief Builds a FutureType (Future<T>).
+     * @param ctx Future type context.
+     * @return Unique pointer to FutureType.
+     */
+    std::unique_ptr<ast::FutureType> buildFutureType(HoocParser::FutureTypeContext* ctx);
+
+    /**
      * @brief Builds a TensorType (tensor[T][d0, d1, d2]).
      * @param ctx Tensor type context.
      * @return Unique pointer to TensorType.
@@ -430,6 +437,13 @@ private:
      * @return PrimaryExpression wrapping the appropriate Primary type.
      */
     std::unique_ptr<ast::Expression> buildPrimary(HoocParser::PrimaryContext* ctx);
+
+    /**
+     * @brief Builds an AwaitExpression (await(future)).
+     * @param ctx Await expression context.
+     * @return Unique pointer to AwaitExpression.
+     */
+    std::unique_ptr<ast::AwaitExpression> buildAwaitExpression(HoocParser::AwaitExpressionContext* ctx);
 
     /**
      * @brief Builds a NewObjectExpression (new ClassName(...)).

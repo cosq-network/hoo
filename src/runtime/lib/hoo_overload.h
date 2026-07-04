@@ -31,8 +31,6 @@ extern "C" {
  */
 #define HOO_TYPE_AMBIGUOUS_OVERLOAD    130   /**< AmbiguousOverloadException */
 #define HOO_TYPE_NO_MATCHING_OVERLOAD  131   /**< NoMatchingOverloadException */
-#define HOO_TYPE_FUTURE                132   /**< Future<T> (async) */
-#define HOO_TYPE_UV_HANDLE             133   /**< libuv handle wrapper */
 
 /* ─────────────────────────── Overload Kind ─────────────────────────────── */
 

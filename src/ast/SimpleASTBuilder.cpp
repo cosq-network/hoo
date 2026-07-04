@@ -147,6 +147,10 @@ std::unique_ptr<FunctionDeclaration> SimpleASTBuilder::buildFunctionDeclaration(
     std::vector<FunctionModifier> modifiers) {
     std::string name = ctx->IDENTIFIER()->getText();
 
+    if (ctx->ASYNC()) {
+        modifiers.push_back(FunctionModifier::ASYNC);
+    }
+
     std::vector<std::unique_ptr<Parameter>> parameters;
     if (ctx->parameterList()) {
         for (auto paramCtx : ctx->parameterList()->parameter()) {
@@ -193,6 +197,10 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
 
     if (ctx->anyArrayType()) {
         return std::make_unique<AnyArrayType>();
+    }
+
+    if (ctx->futureType()) {
+        return buildFutureType(ctx->futureType());
     }
 
     if (ctx->hashMapType()) {
@@ -352,6 +360,11 @@ std::unique_ptr<HashMapType> SimpleASTBuilder::buildHashMapType(HoocParser::Hash
     }
 
     return std::make_unique<HashMapType>(keyType, std::move(valueType));
+}
+
+std::unique_ptr<FutureType> SimpleASTBuilder::buildFutureType(HoocParser::FutureTypeContext* ctx) {
+    auto elementType = buildType(ctx->type());
+    return std::make_unique<FutureType>(std::move(elementType));
 }
 
 std::unique_ptr<TensorType> SimpleASTBuilder::buildTensorType(HoocParser::TensorTypeContext* ctx) {
@@ -955,11 +968,18 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
     } else if (ctx->NULL_()) {
         auto nullLiteral = std::make_unique<NullLiteral>();
         return std::make_unique<PrimaryExpression>(std::move(nullLiteral));
+    } else if (ctx->awaitExpression()) {
+        return buildAwaitExpression(ctx->awaitExpression());
     } else if (ctx->newExpression()) {
         return buildNewExpression(ctx->newExpression());
     }
 
     throw std::runtime_error("Unknown primary expression type encountered");
+}
+
+std::unique_ptr<AwaitExpression> SimpleASTBuilder::buildAwaitExpression(HoocParser::AwaitExpressionContext* ctx) {
+    auto future = buildExpression(ctx->expression());
+    return std::make_unique<AwaitExpression>(std::move(future));
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::NewExpressionContext* ctx) {
