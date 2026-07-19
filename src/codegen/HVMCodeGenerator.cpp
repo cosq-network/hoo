@@ -147,7 +147,7 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"Regex", 120},
         {"Mutex", 121},
         {"Uuid", 122},
-        {"Decimal", 123},
+        {"Decimal", 125},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -1609,7 +1609,18 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         }
         int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId);
         if (decl.getInitializer()) {
+            // Set decimal context from declared type if applicable
+            int32_t savedPrec = currentDecimalPrecision_;
+            int32_t savedScale = currentDecimalScale_;
+            if (decl.getType()) {
+                if (auto decType = dynamic_cast<const ast::DecimalType*>(decl.getType())) {
+                    currentDecimalPrecision_ = decType->getPrecision();
+                    currentDecimalScale_ = decType->getScale();
+                }
+            }
             uint8_t reg = visitExpression(*decl.getInitializer());
+            currentDecimalPrecision_ = savedPrec;
+            currentDecimalScale_ = savedScale;
             emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
             freeRegister(reg);
         } else if (auto tensorType = dynamic_cast<const ast::TensorType*>(decl.getType())) {
@@ -2117,8 +2128,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     rodata->virtual_size = rodata->data.size();
 
     uint8_t addrReg = emitRoDataAddress(offset);
-    uint8_t precReg = emitConstant(static_cast<int64_t>(38));
-    uint8_t scaleReg = emitConstant(static_cast<int64_t>(2));
+    uint8_t precReg = emitConstant(static_cast<int64_t>(currentDecimalPrecision_));
+    uint8_t scaleReg = emitConstant(static_cast<int64_t>(currentDecimalScale_));
     emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
     emit(Opcode::MOV, OperandsR{2, precReg, 0, 0});
     emit(Opcode::MOV, OperandsR{3, scaleReg, 0, 0});
@@ -3010,21 +3021,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
       
 
-     if (leftExprType == 123|| rightExprType == 123) {
-    if (leftExprType != rightExprType) {
-        addError("Decimal operands must have matching precision and scale");
+     if (leftExprType == 125 || rightExprType == 125) {
+    if (leftExprType != 125 || rightExprType != 125) {
+        addError("Decimal operands must both be Decimal types");
         return 0;
     }
-    switch (binary->getOperator()) {
-        case ast::BinaryOperator::EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_eq_p_p_p");
-        case ast::BinaryOperator::NOT_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_ne_p_p_p");
-        case ast::BinaryOperator::LESS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_lt_p_p_p");
-        case ast::BinaryOperator::LESS_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_le_p_p_p");
-        case ast::BinaryOperator::GREATER: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_gt_p_p_p");
-        case ast::BinaryOperator::GREATER_EQUALS: return emitTensorBinaryCall(*binary, "_F_hoo_Decimal_ge_p_p_p");
-        default:
-            return emitDecimalBinaryOp(*binary);
-    }
+    return emitDecimalBinaryOp(*binary);
 }
         if (leftExprType == 104 || rightExprType == 104) {
             switch (binary->getOperator()) {
@@ -3905,7 +3907,7 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
     }
     if (dynamic_cast<const ast::DecimalType*>(type)) {
     if (outClassName) *outClassName = "Decimal";
-    return 123;
+    return 125;
 }
     if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
         if (bt->isPrimitive()) {
@@ -4221,17 +4223,19 @@ uint8_t HVMCodeGenerator::emitDecimalBinaryOp(const ast::BinaryExpression& binar
     const char* symbol = nullptr;
 
     switch (binary.getOperator()) {
-        case ast::BinaryOperator::PLUS: symbol = "_F_hoo_Decimal_add_p_p_p"; break;
-           
-
-        case ast::BinaryOperator::MINUS: symbol = "_F_hoo_Decimal_sub_p_p_p"; break;
-
-        case ast::BinaryOperator::MULTIPLY: symbol = "_F_hoo_Decimal_mul_p_p_p"; break;
-
-        case ast::BinaryOperator::DIVIDE: symbol = "_F_hoo_Decimal_div_p_p_p"; break;
-
-        case ast::BinaryOperator::MODULO:  symbol = "_F_hoo_Decimal_mod_p_p_p"; break;
-
+        // Arithmetic
+        case ast::BinaryOperator::PLUS:       symbol = "_F_hoo_Decimal_add_p_p_p"; break;
+        case ast::BinaryOperator::MINUS:      symbol = "_F_hoo_Decimal_sub_p_p_p"; break;
+        case ast::BinaryOperator::MULTIPLY:   symbol = "_F_hoo_Decimal_mul_p_p_p"; break;
+        case ast::BinaryOperator::DIVIDE:     symbol = "_F_hoo_Decimal_div_p_p_p"; break;
+        case ast::BinaryOperator::MODULO:     symbol = "_F_hoo_Decimal_mod_p_p_p"; break;
+        // Comparison (return int64 1/0, will be boxed as bool by caller)
+        case ast::BinaryOperator::EQUALS:             symbol = "_F_hoo_Decimal_eq_p_p_p"; break;
+        case ast::BinaryOperator::NOT_EQUALS:        symbol = "_F_hoo_Decimal_ne_p_p_p"; break;
+        case ast::BinaryOperator::LESS:              symbol = "_F_hoo_Decimal_lt_p_p_p"; break;
+        case ast::BinaryOperator::LESS_EQUALS:       symbol = "_F_hoo_Decimal_le_p_p_p"; break;
+        case ast::BinaryOperator::GREATER:           symbol = "_F_hoo_Decimal_gt_p_p_p"; break;
+        case ast::BinaryOperator::GREATER_EQUALS:    symbol = "_F_hoo_Decimal_ge_p_p_p"; break;
         default:
             addError("Unsupported decimal operator");
             freeRegister(lhs);
@@ -4263,7 +4267,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
         if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return 101;
-        if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) return 123;
+        if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) return 125;
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isAnyArray() ? 118 : 102;
         if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
@@ -4297,7 +4301,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
         uint32_t left = inferExpressionTypeId(binary->getLeft());
         uint32_t right = inferExpressionTypeId(binary->getRight());
         if (left == 104 || right == 104) return 104;
-        if (left == 123 || right == 123) return 123;
+        if (left == 125 || right == 125) return 125;
         switch (binary->getOperator()) {
             case ast::BinaryOperator::LESS:
             case ast::BinaryOperator::LESS_EQUALS:

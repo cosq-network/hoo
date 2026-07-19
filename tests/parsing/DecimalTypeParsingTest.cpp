@@ -184,7 +184,7 @@ EXPECT_NE(
     dynamic_cast<const F8Literal*>(&getPrimary(2)),
     nullptr);
 }
-TEST(SimpleASTBuilderTest, BuildsDecimalTypeNode) {
+TEST(DecimalTypeParsingTest, BuildsDecimalTypeNode) {
     const std::string code = R"(
         func:void test(price: Decimal<38,2>) {
             return;
@@ -212,7 +212,7 @@ TEST(SimpleASTBuilderTest, BuildsDecimalTypeNode) {
     EXPECT_EQ(decimalType->getPrecision(), 38);
     EXPECT_EQ(decimalType->getScale(), 2);
 }
-TEST(SimpleASTBuilderTest, BuildsDecimalLiteralNode) {
+TEST(DecimalTypeParsingTest, BuildsDecimalLiteralNode) {
     const std::string code = R"(
         func:void test() {
             var amount = 19.99m;

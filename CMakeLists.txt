@@ -299,6 +299,7 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_json.cpp
     src/runtime/lib/hoo_buffer.cpp
     src/runtime/lib/hoo_overload.cpp
+    src/runtime/lib/hoo_decimal.cpp
 )
 if(MSVC)
     hoo_use_static_msvc_runtime(hoort)

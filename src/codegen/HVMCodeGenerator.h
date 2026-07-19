@@ -108,6 +108,10 @@ private:
     bool currentFunctionHasReturn_ = false;
     std::vector<std::pair<std::string, uint32_t>> pendingSingletons_; // className, .data offset
     
+    // Decimal literal context: precision/scale from the most recent variable declaration
+    int32_t currentDecimalPrecision_ = 38; // default
+    int32_t currentDecimalScale_ = 2;      // default
+    
     // Serializable class adjacency for cycle detection: className -> ser. dependency class names
     std::unordered_map<std::string, std::vector<std::string>> serializableAdjacency_;
     
