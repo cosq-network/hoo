@@ -158,8 +158,9 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-025_tensor_data_type.md](issues/ISSUE-025_tensor_data_type.md)**
   - **Title**: # ISSUE-025: Implementation Plan for `tensor` Data Type
-  - **Status**: PARTIALLY IMPLEMENTED - CORE TENSOR TYPE, RUNTIME, CODEGEN, JIT, AND TESTS PRESENT
+  - **Status**: IMPLEMENTED
   - **Priority**: HIGH** (for AI/ML target workloads)
+  - **Notes**: Full 1D/2D/3D support with element-wise arithmetic, comparison, logical operators, and matrix multiplication. Both int64 and f64 element types. Phase 10 complete.
 
 - **[ISSUE-027_hvm_1_5_subword_precision.md](issues/ISSUE-027_hvm_1_5_subword_precision.md)**
   - **Title**: # ISSUE-027: HVM 1.5 Sub-Word Precision Extension Implementation
@@ -173,8 +174,9 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-035_serializable_class_modifier.md](issues/ISSUE-035_serializable_class_modifier.md)**
   - **Title**: # ISSUE-035: `serializable` Class Modifier — Declarative Serialization
-  - **Status**: PARTIALLY IMPLEMENTED - COMPILER VALIDATION AND GENERATED METHODS PRESENT
+  - **Status**: IMPLEMENTED
   - **Priority**: MEDIUM** (Feature enhancement — no correctness impact on existing code)
+  - **Notes**: Grammar, AST, symbol mangling, and codegen support. Auto-generated `serialize()`/`deserialize()` methods. Cycle detection via DFS. Phase 11.3 complete.
 
 
 ## Proposed / Open / Backlog
@@ -236,8 +238,9 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-043_async_await_libuv.md](issues/ISSUE-043_async_await_libuv.md)**
   - **Title**: # ISSUE-043 Async/Await Integration via libuv
-  - **Status**: PROPOSED
-  - **Priority**: UNKNOWN
+  - **Status**: IMPLEMENTED
+  - **Priority**: HIGH
+  - **Notes**: Native `async`/`await` syntax with LLVM coroutine lowering; libuv event loop (`hoo_event_loop`); `Future<T>` generic type (type ID 123); comprehensive JIT test coverage.
 
 - **[ISSUE-046_managed_object_linked_list.md](issues/ISSUE-046_managed_object_linked_list.md)**
   - **Title**: # ISSUE-046: `hoo_is_managed_object` O(n) Linked-List Walk With Global Mutex

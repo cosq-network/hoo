@@ -5,7 +5,7 @@
 [![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml)
 [![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
 
-Last Updated: 2026-06-29
+Last Updated: 2026-07-19
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -40,6 +40,7 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 12 (REPL Integration)**: Added interactive REPL shell mode via `--repl` flag, with nested multiline brace matching, built-in commands (`/exit`, `/quit`, `/help`, `/reset`), static library target `hoorepl`, and complete unit testing coverage.
 - [x] **Phase 13 (Function Overloading)**: Implemented function and method overloading capabilities for both built-in core APIs and user-defined functions. Integrates name mangling strategies based on argument types, an `OverloadList` AST grouping node to gracefully handle multiple method declarations, and dynamic runtime dispatch leveraging `CALL_OVERLOADED` instructions directly into the LLVM ORC JIT. Includes robust ambiguity detection with `AmbiguousOverloadException`.
 - [x] **Phase 14 (Archive Loading)**: Cross-file local imports and `.ha` archive format with Zstd compression, manifest, and multi-module JIT loading.
+- [x] **Phase 15 (Async/Await via libuv)**: Native `async`/`await` syntax with LLVM coroutine lowering (`CoroEarlyPass`, `CoroSplitPass`, `CoroCleanupPass`); cross-platform libuv event loop (`hoo_event_loop`); `Future<T>` generic type (type ID 123) with continuation support; stackless coroutine frame allocation via `hoo_alloc`. Comprehensive JIT test coverage in `NewLanguageFeaturesTest.cpp`. Language docs at `docs/language/async_await.md`.
 - [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity (113/113 mnemonics), all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion (25 new JIT semantics tests).
 - [x] **Verification**: full preset test run passing (`1930 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
