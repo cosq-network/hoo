@@ -40,7 +40,8 @@ enum class PrimitiveTypeKind {
     CHAR,
     STRING,
     BUFFER,
-    VOID
+    VOID,
+    DECIMAL 
 };
 
 class PrimitiveType : public Type {
@@ -84,6 +85,21 @@ public:
 private:
     std::unique_ptr<PrimitiveType> primitiveType_;
     std::unique_ptr<QualifiedIdentifier> identifier_;
+};
+// Decimal type (Decimal<precision, scale>)
+class DecimalType : public Type {
+public:
+    DecimalType(int precision, int scale)
+        : precision_(precision), scale_(scale) {}
+
+    int getPrecision() const { return precision_; }
+    int getScale() const { return scale_; }
+
+    std::string toString() const override;
+
+private:
+    int precision_;
+    int scale_;
 };
 
 // Array type

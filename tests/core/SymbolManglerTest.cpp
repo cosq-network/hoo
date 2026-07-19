@@ -657,3 +657,22 @@ TEST_F(SymbolManglerTest, ModuleSymbolWithSpecialCharsManglingUsesEncoding) {
     std::string mangled = SymbolMangler::mangleModuleSymbol({"hoo.std", "io-utils"}, "print.line");
     EXPECT_NE(mangled.find("E"), std::string::npos);
 }
+TEST_F(SymbolManglerTest, ManglesDecimalWithUniqueCode) {
+    EXPECT_EQ(
+        SymbolMangler::mangleType("Decimal<38,2>"),
+        "m38_2");
+}
+TEST_F(SymbolManglerTest, DemanglesDecimalTypeRoundTrip) {
+    EXPECT_EQ(
+        SymbolMangler::demangleType("m38_2"),
+        "Decimal<38,2>");
+}
+TEST_F(SymbolManglerTest, DoesNotReuseDoubleCodeForDecimal) {
+    EXPECT_NE(
+        SymbolMangler::mangleType("Decimal<38,2>"),
+        SymbolMangler::mangleType("double"));
+
+    EXPECT_NE(
+        SymbolMangler::mangleType("Decimal<38,2>"),
+        SymbolMangler::mangleType("f64"));
+}

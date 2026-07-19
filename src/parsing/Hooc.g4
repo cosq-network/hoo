@@ -68,6 +68,7 @@ BOOL: 'bool';
 CHAR: 'char';
 STRING: 'string';
 VOID: 'void';
+DECIMAL: 'Decimal';
 
 // Operators
 PLUS: '+';
@@ -121,8 +122,10 @@ CHAR_LITERAL: '\'' (~['\\\r\n] | '\\' .) '\'';
 // Number Literals
 BIT_LITERAL: [01] 'b';
 F8_LITERAL: [0-9]+ '.' [0-9]+ 'f8';
+DECIMAL_LITERAL: ([0-9]+'.'[0-9]* | '.' [0-9]+ | [0-9]+) [mM];
 INTEGER_LITERAL: [0-9]+;
 FLOATING_LITERAL: [0-9]+ '.' [0-9]+;
+
 
 // Identifier
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
@@ -198,7 +201,7 @@ constantDeclaration
     ;
 
 // Types
-type: futureType | tensorType | hashMapType | mapType | anyType | anyArrayType | optionalType;
+type: futureType | tensorType | hashMapType | mapType | decimalType | anyType | anyArrayType | optionalType;
 
 optionalType: arrayType QUESTION?;
 
@@ -218,6 +221,7 @@ futureType: FUTURE LESS type GREATER;
 
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 hashMapKeyType: BYTE | INT8 | INT64;
+decimalType: DECIMAL LESS INTEGER_LITERAL COMMA INTEGER_LITERAL GREATER;
 
 primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BOOL | CHAR | STRING | VOID;
 
@@ -339,6 +343,7 @@ primary
     | THIS                                                   // Current object instance
     | BIT_LITERAL
     | F8_LITERAL
+    | DECIMAL_LITERAL
     | INTEGER_LITERAL
     | FLOATING_LITERAL
     | STRING_LITERAL

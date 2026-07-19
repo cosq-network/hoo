@@ -70,7 +70,8 @@ const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap() {
         {"void", "v"},
         {"ptr", "p"},
         {"array", "a"},
-        {"tensor", "t"}
+        {"tensor", "t"},
+        {"decimal", "m"}
     };
     return map;
 }
@@ -584,6 +585,31 @@ std::string SymbolMangler::demangleType(const std::string& mangledType) {
             pos++;
             return "f8";
         }
+         if (mangledType[pos] == 'm') {
+        pos++;
+
+        size_t underscore = mangledType.find('_', pos);
+        if (underscore == std::string::npos) {
+        return "unknown";
+        }
+
+        std::string precision =
+        mangledType.substr(pos, underscore - pos);
+
+        pos = underscore + 1;
+
+        size_t scaleStart = pos;
+
+        while (pos < mangledType.size() &&
+           std::isdigit(static_cast<unsigned char>(mangledType[pos]))) {
+        pos++;
+        }
+
+        std::string scale =
+        mangledType.substr(scaleStart, pos - scaleStart);
+
+        return "Decimal<" + precision + "," + scale + ">";
+        }
         if (mangledType[pos] == 'x') {
             pos++;
             return "bit";
@@ -678,6 +704,26 @@ std::string SymbolMangler::mangleType(const std::string& typeName) {
     if (primitive != "o") {
         return primitive;
     }
+    if (normalized.rfind("Decimal<", 0) == 0) {
+    size_t start = normalized.find('<');
+    size_t comma = normalized.find(',', start);
+    size_t end = normalized.find('>', comma);
+
+    if (start != std::string::npos &&
+        comma != std::string::npos &&
+        end != std::string::npos) {
+
+        std::string precision =
+            trimSpaces(normalized.substr(start + 1,
+                                         comma - start - 1));
+
+        std::string scale =
+            trimSpaces(normalized.substr(comma + 1,
+                                         end - comma - 1));
+
+        return "m" + precision + "_" + scale;
+    }
+}
 
     size_t pos = 0;
     std::function<std::string()> parseType = [&]() -> std::string {

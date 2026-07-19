@@ -83,3 +83,8 @@ build-asan/
 *.ha
 
 .codex-tmp/
+.vs/
+gtests.txt
+tests.txt
+*.xz
+*.tar.xz

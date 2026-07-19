@@ -4,6 +4,7 @@
 #include <iostream>
 #include <stdexcept>
 
+
 using namespace hooc;
 using namespace hooc::ast;
 
@@ -206,7 +207,9 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
     if (ctx->hashMapType()) {
         return buildHashMapType(ctx->hashMapType());
     }
-
+     if (ctx->decimalType()) {
+    return buildDecimalType(ctx->decimalType());
+    }
     // Handle mapType first
     if (ctx->mapType()) {
         return buildMapType(ctx->mapType());
@@ -297,7 +300,25 @@ std::unique_ptr<PrimitiveType> SimpleASTBuilder::buildPrimitiveType(HoocParser::
     PrimitiveTypeKind kind = getPrimitiveTypeKind(typeName);
     return std::make_unique<PrimitiveType>(kind);
 }
+std::unique_ptr<DecimalType> SimpleASTBuilder::buildDecimalType(HoocParser::DecimalTypeContext* ctx) {
 
+    int precision =
+        std::stoi(ctx->INTEGER_LITERAL(0)->getText());
+
+    int scale =
+        std::stoi(ctx->INTEGER_LITERAL(1)->getText());
+
+    if (scale > precision) {
+    throw std::runtime_error(
+        "Decimal scale cannot exceed precision");
+    }
+    if (precision <= 0) {
+    throw std::runtime_error("Decimal precision must be greater than zero");
+    }
+    return std::make_unique<DecimalType>(
+        precision,
+        scale);
+}
 std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeContext* ctx) {
     if (!ctx) {
         throw std::runtime_error("MapTypeContext is null");
@@ -939,7 +960,11 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildPrimary(HoocParser::PrimaryCo
         double value = getDoubleValue(ctx->FLOATING_LITERAL());
         auto floatingLiteral = std::make_unique<FloatingLiteral>(value);
         return std::make_unique<PrimaryExpression>(std::move(floatingLiteral));
-    } else if (ctx->STRING_LITERAL()) {
+    } else if (ctx->DECIMAL_LITERAL()) {
+    std::string text = ctx->DECIMAL_LITERAL()->getText();
+    auto decimalLiteral = std::make_unique<DecimalLiteral>(text);
+    return std::make_unique<PrimaryExpression>(std::move(decimalLiteral));
+}else if (ctx->STRING_LITERAL()) {
         std::string value = getStringValue(ctx->STRING_LITERAL());
         if (isInterpolatedString(ctx->STRING_LITERAL())) {
             auto parts = parseInterpolatedString(value);
@@ -1236,6 +1261,7 @@ PrimitiveTypeKind SimpleASTBuilder::getPrimitiveTypeKind(const std::string& type
     if (typeName == "int8") return PrimitiveTypeKind::INT8;
     if (typeName == "byte") return PrimitiveTypeKind::BYTE;
     if (typeName == "void") return PrimitiveTypeKind::VOID;
+    if (typeName.rfind("Decimal<", 0) == 0) return PrimitiveTypeKind::DECIMAL;
     throw std::runtime_error("Unknown primitive type: " + typeName);
 }
 

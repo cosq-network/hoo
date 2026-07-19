@@ -53,6 +53,21 @@ public:
 private:
     double value_;
 };
+// Decimal literal
+class DecimalLiteral : public Primary {
+public:
+    explicit DecimalLiteral(const std::string& value)
+        : value_(value) {}
+
+    std::string toString() const override;
+
+    const std::string& getValue() const {
+        return value_;
+    }
+
+private:
+    std::string value_;
+};
 
 // f8 literal. Scalar execution stores the promoted f64 value bits; the distinct
 // node preserves the language-level type for type IDs and mangling.

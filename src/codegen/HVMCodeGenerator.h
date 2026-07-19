@@ -108,6 +108,10 @@ private:
     bool currentFunctionHasReturn_ = false;
     std::vector<std::pair<std::string, uint32_t>> pendingSingletons_; // className, .data offset
     
+    // Decimal literal context: precision/scale from the most recent variable declaration
+    int32_t currentDecimalPrecision_ = 38; // default
+    int32_t currentDecimalScale_ = 2;      // default
+    
     // Serializable class adjacency for cycle detection: className -> ser. dependency class names
     std::unordered_map<std::string, std::vector<std::string>> serializableAdjacency_;
     
@@ -198,7 +202,7 @@ private:
     uint8_t emitTensorLiteral(const ast::TensorLiteral& literal);
     uint8_t emitTensorBinaryCall(const ast::BinaryExpression& binary, const std::string& symbolName);
     uint8_t emitTensorVectorArith(const ast::BinaryExpression& binary, hvm::Opcode vecOp, uint16_t func);
-
+    uint8_t emitDecimalBinaryOp(const ast::BinaryExpression& binary);
     /**
      * Check if a name matches a known built-in class for static dispatch.
      */
