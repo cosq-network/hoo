@@ -54,6 +54,41 @@ TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
     ASSERT_GE(insts.size(), 4);
 }
 
+TEST_F(HVMCodeGeneratorTest, AsyncAwaitCodeGeneration) {
+    std::string code = R"(
+        async func:Future<int64> fetchData() {
+            return 42;
+        }
+
+        async func process() {
+            var data = await(fetchData());
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    if (!module) {
+        std::cout << "COMPILER ERROR: " << compiler_->getLastError() << std::endl;
+    }
+    ASSERT_NE(module, nullptr);
+    EXPECT_EQ(module->getName(), "test");
+
+    auto fetchSym = findSymbol(*module, "fetchData");
+    ASSERT_NE(fetchSym, nullptr);
+
+    auto processSym = findSymbol(*module, "process");
+    ASSERT_NE(processSym, nullptr);
+    // Check if CALL to _F_hoo_future_await_unwrap_p_p was emitted in process
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundCall = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::CALL) {
+            foundCall = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundCall);
+}
+
 TEST_F(HVMCodeGeneratorTest, GlobalVariables) {
     std::string code = R"(
         var g_alpha: int64 = 1;

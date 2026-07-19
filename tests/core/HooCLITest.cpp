@@ -236,7 +236,7 @@ TEST_F(HooCLITest, RejectsStdinCompileFlag) {
     EXPECT_TRUE(cli->getIOProvider()->getStderr().find("Unknown option") != std::string::npos);
 }
 
-TEST_F(HooCLITest, OutputOptionProducesBytecode) {
+TEST_F(HooCLITest, RejectsHoOutputPath) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     fakeIO->setFile("test.hoo", "func main() {}");
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
@@ -249,15 +249,11 @@ TEST_F(HooCLITest, OutputOptionProducesBytecode) {
 
     int result = cli->run(4, args.data());
 
-    EXPECT_EQ(result, 0);
-    {
-        std::ifstream f("out.ho");
-        EXPECT_TRUE(f.good());
-    }
-    std::remove("out.ho");
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("source compilation always produces .ha output") != std::string::npos);
 }
 
-TEST_F(HooCLITest, LongOutputEqualsOptionProducesBytecode) {
+TEST_F(HooCLITest, RejectsHoOutputPathLongForm) {
     auto fakeIO = std::make_unique<FakeIOProvider>();
     fakeIO->setFile("test.hoo", "func main() {}");
     auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
@@ -269,12 +265,25 @@ TEST_F(HooCLITest, LongOutputEqualsOptionProducesBytecode) {
 
     int result = cli->run(3, args.data());
 
-    EXPECT_EQ(result, 0);
-    {
-        std::ifstream f("out.ho");
-        EXPECT_TRUE(f.good());
-    }
-    std::remove("out.ho");
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("source compilation always produces .ha output") != std::string::npos);
+}
+
+TEST_F(HooCLITest, AcceptsHaOutputPath) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("test.hoo", "func main() {}");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("-o"));
+    args.push_back(const_cast<char*>("out.ha"));
+    args.push_back(const_cast<char*>("test.hoo"));
+
+    int result = cli->run(4, args.data());
+
+    // Should not fail on output path validation (may fail on compilation, but not on CLI args)
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("source compilation always produces .ha output") == std::string::npos);
 }
 
 TEST_F(HooCLITest, RejectsOptionAsOutputPath) {
@@ -291,6 +300,98 @@ TEST_F(HooCLITest, RejectsOptionAsOutputPath) {
 
     EXPECT_EQ(result, 1);
     EXPECT_TRUE(cli->getIOProvider()->getStderr().find("requires an output file path") != std::string::npos);
+}
+
+// ============================================================================
+// .ho input rejection tests
+// ============================================================================
+
+TEST_F(HooCLITest, RejectsHoInputFile) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("module.ho"));
+
+    int result = cli->run(2, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find(".ho is an internal intermediate format") != std::string::npos);
+}
+
+TEST_F(HooCLITest, RejectsHoInputWithExecFlag) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--exec"));
+    args.push_back(const_cast<char*>("module.ho"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find(".ho is an internal intermediate format") != std::string::npos);
+}
+
+// ============================================================================
+// Output path validation tests
+// ============================================================================
+
+TEST_F(HooCLITest, RejectsOutputEqualsHoFormat) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    fakeIO->setFile("test.hoo", "func main() {}");
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--output=app.ho"));
+    args.push_back(const_cast<char*>("test.hoo"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("source compilation always produces .ha output") != std::string::npos);
+}
+
+// ============================================================================
+// REPL validation tests
+// ============================================================================
+
+TEST_F(HooCLITest, RejectsReplWithHaFile) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--repl"));
+    args.push_back(const_cast<char*>("app.ha"));
+
+    int result = cli->run(3, args.data());
+
+    EXPECT_EQ(result, 1);
+    EXPECT_TRUE(cli->getIOProvider()->getStderr().find("REPL preload input must be a .hoo source file") != std::string::npos);
+}
+
+// ============================================================================
+// Help text includes archive info
+// ============================================================================
+
+TEST_F(HooCLITest, HelpTextMentionsHaArchive) {
+    auto fakeIO = std::make_unique<FakeIOProvider>();
+    auto cli = std::make_unique<HooCLI>(std::move(fakeIO));
+
+    std::vector<char*> args;
+    args.push_back(const_cast<char*>("hoo"));
+    args.push_back(const_cast<char*>("--help"));
+
+    int result = cli->run(2, args.data());
+
+    EXPECT_EQ(result, 0);
+    std::string help = cli->getIOProvider()->getStdout();
+    EXPECT_TRUE(help.find(".ha") != std::string::npos);
+    EXPECT_TRUE(help.find("Archive") != std::string::npos || help.find("archive") != std::string::npos);
 }
 
 

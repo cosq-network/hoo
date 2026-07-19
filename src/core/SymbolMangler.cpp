@@ -222,6 +222,7 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
             oss << encodeComponent(params.functionName) << "_";
         }
         
+        if (params.isAsync) oss << "a_";  // async suffix
         if (params.isStatic) oss << "static_";
         if (params.isVirtual) oss << "virtual_";
         
@@ -245,6 +246,7 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
     } else {
         oss << encodeComponent(params.functionName) << "_";
         
+        if (params.isAsync) oss << "a_";  // async suffix
         if (params.isStatic) oss << "static_";
         if (params.isVirtual) oss << "virtual_";
         

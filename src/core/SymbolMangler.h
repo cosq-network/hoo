@@ -21,6 +21,7 @@ struct DemangledSymbol {
     bool isStatic = false;
     bool isVirtual = false;
     bool isOverload = false;
+    bool isAsync = false;      // true when the symbol is an async function
 };
 
 struct MangledFunctionParams {
@@ -37,6 +38,7 @@ struct MangledFunctionParams {
     bool isStatic = false;
     bool isVirtual = false;
     bool isOverload = false;
+    bool isAsync = false;      // true when the function is declared async
 };
 
 const std::vector<std::pair<std::string, std::string>>& getTypeCodeMap();

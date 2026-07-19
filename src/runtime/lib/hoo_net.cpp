@@ -161,18 +161,6 @@ HooURL hoo_net_url_retain(HooURL url) {
 }
 
 void hoo_net_url_release(HooURL url) {
-    if (!url) return;
-    bool doCleanup = false;
-    {
-        std::lock_guard<std::mutex> lk(gNetUrlReleaseMu);
-        if (hoo_get_refcount(url) == 1) {
-            doCleanup = true;
-        }
-    }
-    if (doCleanup) {
-        HooURLImpl* impl = static_cast<HooURLImpl*>(url);
-        impl->~HooURLImpl();
-    }
     hoo_release(url);
 }
 
@@ -234,18 +222,6 @@ HooHttpResponse hoo_net_http_response_retain(HooHttpResponse response) {
 }
 
 void hoo_net_http_response_release(HooHttpResponse response) {
-    if (!response) return;
-    bool doCleanup = false;
-    {
-        std::lock_guard<std::mutex> lk(gHttpResponseReleaseMu);
-        if (hoo_get_refcount(response) == 1) {
-            doCleanup = true;
-        }
-    }
-    if (doCleanup) {
-        HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(response);
-        impl->~HooHttpResponseImpl();
-    }
     hoo_release(response);
 }
 
@@ -318,18 +294,6 @@ HooHttpClient hoo_net_http_client_retain(HooHttpClient client) {
 }
 
 void hoo_net_http_client_release(HooHttpClient client) {
-    if (!client) return;
-    bool doCleanup = false;
-    {
-        std::lock_guard<std::mutex> lk(gHttpClientReleaseMu);
-        if (hoo_get_refcount(client) == 1) {
-            doCleanup = true;
-        }
-    }
-    if (doCleanup) {
-        HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(client);
-        impl->~HooHttpClientImpl();
-    }
     hoo_release(client);
 }
 
@@ -444,6 +408,31 @@ static HooHttpResponse real_http_request(const char* method, const char* url,
     impl->body = responseBody;
     impl->headers = std::move(responseHeaders);
     return impl;
+}
+
+static void net_url_destructor(void* obj) {
+    HooURLImpl* impl = static_cast<HooURLImpl*>(obj);
+    impl->~HooURLImpl();
+}
+
+static void net_http_response_destructor(void* obj) {
+    HooHttpResponseImpl* impl = static_cast<HooHttpResponseImpl*>(obj);
+    impl->~HooHttpResponseImpl();
+}
+
+static void net_http_client_destructor(void* obj) {
+    HooHttpClientImpl* impl = static_cast<HooHttpClientImpl*>(obj);
+    impl->~HooHttpClientImpl();
+}
+
+namespace {
+    struct NetDestructorRegistrar {
+        NetDestructorRegistrar() {
+            hoo_register_destructor(HOO_TYPE_NET_URL, net_url_destructor);
+            hoo_register_destructor(HOO_TYPE_NET_HTTP_RES, net_http_response_destructor);
+            hoo_register_destructor(HOO_TYPE_NET_HTTP_CLI, net_http_client_destructor);
+        }
+    } net_registrar;
 }
 
 #ifdef __cplusplus

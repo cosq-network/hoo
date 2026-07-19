@@ -359,5 +359,19 @@ private:
     std::unique_ptr<ExpressionList> elements_;
 };
 
+// Await expression: await(future_expr)
+class AwaitExpression : public Expression {
+public:
+    explicit AwaitExpression(std::unique_ptr<Expression> future)
+        : future_(std::move(future)) {}
+
+    std::string toString() const override;
+
+    const Expression& getFuture() const { return *future_; }
+
+private:
+    std::unique_ptr<Expression> future_;
+};
+
 } // namespace ast
 } // namespace hooc

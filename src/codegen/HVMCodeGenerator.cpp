@@ -135,11 +135,11 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"Character", 109},
         {"Args", 110},
         {"Compression", 111},
-        {"Csv", 112},
+        {"Csv", 114},
         {"Buffer", 113},
-        {"URL", 114},
-        {"HttpClient", 115},
-        {"HttpResponse", 116},
+        {"URL", 106},
+        {"HttpClient", 108},
+        {"HttpResponse", 107},
         {"Random", 105},
         {"HashMap", 117},
         {"AnyArray", 118},
@@ -460,7 +460,7 @@ static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) return 113;
-    if (isCsvFreeFunction(functionName)) return 112;
+    if (isCsvFreeFunction(functionName)) return 114;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
     if (isDatetimeFreeFunction(functionName)) return datetimeFreeFunctionReturnTypeId(functionName);
     if (isEncodingFreeFunction(functionName)) {
@@ -1042,6 +1042,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     bool isMethod, bool isConstructor)
 {
     currentFunctionHasReturn_ = false;
+    currentFunctionIsAsync_ = decl && decl->isAsync();
     FunctionPrologueInfo info;
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
@@ -1068,6 +1069,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (decl) {
         mapParams(decl->getParameters());
+        if (decl->isAsync()) {
+            emitCall(Opcode::CALL, "llvm.coro.id");
+            emitCall(Opcode::CALL, "llvm.coro.size.i64");
+            emitCall(Opcode::CALL, "llvm.coro.begin");
+        }
         visitStatement(decl->getBody());
     } else if (ctorDecl) {
         mapParams(ctorDecl->getParameters());
@@ -1080,6 +1086,10 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
         emitScopeCleanup(scopeStack_.size(), 0);
+        if (decl && decl->isAsync()) {
+            emitCall(Opcode::CALL, "llvm.coro.end");
+            emitCall(Opcode::CALL, "llvm.coro.free");
+        }
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     }
@@ -1494,6 +1504,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(reg);
         }
         emitScopeCleanup(scopeStack_.size(), 0);
+        if (currentFunctionIsAsync_) {
+            emitCall(Opcode::CALL, "llvm.coro.end");
+            emitCall(Opcode::CALL, "llvm.coro.free");
+        }
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
@@ -2337,6 +2351,23 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
     }
 
+    if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
+        uint32_t futureTypeId = inferExpressionTypeId(awaitExpr->getFuture());
+        if (futureTypeId != 123 && futureTypeId != 100 && futureTypeId != 0) {
+            addError(std::string("await expression must be used with a Future type"));
+            return 0;
+        }
+        uint8_t futureReg = visitExpression(awaitExpr->getFuture());
+        emit(Opcode::MOV, OperandsR{1, futureReg, 0, 0});
+        emitCall(Opcode::CALL, "llvm.coro.suspend");
+        emitCall(Opcode::CALL, "_F_hoo_future_await_unwrap_p_p");
+        uint8_t dest = allocateRegister();
+        emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        emit(Opcode::RELEASE, OperandsR{futureReg, 0, 0, 0});
+        freeRegister(futureReg);
+        return dest;
+    }
+
     if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
         std::string requiredModule = getRequiredModule("HashMap");
         if (!isSymbolImported("HashMap", requiredModule)) {
@@ -2620,11 +2651,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 109: resolvedClass = "Character"; break;
                     case 110: resolvedClass = "Args"; break;
                     case 111: resolvedClass = "Compression"; break;
-                    case 112: resolvedClass = "Csv"; break;
+                    case 114: resolvedClass = "Csv"; break;
                     case 113: resolvedClass = "Buffer"; break;
-                    case 114: resolvedClass = "URL"; break;
-                    case 115: resolvedClass = "HttpClient"; break;
-                    case 116: resolvedClass = "HttpResponse"; break;
+                    case 106: resolvedClass = "URL"; break;
+                    case 108: resolvedClass = "HttpClient"; break;
+                    case 107: resolvedClass = "HttpResponse"; break;
                     case 105: resolvedClass = "Random"; break;
                     case 117: resolvedClass = "HashMap"; break;
                     case 118: resolvedClass = "AnyArray"; break;
@@ -3905,6 +3936,10 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
         }
     }
     if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
+    if (dynamic_cast<const ast::FutureType*>(type)) {
+        if (outClassName) *outClassName = "Future";
+        return 123;
+    }
     if (dynamic_cast<const ast::MapType*>(type)) return 103;
     if (dynamic_cast<const ast::TensorType*>(type)) return 104;
     if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
@@ -3925,6 +3960,7 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 0: return "any";
         case 101: return "string";
         case 104: return "tensor";
+        case 123: return "Future";
         default: return "ptr";
     }
 }
@@ -4344,8 +4380,9 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
                             {"Array", 102}, {"Tensor", 104}, {"String", 101},
                             {"Map", 103}, {"Buffer", 113}, {"Character", 109},
                             {"Random", 105}, {"DateTime", 119}, {"Args", 110},
-                            {"Compression", 111}, {"Csv", 112}, {"Path", 114},
-                            {"Http", 115}, {"Response", 116}, {"HashMap", 117},
+                            {"Compression", 111}, {"Csv", 114}, {"Path", 114},
+                            {"URL", 106}, {"HttpClient", 108}, {"HttpResponse", 107},
+                            {"Http", 108}, {"Response", 107}, {"HashMap", 117},
                             {"AnyArray", 118}, {"Regex", 120}, {"Mutex", 121},
                             {"Uuid", 122}
                         };
@@ -4458,7 +4495,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     }
                     if (clsName == "Csv") {
                         if (ma->getMember() == "new" || ma->getMember() == "newWithOpts" ||
-                            ma->getMember() == "retain") return 112;
+                             ma->getMember() == "retain") return 114;
                         return 101;
                     }
                     if (clsName == "Character") {
@@ -4502,7 +4539,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "addPositional" || member == "clear") return 4;
                             return 100;
                         }
-                        if (objTypeId == 112) {
+                        if (objTypeId == 114) {
                             if (member == "parse" || member == "readFile" ||
                                 member == "parseAsMaps" || member == "readFileAsMaps" ||
                                 member == "select" || member == "filter" || member == "sort")
@@ -4553,7 +4590,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             if (member == "pop") return 0;
                             return 100;
                         }
-                        if (objTypeId == 114) {
+                        if (objTypeId == 106) {
                             if (member == "getPort") return 1;
                             if (member == "getScheme" || member == "getHost" ||
                                 member == "getPath" || member == "getQuery" ||
@@ -4561,14 +4598,14 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 return 101;
                             return 100;
                         }
-                        if (objTypeId == 115) {
+                        if (objTypeId == 108) {
                             if (member == "setHeader") return 1;
                             if (member == "get" || member == "post" ||
                                 member == "put" || member == "delete")
-                                return 116;
+                                return 107;
                             return 100;
                         }
-                        if (objTypeId == 116) {
+                        if (objTypeId == 107) {
                             if (member == "statusCode" || member == "getStatusCode" ||
                                 member == "isSuccess")
                                 return 1;

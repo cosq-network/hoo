@@ -44,6 +44,18 @@ TEST_F(SymbolManglerTest, FunctionWithMultipleParameters) {
     EXPECT_EQ(mangled, "_F_add_i8_i8_i8");
 }
 
+TEST_F(SymbolManglerTest, AsyncFunctionMangling) {
+    auto params = makeParams();
+    params.functionName = "fetchData";
+    params.returnType = "string";
+    params.parameterTypes = {"int64"};
+    params.isAsync = true;
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    EXPECT_EQ(mangled, "_F_fetchData_a_s_i8");
+}
+
+
 TEST_F(SymbolManglerTest, FunctionOverloading) {
     auto params1 = makeParams();
     params1.functionName = "foo";

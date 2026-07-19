@@ -39,6 +39,8 @@ extern "C" {
 #define HOO_TYPE_HASHMAP      117  // HooHashMap intrinsic
 #define HOO_TYPE_ANYARRAY     118  // HooAnyArray intrinsic
 #define HOO_TYPE_DATETIME     119  // HooDateTime
+#define HOO_TYPE_FUTURE       123  // HooFuture<T>
+#define HOO_TYPE_UV_HANDLE    124  // HooUVHandle (reserved for libuv integration)
 
 // Primitive Type IDs (for runtime conversion/reflection)
 #define HOO_TYPE_INT64        1

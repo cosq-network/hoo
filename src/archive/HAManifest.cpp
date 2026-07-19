@@ -1,9 +1,45 @@
 #include "HAManifest.h"
 #include <nlohmann/json.hpp>
 #include <stdexcept>
+#include <sstream>
+#include <iomanip>
+
+#if __APPLE__
+#include <CommonCrypto/CommonDigest.h>
+#define HOO_SHA256_CTX CC_SHA256_CTX
+#define HOO_SHA256_Init CC_SHA256_Init
+#define HOO_SHA256_Update CC_SHA256_Update
+#define HOO_SHA256_Final CC_SHA256_Final
+#define HOO_SHA256_DIGEST_LENGTH CC_SHA256_DIGEST_LENGTH
+#else
+#include <openssl/sha.h>
+#define HOO_SHA256_CTX SHA256_CTX
+#define HOO_SHA256_Init SHA256_Init
+#define HOO_SHA256_Update SHA256_Update
+#define HOO_SHA256_Final SHA256_Final
+#define HOO_SHA256_DIGEST_LENGTH SHA256_DIGEST_LENGTH
+#endif
 
 namespace hooc {
 namespace archive {
+
+std::string computeSha256(const uint8_t* data, size_t len) {
+    HOO_SHA256_CTX ctx;
+    HOO_SHA256_Init(&ctx);
+    HOO_SHA256_Update(&ctx, data, len);
+    uint8_t hash[HOO_SHA256_DIGEST_LENGTH];
+    HOO_SHA256_Final(hash, &ctx);
+
+    std::ostringstream oss;
+    for (int i = 0; i < HOO_SHA256_DIGEST_LENGTH; ++i) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(hash[i]);
+    }
+    return oss.str();
+}
+
+std::string computeSha256(const std::vector<uint8_t>& data) {
+    return computeSha256(data.data(), data.size());
+}
 
 using json = nlohmann::json;
 

@@ -151,6 +151,10 @@ std::string TensorType::toString() const {
     return "TensorType";
 }
 
+std::string FutureType::toString() const {
+    return "Future<" + elementType_->toString() + ">";
+}
+
 // Statement implementations
 std::string Block::toString() const {
     return "Block";
@@ -296,6 +300,10 @@ std::string ArrayLiteral::toString() const {
 
 std::string TensorLiteral::toString() const {
     return "TensorLiteral";
+}
+
+std::string AwaitExpression::toString() const {
+    return "await(" + future_->toString() + ")";
 }
 
 // Primary implementations

@@ -47,6 +47,10 @@ public:
         return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::PRIVATE) != modifiers_.end();
     }
 
+    bool isAsync() const {
+        return std::find(modifiers_.begin(), modifiers_.end(), FunctionModifier::ASYNC) != modifiers_.end();
+    }
+
     bool isOverload() const { return is_overload_; }
     void setOverload(bool val) { is_overload_ = val; }
 

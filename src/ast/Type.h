@@ -207,6 +207,20 @@ private:
     std::unique_ptr<Type> valueType_;
 };
 
+// Future<T> type for async/await support
+class FutureType : public Type {
+public:
+    explicit FutureType(std::unique_ptr<Type> elementType)
+        : elementType_(std::move(elementType)) {}
+
+    std::string toString() const override;
+
+    const Type& getElementType() const { return *elementType_; }
+
+private:
+    std::unique_ptr<Type> elementType_;
+};
+
 // Fixed-rank tensor type: tensor<element>[d0, d1, d2]
 class TensorType : public Type {
 public:
