@@ -581,6 +581,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/HooAnyCollectionsJitTest.cpp
         tests/jit/HooArrayJitTest.cpp
         tests/jit/HooTensorJitTest.cpp
+        tests/jit/HooDecimalJitTest.cpp
         tests/jit/HooStandardLibraryJitTest.cpp
         tests/jit/HooThreadJitTest.cpp
         tests/jit/HooCsvJitTest.cpp

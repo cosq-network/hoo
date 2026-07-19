@@ -17,6 +17,7 @@
 #include "runtime/lib/hoo_io.h"
 #include "runtime/lib/hoo_generic_array.h"
 #include "runtime/lib/hoo_tensor.h"
+#include "runtime/lib/hoo_decimal.h"
 #include "runtime/lib/hoo_map.h"
 #include "runtime/lib/hoo_any.h"
 #include "runtime/lib/hoo_anyarray.h"
@@ -3383,6 +3384,82 @@ extern "C" {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_json_beautify(json)));
     }
 
+    // --- Decimal runtime JIT wrappers ---
+    uint64_t jit_hoo_Decimal_from_literal(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* text = reinterpret_cast<const char*>(state->memory + state->regs[1]);
+        int32_t precision = static_cast<int32_t>(state->regs[2]);
+        int32_t scale = static_cast<int32_t>(state->regs[3]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_from_literal(text, precision, scale)));
+    }
+    uint64_t jit_hoo_Decimal_add(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_add(reinterpret_cast<void*>(state->regs[1]),
+                            reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_Decimal_sub(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_sub(reinterpret_cast<void*>(state->regs[1]),
+                            reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_Decimal_mul(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_mul(reinterpret_cast<void*>(state->regs[1]),
+                            reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_Decimal_div(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_div(reinterpret_cast<void*>(state->regs[1]),
+                            reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_Decimal_mod(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_mod(reinterpret_cast<void*>(state->regs[1]),
+                            reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_Decimal_eq(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_decimal_eq(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_hoo_Decimal_ne(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_decimal_ne(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_hoo_Decimal_lt(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_decimal_lt(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_hoo_Decimal_le(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_decimal_le(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_hoo_Decimal_gt(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_decimal_gt(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_hoo_Decimal_ge(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_decimal_ge(
+            reinterpret_cast<void*>(state->regs[1]),
+            reinterpret_cast<void*>(state->regs[2])));
+    }
+
     // Base pointer for translating HVM memory offsets to real addresses.
     // The HVM uses offset-addressed memory (std::vector<uint8_t> memory_),
     // but POSIX syscalls need real virtual addresses.  This global lets the
@@ -4599,6 +4676,19 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_json_deserialize_anyarray_p_p", reinterpret_cast<void*>(&jit_json_deserialize_anyarray)},
         {"_F_M_hoo_E_json_minify_p_p", reinterpret_cast<void*>(&jit_json_minify)},
         {"_F_M_hoo_E_json_beautify_p_p", reinterpret_cast<void*>(&jit_json_beautify)},
+        // Decimal runtime functions
+        {"_F_hoo_Decimal_from_literal_p_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_Decimal_from_literal)},
+        {"_F_hoo_Decimal_add_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_add)},
+        {"_F_hoo_Decimal_sub_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_sub)},
+        {"_F_hoo_Decimal_mul_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_mul)},
+        {"_F_hoo_Decimal_div_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_div)},
+        {"_F_hoo_Decimal_mod_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_mod)},
+        {"_F_hoo_Decimal_eq_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_eq)},
+        {"_F_hoo_Decimal_ne_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_ne)},
+        {"_F_hoo_Decimal_lt_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_lt)},
+        {"_F_hoo_Decimal_le_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_le)},
+        {"_F_hoo_Decimal_gt_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_gt)},
+        {"_F_hoo_Decimal_ge_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_ge)},
     };
 }
 
