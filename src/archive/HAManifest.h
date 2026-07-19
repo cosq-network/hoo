@@ -4,9 +4,16 @@
 #include <vector>
 #include <unordered_map>
 #include <optional>
+#include <cstdint>
 
 namespace hooc {
 namespace archive {
+
+/// Compute the hex-encoded SHA-256 hash of a byte buffer.
+std::string computeSha256(const uint8_t* data, size_t len);
+
+/// Compute the hex-encoded SHA-256 hash of a vector of bytes.
+std::string computeSha256(const std::vector<uint8_t>& data);
 
 struct HASymbolInfo {
     std::string name;

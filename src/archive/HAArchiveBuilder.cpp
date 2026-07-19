@@ -93,16 +93,28 @@ void HAArchiveBuilder::write(const std::filesystem::path& outPath) {
     // 4. Write to final path atomically
     std::filesystem::path tempOutPath = outPath;
     tempOutPath += ".tmp";
-    std::ofstream outFile(tempOutPath, std::ios::binary);
-    if (!outFile) {
-        std::filesystem::remove(tempZipPath);
-        throw std::runtime_error("Failed to open output file " + tempOutPath.string());
-    }
-    outFile.write(reinterpret_cast<const char*>(cBuff.data()), cSize);
-    outFile.close();
+    try {
+        std::ofstream outFile(tempOutPath, std::ios::binary);
+        if (!outFile) {
+            std::filesystem::remove(tempZipPath);
+            throw std::runtime_error("Failed to open output file " + tempOutPath.string());
+        }
+        outFile.write(reinterpret_cast<const char*>(cBuff.data()), cSize);
+        outFile.close();
 
-    std::filesystem::rename(tempOutPath, outPath);
-    std::filesystem::remove(tempZipPath); // Clean up temp zip
+        std::error_code ec;
+        std::filesystem::rename(tempOutPath, outPath, ec);
+        if (ec) {
+            std::filesystem::remove(tempOutPath);
+            std::filesystem::remove(tempZipPath);
+            throw std::runtime_error("Failed to rename temp output to final path: " + ec.message());
+        }
+        std::filesystem::remove(tempZipPath); // Clean up temp zip
+    } catch (...) {
+        std::filesystem::remove(tempOutPath);
+        std::filesystem::remove(tempZipPath);
+        throw;
+    }
 }
 
 } // namespace archive

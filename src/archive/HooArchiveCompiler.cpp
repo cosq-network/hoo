@@ -93,12 +93,16 @@ void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, con
 
         std::string archivePath = "modules/" + modInfo.moduleName + ".ho";
         
+        // Compute SHA-256 of the serialized module payload
+        std::string payloadSha256 = computeSha256(payload);
+        
         builder.addModule(modInfo.moduleName, archivePath, payload);
 
         HAModuleInfo hmInfo;
         hmInfo.moduleName = modInfo.moduleName;
         hmInfo.sourcePath = modInfo.sourcePath.string();
         hmInfo.archivePath = archivePath;
+        hmInfo.sha256 = payloadSha256;
         hmInfo.imports = modInfo.localImports;
         
         // Extract symbols

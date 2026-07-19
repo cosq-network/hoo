@@ -164,10 +164,26 @@ HooCLI::Options HooCLI::parseArguments(int argc, char* argv[]) const {
         opts.isArchive = true;
     } else if (ext == ".hoo") {
         opts.isArchive = false;
+    } else if (ext == ".ho") {
+        opts.hasError = true;
+        opts.errorMessage = "Error: .ho is an internal intermediate format; use a .ha archive\n";
+        return opts;
     } else {
         opts.hasError = true;
         opts.errorMessage = "Error: Invalid file extension for '" + filename + "'. Expected .hoo or .ha\n";
         return opts;
+    }
+
+    // Validate output path extension if provided
+    if (opts.outputFile.has_value()) {
+        fs::path outPath(opts.outputFile.value());
+        std::string outExt = outPath.extension().string();
+        if (outExt == ".ho") {
+            opts.hasError = true;
+            opts.errorMessage = "Error: source compilation always produces .ha output; use -o " +
+                               outPath.stem().string() + ".ha\n";
+            return opts;
+        }
     }
 
     return opts;

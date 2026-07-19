@@ -585,6 +585,7 @@ if(HOO_BUILD_TESTS)
         tests/hvm/HVMModuleBundleTest.cpp
         tests/archive/HAManifestTest.cpp
         tests/archive/HAArchiveTest.cpp
+        tests/archive/HooArchiveLoaderTest.cpp
         tests/hvm/HVMJITLoaderTest.cpp
         tests/hvm/HVMJITInstructionSemanticsTest.cpp
         tests/ast/CompilationUnitTest.cpp
