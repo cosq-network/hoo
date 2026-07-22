@@ -1,0 +1,5 @@
+func :bool test() {
+    var a: Decimal<38,2> = 19.99m;
+    var s: string = a.toString();
+    return true;
+}

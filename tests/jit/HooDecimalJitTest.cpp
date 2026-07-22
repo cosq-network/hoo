@@ -162,3 +162,13 @@ TEST_F(HooDecimalJitTest, NegatesZero) {
         }
     )");
 }
+
+TEST_F(HooDecimalJitTest, ToString) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = 19.99m;
+            var s: string = a.toString();
+            return s.length() == 5;
+        }
+    )");
+}

@@ -3497,6 +3497,11 @@ extern "C" {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
             hoo_decimal_neg(reinterpret_cast<void*>(state->regs[1]))));
     }
+    uint64_t jit_hoo_Decimal_toString(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_decimal_to_string(reinterpret_cast<void*>(state->regs[1]))));
+    }
 
     // Base pointer for translating HVM memory offsets to real addresses.
     // The HVM uses offset-addressed memory (std::vector<uint8_t> memory_),
@@ -4733,6 +4738,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Decimal_le_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_le)},
         {"_F_hoo_Decimal_gt_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_gt)},
         {"_F_hoo_Decimal_ge_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_ge)},
+        {"_F_M_hoo_E_Decimal_toString_v", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
+        {"_F_M_hoo_E_Decimal_toString_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
+        {"_F_M_hoo_E_Decimal_toString_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
+        {"_F_M_hoo_E_decimal_toString_v", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
+        {"_F_M_hoo_E_decimal_toString_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
+        {"_F_M_hoo_E_decimal_toString_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
     };
 }
 

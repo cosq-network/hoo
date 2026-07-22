@@ -202,12 +202,12 @@ After implementing fixes, verify:
 
 - [x] Decimal arithmetic throws on overflow
 - [x] Division by zero throws exception
-- [ ] Async functions return properly resolved Futures
-- [ ] Futures integrate with event loop (no spin-wait)
-- [ ] Future continuation is cleaned up on destruction
-- [ ] TLAB memory is freed on thread exit
-- [ ] Managed object lookup is O(1)
-- [ ] Decimal toString() returns ARC-managed string
+- [x] Async functions return properly resolved Futures
+- [x] Futures integrate with event loop (no spin-wait)
+- [x] Future continuation is cleaned up on destruction
+- [x] TLAB memory is freed on thread exit
+- [x] Managed object lookup is O(1)
+- [x] Decimal toString() returns ARC-managed string
 - [x] Decimal negation works (`-19.99m`)
 
 ---

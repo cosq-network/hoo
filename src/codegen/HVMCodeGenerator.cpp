@@ -115,6 +115,7 @@ static std::string classToPrefix(const std::string& className) {
         {"HttpClient", "net_http_client"},
         {"HttpResponse", "net_http_response"},
         {"Thread", "thread"},
+        {"Decimal", "decimal"},
         {"Mutex", "thread_mutex"},
         {"Array", "array"},
         {"Map", "map"},
@@ -2712,6 +2713,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 120: resolvedClass = "Regex"; break;
                     case 121: resolvedClass = "Mutex"; break;
                     case 122: resolvedClass = "Uuid"; break;
+                    case 125: resolvedClass = "Decimal"; break;
                     default: break;
                 }
             }
@@ -3790,7 +3792,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "Path", "Uuid", "Compression",
         "Args", "Csv", "Console", "StringBuilder",
         "Buffer", "Random", "HashMap", "AnyArray",
-        "Mutex"
+        "Mutex", "Decimal"
     };
     return builtinClasses.count(name) > 0;
 }
@@ -4676,6 +4678,10 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             if (member == "isNil" || member == "equals" || member == "compare") return 1; // int64 (type ID 1)
                             if (member == "release") return 4; // void (type ID 4)
                             if (member == "toBytes") return 113; // Buffer (type ID 113)
+                            return 100;
+                        }
+                        if (objTypeId == 125) { // Decimal
+                            if (member == "toString") return 101; // string (type ID 101)
                             return 100;
                         }
                         if (objTypeId == 103) {
