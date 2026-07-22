@@ -13,6 +13,11 @@ protected:
         ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
         EXPECT_EQ(jit.run("_F_M_test_E_test_b"), 1) << jit.getLastError();
     }
+
+    void expectException(const std::string& source) {
+        ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+        EXPECT_THROW(jit.run("_F_M_test_E_test_v"), std::exception);
+    }
 };
 
 TEST_F(HooDecimalJitTest, CreatesFractionalLiteral) {
@@ -169,6 +174,46 @@ TEST_F(HooDecimalJitTest, ToString) {
             var a: Decimal<38,2> = 19.99m;
             var s: string = a.toString();
             return s.length() == 5;
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, ThrowsOnOverflowAdd) {
+    expectException(R"(
+        func :void test() {
+            var a: Decimal<38,2> = 99999999999999999m;
+            var b: Decimal<38,2> = 99999999999999999m;
+            var c: Decimal<38,2> = a + b;
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, ThrowsOnOverflowMul) {
+    expectException(R"(
+        func :void test() {
+            var a: Decimal<38,2> = 9999999999m;
+            var b: Decimal<38,2> = 9999999999m;
+            var c: Decimal<38,2> = a * b;
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, ThrowsOnDivZero) {
+    expectException(R"(
+        func :void test() {
+            var a: Decimal<38,2> = 10.00m;
+            var b: Decimal<38,2> = 0.00m;
+            var c: Decimal<38,2> = a / b;
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, ThrowsOnModZero) {
+    expectException(R"(
+        func :void test() {
+            var a: Decimal<38,2> = 10.00m;
+            var b: Decimal<38,2> = 0.00m;
+            var c: Decimal<38,2> = a % b;
         }
     )");
 }

@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdio>
 #include <algorithm>
+#include "hoo_exception.h"
 
 // ============================================================================
 // Internal representation
@@ -90,18 +91,22 @@ static int64_t parseDecimalMantissa(const char* text, int32_t scale) {
     return negative ? -mantissa : mantissa;
 }
 
-extern "C" [[noreturn]] void hooc_hvm_sys_exception_runtime(int64_t typeId, HooString message);
+// Exceptions
+// ============================================================================
 
 [[noreturn]] static void throwDecimalOverflow() {
-    hooc_hvm_sys_exception_runtime(HOO_EXCEPTION_DECIMAL_OVERFLOW, hoo_string_from_cstr("Decimal arithmetic overflow"));
+    HooException exc = hoo_exception_create(HOO_EXCEPTION_DECIMAL_OVERFLOW, "Decimal arithmetic overflow");
+    hoo_exception_throw(exc);
 }
 
 [[noreturn]] static void throwDecimalDivZero() {
-    hooc_hvm_sys_exception_runtime(HOO_EXCEPTION_DECIMAL_DIV_ZERO, hoo_string_from_cstr("Decimal division by zero"));
+    HooException exc = hoo_exception_create(HOO_EXCEPTION_DECIMAL_DIV_ZERO, "Decimal division by zero");
+    hoo_exception_throw(exc);
 }
 
 [[noreturn]] static void throwDecimalModZero() {
-    hooc_hvm_sys_exception_runtime(HOO_EXCEPTION_DECIMAL_MOD_ZERO, hoo_string_from_cstr("Decimal modulo by zero"));
+    HooException exc = hoo_exception_create(HOO_EXCEPTION_DECIMAL_MOD_ZERO, "Decimal modulo by zero");
+    hoo_exception_throw(exc);
 }
 
 static int32_t countDigits(int64_t m) {

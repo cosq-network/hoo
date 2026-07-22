@@ -173,18 +173,54 @@ TEST_F(HooClassApiTest, ClassModifiers_SingletonInstanceIdentity) {
 
 TEST_F(HooClassApiTest, ClassModifiers_ImmutableClassExecution) {
     const std::string source = R"(
-        import hoo;
         immutable class Config {
-            var threshold: int64;
-            constructor(t: int64) {
-                this.threshold = t;
+            var version: int64;
+            func CT(v: int64) {
+                this.version = v;
             }
         }
-        func :int64 test() {
-            var cfg = new Config(100);
-            return cfg.threshold;
+        func :bool test() {
+            var c: Config = new Config(42);
+            return c.version == 42;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 100);
+    EXPECT_EQ(jit.run("_F_M_test_E_test_b"), 1);
+}
+
+TEST_F(HooClassApiTest, ClassModifiers_ServiceExecution) {
+    const std::string source = R"(
+        service class DatabaseService {
+            var connected: bool;
+            func CT() {
+                this.connected = true;
+            }
+            func :bool isConnected() {
+                return this.connected;
+            }
+        }
+        func :bool test() {
+            var db: DatabaseService = new DatabaseService();
+            return db.isConnected();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_b"), 1);
+}
+
+TEST_F(HooClassApiTest, ClassModifiers_FinalExecution) {
+    const std::string source = R"(
+        final class BaseWidget {
+            var id: int64;
+            func CT(id: int64) {
+                this.id = id;
+            }
+        }
+        func :bool test() {
+            var w: BaseWidget = new BaseWidget(100);
+            return w.id == 100;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_b"), 1);
 }
