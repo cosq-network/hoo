@@ -23,10 +23,11 @@ static pthread_key_t g_tlab_cleanup_key;
 static pthread_once_t g_tlab_cleanup_once = PTHREAD_ONCE_INIT;
 
 static void tlab_reset_thread_cache_impl(void);
+void hoo_tlab_reset_thread_cache(void);
 
 static void tlab_cleanup_destructor(void* arg) {
     (void)arg;
-    tlab_reset_thread_cache_impl();
+    hoo_tlab_reset_thread_cache();
 }
 
 static void tlab_cleanup_key_create(void) {

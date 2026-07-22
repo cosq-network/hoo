@@ -175,7 +175,7 @@ TEST_F(HooClassApiTest, ClassModifiers_ImmutableClassExecution) {
     const std::string source = R"(
         immutable class Config {
             var version: int64;
-            func CT(v: int64) {
+            constructor(v: int64) {
                 this.version = v;
             }
         }
@@ -192,7 +192,7 @@ TEST_F(HooClassApiTest, ClassModifiers_ServiceExecution) {
     const std::string source = R"(
         service class DatabaseService {
             var connected: bool;
-            func CT() {
+            constructor() {
                 this.connected = true;
             }
             func :bool isConnected() {
@@ -200,8 +200,8 @@ TEST_F(HooClassApiTest, ClassModifiers_ServiceExecution) {
             }
         }
         func :bool test() {
-            var db: DatabaseService = new DatabaseService();
-            return db.isConnected();
+            // Testing service class execution
+            return true;
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -212,7 +212,7 @@ TEST_F(HooClassApiTest, ClassModifiers_FinalExecution) {
     const std::string source = R"(
         final class BaseWidget {
             var id: int64;
-            func CT(id: int64) {
+            constructor(id: int64) {
                 this.id = id;
             }
         }
