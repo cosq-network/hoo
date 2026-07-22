@@ -42,13 +42,14 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 14 (Archive Loading)**: Cross-file local imports and `.ha` archive format with Zstd compression, manifest, and multi-module JIT loading.
 - [x] **Phase 15 (Async/Await via libuv)**: Native `async`/`await` syntax with LLVM coroutine lowering (`CoroEarlyPass`, `CoroSplitPass`, `CoroCleanupPass`); cross-platform libuv event loop (`hoo_event_loop`); `Future<T>` generic type (type ID 123) with continuation support; stackless coroutine frame allocation via `hoo_alloc`. Comprehensive JIT test coverage in `NewLanguageFeaturesTest.cpp`. Language docs at `docs/language/async_await.md`.
 - [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity (113/113 mnemonics), all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion (25 new JIT semantics tests).
-- [x] **Verification**: full preset test run passing (`1930 tests`, 0 failures).
+- [x] **Verification**: full preset test run passing (`2014 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 ## Recent Changes
 
 - **Cross-File Local Imports & `.ha` Archives (Phase 14)**: Added native support for cross-file local imports, resolving and compiling local dependencies automatically. The CLI now outputs `.ha` (Hoo Archive) files, a ZIP-compatible, Zstd-compressed container with `manifest.json`, replacing the intermediate `.ho` files.
 - **Archive Loading & CLI Updates**: Added `HooArchiveLoader` to seamlessly load multi-module `.ha` archives into the JIT. Introduced `--exec` to directly execute `.hoo` source files after building.
+- **Concurrency & Performance**: Resolved thread-local allocation (TLAB) memory leaks (ISSUE-060) and implemented fine-grained mutex striping for the Managed Object hash set, eliminating a critical O(n) global bottleneck (ISSUE-064/046).
 - Updated `hoo --version` output to include tool name, brand name, version, and license information.
 - Removed `--compile` / `-c` from the CLI; unknown flags now return a clear error.
 - Improved REPL ergonomics so `--repl` no longer requires an input file, and preloads a `.hoo` file when provided.
@@ -97,7 +98,7 @@ src/
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-tests/         Exhaustive unit and integration test suites (1930 tests in the current preset run).
+tests/         Exhaustive unit and integration test suites (2014 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
