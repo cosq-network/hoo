@@ -116,7 +116,15 @@ typedef struct ManagedObjNode {
     struct ManagedObjNode* next;
 } ManagedObjNode;
 
-static hoo_mutex_t g_managed_objects_mutex = HOO_MUTEX_INIT;
+#define HOO_MANAGED_MUTEX_COUNT 64
+static hoo_mutex_t g_managed_mutexes[HOO_MANAGED_MUTEX_COUNT];
+static pthread_once_t g_managed_mutexes_once = PTHREAD_ONCE_INIT;
+
+static void managed_mutexes_init(void) {
+    for (int i = 0; i < HOO_MANAGED_MUTEX_COUNT; i++) {
+        pthread_mutex_init(&g_managed_mutexes[i], NULL);
+    }
+}
 static ManagedObjNode* g_managed_hash[HOO_MANAGED_HASH_SIZE] = {NULL};
 
 static inline uint32_t managed_hash(const void* obj) {
@@ -125,6 +133,7 @@ static inline uint32_t managed_hash(const void* obj) {
 }
 
 static void managed_register(void* obj) {
+    pthread_once(&g_managed_mutexes_once, managed_mutexes_init);
     ManagedObjNode* node = (ManagedObjNode*)malloc(sizeof(ManagedObjNode));
     if (!node) {
         fprintf(stderr, "FATAL: Out of memory while tracking managed allocation\n");
@@ -132,15 +141,18 @@ static void managed_register(void* obj) {
     }
     node->obj = obj;
     uint32_t idx = managed_hash(obj);
-    hoo_mutex_lock(&g_managed_objects_mutex);
+    uint32_t lock_idx = idx % HOO_MANAGED_MUTEX_COUNT;
+    hoo_mutex_lock(&g_managed_mutexes[lock_idx]);
     node->next = g_managed_hash[idx];
     g_managed_hash[idx] = node;
-    hoo_mutex_unlock(&g_managed_objects_mutex);
+    hoo_mutex_unlock(&g_managed_mutexes[lock_idx]);
 }
 
 static void managed_unregister(void* obj) {
+    pthread_once(&g_managed_mutexes_once, managed_mutexes_init);
     uint32_t idx = managed_hash(obj);
-    hoo_mutex_lock(&g_managed_objects_mutex);
+    uint32_t lock_idx = idx % HOO_MANAGED_MUTEX_COUNT;
+    hoo_mutex_lock(&g_managed_mutexes[lock_idx]);
     ManagedObjNode* prev = NULL;
     ManagedObjNode* it = g_managed_hash[idx];
     while (it) {
@@ -150,29 +162,31 @@ static void managed_unregister(void* obj) {
             } else {
                 g_managed_hash[idx] = it->next;
             }
-            hoo_mutex_unlock(&g_managed_objects_mutex);
+            hoo_mutex_unlock(&g_managed_mutexes[lock_idx]);
             free(it);
             return;
         }
         prev = it;
         it = it->next;
     }
-    hoo_mutex_unlock(&g_managed_objects_mutex);
+    hoo_mutex_unlock(&g_managed_mutexes[lock_idx]);
 }
 
 int64_t hoo_is_managed_object(const void* obj) {
     if (!obj) return 0;
+    pthread_once(&g_managed_mutexes_once, managed_mutexes_init);
     uint32_t idx = managed_hash(obj);
-    hoo_mutex_lock(&g_managed_objects_mutex);
+    uint32_t lock_idx = idx % HOO_MANAGED_MUTEX_COUNT;
+    hoo_mutex_lock(&g_managed_mutexes[lock_idx]);
     ManagedObjNode* it = g_managed_hash[idx];
     while (it) {
         if (it->obj == obj) {
-            hoo_mutex_unlock(&g_managed_objects_mutex);
+            hoo_mutex_unlock(&g_managed_mutexes[lock_idx]);
             return 1;
         }
         it = it->next;
     }
-    hoo_mutex_unlock(&g_managed_objects_mutex);
+    hoo_mutex_unlock(&g_managed_mutexes[lock_idx]);
     return 0;
 }
 
