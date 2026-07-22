@@ -1070,6 +1070,20 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     if (decl) {
         mapParams(decl->getParameters());
         if (decl->isAsync()) {
+            uint32_t elemTypeId = 1; // default to int64
+            if (decl->getReturnType()) {
+                if (auto futureType = dynamic_cast<const ast::FutureType*>(decl->getReturnType())) {
+                    elemTypeId = typeIdFromDeclaredType(&futureType->getElementType());
+                }
+            }
+            uint8_t elemTypeReg = emitConstant(static_cast<int64_t>(elemTypeId));
+            emit(Opcode::MOV, OperandsR{1, elemTypeReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_future_new_i64");
+            freeRegister(elemTypeReg);
+            
+            asyncFutureOffset_ = reserveLocal("__async_future__", 123, "Future");
+            emit(Opcode::ST_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+            
             emitCall(Opcode::CALL, "llvm.coro.id");
             emitCall(Opcode::CALL, "llvm.coro.size.i64");
             emitCall(Opcode::CALL, "llvm.coro.begin");
@@ -1107,6 +1121,8 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
             mp.isOverload = isOverloadedFunction_[decl->getName()];
         }
         if (isMethod) {
+            mp.returnType = "ptr";
+        } else if (decl->isAsync()) {
             mp.returnType = "ptr";
         } else if (decl->getReturnType()) {
             mp.returnType = typeIdToMangleType(typeIdFromDeclaredType(decl->getReturnType()));
@@ -1214,7 +1230,10 @@ void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
 
 void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
     // Populate function return type inference info before processing body
-    if (decl.getReturnType()) {
+    if (decl.isAsync()) {
+        functionReturnTypes_[decl.getName()] = 123;
+        functionReturnClass_[decl.getName()] = "Future";
+    } else if (decl.getReturnType()) {
         std::string clsName;
         functionReturnTypes_[decl.getName()] = typeIdFromDeclaredType(decl.getReturnType(), &clsName);
         if (!clsName.empty()) {
@@ -1497,19 +1516,39 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         scopeStack_.pop_back();
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
         currentFunctionHasReturn_ = true;
-        if (ret->hasExpression()) {
-            uint8_t reg = visitExpression(*ret->getExpression());
-            emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
-            emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
-            freeRegister(reg);
-        }
-        emitScopeCleanup(scopeStack_.size(), 0);
-        if (currentFunctionIsAsync_) {
+        if (currentFunctionIsAsync_ && asyncFutureOffset_ != 0) {
+            if (ret->hasExpression()) {
+                uint8_t reg = visitExpression(*ret->getExpression());
+                emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+                emit(Opcode::MOV, OperandsR{2, reg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_future_set_value_v_p_p");
+                freeRegister(reg);
+            } else {
+                emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+                emit(Opcode::MOV, OperandsR{2, 0, 0, 0}); // NULL
+                emitCall(Opcode::CALL, "_F_hoo_future_set_value_v_p_p");
+            }
+            emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+            emitScopeCleanup(scopeStack_.size(), 0);
             emitCall(Opcode::CALL, "llvm.coro.end");
             emitCall(Opcode::CALL, "llvm.coro.free");
+            emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+            emit(Opcode::RET, OperandsR{0, 0, 0, 0});
+        } else {
+            if (ret->hasExpression()) {
+                uint8_t reg = visitExpression(*ret->getExpression());
+                emit(Opcode::MOV, OperandsR{1, reg, 0, 0});
+                emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0}); // ARC retain for return value
+                freeRegister(reg);
+            }
+            emitScopeCleanup(scopeStack_.size(), 0);
+            if (currentFunctionIsAsync_) {
+                emitCall(Opcode::CALL, "llvm.coro.end");
+                emitCall(Opcode::CALL, "llvm.coro.free");
+            }
+            emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
+            emit(Opcode::RET, OperandsR{0, 0, 0, 0});
         }
-        emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
-        emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     } else if (auto varDecl = dynamic_cast<const ast::VariableDeclarationStatement*>(&stmt)) {
         auto& decl = varDecl->getDeclaration();
         std::string varClassName;
@@ -2370,7 +2409,6 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         uint8_t futureReg = visitExpression(awaitExpr->getFuture());
         emit(Opcode::MOV, OperandsR{1, futureReg, 0, 0});
-        emitCall(Opcode::CALL, "llvm.coro.suspend");
         emitCall(Opcode::CALL, "_F_hoo_future_await_unwrap_p_p");
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});

@@ -23,6 +23,7 @@
 #include "runtime/lib/hoo_anyarray.h"
 #include "runtime/lib/hoo_hashmap.h"
 #include "runtime/lib/hoo_exception.h"
+#include "runtime/lib/hoo_future.h"
 #include "runtime/lib/hoo_math.h"
 #include "runtime/lib/hoo_fs.h"
 #include "runtime/lib/hoo_system.h"
@@ -855,6 +856,38 @@ extern "C" {
     uint64_t jit_hoo_map_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_map_new(static_cast<int>(state->regs[1]), static_cast<int>(state->regs[2]))));
+    }
+    uint64_t jit_hoo_future_new(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        int64_t elemTypeId = state->regs[1];
+        HooFuture fut = hoo_future_new(elemTypeId);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(fut));
+    }
+    uint64_t jit_hoo_future_set_value(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooFuture fut = reinterpret_cast<HooFuture>(state->regs[1]);
+        void* value = reinterpret_cast<void*>(state->regs[2]);
+        hoo_future_set_value(fut, value);
+        return 0;
+    }
+    uint64_t jit_hoo_future_set_error(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooFuture fut = reinterpret_cast<HooFuture>(state->regs[1]);
+        const char* msg = reinterpret_cast<const char*>(state->regs[2]);
+        hoo_future_set_error(fut, msg);
+        return 0;
+    }
+    uint64_t jit_hoo_future_get_value(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooFuture fut = reinterpret_cast<HooFuture>(state->regs[1]);
+        void* result = hoo_future_get_value(fut);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_hoo_future_await_unwrap(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooFuture fut = reinterpret_cast<HooFuture>(state->regs[1]);
+        void* result = _F_hoo_future_await_unwrap_p_p(fut);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
     }
     uint64_t jit_hoo_exception_runtime(void* /*state_ptr*/) {
         HooException exc = hoo_exception_runtime("hvm runtime exception");
@@ -3957,6 +3990,11 @@ constexpr InboundTrampolineFn2 kInboundTrampolines2[kMaxInboundTrampolineSlots] 
 
 std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
     return {
+        {"_F_hoo_future_new_i64", reinterpret_cast<void*>(&jit_hoo_future_new)},
+        {"_F_hoo_future_set_value_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_value)},
+        {"_F_hoo_future_set_error_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_error)},
+        {"_F_hoo_future_get_value_p_p", reinterpret_cast<void*>(&jit_hoo_future_get_value)},
+        {"_F_hoo_future_await_unwrap_p_p", reinterpret_cast<void*>(&jit_hoo_future_await_unwrap)},
         {"_F_hoo_alloc_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_alloc)},
         {"_F_hoo_retain_p_p", reinterpret_cast<void*>(&jit_hoo_retain)},
         {"_F_hoo_release_v_p", reinterpret_cast<void*>(&jit_hoo_release)},

@@ -252,6 +252,7 @@ private:
                                        bool isMethod, bool isConstructor);
     void endFunction(const FunctionPrologueInfo& info);
     bool currentFunctionIsAsync_ = false;
+    int32_t asyncFutureOffset_ = 0;
 
     // Serializable class validation
     void validateSerializableClass(const ast::ClassDeclaration& classDecl,
