@@ -3272,7 +3272,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t src = visitExpression(unaryMinus->getOperand());
         uint8_t dest = allocateRegister();
         const uint32_t operandType = inferExpressionTypeId(unaryMinus->getOperand());
-        if (operandType == 2 || operandType == 9) {
+        if (operandType == 125) { // Decimal
+            emit(Opcode::MOV, OperandsR{1, src, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_Decimal_neg_p_p");
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        } else if (operandType == 2 || operandType == 9) {
             uint8_t zero = emitConstant(0);
             emit(Opcode::FLOAT_ARITH, OperandsR{dest, zero, src, 1});
             freeRegister(zero);

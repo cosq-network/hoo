@@ -123,3 +123,42 @@ TEST_F(HooDecimalJitTest, ComparesGreaterThanAndGreaterThanOrEqual) {
         }
     )");
 }
+
+TEST_F(HooDecimalJitTest, NegatesValue) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = 19.99m;
+            var b: Decimal<38,2> = -a;
+            return b == (0m - 19.99m);
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, DoubleNegation) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = 19.99m;
+            var b: Decimal<38,2> = -a;
+            return -b == 19.99m;
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, NegationInExpression) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = 10.00m;
+            var b: Decimal<38,2> = 9.99m;
+            return -(a + b) == (0m - 19.99m);
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, NegatesZero) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = 0.00m;
+            return -a == 0.00m;
+        }
+    )");
+}
