@@ -18,6 +18,25 @@ typedef pthread_mutex_t hoo_mutex_t;
 #define HOO_MUTEX_INIT PTHREAD_MUTEX_INITIALIZER
 static void hoo_mutex_lock(hoo_mutex_t* m) { pthread_mutex_lock(m); }
 static void hoo_mutex_unlock(hoo_mutex_t* m) { pthread_mutex_unlock(m); }
+
+static pthread_key_t g_tlab_cleanup_key;
+static pthread_once_t g_tlab_cleanup_once = PTHREAD_ONCE_INIT;
+
+static void tlab_reset_thread_cache_impl(void);
+
+static void tlab_cleanup_destructor(void* arg) {
+    (void)arg;
+    tlab_reset_thread_cache_impl();
+}
+
+static void tlab_cleanup_key_create(void) {
+    pthread_key_create(&g_tlab_cleanup_key, tlab_cleanup_destructor);
+}
+
+static void tlab_register_cleanup(void) {
+    pthread_once(&g_tlab_cleanup_once, tlab_cleanup_key_create);
+    pthread_setspecific(g_tlab_cleanup_key, (void*)1);
+}
 #endif
 
 /**
@@ -88,13 +107,21 @@ void hoo_register_destructor(int64_t type_id, HooDestructor dtor) {
     }
 }
 
+#define HOO_MANAGED_HASH_BITS 10
+#define HOO_MANAGED_HASH_SIZE (1U << HOO_MANAGED_HASH_BITS)
+
 typedef struct ManagedObjNode {
     void* obj;
     struct ManagedObjNode* next;
 } ManagedObjNode;
 
 static hoo_mutex_t g_managed_objects_mutex = HOO_MUTEX_INIT;
-static ManagedObjNode* g_managed_objects = NULL;
+static ManagedObjNode* g_managed_hash[HOO_MANAGED_HASH_SIZE] = {NULL};
+
+static inline uint32_t managed_hash(const void* obj) {
+    uintptr_t p = (uintptr_t)obj;
+    return (uint32_t)((p >> 3) & (HOO_MANAGED_HASH_SIZE - 1));
+}
 
 static void managed_register(void* obj) {
     ManagedObjNode* node = (ManagedObjNode*)malloc(sizeof(ManagedObjNode));
@@ -103,22 +130,24 @@ static void managed_register(void* obj) {
         exit(1);
     }
     node->obj = obj;
+    uint32_t idx = managed_hash(obj);
     hoo_mutex_lock(&g_managed_objects_mutex);
-    node->next = g_managed_objects;
-    g_managed_objects = node;
+    node->next = g_managed_hash[idx];
+    g_managed_hash[idx] = node;
     hoo_mutex_unlock(&g_managed_objects_mutex);
 }
 
 static void managed_unregister(void* obj) {
+    uint32_t idx = managed_hash(obj);
     hoo_mutex_lock(&g_managed_objects_mutex);
     ManagedObjNode* prev = NULL;
-    ManagedObjNode* it = g_managed_objects;
+    ManagedObjNode* it = g_managed_hash[idx];
     while (it) {
         if (it->obj == obj) {
             if (prev) {
                 prev->next = it->next;
             } else {
-                g_managed_objects = it->next;
+                g_managed_hash[idx] = it->next;
             }
             hoo_mutex_unlock(&g_managed_objects_mutex);
             free(it);
@@ -132,8 +161,9 @@ static void managed_unregister(void* obj) {
 
 int64_t hoo_is_managed_object(const void* obj) {
     if (!obj) return 0;
+    uint32_t idx = managed_hash(obj);
     hoo_mutex_lock(&g_managed_objects_mutex);
-    ManagedObjNode* it = g_managed_objects;
+    ManagedObjNode* it = g_managed_hash[idx];
     while (it) {
         if (it->obj == obj) {
             hoo_mutex_unlock(&g_managed_objects_mutex);
@@ -154,6 +184,10 @@ static TLABBlock* tlab_alloc_block(size_t min_payload_size) {
     if (min_payload_size > block_cap) {
         block_cap = align_up(min_payload_size, sizeof(void*));
     }
+
+#ifndef _WIN32
+    tlab_register_cleanup();
+#endif
 
     TLABBlock* block = (TLABBlock*)malloc(sizeof(TLABBlock) + block_cap);
     if (!block) {

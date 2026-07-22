@@ -140,3 +140,51 @@ TEST_F(HooClassApiTest, RegexConstructor) {
     auto r = jit.run("_F_M_test_E_test_i8");
     EXPECT_EQ(r, 1);
 }
+
+TEST_F(HooClassApiTest, ClassModifiers_SingletonInstanceIdentity) {
+    const std::string source = R"(
+        import hoo;
+        singleton class AppState {
+            var value: int64;
+            constructor() {
+                // Initialize only if not already initialized
+                if (this.value == 0) {
+                    this.value = 1;
+                }
+            }
+            func :void setValue(v: int64) {
+                this.value = v;
+            }
+            func :int64 getValue() {
+                return this.value;
+            }
+        }
+        func :int64 test() {
+            var a = new AppState();
+            a.setValue(42);
+            var b = new AppState();
+            return b.getValue();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    // b.getValue() should be 42 because it's the same instance as a
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 42);
+}
+
+TEST_F(HooClassApiTest, ClassModifiers_ImmutableClassExecution) {
+    const std::string source = R"(
+        import hoo;
+        immutable class Config {
+            var threshold: int64;
+            constructor(t: int64) {
+                this.threshold = t;
+            }
+        }
+        func :int64 test() {
+            var cfg = new Config(100);
+            return cfg.threshold;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 100);
+}

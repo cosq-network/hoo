@@ -1,4 +1,5 @@
 #include "hoo_thread.h"
+#include "hoo_runtime.h"
 #include <uv.h>
 #include <stdlib.h>
 
@@ -16,6 +17,7 @@ struct ThreadContext {
 static void uv_thread_wrapper(void* arg) {
     ThreadStart* ts = (ThreadStart*)arg;
     ts->result = ts->func(ts->arg);
+    hoo_tlab_reset_thread_cache();
 }
 
 extern "C" {
