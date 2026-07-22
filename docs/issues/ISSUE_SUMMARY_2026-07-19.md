@@ -189,8 +189,8 @@ ISSUE-064 (Managed Object List)
 | ISSUE-061 | 🔴 HIGH | Don't advertise async until complete |
 | ISSUE-058 | 🟠 MEDIUM | Avoid async in performance-critical paths |
 | ISSUE-063 | 🟠 MEDIUM | Avoid futures with external callbacks |
-| ISSUE-060 | 🟡 LOW | Monitor memory in long-running threads |
-| ISSUE-064 | 🟡 LOW | Acceptable for <10K objects |
+| ISSUE-060 | 🟢 IMPLEMENTED | Resolved |
+| ISSUE-064 | 🟢 IMPLEMENTED | Resolved |
 | ISSUE-062 | 🟢 LOW | Use manual memory management |
 | ISSUE-065 | 🟢 LOW | Use `0m - decimal` workaround |
 
