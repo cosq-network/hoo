@@ -891,6 +891,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                     } else if (auto overList = dynamic_cast<const ast::OverloadList*>(declMember)) {
                         for (const auto& fn : overList->getFunctions()) {
                             isOverloadedMethod_[layout.name][fn->getName()] = true;
+                            layout.privateMethods[fn->getName()] = fn->isPrivate();
                             if (fn->getReturnType()) {
                                 layout.methodReturnTypes[fn->getName()] = typeIdFromDeclaredType(fn->getReturnType());
                             } else {
@@ -1060,6 +1061,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     FunctionPrologueInfo info;
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
+    info.isPrivate = decl && decl->isPrivate();
     scopeStack_.push_back({});
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
 
@@ -1129,6 +1131,12 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 
     if (decl) {
         mp.functionName = decl->getName();
+        if (decl->isPublic()) {
+            mp.functionModifiers.push_back("PUBLIC");
+        }
+        if (decl->isPrivate()) {
+            mp.functionModifiers.push_back("PRIVATE");
+        }
         if (isMethod && currentClass_) {
             mp.isOverload = isOverloadedMethod_[currentClass_->name][decl->getName()];
         } else {
@@ -1234,7 +1242,7 @@ void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
     sym.name = info.mangledName;
     sym.value = info.funcStartOffset;
     sym.type = Symbol::STT_FUNC;
-    sym.binding = Symbol::STB_GLOBAL;
+    sym.binding = info.isPrivate ? Symbol::STB_LOCAL : Symbol::STB_GLOBAL;
     sym.section_index = 0;
     module_->addSymbol(sym);
 

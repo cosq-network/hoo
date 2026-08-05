@@ -91,6 +91,11 @@ namespace fs = std::filesystem;
 namespace hooc {
 
 namespace {
+bool isExternallyVisible(const hvm::Symbol& symbol) {
+    return symbol.binding == hvm::Symbol::STB_GLOBAL ||
+           symbol.binding == hvm::Symbol::STB_WEAK;
+}
+
 std::vector<std::string> splitModulePath(const std::string& moduleName) {
     std::vector<std::string> parts;
     std::stringstream ss(moduleName);
@@ -5318,6 +5323,11 @@ bool hooc::HVMJIT::registerModuleInBundle(const std::shared_ptr<hvm::HOModule>& 
     }
 
     for (const auto& sym : module->getSymbols()) {
+        // Local symbols are addressable by code in their defining module, but
+        // are not part of that module's link-visible symbol table.
+        if (!isExternallyVisible(sym)) {
+            continue;
+        }
         hvm::SymbolType kind = hvm::SymbolType::NoType;
         switch (sym.type) {
             case hvm::Symbol::STT_FUNC: kind = hvm::SymbolType::Function; break;
@@ -5787,8 +5797,8 @@ bool HVMJIT::hasExportedOrDefinedSymbol(const std::string& moduleName, const std
         return false;
     }
     const auto& mod = modIt->second;
-    if (mod->getSymbol(symbolName) != nullptr) {
-        return true;
+    if (const auto* symbol = mod->getSymbol(symbolName)) {
+        return isExternallyVisible(*symbol);
     }
     auto regIt = moduleRegistry_.find(moduleName);
     if (regIt == moduleRegistry_.end()) {
@@ -6132,7 +6142,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
         for (const auto& [name, mod] : loadedModules_) {
             if (mod.get() == module.get()) continue;
             sym = findFunctionSymbol(*mod, functionName);
-            if (sym) {
+            if (sym && isExternallyVisible(*sym)) {
                 return executeFunction(mod, functionName, state);
             }
         }
@@ -6152,7 +6162,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
         for (const auto& [name, mod] : loadedModules_) {
             if (mod.get() == module.get()) continue;
             const hvm::Symbol* realSym = findFunctionSymbol(*mod, functionName);
-            if (realSym && realSym->section_index != -1) {
+            if (realSym && realSym->section_index != -1 && isExternallyVisible(*realSym)) {
                 return executeFunction(mod, functionName, state);
             }
         }
@@ -7570,7 +7580,10 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     }
     for (const auto& sym : hvmModule.getSymbols()) {
         if (sym.type != hvm::Symbol::STT_FUNC) continue;
-        fnMap[sym.name] = llvm::Function::Create(fnTy, llvm::Function::ExternalLinkage, sym.name, module.get());
+        const auto linkage = isExternallyVisible(sym)
+            ? llvm::Function::ExternalLinkage
+            : llvm::Function::InternalLinkage;
+        fnMap[sym.name] = llvm::Function::Create(fnTy, linkage, sym.name, module.get());
     }
 
     for (const auto& sym : hvmModule.getSymbols()) {

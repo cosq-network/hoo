@@ -253,6 +253,7 @@ private:
         size_t enterIdx;
         uint32_t funcStartOffset;
         std::string mangledName;
+        bool isPrivate = false;
     };
     FunctionPrologueInfo beginFunction(const ast::FunctionDeclaration* decl,
                                        const ast::ConstructorDeclaration* ctorDecl,

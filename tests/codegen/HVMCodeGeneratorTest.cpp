@@ -3,6 +3,7 @@
 #include "core/HooCompiler.h"
 #include "codegen/HVMCodeGenerator.h"
 #include "hvm/HOModule.h"
+#include "core/SymbolMangler.h"
 
 using namespace hooc;
 using namespace hvm;
@@ -52,6 +53,36 @@ TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
     }
 
     ASSERT_GE(insts.size(), 4);
+}
+
+TEST_F(HVMCodeGeneratorTest, AccessQualifiersAffectMethodSymbolsAndBindings) {
+    const std::string code = R"(
+        class Secret {
+            public func : void visible() {}
+            private func : void hidden() {}
+        }
+    )";
+
+    auto module = compiler_->compile("access_test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+
+    const Symbol* publicSymbol = nullptr;
+    const Symbol* privateSymbol = nullptr;
+    for (const auto& symbol : module->getSymbols()) {
+        const auto demangled = SymbolMangler::demangleSymbol(symbol.name);
+        if (demangled.className != "Secret") continue;
+        if (demangled.functionName == "visible") publicSymbol = &symbol;
+        if (demangled.functionName == "hidden") privateSymbol = &symbol;
+    }
+
+    ASSERT_NE(publicSymbol, nullptr);
+    ASSERT_NE(privateSymbol, nullptr);
+    EXPECT_EQ(publicSymbol->binding, Symbol::STB_GLOBAL);
+    EXPECT_EQ(privateSymbol->binding, Symbol::STB_LOCAL);
+    EXPECT_EQ(SymbolMangler::demangleSymbol(publicSymbol->name).functionModifiers,
+              std::vector<std::string>{"PUBLIC"});
+    EXPECT_EQ(SymbolMangler::demangleSymbol(privateSymbol->name).functionModifiers,
+              std::vector<std::string>{"PRIVATE"});
 }
 
 TEST_F(HVMCodeGeneratorTest, AsyncAwaitCodeGeneration) {

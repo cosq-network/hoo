@@ -5,7 +5,7 @@
 [![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml)
 [![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
 
-Last Updated: 2026-07-19
+Last Updated: 2026-08-05
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -28,6 +28,7 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 6 (Hardening)**: refactored low-level array representation, implemented managed realloc/capacity tracking, and stabilized full test suite.
 - [x] **Phase 7 (System Services)**: expanded SYSCALL table from 11 to 23 entries, adding OS-level file I/O, threading, clock, and random services; reserved `r4` as thread pointer (`tp`).
 - [x] **Phase 8 (Class Method Dispatch)**: class-based method-call syntax (`Math.abs(x)`, `map.length()`) with full JIT support for all runtime modules; unified `new Class(...)` constructor syntax for built-in and user-defined classes (`new Map(1)`); consistent `"ptr"` mangling for all method parameters and return types.
+- [x] **Access Qualifiers (ISSUE-006)**: `public` and `private` field/method access checks, modifier-aware method mangling (`_Pb`/`_Pv`), local HVM bindings for private methods, module export filtering, cross-module import rejection, and LLVM internal linkage during JIT translation.
 - [x] **Phase 8.1 (Character Dispatch Fix)**: Added `Character` → `character` prefix mapping to `classToPrefix()`, registering JIT symbols for `_F_M_hoo_E_character_*` mangled names, enabling constructor syntax `new Character(...)` and factory `Character.fromUtf8()`, and instance methods `codepoint()`, `length()`, `data()`, `print()`, `release()` at the Hoo language level (no static methods).
 - [x] **Phase 8.2 (Type Inference)**: Extended `getTypeId()` to infer return types for function calls, user-defined class methods, and array subscript access. Array literal element types inferred from uniform elements. For-in loop variables infer type from iterable's element type. Char-keyed Map operations removed from Hoo language layer (runtime-only C API).
 - [x] **Phase 9 (Output Optimization)**: Silenced LLVM IR and JIT debug outputs during execution to significantly improve unit test performance.
@@ -50,6 +51,7 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - **Cross-File Local Imports & `.ha` Archives (Phase 14)**: Added native support for cross-file local imports, resolving and compiling local dependencies automatically. The CLI now outputs `.ha` (Hoo Archive) files, a ZIP-compatible, Zstd-compressed container with `manifest.json`, replacing the intermediate `.ho` files.
 - **Archive Loading & CLI Updates**: Added `HooArchiveLoader` to seamlessly load multi-module `.ha` archives into the JIT. Introduced `--exec` to directly execute `.hoo` source files after building.
 - **Concurrency & Performance**: Resolved thread-local allocation (TLAB) memory leaks (ISSUE-060) and implemented fine-grained mutex striping for the Managed Object hash set, eliminating a critical O(n) global bottleneck (ISSUE-064/046).
+- **Access Qualifiers**: Completed compiler and HVM/JIT visibility enforcement for `public` and `private` fields and methods (ISSUE-006).
 - Updated `hoo --version` output to include tool name, brand name, version, and license information.
 - Removed `--compile` / `-c` from the CLI; unknown flags now return a clear error.
 - Improved REPL ergonomics so `--repl` no longer requires an input file, and preloads a `.hoo` file when provided.
