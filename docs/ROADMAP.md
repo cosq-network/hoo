@@ -236,11 +236,13 @@ This document provides a high-level overview of the current status of all tracke
   - **Status**: REVISED DESIGN REQUIRED
   - **Priority**: Medium
 
-- **[ISSUE-043_async_await_libuv.md](issues/ISSUE-043_async_await_libuv.md)**
+- **Async/Await via libuv**
   - **Title**: # ISSUE-043 Async/Await Integration via libuv
-  - **Status**: IMPLEMENTED
+  - **Status**: IMPLEMENTED for cooperative HVM Future execution
   - **Priority**: HIGH
-  - **Notes**: Native `async`/`await` syntax with LLVM coroutine lowering; libuv event loop (`hoo_event_loop`); `Future<T>` generic type (type ID 123); comprehensive JIT test coverage.
+  - **Notes**: Native `async`/`await` syntax, `Future<T>` (type ID 123),
+    condition-variable waiting, multiple continuations, and a mutex-protected
+    libuv event loop. True HVM stack-frame suspension remains future work.
 
 - **[ISSUE-046_managed_object_linked_list.md](issues/ISSUE-046_managed_object_linked_list.md)**
   - **Title**: # ISSUE-046: `hoo_is_managed_object` O(n) Linked-List Walk With Global Mutex
@@ -281,4 +283,3 @@ This document provides a high-level overview of the current status of all tracke
   - **Title**: # ISSUE-055: Destructor Table Size Limited to 256 Type IDs
   - **Status**: PROPOSED
   - **Priority**: MEDIUM
-

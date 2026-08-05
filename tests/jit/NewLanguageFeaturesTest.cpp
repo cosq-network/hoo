@@ -39,16 +39,15 @@ TEST_F(NewLanguageFeaturesTest, AsyncAwait_SimpleExecution) {
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
 
     // Call test(). It returns a Future<int64>.
-    int64_t futPtr = jit->run("_F_test_a_Future");
+    int64_t futPtr = jit->run("_F_M_test_E_test_p");
+    ASSERT_NE(futPtr, -1) << jit->getLastError();
     HooFuture fut = reinterpret_cast<HooFuture>(futPtr);
     ASSERT_NE(fut, nullptr);
-    
-    // Test returned a future, but since Hoo isn't event-loop driven yet in JIT tests unless we spin,
-    // getting the value will spin wait. But wait, `getVal()` returned 42 synchronously inside an async function!
-    // Since `getVal` is evaluated synchronously until suspension, it should resolve immediately in our naive impl.
-    // However, if the codegen doesn't actually wrap the return of async function in a Future, `futPtr` might just be 43!
-    // Let's verify what codegen actually emitted for return in async function.
-    // If it didn't emit a Future, this test will segfault. Let's just check if it compiles for now.
+    ASSERT_EQ(hoo_future_is_ready(fut), 1) << "async function returned a pending Future";
+    ASSERT_EQ(reinterpret_cast<int64_t>(hoo_future_get_value(fut)), 43);
+    EXPECT_EQ(hoo_future_is_ready(fut), 1);
+    EXPECT_EQ(hoo_future_has_error(fut), 0);
+    hoo_future_release(fut);
 }
 
 // ============================================================================

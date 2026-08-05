@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <thread>
 #include <chrono>
+#include <vector>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
 #include "src/runtime/lib/hoo_future.h"
@@ -175,6 +176,33 @@ TEST_F(HooFutureJitTest, AwaitUnwrapWithEventLoop) {
     void* result = _F_hoo_future_await_unwrap_p_p(fut);
     // Result can be nullptr for void futures
     
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, PrimitiveValueRoundTrip) {
+    HooFuture fut = hoo_future_new(1);
+    ASSERT_NE(fut, nullptr);
+
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(42)));
+    EXPECT_EQ(reinterpret_cast<intptr_t>(hoo_future_get_value(fut)), 42);
+    EXPECT_EQ(reinterpret_cast<intptr_t>(_F_hoo_future_await_unwrap_p_p(fut)), 42);
+
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, MultipleContinuationsAreAllInvoked) {
+    HooFuture fut = hoo_future_new(4);
+    ASSERT_NE(fut, nullptr);
+    int callbacks = 0;
+    auto continuation = [](void* arg) {
+        ++*static_cast<int*>(arg);
+    };
+
+    hoo_future_set_continuation(fut, continuation, &callbacks);
+    hoo_future_set_continuation(fut, continuation, &callbacks);
+    hoo_future_set_value(fut, nullptr);
+
+    EXPECT_EQ(callbacks, 2);
     hoo_future_release(fut);
 }
 

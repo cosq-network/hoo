@@ -4001,10 +4001,13 @@ constexpr InboundTrampolineFn2 kInboundTrampolines2[kMaxInboundTrampolineSlots] 
 std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
     return {
         {"_F_hoo_future_new_i64", reinterpret_cast<void*>(&jit_hoo_future_new)},
+        {"_F_hoo_future_new_native_i64", reinterpret_cast<void*>(&jit_hoo_future_new)},
         {"_F_hoo_future_set_value_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_value)},
+        {"_F_hoo_future_set_value_native_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_value)},
         {"_F_hoo_future_set_error_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_error)},
         {"_F_hoo_future_get_value_p_p", reinterpret_cast<void*>(&jit_hoo_future_get_value)},
         {"_F_hoo_future_await_unwrap_p_p", reinterpret_cast<void*>(&jit_hoo_future_await_unwrap)},
+        {"_F_hoo_future_await_unwrap_native_p_p", reinterpret_cast<void*>(&jit_hoo_future_await_unwrap)},
         {"_F_hoo_alloc_p_i8_i8", reinterpret_cast<void*>(&jit_hoo_alloc)},
         {"_F_hoo_retain_p_p", reinterpret_cast<void*>(&jit_hoo_retain)},
         {"_F_hoo_release_v_p", reinterpret_cast<void*>(&jit_hoo_release)},

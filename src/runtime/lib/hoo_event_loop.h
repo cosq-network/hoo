@@ -22,6 +22,9 @@ uv_loop_t* hoo_event_loop_get(void);
  */
 void hoo_event_loop_run(void);
 
+/** Process pending work without taking ownership of the loop lifetime. */
+void hoo_event_loop_run_nowait(void);
+
 /**
  * Destroy and clean up the global event loop.
  */

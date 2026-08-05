@@ -598,6 +598,7 @@ if(HOO_BUILD_TESTS)
         tests/jit/HooJsonJitTest.cpp
         tests/jit/IntegerTypesTest.cpp
         tests/jit/NewLanguageFeaturesTest.cpp
+        tests/jit/HooFutureJitTest.cpp
         tests/jit/CharacterLiteralTest.cpp
         tests/jit/HooCharacterApiJitTest.cpp
         tests/jit/FloatingLiteralTest.cpp

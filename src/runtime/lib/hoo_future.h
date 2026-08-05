@@ -62,7 +62,8 @@ void hoo_future_set_error(HooFuture f, const char* error_message);
 
 /**
  * Get the resolved value.
- * Blocks (spin-waits) until the future is ready.
+ * Waits until the future is ready while pumping the event loop and yielding
+ * instead of busy-spinning.
  * Returns NULL for void futures or if the future resolved with an error.
  */
 void* hoo_future_get_value(HooFuture f);
@@ -76,9 +77,11 @@ const char* hoo_future_get_error(HooFuture f);
 
 /**
  * Runtime helper for await keyword codegen.
- * Blocks (spin-waits) until the future is ready.
+ * Waits until the future is ready while pumping the event loop and yielding
+ * instead of busy-spinning.
  * If the future resolved with an error, throws a Hoo runtime exception.
- * If successful, returns the resolved value (with its refcount incremented).
+ * If successful, returns the resolved value. Managed values have their
+ * refcount incremented; primitive values are returned as raw register bits.
  */
 void* _F_hoo_future_await_unwrap_p_p(HooFuture f);
 

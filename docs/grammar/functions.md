@@ -30,7 +30,10 @@ Parameters are comma-separated and must have a name and a type.
 Functions can be prefixed with modifiers to change their behavior or visibility:
 - `public`: Visible to other modules.
 - `private`: Visible only within the current module or class.
-- `async`: Declares an asynchronous function (Scaffolding for future task models).
+- `async`: Declares a function that returns a `Future<T>` (or `Future<void>` when
+  it has no result). `await` may be used only inside an async function. The
+  current HVM implementation waits cooperatively and pumps the libuv event
+  loop while a Future is pending.
 
 ## 4. Methods
 Methods are functions declared inside a `class`. They have access to the implicit `this` reference.

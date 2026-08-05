@@ -660,6 +660,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     symbolFixups_.clear();
     functionReturnTypes_.clear();
     functionReturnClass_.clear();
+    functionFutureElementTypes_.clear();
 
     importedModules_.clear();
     importedSymbols_.clear();
@@ -696,6 +697,13 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     // direct calls can mangle f8/bit and other return types regardless of order.
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const ast::FunctionDeclaration*>(decl.get())) {
+            if (funcDecl->isAsync()) {
+                uint32_t elementType = 4;
+                if (auto futureType = dynamic_cast<const ast::FutureType*>(funcDecl->getReturnType())) {
+                    elementType = typeIdFromDeclaredType(&futureType->getElementType());
+                }
+                functionFutureElementTypes_[funcDecl->getName()] = elementType;
+            }
             if (funcDecl->getReturnType()) {
                 std::string clsName;
                 functionReturnTypes_[funcDecl->getName()] = typeIdFromDeclaredType(funcDecl->getReturnType(), &clsName);
@@ -1044,6 +1052,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
 {
     currentFunctionHasReturn_ = false;
     currentFunctionIsAsync_ = decl && decl->isAsync();
+    if (decl && decl->isAsync() && decl->getReturnType() &&
+        typeIdFromDeclaredType(decl->getReturnType()) != 4 &&
+        !dynamic_cast<const ast::FutureType*>(decl->getReturnType())) {
+        addError("Async function '" + decl->getName() + "' must return Future<T>");
+    }
     FunctionPrologueInfo info;
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
@@ -1071,7 +1084,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     if (decl) {
         mapParams(decl->getParameters());
         if (decl->isAsync()) {
-            uint32_t elemTypeId = 1; // default to int64
+            uint32_t elemTypeId = 4; // async functions without a declared result are Future<void>
             if (decl->getReturnType()) {
                 if (auto futureType = dynamic_cast<const ast::FutureType*>(decl->getReturnType())) {
                     elemTypeId = typeIdFromDeclaredType(&futureType->getElementType());
@@ -1079,15 +1092,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
             }
             uint8_t elemTypeReg = emitConstant(static_cast<int64_t>(elemTypeId));
             emit(Opcode::MOV, OperandsR{1, elemTypeReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_hoo_future_new_i64");
+            emitCall(Opcode::CALL, "_F_hoo_future_new_native_i64");
             freeRegister(elemTypeReg);
             
             asyncFutureOffset_ = reserveLocal("__async_future__", 123, "Future");
             emit(Opcode::ST_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
-            
-            emitCall(Opcode::CALL, "llvm.coro.id");
-            emitCall(Opcode::CALL, "llvm.coro.size.i64");
-            emitCall(Opcode::CALL, "llvm.coro.begin");
         }
         visitStatement(decl->getBody());
     } else if (ctorDecl) {
@@ -1100,11 +1109,15 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     }
 
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
-        emitScopeCleanup(scopeStack_.size(), 0);
-        if (decl && decl->isAsync()) {
-            emitCall(Opcode::CALL, "llvm.coro.end");
-            emitCall(Opcode::CALL, "llvm.coro.free");
+        if (decl && decl->isAsync() && asyncFutureOffset_ != 0) {
+            /* A fallthrough async body is a successful Future<void> result. */
+            emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+            emit(Opcode::MOV, OperandsR{2, 0, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_future_set_value_native_v_p_p");
+            emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+            emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0});
         }
+        emitScopeCleanup(scopeStack_.size(), 0);
         emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
         emit(Opcode::RET, OperandsR{0, 0, 0, 0});
     }
@@ -1234,6 +1247,11 @@ void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
     if (decl.isAsync()) {
         functionReturnTypes_[decl.getName()] = 123;
         functionReturnClass_[decl.getName()] = "Future";
+        uint32_t elementType = 4;
+        if (auto futureType = dynamic_cast<const ast::FutureType*>(decl.getReturnType())) {
+            elementType = typeIdFromDeclaredType(&futureType->getElementType());
+        }
+        functionFutureElementTypes_[decl.getName()] = elementType;
     } else if (decl.getReturnType()) {
         std::string clsName;
         functionReturnTypes_[decl.getName()] = typeIdFromDeclaredType(decl.getReturnType(), &clsName);
@@ -1522,17 +1540,20 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 uint8_t reg = visitExpression(*ret->getExpression());
                 emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
                 emit(Opcode::MOV, OperandsR{2, reg, 0, 0});
-                emitCall(Opcode::CALL, "_F_hoo_future_set_value_v_p_p");
+                emitCall(Opcode::CALL, "_F_hoo_future_set_value_native_v_p_p");
+                if (isArcManagedTypeId(inferExpressionTypeId(*ret->getExpression()))) {
+                    emit(Opcode::RELEASE, OperandsR{reg, 0, 0, 0});
+                }
                 freeRegister(reg);
             } else {
                 emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
                 emit(Opcode::MOV, OperandsR{2, 0, 0, 0}); // NULL
-                emitCall(Opcode::CALL, "_F_hoo_future_set_value_v_p_p");
+                emitCall(Opcode::CALL, "_F_hoo_future_set_value_native_v_p_p");
             }
             emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
+            /* Transfer the return Future to the caller before local cleanup. */
+            emit(Opcode::RETAIN, OperandsR{1, 1, 0, 0});
             emitScopeCleanup(scopeStack_.size(), 0);
-            emitCall(Opcode::CALL, "llvm.coro.end");
-            emitCall(Opcode::CALL, "llvm.coro.free");
             emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
             emit(Opcode::RET, OperandsR{0, 0, 0, 0});
         } else {
@@ -1543,10 +1564,6 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 freeRegister(reg);
             }
             emitScopeCleanup(scopeStack_.size(), 0);
-            if (currentFunctionIsAsync_) {
-                emitCall(Opcode::CALL, "llvm.coro.end");
-                emitCall(Opcode::CALL, "llvm.coro.free");
-            }
             emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
             emit(Opcode::RET, OperandsR{0, 0, 0, 0});
         }
@@ -1569,6 +1586,8 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 elemTypeId = typeIdFromDeclaredType(&mapType->getValueType());
             } else if (dynamic_cast<const ast::AnyArrayType*>(decl.getType())) {
                 elemTypeId = 0;
+            } else if (auto futureType = dynamic_cast<const ast::FutureType*>(decl.getType())) {
+                elemTypeId = typeIdFromDeclaredType(&futureType->getElementType());
             }
         } else if (decl.getInitializer()) {
             if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(decl.getInitializer())) {
@@ -2403,17 +2422,32 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
+        if (!currentFunctionIsAsync_) {
+            addError("await expression must be used inside an async function");
+            return 0;
+        }
         uint32_t futureTypeId = inferExpressionTypeId(awaitExpr->getFuture());
-        if (futureTypeId != 123 && futureTypeId != 100 && futureTypeId != 0) {
+        if (futureTypeId != 123) {
             addError(std::string("await expression must be used with a Future type"));
             return 0;
         }
         uint8_t futureReg = visitExpression(awaitExpr->getFuture());
         emit(Opcode::MOV, OperandsR{1, futureReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_hoo_future_await_unwrap_p_p");
+        emitCall(Opcode::CALL, "_F_hoo_future_await_unwrap_native_p_p");
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-        emit(Opcode::RELEASE, OperandsR{futureReg, 0, 0, 0});
+        /* Identifier expressions borrow a local Future; call expressions
+         * produce an owned temporary which must be released after await. */
+        const ast::ASTNode* futureSource = &awaitExpr->getFuture();
+        while (auto primary = dynamic_cast<const ast::PrimaryExpression*>(futureSource)) {
+            futureSource = &primary->getPrimary();
+        }
+        while (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(futureSource)) {
+            futureSource = &paren->getExpression();
+        }
+        if (dynamic_cast<const ast::FunctionCall*>(futureSource)) {
+            emit(Opcode::RELEASE, OperandsR{futureReg, 0, 0, 0});
+        }
         freeRegister(futureReg);
         return dest;
     }
@@ -4006,7 +4040,8 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 0: return "any";
         case 101: return "string";
         case 104: return "tensor";
-        case 123: return "Future";
+        /* Future values use the stable pointer ABI in function symbols. */
+        case 123: return "ptr";
         default: return "ptr";
     }
 }
@@ -4301,6 +4336,46 @@ uint8_t HVMCodeGenerator::emitDecimalBinaryOp(const ast::BinaryExpression& binar
     return dest;
 }
 uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
+    if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
+        const ast::Expression* source = &awaitExpr->getFuture();
+        while (auto primary = dynamic_cast<const ast::PrimaryExpression*>(source)) {
+            const auto& node = primary->getPrimary();
+            if (auto id = dynamic_cast<const ast::Identifier*>(&node)) {
+                for (auto scope = scopeStack_.rbegin(); scope != scopeStack_.rend(); ++scope) {
+                    auto local = scope->find(id->getName());
+                    if (local != scope->end() && local->second.typeId == 123) {
+                        return local->second.elementTypeId != 0 ? local->second.elementTypeId : 100;
+                    }
+                }
+                return 100;
+            }
+            if (auto nested = dynamic_cast<const ast::Expression*>(&node)) {
+                source = nested;
+            } else {
+                break;
+            }
+        }
+        while (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(source)) {
+            source = &paren->getExpression();
+        }
+        if (auto call = dynamic_cast<const ast::FunctionCall*>(source)) {
+            if (auto functionPrimary = dynamic_cast<const ast::PrimaryExpression*>(&call->getFunction())) {
+                if (auto id = dynamic_cast<const ast::Identifier*>(&functionPrimary->getPrimary())) {
+                    auto it = functionFutureElementTypes_.find(id->getName());
+                    if (it != functionFutureElementTypes_.end()) return it->second;
+                }
+            }
+        }
+        if (auto id = dynamic_cast<const ast::Identifier*>(source)) {
+            for (auto scope = scopeStack_.rbegin(); scope != scopeStack_.rend(); ++scope) {
+                auto local = scope->find(id->getName());
+                if (local != scope->end() && local->second.typeId == 123) {
+                    return local->second.elementTypeId != 0 ? local->second.elementTypeId : 100;
+                }
+            }
+        }
+        return 100;
+    }
     if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
         const ast::ASTNode& primary = primaryExpr->getPrimary();
         if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) return 1;

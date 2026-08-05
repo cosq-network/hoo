@@ -1,5 +1,15 @@
 # Issue Summary - 2026-07-19 (Prioritized)
 
+> Historical audit. Current async status was verified on 2026-08-05.
+
+## Current Async Status
+
+ISSUE-058, ISSUE-061, and ISSUE-063 are resolved for the cooperative HVM
+Future model. Async functions create and resolve Futures, pending waits pump
+the libuv loop without busy-spinning, and multiple continuations are cleaned
+up safely. True HVM stack-frame suspension remains deferred because the VM has
+no suspend/resume instructions.
+
 ## Overview
 This document summarizes the codebase review conducted on 2026-07-19, the new issues identified, and their prioritization for resolution.
 
@@ -29,40 +39,37 @@ This document summarizes the codebase review conducted on 2026-07-19, the new is
 - **Fix Effort**: Medium (2-3 days)
 - **Dependencies**: None
 
-### ISSUE-061: Async/Await Implementation Is Incomplete
+### ISSUE-061: Async/Await Future Model (Resolved)
 - **Component**: Codegen/Async
-- **Impact**: Advertised feature doesn't work
+- **Impact**: Future-based async execution is supported; true frame suspension remains future work
 - **Problem**:
-  - Tests only verify compilation, not actual async behavior
-  - No coroutine suspension implementation
-  - No event loop integration
-- **Risk**: Feature marketing mismatch, developer frustration
-- **Fix Effort**: High (1-2 weeks)
-- **Dependencies**: ISSUE-058
+  - Async functions resolve `Future<T>`/`Future<void>` values
+  - Await validates Future operands and unwraps through the runtime ABI
+  - Pending waits use a condition variable and libuv `UV_RUN_NOWAIT`
+- **Risk**: True non-blocking suspension requires future VM support
+- **Resolution**: Implemented and covered by JIT/runtime tests
 
-### ISSUE-058: Future Spin-Wait CPU Waste
+### ISSUE-058: Future Wait Efficiency (Resolved)
 - **Component**: Runtime/Async
-- **Impact**: 100% CPU usage in async workloads
-- **Problem**:
-  - `hoo_future_get_value()` uses tight spin loop
-  - No integration with libuv event loop
-  - No yielding mechanism
+- **Impact**: Historical 100% CPU usage in async workloads
+- **Problem**: Historical tight spin loop in `hoo_future_get_value()`
 - **Risk**: Performance degradation, battery drain, unresponsive applications
 - **Fix Effort**: Medium (3-5 days)
 - **Dependencies**: None
 
-**Why P0**: These issues affect correctness (data corruption) and core functionality (async doesn't work). They must be fixed before any release.
+**Historical priority rationale**: These issues affected correctness and core
+functionality at the time of the audit. The async issues listed here are now
+resolved for the cooperative Future model.
 
 ---
 
 ## 🟠 P1 - HIGH (Fix in Current Sprint)
 
-### ISSUE-063: Future Continuation Cleanup
+### ISSUE-063: Future Continuation Cleanup (Resolved)
 - **Component**: Runtime/Async
 - **Impact**: Potential use-after-free
-- **Problem**:
-  - Future destructor doesn't nullify continuation callback
-  - If continuation references freed data, use-after-free occurs
+- **Resolution**: Multiple continuation nodes are detached under a mutex;
+  queued callbacks retain the Future and destruction frees pending nodes.
 - **Risk**: Memory corruption, crashes
 - **Fix Effort**: Low (1 day)
 - **Dependencies**: None
@@ -141,11 +148,11 @@ This document summarizes the codebase review conducted on 2026-07-19, the new is
 | 3 | ISSUE-059 | Add division by zero exception |
 | 4-5 | ISSUE-058 | Integrate Future with libuv event loop |
 
-### Week 2: Async Completion
+### Week 2: Async Completion (completed for cooperative Future model)
 | Day | Issue | Task |
 |-----|-------|------|
-| 1-3 | ISSUE-061 | Implement coroutine suspension |
-| 4-5 | ISSUE-061 | Add event loop integration |
+| 1-3 | ISSUE-061 | Implement Future wrapping, await validation, and JIT execution |
+| 4-5 | ISSUE-061 | Add condition-variable waiting and event-loop integration |
 
 ### Week 3: Memory Safety
 | Day | Issue | Task |
@@ -166,7 +173,7 @@ This document summarizes the codebase review conducted on 2026-07-19, the new is
 ## 🔗 Dependency Graph
 
 ```
-ISSUE-061 (Async Incomplete)
+ISSUE-061 (Async Future Model, resolved)
     └── depends on → ISSUE-058 (Future Spin-Wait)
 
 ISSUE-062 (Decimal toString)
@@ -186,7 +193,7 @@ ISSUE-064 (Managed Object List)
 | Issue | Risk Level | Mitigation |
 |-------|------------|------------|
 | ISSUE-059 | 🔴 HIGH | Fix before any financial/precision use cases |
-| ISSUE-061 | 🔴 HIGH | Don't advertise async until complete |
+| ISSUE-061 | 🟡 MEDIUM | Document cooperative waiting; track true VM suspension separately |
 | ISSUE-058 | 🟠 MEDIUM | Avoid async in performance-critical paths |
 | ISSUE-063 | 🟠 MEDIUM | Avoid futures with external callbacks |
 | ISSUE-060 | 🟢 IMPLEMENTED | Resolved |
@@ -212,4 +219,4 @@ After implementing fixes, verify:
 
 ---
 
-*Last Updated: 2026-07-22*
+*Last Updated: 2026-08-05*

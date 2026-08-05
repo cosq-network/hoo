@@ -3,7 +3,11 @@
 #include "hoo_exception.h"
 #include <string.h>
 #include <stdlib.h>
-#include <stdatomic.h>
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#include "hoo_event_loop.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,14 +20,34 @@ extern "C" {
 typedef struct {
     int64_t  elem_type_id;   /* type ID of the promised value          */
     void    *value;           /* resolved value (ARC-managed), or NULL  */
+    int64_t  value_is_managed; /* whether value owns an ARC reference    */
     char    *error_message;  /* non-NULL when resolved with an error   */
     int32_t  ready;          /* 0 = pending, 1 = resolved              */
-    HooFutureContinuation continuation; /* callback to resume coroutine  */
-    void*    continuation_arg; /* argument for the callback             */
+    struct HooFutureContinuationNode* continuations;
 } HooFutureImpl;
+
+typedef struct HooFutureContinuationNode {
+    HooFutureContinuation callback;
+    void* arg;
+    struct HooFutureContinuationNode* next;
+} HooFutureContinuationNode;
+
+/* Objects are allocated as raw storage by hoo_alloc, so synchronization
+ * primitives live outside the object. A single mutex is intentionally used
+ * here: future resolution is short and this keeps the opaque ABI layout C-safe. */
+static std::mutex g_future_mutex;
+static std::condition_variable g_future_cv;
 
 static HooFutureImpl* get_impl(HooFuture f) {
     return (HooFutureImpl*)f;
+}
+
+static int future_value_is_managed(const HooFutureImpl* impl, void* value) {
+    if (!value) return 0;
+    /* Primitive values are passed through the void* ABI as register bits. */
+    if (impl->elem_type_id > 0 && impl->elem_type_id < 100) return 0;
+    /* Type 100 is the unknown/object type; verify it before using ARC. */
+    return hoo_is_managed_object(value) != 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -31,15 +55,36 @@ static HooFutureImpl* get_impl(HooFuture f) {
 /* ------------------------------------------------------------------ */
 static void future_destructor(void* obj) {
     HooFutureImpl* impl = (HooFutureImpl*)obj;
-    /* Release the resolved ARC-managed value, if any */
-    if (impl->value) {
-        hoo_release(impl->value);
+
+    void* value = NULL;
+    int value_is_managed = 0;
+    char* error_message = NULL;
+    HooFutureContinuationNode* continuations = NULL;
+    {
+        std::lock_guard<std::mutex> lock(g_future_mutex);
+        value = impl->value;
+        value_is_managed = impl->value_is_managed;
+        error_message = impl->error_message;
+        continuations = impl->continuations;
         impl->value = NULL;
+        impl->value_is_managed = 0;
+        impl->error_message = NULL;
+        impl->continuations = NULL;
+    }
+
+    while (continuations) {
+        HooFutureContinuationNode* next = continuations->next;
+        free(continuations);
+        continuations = next;
+    }
+
+    /* Release the resolved ARC-managed value, if any */
+    if (value && value_is_managed) {
+        hoo_release(value);
     }
     /* Free the error string, if any */
-    if (impl->error_message) {
-        free(impl->error_message);
-        impl->error_message = NULL;
+    if (error_message) {
+        free(error_message);
     }
 }
 
@@ -61,10 +106,10 @@ HooFuture hoo_future_new(int64_t elem_type_id) {
     HooFutureImpl* impl = (HooFutureImpl*)hoo_alloc(sizeof(HooFutureImpl), HOO_TYPE_FUTURE);
     impl->elem_type_id = elem_type_id;
     impl->value        = NULL;
+    impl->value_is_managed = 0;
     impl->error_message = NULL;
     impl->ready        = 0;
-    impl->continuation = NULL;
-    impl->continuation_arg = NULL;
+    impl->continuations = NULL;
     return (HooFuture)impl;
 }
 
@@ -75,82 +120,127 @@ int64_t hoo_future_get_elem_type_id(HooFuture f) {
 
 int64_t hoo_future_is_ready(HooFuture f) {
     if (!f) return 0;
+    std::lock_guard<std::mutex> lock(g_future_mutex);
     return get_impl(f)->ready ? 1 : 0;
 }
 
 int64_t hoo_future_has_error(HooFuture f) {
     if (!f) return 0;
     HooFutureImpl* impl = get_impl(f);
+    std::lock_guard<std::mutex> lock(g_future_mutex);
     return (impl->ready && impl->error_message != NULL) ? 1 : 0;
 }
 
 static void trigger_continuation(HooFutureImpl* impl) {
-    if (impl->continuation) {
-        // Run continuation. Note: in a fully async environment, you might
-        // post this to the event loop via uv_async_send instead of calling directly,
-        // but for coroutines, direct call is often sufficient since the resolver
-        // is already running on the event loop.
-        impl->continuation(impl->continuation_arg);
-        impl->continuation = NULL; // Run only once
+    HooFutureContinuationNode* continuations = NULL;
+    {
+        std::lock_guard<std::mutex> lock(g_future_mutex);
+        continuations = impl->continuations;
+        impl->continuations = NULL;
+    }
+    while (continuations) {
+        HooFutureContinuationNode* next = continuations->next;
+        HooFutureContinuation callback = continuations->callback;
+        void* callback_arg = continuations->arg;
+        free(continuations);
+        if (callback) callback(callback_arg);
+        /* Each pending continuation owns one reference while queued. */
+        hoo_release((HooFuture)impl);
+        continuations = next;
     }
 }
 
 void hoo_future_set_value(HooFuture f, void* value) {
     if (!f) return;
     HooFutureImpl* impl = get_impl(f);
-    if (impl->ready) return;  /* already resolved */
-    impl->value = value ? hoo_retain(value) : NULL;
-    impl->ready = 1;
+    {
+        std::lock_guard<std::mutex> lock(g_future_mutex);
+        if (impl->ready) return;
+        impl->value = value;
+        impl->value_is_managed = future_value_is_managed(impl, value);
+        if (impl->value_is_managed) {
+            hoo_retain(value);
+        }
+        impl->ready = 1;
+    }
+    g_future_cv.notify_all();
     trigger_continuation(impl);
 }
 
 void hoo_future_set_error(HooFuture f, const char* error_message) {
     if (!f) return;
     HooFutureImpl* impl = get_impl(f);
-    if (impl->ready) return;  /* already resolved */
-    impl->error_message = error_message ? strdup(error_message) : NULL;
-    impl->ready = 1;
+    {
+        std::lock_guard<std::mutex> lock(g_future_mutex);
+        if (impl->ready) return;
+        impl->error_message = error_message ? strdup(error_message) : NULL;
+        impl->ready = 1;
+    }
+    g_future_cv.notify_all();
     trigger_continuation(impl);
 }
 
 void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, void* arg) {
     if (!f || !callback) return;
     HooFutureImpl* impl = get_impl(f);
-    if (impl->ready) {
+    bool invoke_now = false;
+    HooFutureContinuationNode* node = (HooFutureContinuationNode*)malloc(sizeof(HooFutureContinuationNode));
+    if (!node) return;
+    node->callback = callback;
+    node->arg = arg;
+    node->next = NULL;
+    {
+        std::lock_guard<std::mutex> lock(g_future_mutex);
+        if (impl->ready) {
+            invoke_now = true;
+        } else {
+            /* Keep the Future alive until this callback has run. */
+            hoo_retain(f);
+            node->next = impl->continuations;
+            impl->continuations = node;
+        }
+    }
+    if (invoke_now) {
+        free(node);
         callback(arg);
-    } else {
-        impl->continuation = callback;
-        impl->continuation_arg = arg;
+    }
+}
+
+static void wait_for_future(HooFutureImpl* impl) {
+    std::unique_lock<std::mutex> lock(g_future_mutex);
+    while (!impl->ready) {
+        lock.unlock();
+        hoo_event_loop_run_nowait();
+        lock.lock();
+        if (!impl->ready) {
+            g_future_cv.wait_for(lock, std::chrono::milliseconds(16));
+        }
     }
 }
 
 void* hoo_future_get_value(HooFuture f) {
     if (!f) return NULL;
     HooFutureImpl* impl = get_impl(f);
-    /* Spin-wait until resolved (simple polling for now) */
-    while (!impl->ready) {
-        /* In a real event-loop integration, yield here */
-    }
+    wait_for_future(impl);
     return impl->value;
 }
 
 void* _F_hoo_future_await_unwrap_p_p(HooFuture f) {
     if (!f) return NULL;
     HooFutureImpl* impl = get_impl(f);
-    while (!impl->ready) {
-        /* Spin-wait */
-    }
+    wait_for_future(impl);
     if (impl->error_message) {
         HooException exc = hoo_exception_runtime(impl->error_message);
         hoo_exception_throw(exc); // does not return
     }
     void* result = impl->value;
-    if (result) hoo_retain(result);
+    if (result && impl->value_is_managed) hoo_retain(result);
     return result;
 }
 
 const char* hoo_future_get_error(HooFuture f) {
     if (!f) return NULL;
+    std::lock_guard<std::mutex> lock(g_future_mutex);
     return get_impl(f)->error_message;
 }
 

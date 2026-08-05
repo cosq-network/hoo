@@ -11,6 +11,17 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- fix(async): harden async/await and Future execution
+  - Async functions now create and resolve `Future<T>`/`Future<void>` values
+  - Await validates async context and Future operands, with primitive and
+    ARC-managed result handling
+  - Future waits use condition variables and cooperative libuv pumping instead
+    of busy-spinning
+  - Multiple continuations are detached and retained safely
+  - HVM codegen no longer emits unsupported `llvm.coro.*` pseudo-calls; true
+    stack-frame suspension remains future VM work
+  - Added primitive round-trip and multiple-continuation JIT coverage
+
 - feat(cli): allow `--repl` mode without an input file；add unit tests and update docs
   - `hoo --repl` now skips the required input_file validation
   - Add 3 CLI tests: accepts `--repl` alone, accepts it with a file, and ensures no missing-file error message

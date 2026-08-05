@@ -103,6 +103,7 @@ private:
     std::unordered_map<std::string, std::unordered_map<std::string, bool>> isOverloadedMethod_; // methodName -> className
     std::unordered_map<std::string, uint32_t> functionReturnTypes_; // functionName -> typeId
     std::unordered_map<std::string, std::string> functionReturnClass_; // functionName -> className (for user-defined types)
+    std::unordered_map<std::string, uint32_t> functionFutureElementTypes_; // async functionName -> Future element type
     ClassLayout* currentClass_ = nullptr;
     bool inConstructor_ = false;
     bool currentFunctionHasReturn_ = false;
