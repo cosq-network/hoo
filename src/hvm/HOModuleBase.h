@@ -129,9 +129,6 @@ protected:
     mutable std::string error_;
 
     virtual const ModuleSymbol* findSymbolInternal(const std::string& name) const;
-    virtual void checkCircularDependencies(const std::string& module_name,
-                                          std::unordered_set<std::string>& visited,
-                                          std::unordered_set<std::string>& recursion_stack) const;
 
     virtual void addSymbolInternal(const ModuleSymbol& symbol);
 };

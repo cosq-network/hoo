@@ -168,28 +168,6 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
     has_circular_dependency_ = cycle_found;
 }
 
-void HOModuleBase::checkCircularDependencies(const std::string& module_name,
-                                            std::unordered_set<std::string>& visited,
-                                            std::unordered_set<std::string>& recursion_stack) const {
-    if (recursion_stack.find(module_name) != recursion_stack.end()) {
-        const_cast<bool&>(has_circular_dependency_) = true;
-        return;
-    }
-
-    if (visited.find(module_name) != visited.end()) {
-        return;
-    }
-
-    visited.insert(module_name);
-    recursion_stack.insert(module_name);
-
-    for (const auto& dep : dependencies_) {
-        checkCircularDependencies(dep.module_name, visited, recursion_stack);
-    }
-
-    recursion_stack.erase(module_name);
-}
-
 std::string HOModuleBase::getSymbolSignature(const std::string& symbol_name) const {
     auto it = symbols_by_name_.find(symbol_name);
     if (it != symbols_by_name_.end()) {
