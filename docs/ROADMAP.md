@@ -147,8 +147,8 @@ This document provides a high-level overview of the current status of all tracke
   - **Priority**: LOW
 
 - **[ISSUE-021_missing_statement_types.md](issues/ISSUE-021_missing_statement_types.md)**
-  - **Title**: # ISSUE-021: Missing Statement Types in Grammar and Codegen
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Title**: # ISSUE-021: Statement Grammar, Lowering, and Execution Completeness
+  - **Status**: IMPLEMENTED
   - **Priority**: MEDIUM
 
 - **[ISSUE-022_type_inference_limits.md](issues/ISSUE-022_type_inference_limits.md)**

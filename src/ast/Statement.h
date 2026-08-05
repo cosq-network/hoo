@@ -148,6 +148,19 @@ private:
     std::unique_ptr<Expression> condition_;
 };
 
+// Explicit lexical scope statement. The code generator treats this as a
+// lifetime boundary, so managed locals are released when the scope exits.
+class ScopeStatement : public Statement {
+public:
+    explicit ScopeStatement(std::unique_ptr<Block> body) : body_(std::move(body)) {}
+
+    std::string toString() const override;
+    const Block& getBody() const { return *body_; }
+
+private:
+    std::unique_ptr<Block> body_;
+};
+
 // Switch statement
 class SwitchStatement : public Statement {
 public:

@@ -176,6 +176,14 @@ int64_t hoo_exception_get_type_id(HooException exc) {
     return get_impl(exc)->typeId;
 }
 
+int64_t hoo_exception_matches_type(HooException exc, int64_t expectedTypeId) {
+    if (!exc) return 0;
+    // Type id 100 is Hoo's open constructed/object type and is used by the
+    // Exception declaration. It intentionally catches every runtime exception.
+    if (expectedTypeId == 100) return 1;
+    return get_impl(exc)->typeId == expectedTypeId;
+}
+
 const char* hoo_exception_get_type_name(HooException exc) {
     if (!exc) return "";
     return empty_str(get_impl(exc)->typeName);

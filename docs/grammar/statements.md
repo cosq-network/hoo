@@ -33,15 +33,38 @@ while (i < 10) {
 ```
 
 ### For-In Loop
-Supports iterating over ranges or collections.
+Supports iterating over ranges, arrays, strings, and map keys.
 - **Range**: `for i in 0..10 by 2 { ... }`
-- **Collection**: `for item in array { ... }`
+- **Array**: `for item in array { ... }`
+- **String**: `for ch in text { ... }` (character objects)
+- **Map keys**: `for key in map { ... }`
 
 ### Loop Control
 - `break;`: Exits the innermost loop.
 - `continue;`: Jumps to the next iteration.
 
-## 4. Exception Handling
+### Do-While Loop
+Executes its body at least once, then evaluates the condition.
+```hoo
+do {
+    i++;
+} while (i < 10);
+```
+
+### Switch Statement
+Integer-like discriminants support ordered cases, fall-through, `default`,
+and `break`.
+```hoo
+switch value {
+case 1:
+    result = 10;
+    break;
+default:
+    result = 0;
+}
+```
+
+## 5. Exception Handling
 
 Hoo provides a robust `try-catch-finally` model.
 
@@ -62,9 +85,9 @@ try {
 - `throw new Exception("Error");`
 - `rethrow;` (Valid only within a catch block).
 
-## 5. Other Statements
+## 6. Other Statements
 
 - **Return**: `return expr;` or `return;`.
 - **Block**: `{ statement* }`
 - **Expression Statement**: `expr;`
-- **Scope**: `scope { ... }` (Creates an isolated block for resource management).
+- **Scope**: `scope { ... }` (Creates an isolated lexical lifetime boundary).

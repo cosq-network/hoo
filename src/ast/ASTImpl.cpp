@@ -184,6 +184,10 @@ std::string DoWhileStatement::toString() const {
     return "DoWhileStatement";
 }
 
+std::string ScopeStatement::toString() const {
+    return "ScopeStatement";
+}
+
 std::string SwitchStatement::toString() const {
     return "SwitchStatement";
 }

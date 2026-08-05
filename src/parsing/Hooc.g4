@@ -21,6 +21,7 @@ FROM: 'from';
 NEW: 'new';
 VAR: 'var';
 CONST: 'const';
+SCOPE: 'scope';
 
 FINAL: 'final';
 SINGLETON: 'singleton';
@@ -232,6 +233,7 @@ statement
     | variableDeclarationStatement
     | expressionStatement
     | returnStatement
+    | scopeStatement
     | ifStatement
     | whileStatement
     | doWhileStatement
@@ -244,6 +246,8 @@ statement
     ;
 
 doWhileStatement: DO block WHILE expression SEMICOLON;
+
+scopeStatement: SCOPE block;
 
 switchStatement: SWITCH expression LBRACE switchCase* switchDefault? RBRACE;
 

@@ -338,6 +338,7 @@ private:
      * @return Unique pointer to DoWhileStatement.
      */
     std::unique_ptr<ast::DoWhileStatement> buildDoWhileStatement(HoocParser::DoWhileStatementContext* ctx);
+    std::unique_ptr<ast::ScopeStatement> buildScopeStatement(HoocParser::ScopeStatementContext* ctx);
 
     /**
      * @brief Builds a SwitchStatement from its context.

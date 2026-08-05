@@ -897,6 +897,11 @@ extern "C" {
         hoo_exception_clear();
         return 0;
     }
+    uint64_t jit_hoo_exception_matches_type(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_exception_matches_type(
+            reinterpret_cast<HooException>(state->regs[1]), state->regs[2]));
+    }
     uint64_t jit_hoo_push_handler(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const uint64_t handlerPc = static_cast<uint64_t>(state->regs[2]);
@@ -1336,10 +1341,26 @@ extern "C" {
                 }
                 break;
             }
+            case HOO_MAP_KEY_STRING: {
+                std::vector<const char*> keys(static_cast<size_t>(count));
+                int64_t written = hoo_map_get_keys(map, keys.data(), count);
+                for (int64_t i = 0; i < written; ++i) {
+                    HooString key = hoo_string_from_cstr(keys[static_cast<size_t>(i)]);
+                    arr = hoo_array_push_object(arr, key);
+                    hoo_string_release(key);
+                }
+                break;
+            }
             default:
                 break;
         }
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
+    }
+    uint64_t jit_array_get_object(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* value = nullptr;
+        hoo_array_get_object(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &value);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value));
     }
 
     uint64_t jit_anyarray_new(void* /*state_ptr*/) {
@@ -4101,6 +4122,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Map_new_p_i8", reinterpret_cast<void*>(&jit_hoo_map_new)},
         {"_F_hoo_Map_keys_p", reinterpret_cast<void*>(&jit_hoo_map_keys)},
         {"_F_hoo_exception_runtime_p", reinterpret_cast<void*>(&jit_hoo_exception_runtime)},
+        {"_F_hoo_exception_matches_type_i8_p_i8", reinterpret_cast<void*>(&jit_hoo_exception_matches_type)},
         {"_F_hoo_exception_clear_v", reinterpret_cast<void*>(&jit_hoo_exception_clear)},
         {"_F_hoo_push_handler_v_p", reinterpret_cast<void*>(&jit_hoo_push_handler)},
         {"_F_hoo_pop_handler_v", reinterpret_cast<void*>(&jit_hoo_pop_handler)},

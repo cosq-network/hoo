@@ -62,6 +62,13 @@ TEST_F(ASTStatementTest, ForInStatement) {
     EXPECT_EQ(fis.toString(), "ForInStatement i");
 }
 
+TEST_F(ASTStatementTest, ScopeStatementOwnsLifetimeBlock) {
+    auto body = emptyBlock();
+    ScopeStatement scope(std::move(body));
+    EXPECT_EQ(scope.toString(), "ScopeStatement");
+    EXPECT_TRUE(scope.getBody().getStatements().empty());
+}
+
 TEST_F(ASTStatementTest, ForRangeStatementWithoutStep) {
     auto start = intLit(0);
     auto end = intLit(10);

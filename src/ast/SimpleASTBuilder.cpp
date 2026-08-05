@@ -465,6 +465,8 @@ std::unique_ptr<Statement> SimpleASTBuilder::buildStatement(HoocParser::Statemen
         return buildWhileStatement(ctx->whileStatement());
     } else if (ctx->doWhileStatement()) {
         return buildDoWhileStatement(ctx->doWhileStatement());
+    } else if (ctx->scopeStatement()) {
+        return buildScopeStatement(ctx->scopeStatement());
     } else if (ctx->forStatement()) {
         auto forCtx = ctx->forStatement();
         // Check if it's a for-range loop (has RANGE ..) or for-in loop (has 1 expression)
@@ -519,6 +521,17 @@ std::unique_ptr<DoWhileStatement> SimpleASTBuilder::buildDoWhileStatement(HoocPa
     auto body = buildBlock(ctx->block());
     auto condition = buildExpression(ctx->expression());
     return std::make_unique<DoWhileStatement>(std::move(body), std::move(condition));
+}
+
+std::unique_ptr<ScopeStatement> SimpleASTBuilder::buildScopeStatement(HoocParser::ScopeStatementContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("ScopeStatementContext is null");
+    }
+    auto body = buildBlock(ctx->block());
+    if (!body) {
+        throw std::runtime_error("Failed to build scope block");
+    }
+    return std::make_unique<ScopeStatement>(std::move(body));
 }
 
 std::unique_ptr<SwitchStatement> SimpleASTBuilder::buildSwitchStatement(HoocParser::SwitchStatementContext* ctx) {

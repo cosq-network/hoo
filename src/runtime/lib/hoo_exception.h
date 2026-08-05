@@ -125,6 +125,9 @@ HooException hoo_exception_custom(const char* exceptionType, const char* message
  */
 int64_t hoo_exception_get_type_id(HooException exc);
 
+/** Return non-zero when exc can be handled by expectedTypeId. */
+int64_t hoo_exception_matches_type(HooException exc, int64_t expectedTypeId);
+
 /**
  * Get exception type name
  *

@@ -731,7 +731,7 @@ TEST_F(NewLanguageFeaturesTest, ForInMap) {
     EXPECT_EQ(jit->run("_F_test_i8"), 60) << jit->getLastError();
 }
 
-TEST_F(NewLanguageFeaturesTest, ForInMapRejectsStringKeys) {
+TEST_F(NewLanguageFeaturesTest, ForInMapStringKeys) {
     std::string code = R"(
         import hoo;
         func :int64 test() {
@@ -745,11 +745,11 @@ TEST_F(NewLanguageFeaturesTest, ForInMapRejectsStringKeys) {
         }
     )";
 
-    ASSERT_FALSE(jit->loadSourceCode("test", code));
-    EXPECT_NE(jit->getLastError().find("for-in over maps currently supports only numeric and char keys"), std::string::npos);
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
 }
 
-TEST_F(NewLanguageFeaturesTest, ForInMapRejectsUntypedStringKeys) {
+TEST_F(NewLanguageFeaturesTest, ForInMapStringKeysWithInference) {
     std::string code = R"(
         import hoo;
         func :int64 test() {
@@ -763,6 +763,59 @@ TEST_F(NewLanguageFeaturesTest, ForInMapRejectsUntypedStringKeys) {
         }
     )";
 
-    ASSERT_FALSE(jit->loadSourceCode("test", code));
-    EXPECT_NE(jit->getLastError().find("for-in over maps currently supports only numeric and char keys"), std::string::npos);
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, ForInDoubleArrayUsesTypedAccessor) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var values: double[] = [1.5, 2.5];
+            var total: double = 0.0;
+            for value in values { total = total + value; }
+            if (total > 3.9) { return 1; }
+            return 0;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, ExplicitScopeExecutesAndReleasesLocals) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var result: int64 = 1;
+            scope {
+                var temporary: string = "scoped";
+                result = result + 1;
+            }
+            return result;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 2) << jit->getLastError();
+}
+
+TEST_F(NewLanguageFeaturesTest, TryFinallyNormalPathRunsExactlyOnce) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var result: int64 = 0;
+            try {
+                result = result + 10;
+            } catch (e: Exception) {
+                result = result + 100;
+            } finally {
+                result = result + 1;
+            }
+            return result;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 11) << jit->getLastError();
 }

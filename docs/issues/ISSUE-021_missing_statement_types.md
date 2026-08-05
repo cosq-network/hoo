@@ -1,56 +1,51 @@
-# ISSUE-021: Missing Statement Types in Grammar and Codegen
+# ISSUE-021: Statement Grammar, Lowering, and Execution Completeness
 
-## 1. Overview
-The Hoo language grammar and codegen are missing several common statement types and have incomplete implementations for others. These gaps limit expressiveness and cause compiler crashes for valid Hoo programs.
+## Status
 
-## 2. Issues
+**Implemented for the supported statement model.** The issue was audited and
+completed across grammar, AST construction, code generation, JIT bridges, and
+runtime tests. C-style `for (;;)` and custom iterable protocols remain outside
+the language design; `for-in` supports arrays, strings, and map keys.
 
-### 2.1 No `do-while` loop
-- **Grammar**: `src/parsing/Hoo.g4`
-- **Codegen**: `src/codegen/HVMCodeGenerator.cpp`
-- **Issue**: The language has `while` and `for` but no `do-while` loop. The grammar has no corresponding rule.
+## Implemented behavior
 
-### 2.2 No `switch/case` statement
-- **Grammar**: `src/parsing/Hoo.g4`
-- **Issue**: No `switch` expression or multi-branch conditional statement exists beyond `if/else`.
+### Loops and branching
 
-### 2.3 No `scope` block (documented)
-- **Documentation**: `docs/issues/ISSUE-003_scope_statement.md`
-- **Status**: Already documented. The AST node exists but `visitStatement` dispatch is missing.
-- **Issue**: The `scope { }` block for explicit lifetime management is not implemented.
+- `do { ... } while (condition);` is parsed, represented by
+  `DoWhileStatement`, lowered to HVM control flow, and covered by JIT tests.
+- `switch` supports integer-like discriminants, fall-through, `break`, and
+  interaction with enclosing loops.
+- `for-in` supports typed array access, strings as character sequences, and
+  numeric, character, and string map keys.
+- Ranges continue to use the dedicated `for-range` lowering rather than being
+  treated as collection objects.
 
-### 2.4 `for-in` only supports arrays
-- **Location**: `src/codegen/HVMCodeGenerator.cpp` lines 568-622
-- **Issue**: The `for-in` loop lowering hardcodes array layout assumptions. It does not support:
-  - Iterating over strings (character-by-character)
-  - Iterating over maps (key-value pairs)
-  - Iterating over ranges as objects
-  - Custom iterable classes
+### Explicit scopes
 
-```cpp
-// Hardcoded array layout:
-// length at offset 0, capacity at offset 8
-// elements start at offset 32
-```
+`scope { ... }` is now a first-class grammar and AST statement. It creates a
+lexical lifetime boundary and uses the existing ARC cleanup machinery when the
+scope exits.
 
-### 2.5 `try-catch-finally` has no guarantee for finally
-- **Documentation**: `docs/issues/ISSUE-012_finally_block_safety.md`
-- **Issue**: The finally block is not guaranteed to execute when exceptions propagate.
+### Exceptions
 
-## 3. Impact
-- Programs needing `do-while` or `switch` must use equivalent `while`/`if` chains.
-- `for (c in "hello")` produces nonsensical bytecode.
-- `for (k, v in map)` fails to compile or crashes.
+The HVM/JIT exception path now has explicit handler-PC lowering, catch-type
+compatibility support, unmatched-exception rethrow paths, and separate normal
+and exceptional `finally` paths. The native exception API exposes type
+compatibility through `hoo_exception_matches_type`.
 
-## 4. Suggested Priority Order
-1. Add `for-in` support for strings (needed for character iteration).
-2. Add `scope` block dispatch in `visitStatement` (minimal effort, short-term path).
-3. Add `do-while` loop to grammar and codegen.
-4. Add `switch/case` statement to grammar and codegen.
-5. Add `for-in` support for maps.
+## Verification
 
-## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **PARTIALLY IMPLEMENTED**
-- **Priority**: **MEDIUM**
-- **Audit 2026-06-24**: `do-while`, `switch`, and `for-in` support for strings/maps are in progress in the pending language-feature changes. Explicit `scope` statements remain absent. C-style `for(;;)` is not in the language by design — only `for-in` and `for-range` exist.
+Coverage includes:
+
+- parser and AST construction for statements and explicit scopes;
+- code-generation checks for handler registration and cleanup;
+- JIT execution for do-while, switch, typed array iteration, string/map
+  iteration, explicit scopes, and normal `finally` execution;
+- runtime tests for exception type compatibility and existing ARC behavior.
+
+## Design boundaries
+
+- Map iteration binds keys only: `for key in map { ... }`.
+- Key/value pair iteration is not part of the current grammar.
+- User-defined iterable classes are not implicitly iterable; a future protocol
+  should be tracked as a separate language feature.

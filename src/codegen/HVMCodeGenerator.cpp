@@ -1533,6 +1533,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         }
         emitScopeCleanup(scopeStack_.size(), scopeStack_.size() - 1);
         scopeStack_.pop_back();
+    } else if (auto scope = dynamic_cast<const ast::ScopeStatement*>(&stmt)) {
+        // An explicit scope is a real lifetime boundary. Reuse the existing
+        // block lowering so ARC cleanup and break/continue cleanup remain
+        // identical to ordinary nested blocks.
+        visitStatement(scope->getBody());
     } else if (auto ret = dynamic_cast<const ast::ReturnStatement*>(&stmt)) {
         currentFunctionHasReturn_ = true;
         if (currentFunctionIsAsync_ && asyncFutureOffset_ != 0) {
@@ -1973,9 +1978,6 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                     mapKeyTypeId = getLocalKeyTypeId(id->getName());
                 }
             }
-            if (mapKeyTypeId == 101) {
-                addError("for-in over maps currently supports only numeric and char keys");
-            }
             uint8_t oldReg = iterReg;
             emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Map_keys_p");
@@ -2011,14 +2013,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         Label* stepLabel = createLabel();
         bindLabel(startLabel);
         
-        // Lowered: item = iter[i] via runtime call
-        emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
-        emit(Opcode::MOV, OperandsR{2, iReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
-        uint8_t itemReg = allocateRegister();
-        emit(Opcode::MOV, OperandsR{itemReg, 1, 0, 0});
-        
-        uint32_t forInElemTypeId = 100;
+        uint32_t forInElemTypeId = (forInTypeId == 101) ? 109 : 100;
         if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
                 uint32_t et = forInTypeId == 103
@@ -2027,6 +2022,23 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 if (et != 0) forInElemTypeId = et;
             }
         }
+
+        // Lowered: item = iter[i] via a type-correct runtime accessor.
+        emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
+        emit(Opcode::MOV, OperandsR{2, iReg, 0, 0});
+        if (forInElemTypeId == 2 || forInElemTypeId == 9) {
+            emitCall(Opcode::CALL, "_F_array_get_double_v_p_p");
+        } else if (forInElemTypeId == 3 || forInElemTypeId == 8) {
+            emitCall(Opcode::CALL, "_F_array_get_bool_v_p_p");
+        } else if (forInElemTypeId == 101) {
+            emitCall(Opcode::CALL, "_F_array_get_string_v_p_p");
+        } else if (forInElemTypeId == 100 || forInElemTypeId == 109) {
+            emitCall(Opcode::CALL, "_F_array_get_object_v_p_p");
+        } else {
+            emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
+        }
+        uint8_t itemReg = allocateRegister();
+        emit(Opcode::MOV, OperandsR{itemReg, 1, 0, 0});
         int32_t itemOffset = reserveLocal(forIn->getVariable(), forInElemTypeId);
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
@@ -2063,15 +2075,25 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
     } else if (auto tryCatch = dynamic_cast<const ast::TryCatchStatement*>(&stmt)) {
         Label* catchStartLabel = createLabel();
         Label* finallyLabel = createLabel();
+        Label* unhandledFinallyLabel = createLabel();
+        Label* unhandledLabel = createLabel();
         Label* endLabel = createLabel();
+        Label* afterTryLabel = createLabel();
+        // The handler bridge places the exception in r1, but popping the
+        // handler is itself a runtime call and may overwrite r1. Reserve a
+        // temporary for the exception before entering the protected region.
+        uint8_t exceptionReg = allocateRegister();
         
         // 1. Register handler: CALL hoo_push_handler(catchStartLabel)
         uint8_t handlerAddrReg = allocateRegister();
-        emit(Opcode::LDA, OperandsI{handlerAddrReg, 0, 0}); 
+        // Handler PCs are text-section offsets, not rodata addresses. Use an
+        // integer immediate so LDA's rs=0 rodata addressing special case
+        // cannot reinterpret the handler as a data pointer.
+        emit(Opcode::ADDI, OperandsI{handlerAddrReg, 0, 0});
         size_t ldaIdx = instructions_.size() - 1;
-        uint32_t ldaOff = currentByteOffset_ - instructions_.back().getSize();
         
-        emit(Opcode::MOV, OperandsR{1, handlerAddrReg, 0, 0});
+        // The state-ABI bridge reads the handler PC from argument register r2.
+        emit(Opcode::MOV, OperandsR{2, handlerAddrReg, 0, 0});
         emitCall(Opcode::CALL, "_F_hoo_push_handler_v_p");
         freeRegister(handlerAddrReg);
 
@@ -2083,18 +2105,45 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
 
         bindLabel(catchStartLabel);
         // Fixup LDA to point to catch handler
-        int32_t catchOffset = catchStartLabel->targetByteOffset - static_cast<int32_t>(ldaOff);
+        int32_t catchOffset = catchStartLabel->targetByteOffset;
         auto ldaOps = instructions_[ldaIdx].getOperands();
         auto& ldaOpsI = std::get<OperandsI>(ldaOps);
         ldaOpsI.imm15 = static_cast<int16_t>(catchOffset);
         instructions_[ldaIdx].setOperands(ldaOpsI);
 
-        // 3. Exception path: pop handler and run catch clauses
+        // 3. Exception path: pop handler and select the first compatible
+        // catch clause. The shadow handler places the exception in r1.
+        emit(Opcode::MOV, OperandsR{exceptionReg, 1, 0, 0});
         emitCall(Opcode::CALL, "_F_hoo_pop_handler_v");
+        std::vector<Label*> catchLabels;
+        for (size_t i = 0; i < tryCatch->getCatchClauses().size(); ++i) {
+            catchLabels.push_back(createLabel());
+        }
+        for (size_t i = 0; i < tryCatch->getCatchClauses().size(); ++i) {
+            const auto& clause = tryCatch->getCatchClauses()[i];
+            Label* nextClause = (i + 1 < catchLabels.size()) ? catchLabels[i + 1] : unhandledLabel;
+            uint32_t catchTypeId = getTypeId(clause.type.get(), nullptr, nullptr);
+            if (catchTypeId == 100) {
+                // `Exception` is the open base type in the Hoo type system;
+                // every runtime exception is compatible with it.
+                emitJump(Opcode::JMP, 0, catchLabels[i]);
+                continue;
+            }
+            emit(Opcode::MOV, OperandsR{1, exceptionReg, 0, 0});
+            uint8_t expectedReg = emitConstant(static_cast<int64_t>(catchTypeId));
+            emit(Opcode::MOV, OperandsR{2, expectedReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_exception_matches_type_i8_p_i8");
+            freeRegister(expectedReg);
+            emitBranch(Opcode::BEQ, 1, 0, nextClause);
+            emitJump(Opcode::JMP, 0, catchLabels[i]);
+        }
 
-        for (const auto& clause : tryCatch->getCatchClauses()) {
+        for (size_t i = 0; i < tryCatch->getCatchClauses().size(); ++i) {
+            const auto& clause = tryCatch->getCatchClauses()[i];
+            bindLabel(catchLabels[i]);
+            emit(Opcode::MOV, OperandsR{1, exceptionReg, 0, 0});
             uint8_t excReg = allocateRegister();
-            emit(Opcode::MOV, OperandsR{excReg, 1, 0, 0});
+            emit(Opcode::MOV, OperandsR{excReg, exceptionReg, 0, 0});
             std::string catchClassName;
             uint32_t catchTypeId = getTypeId(clause.type.get(), nullptr, &catchClassName);
             int32_t itemOffset = reserveLocal(clause.variable, catchTypeId, catchClassName);
@@ -2104,12 +2153,28 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, finallyLabel);
         }
 
+        freeRegister(exceptionReg);
+        bindLabel(unhandledLabel);
+        if (tryCatch->getFinallyBlock()) {
+            emitJump(Opcode::JMP, 0, unhandledFinallyLabel);
+        } else {
+            emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
+            emitJump(Opcode::JMP, 0, endLabel);
+        }
+
         // 4. Finally block — executed on both normal and catch paths
         bindLabel(finallyLabel);
         if (tryCatch->getFinallyBlock()) {
             visitStatement(*tryCatch->getFinallyBlock());
         }
         bindLabel(endLabel);
+        if (tryCatch->getFinallyBlock()) {
+            emitJump(Opcode::JMP, 0, afterTryLabel);
+            bindLabel(unhandledFinallyLabel);
+            visitStatement(*tryCatch->getFinallyBlock());
+            emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
+        }
+        bindLabel(afterTryLabel);
     } else if (auto throwStmt = dynamic_cast<const ast::ThrowStatement*>(&stmt)) {
         if (throwStmt->isRethrow()) {
             emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
@@ -2503,6 +2568,21 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (!isSymbolImported(className, requiredModule)) {
             addError("Use of '" + className + "' requires 'import " + requiredModule + ";'");
             return 0;
+        }
+        if (className == "Exception") {
+            const auto* argumentList = newExpr->getArguments();
+            const size_t argCount = argumentList ? argumentList->getArguments().size() : 0;
+            if (argCount > 1) {
+                addError("Exception constructor expects zero or one argument");
+                return 0;
+            }
+            // Exception values are owned by the native runtime. The Hoo
+            // constructor is lowered to its canonical runtime exception
+            // factory instead of an unresolved class constructor symbol.
+            emitCall(Opcode::CALL, "_F_hoo_exception_runtime_p");
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            return dest;
         }
         if (isBuiltinClassName(className) && classes_.find(className) == classes_.end()) {
             if (builtinConstructedTypeId(className) == 100) {
