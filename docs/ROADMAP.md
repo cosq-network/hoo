@@ -214,8 +214,9 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-036_module_dependency_resolution_bug.md](issues/ISSUE-036_module_dependency_resolution_bug.md)**
   - **Title**: # ISSUE-036: Module Dependency Resolution Can Produce Incorrect Order and False Cycle Reports
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED
   - **Priority**: Medium (graph correctness and linker behavior)
+  - **Notes**: Per-module graph traversal, transitive ordering, explicit cycle-state tracking, HVMJIT loader rejection, and regression coverage are complete. The obsolete circular-dependency helper was removed.
 
 - **[ISSUE-037_network_runtime_socket_support.md](issues/ISSUE-037_network_runtime_socket_support.md)**
   - **Title**: # ISSUE-037: Runtime Networking API Is Missing Full Socket Support

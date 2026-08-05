@@ -11,6 +11,14 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- fix(modules): complete ISSUE-036 dependency resolution
+  - Traverse each visited module's own dependency edges for correct transitive
+    topological ordering
+  - Use explicit visiting/visited states for reliable cycle detection and keep
+    bundle and per-module cycle results aligned
+  - Remove the obsolete `checkCircularDependencies()` helper
+  - Add chain, transitive dependency, cycle, and HVMJIT loader regression tests
+
 - feat(serializable): complete ISSUE-035 declarative class serialization
   - Resolve generated static `deserialize()` and instance `serialize()` calls
     with modifier-aware symbols

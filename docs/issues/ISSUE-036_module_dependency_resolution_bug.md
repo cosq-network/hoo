@@ -1,37 +1,39 @@
 # ISSUE-036: Module Dependency Resolution Can Produce Incorrect Order and False Cycle Reports
 
 ## 1. Overview
-The current implementation of `HOModuleBase::resolveDependencyOrder()` appears to walk the dependency graph incorrectly for modules that are not the current one. The algorithm relies on `findDependency(name)` against the current module instead of consulting the actual module object for the dependency name, which can produce wrong topological orderings and incorrect cycle detection results.
+The historical implementation of `HOModuleBase::resolveDependencyOrder()` walked the dependency graph through the current module's local lookup path. That could produce incorrect transitive ordering and cycle results.
 
-This was explicitly called out in the test suite: the module bundle tests note that `resolveDependencyOrder` has a known issue with cycle detection that causes false positives for simple dependency chains.
+The defect was addressed by resolving each visited module name through the complete module map and traversing that module's own dependency list.
 
 ## 2. Technical Analysis
-The relevant logic lives in `src/hvm/HOModuleBase.cpp`.
+The relevant logic lives in `src/hvm/HOModuleBase.cpp` and
+`src/hvm/HVMModuleBundle.cpp`.
 
-The current implementation builds a local `module_map` from `all_modules`, but the recursive `visit()` routine does this:
+The corrected traversal builds a local `module_map` from `all_modules` and
+recursively visits the dependency list belonging to the module being visited:
 
 ```cpp
-auto dep = findDependency(name);
-if (dep) {
-    visit(dep->module_name);
+auto module_it = module_map.find(name);
+if (module_it != module_map.end() && module_it->second) {
+    for (const auto& dep : module_it->second->getDependencies()) {
+        visit(dep.module_name);
+    }
 }
 ```
 
-That logic is suspicious because `findDependency(name)` checks `dependencies_` of the current module, not the module whose name is being visited. For a dependency chain like:
+For a dependency chain like:
 
 - `A` depends on `B`
 - `B` depends on `C`
 
-`visit("B")` will inspect `A`'s dependency list instead of `B`'s list unless `B` happens to be a dependency of `A` with the same name. This can lead to:
+the corrected `visit("B")` inspects `B`'s dependency list. The traversal now uses explicit visiting/visited states, preventing:
 
 - missing transitive edges,
 - incorrect dependency order, and
-- false positives when the routine thinks it has found a cycle.
+- false-positive cycle reports.
 
-The issue is visible in the test comments for `tests/hvm/HVMModuleBundleTest.cpp`:
-
-- `HOModuleBase::resolveDependencyOrder` has a known issue with cycle detection.
-- The tests avoid triggering the bug by using self-dependency cases.
+The regression coverage is in `tests/hvm/HVMModuleBundleTest.cpp` and
+`tests/hvm/HVMJITLoaderTest.cpp`.
 
 ## 3. Requirements
 1. Rework dependency traversal so that each visited module name resolves to the corresponding module object and its own dependency list.
@@ -48,7 +50,15 @@ The issue is visible in the test comments for `tests/hvm/HVMModuleBundleTest.cpp
 - False cycle reports that can block valid programs.
 
 ## 5. Status
-- **Date**: 2026-06-19
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-06
+- **Status**: **IMPLEMENTED**
 - **Priority**: Medium (graph correctness and linker behavior)
-- **Audit 2026-06-21**: Verified `HOModuleBase::resolveDependencyOrder` still resolves dependency names through the current module lookup path, and the bundle test still documents the known unresolved dependency-order bug.
+- **Implementation**: Commits `8e9233b` and `ca2beb7` corrected per-module traversal, explicit cycle-state handling, bundle/per-module cycle agreement, and regression coverage. Commit `5db1684` removed the obsolete `checkCircularDependencies()` helper, leaving `resolveDependencyOrder()` as the single dependency-cycle implementation.
+- **Verification**: Three-module chains, transitive-only dependencies, real three-module cycles, self-cycles, and HVMJIT loader rejection all pass. Focused verification: 9 tests passed.
+
+### Remaining design notes
+
+- The dependency order is topologically valid; ordering among unrelated modules
+  follows the bundle's current container traversal and is not a serialized ABI.
+- Missing optional dependencies are skipped by graph ordering; required-module
+  presence is validated by the loader's dependency-resolution phase.

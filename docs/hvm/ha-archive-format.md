@@ -27,7 +27,7 @@ While `.ha` serves a similar purpose to Java's `.jar` format (providing a single
 | **Compression** | Stores internal files *uncompressed*, but compresses the **entire archive stream** using **Zstandard** (balances compression ratio and fast JIT decompression). | Uses standard ZIP (Deflate) compression on **individual files** within the archive. |
 | **Internal Payloads** | Contains compiled **`.ho` files**. These are low-level, physical-silicon-ready 64-bit RISC module payloads. | Contains compiled **`.class` files**. These are high-level, semantic bytecode instructions. |
 | **Manifest / Metadata** | Uses **`META-INF/hoo/archive.json`** (minified JSON) storing dependency graphs, entry points, and strict symbol lookup tables for fast loading. | Uses **`META-INF/MANIFEST.MF`** (custom text-based key-value format) specifying the Main-Class, classpath, and package metadata. |
-| **Execution** | Loaded into the **HVMJIT** (an LLVM ORC-based dynamic binary translator) which links modules and resolves cycles natively in memory. | Loaded into the **JVM** which incrementally loads and verifies `.class` files on-demand during runtime. |
+| **Execution** | Loaded into the **HVMJIT** (an LLVM ORC-based dynamic binary translator) which topologically orders modules and rejects circular dependencies during resolution. | Loaded into the **JVM** which incrementally loads and verifies `.class` files on-demand during runtime. |
 | **Resolution** | Files are compiled sequentially, packaged into `.ha`, and executed as a monolithic payload. | Highly dynamic classpaths allow multiple overlapping `.jar` files to resolve dependencies at runtime. |
 
 ### Which is better?
@@ -53,3 +53,11 @@ Which format is "better" for loading depends entirely on the environment's execu
 ### Summary
 * **For Compression:** `.ha` wins decisively thanks to Zstandard whole-archive compression.
 * **For Loading:** `.ha` is better for systems-level performance (zero runtime stuttering, fully resolved memory), while `.jar` is better for instantly booting up massive applications through lazy loading.
+
+### Dependency ordering contract
+
+The archive manifest records module dependencies by name. During loading, the
+HVM bundle resolves each module's own dependency edges with a DFS traversal,
+emits dependencies before dependents, and rejects a real cycle such as
+`A -> B -> C -> A`. A missing optional dependency is ignored for ordering;
+required-module availability is validated by the loader.

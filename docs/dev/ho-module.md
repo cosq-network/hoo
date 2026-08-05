@@ -90,6 +90,17 @@ void HOModule::deserialize(const Buffer &buf);
 - **Write** — Iterates sections, writes header, then each section's type, size, and data.
 - **Read** — Reads header, then loops over sections, dispatching to section-specific deserializers.
 
+## Dependency resolution
+
+`HOModuleBase::resolveDependencyOrder()` receives the complete module set and
+builds a name-to-module map. Each DFS visit resolves the current module from
+that map and traverses its own `getDependencies()` list. Dependencies are
+emitted before their dependents, so a chain such as `A -> B -> C` produces
+`C, B, A`. Explicit `Visiting` and `Visited` states identify real cycles
+without confusing transitive edges for cycles. `HVMModuleBundle` and the HVMJIT
+loader use the same graph semantics; missing required modules are rejected by
+loader resolution while optional missing modules do not add graph edges.
+
 ## Symbol encoding
 
 Symbols in `SHT_SYMTAB` store:
