@@ -41,6 +41,7 @@ extern "C" {
 #define HOO_TYPE_DATETIME     119  // HooDateTime
 #define HOO_TYPE_FUTURE       123  // HooFuture<T>
 #define HOO_TYPE_UV_HANDLE    124  // HooUVHandle (reserved for libuv integration)
+#define HOO_TYPE_TENSOR_SERIALIZED 126 // Tensor value stored inside HooAnyValue
 
 // Primitive Type IDs (for runtime conversion/reflection)
 #define HOO_TYPE_INT64        1

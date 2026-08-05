@@ -185,10 +185,18 @@ Each has a corresponding `*ReturnTypeId()` helper that maps the function name to
 ### Serialization validation
 
 `validateSerializableClass()` enforces:
-- All fields must be valid serializable types (primitives, strings, arrays of serializables, maps with string keys)
+- All fields must be valid serializable types (supported primitives, buffers,
+  tensors, AnyArray, numeric-keyed HashMap values, or serializable classes)
 - No `any` type fields
 - Cycle detection via `serializableAdjacency_` and `detectSerializableCycles()`
 - `isValidSerializableType()` recursively validates field types
+
+Generated serializable methods use a base-first positional schema backed by
+`HashMap<int64, any>`. Nested classes are lowered by calling their generated
+methods; buffers use tagged base64 objects and tensors use tagged element-type,
+dimensions, and raw-bit data objects. The source-level `Class.deserialize(json)`
+form is recognized as a generated static call, while `instance.serialize()`
+uses the modifier-aware instance symbol.
 
 ### Bytecode emission pattern
 

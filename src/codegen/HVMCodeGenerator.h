@@ -117,6 +117,9 @@ private:
         uint32_t singletonDataOffset = 0; // .data offset for singleton pointer
     };
     std::unordered_map<std::string, ClassLayout> classes_;
+    // AST declarations are retained while generating a module so generated
+    // serializable methods can include inherited fields in layout order.
+    std::unordered_map<std::string, const ast::ClassDeclaration*> classDeclarations_;
     std::unordered_map<std::string, std::string> methodNameToClass_;
     std::unordered_map<std::string, bool> isOverloadedFunction_;
     std::unordered_map<std::string, std::unordered_map<std::string, bool>> isOverloadedMethod_; // methodName -> className

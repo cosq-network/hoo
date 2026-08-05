@@ -176,7 +176,7 @@ This document provides a high-level overview of the current status of all tracke
   - **Title**: # ISSUE-035: `serializable` Class Modifier — Declarative Serialization
   - **Status**: IMPLEMENTED
   - **Priority**: MEDIUM** (Feature enhancement — no correctness impact on existing code)
-  - **Notes**: Grammar, AST, symbol mangling, and codegen support. Auto-generated `serialize()`/`deserialize()` methods. Cycle detection via DFS. Phase 11.3 complete.
+  - **Notes**: Grammar, AST, modifier-aware symbol mangling and source dispatch, constructor/type/cycle validation, inherited and nested field lowering, tagged buffer/tensor JSON round-trips, and runtime/codegen regression coverage. Phase 11.3 complete.
 
 
 ## Proposed / Open / Backlog

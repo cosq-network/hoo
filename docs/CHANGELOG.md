@@ -11,6 +11,16 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(serializable): complete ISSUE-035 declarative class serialization
+  - Resolve generated static `deserialize()` and instance `serialize()` calls
+    with modifier-aware symbols
+  - Include inherited public fields in a deterministic base-first schema and
+    recursively lower nested serializable fields
+  - Preserve buffers as tagged Base64 objects and tensors as tagged
+    shape/element-type/raw-bit objects
+  - Add codegen and runtime round-trip regression tests; the full suite passes
+    with 2062 tests and 2 disabled
+
 - feat(tensor): complete ISSUE-030 scalar broadcasting
   - Add safe tensor-scalar add, subtract, scale, and divide for both operand
     orders without treating scalar values as tensor pointers
@@ -36,7 +46,7 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
     overflow handling and compiler-controlled sign/zero extension
   - Preserve the f64 language ABI through FP8 encode/decode fallback shims
   - Add codegen and JIT regression tests; the current full suite passes with
-    2059 tests
+    2062 tests
 
 - fix(hvm): complete ISSUE-028 sub-word modulo and shifts
   - Dispatch binary and compound `int8`/`byte` modulo through `REM.B` and

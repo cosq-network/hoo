@@ -1,6 +1,6 @@
 # Serializable Class Modifier — Developer Guide
 
-**Last Updated**: 2026-06-19
+**Last Updated**: 2026-08-06
 
 ---
 
@@ -100,7 +100,8 @@ func :string serialize()
 
 The method:
 1. Creates a `HashMap<int64, any>` via `hoo_hashmap_new`.
-2. Iterates public fields in declaration order, storing each by numeric index.
+2. Iterates public fields in deterministic base-first declaration order,
+   storing each by numeric positional index.
 3. Calls `json_serialize_hashmap` and returns the resulting string.
 
 ### `deserialize(json)`
@@ -293,7 +294,7 @@ serializable service class BadService {
 | `string`   | JSON string   | Direct copy |
 | `bool`     | JSON boolean  | `true` / `false` |
 | `bit`      | JSON boolean  | Promoted to bool |
-| `buffer`   | JSON string   | Promoted to string |
+| `buffer`   | Tagged JSON object | Base64 payload; round-trips as `buffer` |
 
 ### Allowed Container Types
 
@@ -301,7 +302,7 @@ serializable service class BadService {
 |------------------------------------|---------------|--------------------|
 | `HashMap<K, V>`                    | JSON object   | `V` must be a restricted primitive, tensor, or string |
 | `AnyArray`                         | JSON array    | Runtime values must be restricted primitives |
-| `tensor<T>[d0, d1, ...]`          | JSON array    | `T` must be a primitive except string |
+| `tensor<T>[d0, d1, ...]`          | Tagged JSON object | Preserves element type, dimensions, and raw element bits |
 
 ### Allowed Reference Types
 
@@ -309,7 +310,7 @@ serializable service class BadService {
 |------------------------|---------------|-----------|
 | Other serializable class | JSON object (nested) | Referenced class must also have `serializable` modifier |
 | `string`               | JSON string   | Same as `string` primitive |
-| `buffer`               | JSON string   | Same as `buffer` primitive |
+| `buffer`               | Tagged JSON object | Base64 payload |
 
 ### Rejected Types
 
@@ -333,9 +334,9 @@ To simplify the HashMap-based encoding, certain narrow types are **promoted** to
 | `byte`        | `int64`                  | 1                 | Fits in int64 without loss |
 | `f8`          | `double` (f64)           | 2                 | Fits in f64 without loss |
 | `bit`         | `bool`                   | 3                 | Boolean domain |
-| `buffer`      | `string`                 | 101               | Stored as string (base64 pending) |
+| `buffer`      | `buffer`                 | 113               | Tagged base64 JSON object |
 
-The promotion happens in `serializeFieldTypeId()` at `src/codegen/HVMCodeGenerator.cpp:3490`. On **deserialization**, the value is stored back into the field as the original HVM value type (e.g., the `int8` field receives the `int64` HashMap value's raw `uint64_t` data, which is compatible because `int8` values are stored in the lower bits of a 64-bit slot).
+The promotion happens in `serializeFieldTypeId()` at `src/codegen/HVMCodeGenerator.cpp`. Deserialization reverses scalar promotions: narrow integers are truncated/sign-extended, `bit` is masked to one bit, and `f8` is converted through the FP8 helper. Buffers and tensors retain dedicated runtime type IDs and are reconstructed from tagged JSON objects.
 
 ---
 
@@ -389,10 +390,10 @@ HashMap fields are serialized as nested JSON objects with numeric keys:
 | `string`     | String              | `"hello"` |
 | `bool`       | Boolean             | `true` |
 | `bit`        | Boolean             | `false` |
-| `buffer`     | String              | `""` (base64 pending) |
+| `buffer`     | Tagged object       | `{"__hoo_buffer__":true,"data":"..."}` |
 | `HashMap`    | Object              | `{"0":"a","1":"b"}` |
 | `AnyArray`   | Array               | `[1, "two", true]` |
-| `tensor`     | Array (nested)      | `[[1,2],[3,4]]` |
+| `tensor`     | Tagged object       | `{"__hoo_tensor__":true,"element_type":2,"dims":[2,2],"data":[...]}` |
 | Serializable | Object              | `{"0":42,"1":"x"}` |
 
 ---
@@ -551,7 +552,7 @@ The demangler also has a fix (lines 426–435) to handle function names that app
 | `final`         | Yes                            | No semantic conflict |
 | `service`       | **No**                         | Compile-time error: service dependency state is not serializable |
 
-**Not yet tested/documented**: inheritance between serializable classes (`serializable class B extends A`).
+Inheritance between serializable classes is supported. Public base fields are emitted before derived fields and use the same positional schema on serialization and deserialization.
 
 ---
 
@@ -692,12 +693,12 @@ serializable class AllTypes {
 }
 ```
 
-### 11.5 DateTime (Serializable-Ready Instantiable Class)
+### 11.5 DateTime (Serializable-Ready Runtime Class)
 
-DateTime was reworked from a singleton into an instantiable ARC-managed class (type ID 119) specifically to support the `serializable` modifier:
+DateTime was reworked from a singleton into an instantiable ARC-managed class (type ID 119). It is serializable-ready as a runtime class, but the generated serializable field validator currently accepts user-defined classes carrying the `serializable` modifier; use an explicit wrapper with an `int64` timestamp when persistence is required:
 
 ```hoo
-serializable class DateTime {
+serializable class DateTimeValue {
     public var timestamp: int64;     // milliseconds since Unix epoch
 
     constructor() {
@@ -706,11 +707,11 @@ serializable class DateTime {
 }
 
 func :void main() {
-    var dt = DateTime.now();
+    var dt = new DateTimeValue();
     var json = dt.serialize();
     // {"0":1718640000000}
 
-    var restored = DateTime.deserialize(json);
+    var restored = DateTimeValue.deserialize(json);
     Console.println(restored.timestamp == dt.timestamp);  // true
 }
 ```
@@ -724,23 +725,17 @@ func :void main() {
 | Limitation | Description | Impact |
 |------------|-------------|--------|
 | **Numeric JSON keys** | Field indices (0, 1, 2) used instead of field names | JSON is not human-readable; field reordering breaks backward compat |
-| **No base64 for buffers** | `buffer` fields are promoted to string without encoding | Binary data may produce invalid UTF-8 JSON strings |
-| **No recursive serialization** | Class-typed fields store a HashMap<int64,any> entry, not a nested JSON call | Nested class fields are not fully traversed |
 | **No HashMap<serializable>** | Serializable classes cannot be HashMap values | Limits use cases like `HashMap<int64, User>` |
-| **No inheritance support** | Extending serializable classes is not validated or tested | Future work |
 | **No user-override** | Generated methods cannot be overridden by user code | User cannot customize serialization format |
 | **No custom serialization** | No way to exclude fields or add custom serialize logic | Always includes all public fields |
 
 ### Future Work Items
 
 1. **Human-readable JSON keys** — Implement string-keyed HashMap serialization in runtime (`json_serialize_object` / `json_deserialize_object`) and use field names as keys.
-2. **Base64 buffer encoding** — Add base64 encode/decode in `emitSerializeMethod` / `emitDeserializeMethod` for `buffer` fields.
-3. **Recursive serialization** — For serializable-class-typed fields, recursively call `field.serialize()` and embed the result as a nested JSON string, then recursively parse on deserialization.
-4. **HashMap<serializable> values** — Extend the value-type restriction to allow serializable class references in HashMap values, with recursive serialization.
-5. **Inheritance** — Validate and generate for serializable class hierarchies.
-6. **User-overridable methods** — If user defines `serialize()` or `deserialize()`, skip generation and use user version.
-7. **Omit-by-default or exclude annotation** — Allow selective field inclusion.
-8. **Versioning** — Store a schema version or class name in the JSON output for format evolution.
+2. **HashMap<serializable> values** — Extend the value-type restriction to allow serializable class references in HashMap values.
+3. **User-overridable methods** — If user defines `serialize()` or `deserialize()`, skip generation and use user version.
+4. **Omit-by-default or exclude annotation** — Allow selective field inclusion.
+5. **Versioning** — Store a schema version or class name in the JSON output for format evolution.
 
 ---
 
@@ -838,9 +833,10 @@ emitDeserializeMethod(layout, classDecl):
   2. CALL json_deserialize_hashmap(json) → map
   3. CALL hoo_alloc(totalSize, 100) → instance
   4. CALL <Class>_CT(instance)  // constructor
-  5. For each public field at index i:
+  5. For each public field at index i (base fields first):
      a. CALL hoo_hashmap_get_any_data_i8(map, i) → value.data
-     b. ST_D value.data → instance[fieldOffset]
+     b. Reverse scalar promotion or recursively deserialize nested values
+     c. ST_D converted value → instance[fieldOffset]
   6. MOV r1, instance
   7. Emit LEAVE, RET
   8. Register symbol _F_<Class>_R_deserialize_static_p_s
@@ -882,4 +878,4 @@ if (!serializableAdjacency_.empty()) {
 
 ### Test Count
 
-Total test count after Phase 11.3: **1660 tests, 0 failures, 2 disabled**.
+Total test count after Phase 11.3: **2062 tests, 0 failures, 2 disabled**.

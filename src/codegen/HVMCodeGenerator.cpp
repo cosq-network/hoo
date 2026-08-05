@@ -16,6 +16,7 @@
 #include <typeinfo>
 #include <atomic>
 #include <sstream>
+#include <functional>
 
 using namespace hvm;
 
@@ -675,6 +676,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     functionReturnClass_.clear();
     functionOverloadReturns_.clear();
     functionFutureElementTypes_.clear();
+    classDeclarations_.clear();
 
     importedModules_.clear();
     importedSymbols_.clear();
@@ -754,6 +756,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     // between serializable/service classes can be resolved consistently.
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto classDecl = dynamic_cast<const ast::ClassDeclaration*>(decl.get())) {
+            classDeclarations_[classDecl->getName()] = classDecl;
             ClassLayout layout;
             layout.name = classDecl->getName();
             layout.isSingleton = classDecl->hasModifier(ast::ClassModifier::SINGLETON);
@@ -877,6 +880,20 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             
             // Calculate field offsets
             int32_t currentOffset = 0;
+            // A derived object starts after its base subobject.  Preserve the
+            // base layout so field access, constructors, and generated
+            // serialization all agree on one stable ABI.
+            if (classDecl->hasBaseClass()) {
+                auto baseIt = classes_.find(classDecl->getBaseClass());
+                if (baseIt != classes_.end()) {
+                    layout.fieldOffsets = baseIt->second.fieldOffsets;
+                    layout.fieldTypeIds = baseIt->second.fieldTypeIds;
+                    layout.fieldClassNames = baseIt->second.fieldClassNames;
+                    layout.fieldElementTypeIds = baseIt->second.fieldElementTypeIds;
+                    layout.fieldAccess = baseIt->second.fieldAccess;
+                    currentOffset = baseIt->second.totalSize;
+                }
+            }
             for (const auto& member : classDecl->getBody().getMembers()) {
                 if (auto declMember = member->getDeclaration()) {
                     if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
@@ -2889,6 +2906,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
+            // Generated serializable deserialization is class-qualified and
+            // static even though it has no source-level method declaration.
+            // Resolve it before the generic unresolved-method diagnostic.
+            if (!isStaticCall && methodName == "deserialize" &&
+                !objName.empty() && classes_.count(objName) &&
+                classes_.at(objName).isSerializable) {
+                isStaticCall = true;
+                resolvedClass = objName;
+            }
+
             // Enforce visibility after receiver inference as well as after
             // legacy name-based resolution. Recursive inference can identify
             // a class before the fallback index is consulted.
@@ -3192,6 +3219,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 mp.className = resolvedClass;
                 mp.functionName = methodName;
                 mp.returnType = "ptr";
+                auto classIt = classes_.find(resolvedClass);
+                if (classIt != classes_.end() && classIt->second.isSerializable) {
+                    mp.classModifiers = {"SERIALIZABLE"};
+                    mp.isStatic = isStaticCall;
+                }
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                         if (mp.isOverload) {
@@ -4942,6 +4974,26 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 if (isBuiltinClassName(objectId->getName()) && getLocalTypeId(objectId->getName()) == 0) {
                     className = objectId->getName();
                 }
+                // Serializable deserialization is a generated static method;
+                // expose its class result to later instance dispatch and
+                // chained expression inference.
+                if (className.empty() && classes_.count(objectId->getName()) &&
+                    classes_.at(objectId->getName()).isSerializable) {
+                    className = objectId->getName();
+                }
+            }
+
+            if (className.size() > 0 && classes_.count(className) &&
+                classes_.at(className).isSerializable) {
+                if (memberAccess->getMember() == "deserialize") {
+                    result.typeId = 100;
+                    result.className = className;
+                    return result;
+                }
+                if (memberAccess->getMember() == "serialize") {
+                    result.typeId = 101;
+                    return result;
+                }
             }
             auto classIt = classes_.find(className);
             if (classIt != classes_.end()) {
@@ -5604,17 +5656,18 @@ uint32_t HVMCodeGenerator::serializeFieldTypeId(const ast::Type& type) const {
                 case ast::PrimitiveTypeKind::BOOL:   return 3;   // HOO_TYPE_BOOL
                 case ast::PrimitiveTypeKind::BIT:    return 3;   // Promote to BOOL
                 case ast::PrimitiveTypeKind::STRING: return 101; // HOO_TYPE_STRING
-                case ast::PrimitiveTypeKind::BUFFER: return 101; // Promote to STRING (base64)
+                case ast::PrimitiveTypeKind::BUFFER: return 113; // HOO_TYPE_BUFFER
                 default: return 0;
             }
         }
         std::string name = bt->getIdentifier();
         if (name == "String" || name == "string") return 101;
-        if (name == "Buffer" || name == "buffer") return 101; // Promoted to STRING (base64)
+        if (name == "Buffer" || name == "buffer") return 113; // HOO_TYPE_BUFFER
         return 0;
     }
     if (dynamic_cast<const ast::HashMapType*>(&type)) return 117;  // HOO_TYPE_HASHMAP
     if (dynamic_cast<const ast::AnyArrayType*>(&type)) return 118; // HOO_TYPE_ANYARRAY
+    if (dynamic_cast<const ast::TensorType*>(&type)) return 126;  // HOO_TYPE_TENSOR_SERIALIZED
     return 0;
 }
 
@@ -5635,15 +5688,29 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
     uint8_t mapReg = allocateRegister();
     emit(Opcode::MOV, OperandsR{mapReg, 1, 0, 0});
 
-    // 2. For each public field, store in HashMap with field index as key
+    // 2. For each public field, store in HashMap with a stable positional key.
+    // Walk the inheritance chain first so base fields are not silently lost.
+    std::vector<std::pair<const ast::VariableDeclaration*, int32_t>> fields;
+    std::function<void(const ast::ClassDeclaration&)> collectFields =
+        [&](const ast::ClassDeclaration& decl) {
+            if (decl.hasBaseClass()) {
+                auto baseDecl = classDeclarations_.find(decl.getBaseClass());
+                if (baseDecl != classDeclarations_.end()) collectFields(*baseDecl->second);
+            }
+            for (const auto& member : decl.getBody().getMembers()) {
+                if (auto declMember = member->getDeclaration()) {
+                    if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
+                        auto offset = layout.fieldOffsets.find(var->getName());
+                        if (offset != layout.fieldOffsets.end() && var->isPublic()) {
+                            fields.emplace_back(var, offset->second);
+                        }
+                    }
+                }
+            }
+        };
+    collectFields(classDecl);
     int fieldIndex = 0;
-    for (const auto& member : classDecl.getBody().getMembers()) {
-        if (auto declMember = member->getDeclaration()) {
-            if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
-                if (!var->isPublic()) continue;
-                auto fieldIt = layout.fieldOffsets.find(var->getName());
-                if (fieldIt == layout.fieldOffsets.end()) continue;
-                int32_t fieldOffset = fieldIt->second;
+    for (const auto& [var, fieldOffset] : fields) {
 
                 // Load field value from this (r1)
                 uint8_t fieldReg = allocateRegister();
@@ -5654,6 +5721,30 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
                 uint32_t hooType = 0;
                 if (fieldType) {
                     hooType = serializeFieldTypeId(*fieldType);
+                }
+
+                // Nested serializable objects are represented as ordinary
+                // JSON objects in the enclosing HashMap.  Convert the nested
+                // object's generated JSON back to a managed HashMap before
+                // inserting it as an any value.
+                if (auto nested = dynamic_cast<const ast::BaseType*>(fieldType)) {
+                    if (!nested->isPrimitive()) {
+                        auto nestedIt = classes_.find(nested->getIdentifier());
+                        if (nestedIt != classes_.end() && nestedIt->second.isSerializable) {
+                            MangledFunctionParams nestedMp;
+                            nestedMp.modulePath = modulePath_;
+                            nestedMp.className = nested->getIdentifier();
+                            nestedMp.classModifiers = {"SERIALIZABLE"};
+                            nestedMp.functionName = "serialize";
+                            nestedMp.returnType = "ptr";
+                            emit(Opcode::MOV, OperandsR{1, fieldReg, 0, 0});
+                            emitCall(Opcode::CALL, SymbolMangler::mangleFunctionName(nestedMp));
+                            emitCall(Opcode::CALL, "_F_M_hoo_E_String_data_p");
+                            emitCall(Opcode::CALL, "_F_M_hoo_E_json_deserialize_hashmap_p_p");
+                            emit(Opcode::MOV, OperandsR{fieldReg, 1, 0, 0});
+                            hooType = 117;
+                        }
+                    }
                 }
 
                 // hashmap_set_any_i8(map, key, typeId, data)
@@ -5668,9 +5759,7 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
                 freeRegister(keyReg);
                 freeRegister(typeReg);
                 freeRegister(fieldReg);
-                ++fieldIndex;
-            }
-        }
+        ++fieldIndex;
     }
 
     // 3. Serialize HashMap to JSON
@@ -5749,15 +5838,29 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
     emit(Opcode::MOV, OperandsR{1, instanceReg, 0, 0});
     emitCall(Opcode::CALL, ctorName);
 
-    // 4. For each public field, extract from HashMap and assign
+    // 4. For each public field, extract from HashMap and assign.  The same
+    // base-first traversal used by serialization keeps both sides aligned.
+    std::vector<std::pair<const ast::VariableDeclaration*, int32_t>> fields;
+    std::function<void(const ast::ClassDeclaration&)> collectFields =
+        [&](const ast::ClassDeclaration& decl) {
+            if (decl.hasBaseClass()) {
+                auto baseDecl = classDeclarations_.find(decl.getBaseClass());
+                if (baseDecl != classDeclarations_.end()) collectFields(*baseDecl->second);
+            }
+            for (const auto& member : decl.getBody().getMembers()) {
+                if (auto declMember = member->getDeclaration()) {
+                    if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
+                        auto offset = layout.fieldOffsets.find(var->getName());
+                        if (offset != layout.fieldOffsets.end() && var->isPublic()) {
+                            fields.emplace_back(var, offset->second);
+                        }
+                    }
+                }
+            }
+        };
+    collectFields(classDecl);
     int fieldIndex = 0;
-    for (const auto& member : classDecl.getBody().getMembers()) {
-        if (auto declMember = member->getDeclaration()) {
-            if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
-                if (!var->isPublic()) continue;
-                auto fieldIt = layout.fieldOffsets.find(var->getName());
-                if (fieldIt == layout.fieldOffsets.end()) continue;
-                int32_t fieldOffset = fieldIt->second;
+    for (const auto& [var, fieldOffset] : fields) {
 
                 // Determine original field type for deserialization conversion
                 uint32_t origFieldType = getTypeId(var->getType(), nullptr, nullptr);
@@ -5770,6 +5873,29 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
                 emit(Opcode::MOV, OperandsR{2, keyReg, 0, 0});
                 emitCall(Opcode::CALL, "_F_hoo_hashmap_get_any_data_i8_p_i8");
                 freeRegister(keyReg);
+
+                // Nested serializable fields arrive as a JSON object backed
+                // by HashMap<int64, any>. Re-encode that object and invoke the
+                // nested class's generated static deserializer.
+                if (auto nested = dynamic_cast<const ast::BaseType*>(fieldType)) {
+                    if (!nested->isPrimitive()) {
+                        auto nestedIt = classes_.find(nested->getIdentifier());
+                        if (nestedIt != classes_.end() && nestedIt->second.isSerializable) {
+                            MangledFunctionParams nestedMp;
+                            nestedMp.modulePath = modulePath_;
+                            nestedMp.className = nested->getIdentifier();
+                            nestedMp.classModifiers = {"SERIALIZABLE"};
+                            nestedMp.functionName = "deserialize";
+                            nestedMp.returnType = "ptr";
+                            nestedMp.isStatic = true;
+                            nestedMp.parameterTypes = {"string"};
+                            emitCall(Opcode::CALL, "_F_M_hoo_E_json_serialize_hashmap_p_p");
+                            emitCall(Opcode::CALL, "_F_M_hoo_E_String_data_p");
+                            emitCall(Opcode::CALL, SymbolMangler::mangleFunctionName(nestedMp));
+                            serializedType = origFieldType;
+                        }
+                    }
+                }
 
                 // r1 now has the value.data — reverse type promotion if needed
                 if (serializedType != origFieldType && serializedType != 0) {
@@ -5811,9 +5937,7 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
                 emit(Opcode::ST_D, OperandsI{1, instReg, static_cast<int16_t>(fieldOffset)});
                 freeRegister(instReg);
 
-                ++fieldIndex;
-            }
-        }
+        ++fieldIndex;
     }
 
     // 5. Return the instance

@@ -2,10 +2,13 @@
 
 #include "hoo_any.h"
 #include "hoo_anyarray.h"
+#include "hoo_buffer.h"
+#include "hoo_encoding.h"
 #include "hoo_exception.h"
 #include "hoo_hashmap.h"
 #include "hoo_runtime.h"
 #include "hoo_string.h"
+#include "hoo_tensor.h"
 
 #include <cmath>
 #include <cstdio>
@@ -394,6 +397,26 @@ void stringifyNode(const JsonNode& node, std::string& out, int indent, bool pret
 
 void serializeAnyValue(HooAnyValue value, std::string& out);
 
+void serializeTensor(HooTensor tensor, std::string& out) {
+    if (!tensor) throw std::runtime_error("Tensor is nil");
+    int64_t rank = hoo_tensor_rank(tensor);
+    if (rank < 0 || rank > 3) throw std::runtime_error("Tensor rank is invalid");
+    out += "{\"__hoo_tensor__\":true,\"element_type\":";
+    out += std::to_string(hoo_tensor_element_type(tensor));
+    out += ",\"dims\":[";
+    for (int64_t axis = 0; axis < rank; ++axis) {
+        if (axis) out += ',';
+        out += std::to_string(hoo_tensor_dim(tensor, axis));
+    }
+    out += "],\"data\":[";
+    int64_t length = hoo_tensor_length(tensor);
+    for (int64_t index = 0; index < length; ++index) {
+        if (index) out += ',';
+        out += std::to_string(hoo_tensor_get_bits(tensor, index));
+    }
+    out += "]}";
+}
+
 void serializeAnyArray(HooAnyArray array, std::string& out) {
     if (!array) throw std::runtime_error("AnyArray is nil");
     int64_t length = hoo_anyarray_length(array);
@@ -477,6 +500,22 @@ void serializeAnyValue(HooAnyValue value, std::string& out) {
             out += '"';
             return;
         }
+        case HOO_TYPE_BUFFER: {
+            if (value.data == 0) {
+                out += "null";
+                return;
+            }
+            char* encoded = hoo_encoding_base64_encode_buffer(dataToPointer<void>(value.data));
+            if (!encoded) throw std::runtime_error("buffer base64 encoding failed");
+            out += "{\"__hoo_buffer__\":true,\"data\":\"";
+            out += jsonEscape(encoded);
+            out += "\"}";
+            hoo_encoding_free_string(encoded);
+            return;
+        }
+        case HOO_TYPE_TENSOR_SERIALIZED:
+            serializeTensor(dataToPointer<void>(value.data), out);
+            return;
         case HOO_TYPE_HASHMAP:
             serializeHashMap(dataToPointer<void>(value.data), out);
             return;
@@ -585,6 +624,65 @@ HooAnyValue nodeToAnyValue(const JsonNode& node) {
             return HooAnyValue{HOO_TYPE_ANYARRAY, pointerToData(array)};
         }
         case JsonKind::Object: {
+            const JsonNode* bufferMarker = nullptr;
+            const JsonNode* bufferData = nullptr;
+            for (const auto& [key, value] : node.objectValues) {
+                if (key == "__hoo_buffer__") bufferMarker = value.get();
+                else if (key == "data") bufferData = value.get();
+            }
+            if (bufferMarker && bufferMarker->kind == JsonKind::Bool &&
+                bufferMarker->boolValue && bufferData &&
+                bufferData->kind == JsonKind::String) {
+                HooBuffer buffer = hoo_encoding_base64_decode_buffer(bufferData->stringValue.c_str());
+                if (!buffer) throw std::runtime_error("invalid buffer base64 payload");
+                return HooAnyValue{HOO_TYPE_BUFFER, pointerToData(buffer)};
+            }
+            const JsonNode* tensorMarker = nullptr;
+            const JsonNode* elementTypeNode = nullptr;
+            const JsonNode* dimsNode = nullptr;
+            const JsonNode* dataNode = nullptr;
+            for (const auto& [key, value] : node.objectValues) {
+                if (key == "__hoo_tensor__") tensorMarker = value.get();
+                else if (key == "element_type") elementTypeNode = value.get();
+                else if (key == "dims") dimsNode = value.get();
+                else if (key == "data") dataNode = value.get();
+            }
+            if (tensorMarker && tensorMarker->kind == JsonKind::Bool &&
+                tensorMarker->boolValue && elementTypeNode && dimsNode && dataNode &&
+                elementTypeNode->kind == JsonKind::Number && dimsNode->kind == JsonKind::Array &&
+                dataNode->kind == JsonKind::Array && dimsNode->arrayValues.size() <= 3) {
+                int64_t elementType = 0;
+                if (!parseInt64Text(elementTypeNode->numberValue, elementType)) {
+                    throw std::runtime_error("invalid tensor element type");
+                }
+                int64_t dims[3] = {1, 1, 1};
+                for (size_t axis = 0; axis < dimsNode->arrayValues.size(); ++axis) {
+                    const auto& dim = *dimsNode->arrayValues[axis];
+                    if (dim.kind != JsonKind::Number || !parseInt64Text(dim.numberValue, dims[axis]) || dims[axis] < 0) {
+                        throw std::runtime_error("invalid tensor dimension");
+                    }
+                }
+                HooTensor tensor = hoo_tensor_new(elementType,
+                    static_cast<int64_t>(dimsNode->arrayValues.size()), dims[0], dims[1], dims[2]);
+                if (!tensor) throw std::runtime_error("failed to allocate tensor");
+                try {
+                    if (static_cast<int64_t>(dataNode->arrayValues.size()) != hoo_tensor_length(tensor)) {
+                        throw std::runtime_error("tensor data length does not match dimensions");
+                    }
+                    for (size_t index = 0; index < dataNode->arrayValues.size(); ++index) {
+                        int64_t bits = 0;
+                        const auto& item = *dataNode->arrayValues[index];
+                        if (item.kind != JsonKind::Number || !parseInt64Text(item.numberValue, bits) ||
+                            !hoo_tensor_set_value(tensor, static_cast<int64_t>(index), bits)) {
+                            throw std::runtime_error("invalid tensor data");
+                        }
+                    }
+                    return HooAnyValue{HOO_TYPE_TENSOR_SERIALIZED, pointerToData(tensor)};
+                } catch (...) {
+                    hoo_release(tensor);
+                    throw;
+                }
+            }
             HooHashMap map = nodeToHashMap(node);
             return HooAnyValue{HOO_TYPE_HASHMAP, pointerToData(map)};
         }

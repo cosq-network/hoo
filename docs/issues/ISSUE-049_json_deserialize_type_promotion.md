@@ -1,7 +1,9 @@
 # ISSUE-049: JSON Deserialization Does Not Reverse Serialization Type Promotion
 
 ## 1. Overview
-The `@Serializable` code generator's `serializeFieldTypeId()` promotes certain field types to wider JSON-compatible representations, but `emitDeserializeMethod()` does not reverse these promotions. This causes round-trip corruption for `int8`, `byte`, `f8`, `bit`, and `buffer` fields.
+Historically, the `serializable` code generator promoted certain field types
+to wider JSON-compatible representations without fully reversing them during
+deserialization. This document records the issue and its completed fix.
 
 ## 2. Technical Analysis
 - **Location**: `src/codegen/HVMCodeGenerator.cpp:4266-4491`
@@ -12,17 +14,15 @@ The `@Serializable` code generator's `serializeFieldTypeId()` promotes certain f
 | `int8` / `byte` | `HOO_TYPE_INT64` (1) | JSON only has number type |
 | `f8` | `HOO_TYPE_FLOAT64` (2) | JSON only has number type |
 | `bit` | `HOO_TYPE_BOOL` (3) | JSON uses true/false |
-| `Buffer` | `HOO_TYPE_STRING` (101) | Base64-encoded in JSON |
+| `Buffer` | `HOO_TYPE_BUFFER` (113) | Tagged Base64 object in JSON |
 
-**Deserialization** (`emitDeserializeMethod`, line 4388):
-- Calls `hoo_hashmap_get_any_data_i8` to extract the raw value.
-- Stores the result directly via `ST_D` into the field offset.
-- No type conversion is performed.
+**Deserialization** now calls `hoo_hashmap_get_any_data_i8` and applies the
+declared-field conversion before `ST_D`: narrow integer truncation and sign
+extension, bit masking, FP8 conversion, and dedicated buffer reconstruction.
 
 ## 3. Impact
-- `int8` field serialized as `INT64` and stored back — produces wrong value range, possible overflow.
-- `Buffer` field serialized as base64 `string` and stored back — the field will hold a string pointer instead of a Buffer, causing undefined behavior.
-- `bit` field serialized as `bool` — the stored value is wrong.
+- These corruptions were possible before the ISSUE-035 fix; regression tests now
+  cover the corrected buffer path and the generated scalar conversion paths.
 - Any existing serialized JSON data will produce corrupted objects on deserialization.
 
 ## 4. Suggested Fix
@@ -34,6 +34,13 @@ The `@Serializable` code generator's `serializeFieldTypeId()` promotes certain f
 6. Add round-trip tests for all promoted field types.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-06
+- **Status**: **FIXED**
 - **Priority**: **HIGH**
+
+## 6. Resolution
+
+Resolved as part of ISSUE-035. Generated deserialization now reverses the
+`int8`/`byte`, `f8`, and `bit` promotions. Buffers use runtime type ID 113 and
+tagged Base64 JSON instead of being misidentified as strings. Runtime tests
+cover buffer round-trips, and the full suite passes with 2062 tests.

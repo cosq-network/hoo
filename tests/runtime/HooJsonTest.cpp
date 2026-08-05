@@ -4,11 +4,13 @@
 #include <cstring>
 
 #include "runtime/lib/hoo_anyarray.h"
+#include "runtime/lib/hoo_buffer.h"
 #include "runtime/lib/hoo_exception.h"
 #include "runtime/lib/hoo_hashmap.h"
 #include "runtime/lib/hoo_json.h"
 #include "runtime/lib/hoo_runtime.h"
 #include "runtime/lib/hoo_string.h"
+#include "runtime/lib/hoo_tensor.h"
 
 class HooJsonTest : public ::testing::Test {};
 
@@ -109,6 +111,65 @@ TEST_F(HooJsonTest, SerializeAnyArrayWithNestedHashMap) {
     hoo_string_release(json);
     hoo_hashmap_release(map);
     hoo_anyarray_release(values);
+}
+
+TEST_F(HooJsonTest, SerializeAndDeserializeBufferUsesTaggedBase64) {
+    const uint8_t bytes[] = {0, 1, 2, 250, 255};
+    HooBuffer buffer = hoo_buffer_from_bytes(bytes, static_cast<int64_t>(sizeof(bytes)));
+    ASSERT_NE(buffer, nullptr);
+
+    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    ASSERT_NE(map, nullptr);
+    ASSERT_EQ(hoo_hashmap_set_any_i8(map, 4, HOO_TYPE_BUFFER, testPointerToData(buffer)), 1);
+
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+    EXPECT_NE(std::strstr(hoo_string_data(json), "__hoo_buffer__"), nullptr);
+
+    HooHashMap decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue value{0, 0};
+    ASSERT_EQ(hoo_hashmap_get_any_i8(decoded, 4, &value), 1);
+    EXPECT_EQ(value.type_id, HOO_TYPE_BUFFER);
+    HooBuffer decodedBuffer = reinterpret_cast<HooBuffer>(value.data);
+    ASSERT_EQ(hoo_buffer_length(decodedBuffer), static_cast<int64_t>(sizeof(bytes)));
+    EXPECT_EQ(std::memcmp(hoo_buffer_data(decodedBuffer), bytes, sizeof(bytes)), 0);
+
+    hoo_string_release(json);
+    hoo_hashmap_release(decoded);
+    hoo_hashmap_release(map);
+    hoo_buffer_release(buffer);
+}
+
+TEST_F(HooJsonTest, SerializeAndDeserializeTensorPreservesShapeAndBits) {
+    HooTensor tensor = hoo_tensor_new1(1 /* int64 */, 3);
+    ASSERT_NE(tensor, nullptr);
+    ASSERT_EQ(hoo_tensor_set_value(tensor, 0, 11), 1);
+    ASSERT_EQ(hoo_tensor_set_value(tensor, 1, 22), 1);
+    ASSERT_EQ(hoo_tensor_set_value(tensor, 2, 33), 1);
+
+    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    ASSERT_NE(map, nullptr);
+    ASSERT_EQ(hoo_hashmap_set_any_i8(map, 8, HOO_TYPE_TENSOR_SERIALIZED, testPointerToData(tensor)), 1);
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+
+    HooHashMap decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue value{0, 0};
+    ASSERT_EQ(hoo_hashmap_get_any_i8(decoded, 8, &value), 1);
+    EXPECT_EQ(value.type_id, HOO_TYPE_TENSOR_SERIALIZED);
+    HooTensor decodedTensor = reinterpret_cast<HooTensor>(value.data);
+    ASSERT_EQ(hoo_tensor_rank(decodedTensor), 1);
+    ASSERT_EQ(hoo_tensor_dim(decodedTensor, 0), 3);
+    EXPECT_EQ(hoo_tensor_get_int64(decodedTensor, 0), 11);
+    EXPECT_EQ(hoo_tensor_get_int64(decodedTensor, 1), 22);
+    EXPECT_EQ(hoo_tensor_get_int64(decodedTensor, 2), 33);
+
+    hoo_string_release(json);
+    hoo_hashmap_release(decoded);
+    hoo_hashmap_release(map);
+    hoo_release(tensor);
 }
 
 TEST_F(HooJsonTest, SerializeUnsupportedAnyValueThrowsRuntimeException) {

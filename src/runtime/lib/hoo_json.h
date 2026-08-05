@@ -15,9 +15,11 @@ typedef void* HooString;
  *
  * Supported map values:
  * - fixed scalar HashMap values: int64, int8, byte, bool, string
- * - any values containing int64, int8, byte, bool, f64, string, HashMap, AnyArray
+ * - any values containing int64, int8, byte, bool, f64, string, Buffer,
+ *   HashMap, AnyArray, and Tensor.
  *
- * HashMap keys are numeric in Hoo and are serialized as JSON object field names.
+ * Buffers and tensors use tagged objects. HashMap keys are numeric in Hoo and
+ * are serialized as JSON object field names.
  * Returns a HooString with refcount=1, or NULL on unsupported input.
  */
 HooString hoo_json_serialize_hashmap(HooHashMap map);
