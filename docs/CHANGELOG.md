@@ -11,6 +11,22 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(tensor): complete ISSUE-030 scalar broadcasting
+  - Add safe tensor-scalar add, subtract, scale, and divide for both operand
+    orders without treating scalar values as tensor pointers
+  - Preserve native integer, FP8, and f64 promotion semantics through JIT
+    runtime wrappers
+  - Add runtime and JIT regression coverage
+
+- feat(tensor): complete ISSUE-025 tensor data type support
+  - Add packed `tensor<bit>` and one-byte `tensor<int8>`, `tensor<byte>`, and
+    canonical E4M3 `tensor<f8>` storage with promotion and native-width
+    overflow semantics
+  - Route low-precision tensor arithmetic through interpreter/JIT runtime
+    wrappers while preserving wide-element vector lowering
+  - Add reshape, transpose, and numerically stable softmax with JIT symbol
+    registration and regression tests
+
 - feat(hvm): implement HVM 1.5 scalar sub-word precision
   - Add `ARITH_B` (`0x11`), `LOGIC_B` (`0x22`), and `FLOAT_ARITH_B` (`0x31`)
     opcode families with registry, CSV, encoding, and decoding coverage
@@ -19,7 +35,8 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
   - Add signed/unsigned division and remainder semantics with native-width
     overflow handling and compiler-controlled sign/zero extension
   - Preserve the f64 language ABI through FP8 encode/decode fallback shims
-  - Add codegen and JIT regression tests; full suite passes with 2047 tests
+  - Add codegen and JIT regression tests; the current full suite passes with
+    2059 tests
 
 - fix(hvm): complete ISSUE-028 sub-word modulo and shifts
   - Dispatch binary and compound `int8`/`byte` modulo through `REM.B` and

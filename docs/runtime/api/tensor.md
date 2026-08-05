@@ -12,7 +12,10 @@ import hoo.tensor;
 
 ## Module Description
 
-The `Tensor` module provides multi‑dimensional arrays for numerical computation. Tensors are reference‑counted runtime objects supporting various element types (bit, int64, float64, etc.) and a rich set of arithmetic and logical operations.
+The `Tensor` module provides rank-1, rank-2, and rank-3 arrays for numerical
+computation. Tensors are reference-counted runtime objects supporting `bit`,
+`int8`, `byte`, `int64`, `f8`, and `f64` elements, plus tensor-tensor and
+tensor-scalar arithmetic and logical operations.
 
 ## Class: Tensor
 
@@ -167,6 +170,17 @@ These functions take two tensors of identical shape and produce a new tensor wit
 - `element_mul(left: Tensor, right: Tensor) :Tensor` — Element‑wise multiplication.
 - `element_div(left: Tensor, right: Tensor) :Tensor` — Element‑wise division (division‑by‑zero yields 0).
 - `matmul(left: Tensor, right: Tensor) :Tensor` — Matrix multiplication for rank‑2 tensors.
+
+Scalar broadcasting is also supported for numeric tensors:
+
+- `tensor + scalar`, `scalar + tensor`
+- `tensor - scalar`, `scalar - tensor`
+- `tensor * scalar`, `scalar * tensor` (including `.*`)
+- `tensor / scalar`, `scalar / tensor` (including `./`; zero denominator yields 0)
+
+The result keeps the tensor shape. Floating-point scalars follow tensor
+promotion rules; integer and low-precision tensors retain native storage
+semantics where possible.
 
 All functions return a new tensor or `null` on shape mismatch.
 

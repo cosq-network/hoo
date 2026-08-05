@@ -3314,14 +3314,62 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
       
 
-     if (leftExprType == 125 || rightExprType == 125) {
-    if (leftExprType != 125 || rightExprType != 125) {
-        addError("Decimal operands must both be Decimal types");
-        return 0;
-    }
-    return emitDecimalBinaryOp(*binary);
-}
+        if (leftExprType == 125 || rightExprType == 125) {
+            if (leftExprType != 125 || rightExprType != 125) {
+                addError("Decimal operands must both be Decimal types");
+                return 0;
+            }
+            return emitDecimalBinaryOp(*binary);
+        }
         if (leftExprType == 104 || rightExprType == 104) {
+            const bool leftIsTensor = leftExprType == 104;
+            const bool rightIsTensor = rightExprType == 104;
+            if (leftIsTensor != rightIsTensor) {
+                const bool scalarIsLeft = !leftIsTensor;
+                switch (binary->getOperator()) {
+                    case ast::BinaryOperator::PLUS:
+                        return emitTensorScalarCall(*binary, "_F_hoo_Tensor_add_scalar_p_p_i8_i8");
+                    case ast::BinaryOperator::MINUS:
+                        return emitTensorScalarCall(*binary, scalarIsLeft
+                            ? "_F_hoo_Tensor_sub_scalar_left_p_p_i8_i8"
+                            : "_F_hoo_Tensor_sub_scalar_p_p_i8_i8");
+                    case ast::BinaryOperator::MULTIPLY:
+                    case ast::BinaryOperator::ELEMENT_MULTIPLY:
+                        return emitTensorScalarCall(*binary, "_F_hoo_Tensor_scale_p_p_i8_i8");
+                    case ast::BinaryOperator::DIVIDE:
+                    case ast::BinaryOperator::ELEMENT_DIVIDE:
+                        return emitTensorScalarCall(*binary, scalarIsLeft
+                            ? "_F_hoo_Tensor_div_scalar_left_p_p_i8_i8"
+                            : "_F_hoo_Tensor_div_scalar_p_p_i8_i8");
+                    default:
+                        addError("Unsupported tensor-scalar binary operator");
+                        return 0;
+                }
+            }
+            const auto leftTensorInfo = inferExpressionTypeInfo(binary->getLeft());
+            const auto rightTensorInfo = inferExpressionTypeInfo(binary->getRight());
+            const auto isLowPrecisionTensorElement = [](uint32_t elementType) {
+                return elementType == 5 || elementType == 6 || elementType == 8 || elementType == 9;
+            };
+            const bool lowPrecisionTensor =
+                isLowPrecisionTensorElement(leftTensorInfo.elementTypeId) ||
+                isLowPrecisionTensorElement(rightTensorInfo.elementTypeId);
+            if (lowPrecisionTensor) {
+                switch (binary->getOperator()) {
+                    case ast::BinaryOperator::PLUS:
+                        return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_add_p_p_p");
+                    case ast::BinaryOperator::MINUS:
+                        return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_sub_p_p_p");
+                    case ast::BinaryOperator::ELEMENT_MULTIPLY:
+                        return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_elementMul_p_p_p");
+                    case ast::BinaryOperator::ELEMENT_DIVIDE:
+                        return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_elementDiv_p_p_p");
+                    case ast::BinaryOperator::MULTIPLY:
+                        return emitTensorBinaryCall(*binary, "_F_hoo_Tensor_matmul_p_p_p");
+                    default:
+                        break;
+                }
+            }
             switch (binary->getOperator()) {
                 case ast::BinaryOperator::PLUS: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 0);
                 case ast::BinaryOperator::MINUS: return emitTensorVectorArith(*binary, Opcode::VECTOR_ARITH, 2);
@@ -4532,6 +4580,27 @@ uint8_t HVMCodeGenerator::emitTensorBinaryCall(const ast::BinaryExpression& bina
     return dest;
 }
 
+uint8_t HVMCodeGenerator::emitTensorScalarCall(const ast::BinaryExpression& binary, const std::string& symbolName) {
+    const uint32_t leftType = inferExpressionTypeId(binary.getLeft());
+    const bool leftIsTensor = leftType == 104;
+    const ast::Expression& tensorExpr = leftIsTensor ? binary.getLeft() : binary.getRight();
+    const ast::Expression& scalarExpr = leftIsTensor ? binary.getRight() : binary.getLeft();
+    const uint32_t scalarType = inferExpressionTypeId(scalarExpr);
+    uint8_t tensor = visitExpression(tensorExpr);
+    uint8_t scalar = visitExpression(scalarExpr);
+    emit(Opcode::MOV, OperandsR{1, tensor, 0, 0});
+    emit(Opcode::MOV, OperandsR{2, scalar, 0, 0});
+    uint8_t scalarTypeReg = emitConstant(static_cast<int64_t>(scalarType));
+    emit(Opcode::MOV, OperandsR{3, scalarTypeReg, 0, 0});
+    emitCall(Opcode::CALL, symbolName);
+    uint8_t dest = allocateRegister();
+    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+    freeRegister(scalarTypeReg);
+    freeRegister(tensor);
+    freeRegister(scalar);
+    return dest;
+}
+
 uint8_t HVMCodeGenerator::emitTensorVectorArith(const ast::BinaryExpression& binary, hvm::Opcode vecOp, uint16_t func) {
     uint8_t left = visitExpression(binary.getLeft());
     uint8_t right = visitExpression(binary.getRight());
@@ -4748,7 +4817,10 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                  dynamic_cast<const ast::InterpolatedString*>(&primary)) result.typeId = 101;
         else if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) result.typeId = 109;
         else if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) result.typeId = 125;
-        else if (dynamic_cast<const ast::TensorLiteral*>(&primary)) result.typeId = 104;
+        else if (auto tensorLiteral = dynamic_cast<const ast::TensorLiteral*>(&primary)) {
+            result.typeId = 104;
+            result.elementTypeId = tensorElementTypeIdFromLiteral(*tensorLiteral);
+        }
         else if (auto nested = dynamic_cast<const ast::Expression*>(&primary)) {
             return inferExpressionTypeInfo(*nested);
         }

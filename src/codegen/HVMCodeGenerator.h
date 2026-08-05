@@ -225,6 +225,7 @@ private:
     void emitFlattenTensorLiteralElements(const ast::Expression& expr, uint8_t tensorReg);
     uint8_t emitTensorLiteral(const ast::TensorLiteral& literal);
     uint8_t emitTensorBinaryCall(const ast::BinaryExpression& binary, const std::string& symbolName);
+    uint8_t emitTensorScalarCall(const ast::BinaryExpression& binary, const std::string& symbolName);
     uint8_t emitTensorVectorArith(const ast::BinaryExpression& binary, hvm::Opcode vecOp, uint16_t func);
     uint8_t emitDecimalBinaryOp(const ast::BinaryExpression& binary);
     /**

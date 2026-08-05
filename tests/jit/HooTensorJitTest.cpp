@@ -114,6 +114,52 @@ TEST_F(HooTensorJitTest, TensorElementwiseSubAndDiv) {
     EXPECT_EQ(jit->run("_F_test_i8"), 21) << jit->getLastError(); // (20-4) + (30/6) = 16 + 5 = 21
 }
 
+TEST_F(HooTensorJitTest, TensorScalarBroadcastSupportsBothOperandOrders) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var values = [2, 4, 8]t;
+            var added = values + 1;
+            var scaled = 2 .* values;
+            var subtracted = 10 - values;
+            var divided = 16 ./ values;
+            return added[0] + scaled[1] + subtracted[2] + divided[0];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    // 3 + 8 + 2 + 8 = 21
+    EXPECT_EQ(jit->run("_F_test_i8"), 21) << jit->getLastError();
+}
+
+TEST_F(HooTensorJitTest, TensorScalarF64BroadcastUsesFloatingPointValues) {
+    const std::string code = R"(
+        import hoo;
+        func :double test() {
+            var values: tensor<f64>[3] = [1.5, 3.0, 4.5]t;
+            var result = values .* 2.0;
+            return result[0] + result[1] + result[2];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_NEAR(bitsToDouble(jit->run("_F_test_d")), 18.0, 0.00001) << jit->getLastError();
+}
+
+TEST_F(HooTensorJitTest, TensorScalarBroadcastUsesLowPrecisionRuntimePath) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var signedValues: tensor<int8>[2] = [127, 1]t;
+            var wrapped = signedValues + 1;
+            return wrapped[0] + wrapped[1];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), -126) << jit->getLastError();
+}
+
 TEST_F(HooTensorJitTest, TensorComparisonAndBitLogic) {
     const std::string code = R"(
         import hoo;
@@ -265,6 +311,36 @@ TEST_F(HooTensorJitTest, TensorF64ElementwiseArithmetic) {
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
     // sum[0] = 2.0, diff[2] = 2.0, total = 4.0
     EXPECT_NEAR(bitsToDouble(jit->run("_F_test_d")), 4.0, 0.00001) << jit->getLastError();
+}
+
+TEST_F(HooTensorJitTest, TensorInt8AndByteArithmeticUseNativeWidthSemantics) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var signedValues: tensor<int8>[2] = [127, 1]t;
+            var unsignedValues: tensor<byte>[2] = [255, 1]t;
+            var signedResult = signedValues + signedValues;
+            var unsignedResult = unsignedValues + unsignedValues;
+            return signedResult[0] + unsignedResult[0];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 252) << jit->getLastError(); // -2 + 254
+}
+
+TEST_F(HooTensorJitTest, TensorF8ArithmeticUsesCanonicalE4M3Values) {
+    const std::string code = R"(
+        import hoo;
+        func :double test() {
+            var values: tensor<f8>[2] = [1.5f8, 2.25f8]t;
+            var doubled = values + values;
+            return doubled[0] + doubled[1];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_NEAR(bitsToDouble(jit->run("_F_test_d")), 7.5, 0.00001) << jit->getLastError();
 }
 
 TEST_F(HooTensorJitTest, TensorF64Matmul) {

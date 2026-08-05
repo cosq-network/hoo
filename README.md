@@ -33,7 +33,7 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 8.2 (Type Inference)**: Extended `getTypeId()` to infer return types for function calls, user-defined class methods, and array subscript access. Array literal element types inferred from uniform elements. For-in loop variables infer type from iterable's element type. Char-keyed Map operations removed from Hoo language layer (runtime-only C API).
 - [x] **Phase 9 (Output Optimization)**: Silenced LLVM IR and JIT debug outputs during execution to significantly improve unit test performance.
 - [x] **Phase 9.1 (macOS Stabilization)**: Resolved cross-platform build errors in `hoo_thread` and `hoo_uuid` modules; project now verified stable on macOS (Apple Silicon/Intel).
-- [x] **Phase 10 (Tensor Type Support)**: Added tensor type (`tensor<T>[N]`) to grammar, AST, codegen, and runtime with full 1D/2D/3D support. Includes element-wise arithmetic, comparison operators, logical operators, matrix multiplication, and both int64 and f64 element types. Runtime, parsing, and JIT test coverage across all dimensions.
+- [x] **Phase 10 (Tensor Type Support)**: Added tensor type (`tensor<T>[N]`) to grammar, AST, codegen, and runtime with full rank-1/rank-2/rank-3 support. Includes packed `bit`, one-byte `int8`/`byte`/canonical E4M3 `f8`, wide `int64`/`f64`, element-wise arithmetic, promotion, comparison and logical operators, matrix multiplication, reshape, transpose, softmax, and tensor-scalar broadcasting in both operand orders. Runtime, parsing, codegen, and JIT coverage is included.
 - [x] **Phase 11 (Buffer Type Integration)**: Added managed mutable byte array (`Buffer`) with a single Hoo constructor (`new Buffer()`), free function byte-source creation (`buffer_fromBytes(...)`), ARC management, JIT wrappers, and symbol registration. Buffer handle points to `BufferImpl` (right after ARC header), matching the HooString memory layout. Includes copy, append, clear, slice, byte-level access, and Buffer-aware overloads in Fs, Encoding, Uuid, Hashing, and Compression modules. Runtime and JIT test coverage updated.
 - [x] **Phase 11.1 (Map OOP API Redesign)**: Consolidated 70+ type-specific C-ABI functions into 15 polymorphic functions (`hoo_map_new`, `hoo_map_set`, `hoo_map_try_get`, `hoo_map_contains_key`, `hoo_map_remove`, `hoo_map_clear`, `hoo_map_count`, `hoo_map_is_empty`, etc.) with internal key/value type dispatch via template helpers. Key/value type-erased via `void*` at the C-ABI layer. JIT wrappers rewritten to delegate to the polymorphic C-ABI. 23 runtime tests + 21 JIT tests pass. Cross-platform fix: char map storage uses `int8_t` instead of `char` to avoid signedness differences on ARM64 Linux.
 - [x] **Phase 11.2 (DateTime Redesign as Instantiable Class)**: Converted DateTime from a raw-int64 singleton API into an ARC-managed instantiable class (type ID 119) with `timestamp: int64` field, enabling future `serializable` modifier support. Added instance methods (`dt.format()`, `dt.addDays()`, `dt.compare()`, etc.), built-in class-qualified factory dispatch (`DateTime.now()`, `DateTime.parse()`), module-level free functions (`datetime_now()`, `datetime_new(ts)`), and full C-level free function wrappers (`hoo_datetime_now`, `hoo_datetime_format`, etc.). 15 JIT tests + 24 runtime tests pass.
@@ -43,7 +43,8 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 14 (Archive Loading)**: Cross-file local imports and `.ha` archive format with Zstd compression, manifest, and multi-module JIT loading.
 - [x] **Phase 15 (Async/Await via libuv)**: Native `async`/`await` syntax, `Future<T>` values (type ID 123), managed and primitive result handling, multiple continuations, and a mutex-protected libuv event loop with cooperative waiting. HVM async functions currently execute through the Future ABI and pump the event loop while awaiting; true VM stack-frame suspension requires future HVM suspend/resume instructions. Coverage includes `NewLanguageFeaturesTest.cpp` and `HooFutureJitTest.cpp`. Language docs: `docs/language/async_await.md`.
 - [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity (113/113 mnemonics), all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion (25 new JIT semantics tests).
-- [x] **Verification**: full preset test run passing (`2030 tests`, 2 disabled, 0 failures).
+- [x] **Tensor Precision and Broadcasting (ISSUE-025/030)**: Completed low-precision tensor storage, canonical FP8 fallback, native-width integer semantics, scalar promotion, safe tensor-scalar runtime/JIT lowering, and reshape/transpose/softmax utilities.
+- [x] **Verification**: full preset test run passing (`2059 tests`, 2 disabled, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 ## Recent Changes
@@ -97,10 +98,10 @@ src/
   ast/        Typed Abstract Syntax Tree with lowering metadata.
   codegen/    HVM and LLVM IR generation backends.
   hvm/        ISA definitions, module serialization, and physical state model.
-  runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Exceptions, IO).
+  runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Tensors, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-tests/         Exhaustive unit and integration test suites (2014 tests in the current preset run).
+tests/         Exhaustive unit and integration test suites (2059 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 

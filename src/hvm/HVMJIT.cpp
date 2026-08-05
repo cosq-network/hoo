@@ -1146,6 +1146,34 @@ extern "C" {
     uint64_t jit_tensor_sub(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_sub); }
     uint64_t jit_tensor_element_mul(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_element_mul); }
     uint64_t jit_tensor_element_div(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_element_div); }
+    using TensorScalarBitsFn = HooTensor (*)(HooTensor, int64_t, int64_t);
+    uint64_t jit_tensor_scalar_bits(void* state_ptr, TensorScalarBitsFn fn) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(fn(
+            reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]),
+            static_cast<int64_t>(state->regs[3]))));
+    }
+    uint64_t jit_tensor_add_scalar_bits(void* state_ptr) { return jit_tensor_scalar_bits(state_ptr, &hoo_tensor_add_scalar_bits); }
+    uint64_t jit_tensor_sub_scalar_bits(void* state_ptr) { return jit_tensor_scalar_bits(state_ptr, &hoo_tensor_sub_scalar_bits); }
+    uint64_t jit_tensor_sub_scalar_left_bits(void* state_ptr) { return jit_tensor_scalar_bits(state_ptr, &hoo_tensor_sub_scalar_left_bits); }
+    uint64_t jit_tensor_scale_scalar_bits(void* state_ptr) { return jit_tensor_scalar_bits(state_ptr, &hoo_tensor_scale_scalar_bits); }
+    uint64_t jit_tensor_div_scalar_bits(void* state_ptr) { return jit_tensor_scalar_bits(state_ptr, &hoo_tensor_div_scalar_bits); }
+    uint64_t jit_tensor_div_scalar_left_bits(void* state_ptr) { return jit_tensor_scalar_bits(state_ptr, &hoo_tensor_div_scalar_left_bits); }
+    using TensorScalarDoubleFn = HooTensor (*)(HooTensor, double);
+    uint64_t jit_tensor_scalar_double(void* state_ptr, TensorScalarDoubleFn fn) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double scalar = 0.0;
+        const uint64_t bits = state->regs[2];
+        std::memcpy(&scalar, &bits, sizeof(scalar));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(fn(
+            reinterpret_cast<void*>(state->regs[1]), scalar)));
+    }
+    uint64_t jit_tensor_add_scalar_double(void* state_ptr) { return jit_tensor_scalar_double(state_ptr, &hoo_tensor_add_scalar); }
+    uint64_t jit_tensor_sub_scalar_double(void* state_ptr) { return jit_tensor_scalar_double(state_ptr, &hoo_tensor_sub_scalar); }
+    uint64_t jit_tensor_sub_scalar_left_double(void* state_ptr) { return jit_tensor_scalar_double(state_ptr, &hoo_tensor_sub_scalar_left); }
+    uint64_t jit_tensor_scale_scalar_double(void* state_ptr) { return jit_tensor_scalar_double(state_ptr, &hoo_tensor_scale_scalar); }
+    uint64_t jit_tensor_div_scalar_double(void* state_ptr) { return jit_tensor_scalar_double(state_ptr, &hoo_tensor_div_scalar); }
+    uint64_t jit_tensor_div_scalar_left_double(void* state_ptr) { return jit_tensor_scalar_double(state_ptr, &hoo_tensor_div_scalar_left); }
     uint64_t jit_tensor_matmul(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_matmul); }
     uint64_t jit_tensor_eq(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_eq); }
     uint64_t jit_tensor_ne(void* state_ptr) { return jit_tensor_binary(state_ptr, &hoo_tensor_ne); }
@@ -1158,6 +1186,22 @@ extern "C" {
     uint64_t jit_tensor_not(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_not(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_tensor_reshape(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_reshape(
+            reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3],
+            state->regs[4], state->regs[5])));
+    }
+    uint64_t jit_tensor_transpose(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_transpose(
+            reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_tensor_softmax(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_tensor_softmax(
+            reinterpret_cast<void*>(state->regs[1]))));
     }
     uint64_t jit_tensor_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -4277,6 +4321,18 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Tensor_sub_p_p_p", reinterpret_cast<void*>(&jit_tensor_sub)},
         {"_F_hoo_Tensor_elementMul_p_p_p", reinterpret_cast<void*>(&jit_tensor_element_mul)},
         {"_F_hoo_Tensor_elementDiv_p_p_p", reinterpret_cast<void*>(&jit_tensor_element_div)},
+        {"_F_hoo_Tensor_add_scalar_p_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_add_scalar_bits)},
+        {"_F_hoo_Tensor_sub_scalar_p_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_sub_scalar_bits)},
+        {"_F_hoo_Tensor_sub_scalar_left_p_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_sub_scalar_left_bits)},
+        {"_F_hoo_Tensor_scale_p_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_scale_scalar_bits)},
+        {"_F_hoo_Tensor_div_scalar_p_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_div_scalar_bits)},
+        {"_F_hoo_Tensor_div_scalar_left_p_p_i8_i8", reinterpret_cast<void*>(&jit_tensor_div_scalar_left_bits)},
+        {"_F_hoo_Tensor_add_scalar_p_p_d", reinterpret_cast<void*>(&jit_tensor_add_scalar_double)},
+        {"_F_hoo_Tensor_sub_scalar_p_p_d", reinterpret_cast<void*>(&jit_tensor_sub_scalar_double)},
+        {"_F_hoo_Tensor_sub_scalar_left_p_p_d", reinterpret_cast<void*>(&jit_tensor_sub_scalar_left_double)},
+        {"_F_hoo_Tensor_scale_p_p_d", reinterpret_cast<void*>(&jit_tensor_scale_scalar_double)},
+        {"_F_hoo_Tensor_div_scalar_p_p_d", reinterpret_cast<void*>(&jit_tensor_div_scalar_double)},
+        {"_F_hoo_Tensor_div_scalar_left_p_p_d", reinterpret_cast<void*>(&jit_tensor_div_scalar_left_double)},
         {"_F_hoo_Tensor_matmul_p_p_p", reinterpret_cast<void*>(&jit_tensor_matmul)},
         {"_F_hoo_Tensor_eq_p_p_p", reinterpret_cast<void*>(&jit_tensor_eq)},
         {"_F_hoo_Tensor_ne_p_p_p", reinterpret_cast<void*>(&jit_tensor_ne)},
@@ -4287,6 +4343,9 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Tensor_and_p_p_p", reinterpret_cast<void*>(&jit_tensor_and)},
         {"_F_hoo_Tensor_or_p_p_p", reinterpret_cast<void*>(&jit_tensor_or)},
         {"_F_hoo_Tensor_not_p_p", reinterpret_cast<void*>(&jit_tensor_not)},
+        {"_F_hoo_Tensor_reshape_p_p_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_reshape)},
+        {"_F_hoo_Tensor_transpose_p_p", reinterpret_cast<void*>(&jit_tensor_transpose)},
+        {"_F_hoo_Tensor_softmax_p_p", reinterpret_cast<void*>(&jit_tensor_softmax)},
         // Object field access helpers
         {"_F_object_get_field_p_i8", reinterpret_cast<void*>(&jit_object_get_field)},
         {"_F_object_set_field_v_p_i8_p", reinterpret_cast<void*>(&jit_object_set_field)},

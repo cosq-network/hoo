@@ -308,7 +308,7 @@ The `jit_hoo_*` wrappers span ~25+ runtime library domains. Each reads arguments
 | AnyArray | 8 (`new`, `new_capacity`, `length`, `push`, `set`, `get_data`, `pop_data`, `clear`, `release`) | `hoo_anyarray.h` |
 | HashMap | 7 (`new`, `count`, `set_fixed`, `get_fixed`, `set_any`, `get_any`, `remove`, `clear`, `release`) | `hoo_hashmap.h` |
 | Math | 60+ — per-type overloads for `abs`, `min`, `max`, `sign` (int64/int8/byte/double/f8), `gcd`, `factorial`, `fibonacci`, `is_even`, `is_odd`, `is_prime`, `lcm`, `sqrt`, `get_pi`, `get_e`, `get_tau`, `get_inf`, `get_neg_inf`, `get_nan`, `pow`, `clamp`, `floor`, `cbrt`, `hypot`, `ceil`, `sin`, `cos`, `tan`, `atan2`, `asin`, `acos`, `atan`, `sinh`, `cosh`, `tanh`, `exp`, `exp2`, `expm1`, `log`, `log10`, `log2`, `log1p`, `round`, `trunc`, `fract` | `hoo_math.h` |
-| Tensor | 15+ (`new1`, `new2`, `new3`, `new`, `push_value`, `length`, `rank`, `element_type`, `dim`, `get_int64`, `get_double`, `add`, `sub`, `element_mul`, `element_div`, `matmul`, `eq`, `ne`, `lt`, `le`, `gt`, `ge`, `and`, `or`, `not`) | `hoo_tensor.h` |
+| Tensor | 30+ (`new1`, `new2`, `new3`, `new`, `push_value`, `length`, `rank`, `element_type`, `dim`, `get_int64`, `get_double`, `add`, `sub`, `element_mul`, `element_div`, scalar add/subtract/scale/divide, `matmul`, `reshape`, `transpose`, `softmax`, `eq`, `ne`, `lt`, `le`, `gt`, `ge`, `and`, `or`, `not`) | `hoo_tensor.h` |
 | Buffer | 14 (`new`, `from_bytes`, `copy`, `length`, `capacity`, `byte_at`, `set_byte`, `append`, `append_buffer`, `clear`, `slice`, `data`, and `hoo_buffer.h` wrappers) | `hoo_buffer.h` |
 | I/O | 4 (`print`, `println`, `readline`, `readchar`) | `hoo_io.h` |
 | Filesystem | Fs functions (`hoo_fs.h`) —

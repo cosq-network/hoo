@@ -1,7 +1,7 @@
 # ISSUE-025: Implementation Plan for `tensor` Data Type
 
 ## 1. Overview
-This document outlines the detailed implementation plan to introduce a native `tensor` data type to the Hoo language. The `tensor` type will represent 1D, 2D, or 3D fixed-size arrays optimized for AI/ML matrix algebra. It will natively support numerical primitives: `bit`, `int8`, `int64`, `f8` (8-bit floating point), and `f64`.
+This document records the completed implementation of Hoo's native `tensor` data type. Tensors represent rank-1, rank-2, or rank-3 fixed-size arrays and support `bit`, `int8`, `byte`, `int64`, `f8`, and `f64` element types across the parser, AST, code generator, HVM JIT, and runtime.
 
 The implementation requires full-stack integration: from parser grammar and AST nodes, down through the code generator, to the LLVM-based JIT and the C++ runtime library.
 
@@ -17,12 +17,11 @@ profile and must not be inferred from the scalar `f8` ABI:
 
 **Implementation Details**:
 - **Storage**: Occupies 1 byte in memory.
-- **Arithmetic**: Scalar HVM 1.5 arithmetic uses `FLOAT_ARITH_B` over canonical
-  E4M3 bytes, with f64 encode/decode shims at the language ABI boundary.
-  Tensors will use specialized SIMD/hardware intrinsics for batch `f8`
-  operations.
-- **JIT**: The scalar fallback is host-independent; tensor lowering may map to
-  LLVM's `f8e5m2` or `f8e4m3fn` types where available (e.g., Hopper/H100).
+- **Arithmetic**: Tensor arithmetic decodes canonical E4M3 bytes to `double`,
+  computes, and re-encodes to E4M3. This portable fallback preserves the
+  one-byte storage contract; wide `int64`/`f64` tensors retain vector lowering.
+- **JIT**: Low-precision tensor expressions dispatch through registered runtime
+  wrappers, using the same deterministic E4M3 shim as the interpreter.
 
 ### 2.2 `bit` (1-bit Numerical Type)
 The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which represents logical truth, `bit` is a numerical primitive intended for hardware-level bitmasking, logical gates, and Binary Neural Networks (BNNs).
@@ -32,6 +31,12 @@ The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which r
 - **Storage in Scalars**: Occupies 1 byte in a standard register for simplicity during local execution.
 - **Storage in Tensors**: **Packed Storage**. A `tensor<bit>` will pack 8 bits into a single byte, providing an 8x reduction in memory footprint compared to `int8` tensors.
 - **Conversions**: Explicitly castable to `int64` (0 or 1) and `bool` (0 -> false, 1 -> true).
+
+### 2.3 `int8` and `byte`
+`int8` uses one signed byte per element and `byte` uses one unsigned byte per
+element. Same-type arithmetic wraps modulo 256 and preserves the element type;
+mixed `int8`/`byte` arithmetic promotes to `int64`. Floating-point promotion is
+`f64` over `f8` over integer/bit values.
 
 ## 3. Technical Requirements
 
@@ -104,16 +109,17 @@ var inverted = !mask1;         // Result: [0b, 1b, 0b]t
 - **Allocation**: Lower `tensor` declarations to `_F_hoo_tensor_alloc`. For `tensor<bit>`, calculate packed buffer size (`(dims + 7) / 8`).
 - **Operator Lowering**: 
   - Overload `+`, `-`, `*` for tensors.
-  - Implement **Type Promotion Rules**: Tensors of different precision (e.g., `tensor<f8> * tensor<f64>`) should promote to the higher precision or follow explicit quantization rules.
+  - Implement **Type Promotion Rules**: `f64` dominates `f8`, `f8` dominates
+    integer and bit values, and mixed `byte`/`int8` promotes to `int64`.
 - **Indexing**: 
   - Standard types: `base + header + (i * stride_i + j * stride_j) * size`.
   - `bit` types: `base + header + (offset / 8)`, followed by bit-masking `(1 << (offset % 8))`.
 
 ### 3.5 JIT Integration (`src/hvm/HVMJIT.cpp`)
 - **Wrappers**: Register JIT function wrappers for tensor math.
-- **Low-Precision Backend**: 
-  - Use LLVM `half` or `float` as intermediates for `f8` if native `f8` is missing.
-  - Use bitwise IR operations for `tensor<bit>` acceleration.
+  - **Low-Precision Backend**: Use portable FP8 and packed-bit runtime helpers
+    when native FP8/vector support is unavailable.
+  - Register runtime wrappers for tensor math, reshape, transpose, and softmax.
 
 ### 3.6 Runtime Library (`src/runtime/lib/`)
 - **`HooTensor`**: Extend struct to handle `bit` packing flags.
@@ -124,27 +130,30 @@ var inverted = !mask1;         // Result: [0b, 1b, 0b]t
 
 ## 4. Implementation Phases
 
-### Phase 1: Foundation (f8, bit & Grammar)
+### Phase 1: Foundation (complete)
 1. Add `f8` and `bit` to the compiler stack (Grammar, AST, Codegen).
 2. Update `Hooc.g4` for `tensor` syntax and new literals.
 3. Regenerate ANTLR C++ parser.
 
-### Phase 2: Runtime Tensor Storage
+### Phase 2: Runtime Tensor Storage (complete)
 1. Implement `HooTensor` with bit-packing support for `tensor<bit>`.
 2. Implement reference counting and bounds-checked multi-dimensional indexing.
 
-### Phase 3: Matrix Algebra & Codegen
+### Phase 3: Matrix Algebra & Codegen (complete)
 1. Implement `f8` and `bit` optimized math kernels in `hoort`.
 2. Update `HVMCodeGenerator` to lower tensor expressions to these kernels.
 3. Bind kernels in `HVMJIT.cpp`.
 
-### Phase 4: AI/ML Specialized Operations
+### Phase 4: AI/ML Specialized Operations (complete for the core API)
 1. Implement high-level tensor operations: `reshape`, `transpose`, `softmax`.
 2. Verification with 1D/2D/3D test cases.
 
 
 ## 5. Status
-- **Date**: 2026-06-16
-- **Status**: **PARTIALLY IMPLEMENTED - CORE TENSOR TYPE, RUNTIME, CODEGEN, JIT, AND TESTS PRESENT**
+- **Date**: 2026-08-05
+- **Status**: **IMPLEMENTED - CORE TENSOR TYPE, LOW-PRECISION STORAGE, RUNTIME, CODEGEN, JIT, UTILITY OPERATIONS, AND TESTS COMPLETE**
 - **Priority**: **HIGH** (for AI/ML target workloads)
-- **Audit 2026-06-21**: Parser, AST, runtime, codegen, JIT bridge, and tests for tensor support are present. Tensor-scalar arithmetic and higher ANN/autograd functionality remain separate open work under ISSUE-030 and ISSUE-026.
+- **Audit 2026-08-05**: Verified packed bit storage, one-byte int8/byte/f8 storage,
+  canonical E4M3 conversion, native-width overflow, promotion, low-precision JIT
+  dispatch, reshape, transpose, softmax, and regression tests. Tensor-scalar
+  arithmetic is completed by ISSUE-030; ANN/autograd kernels remain under ISSUE-026.

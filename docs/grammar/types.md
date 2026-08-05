@@ -58,7 +58,10 @@ var more = new AnyArray(16);
 
 ### Tensors
 Tensors are multi-dimensional, fixed-size numerical arrays optimized for AI/ML algebra.
-- `tensor<f8>[3, 3]` - A 3x3 2D matrix of 8-bit floating point values.
+- Supported element types are `bit`, `int8`, `byte`, `int64`, `f8`, and `f64`.
+- Shapes may have rank 1, 2, or 3 dimensions, for example `tensor<f8>[3, 3]`.
+- `tensor<bit>` uses packed bits; `int8`, `byte`, and `f8` use one byte per element.
+- Tensor literals use the `t` suffix, for example `[1, 2, 3]t`.
 
 ### Nullable (Optional) Types
 Types can be marked as nullable by appending a `?`.

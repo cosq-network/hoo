@@ -160,7 +160,7 @@ This document provides a high-level overview of the current status of all tracke
   - **Title**: # ISSUE-025: Implementation Plan for `tensor` Data Type
   - **Status**: IMPLEMENTED
   - **Priority**: HIGH** (for AI/ML target workloads)
-  - **Notes**: Full 1D/2D/3D support with element-wise arithmetic, comparison, logical operators, and matrix multiplication. Both int64 and f64 element types. Phase 10 complete.
+  - **Notes**: Complete rank-1/2/3 support with tensor literals, packed bit and one-byte int8/byte/f8 storage, canonical E4M3 FP8 fallback, promotion, element-wise arithmetic/comparison/logic, matrix multiplication, reshape, transpose, softmax, tensor-scalar broadcasting, and JIT/runtime coverage. Higher ANN/autograd kernels remain tracked by ISSUE-026.
 
 - **[ISSUE-027_hvm_1_5_subword_precision.md](issues/ISSUE-027_hvm_1_5_subword_precision.md)**
   - **Title**: # ISSUE-027: HVM 1.5 Sub-Word Precision Extension Implementation
@@ -203,7 +203,8 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-030_tensor_scalar_arithmetic.md](issues/ISSUE-030_tensor_scalar_arithmetic.md)**
   - **Title**: # ISSUE-030: Tensor-Scalar Mixed Arithmetic Support
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED
+  - **Notes**: Safe scalar broadcasting for add, subtract, scale, and divide in both operand orders, with runtime/JIT coverage.
   - **Priority**: Medium (Essential for training loops/optimizers)
 
 - **[ISSUE-034_language_ergonomics_proposals.md](issues/ISSUE-034_language_ergonomics_proposals.md)**
