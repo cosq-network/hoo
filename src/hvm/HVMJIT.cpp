@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -3605,6 +3606,96 @@ extern "C" {
     extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_should_stop_state(void* state_ptr) {
         return shadow_should_stop_state(state_ptr);
     }
+
+    // Canonical scalar FP8 representation used by FLOAT_ARITH_B.  This is
+    // E4M3 with an IEEE-style exponent field (bias 7); conversion remains a
+    // small software shim on hosts without native FP8 instructions.
+    uint8_t fp8EncodeE4M3(double value) {
+        if (std::isnan(value)) return 0x7FU;
+        const bool negative = std::signbit(value);
+        const double magnitude = std::fabs(value);
+        if (std::isinf(magnitude)) return static_cast<uint8_t>((negative ? 0x80U : 0U) | 0x78U);
+        if (magnitude == 0.0) return negative ? 0x80U : 0U;
+
+        int exponent = 0;
+        const double fraction = std::frexp(magnitude, &exponent);
+        int unbiased = exponent - 1;
+        int encodedExponent = unbiased + 7;
+        uint8_t mantissa = 0;
+        if (encodedExponent <= 0) {
+            const double scaled = std::ldexp(magnitude, 9); // 2^(1-bias) * 2^3
+            int subnormal = static_cast<int>(std::round(scaled));
+            if (subnormal <= 0) return negative ? 0x80U : 0U;
+            if (subnormal >= 8) {
+                encodedExponent = 1;
+                mantissa = 0;
+            } else {
+                mantissa = static_cast<uint8_t>(subnormal);
+                encodedExponent = 0;
+            }
+        } else if (encodedExponent >= 15) {
+            return static_cast<uint8_t>((negative ? 0x80U : 0U) | 0x78U);
+        } else {
+            const double normalized = std::ldexp(magnitude, -unbiased) - 1.0;
+            int rounded = static_cast<int>(std::round(normalized * 8.0));
+            if (rounded == 8) {
+                ++encodedExponent;
+                rounded = 0;
+                if (encodedExponent >= 15) {
+                    return static_cast<uint8_t>((negative ? 0x80U : 0U) | 0x78U);
+                }
+            }
+            mantissa = static_cast<uint8_t>(rounded);
+        }
+        return static_cast<uint8_t>((negative ? 0x80U : 0U) |
+                                    (static_cast<uint8_t>(encodedExponent) << 3U) | mantissa);
+    }
+
+    double fp8DecodeE4M3(uint8_t encoded) {
+        const bool negative = (encoded & 0x80U) != 0;
+        const uint8_t exponent = static_cast<uint8_t>((encoded >> 3U) & 0x0FU);
+        const uint8_t mantissa = encoded & 0x07U;
+        double value = 0.0;
+        if (exponent == 0) {
+            value = std::ldexp(static_cast<double>(mantissa), -9);
+        } else if (exponent == 0x0FU) {
+            value = mantissa == 0 ? INFINITY : NAN;
+        } else {
+            value = std::ldexp(1.0 + static_cast<double>(mantissa) / 8.0,
+                               static_cast<int>(exponent) - 7);
+        }
+        return negative ? -value : value;
+    }
+
+    extern "C" uint64_t hooc_hvm_f8_arith(uint64_t lhs, uint64_t rhs, uint64_t func) {
+        const double a = fp8DecodeE4M3(static_cast<uint8_t>(lhs));
+        const double b = fp8DecodeE4M3(static_cast<uint8_t>(rhs));
+        double result = 0.0;
+        switch (func) {
+            case 0: result = a + b; break;
+            case 1: result = a - b; break;
+            case 2: result = a * b; break;
+            case 3: result = a / b; break;
+            default: return 0;
+        }
+        return fp8EncodeE4M3(result);
+    }
+
+    uint64_t jit_f8_encode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double value = 0.0;
+        std::memcpy(&value, &state->regs[1], sizeof(value));
+        return fp8EncodeE4M3(value);
+    }
+
+    uint64_t jit_f8_decode(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const double value = fp8DecodeE4M3(static_cast<uint8_t>(state->regs[1]));
+        uint64_t bits = 0;
+        std::memcpy(&bits, &value, sizeof(bits));
+        return bits;
+    }
+
     extern "C" void hooc_hvm_vector_load(void* state_ptr, uint64_t vd, uint64_t base) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         uint8_t* ptr = (base >= 1000000000ULL) ? reinterpret_cast<uint8_t*>(base) : (state->memory + base);
@@ -4026,6 +4117,8 @@ constexpr InboundTrampolineFn2 kInboundTrampolines2[kMaxInboundTrampolineSlots] 
 
 std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
     return {
+        {"_F_hoo_f8_encode_i1_d", reinterpret_cast<void*>(&jit_f8_encode)},
+        {"_F_hoo_f8_decode_d_i1", reinterpret_cast<void*>(&jit_f8_decode)},
         {"_F_hoo_future_new_i64", reinterpret_cast<void*>(&jit_hoo_future_new)},
         {"_F_hoo_future_new_native_i64", reinterpret_cast<void*>(&jit_hoo_future_new)},
         {"_F_hoo_future_set_value_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_value)},
@@ -5514,6 +5607,8 @@ bool HVMJIT::bootstrapRuntimeModules() {
     runtime->registerFunction("release", reinterpret_cast<void*>(&hoo_release), "_F_hoo_release_v_p");
     runtime->registerFunction("get_refcount", reinterpret_cast<void*>(&hoo_get_refcount), "_F_hoo_get_refcount_i8_p");
     runtime->registerFunction("get_type_id", reinterpret_cast<void*>(&hoo_get_type_id), "_F_hoo_get_type_id_i8_p");
+    runtime->registerFunction("f8_encode", reinterpret_cast<void*>(&jit_f8_encode), "_F_hoo_f8_encode_i1_d");
+    runtime->registerFunction("f8_decode", reinterpret_cast<void*>(&jit_f8_decode), "_F_hoo_f8_decode_d_i1");
 
     runtime->registerFunction("string_from_cstr", reinterpret_cast<void*>(&hoo_string_from_cstr),
                               "_F_M_hoo_E_String_fromCStr_static_p_p");
@@ -5955,11 +6050,17 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
             return true;
         case hvm::Opcode::ARITH:
             return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7;
+        case hvm::Opcode::ARITH_B:
+            return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7 || func == 8;
         case hvm::Opcode::FLOAT_ARITH:
+            return func <= 3;
+        case hvm::Opcode::FLOAT_ARITH_B:
             return func <= 3;
         case hvm::Opcode::SHIFT:
             return func <= 2;
         case hvm::Opcode::LOGIC:
+            return func <= 2;
+        case hvm::Opcode::LOGIC_B:
             return func <= 2;
         case hvm::Opcode::CMP:
             return func <= 5;
@@ -6299,6 +6400,36 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 }
                 break;
             }
+            case hvm::Opcode::ARITH_B: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint8_t ua = static_cast<uint8_t>(readReg(o.rs1));
+                const uint8_t ub = static_cast<uint8_t>(readReg(o.rs2));
+                const int16_t sa = static_cast<int8_t>(ua);
+                const int16_t sb = static_cast<int8_t>(ub);
+                switch (o.func) {
+                    case 0: writeReg(o.rd, static_cast<uint8_t>(ua + ub)); break;
+                    case 1: writeReg(o.rd, static_cast<uint8_t>(ua - ub)); break;
+                    case 2: writeReg(o.rd, static_cast<uint8_t>(ua * ub)); break;
+                    case 5:
+                        if (sb == 0) { lastError_ = "8-bit division by zero"; return -1; }
+                        if (sa == -128 && sb == -1) { lastError_ = "8-bit division overflow"; return -1; }
+                        writeReg(o.rd, static_cast<uint64_t>(static_cast<int8_t>(sa / sb))); break;
+                    case 6:
+                        if (ub == 0) { lastError_ = "8-bit unsigned division by zero"; return -1; }
+                        writeReg(o.rd, static_cast<uint8_t>(ua / ub)); break;
+                    case 7:
+                        if (sb == 0) { lastError_ = "8-bit remainder by zero"; return -1; }
+                        if (sa == -128 && sb == -1) { lastError_ = "8-bit remainder overflow"; return -1; }
+                        writeReg(o.rd, static_cast<uint64_t>(static_cast<int8_t>(sa % sb))); break;
+                    case 8:
+                        if (ub == 0) { lastError_ = "8-bit unsigned remainder by zero"; return -1; }
+                        writeReg(o.rd, static_cast<uint8_t>(ua % ub)); break;
+                    default:
+                        lastError_ = "Unsupported ARITH_B func: " + std::to_string(o.func);
+                        return -1;
+                }
+                break;
+            }
             case hvm::Opcode::SHIFT: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
                 const uint64_t a = readReg(o.rs1);
@@ -6322,6 +6453,20 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     case 2: writeReg(o.rd, a ^ b); break;
                     default:
                         lastError_ = "Unsupported LOGIC func: " + std::to_string(o.func);
+                        return -1;
+                }
+                break;
+            }
+            case hvm::Opcode::LOGIC_B: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint8_t a = static_cast<uint8_t>(readReg(o.rs1)) & 1U;
+                const uint8_t b = static_cast<uint8_t>(readReg(o.rs2)) & 1U;
+                switch (o.func) {
+                    case 0: writeReg(o.rd, static_cast<uint8_t>(a ^ b)); break;
+                    case 1: writeReg(o.rd, static_cast<uint8_t>(a & b)); break;
+                    case 2: writeReg(o.rd, static_cast<uint8_t>(a ^ 1U)); break;
+                    default:
+                        lastError_ = "Unsupported LOGIC_B func: " + std::to_string(o.func);
                         return -1;
                 }
                 break;
@@ -6358,6 +6503,11 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                         return -1;
                 }
                 writeReg(o.rd, f64AsBits(out));
+                break;
+            }
+            case hvm::Opcode::FLOAT_ARITH_B: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                writeReg(o.rd, hooc_hvm_f8_arith(readReg(o.rs1), readReg(o.rs2), o.func));
                 break;
             }
             case hvm::Opcode::FCMP: {
@@ -7687,6 +7837,8 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             "hooc_hvm_vector_shift", llvm::FunctionType::get(builder.getVoidTy(), {statePtrTy, i64, i64, i64, i64}, false));
         auto vectorBitwiseCallee = module->getOrInsertFunction(
             "hooc_hvm_vector_bitwise", llvm::FunctionType::get(builder.getVoidTy(), {statePtrTy, i64, i64, i64, i64}, false));
+        auto f8ArithCallee = module->getOrInsertFunction(
+            "hooc_hvm_f8_arith", llvm::FunctionType::get(i64, {i64, i64, i64}, false));
         auto vectorMemStridedCallee = module->getOrInsertFunction(
             "hooc_hvm_vector_mem_strided", llvm::FunctionType::get(builder.getVoidTy(), {statePtrTy, i64, i64, i64, i64}, false));
         auto vectorMemIndexedCallee = module->getOrInsertFunction(
@@ -7994,6 +8146,46 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     }
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, out);
+                } else if (op == hvm::Opcode::ARITH_B) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* a8 = builder.CreateTrunc(readReg(o.rs1), builder.getInt8Ty());
+                    auto* b8 = builder.CreateTrunc(readReg(o.rs2), builder.getInt8Ty());
+                    llvm::Value* out8 = nullptr;
+                    if (o.func == 0) out8 = builder.CreateAdd(a8, b8);
+                    else if (o.func == 1) out8 = builder.CreateSub(a8, b8);
+                    else if (o.func == 2) out8 = builder.CreateMul(a8, b8);
+                    else if (o.func == 5 || o.func == 6 || o.func == 7 || o.func == 8) {
+                        auto* zero8 = builder.getInt8(0);
+                        auto* isZero = builder.CreateICmpEQ(b8, zero8);
+                        auto* okBB = llvm::BasicBlock::Create(*context, "arith_b_ok", fn);
+                        auto* errBB = llvm::BasicBlock::Create(*context, "arith_b_err", fn);
+                        builder.CreateCondBr(isZero, errBB, okBB);
+                        builder.SetInsertPoint(errBB);
+                        builder.CreateRet(builder.getInt64(-1));
+                        builder.SetInsertPoint(okBB);
+                        if (o.func == 5 || o.func == 7) {
+                            auto* min8 = builder.getInt8(static_cast<uint8_t>(-128));
+                            auto* negOne8 = builder.getInt8(static_cast<uint8_t>(-1));
+                            auto* overflow = builder.CreateAnd(builder.CreateICmpEQ(a8, min8),
+                                                               builder.CreateICmpEQ(b8, negOne8));
+                            auto* okBB2 = llvm::BasicBlock::Create(*context, "arith_b_ok2", fn);
+                            auto* errBB2 = llvm::BasicBlock::Create(*context, "arith_b_err2", fn);
+                            builder.CreateCondBr(overflow, errBB2, okBB2);
+                            builder.SetInsertPoint(errBB2);
+                            builder.CreateRet(builder.getInt64(-1));
+                            builder.SetInsertPoint(okBB2);
+                        }
+                        if (o.func == 5) out8 = builder.CreateSDiv(a8, b8);
+                        else if (o.func == 6) out8 = builder.CreateUDiv(a8, b8);
+                        else if (o.func == 7) out8 = builder.CreateSRem(a8, b8);
+                        else out8 = builder.CreateURem(a8, b8);
+                    } else {
+                        builder.CreateRet(builder.getInt64(-1));
+                        break;
+                    }
+                    writeReg(o.rd, (o.func == 5 || o.func == 7)
+                        ? builder.CreateSExt(out8, i64)
+                        : builder.CreateZExt(out8, i64));
                 } else if (op == hvm::Opcode::SHIFT) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto sh = builder.CreateAnd(readReg(o.rs2), builder.getInt64(63));
@@ -8011,6 +8203,16 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 2) out = builder.CreateXor(readReg(o.rs1), readReg(o.rs2));
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, out);
+                } else if (op == hvm::Opcode::LOGIC_B) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* a = builder.CreateAnd(readReg(o.rs1), builder.getInt64(1));
+                    auto* b = builder.CreateAnd(readReg(o.rs2), builder.getInt64(1));
+                    llvm::Value* out = nullptr;
+                    if (o.func == 0) out = builder.CreateXor(a, b);
+                    else if (o.func == 1) out = builder.CreateAnd(a, b);
+                    else if (o.func == 2) out = builder.CreateXor(a, builder.getInt64(1));
+                    else { builder.CreateRet(builder.getInt64(-1)); break; }
+                    writeReg(o.rd, builder.CreateAnd(out, builder.getInt64(1)));
                 } else if (op == hvm::Opcode::CMP) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     llvm::Value* pred = nullptr;
@@ -8033,6 +8235,11 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 3) out = builder.CreateFDiv(a, b);
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, builder.CreateBitCast(out, i64));
+                } else if (op == hvm::Opcode::FLOAT_ARITH_B) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* result = builder.CreateCall(f8ArithCallee,
+                        {readReg(o.rs1), readReg(o.rs2), builder.getInt64(o.func)});
+                    writeReg(o.rd, result);
                 } else if (op == hvm::Opcode::FCMP) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* a = builder.CreateBitCast(readReg(o.rs1), builder.getDoubleTy());

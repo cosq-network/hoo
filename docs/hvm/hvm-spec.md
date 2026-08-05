@@ -85,6 +85,25 @@ HVM 1.5 promotes the following low-complexity extensions into the standard HVM C
 
 These instructions remain 64-bit operations. They do not change pointer width, register width, stack slot width, or the public ABI.
 
+### HVM 1.5 scalar sub-word profile
+
+The HVM 1.5 scalar profile adds three base-encoded instruction families while
+retaining the 64-bit register machine:
+
+- `ARITH_B` (`0x11`) samples operands from bits 7:0 and provides wrapping
+  `ADD.B`/`SUB.B`/`MUL.B`, signed and unsigned division, and signed and
+  unsigned remainder.
+- `LOGIC_B` (`0x22`) applies XOR, AND, and NOT to bit 0 and returns a
+  normalized bit value.
+- `FLOAT_ARITH_B` (`0x31`) performs arithmetic on canonical E4M3 FP8 byte
+  encodings. The interpreter and LLVM JIT use a software-compatible shim when
+  host FP8 instructions are unavailable.
+
+Integer sub-word instructions write a low-byte result. The compiler applies
+sign extension for `int8` and zero extension for `byte`/`bit` when values
+return to the normal 64-bit language ABI. FP8 codegen encodes and decodes at
+the existing f64 language boundary, preserving mixed-precision compatibility.
+
 ### 5.3 Optional Profile-Gated Extensions
 
 The following extensions are optional unless required by a specific HVM platform profile:

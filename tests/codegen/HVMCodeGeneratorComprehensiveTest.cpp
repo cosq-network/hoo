@@ -254,6 +254,32 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ByteComparisonSignedVsUnsigned) {
     }
 }
 
+TEST_F(HVMCodeGeneratorComprehensiveTest, SubwordTypesSelectNativeOpcodeFamilies) {
+    std::string code = R"(
+        import hoo;
+        func :int8 addInt8(a: int8, b: int8) { return a + b; }
+        func :byte remByte(a: byte, b: byte) { return a % b; }
+        func :f8 addF8(a: f8, b: f8) { return a + b; }
+        func :bit invertBit(a: bit) { return !a; }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundArithB = false;
+    bool foundFloatArithB = false;
+    bool foundLogicB = false;
+    for (const auto& inst : insts) {
+        foundArithB |= inst.getOpcode() == Opcode::ARITH_B;
+        foundFloatArithB |= inst.getOpcode() == Opcode::FLOAT_ARITH_B;
+        foundLogicB |= inst.getOpcode() == Opcode::LOGIC_B;
+    }
+    EXPECT_TRUE(foundArithB);
+    EXPECT_TRUE(foundFloatArithB);
+    EXPECT_TRUE(foundLogicB);
+}
+
 TEST_F(HVMCodeGeneratorComprehensiveTest, DivisionOperator) {
     std::string code = R"(
         import hoo;

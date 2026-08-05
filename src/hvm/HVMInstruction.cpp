@@ -522,6 +522,16 @@ InstructionRegistry::InstructionRegistry() {
     reg("div",   Opcode::ARITH, InstructionFormat::R, 5);
     reg("divu",  Opcode::ARITH, InstructionFormat::R, 6);
     reg("rem",   Opcode::ARITH, InstructionFormat::R, 7);
+
+    // HVM 1.5 sub-word integer arithmetic (0x11). Results are low-byte
+    // values; the compiler applies the required signed/unsigned extension.
+    reg("add.b",  Opcode::ARITH_B, InstructionFormat::R, 0);
+    reg("sub.b",  Opcode::ARITH_B, InstructionFormat::R, 1);
+    reg("mul.b",  Opcode::ARITH_B, InstructionFormat::R, 2);
+    reg("div.b",  Opcode::ARITH_B, InstructionFormat::R, 5);
+    reg("divu.b", Opcode::ARITH_B, InstructionFormat::R, 6);
+    reg("rem.b",  Opcode::ARITH_B, InstructionFormat::R, 7);
+    reg("remu.b", Opcode::ARITH_B, InstructionFormat::R, 8);
     
     // Compressed 16‑bit instructions (HVM‑C) – only those that satisfy the 4‑bit register/immediate constraint
     regCompressed("add.c", Opcode::ARITH, InstructionFormat::R, 0); // rd = rs1 + imm4
@@ -539,6 +549,10 @@ InstructionRegistry::InstructionRegistry() {
     reg("and",   Opcode::LOGIC, InstructionFormat::R, 0);
     reg("or",    Opcode::LOGIC, InstructionFormat::R, 1);
     reg("xor",   Opcode::LOGIC, InstructionFormat::R, 2);
+    // HVM 1.5 one-bit boolean arithmetic (0x22).
+    reg("badd",  Opcode::LOGIC_B, InstructionFormat::R, 0);
+    reg("bmul",  Opcode::LOGIC_B, InstructionFormat::R, 1);
+    reg("bnot",  Opcode::LOGIC_B, InstructionFormat::R, 2);
     reg("not",   Opcode::NOT,   InstructionFormat::R);
     
     // Float Arith (0x30)
@@ -546,6 +560,11 @@ InstructionRegistry::InstructionRegistry() {
     reg("fsub",  Opcode::FLOAT_ARITH, InstructionFormat::R, 1);
     reg("fmul",  Opcode::FLOAT_ARITH, InstructionFormat::R, 2);
     reg("fdiv",  Opcode::FLOAT_ARITH, InstructionFormat::R, 3);
+    // HVM 1.5 FP8 arithmetic (0x31), using the canonical E4M3 encoding.
+    reg("fadd.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 0);
+    reg("fsub.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 1);
+    reg("fmul.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 2);
+    reg("fdiv.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 3);
     
     // Comparisons (0x40, 0x41)
     reg("cmpeq", Opcode::CMP,   InstructionFormat::R, 0);

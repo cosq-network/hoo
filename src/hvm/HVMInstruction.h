@@ -26,10 +26,13 @@ enum class Opcode : uint16_t {
     RELEASE  = 0x07,
     ICACHE_RNG = 0x0B,
     ARITH    = 0x10, // ADD, SUB, MUL, DIV, DIVU, REM
+    ARITH_B  = 0x11, // ADD.B, SUB.B, MUL.B, DIV.B, DIVU.B, REM.B, REMU.B
     SHIFT    = 0x13, // SHL, SHR, SAR
     LOGIC    = 0x20, // AND, OR, XOR
+    LOGIC_B  = 0x22, // BADD, BMUL, BNOT
     NOT      = 0x21,
     FLOAT_ARITH = 0x30, // FADD, FSUB, FMUL, FDIV
+    FLOAT_ARITH_B = 0x31, // FADD.B, FSUB.B, FMUL.B, FDIV.B
     CMP      = 0x40, // CMPEQ, CMPNE, CMPLT, CMPLE
     FCMP     = 0x41, // FCMPEQ, FCMPLT, FCMPLE
     BEQ      = 0x50,

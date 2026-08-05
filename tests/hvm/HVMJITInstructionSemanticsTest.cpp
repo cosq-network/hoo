@@ -460,6 +460,59 @@ TEST_F(HVMJITInstructionSemanticsTest, FloatArithmeticAndComparisonUsingSubnorma
     EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, SubwordIntegerArithmeticWrapsAndUsesUnsignedRemainder) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x7F}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1}),
+        makeR(Opcode::ARITH_B, OperandsR{4, 2, 3, 0}), // 0x7f + 1 -> 0x80
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 250}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 7}),
+        makeR(Opcode::ARITH_B, OperandsR{1, 2, 3, 8}), // 250 % 7 -> 5
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["subword_arith.ho"] = buildModuleBytes("subword_arith", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("subword_arith.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 5) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SubwordBitLogicNormalizesBitZero) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1}),
+        makeR(Opcode::LOGIC_B, OperandsR{4, 2, 3, 0}), // XOR -> 0
+        makeR(Opcode::LOGIC_B, OperandsR{1, 4, 0, 2}), // NOT -> 1
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["subword_logic.ho"] = buildModuleBytes("subword_logic", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("subword_logic.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SubwordFp8ArithmeticUsesCanonicalE4M3Encoding) {
+    // E4M3: 1.5 = 0x3c, 2.25 = 0x41, rounded 3.75 = 0x47.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x3C}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0x41}),
+        makeR(Opcode::FLOAT_ARITH_B, OperandsR{1, 2, 3, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["subword_fp8.ho"] = buildModuleBytes("subword_fp8", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("subword_fp8.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0x47) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, UnalignedDoubleWordAccessReportsError) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),
@@ -2164,4 +2217,3 @@ TEST_F(HVMJITInstructionSemanticsTest, VectorStoreIndexed) {
     ASSERT_TRUE(jit.loadInput("vstx.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 40) << jit.getLastError();
 }
-

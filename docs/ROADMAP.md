@@ -164,7 +164,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-027_hvm_1_5_subword_precision.md](issues/ISSUE-027_hvm_1_5_subword_precision.md)**
   - **Title**: # ISSUE-027: HVM 1.5 Sub-Word Precision Extension Implementation
-  - **Status**: PARTIALLY IMPLEMENTED - LANGUAGE TYPES PRESENT, NATIVE SUB-WORD ISA NOT IMPLEMENTED
+  - **Status**: IMPLEMENTED for the HVM 1.5 scalar E4M3/int8/byte/bit profile
   - **Priority**: HIGH** (Prerequisite for high-performance AI/ML support)
 
 - **[ISSUE-031_chained_inference.md](issues/ISSUE-031_chained_inference.md)**

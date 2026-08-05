@@ -3347,6 +3347,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightType = rightExprType;
         const bool isFloatExpr = leftType == 2 || leftType == 9 || rightType == 2 || rightType == 9;
         const bool isUnsigned = leftType == 6 || rightType == 6;
+        const bool isSubwordInt = ((leftType == 5 || leftType == 6) &&
+                                   (rightType == 5 || rightType == 6)) ||
+                                  (leftType == 8 && rightType == 8);
+        const bool isNativeF8Arithmetic = leftType == 9 && rightType == 9 &&
+            (binary->getOperator() == ast::BinaryOperator::PLUS ||
+             binary->getOperator() == ast::BinaryOperator::MINUS ||
+             binary->getOperator() == ast::BinaryOperator::MULTIPLY ||
+             binary->getOperator() == ast::BinaryOperator::DIVIDE);
         const bool isStringConcat = binary->getOperator() == ast::BinaryOperator::PLUS
             && (leftType == 101 || rightType == 101);
         const bool isAnd = binary->getOperator() == ast::BinaryOperator::AND;
@@ -3400,14 +3408,29 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
         uint8_t left = visitExpression(binary->getLeft());
         uint8_t right = visitExpression(binary->getRight());
+        if (isNativeF8Arithmetic) {
+            emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_f8_encode_i1_d");
+            emit(Opcode::MOV, OperandsR{left, 1, 0, 0});
+            emit(Opcode::MOV, OperandsR{1, right, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_f8_encode_i1_d");
+            emit(Opcode::MOV, OperandsR{right, 1, 0, 0});
+        }
         uint8_t dest = allocateRegister();
         Opcode op = Opcode::ARITH;
         uint16_t func = 0;
         switch (binary->getOperator()) {
-            case ast::BinaryOperator::PLUS:  op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 0; break;
-            case ast::BinaryOperator::MINUS: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 1; break;
-            case ast::BinaryOperator::MULTIPLY: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = 2; break;
-            case ast::BinaryOperator::DIVIDE: op = isFloatExpr ? Opcode::FLOAT_ARITH : Opcode::ARITH; func = isFloatExpr ? 3 : 5; break;
+            case ast::BinaryOperator::PLUS:
+                op = isNativeF8Arithmetic ? Opcode::FLOAT_ARITH_B : (isFloatExpr ? Opcode::FLOAT_ARITH : (isSubwordInt ? Opcode::ARITH_B : Opcode::ARITH)), func = 0;
+                break;
+            case ast::BinaryOperator::MINUS: op = isNativeF8Arithmetic ? Opcode::FLOAT_ARITH_B : (isFloatExpr ? Opcode::FLOAT_ARITH : (isSubwordInt ? Opcode::ARITH_B : Opcode::ARITH)); func = 1; break;
+            case ast::BinaryOperator::MULTIPLY:
+                op = isNativeF8Arithmetic ? Opcode::FLOAT_ARITH_B : (isFloatExpr ? Opcode::FLOAT_ARITH : (isSubwordInt ? Opcode::ARITH_B : Opcode::ARITH)), func = 2;
+                break;
+            case ast::BinaryOperator::DIVIDE:
+                op = isNativeF8Arithmetic ? Opcode::FLOAT_ARITH_B : (isFloatExpr ? Opcode::FLOAT_ARITH : (isSubwordInt ? Opcode::ARITH_B : Opcode::ARITH));
+                func = isFloatExpr ? 3 : (isSubwordInt && isUnsigned ? 6 : (isSubwordInt ? 5 : 5));
+                break;
             case ast::BinaryOperator::MODULO:
                 if (isFloatExpr) {
                     emit(Opcode::MOV, OperandsR{1, left, 0, 0});
@@ -3419,7 +3442,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     freeRegister(right);
                     return fmodDest;
                 }
-                func = 7; break;
+                func = isSubwordInt && isUnsigned ? 8 : 7; break;
             case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = 0; break;
             case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
             case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2); break;
@@ -3441,6 +3464,26 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             default: addError("Unsupported binary operator");
         }
         emit(op, OperandsR{dest, left, right, func});
+        if (isNativeF8Arithmetic) {
+            emit(Opcode::MOV, OperandsR{1, dest, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_f8_decode_d_i1");
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        } else if (isSubwordInt && (binary->getOperator() == ast::BinaryOperator::PLUS ||
+                                    binary->getOperator() == ast::BinaryOperator::MINUS ||
+                                    binary->getOperator() == ast::BinaryOperator::MULTIPLY ||
+                                    binary->getOperator() == ast::BinaryOperator::DIVIDE ||
+                                    binary->getOperator() == ast::BinaryOperator::MODULO)) {
+            if (leftType == 5 && rightType == 5) {
+                uint8_t shift = emitConstant(56);
+                emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 0});
+                emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 2});
+                freeRegister(shift);
+            } else {
+                uint8_t mask = emitConstant(0xFF);
+                emit(Opcode::LOGIC, OperandsR{dest, dest, mask, 0});
+                freeRegister(mask);
+            }
+        }
         freeRegister(left);
         freeRegister(right);
         return dest;
@@ -3512,7 +3555,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
         uint8_t src = visitExpression(logicalNot->getOperand());
         uint8_t dest = allocateRegister();
-        if (inferExpressionTypeId(logicalNot->getOperand()) == 104) {
+        if (inferExpressionTypeId(logicalNot->getOperand()) == 8) {
+            emit(Opcode::LOGIC_B, OperandsR{dest, src, 0, 2});
+        } else if (inferExpressionTypeId(logicalNot->getOperand()) == 104) {
             emit(Opcode::MOV, OperandsR{1, src, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Tensor_not_p_p");
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
@@ -3531,9 +3576,34 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emit(Opcode::MOV, OperandsR{1, src, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Decimal_neg_p_p");
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-        } else if (operandType == 2 || operandType == 9) {
+        } else if (operandType == 2) {
             uint8_t zero = emitConstant(0);
             emit(Opcode::FLOAT_ARITH, OperandsR{dest, zero, src, 1});
+            freeRegister(zero);
+        } else if (operandType == 9) {
+            uint8_t zero = emitConstant(0.0);
+            emit(Opcode::MOV, OperandsR{1, zero, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_f8_encode_i1_d");
+            uint8_t zeroF8 = allocateRegister();
+            emit(Opcode::MOV, OperandsR{zeroF8, 1, 0, 0});
+            emit(Opcode::MOV, OperandsR{1, src, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_f8_encode_i1_d");
+            uint8_t srcF8 = allocateRegister();
+            emit(Opcode::MOV, OperandsR{srcF8, 1, 0, 0});
+            emit(Opcode::FLOAT_ARITH_B, OperandsR{dest, zeroF8, srcF8, 1});
+            emit(Opcode::MOV, OperandsR{1, dest, 0, 0});
+            emitCall(Opcode::CALL, "_F_hoo_f8_decode_d_i1");
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            freeRegister(srcF8);
+            freeRegister(zeroF8);
+            freeRegister(zero);
+        } else if (operandType == 5) {
+            uint8_t zero = emitConstant(0);
+            emit(Opcode::ARITH_B, OperandsR{dest, zero, src, 1});
+            uint8_t shift = emitConstant(56);
+            emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 0});
+            emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 2});
+            freeRegister(shift);
             freeRegister(zero);
         } else {
             emit(Opcode::ARITH, OperandsR{dest, 0, src, 1});
@@ -3626,7 +3696,56 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 case ast::CompoundAssignmentOperator::RIGHT_SHIFT_ASSIGN: op = Opcode::SHIFT; func = 1; break;
                 default: addError("Unsupported compound assignment");
             }
-            emit(op, OperandsR{resultReg, lhsReg, rhsReg, func});
+
+            const uint32_t lhsType = inferExpressionTypeId(compoundAssign->getLeft());
+            const uint32_t rhsType = inferExpressionTypeId(compoundAssign->getRight());
+            const bool isSubwordInt =
+                ((lhsType == 5 || lhsType == 6) && (rhsType == 5 || rhsType == 6)) ||
+                (lhsType == 8 && rhsType == 8);
+            const bool isNativeF8 = lhsType == 9 && rhsType == 9 &&
+                compoundAssign->getOperator() != ast::CompoundAssignmentOperator::MODULO_ASSIGN &&
+                compoundAssign->getOperator() != ast::CompoundAssignmentOperator::LEFT_SHIFT_ASSIGN &&
+                compoundAssign->getOperator() != ast::CompoundAssignmentOperator::RIGHT_SHIFT_ASSIGN;
+            bool nativeF8Lowered = false;
+            if (isSubwordInt && op == Opcode::ARITH) {
+                op = Opcode::ARITH_B;
+                if (lhsType == 6 && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::DIVIDE_ASSIGN) func = 6;
+                if (lhsType == 6 && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::MODULO_ASSIGN) func = 8;
+            }
+            if (isNativeF8 && op == Opcode::ARITH) {
+                if (compoundAssign->getOperator() == ast::CompoundAssignmentOperator::DIVIDE_ASSIGN) func = 3;
+                emit(Opcode::MOV, OperandsR{1, lhsReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_f8_encode_i1_d");
+                uint8_t lhsF8 = allocateRegister();
+                emit(Opcode::MOV, OperandsR{lhsF8, 1, 0, 0});
+                emit(Opcode::MOV, OperandsR{1, rhsReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_f8_encode_i1_d");
+                uint8_t rhsF8 = allocateRegister();
+                emit(Opcode::MOV, OperandsR{rhsF8, 1, 0, 0});
+                emit(Opcode::FLOAT_ARITH_B, OperandsR{resultReg, lhsF8, rhsF8, func});
+                emit(Opcode::MOV, OperandsR{1, resultReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_hoo_f8_decode_d_i1");
+                emit(Opcode::MOV, OperandsR{resultReg, 1, 0, 0});
+                freeRegister(rhsF8);
+                freeRegister(lhsF8);
+                nativeF8Lowered = true;
+            }
+            if (!nativeF8Lowered) {
+                emit(op, OperandsR{resultReg, lhsReg, rhsReg, func});
+            }
+
+            if (op == Opcode::ARITH_B) {
+                if (lhsType == 5) {
+                    uint8_t shift = emitConstant(56);
+                    emit(Opcode::SHIFT, OperandsR{resultReg, resultReg, shift, 0});
+                    emit(Opcode::SHIFT, OperandsR{resultReg, resultReg, shift, 2});
+                    freeRegister(shift);
+                } else {
+                    uint8_t mask = emitConstant(0xFF);
+                    emit(Opcode::LOGIC, OperandsR{resultReg, resultReg, mask, 0});
+                    freeRegister(mask);
+                }
+            }
             
             if (isMember) {
                 uint8_t setOffsetReg = emitConstant(static_cast<int64_t>(offset));

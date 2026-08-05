@@ -23,9 +23,10 @@ Standard 32-bit `R` format.
 - `DIV.B` (func 5): 8-bit signed division.
 - `DIVU.B` (func 6): 8-bit unsigned division.
 - `REM.B` (func 7): 8-bit remainder.
+- `REMU.B` (func 8): 8-bit unsigned remainder.
 
 #### Family 2: Low-Precision Floating Point (`FLOAT_ARITH_B`, Opcode 0x31)
-Native 8-bit floating-point math (E4M3/E5M2).
+Native 8-bit floating-point math using the canonical E4M3 representation.
 - `FADD.B` (func 0)
 - `FSUB.B` (func 1)
 - `FMUL.B` (func 2)
@@ -55,11 +56,16 @@ Instead of operating on `i64` and masking, the JIT emits:
 This allows LLVM to perform **Strength Reduction** and **Range Analysis** optimizations that are impossible with manual `i64` masking.
 
 **FP8 (E4M3/E5M2) Support:**
-On modern hardware (NVIDIA Hopper, ARMv9 SME), the JIT maps `FLOAT_ARITH_B` to native types:
-- `f8e4m3fn` (Precision-focused)
-- `f8e5m2` (Range-focused)
-
-For older hardware, the JIT emits a specialized **software emulation shim** that uses bit-manipulation to promote `f8` to `f32/f64` in just 4-5 instructions, avoiding expensive runtime library calls.
+The current implementation has a stable software representation and fallback ABI:
+- `f8` values are encoded as IEEE-style E4M3 bytes (including zero, subnormal,
+  infinity, and NaN handling).
+- `FLOAT_ARITH_B` operates on encoded bytes in the interpreter and LLVM JIT
+  through `hooc_hvm_f8_arith`.
+- Codegen uses `_F_hoo_f8_encode_i1_d` and `_F_hoo_f8_decode_d_i1` at the
+  existing f64 language ABI boundary, so mixed `f8`/`f64` promotion remains
+  compatible.
+- A future E5M2 profile may share the same opcode and shim contract, but is not
+  silently mixed with the canonical E4M3 profile.
 
 ### 3.2 Compiler Codegen Integration (`src/codegen/HVMCodeGenerator.cpp`)
 The `HVMCodeGenerator` is updated to be **Sub-word Aware**.
@@ -67,8 +73,14 @@ The `HVMCodeGenerator` is updated to be **Sub-word Aware**.
 1.  **Type-Driven Selection**: When generating code for `a + b`, the generator queries the `inferExpressionTypeId()` result.
 2.  **Opcode Dispatch**:
     - If `typeId == 5` (`int8`), emit `Opcode::ARITH_B / func 0`.
-    - If `typeId == 9` (`f8`), emit `Opcode::FLOAT_ARITH_B / func 0`.
-3.  **Instruction Pruning**: The generator removes all `AND r1, r1, 0xFF` instructions previously used to simulate 8-bit wrap-around, reducing the HVM binary size.
+    - If `typeId == 9` (`f8`), emit `Opcode::FLOAT_ARITH_B / func 0` with
+      explicit f8 encode/decode shims at the f64 ABI boundary.
+    - `byte` division/remainder select `DIVU.B`/`REMU.B`; `int8` selects
+      signed `DIV.B`/`REM.B`.
+3.  **Instruction Pruning**: Native arithmetic performs the low-byte operation;
+    codegen adds only the required result extension (sign extension for
+    `int8`, zero extension for `byte` and `bit`) before values re-enter the
+    64-bit ABI.
 
 ## 4. Quantitative Advantages
 
@@ -96,25 +108,29 @@ This allows larger AI models (Transformers, LLMs) to fit entirely within the CPU
 
 ## 5. Implementation Phases
 
-### Phase 1: ISA Foundation (Week 1)
+### Phase 1: ISA Foundation (Week 1) — Complete
 - Update `HVMInstruction.h` and `HVMInstruction.cpp` with new opcodes.
 - Add unit tests for 8-bit instruction encoding/decoding.
 
-### Phase 2: JIT Sub-word Core (Week 2)
+### Phase 2: JIT Sub-word Core (Week 2) — Complete
 - Implement `ARITH_B` and `LOGIC_B` in `HVMJIT.cpp` using LLVM `i8` types.
 - Verify correctness of 8-bit signed overflow and zero-extension.
 
-### Phase 3: FP8 & AI Acceleration (Week 3)
+### Phase 3: FP8 & AI Acceleration (Week 3) — Complete for E4M3 software/native-compatible profile
 - Implement `FLOAT_ARITH_B`.
 - Add support for LLVM's native 8-bit float types.
 - Implement software fallback for architectures lacking native FP8.
 
-### Phase 4: Compiler Hardening (Week 4)
+### Phase 4: Compiler Hardening (Week 4) — Complete
 - Update `HVMCodeGenerator` to emit the new opcodes based on type inference.
 - Remove redundant masking instructions from the generator.
 
 ## 6. Status
-- **Date**: 2026-06-16
-- **Status**: **PARTIALLY IMPLEMENTED - LANGUAGE TYPES PRESENT, NATIVE SUB-WORD ISA NOT IMPLEMENTED**
+- **Date**: 2026-08-05
+- **Status**: **IMPLEMENTED for the HVM 1.5 scalar E4M3/int8/byte/bit profile**
 - **Priority**: **HIGH** (Prerequisite for high-performance AI/ML support)
-- **Audit 2026-06-21**: `f8` and `bit` are present in grammar, mangling, inference, runtime, and tests, but the proposed native sub-word opcodes such as `ARITH_B`, `FLOAT_ARITH_B`, and `LOGIC_B` are not in the HVM instruction set.
+- **Implementation audit 2026-08-05**: `ARITH_B` (`0x11`), `LOGIC_B` (`0x22`), and
+  `FLOAT_ARITH_B` (`0x31`) are registered in the ISA and CSV, decoded by the
+  interpreter, lowered by LLVM JIT, and selected by codegen. Unit tests cover
+  encoding/CSV parity, wrapping arithmetic, signed/unsigned extension,
+  bit-normalized logic, E4M3 FP8 arithmetic, and native opcode selection.

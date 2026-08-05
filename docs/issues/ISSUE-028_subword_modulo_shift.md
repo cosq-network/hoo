@@ -1,14 +1,18 @@
 # ISSUE-028: Inconsistent Sub-word Modulo and Shift Semantics
 
 ## 1. Overview
-The current implementation of HVM 1.5 sub-word precision focuses on basic arithmetic (`ADD.B`, `SUB.B`, `MUL.B`, `DIV.B`). However, the `MODULO` (`%`) and `SHIFT` (`<<`, `>>`) operators are still lowered to 64-bit `Opcode::ARITH` or `Opcode::SHIFT` instructions regardless of whether the operands are `int8`, `byte`, or `bit`.
+The HVM 1.5 scalar implementation now provides type-dispatched sub-word modulo
+through `REM.B` and `REMU.B`. Shifts remain wide `Opcode::SHIFT` operations;
+there is no `SHIFT_B` opcode in the ISSUE-027 ISA, so shift-width semantics
+remain a separate follow-up.
 
 ## 2. Technical Analysis
 In `HVMCodeGenerator.cpp`, binary operator lowering for `MODULO` is hardcoded:
 ```cpp
 case ast::BinaryOperator::MODULO: func = 7; break; // Always Opcode::ARITH
 ```
-For an `int8` value, `127 % 5` works fine in 64-bit, but `(-128) % 5` might yield different results if not truncated correctly to 8-bit signed space before or after the operation.
+For an `int8` value, `127 % 5` and `(-128) % 5` now use signed 8-bit
+remainder semantics. `byte` uses unsigned `REMU.B` semantics.
 
 Similarly, for `SHIFT`:
 - `byte << 4` where `byte = 0xF0` should result in `0x00` (8-bit wrap), but currently results in `0xF00` (64-bit).
@@ -20,6 +24,7 @@ Similarly, for `SHIFT`:
 
 ## 4. Status
 - **Date**: 2026-06-16
-- **Status**: **PROPOSED**
+- **Status**: **PARTIALLY IMPLEMENTED** — modulo complete; shift extension remains proposed
 - **Priority**: Medium (Correctness issue for low-precision types)
-- **Audit 2026-06-21**: No type-dispatched sub-word modulo or shift lowering was found; modulo still uses the generic function code and shifts are not specialized by `bit`/`f8` width.
+- **Audit 2026-08-05**: `REM.B`/`REMU.B` are registered, interpreted, JIT-lowered,
+  and selected by codegen. No `SHIFT_B` family has been added.
