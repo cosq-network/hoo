@@ -2,9 +2,9 @@
 
 ## Status
 
-**Implemented for the supported statement model, with exceptional JIT-flow
-verification still pending.** Grammar, AST construction, code generation, JIT
-bridges, and runtime coverage are in place. C-style `for (;;)` and custom
+**Implemented and verified for the supported statement model.** Grammar, AST
+construction, code generation, JIT bridges, runtime behavior, and exceptional
+JIT flow are covered. C-style `for (;;)` and custom
 iterable protocols remain outside the language design; `for-in` supports
 arrays, strings, and map keys.
 
@@ -29,14 +29,13 @@ scope exits.
 
 ### Exceptions
 
-The HVM/JIT exception path has explicit handler-PC lowering, catch-type
+The HVM/JIT exception path has syscall-based handler-PC lowering, catch-type
 compatibility support, unmatched-exception rethrow paths, and separate normal
 and exceptional `finally` paths. The native exception API exposes type
 compatibility through `hoo_exception_matches_type`.
 
-Normal-path `finally` execution and native exception compatibility are covered
-by passing tests. A dedicated passing JIT test for `throw -> catch -> finally`
-is still required before this section can be marked fully verified.
+Normal-path `finally` execution, native exception compatibility, and a
+source-level JIT `throw -> catch -> finally` flow are covered by passing tests.
 
 ## Verification
 
@@ -45,10 +44,11 @@ Coverage includes:
 - parser and AST construction for statements and explicit scopes;
 - code-generation checks for handler registration and cleanup;
 - JIT execution for do-while, switch, typed array iteration, string/map
-  iteration, explicit scopes, and normal `finally` execution;
+  iteration, explicit scopes, normal `finally` execution, and exceptional
+  `throw -> catch -> finally` execution;
 - runtime tests for exception type compatibility and existing ARC behavior.
 
-The current `hoo-tests` binary registers 2,038 GoogleTest cases. Run
+The current `hoo-tests` binary registers 2,039 GoogleTest cases. Run
 `build/ninja-relwithdebinfo/hoo-tests --gtest_list_tests` to refresh the count
 after adding tests.
 

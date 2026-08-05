@@ -105,7 +105,8 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, TryCatchFinally) {
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
     bool foundPushHandler = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::CALL) {
+        if (inst.getOpcode() == Opcode::SYSCALL &&
+            std::get<OperandsI>(inst.getOperands()).imm15 == 7) {
             foundPushHandler = true;
             break;
         }
@@ -131,14 +132,15 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MultipleCatchClauses) {
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    bool foundCall = false;
+    bool foundThrowSyscall = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::CALL) {
-            foundCall = true;
+        if (inst.getOpcode() == Opcode::SYSCALL &&
+            std::get<OperandsI>(inst.getOperands()).imm15 == 9) {
+            foundThrowSyscall = true;
             break;
         }
     }
-    EXPECT_TRUE(foundCall);
+    EXPECT_TRUE(foundThrowSyscall);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
@@ -157,14 +159,15 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, Rethrow) {
     ASSERT_NE(module, nullptr);
 
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
-    bool foundCall = false;
+    bool foundRethrowSyscall = false;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::CALL) {
-            foundCall = true;
+        if (inst.getOpcode() == Opcode::SYSCALL &&
+            std::get<OperandsI>(inst.getOperands()).imm15 == 10) {
+            foundRethrowSyscall = true;
             break;
         }
     }
-    EXPECT_TRUE(foundCall);
+    EXPECT_TRUE(foundRethrowSyscall);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, ComparisonOperators) {

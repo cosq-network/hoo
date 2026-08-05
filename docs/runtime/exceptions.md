@@ -55,4 +55,6 @@ On Windows, the handler-related syscalls (`kSysPushHandler`, `kSysPopHandler`, `
 The code generator preserves the exception handle before popping the shadow
 handler, because the pop bridge may reuse the return register. It also emits a
 separate exceptional `finally` landing path so unmatched exceptions can
-continue unwinding after cleanup.
+continue unwinding after cleanup. Handler registration, throw, pop, and rethrow
+are emitted through HVM syscalls 7–10 so the JIT and interpreter can transfer
+control to the returned handler PC.

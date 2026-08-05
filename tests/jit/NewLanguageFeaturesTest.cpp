@@ -819,3 +819,25 @@ TEST_F(NewLanguageFeaturesTest, TryFinallyNormalPathRunsExactlyOnce) {
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
     EXPECT_EQ(jit->run("_F_test_i8"), 11) << jit->getLastError();
 }
+
+TEST_F(NewLanguageFeaturesTest, TryCatchFinallyHandlesThrownException) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var result: int64 = 0;
+            try {
+                result = result + 10;
+                throw new Exception("boom");
+            } catch (e: Exception) {
+                result = result + 100;
+            } finally {
+                result = result + 1;
+            }
+            return result;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 111) << jit->getLastError();
+    EXPECT_TRUE(jit->lastRunUsedJIT());
+}

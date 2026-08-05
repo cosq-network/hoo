@@ -2084,7 +2084,9 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         // temporary for the exception before entering the protected region.
         uint8_t exceptionReg = allocateRegister();
         
-        // 1. Register handler: CALL hoo_push_handler(catchStartLabel)
+        // 1. Register handler. Handler transfer is a control-flow operation,
+        // so use the dedicated syscall ABI rather than an ordinary CALL (the
+        // JIT/interpreter route the returned PC through syscall handling).
         uint8_t handlerAddrReg = allocateRegister();
         // Handler PCs are text-section offsets, not rodata addresses. Use an
         // integer immediate so LDA's rs=0 rodata addressing special case
@@ -2094,13 +2096,13 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         
         // The state-ABI bridge reads the handler PC from argument register r2.
         emit(Opcode::MOV, OperandsR{2, handlerAddrReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_hoo_push_handler_v_p");
+        emit(Opcode::SYSCALL, OperandsI{0, 0, 7});
         freeRegister(handlerAddrReg);
 
         visitStatement(tryCatch->getTryBlock());
         
         // 2. Normal path: pop handler and go to finally
-        emitCall(Opcode::CALL, "_F_hoo_pop_handler_v");
+        emit(Opcode::SYSCALL, OperandsI{0, 0, 8});
         emitJump(Opcode::JMP, 0, finallyLabel);
 
         bindLabel(catchStartLabel);
@@ -2114,7 +2116,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         // 3. Exception path: pop handler and select the first compatible
         // catch clause. The shadow handler places the exception in r1.
         emit(Opcode::MOV, OperandsR{exceptionReg, 1, 0, 0});
-        emitCall(Opcode::CALL, "_F_hoo_pop_handler_v");
+        emit(Opcode::SYSCALL, OperandsI{0, 0, 8});
         std::vector<Label*> catchLabels;
         for (size_t i = 0; i < tryCatch->getCatchClauses().size(); ++i) {
             catchLabels.push_back(createLabel());
@@ -2158,7 +2160,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (tryCatch->getFinallyBlock()) {
             emitJump(Opcode::JMP, 0, unhandledFinallyLabel);
         } else {
-            emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
+            emit(Opcode::SYSCALL, OperandsI{0, 0, 10});
             emitJump(Opcode::JMP, 0, endLabel);
         }
 
@@ -2172,16 +2174,17 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, afterTryLabel);
             bindLabel(unhandledFinallyLabel);
             visitStatement(*tryCatch->getFinallyBlock());
-            emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
+            emit(Opcode::SYSCALL, OperandsI{0, 0, 10});
         }
         bindLabel(afterTryLabel);
     } else if (auto throwStmt = dynamic_cast<const ast::ThrowStatement*>(&stmt)) {
         if (throwStmt->isRethrow()) {
-            emitCall(Opcode::CALL, "_F_hoo_rethrow_v");
+            emit(Opcode::SYSCALL, OperandsI{0, 0, 10});
         } else {
             uint8_t excReg = visitExpression(*throwStmt->getExpression());
-            emit(Opcode::MOV, OperandsR{1, excReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_hoo_throw_v_p");
+            // The syscall ABI consumes the thrown handle from r2.
+            emit(Opcode::MOV, OperandsR{2, excReg, 0, 0});
+            emit(Opcode::SYSCALL, OperandsI{0, 0, 9});
             freeRegister(excReg);
         }
     }
@@ -3776,7 +3779,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         // Out-of-bounds trap
         bindLabel(trapLabel);
         emitCall(Opcode::CALL, "_F_hoo_exception_runtime_p");
-        emitCall(Opcode::CALL, "_F_hoo_throw_v_p");
+        emit(Opcode::MOV, OperandsR{2, 1, 0, 0});
+        emit(Opcode::SYSCALL, OperandsI{0, 0, 9});
         
         bindLabel(afterAccess);
         return dest;
