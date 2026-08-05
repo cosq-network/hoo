@@ -4160,6 +4160,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_array_empty_v_p", reinterpret_cast<void*>(&jit_array_empty)},
         {"_F_array_push_string_v_p_p", reinterpret_cast<void*>(&jit_array_push_string)},
         {"_F_array_get_string_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
+        {"_F_array_get_object_v_p_p", reinterpret_cast<void*>(&jit_array_get_object)},
         {"_F_array_push_bool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_array_get_bool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
         {"_F_array_set_v_p_i8_p", reinterpret_cast<void*>(&jit_array_set_int64)},
