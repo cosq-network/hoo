@@ -87,12 +87,15 @@ These instructions remain 64-bit operations. They do not change pointer width, r
 
 ### HVM 1.5 scalar sub-word profile
 
-The HVM 1.5 scalar profile adds three base-encoded instruction families while
+The HVM 1.5 scalar profile adds four base-encoded instruction families while
 retaining the 64-bit register machine:
 
 - `ARITH_B` (`0x11`) samples operands from bits 7:0 and provides wrapping
   `ADD.B`/`SUB.B`/`MUL.B`, signed and unsigned division, and signed and
   unsigned remainder.
+- `SHIFT_B` (`0x12`) samples the low byte, masks the shift count to three
+  bits, and provides wrapping `SHL.B`, logical `SHR.B`, and signed `SAR.B`.
+  The language frontend exposes these through `<<`, `>>`, `<<=`, and `>>=`.
 - `LOGIC_B` (`0x22`) applies XOR, AND, and NOT to bit 0 and returns a
   normalized bit value.
 - `FLOAT_ARITH_B` (`0x31`) performs arithmetic on canonical E4M3 FP8 byte

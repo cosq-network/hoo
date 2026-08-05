@@ -532,6 +532,12 @@ InstructionRegistry::InstructionRegistry() {
     reg("divu.b", Opcode::ARITH_B, InstructionFormat::R, 6);
     reg("rem.b",  Opcode::ARITH_B, InstructionFormat::R, 7);
     reg("remu.b", Opcode::ARITH_B, InstructionFormat::R, 8);
+
+    // HVM 1.5 sub-word shifts (0x12). Operands and results are low-byte
+    // values; codegen applies the source type's final extension.
+    reg("shl.b", Opcode::SHIFT_B, InstructionFormat::R, 0);
+    reg("shr.b", Opcode::SHIFT_B, InstructionFormat::R, 1);
+    reg("sar.b", Opcode::SHIFT_B, InstructionFormat::R, 2);
     
     // Compressed 16‑bit instructions (HVM‑C) – only those that satisfy the 4‑bit register/immediate constraint
     regCompressed("add.c", Opcode::ARITH, InstructionFormat::R, 0); // rd = rs1 + imm4

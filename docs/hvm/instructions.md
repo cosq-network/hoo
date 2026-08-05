@@ -81,6 +81,9 @@ the low-byte operation explicit:
 
 - `ARITH_B` (`0x11`): `ADD.B`, `SUB.B`, `MUL.B`, `DIV.B`, `DIVU.B`, `REM.B`,
   and `REMU.B`.
+- `SHIFT_B` (`0x12`): `SHL.B`, `SHR.B`, and `SAR.B`, with shift counts masked
+  to three bits and results constrained to the low byte. These are selected
+  for both standalone `<<`/`>>` expressions and compound assignments.
 - `LOGIC_B` (`0x22`): `BADD` (XOR), `BMUL` (AND), and `BNOT`, normalized to
   bit 0.
 - `FLOAT_ARITH_B` (`0x31`): `FADD.B`, `FSUB.B`, `FMUL.B`, and `FDIV.B` over
@@ -88,9 +91,11 @@ the low-byte operation explicit:
 
 Inputs are sampled from bits 7:0. Native integer add/subtract/multiply wrap at
 8 bits; signed division/remainder use signed int8 values and trap on zero or
-the `-128 / -1` overflow case. Codegen sign-extends `int8` results and
-zero-extends `byte`/`bit` results. FP8 conversion helpers preserve the existing
-f64 language ABI when the host lacks native FP8 instructions.
+the `-128 / -1` overflow case. `SHIFT_B` provides low-byte wrapping left
+shifts, logical right shifts, and signed arithmetic right shifts. Codegen
+sign-extends `int8` results and zero-extends `byte`/`bit` results. FP8
+conversion helpers preserve the existing f64 language ABI when the host lacks
+native FP8 instructions.
 
 ### 4.6 Branch/jump
 - `BEQ` `BNE` `BLT` `BLE`

@@ -410,6 +410,8 @@ std::string hooc::ast::binaryOperatorToString(BinaryOperator op) {
         case BinaryOperator::MULTIPLY: return "*";
         case BinaryOperator::DIVIDE: return "/";
         case BinaryOperator::MODULO: return "%";
+        case BinaryOperator::SHIFT_LEFT: return "<<";
+        case BinaryOperator::SHIFT_RIGHT: return ">>";
         case BinaryOperator::ELEMENT_MULTIPLY: return ".*";
         case BinaryOperator::ELEMENT_DIVIDE: return "./";
         case BinaryOperator::PLUS: return "+";

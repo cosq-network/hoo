@@ -410,6 +410,7 @@ private:
      * @return RelationalExpression.
      */
     std::unique_ptr<ast::Expression> buildRelationalExpression(HoocParser::RelationalExpressionContext* ctx);
+    std::unique_ptr<ast::Expression> buildShiftExpression(HoocParser::ShiftExpressionContext* ctx);
 
     /**
      * @brief Builds an AdditiveExpression (+, -).

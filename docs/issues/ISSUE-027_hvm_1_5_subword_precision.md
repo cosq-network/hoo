@@ -55,7 +55,7 @@ Instead of operating on `i64` and masking, the JIT emits:
 ```
 This allows LLVM to perform **Strength Reduction** and **Range Analysis** optimizations that are impossible with manual `i64` masking.
 
-**FP8 (E4M3/E5M2) Support:**
+**FP8 (canonical E4M3 profile) Support:**
 The current implementation has a stable software representation and fallback ABI:
 - `f8` values are encoded as IEEE-style E4M3 bytes (including zero, subnormal,
   infinity, and NaN handling).

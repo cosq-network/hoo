@@ -496,6 +496,25 @@ TEST_F(HVMJITInstructionSemanticsTest, SubwordBitLogicNormalizesBitZero) {
     EXPECT_TRUE(jit.lastRunUsedJIT());
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, SubwordShiftsWrapAndPreserveSignedRightShift) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0xF0}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 4}),
+        makeR(Opcode::SHIFT_B, OperandsR{4, 2, 3, 0}), // 0xf0 << 4 -> 0x00
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0x80}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1}),
+        makeR(Opcode::SHIFT_B, OperandsR{1, 2, 3, 2}), // -128 >> 1 -> -64
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["subword_shift.ho"] = buildModuleBytes("subword_shift", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("subword_shift.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), static_cast<int64_t>(-64)) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, SubwordFp8ArithmeticUsesCanonicalE4M3Encoding) {
     // E4M3: 1.5 = 0x3c, 2.25 = 0x41, rounded 3.75 = 0x47.
     std::vector<HVMInstruction> ins{

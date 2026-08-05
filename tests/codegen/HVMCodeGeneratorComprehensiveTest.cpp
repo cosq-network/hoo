@@ -259,6 +259,8 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SubwordTypesSelectNativeOpcodeFamilies
         import hoo;
         func :int8 addInt8(a: int8, b: int8) { return a + b; }
         func :byte remByte(a: byte, b: byte) { return a % b; }
+        func :byte shiftExpr(a: byte, b: byte) { return a << b; }
+        func :byte shiftByte(a: byte, b: byte) { a <<= b; return a; }
         func :f8 addF8(a: f8, b: f8) { return a + b; }
         func :bit invertBit(a: bit) { return !a; }
     )";
@@ -270,14 +272,22 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SubwordTypesSelectNativeOpcodeFamilies
     bool foundArithB = false;
     bool foundFloatArithB = false;
     bool foundLogicB = false;
+    bool foundShiftB = false;
+    bool foundUnsignedRemB = false;
     for (const auto& inst : insts) {
         foundArithB |= inst.getOpcode() == Opcode::ARITH_B;
         foundFloatArithB |= inst.getOpcode() == Opcode::FLOAT_ARITH_B;
         foundLogicB |= inst.getOpcode() == Opcode::LOGIC_B;
+        foundShiftB |= inst.getOpcode() == Opcode::SHIFT_B;
+        if (inst.getOpcode() == Opcode::ARITH_B && std::holds_alternative<OperandsR>(inst.getOperands())) {
+            foundUnsignedRemB |= std::get<OperandsR>(inst.getOperands()).func == 8;
+        }
     }
     EXPECT_TRUE(foundArithB);
     EXPECT_TRUE(foundFloatArithB);
     EXPECT_TRUE(foundLogicB);
+    EXPECT_TRUE(foundShiftB);
+    EXPECT_TRUE(foundUnsignedRemB);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, DivisionOperator) {

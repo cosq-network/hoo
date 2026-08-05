@@ -8,14 +8,21 @@ The implementation requires full-stack integration: from parser grammar and AST 
 ## 2. Low-Precision Data Types Specification
 
 ### 2.1 `f8` (8-bit Floating Point)
-To support modern AI/ML quantization strategies (e.g., OCP FP8), Hoo will implement two variants of the `f8` type:
+To support modern AI/ML quantization strategies (e.g., OCP FP8), Hoo's tensor
+roadmap covers two variants of the `f8` type. The currently implemented HVM
+1.5 scalar profile uses canonical E4M3 encoding; E5M2 remains a future tensor
+profile and must not be inferred from the scalar `f8` ABI:
 - **`f8e4m3`**: 1 sign bit, 4 exponent bits, 3 mantissa bits. Optimized for higher precision during inference.
 - **`f8e5m2`**: 1 sign bit, 5 exponent bits, 2 mantissa bits. Optimized for wider dynamic range during training (similar to half-precision but smaller).
 
 **Implementation Details**:
 - **Storage**: Occupies 1 byte in memory.
-- **Arithmetic**: In the HVM core, `f8` values are promoted to `f64` for individual register-based arithmetic. Tensors will use specialized SIMD/Hardware intrinsics for batch `f8` operations.
-- **JIT**: Maps to LLVM's `f8e5m2` or `f8e4m3fn` types where available (e.g., for Hopper/H100 architectures).
+- **Arithmetic**: Scalar HVM 1.5 arithmetic uses `FLOAT_ARITH_B` over canonical
+  E4M3 bytes, with f64 encode/decode shims at the language ABI boundary.
+  Tensors will use specialized SIMD/hardware intrinsics for batch `f8`
+  operations.
+- **JIT**: The scalar fallback is host-independent; tensor lowering may map to
+  LLVM's `f8e5m2` or `f8e4m3fn` types where available (e.g., Hopper/H100).
 
 ### 2.2 `bit` (1-bit Numerical Type)
 The `bit` type represents a single binary digit (0 or 1). Unlike `bool`, which represents logical truth, `bit` is a numerical primitive intended for hardware-level bitmasking, logical gates, and Binary Neural Networks (BNNs).

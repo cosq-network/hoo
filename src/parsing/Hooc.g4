@@ -85,6 +85,8 @@ COMPOUND_MINUS: '-=';
 COMPOUND_MULTIPLY: '*=';
 COMPOUND_DIVIDE: '/=';
 COMPOUND_MODULO: '%=';
+LEFT_SHIFT: '<<';
+RIGHT_SHIFT: '>>';
 COMPOUND_LEFT_SHIFT: '<<=';
 COMPOUND_RIGHT_SHIFT: '>>=';
 INCREMENT: '++';
@@ -311,7 +313,11 @@ logicalAndExpression
     ;
 
 relationalExpression
-    : additiveExpression ((EQUALS | NOT_EQUALS | LESS | LESS_EQUALS | GREATER | GREATER_EQUALS) additiveExpression)*
+    : shiftExpression ((EQUALS | NOT_EQUALS | LESS | LESS_EQUALS | GREATER | GREATER_EQUALS) shiftExpression)*
+    ;
+
+shiftExpression
+    : additiveExpression ((LEFT_SHIFT | RIGHT_SHIFT) additiveExpression)*
     ;
 
 additiveExpression

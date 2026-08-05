@@ -170,6 +170,7 @@ enum class BinaryOperator {
     MULTIPLY, DIVIDE, MODULO,           // Multiplicative
     ELEMENT_MULTIPLY, ELEMENT_DIVIDE,   // Tensor element-wise multiplicative
     PLUS, MINUS,                        // Additive
+    SHIFT_LEFT, SHIFT_RIGHT,            // Bit shifts
     LESS, LESS_EQUALS, GREATER,         // Relational
     GREATER_EQUALS, EQUALS, NOT_EQUALS,
     AND, OR,                           // Logical

@@ -193,7 +193,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-028_subword_modulo_shift.md](issues/ISSUE-028_subword_modulo_shift.md)**
   - **Title**: # ISSUE-028: Inconsistent Sub-word Modulo and Shift Semantics
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED
   - **Priority**: Medium (Correctness issue for low-precision types)
 
 - **[ISSUE-029_unsigned_comparisons.md](issues/ISSUE-029_unsigned_comparisons.md)**

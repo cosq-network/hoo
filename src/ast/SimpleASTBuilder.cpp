@@ -783,11 +783,11 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildLogicalAndExpression(HoocPars
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildRelationalExpression(HoocParser::RelationalExpressionContext* ctx) {
-    auto addExprs = ctx->additiveExpression();
-    auto result = buildAdditiveExpression(addExprs[0]);
+    auto shiftExprs = ctx->shiftExpression();
+    auto result = buildShiftExpression(shiftExprs[0]);
 
-    for (size_t i = 1; i < addExprs.size(); i++) {
-        auto right = buildAdditiveExpression(addExprs[i]);
+    for (size_t i = 1; i < shiftExprs.size(); i++) {
+        auto right = buildShiftExpression(shiftExprs[i]);
 
         // Determine the operator
         BinaryOperator op;
@@ -802,6 +802,19 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildRelationalExpression(HoocPars
         result = std::make_unique<RelationalExpression>(std::move(result), op, std::move(right));
     }
 
+    return result;
+}
+
+std::unique_ptr<Expression> SimpleASTBuilder::buildShiftExpression(HoocParser::ShiftExpressionContext* ctx) {
+    auto addExprs = ctx->additiveExpression();
+    auto result = buildAdditiveExpression(addExprs[0]);
+    for (size_t i = 1; i < addExprs.size(); i++) {
+        auto right = buildAdditiveExpression(addExprs[i]);
+        BinaryOperator op = ctx->LEFT_SHIFT(i - 1)
+            ? BinaryOperator::SHIFT_LEFT
+            : BinaryOperator::SHIFT_RIGHT;
+        result = std::make_unique<AdditiveExpression>(std::move(result), op, std::move(right));
+    }
     return result;
 }
 

@@ -27,6 +27,7 @@ enum class Opcode : uint16_t {
     ICACHE_RNG = 0x0B,
     ARITH    = 0x10, // ADD, SUB, MUL, DIV, DIVU, REM
     ARITH_B  = 0x11, // ADD.B, SUB.B, MUL.B, DIV.B, DIVU.B, REM.B, REMU.B
+    SHIFT_B  = 0x12, // SHL.B, SHR.B, SAR.B
     SHIFT    = 0x13, // SHL, SHR, SAR
     LOGIC    = 0x20, // AND, OR, XOR
     LOGIC_B  = 0x22, // BADD, BMUL, BNOT

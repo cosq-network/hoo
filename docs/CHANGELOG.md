@@ -11,6 +11,25 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(hvm): implement HVM 1.5 scalar sub-word precision
+  - Add `ARITH_B` (`0x11`), `LOGIC_B` (`0x22`), and `FLOAT_ARITH_B` (`0x31`)
+    opcode families with registry, CSV, encoding, and decoding coverage
+  - Add interpreter and LLVM JIT lowering for wrapping int8/byte arithmetic,
+    normalized bit logic, and canonical E4M3 FP8 arithmetic
+  - Add signed/unsigned division and remainder semantics with native-width
+    overflow handling and compiler-controlled sign/zero extension
+  - Preserve the f64 language ABI through FP8 encode/decode fallback shims
+  - Add codegen and JIT regression tests; full suite passes with 2047 tests
+
+- fix(hvm): complete ISSUE-028 sub-word modulo and shifts
+  - Dispatch binary and compound `int8`/`byte` modulo through `REM.B` and
+    `REMU.B`
+  - Add `SHIFT_B` (`0x12`) with wrapping left, logical right, and signed
+    arithmetic right byte shifts across interpreter and LLVM JIT
+  - Add standalone shift-expression grammar and AST support for `<<` and `>>`
+    while preserving existing wide `SHIFT` behavior
+
+
 - fix(codegen): complete ISSUE-019 register cleanup across loop control flow
   - Add register-state checkpoints to loop and switch control-flow scopes
   - Restore correct temporary-register state for `break`, `continue`, and loop

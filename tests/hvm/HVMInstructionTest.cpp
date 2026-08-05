@@ -559,6 +559,9 @@ static const CsvRow kCsvRows[] = {
     {"divu.b", Opcode::ARITH_B, InstructionFormat::R, 6},
     {"rem.b",  Opcode::ARITH_B, InstructionFormat::R, 7},
     {"remu.b", Opcode::ARITH_B, InstructionFormat::R, 8},
+    {"shl.b",  Opcode::SHIFT_B, InstructionFormat::R, 0},
+    {"shr.b",  Opcode::SHIFT_B, InstructionFormat::R, 1},
+    {"sar.b",  Opcode::SHIFT_B, InstructionFormat::R, 2},
     {"shl",   Opcode::SHIFT, InstructionFormat::R, 0},
     {"shr",   Opcode::SHIFT, InstructionFormat::R, 1},
     {"sar",   Opcode::SHIFT, InstructionFormat::R, 2},
@@ -703,7 +706,7 @@ TEST_F(HVMInstructionTest, CsvParity_AllRowsRegistered) {
 
     EXPECT_EQ(missingCount, 0) << missingCount << " CSV mnemonics missing from registry";
     EXPECT_EQ(mismatchCount, 0) << mismatchCount << " registry entries differ from CSV";
-    EXPECT_EQ(totalRows, 127) << "CSV parity table has wrong row count";
+    EXPECT_EQ(totalRows, 130) << "CSV parity table has wrong row count";
 }
 
 TEST_F(HVMInstructionTest, CsvParity_StringToOpcodeResolvesAll) {

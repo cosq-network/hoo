@@ -6052,6 +6052,8 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
             return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7;
         case hvm::Opcode::ARITH_B:
             return func == 0 || func == 1 || func == 2 || func == 5 || func == 6 || func == 7 || func == 8;
+        case hvm::Opcode::SHIFT_B:
+            return func <= 2;
         case hvm::Opcode::FLOAT_ARITH:
             return func <= 3;
         case hvm::Opcode::FLOAT_ARITH_B:
@@ -6440,6 +6442,20 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     case 2: writeReg(o.rd, static_cast<uint64_t>(static_cast<int64_t>(a) >> sh)); break;
                     default:
                         lastError_ = "Unsupported SHIFT func: " + std::to_string(o.func);
+                        return -1;
+                }
+                break;
+            }
+            case hvm::Opcode::SHIFT_B: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint8_t value = static_cast<uint8_t>(readReg(o.rs1));
+                const uint8_t shift = static_cast<uint8_t>(readReg(o.rs2)) & 7U;
+                switch (o.func) {
+                    case 0: writeReg(o.rd, static_cast<uint8_t>(value << shift)); break;
+                    case 1: writeReg(o.rd, static_cast<uint8_t>(value >> shift)); break;
+                    case 2: writeReg(o.rd, static_cast<uint64_t>(static_cast<int8_t>(value) >> shift)); break;
+                    default:
+                        lastError_ = "Unsupported SHIFT_B func: " + std::to_string(o.func);
                         return -1;
                 }
                 break;
@@ -8195,6 +8211,20 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 2) out = builder.CreateAShr(readReg(o.rs1), sh);
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, out);
+                } else if (op == hvm::Opcode::SHIFT_B) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* value8 = builder.CreateTrunc(readReg(o.rs1), builder.getInt8Ty());
+                    auto* shift8 = builder.CreateAnd(
+                        builder.CreateTrunc(readReg(o.rs2), builder.getInt8Ty()),
+                        builder.getInt8(7));
+                    llvm::Value* out8 = nullptr;
+                    if (o.func == 0) out8 = builder.CreateShl(value8, shift8);
+                    else if (o.func == 1) out8 = builder.CreateLShr(value8, shift8);
+                    else if (o.func == 2) out8 = builder.CreateAShr(value8, shift8);
+                    else { builder.CreateRet(builder.getInt64(-1)); break; }
+                    writeReg(o.rd, o.func == 2
+                        ? builder.CreateSExt(out8, i64)
+                        : builder.CreateZExt(out8, i64));
                 } else if (op == hvm::Opcode::LOGIC) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     llvm::Value* out = nullptr;

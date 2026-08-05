@@ -3442,7 +3442,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     freeRegister(right);
                     return fmodDest;
                 }
+                op = isSubwordInt ? Opcode::ARITH_B : Opcode::ARITH;
                 func = isSubwordInt && isUnsigned ? 8 : 7; break;
+            case ast::BinaryOperator::SHIFT_LEFT:
+                op = isSubwordInt ? Opcode::SHIFT_B : Opcode::SHIFT;
+                func = 0; break;
+            case ast::BinaryOperator::SHIFT_RIGHT:
+                op = isSubwordInt ? Opcode::SHIFT_B : Opcode::SHIFT;
+                func = 1; break;
             case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = 0; break;
             case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
             case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2); break;
@@ -3472,7 +3479,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                                     binary->getOperator() == ast::BinaryOperator::MINUS ||
                                     binary->getOperator() == ast::BinaryOperator::MULTIPLY ||
                                     binary->getOperator() == ast::BinaryOperator::DIVIDE ||
-                                    binary->getOperator() == ast::BinaryOperator::MODULO)) {
+                                    binary->getOperator() == ast::BinaryOperator::MODULO ||
+                                    binary->getOperator() == ast::BinaryOperator::SHIFT_LEFT ||
+                                    binary->getOperator() == ast::BinaryOperator::SHIFT_RIGHT)) {
             if (leftType == 5 && rightType == 5) {
                 uint8_t shift = emitConstant(56);
                 emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 0});
@@ -3712,6 +3721,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (lhsType == 6 && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::DIVIDE_ASSIGN) func = 6;
                 if (lhsType == 6 && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::MODULO_ASSIGN) func = 8;
             }
+            if (isSubwordInt && op == Opcode::SHIFT) {
+                op = Opcode::SHIFT_B;
+            }
             if (isNativeF8 && op == Opcode::ARITH) {
                 if (compoundAssign->getOperator() == ast::CompoundAssignmentOperator::DIVIDE_ASSIGN) func = 3;
                 emit(Opcode::MOV, OperandsR{1, lhsReg, 0, 0});
@@ -3734,14 +3746,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 emit(op, OperandsR{resultReg, lhsReg, rhsReg, func});
             }
 
-            if (op == Opcode::ARITH_B) {
+            if (op == Opcode::ARITH_B || op == Opcode::SHIFT_B) {
                 if (lhsType == 5) {
                     uint8_t shift = emitConstant(56);
                     emit(Opcode::SHIFT, OperandsR{resultReg, resultReg, shift, 0});
                     emit(Opcode::SHIFT, OperandsR{resultReg, resultReg, shift, 2});
                     freeRegister(shift);
                 } else {
-                    uint8_t mask = emitConstant(0xFF);
+                    uint8_t mask = emitConstant(op == Opcode::SHIFT_B && lhsType == 8 ? 1 : 0xFF);
                     emit(Opcode::LOGIC, OperandsR{resultReg, resultReg, mask, 0});
                     freeRegister(mask);
                 }
