@@ -81,6 +81,16 @@ private:
         uint32_t elementTypeId = 0; // Element type for Array variables (0 = unknown/Object)
         uint32_t keyTypeId = 0; // Key type for HashMap variables
     };
+    struct ExpressionTypeInfo {
+        uint32_t typeId = 100;
+        std::string className;
+        uint32_t elementTypeId = 0;
+        uint32_t keyTypeId = 0;
+    };
+    struct OverloadReturnInfo {
+        std::vector<uint32_t> parameterTypes;
+        ExpressionTypeInfo result;
+    };
     std::vector<std::unordered_map<std::string, Local>> scopeStack_;
     int32_t currentStackOffset_ = 0;
     
@@ -90,9 +100,14 @@ private:
         std::string name;
         std::string baseClass; // empty if no base class
         std::unordered_map<std::string, int32_t> fieldOffsets;
+        std::unordered_map<std::string, uint32_t> fieldTypeIds;
+        std::unordered_map<std::string, std::string> fieldClassNames;
+        std::unordered_map<std::string, uint32_t> fieldElementTypeIds;
         std::unordered_map<std::string, bool> privateMethods; // methodName -> isPrivate
         std::unordered_map<std::string, FieldAccess> fieldAccess; // fieldName -> access level
         std::unordered_map<std::string, uint32_t> methodReturnTypes; // methodName -> typeId
+        std::unordered_map<std::string, std::string> methodReturnClasses;
+        std::unordered_map<std::string, std::vector<OverloadReturnInfo>> methodOverloadReturns;
         int32_t totalSize = 0;
         bool isSingleton = false;
         bool isFinal = false;
@@ -107,6 +122,7 @@ private:
     std::unordered_map<std::string, std::unordered_map<std::string, bool>> isOverloadedMethod_; // methodName -> className
     std::unordered_map<std::string, uint32_t> functionReturnTypes_; // functionName -> typeId
     std::unordered_map<std::string, std::string> functionReturnClass_; // functionName -> className (for user-defined types)
+    std::unordered_map<std::string, std::vector<OverloadReturnInfo>> functionOverloadReturns_;
     std::unordered_map<std::string, uint32_t> functionFutureElementTypes_; // async functionName -> Future element type
     ClassLayout* currentClass_ = nullptr;
     bool inConstructor_ = false;
@@ -194,6 +210,9 @@ private:
      * Infer the runtime typeId of an expression in the current scope.
      */
     uint32_t inferExpressionTypeId(const ast::Expression& expr);
+
+    ExpressionTypeInfo inferExpressionTypeInfo(const ast::Expression& expr);
+    uint32_t inferExpressionTypeIdLegacy(const ast::Expression& expr);
 
     /**
      * Convert a runtime typeId to the return-type string used by the mangler.

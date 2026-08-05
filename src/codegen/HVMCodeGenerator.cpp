@@ -154,6 +154,19 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
     return it != typeIds.end() ? it->second : 100;
 }
 
+static std::string builtinClassNameFromTypeId(uint32_t typeId) {
+    static const std::unordered_map<uint32_t, std::string> names = {
+        {101, "String"}, {102, "Array"}, {103, "Map"}, {104, "Tensor"},
+        {105, "Random"}, {106, "URL"}, {107, "HttpResponse"},
+        {108, "HttpClient"}, {109, "Character"}, {110, "Args"},
+        {111, "Compression"}, {113, "Buffer"}, {114, "Csv"},
+        {117, "HashMap"}, {118, "AnyArray"}, {119, "DateTime"},
+        {120, "Regex"}, {121, "Mutex"}, {122, "Uuid"}, {125, "Decimal"}
+    };
+    auto it = names.find(typeId);
+    return it == names.end() ? std::string{} : it->second;
+}
+
 static std::string builtinConstructorMethodName(const std::string& className, size_t argCount) {
     return "new";
 }
@@ -660,6 +673,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     symbolFixups_.clear();
     functionReturnTypes_.clear();
     functionReturnClass_.clear();
+    functionOverloadReturns_.clear();
     functionFutureElementTypes_.clear();
 
     importedModules_.clear();
@@ -716,15 +730,22 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         } else if (auto overList = dynamic_cast<const ast::OverloadList*>(decl.get())) {
             for (const auto& funcDecl : overList->getFunctions()) {
                 isOverloadedFunction_[funcDecl->getName()] = true;
+                OverloadReturnInfo overloadInfo;
+                for (const auto& param : funcDecl->getParameters()) {
+                    overloadInfo.parameterTypes.push_back(typeIdFromDeclaredType(&param->getType()));
+                }
                 if (funcDecl->getReturnType()) {
                     std::string clsName;
-                    functionReturnTypes_[funcDecl->getName()] = typeIdFromDeclaredType(funcDecl->getReturnType(), &clsName);
+                    overloadInfo.result.typeId = typeIdFromDeclaredType(funcDecl->getReturnType(), &clsName);
+                    overloadInfo.result.className = clsName;
+                    functionReturnTypes_[funcDecl->getName()] = overloadInfo.result.typeId;
                     if (!clsName.empty()) {
                         functionReturnClass_[funcDecl->getName()] = clsName;
                     }
                 } else {
-                    functionReturnTypes_[funcDecl->getName()] = 4;
+                    overloadInfo.result.typeId = 4;
                 }
+                functionOverloadReturns_[funcDecl->getName()].push_back(std::move(overloadInfo));
             }
         }
     }
@@ -860,6 +881,15 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 if (auto declMember = member->getDeclaration()) {
                     if (auto var = dynamic_cast<const ast::VariableDeclaration*>(declMember)) {
                         layout.fieldOffsets[var->getName()] = currentOffset;
+                        std::string fieldClassName;
+                        layout.fieldTypeIds[var->getName()] =
+                            var->getType() ? typeIdFromDeclaredType(var->getType(), &fieldClassName) : 100;
+                        layout.fieldClassNames[var->getName()] = fieldClassName;
+                        if (auto arrType = var->getType()
+                                ? dynamic_cast<const ast::ArrayType*>(var->getType()) : nullptr) {
+                            layout.fieldElementTypeIds[var->getName()] =
+                                typeIdFromDeclaredType(&arrType->getBaseType());
+                        }
                         if (var->isPrivate()) {
                             layout.fieldAccess[var->getName()] = FieldAccess::PRIVATE;
                         } else if (var->isPublic()) {
@@ -884,7 +914,10 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         methodNameToClass_[fn->getName()] = layout.name;
                         layout.privateMethods[fn->getName()] = fn->isPrivate();
                         if (fn->getReturnType()) {
-                            layout.methodReturnTypes[fn->getName()] = typeIdFromDeclaredType(fn->getReturnType());
+                            std::string returnClass;
+                            layout.methodReturnTypes[fn->getName()] =
+                                typeIdFromDeclaredType(fn->getReturnType(), &returnClass);
+                            layout.methodReturnClasses[fn->getName()] = returnClass;
                         } else {
                             layout.methodReturnTypes[fn->getName()] = 4; // void
                         }
@@ -892,16 +925,30 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         for (const auto& fn : overList->getFunctions()) {
                             isOverloadedMethod_[layout.name][fn->getName()] = true;
                             layout.privateMethods[fn->getName()] = fn->isPrivate();
+                            OverloadReturnInfo overloadInfo;
+                            for (const auto& param : fn->getParameters()) {
+                                overloadInfo.parameterTypes.push_back(typeIdFromDeclaredType(&param->getType()));
+                            }
                             if (fn->getReturnType()) {
-                                layout.methodReturnTypes[fn->getName()] = typeIdFromDeclaredType(fn->getReturnType());
+                                std::string returnClass;
+                                layout.methodReturnTypes[fn->getName()] =
+                                    typeIdFromDeclaredType(fn->getReturnType(), &returnClass);
+                                layout.methodReturnClasses[fn->getName()] = returnClass;
+                                overloadInfo.result.typeId = layout.methodReturnTypes[fn->getName()];
+                                overloadInfo.result.className = returnClass;
                             } else {
                                 layout.methodReturnTypes[fn->getName()] = 4;
+                                overloadInfo.result.typeId = 4;
                             }
+                            layout.methodOverloadReturns[fn->getName()].push_back(std::move(overloadInfo));
                         }
                     }
                 }
             }
-            classes_[layout.name].privateMethods = layout.privateMethods;
+            // Store all method metadata, including return classes, after the
+            // indexing pass. Keeping only privateMethods here discarded the
+            // information required for chained return-type inference.
+            classes_[layout.name] = layout;
 
             // Serializable validation
             if (layout.isSerializable) {
@@ -1586,6 +1633,12 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         uint32_t typeId = getTypeId(decl.getType(), decl.getInitializer(), &varClassName);
         uint32_t elemTypeId = 0;
         uint32_t keyTypeId = 0;
+        if (!decl.getType() && decl.getInitializer()) {
+            const auto inferred = inferExpressionTypeInfo(*decl.getInitializer());
+            if (varClassName.empty()) varClassName = inferred.className;
+            elemTypeId = inferred.elementTypeId;
+            keyTypeId = inferred.keyTypeId;
+        }
         if (decl.getType()) {
             if (auto arrType = dynamic_cast<const ast::ArrayType*>(decl.getType())) {
                 elemTypeId = typeIdFromDeclaredType(&arrType->getBaseType());
@@ -2733,12 +2786,27 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t objReg = visitExpression(memberAccess->getObject());
         int32_t offset = 0; 
         std::string foundClass;
-        for (const auto& [className, layout] : classes_) {
-            auto it = layout.fieldOffsets.find(memberAccess->getMember());
-            if (it != layout.fieldOffsets.end()) {
-                offset = it->second;
-                foundClass = className;
-                break;
+        const auto receiverInfo = inferExpressionTypeInfo(memberAccess->getObject());
+        std::string receiverClass = receiverInfo.className;
+        if (receiverClass.empty()) receiverClass = builtinClassNameFromTypeId(receiverInfo.typeId);
+        if (!receiverClass.empty()) {
+            auto classIt = classes_.find(receiverClass);
+            if (classIt != classes_.end()) {
+                auto it = classIt->second.fieldOffsets.find(memberAccess->getMember());
+                if (it != classIt->second.fieldOffsets.end()) {
+                    offset = it->second;
+                    foundClass = receiverClass;
+                }
+            }
+        }
+        if (foundClass.empty()) {
+            for (const auto& [className, layout] : classes_) {
+                auto it = layout.fieldOffsets.find(memberAccess->getMember());
+                if (it != layout.fieldOffsets.end()) {
+                    offset = it->second;
+                    foundClass = className;
+                    break;
+                }
             }
         }
         if (foundClass.empty()) {
@@ -2801,25 +2869,39 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 isStaticCall = true;
             }
 
+            // Resolve the receiver recursively before consulting the legacy
+            // method-name index. This preserves the class of expressions such
+            // as `obj.factory().length()` and avoids dispatching by method name
+            // when the receiver already carries precise type information.
+            if (resolvedClass.empty()) {
+                const auto receiverInfo = inferExpressionTypeInfo(memberAccess->getObject());
+                resolvedClass = receiverInfo.className;
+                if (resolvedClass.empty()) {
+                    resolvedClass = builtinClassNameFromTypeId(receiverInfo.typeId);
+                }
+            }
+
             // Detect instance calls on user-defined classes
             if (resolvedClass.empty()) {
                 auto it = methodNameToClass_.find(methodName);
                 if (it != methodNameToClass_.end()) {
                     resolvedClass = it->second;
-                    // Private access check
-                    auto classIt = classes_.find(resolvedClass);
-                    if (classIt != classes_.end()) {
-                        auto privIt = classIt->second.privateMethods.find(methodName);
-                        if (privIt != classIt->second.privateMethods.end() && privIt->second) {
-                            bool canAccess = false;
-                            if (currentClass_ && currentClass_->name == resolvedClass) {
-                                canAccess = true;
-                            } else if (currentClass_ && isDerivedFrom(currentClass_->name, resolvedClass)) {
-                                canAccess = true;
-                            }
-                            if (!canAccess) {
-                                addError("Cannot access private method '" + methodName + "' of class '" + resolvedClass + "'");
-                            }
+                }
+            }
+
+            // Enforce visibility after receiver inference as well as after
+            // legacy name-based resolution. Recursive inference can identify
+            // a class before the fallback index is consulted.
+            if (!isStaticCall && !resolvedClass.empty()) {
+                auto classIt = classes_.find(resolvedClass);
+                if (classIt != classes_.end()) {
+                    auto privIt = classIt->second.privateMethods.find(methodName);
+                    if (privIt != classIt->second.privateMethods.end() && privIt->second) {
+                        bool canAccess = currentClass_ &&
+                            (currentClass_->name == resolvedClass ||
+                             isDerivedFrom(currentClass_->name, resolvedClass));
+                        if (!canAccess) {
+                            addError("Cannot access private method '" + methodName + "' of class '" + resolvedClass + "'");
                         }
                     }
                 }
@@ -2986,6 +3068,26 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
                 return dest;
+            }
+
+            // Array instance methods use the plain runtime bridge names. The
+            // class-qualified naming convention is reserved for String and
+            // user-defined methods; using it here makes chained array results
+            // fail symbol resolution even though their type is known.
+            if (resolvedClass == "Array") {
+                std::string symbol;
+                if (methodName == "length") symbol = "_F_array_length_v_p";
+                else if (methodName == "empty") symbol = "_F_array_empty_v_p";
+                else if (methodName == "clear") symbol = "_F_array_clear_v_p";
+                else if (methodName == "sort") symbol = "_F_array_sort_v_p";
+                else if (methodName == "reverse") symbol = "_F_array_reverse_v_p";
+                else if (methodName == "shuffle") symbol = "_F_array_shuffle_v_p";
+                if (!symbol.empty()) {
+                    emitCall(Opcode::CALL, symbol);
+                    uint8_t dest = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                    return dest;
+                }
             }
 
             // DateTime instance methods
@@ -4467,7 +4569,216 @@ uint8_t HVMCodeGenerator::emitDecimalBinaryOp(const ast::BinaryExpression& binar
 
     return dest;
 }
+HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(const ast::Expression& expr) {
+    ExpressionTypeInfo result;
+
+    if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
+        const ast::ASTNode& primary = primaryExpr->getPrimary();
+        if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
+            for (auto scope = scopeStack_.rbegin(); scope != scopeStack_.rend(); ++scope) {
+                auto it = scope->find(id->getName());
+                if (it != scope->end()) {
+                    result.typeId = it->second.typeId;
+                    result.className = it->second.className;
+                    result.elementTypeId = it->second.elementTypeId;
+                    result.keyTypeId = it->second.keyTypeId;
+                    return result;
+                }
+            }
+            if (isBuiltinClassName(id->getName())) {
+                result.className = id->getName();
+                result.typeId = builtinConstructedTypeId(id->getName());
+            }
+            return result;
+        }
+        if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(&primary)) {
+            return inferExpressionTypeInfo(paren->getExpression());
+        }
+        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
+            result.typeId = arr->isAnyArray() ? 118 : 102;
+            if (!arr->isAnyArray() && arr->getElements()) {
+                uint32_t common = 0;
+                for (const auto& element : arr->getElements()->getExpressions()) {
+                    const auto elementInfo = inferExpressionTypeInfo(*element);
+                    if (elementInfo.typeId == 100) { common = 100; break; }
+                    if (common == 0) common = elementInfo.typeId;
+                    else if (common != elementInfo.typeId) { common = 100; break; }
+                }
+                result.elementTypeId = common == 0 ? 100 : common;
+            }
+            return result;
+        }
+        if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) result.typeId = 1;
+        else if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) result.typeId = 2;
+        else if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) result.typeId = 3;
+        else if (dynamic_cast<const ast::BitLiteral*>(&primary)) result.typeId = 8;
+        else if (dynamic_cast<const ast::F8Literal*>(&primary)) result.typeId = 9;
+        else if (dynamic_cast<const ast::StringLiteral*>(&primary) ||
+                 dynamic_cast<const ast::InterpolatedString*>(&primary)) result.typeId = 101;
+        else if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) result.typeId = 109;
+        else if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) result.typeId = 125;
+        else if (dynamic_cast<const ast::TensorLiteral*>(&primary)) result.typeId = 104;
+        else if (auto nested = dynamic_cast<const ast::Expression*>(&primary)) {
+            return inferExpressionTypeInfo(*nested);
+        }
+        return result;
+    }
+
+    if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
+        const auto future = inferExpressionTypeInfo(awaitExpr->getFuture());
+        if (future.typeId == 123) {
+            result.typeId = future.elementTypeId != 0 ? future.elementTypeId : 100;
+        }
+        return result;
+    }
+
+    if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
+        const auto array = inferExpressionTypeInfo(arrayAccess->getArray());
+        if (array.elementTypeId != 0) result.typeId = array.elementTypeId;
+        else if (array.typeId == 104) result.typeId = 1;
+        return result;
+    }
+
+    if (auto newExpr = dynamic_cast<const ast::NewObjectExpression*>(&expr)) {
+        result.typeId = builtinConstructedTypeId(newExpr->getClassName());
+        result.className = newExpr->getClassName();
+        if (newExpr->getClassName() == "Map") {
+            result.keyTypeId = mapConstructorKeyTypeId(*newExpr);
+            result.elementTypeId = mapConstructorValueTypeId(*newExpr);
+        }
+        return result;
+    }
+    if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
+        result.typeId = 117;
+        result.className = "HashMap";
+        result.keyTypeId = hashMapKeyTypeId(newHash->getHashMapType());
+        result.elementTypeId = typeIdFromDeclaredType(&newHash->getHashMapType().getValueType());
+        return result;
+    }
+
+    if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&expr)) {
+        const auto receiver = inferExpressionTypeInfo(memberAccess->getObject());
+        std::string className = receiver.className;
+        if (className.empty()) className = builtinClassNameFromTypeId(receiver.typeId);
+        if (!className.empty()) {
+            auto classIt = classes_.find(className);
+            if (classIt != classes_.end()) {
+                const auto fieldIt = classIt->second.fieldTypeIds.find(memberAccess->getMember());
+                if (fieldIt != classIt->second.fieldTypeIds.end()) {
+                    result.typeId = fieldIt->second;
+                    auto fieldClassIt = classIt->second.fieldClassNames.find(memberAccess->getMember());
+                    if (fieldClassIt != classIt->second.fieldClassNames.end()) result.className = fieldClassIt->second;
+                    auto elemIt = classIt->second.fieldElementTypeIds.find(memberAccess->getMember());
+                    if (elemIt != classIt->second.fieldElementTypeIds.end()) result.elementTypeId = elemIt->second;
+                    return result;
+                }
+            }
+        }
+        // Preserve the established built-in method tables for simple receivers.
+        result.typeId = inferExpressionTypeIdLegacy(expr);
+        return result;
+    }
+
+    if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
+        std::vector<uint32_t> argumentTypeIds;
+        if (funcCall->getArguments()) {
+            for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                argumentTypeIds.push_back(inferExpressionTypeInfo(*arg).typeId);
+            }
+        }
+        auto selectOverload = [&](const std::vector<OverloadReturnInfo>& overloads) -> const OverloadReturnInfo* {
+            const OverloadReturnInfo* fallback = nullptr;
+            for (const auto& overload : overloads) {
+                if (overload.parameterTypes.size() != argumentTypeIds.size()) continue;
+                bool exact = true;
+                for (size_t i = 0; i < argumentTypeIds.size(); ++i) {
+                    if (overload.parameterTypes[i] != argumentTypeIds[i]) {
+                        exact = false;
+                        break;
+                    }
+                }
+                if (exact) return &overload;
+                if (!fallback) fallback = &overload;
+            }
+            return fallback;
+        };
+        const ast::Identifier* functionId = dynamic_cast<const ast::Identifier*>(&funcCall->getFunction());
+        if (!functionId) {
+            if (auto functionPrimary = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
+                functionId = dynamic_cast<const ast::Identifier*>(&functionPrimary->getPrimary());
+            }
+        }
+        if (auto id = functionId) {
+            auto overloadIt = functionOverloadReturns_.find(id->getName());
+            if (overloadIt != functionOverloadReturns_.end()) {
+                if (const auto* selected = selectOverload(overloadIt->second)) return selected->result;
+            }
+            auto it = functionReturnTypes_.find(id->getName());
+            if (it != functionReturnTypes_.end()) {
+                result.typeId = it->second;
+                auto classIt = functionReturnClass_.find(id->getName());
+                if (classIt != functionReturnClass_.end()) result.className = classIt->second;
+                if (result.typeId == 123) {
+                    auto futureIt = functionFutureElementTypes_.find(id->getName());
+                    if (futureIt != functionFutureElementTypes_.end()) result.elementTypeId = futureIt->second;
+                }
+                return result;
+            }
+        }
+        if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&funcCall->getFunction())) {
+            const auto receiver = inferExpressionTypeInfo(memberAccess->getObject());
+            std::string className = receiver.className;
+            if (className.empty()) className = builtinClassNameFromTypeId(receiver.typeId);
+            const ast::Identifier* objectId = dynamic_cast<const ast::Identifier*>(&memberAccess->getObject());
+            if (!objectId) {
+                if (auto objectPrimary = dynamic_cast<const ast::PrimaryExpression*>(&memberAccess->getObject())) {
+                    objectId = dynamic_cast<const ast::Identifier*>(&objectPrimary->getPrimary());
+                }
+            }
+            if (objectId) {
+                if (isBuiltinClassName(objectId->getName()) && getLocalTypeId(objectId->getName()) == 0) {
+                    className = objectId->getName();
+                }
+            }
+            auto classIt = classes_.find(className);
+            if (classIt != classes_.end()) {
+                auto overloadIt = classIt->second.methodOverloadReturns.find(memberAccess->getMember());
+                if (overloadIt != classIt->second.methodOverloadReturns.end()) {
+                    if (const auto* selected = selectOverload(overloadIt->second)) return selected->result;
+                }
+                auto retIt = classIt->second.methodReturnTypes.find(memberAccess->getMember());
+                if (retIt != classIt->second.methodReturnTypes.end()) {
+                    result.typeId = retIt->second;
+                    result.className = classIt->second.methodReturnClasses[memberAccess->getMember()];
+                    return result;
+                }
+            }
+            // For chained built-ins, retain the common return shapes needed
+            // for a subsequent receiver lookup.
+            const auto& method = memberAccess->getMember();
+            if (className == "Array" && (method == "sort" || method == "reverse" || method == "shuffle")) {
+                result.typeId = 102; result.className = "Array"; return result;
+            }
+            if (className == "Map" && (method == "getInt64String" || method == "getStringString")) {
+                result.typeId = 101; result.className = "String"; return result;
+            }
+            if (className == "Buffer" && (method == "copy" || method == "slice")) {
+                result.typeId = 113; result.className = "Buffer"; return result;
+            }
+            result.typeId = inferExpressionTypeIdLegacy(expr);
+            return result;
+        }
+    }
+
+    result.typeId = inferExpressionTypeIdLegacy(expr);
+    return result;
+}
+
 uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
+    return inferExpressionTypeInfo(expr).typeId;
+}
+
+uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& expr) {
     if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
         const ast::Expression* source = &awaitExpr->getFuture();
         while (auto primary = dynamic_cast<const ast::PrimaryExpression*>(source)) {
@@ -4720,8 +5031,11 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 if (dynamic_cast<const ast::TensorLiteral*>(&node)) return 104;
                 if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
             }
-            uint32_t inferredExprType = inferExpressionTypeId(*initializer);
-            if (inferredExprType != 100) return inferredExprType;
+            const auto inferredInfo = inferExpressionTypeInfo(*initializer);
+            if (outClassName && !inferredInfo.className.empty()) {
+                *outClassName = inferredInfo.className;
+            }
+            if (inferredInfo.typeId != 100) return inferredInfo.typeId;
             // Back-compat inference for older class-style factory calls.
             if (auto fc = dynamic_cast<const ast::FunctionCall*>(initializer)) {
                 if (auto ma = dynamic_cast<const ast::MemberAccess*>(&fc->getFunction())) {

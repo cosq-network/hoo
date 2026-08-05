@@ -1,20 +1,26 @@
-# ISSUE-022: Limited Type Inference for `var` Declarations
+# ISSUE-022: Type Inference for `var` Declarations
 
 ## 1. Overview
-The `var` keyword relies on compile-time type inference from the initializer expression, but the inference only handles a narrow set of cases: primitive literals, `new Map(...)`, `new Array(...)`, and built-in constructor calls. All other cases fall back to the generic typeId 100 (Object), losing type information for method dispatch.
+The `var` keyword uses compile-time expression inference. The inference engine
+now recursively carries runtime type ID, user-defined class name, collection
+element type, and map key type through supported expressions, preserving type
+information for method dispatch and typed lowering.
 
 ## 2. Technical Analysis
 
 ### 2.1 Limited inference scope
-- **Location**: `src/codegen/HVMCodeGenerator.cpp` lines 1828-1885 (`getTypeId`)
-- **Issue**: The type inference switch checks `PrimaryExpression` sub-types (integer literal → typeId 1, float literal → typeId 2, string literal → typeId 101, etc.) and specific function-call patterns (`new Map(...)` -> 103, `new Array(...)` -> 102, `new Character(...)` -> 109) and instance method return types on known built-in types (Args, Character, Map).
+- **Location**: `src/codegen/HVMCodeGenerator.cpp` (`inferExpressionTypeInfo` and `getTypeId`)
+- **Implementation**: Inference handles literals, operators, function returns,
+  method returns, fields, array access, arrays, tensors, maps, futures, and
+  user-defined class metadata. Unknown or dynamic expressions intentionally
+  fall back to type ID 100 (`Object`).
 
 ```cpp
 // Extended but still incomplete:
-var a = someFunction();       // typeId = 100 (Object) — not inferred
-var b = obj.method();         // typeId = 100 (Object) — not inferred
-var c = arr[0];               // typeId = 100 (Object) — not inferred
-var d = someComplexExpr;      // typeId = 100 (Object) — not inferred
+var a = someFunction();       // inferred from the declared return type
+var b = obj.method();         // inferred from class method metadata
+var c = arr[0];               // inferred from the array element type
+var d = someComplexExpr;      // Object only when the expression is unknown
 
 // These ARE inferred (added since initial issue filing):
 var e = ch.codepoint();       // typeId = 1 (int64) — Character method
@@ -27,13 +33,14 @@ var i = args.count();         // typeId = 1 (int64) — Args method
 ### 2.2 Impact on method dispatch
 When a `var` variable has typeId 100 (Object), instance method calls on it use `methodNameToClass_` for dispatch. As ISSUE-015 documents, this single-class map dispatches to the wrong class when multiple classes define the same method name.
 
-### 2.3 Hardcoded element type for array literals
-- **Location**: `src/codegen/HVMCodeGenerator.cpp` line 766
-- **Issue**: Array literal elements are hardcoded to typeId 100 (Object). No inference is done from the actual element values.
+### 2.3 Array literal element type
+Array literals infer a common element type recursively. Homogeneous literals
+such as `[1, 2, 3]` retain `int64` element metadata; heterogeneous or dynamic
+elements conservatively use `Object`.
 
 ## 3. Impact
 - Method calls on `var` variables return wrong results when multiple classes share method names.
-- Array literals always create "array of Object" regardless of actual element types.
+- Heterogeneous or dynamic expressions may still require `Object` dispatch.
 - No type-driven optimizations possible for most `var` variables.
 
 ## 4. Fixes Applied
@@ -43,15 +50,25 @@ When a `var` variable has typeId 100 (Object), instance method calls on it use `
    - Array subscript access (looked up from `Local::elementTypeId`).
 2. ✅ `var` declarations on function/method calls now infer the type from the declaration's return type (including user-defined class names via `Local::className`).
 3. ✅ Array literal element types inferred from uniform literal elements and stored in header (offset 16).
+4. ✅ Added recursive expression metadata for chained function/method calls,
+   field access, array access, futures, and collection values.
+5. ✅ Added method return-class metadata and overload return selection by
+   inferred parameter types.
+6. ✅ Receiver inference now drives method and field dispatch before the
+   method-name fallback index, while preserving private-access enforcement.
 
-### Remaining work
-- Method-level function return type info (no separate map; currently relies on `FunctionDeclaration` AST during `visitFunction`).
+### Type-system boundaries
+- `any`, unknown external signatures, and incompatible heterogeneous values
+  intentionally remain dynamic (`Object`) and require runtime handling.
+- Overload selection uses exact inferred parameter IDs with a conservative
+  fallback; implicit conversion ranking remains a separate overload-system
+  concern.
 
 ## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-08-05
+- **Status**: **IMPLEMENTED for the supported compile-time type model**
 - **Priority**: **MEDIUM**
-- **Audit 2026-06-21**: Function, method, class, array, tensor, `HashMap`, `AnyArray`, and literal inference paths are broader than when this was opened. Remaining limits are mostly chained/ambiguous dispatch and overload-related cases tracked by ISSUE-031, ISSUE-015, and ISSUE-041.
+- **Audit 2026-08-05**: Recursive receiver and result metadata is implemented and verified for built-in, user-defined, collection, array-access, and overload return paths. Dynamic/unknown expressions remain intentionally conservative.
 - **Update 2026-06-11 (a)**: Inference extended to cover instance method return types on `Args` (typeId 110), `Character` (typeId 109), and `Map` (typeId 103) objects. Method calls on these types now correctly infer int64, double, and String return types.
 - **Update 2026-06-11 (b)**: Major inference expansion:
   - **Direct function calls** (`var x = someFunction()`): Now looks up the function's declared return type from `functionReturnTypes_` map. Works for all return types including user-defined classes (with class name propagation via `functionReturnClass_`).
@@ -70,4 +87,14 @@ When a `var` variable has typeId 100 (Object), instance method calls on it use `
   - **Tensors**: Added `typeId 104` for tensors. Arithmetic operations on tensors now correctly propagate the tensor type.
   - **Nesting**: Added recursive handling for `ParenthesizedExpression`.
   - **Function Returns**: Inference now consults the `functionReturnTypes_` map for all function calls.
-- **Update 2026-06-17 (e)**: Remaining work on method chains is now tracked separately in ISSUE-031.
+- **Update 2026-08-05**: Basic chained inference is complete and covered by JIT tests for map-to-string, function-to-array, array access, and user-defined method-to-array dispatch. ISSUE-031 now tracks only broader generic/dynamic chain semantics beyond the supported metadata model.
+
+## 6. Verification
+
+- JIT regression coverage verifies chained map/string dispatch, function-return
+  array dispatch, chained array element inference, and user-defined method
+  return dispatch.
+- Existing tests cover literals, operators, tensors, decimals, futures,
+  collections, and access-control behavior.
+- Full build and CTest pass with 0 failures; the test binary registers 2,044
+  GoogleTest cases.

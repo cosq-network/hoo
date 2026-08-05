@@ -1,21 +1,26 @@
-# ISSUE-031: Missing Return Type Inference for Method Chains
+# ISSUE-031: Advanced Return Type Inference for Method Chains
 
 ## 1. Overview
-Hoo's type inference system (`getTypeId`) has been significantly improved for simple method calls (e.g., `var x = obj.method()`). However, it fails to infer types for "chained" method calls (e.g., `var x = obj.getMap().length()`), reverting to `typeId 100` (Object) for the entire chain.
+Hoo's type inference system now recursively preserves type metadata for
+supported method chains (for example, `obj.getMap().length()` and
+`makeArray()[0]`). This issue now covers advanced chains whose intermediate
+types are dynamic, generic, overloaded with conversions, or supplied by
+external signatures without metadata.
 
 ## 2. Technical Analysis
-In `HVMCodeGenerator.cpp`, the `inferExpressionTypeId` logic for `MemberAccess` and `FunctionCall` only looks one level deep. It can resolve the return type of a method if the object's type is known in the local scope. However, for a chain:
-1. `obj` is found in scope -> `Type A`.
-2. `obj.getMap()` return type is looked up from `Type A`'s metadata -> `Map`.
-3. The result of `obj.getMap()` is an intermediate expression that is **not** in the local variable scope.
-4. `(obj.getMap()).length()` fails because the inference engine doesn't know the type of the intermediate result of `getMap()`.
+`HVMCodeGenerator.cpp` now recursively evaluates the metadata of `MemberAccess`, `FunctionCall`, `ArrayAccess`, `await`, and collection literals. This allows a known intermediate result to become the receiver type of the next operation, even when that result is not stored in a local variable. For example, `obj.getMap().length()` can use the return metadata for `getMap()` and then resolve `length()` against `Map`.
+
+The remaining boundary is intentional: dynamic/unknown values, generic results without concrete metadata, external signatures that omit return metadata, and overloads requiring implicit-conversion ranking still fall back to the established conservative behavior.
 
 ## 3. Requirements
 - **Recursive Inference**: Implement a robust `inferType(Expression*)` method that recursively traverses the expression tree, calculating the resulting typeId and class name at each node.
 - **Metadata Persistence**: Ensure `ClassLayout` and `FunctionDeclaration` metadata are accessible during this recursive pass.
 
 ## 4. Status
-- **Date**: 2026-06-16
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-08-05
+- **Status**: **PARTIALLY IMPLEMENTED — advanced/dynamic cases remain**
 - **Priority**: Medium (Affects code ergonomics and dispatch safety)
-- **Audit 2026-06-21**: Recursive receiver inference and method return maps now cover basic chained calls, but dispatch is still limited by method-name-only class lookup and lack of overload-aware signatures.
+- **Audit 2026-08-05**: Recursive receiver inference, field/method return metadata,
+  collection element propagation, and exact overload return selection are
+  implemented and covered by JIT regressions. Generic/dynamic chains and
+  conversion-ranked overloads remain future work.

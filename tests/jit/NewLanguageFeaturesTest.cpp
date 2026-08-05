@@ -841,3 +841,36 @@ TEST_F(NewLanguageFeaturesTest, TryCatchFinallyHandlesThrownException) {
     EXPECT_EQ(jit->run("_F_test_i8"), 111) << jit->getLastError();
     EXPECT_TRUE(jit->lastRunUsedJIT());
 }
+
+TEST_F(NewLanguageFeaturesTest, ChainedFunctionReturnKeepsArrayType) {
+    std::string code = R"(
+        import hoo;
+        func :Array makeValues() {
+            return [10, 20, 30];
+        }
+        func :int64 test() {
+            return makeValues().length();
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 3) << jit->getLastError();
+    EXPECT_TRUE(jit->lastRunUsedJIT());
+}
+
+TEST_F(NewLanguageFeaturesTest, ChainedArrayAccessKeepsElementType) {
+    std::string code = R"(
+        import hoo;
+        func :Array makeValues() {
+            return [10, 20, 30];
+        }
+        func :int64 test() {
+            var value = makeValues()[1];
+            return value + 1;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 21) << jit->getLastError();
+    EXPECT_TRUE(jit->lastRunUsedJIT());
+}

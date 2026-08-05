@@ -171,6 +171,19 @@ TEST_F(HooMapJitTest, SetGetInt64String) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
 }
 
+TEST_F(HooMapJitTest, ChainedMapStringResultDispatchesToString) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var m = new Map(2, 4);
+            m.setInt64String(1, "hello");
+            return m.getInt64String(1).length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5) << jit.getLastError();
+}
+
 TEST_F(HooMapJitTest, GetInt64StringContent) {
     const std::string source = R"(
         import hoo;

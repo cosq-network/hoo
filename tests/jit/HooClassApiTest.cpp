@@ -23,6 +23,44 @@ TEST_F(HooClassApiTest, StringLengthMethod) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
 }
 
+TEST_F(HooClassApiTest, ChainedUserMethodReturnTypeDispatch) {
+    const std::string source = R"(
+        import hoo;
+        class Holder {
+            constructor() {}
+            func :Array values() {
+                return [1, 2, 3, 4];
+            }
+        }
+        func :int64 test() {
+            var holder = new Holder();
+            return holder.values().length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 4) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
+TEST_F(HooClassApiTest, ChainedUserFieldReturnTypeDispatch) {
+    const std::string source = R"(
+        import hoo;
+        class Holder {
+            var values: Array;
+            constructor() {
+                this.values = [7, 8, 9];
+            }
+        }
+        func :int64 test() {
+            var holder = new Holder();
+            return holder.values.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
 TEST_F(HooClassApiTest, StringConcatMethod) {
     const std::string source = R"(
         import hoo;
