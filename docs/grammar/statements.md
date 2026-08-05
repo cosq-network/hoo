@@ -66,7 +66,10 @@ default:
 
 ## 5. Exception Handling
 
-Hoo provides a robust `try-catch-finally` model.
+Hoo provides a `try-catch-finally` model backed by ARC-managed exceptions and
+the HVM/JIT shadow stack. Normal-path `finally` execution is covered by the
+current runtime tests; exceptional-path integration remains under focused JIT
+verification.
 
 **Implementation Note:** The exception model is implemented using an ARC-managed `HooException` object and a Shadow Stack for routing control flow across the native JIT boundary. For details, see [Runtime Exceptions & Shadow Stack](../runtime/exceptions.md).
 

@@ -31,6 +31,11 @@ The JIT lowers the `SYSCALL` instruction (`0xC0`) directly into highly optimized
 | `22` | `hoo_hvm_sys_clock_gettime` | `rd = clock_gettime(r2, r3)` | Gets clock `r2` time into `struct timespec` at HVM offset `r3`. |
 | `23` | `hoo_hvm_sys_getrandom` | `rd = getrandom(r2, r3)` | Fills buffer at HVM offset `r2` with `r3` random bytes. |
 
+Statement exception lowering loads handler PCs as text offsets with an integer
+immediate and passes them in `r2`, matching the shadow-stack bridge ABI. Catch
+dispatch preserves the thrown handle across the handler-pop call and uses the
+runtime type-compatibility helper before entering a catch clause.
+
 **Pointer note**: Syscalls 16-18, 21-23 take HVM-memory offsets (not host virtual addresses) for buffer/string/path arguments. The runtime translates these offsets to real addresses at call time via an internal `g_hvm_memory` base pointer, so HVM code passes raw register values without manual address arithmetic.
 
 **Platform note**: On Windows, syscalls 7-10 are not lowered to LLVM IR. `ensureJITFunctionTable()` returns `false` for these opcodes, causing the JIT to fall back to the interpreter for handler operations. The JIT bridge functions (`jit_hoo_throw`, `jit_hoo_rethrow`, `hoo_hvm_sys_throw_to_handler_state`, `hoo_hvm_sys_rethrow_to_handler_state`) use `hoo_exception_set_current()` instead of C++ try/catch on Windows, while macOS/Linux retain the original C++ exception-based path. Syscalls 12-15 (threading) are implemented via pthreads and are unavailable on Windows.

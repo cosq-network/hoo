@@ -2,10 +2,11 @@
 
 ## Status
 
-**Implemented for the supported statement model.** The issue was audited and
-completed across grammar, AST construction, code generation, JIT bridges, and
-runtime tests. C-style `for (;;)` and custom iterable protocols remain outside
-the language design; `for-in` supports arrays, strings, and map keys.
+**Implemented for the supported statement model, with exceptional JIT-flow
+verification still pending.** Grammar, AST construction, code generation, JIT
+bridges, and runtime coverage are in place. C-style `for (;;)` and custom
+iterable protocols remain outside the language design; `for-in` supports
+arrays, strings, and map keys.
 
 ## Implemented behavior
 
@@ -28,10 +29,14 @@ scope exits.
 
 ### Exceptions
 
-The HVM/JIT exception path now has explicit handler-PC lowering, catch-type
+The HVM/JIT exception path has explicit handler-PC lowering, catch-type
 compatibility support, unmatched-exception rethrow paths, and separate normal
 and exceptional `finally` paths. The native exception API exposes type
 compatibility through `hoo_exception_matches_type`.
+
+Normal-path `finally` execution and native exception compatibility are covered
+by passing tests. A dedicated passing JIT test for `throw -> catch -> finally`
+is still required before this section can be marked fully verified.
 
 ## Verification
 
@@ -42,6 +47,10 @@ Coverage includes:
 - JIT execution for do-while, switch, typed array iteration, string/map
   iteration, explicit scopes, and normal `finally` execution;
 - runtime tests for exception type compatibility and existing ARC behavior.
+
+The current `hoo-tests` binary registers 2,038 GoogleTest cases. Run
+`build/ninja-relwithdebinfo/hoo-tests --gtest_list_tests` to refresh the count
+after adding tests.
 
 ## Design boundaries
 

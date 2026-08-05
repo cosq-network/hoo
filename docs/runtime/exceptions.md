@@ -49,3 +49,10 @@ On Windows, the handler-related syscalls (`kSysPushHandler`, `kSysPopHandler`, `
 - `Exception.pushHandler(handler_pc)` / `Exception.popHandler()`
 - `Exception.throw(exc)` / `Exception.rethrow()`
 - `Exception.setCurrent(exc)` — Set the current exception without native unwinding (used on Windows; also available on other platforms for direct state management)
+- `hoo_exception_matches_type(exc, expectedTypeId)` — Checks exact runtime
+  compatibility, with type ID `100` representing the open `Exception` base type.
+
+The code generator preserves the exception handle before popping the shadow
+handler, because the pop bridge may reuse the return register. It also emits a
+separate exceptional `finally` landing path so unmatched exceptions can
+continue unwinding after cleanup.

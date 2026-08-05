@@ -74,6 +74,14 @@ ctest --test-dir build --output-on-failure
 
 The `ctest` invocation runs the `HooUnitTests` CTest entry that executes `hoo-tests`.
 
+At the current build snapshot, `hoo-tests` registers 2,038 GoogleTest cases.
+The count is dynamic; refresh it with:
+
+```sh
+build/ninja-relwithdebinfo/hoo-tests --gtest_list_tests \
+  | awk '/^[^ ]/ { next } /^[ ]/ { count++ } END { print count }'
+```
+
 ## What the test files cover
 
 The suite is organized by responsibility:

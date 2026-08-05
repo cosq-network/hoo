@@ -11,7 +11,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-005_class_modifiers.md](issues/ISSUE-005_class_modifiers.md)**
   - **Title**: # ISSUE-005: Unimplemented Class Modifiers
-  - **Status**: IMPLEMENTED
+  - **Status**: IMPLEMENTED (EXCEPTIONAL JIT-FLOW VERIFICATION PENDING)
   - **Priority**: Medium
 
 - **[ISSUE-006_access_qualifiers.md](issues/ISSUE-006_access_qualifiers.md)**
