@@ -34,5 +34,5 @@ int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     int result = RUN_ALL_TESTS();
     std::fflush(nullptr);
-    std::quick_exit(result);
+    return result;
 }

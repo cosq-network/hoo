@@ -126,16 +126,18 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
         module_map[mod->getName()] = mod;
     }
 
-    std::unordered_set<std::string> visited;
-    std::unordered_set<std::string> temp_visited;
+    enum class VisitState { Unvisited, Visiting, Visited };
+    std::unordered_map<std::string, VisitState> states;
+    bool cycle_found = false;
 
     std::function<void(const std::string&)> visit = [&](const std::string& name) {
-        if (visited.find(name) != visited.end()) {
+        auto state_it = states.find(name);
+        if (state_it != states.end() && state_it->second == VisitState::Visited) {
             return;
         }
 
-        if (temp_visited.find(name) != temp_visited.end()) {
-            has_circular_dependency_ = true;
+        if (state_it != states.end() && state_it->second == VisitState::Visiting) {
+            cycle_found = true;
             return;
         }
 
@@ -144,7 +146,7 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
             return;
         }
 
-        temp_visited.insert(name);
+        states[name] = VisitState::Visiting;
 
         for (const auto& dep : module_it->second->getDependencies()) {
             auto dep_it = module_map.find(dep.module_name);
@@ -153,8 +155,7 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
             }
         }
 
-        temp_visited.erase(name);
-        visited.insert(name);
+        states[name] = VisitState::Visited;
         dependency_order_.push_back(name);
     };
 
@@ -163,6 +164,8 @@ void HOModuleBase::resolveDependencyOrder(const std::vector<std::shared_ptr<HOMo
             visit(dep.module_name);
         }
     }
+
+    has_circular_dependency_ = cycle_found;
 }
 
 void HOModuleBase::checkCircularDependencies(const std::string& module_name,

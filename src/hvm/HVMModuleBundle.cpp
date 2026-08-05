@@ -148,12 +148,16 @@ std::vector<std::shared_ptr<HOModuleBase>> HVMModuleBundle::resolveDependencyOrd
     std::vector<std::shared_ptr<HOModuleBase>> result;
     std::unordered_set<std::string> visited;
     std::unordered_set<std::string> recursion_stack;
+    bool cycle_found = false;
 
     std::function<void(const std::shared_ptr<HOModuleBase>&)> visit =
         [&](const std::shared_ptr<HOModuleBase>& module) {
             const std::string& name = module->getName();
             if (visited.count(name)) return;
-            if (recursion_stack.count(name)) return;
+            if (recursion_stack.count(name)) {
+                cycle_found = true;
+                return;
+            }
 
             recursion_stack.insert(name);
 
@@ -171,6 +175,20 @@ std::vector<std::shared_ptr<HOModuleBase>> HVMModuleBundle::resolveDependencyOrd
 
     for (const auto& pair : modules_by_name_) {
         visit(pair.second.module);
+    }
+
+    // Keep the per-module cycle state consistent with the bundle-level walk.
+    // This also ensures hasCircularDependency(name) and the bundle traversal
+    // agree for transitive cycles.
+    if (cycle_found) {
+        std::vector<std::shared_ptr<HOModuleBase>> all_modules;
+        all_modules.reserve(modules_by_name_.size());
+        for (const auto& pair : modules_by_name_) {
+            all_modules.push_back(pair.second.module);
+        }
+        for (const auto& pair : modules_by_name_) {
+            pair.second.module->resolveDependencyOrder(all_modules);
+        }
     }
 
     return result;

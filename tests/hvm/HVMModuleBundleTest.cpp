@@ -428,6 +428,49 @@ TEST_F(HVMModuleBundleTest, ResolveDependencyOrderTransitiveChain) {
     EXPECT_EQ(depOrder[1], "B");
 }
 
+TEST_F(HVMModuleBundleTest, ResolveDependencyOrderChainHasNoFalseCycle) {
+    HVMModuleBundle bundle;
+
+    auto moduleA = std::make_shared<HOModuleBase>(ModuleType::Compiled, "A");
+    moduleA->addDependency("B", ModuleType::Compiled);
+    auto moduleB = std::make_shared<HOModuleBase>(ModuleType::Compiled, "B");
+    moduleB->addDependency("C", ModuleType::Compiled);
+    auto moduleC = std::make_shared<HOModuleBase>(ModuleType::Compiled, "C");
+
+    bundle.addModule(moduleA);
+    bundle.addModule(moduleB);
+    bundle.addModule(moduleC);
+
+    auto order = bundle.resolveDependencyOrder();
+    ASSERT_EQ(order.size(), 3);
+    EXPECT_FALSE(bundle.hasCircularDependency("A"));
+    EXPECT_FALSE(bundle.hasCircularDependency("B"));
+    EXPECT_FALSE(bundle.hasCircularDependency("C"));
+    EXPECT_FALSE(bundle.hasCircularDependency());
+}
+
+TEST_F(HVMModuleBundleTest, ResolveDependencyOrderCycleIsReported) {
+    HVMModuleBundle bundle;
+
+    auto moduleA = std::make_shared<HOModuleBase>(ModuleType::Compiled, "A");
+    moduleA->addDependency("B", ModuleType::Compiled);
+    auto moduleB = std::make_shared<HOModuleBase>(ModuleType::Compiled, "B");
+    moduleB->addDependency("C", ModuleType::Compiled);
+    auto moduleC = std::make_shared<HOModuleBase>(ModuleType::Compiled, "C");
+    moduleC->addDependency("A", ModuleType::Compiled);
+
+    bundle.addModule(moduleA);
+    bundle.addModule(moduleB);
+    bundle.addModule(moduleC);
+
+    auto order = bundle.resolveDependencyOrder();
+    ASSERT_EQ(order.size(), 3);
+    EXPECT_TRUE(bundle.hasCircularDependency("A"));
+    EXPECT_TRUE(bundle.hasCircularDependency("B"));
+    EXPECT_TRUE(bundle.hasCircularDependency("C"));
+    EXPECT_TRUE(bundle.hasCircularDependency());
+}
+
 TEST_F(HVMModuleBundleTest, HasCircularDependencyThreeModuleCycle) {
     HVMModuleBundle bundle;
 
