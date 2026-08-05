@@ -152,8 +152,8 @@ This document provides a high-level overview of the current status of all tracke
   - **Priority**: MEDIUM
 
 - **[ISSUE-022_type_inference_limits.md](issues/ISSUE-022_type_inference_limits.md)**
-  - **Title**: # ISSUE-022: Limited Type Inference for `var` Declarations
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Title**: # ISSUE-022: Type Inference for `var` Declarations
+  - **Status**: IMPLEMENTED for the supported compile-time type model
   - **Priority**: MEDIUM
 
 - **[ISSUE-025_tensor_data_type.md](issues/ISSUE-025_tensor_data_type.md)**
@@ -168,7 +168,7 @@ This document provides a high-level overview of the current status of all tracke
   - **Priority**: HIGH** (Prerequisite for high-performance AI/ML support)
 
 - **[ISSUE-031_chained_inference.md](issues/ISSUE-031_chained_inference.md)**
-  - **Title**: # ISSUE-031: Missing Return Type Inference for Method Chains
+  - **Title**: # ISSUE-031: Advanced Return Type Inference for Method Chains
   - **Status**: PARTIALLY IMPLEMENTED
   - **Priority**: Medium (Affects code ergonomics and dispatch safety)
 

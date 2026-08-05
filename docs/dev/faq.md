@@ -8,7 +8,7 @@ A: Add the token and production rules in `src/parsing/Hooc.g4`, regenerate the p
 
 **Q: Where does type checking happen?**
 
-A: Mostly in `HVMCodeGenerator`. The AST builder (`SimpleASTBuilder`) does minimal validation — primarily `rejectAnyTypeInPosition` to forbid `any` in certain contexts and single-constructor enforcement. The codegen performs type inference via `inferExpressionTypeId()`, checks argument counts via parameter type lists, validates modifiers (immutable field reassignment, singleton instantiation, etc.), and enforces serializable class constraints.
+A: Mostly in `HVMCodeGenerator`. The AST builder (`SimpleASTBuilder`) does minimal validation — primarily `rejectAnyTypeInPosition` to forbid `any` in certain contexts and single-constructor enforcement. The codegen performs recursive type inference via `inferExpressionTypeInfo()` (with `inferExpressionTypeId()` as the compatibility wrapper), checks argument counts via parameter type lists, validates modifiers (immutable field reassignment, singleton instantiation, etc.), and enforces serializable class constraints.
 
 **Q: How do I debug bytecode output?**
 
