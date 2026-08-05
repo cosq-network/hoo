@@ -1724,22 +1724,29 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
     } else if (auto whileStmt = dynamic_cast<const ast::WhileStatement*>(&stmt)) {
         Label* startLabel = createLabel();
         Label* endLabel = createLabel();
+        RegisterMask loopExitMask = captureRegisterMask();
         bindLabel(startLabel);
         uint8_t condReg = visitExpression(whileStmt->getCondition());
         emitBranch(Opcode::BEQ, condReg, 0, endLabel);
         freeRegister(condReg);
-        controlFlowStack_.push({endLabel, startLabel, scopeStack_.size()});
+        RegisterMask loopBodyMask = captureRegisterMask();
+        controlFlowStack_.push({endLabel, startLabel, scopeStack_.size(), loopExitMask, loopBodyMask});
         visitStatement(whileStmt->getBody());
+        restoreRegisterMask(loopBodyMask);
         controlFlowStack_.pop();
         emitJump(Opcode::JMP, 0, startLabel);
         bindLabel(endLabel);
+        restoreRegisterMask(loopExitMask);
     } else if (auto doWhile = dynamic_cast<const ast::DoWhileStatement*>(&stmt)) {
         Label* startLabel = createLabel();
         Label* conditionLabel = createLabel();
         Label* endLabel = createLabel();
+        RegisterMask loopExitMask = captureRegisterMask();
         bindLabel(startLabel);
-        controlFlowStack_.push({endLabel, conditionLabel, scopeStack_.size()});
+        RegisterMask loopBodyMask = captureRegisterMask();
+        controlFlowStack_.push({endLabel, conditionLabel, scopeStack_.size(), loopExitMask, loopBodyMask});
         visitStatement(doWhile->getBody());
+        restoreRegisterMask(loopBodyMask);
         controlFlowStack_.pop();
         bindLabel(conditionLabel);
         uint8_t condReg = visitExpression(doWhile->getCondition());
@@ -1747,6 +1754,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         freeRegister(condReg);
         emitJump(Opcode::JMP, 0, startLabel);
         bindLabel(endLabel);
+        restoreRegisterMask(loopExitMask);
     } else if (auto switchStmt = dynamic_cast<const ast::SwitchStatement*>(&stmt)) {
         auto supportsSwitchCompare = [](uint32_t typeId) {
             return typeId == 0 || typeId == 1 || typeId == 3 || typeId == 5 ||
@@ -1784,7 +1792,12 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             emitJump(Opcode::JMP, 0, endLabel);
         }
 
-        controlFlowStack_.push({endLabel, nullptr, scopeStack_.size()});
+        RegisterMask switchBodyMask = captureRegisterMask();
+        RegisterMask switchExitMask = switchBodyMask;
+        if (discReg >= 9 && discReg <= 20) {
+            switchExitMask.set(discReg, false);
+        }
+        controlFlowStack_.push({endLabel, nullptr, scopeStack_.size(), switchBodyMask, switchBodyMask});
 
         for (size_t i = 0; i < switchStmt->getCases().size(); i++) {
             bindLabel(caseLabels[i]);
@@ -1801,24 +1814,29 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             }
         }
 
+        restoreRegisterMask(switchBodyMask);
         controlFlowStack_.pop();
         bindLabel(endLabel);
         freeRegister(discReg);
+        restoreRegisterMask(switchExitMask);
     } else if (auto breakStmt = dynamic_cast<const ast::BreakStatement*>(&stmt)) {
         if (controlFlowStack_.empty() || !controlFlowStack_.top().breakLabel) {
             addError("break statement outside of loop");
         } else {
+            restoreRegisterMask(controlFlowStack_.top().breakRegisterMask);
             emitScopeCleanup(scopeStack_.size(), controlFlowStack_.top().scopeDepth);
             emitJump(Opcode::JMP, 0, controlFlowStack_.top().breakLabel);
         }
     } else if (auto continueStmt = dynamic_cast<const ast::ContinueStatement*>(&stmt)) {
         Label* continueLabel = nullptr;
         size_t continueScopeDepth = 0;
+        RegisterMask continueRegisterMask;
         auto scopes = controlFlowStack_;
         while (!scopes.empty()) {
             if (scopes.top().continueLabel) {
                 continueLabel = scopes.top().continueLabel;
                 continueScopeDepth = scopes.top().scopeDepth;
+                continueRegisterMask = scopes.top().continueRegisterMask;
                 break;
             }
             scopes.pop();
@@ -1826,10 +1844,12 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         if (!continueLabel) {
             addError("continue statement outside of loop");
         } else {
+            restoreRegisterMask(continueRegisterMask);
             emitScopeCleanup(scopeStack_.size(), continueScopeDepth);
             emitJump(Opcode::JMP, 0, continueLabel);
         }
     } else if (auto forRange = dynamic_cast<const ast::ForRangeStatement*>(&stmt)) {
+        RegisterMask loopExitMask = captureRegisterMask();
         int32_t offset = reserveLocal(forRange->getVariable(), 1);
         bool isStepOne = true;
         if (forRange->getStep()) {
@@ -1868,9 +1888,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             Label* startLabel = createLabel();
             Label* stepLabel = createLabel();
             bindLabel(startLabel);
-            
-            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
+            RegisterMask loopBodyMask = captureRegisterMask();
+            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size(), loopExitMask, loopBodyMask});
             visitStatement(forRange->getBody());
+            restoreRegisterMask(loopBodyMask);
             controlFlowStack_.pop();
             
             bindLabel(stepLabel);
@@ -1895,6 +1916,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             loopSetInst.setOperands(ops);
             
             bindLabel(endLabel);
+            restoreRegisterMask(loopExitMask);
         } else {
             uint8_t startReg = visitExpression(forRange->getStart());
             emit(Opcode::ST_D, OperandsI{startReg, 30, static_cast<int16_t>(offset)});
@@ -1912,8 +1934,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(iReg);
             freeRegister(endReg);
             freeRegister(condReg);
-            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
+            RegisterMask loopBodyMask = captureRegisterMask();
+            controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size(), loopExitMask, loopBodyMask});
             visitStatement(forRange->getBody());
+            restoreRegisterMask(loopBodyMask);
             controlFlowStack_.pop();
             bindLabel(stepLabel);
             iReg = allocateRegister();
@@ -1927,8 +1951,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(nextIReg);
             emitJump(Opcode::JMP, 0, startLabel);
             bindLabel(endLabel);
+            restoreRegisterMask(loopExitMask);
         }
     } else if (auto forIn = dynamic_cast<const ast::ForInStatement*>(&stmt)) {
+        RegisterMask loopExitMask = captureRegisterMask();
         uint8_t iterReg = visitExpression(forIn->getIterable());
         
         // Convert string to character array, or map to key array
@@ -2005,8 +2031,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         emit(Opcode::ST_D, OperandsI{itemReg, 30, static_cast<int16_t>(itemOffset)});
         freeRegister(itemReg);
         
-        controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size()});
+        RegisterMask loopBodyMask = captureRegisterMask();
+        controlFlowStack_.push({endLabel, stepLabel, scopeStack_.size(), loopExitMask, loopBodyMask});
         visitStatement(forIn->getBody());
+        restoreRegisterMask(loopBodyMask);
         controlFlowStack_.pop();
         
         bindLabel(stepLabel);
@@ -2031,9 +2059,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         loopSetInst.setOperands(ops);
         
         bindLabel(endLabel);
-        freeRegister(iterReg);
-        freeRegister(lenReg);
-        freeRegister(iReg);
+        restoreRegisterMask(loopExitMask);
     } else if (auto tryCatch = dynamic_cast<const ast::TryCatchStatement*>(&stmt)) {
         Label* catchStartLabel = createLabel();
         Label* finallyLabel = createLabel();
@@ -3699,6 +3725,20 @@ uint8_t HVMCodeGenerator::allocateRegister() {
 
 void HVMCodeGenerator::freeRegister(uint8_t reg) {
     if (reg >= 9 && reg <= 20) usedRegs_[reg] = false;
+}
+
+HVMCodeGenerator::RegisterMask HVMCodeGenerator::captureRegisterMask() const {
+    RegisterMask mask;
+    for (uint8_t i = 0; i < 32; ++i) {
+        mask.set(i, usedRegs_[i]);
+    }
+    return mask;
+}
+
+void HVMCodeGenerator::restoreRegisterMask(const RegisterMask& mask) {
+    for (uint8_t i = 9; i <= 20; ++i) {
+        usedRegs_[i] = mask.test(i);
+    }
 }
 
 void HVMCodeGenerator::emitCompressed(uint8_t opcode4, uint8_t rd, uint8_t rs1, uint8_t imm4) {

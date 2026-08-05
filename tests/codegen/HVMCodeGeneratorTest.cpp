@@ -534,6 +534,46 @@ TEST_F(HVMCodeGeneratorTest, LoopBreak_CleansUpManagedLocals) {
     EXPECT_TRUE(foundCall) << "Expected CALL for scope cleanup before break";
 }
 
+TEST_F(HVMCodeGeneratorTest, LoopControlRestoresTemporaryRegisterState) {
+    std::string code = R"(
+        import hoo;
+
+        func:void whileBreak() {
+            var i: int64 = 0;
+            while (i < 20) {
+                if (i == 3) { break; }
+                i = i + 1;
+            }
+        }
+
+        func:void doWhileContinue() {
+            var i: int64 = 0;
+            do {
+                i = i + 1;
+                if (i < 4) { continue; }
+            } while (i < 8);
+        }
+
+        func:void rangeBreak() {
+            for i in 0 .. 20 by 2 {
+                if (i == 6) { break; }
+            }
+        }
+
+        func:void arrayContinue() {
+            var values = [1, 2, 3, 4, 5];
+            for value in values {
+                if (value == 2) { continue; }
+                if (value == 4) { break; }
+            }
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+    EXPECT_TRUE(compiler_->getLastError().empty()) << compiler_->getLastError();
+}
+
 TEST_F(HVMCodeGeneratorTest, InterpolatedStringExprStmt_EmitsRelease) {
     std::string code = R"(
         func:void test() {

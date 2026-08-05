@@ -78,7 +78,7 @@ static uint8_t argReg(uint8_t first, size_t i) {
 }
 ```
 
-Temporary registers r9-r20 are managed via `allocateRegister()` / `freeRegister()` with a bitmask (`usedRegs_[32]`).
+Temporary registers r9-r20 are managed via `allocateRegister()` / `freeRegister()` with a bitmask (`usedRegs_[32]`). Loop and switch control-flow scopes also checkpoint this mask so `break`, `continue`, and join labels cannot carry stale temporary-register state into subsequent code generation. Managed-local cleanup remains separate from temporary-register state.
 
 ## Compilation phases
 

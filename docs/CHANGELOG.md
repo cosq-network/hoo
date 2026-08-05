@@ -11,6 +11,13 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- fix(codegen): complete ISSUE-019 register cleanup across loop control flow
+  - Add register-state checkpoints to loop and switch control-flow scopes
+  - Restore correct temporary-register state for `break`, `continue`, and loop
+    fallthrough/exit joins
+  - Add regression coverage for while, do-while, stepped range, and for-in
+    loops
+
 - fix(async): harden async/await and Future execution
   - Async functions now create and resolve `Future<T>`/`Future<void>` values
   - Await validates async context and Future operands, with primitive and

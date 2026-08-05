@@ -15,6 +15,7 @@
 #include <unordered_set>
 #include <stack>
 #include <string>
+#include <bitset>
 
 namespace hooc {
 
@@ -62,9 +63,12 @@ private:
     std::string getRequiredModule(const std::string& name) const;
 
     // Register Management (r9-r20 available for temps)
+    using RegisterMask = std::bitset<32>;
     bool usedRegs_[32];
     uint8_t allocateRegister();
     void freeRegister(uint8_t reg);
+    RegisterMask captureRegisterMask() const;
+    void restoreRegisterMask(const RegisterMask& mask);
     void emitCompressed(uint8_t opcode4, uint8_t rd, uint8_t rs1, uint8_t imm4);
 
 
@@ -228,6 +232,8 @@ private:
         Label* breakLabel;
         Label* continueLabel;
         size_t scopeDepth;
+        RegisterMask breakRegisterMask;
+        RegisterMask continueRegisterMask;
     };
     std::stack<ControlFlowScope> controlFlowStack_;
     std::vector<std::unique_ptr<Label>> allLabels_;

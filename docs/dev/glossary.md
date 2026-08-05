@@ -104,7 +104,7 @@
 
 | Term | Definition |
 |---|---|
-| **Register allocation** | Managed by `HVMCodeGenerator` via `usedRegs_[32]` bitmask. r4 reserved for thread pointer. r9-r20 available for temporaries. `argReg()` skips r4 when mapping argument indices to registers. |
+| **Register allocation** | Managed by `HVMCodeGenerator` via `usedRegs_[32]` bitmask. r4 reserved for thread pointer. r9-r20 available for temporaries. `argReg()` skips r4 when mapping argument indices to registers. Loop and switch control-flow scopes checkpoint the mask to keep `break`/`continue` joins balanced. |
 
 ## S
 

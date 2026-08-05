@@ -13,6 +13,7 @@ This document summarizes the implementation work completed on 2026-07-19 to addr
 | **ISSUE-058** | Future Spin-Wait CPU Waste | 🔴 P0 | ✅ **IMPLEMENTED** | 1 day |
 | **ISSUE-063** | Future Continuation Cleanup | 🟠 P1 | ✅ **IMPLEMENTED** | Included in ISSUE-058 |
 | **ISSUE-061** | Async/Await Future Model | 🔴 P0 | ✅ **IMPLEMENTED** | Cooperative HVM execution; frame suspension deferred |
+| **ISSUE-019** | Register Leaks on Control Flow Breaks | 🟡 P2 | ✅ **IMPLEMENTED** | Register checkpoints for loop control flow |
 
 ---
 
@@ -121,6 +122,22 @@ suspension remains future VM work.
   runtime helper.
 - HVM does not yet capture and resume stack frames. Unsupported
   `llvm.coro.*` pseudo-calls are intentionally not emitted.
+
+---
+
+### ISSUE-019: Register Leaks on Control Flow Breaks
+
+**Status:** Implemented on 2026-08-05.
+
+**Changes:**
+- Added temporary-register masks and capture/restore helpers to
+  `HVMCodeGenerator`.
+- Stored break and continue register states in `ControlFlowScope`.
+- Restored loop-body state before normal step/fallthrough code and loop-exit
+  state before subsequent code.
+- Applied the same merge protection to nested switch scopes.
+- Added regression coverage for while, do-while, stepped range, and for-in
+  loops using `break` and `continue`.
 
 ---
 

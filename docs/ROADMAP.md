@@ -138,7 +138,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-019_register_leaks.md](issues/ISSUE-019_register_leaks.md)**
   - **Title**: # ISSUE-019: Register Leaks on Control Flow Breaks
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: IMPLEMENTED
   - **Priority**: MEDIUM
 
 - **[ISSUE-020_class_modifiers_pruned.md](issues/ISSUE-020_class_modifiers_pruned.md)**

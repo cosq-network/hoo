@@ -66,7 +66,7 @@ A: The codegen inserts `retain` calls after object allocations and `release` cal
 
 **Q: How are registers allocated?**
 
-A: The `argReg()` helper maps argument indices to register numbers, skipping r4 (reserved for thread pointer). Temporary registers (r9-r20) are managed with a bitmask in `usedRegs_[32]`, allocated via `allocateRegister()` and freed via `freeRegister()`.
+A: The `argReg()` helper maps argument indices to register numbers, skipping r4 (reserved for thread pointer). Temporary registers (r9-r20) are managed with a bitmask in `usedRegs_[32]`, allocated via `allocateRegister()` and freed via `freeRegister()`. Loop and switch control-flow scopes checkpoint and restore that mask around `break`, `continue`, and join points.
 
 **Q: Can I add a new section type to HOModule?**
 

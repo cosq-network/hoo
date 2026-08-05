@@ -10,6 +10,9 @@ the libuv loop without busy-spinning, and multiple continuations are cleaned
 up safely. True HVM stack-frame suspension remains deferred because the VM has
 no suspend/resume instructions.
 
+ISSUE-019 is also resolved: loop control-flow scopes now checkpoint and restore
+temporary-register state for `break`, `continue`, and loop join points.
+
 ## Overview
 This document summarizes the codebase review conducted on 2026-07-19, the new issues identified, and their prioritization for resolution.
 

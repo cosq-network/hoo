@@ -1,43 +1,54 @@
 # ISSUE-019: Register Leaks on Control Flow Breaks
 
 ## 1. Overview
-When `break` or `continue` is used inside loops (for-range, for-in, while), the `emitJump(JMP)` to the break/continue label bypasses the `freeRegister` calls at the bottom of the loop body. Registers allocated for the loop variable, condition, and body expressions are leaked, causing register exhaustion.
+When `break` or `continue` is used inside loops, code generation can branch
+around the normal fallthrough path. A function-wide temporary-register bitmap
+cannot safely represent that control-flow merge unless the allocator state is
+restored at the branch and loop join points.
 
 ## 2. Technical Analysis
-- **Location**: `src/codegen/HVMCodeGenerator.cpp` lines 511-622
+- **Location**: `src/codegen/HVMCodeGenerator.cpp` loop/control-flow emission
+  and `src/codegen/HVMCodeGenerator.h` `ControlFlowScope`
 
 ### Affected code paths:
-1. **`emitWhileStatement`** (lines 511-554):
-   - `breakLabel` and `continueLabel` jumps skip `freeRegister(condReg)` at line 548.
-
-2. **`emitForRangeStatement`** (lines 553-555):
-   - `breakLabel` and `continueLabel` jumps skip register cleanup.
-
-3. **`emitForInStatement`** (lines 608-610):
-   - `breakLabel` and `continueLabel` jumps skip register cleanup.
+1. Loop bodies can contain nested blocks and branches whose temporary state
+   differs at compile-time.
+2. `ControlFlowScope` previously tracked only labels and managed-local scope
+   depth, not temporary-register state.
+3. `emitScopeCleanup()` needs a temporary register to preserve `r1`; stale
+   allocator state could make that cleanup itself fail under pressure.
 
 ### Mechanism:
-- The `break`/`continue` is compiled as `emitJump(Opcode::JMP, breakLabel)`.
-- The target label is placed after the loop's register-freeing code.
-- Registers allocated within the loop body (loop variables, iterators, conditions) are never freed.
-- The register allocator (`usedRegs_` bitmap) has no mechanism for abnormal control flow.
+- The `break`/`continue` is compiled as an unconditional jump.
+- The target label can merge with code generated from the normal loop path.
+- The allocator's `usedRegs_` bitmap is compile-time state and needs explicit
+  checkpoints at those merges.
 
 ## 3. Impact
 - Register exhaustion after repeated `break`/`continue` inside loops.
-- Corrupted register state on continued loop iterations.
-- Hard-to-debug crashes in loops with early exits.
+- Incorrect register reuse or false register-pressure errors after early exits.
+- Hard-to-debug failures in nested loops and control-flow-heavy functions.
 
-## 4. Suggested Fix
-Before emitting the `JMP` to `breakLabel` or `continueLabel`, free all registers currently allocated within the loop scope. Options:
+## 4. Implementation
 
-1. **Save/restore register state**: Snapshots `usedRegs_` before entering the loop and restores it on `break`/`continue`.
-2. **Free on jump**: Track which registers were allocated since the last scope boundary and emit `freeRegister` calls for each before the `JMP`.
-3. **Lexical scoping**: Implement proper register scoping by pushing/popping register allocation state alongside `scopeStack_`.
+`ControlFlowScope` now stores register masks for its break and continue
+targets. Loop emitters capture:
 
-Approach 3 is cleanest — treat each loop body as a register scope, and free all loop-local registers at scope exit (including `break`/`continue` targets).
+- the register state before loop setup;
+- the state at loop-body entry, including loop-carried registers.
+
+Before emitting `break` or `continue`, the generator restores the target
+state, then emits managed-local cleanup and the jump. After generating a loop
+body, it restores the body-entry state before emitting step/fallthrough code.
+At the loop exit it restores the pre-loop state. Switch scopes use the same
+mechanism so a `break` inside a switch nested in a loop does not corrupt the
+enclosing loop state.
 
 ## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-08-05
+- **Status**: **RESOLVED**
 - **Priority**: **MEDIUM**
-- **Audit 2026-06-24**: Register allocator uses paired alloc/free pattern across 90+ call sites. Break/continue paths may still skip freeRegister for loop-body temporaries. No spilling support — limited to 12 temporary registers (r9–r20).
+- Temporary registers remain limited to 12 (`r9`–`r20`); this issue does not
+  add spilling.
+- Regression coverage verifies while, do-while, stepped for-range, and for-in
+  loops containing `break` and `continue`.
