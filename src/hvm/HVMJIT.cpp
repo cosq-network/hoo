@@ -92,6 +92,16 @@ namespace fs = std::filesystem;
 namespace hooc {
 
 namespace {
+constexpr uint64_t kCanonicalQuietNaN = 0x7ff8000000000000ULL;
+
+uint64_t canonicalizeF64Bits(uint64_t bits) {
+    const uint64_t exponent = bits & 0x7ff0000000000000ULL;
+    const uint64_t fraction = bits & 0x000fffffffffffffULL;
+    return exponent == 0x7ff0000000000000ULL && fraction != 0
+               ? kCanonicalQuietNaN
+               : bits;
+}
+
 bool isExternallyVisible(const hvm::Symbol& symbol) {
     return symbol.binding == hvm::Symbol::STB_GLOBAL ||
            symbol.binding == hvm::Symbol::STB_WEAK;
@@ -6582,7 +6592,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                         lastError_ = "Unsupported FLOAT_ARITH func: " + std::to_string(o.func);
                         return -1;
                 }
-                writeReg(o.rd, f64AsBits(out));
+                writeReg(o.rd, canonicalizeF64Bits(f64AsBits(out)));
                 break;
             }
             case hvm::Opcode::FLOAT_ARITH_B: {
@@ -6766,6 +6776,10 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                         v = static_cast<uint64_t>(static_cast<int64_t>(static_cast<int8_t>(v)));
                     }
                 } else if (ins->getOpcode() == hvm::Opcode::LD_H || ins->getOpcode() == hvm::Opcode::LD_HU) {
+                    if ((addr & 1ULL) != 0) {
+                        lastError_ = "Unaligned LD.H address: " + std::to_string(addr);
+                        return -1;
+                    }
                     if (addr + 2 > memory_.size()) {
                         lastError_ = "Invalid LD.H address: " + std::to_string(addr);
                         return -1;
@@ -6776,6 +6790,10 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                             ? static_cast<uint64_t>(static_cast<int64_t>(static_cast<int16_t>(h)))
                             : static_cast<uint64_t>(h);
                 } else {
+                    if ((addr & 3ULL) != 0) {
+                        lastError_ = "Unaligned LD.W address: " + std::to_string(addr);
+                        return -1;
+                    }
                     if (addr + 4 > memory_.size()) {
                         lastError_ = "Invalid LD.W address: " + std::to_string(addr);
                         return -1;
@@ -6825,6 +6843,10 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     }
                     memory_[addr] = static_cast<uint8_t>(data & 0xFFU);
                 } else if (ins->getOpcode() == hvm::Opcode::ST_H) {
+                    if ((addr & 1ULL) != 0) {
+                        lastError_ = "Unaligned ST.H address: " + std::to_string(addr);
+                        return -1;
+                    }
                     if (addr + 2 > memory_.size()) {
                         lastError_ = "Invalid ST.H address: " + std::to_string(addr);
                         return -1;
@@ -6832,6 +6854,10 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     memory_[addr] = static_cast<uint8_t>(data & 0xFFU);
                     memory_[addr + 1] = static_cast<uint8_t>((data >> 8U) & 0xFFU);
                 } else {
+                    if ((addr & 3ULL) != 0) {
+                        lastError_ = "Unaligned ST.W address: " + std::to_string(addr);
+                        return -1;
+                    }
                     if (addr + 4 > memory_.size()) {
                         lastError_ = "Invalid ST.W address: " + std::to_string(addr);
                         return -1;
@@ -7320,10 +7346,24 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 writeReg(o.rd, result);
                 break;
             }
-            case hvm::Opcode::CSRRW:
-                lastError_ = "CSRRW not implemented";
-                state.trapHit = true;
-                return -1;
+            case hvm::Opcode::CSRRW: {
+                auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                const uint16_t csrImmediate = static_cast<uint16_t>(o.imm15);
+                if (o.imm15 < 0 || (csrImmediate & 0x7000U) != 0 ||
+                    (csrImmediate & 0x0FFFU) >= 8) {
+                    lastError_ = "Invalid HVM CSR address";
+                    state.trapHit = true;
+                    return -1;
+                }
+                const uint64_t csr = csrImmediate & 0x0FFFU;
+                const uint64_t oldValue = state.csrs[csr];
+                writeReg(o.rd, oldValue);
+                // stime (CSR 0x006) is read-only in the system profile.
+                if (csr != 0x006 && o.rs != 0) {
+                    state.csrs[csr] = readReg(o.rs);
+                }
+                break;
+            }
             case hvm::Opcode::SFENCE_VMA:
                 // No-op in interpreter (no TLB to flush)
                 break;
@@ -7753,7 +7793,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64, i64, i64});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64, i64, i64, llvm::ArrayType::get(i64, 8)});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -7832,6 +7872,11 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
         };
         auto vtypePtr = [&]() {
             return builder.CreateStructGEP(stateTy, stateArg, 8);
+        };
+        auto csrPtr = [&](uint64_t csr) {
+            auto* csrs = builder.CreateStructGEP(stateTy, stateArg, 12);
+            return builder.CreateInBoundsGEP(llvm::ArrayType::get(i64, 8), csrs,
+                                             {builder.getInt64(0), builder.getInt64(csr)});
         };
         auto memBase = [&]() -> llvm::Value* {
             return builder.CreateLoad(i8Ptr, builder.CreateStructGEP(stateTy, stateArg, 1));
@@ -8311,7 +8356,16 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 2) out = builder.CreateFMul(a, b);
                     else if (o.func == 3) out = builder.CreateFDiv(a, b);
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
-                    writeReg(o.rd, builder.CreateBitCast(out, i64));
+                     auto* outBits = builder.CreateBitCast(out, i64);
+                     auto* isNaN = builder.CreateAnd(
+                         builder.CreateICmpEQ(
+                             builder.CreateAnd(outBits, builder.getInt64(0x7ff0000000000000ULL)),
+                             builder.getInt64(0x7ff0000000000000ULL)),
+                         builder.CreateICmpNE(
+                             builder.CreateAnd(outBits, builder.getInt64(0x000fffffffffffffULL)),
+                             builder.getInt64(0)));
+                     writeReg(o.rd, builder.CreateSelect(
+                         isNaN, builder.getInt64(kCanonicalQuietNaN), outBits));
                 } else if (op == hvm::Opcode::FLOAT_ARITH_B) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* result = builder.CreateCall(f8ArithCallee,
@@ -8601,11 +8655,23 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.CreateRet(rv);
                     break;
                 }
- else if (op == hvm::Opcode::LD_B || op == hvm::Opcode::LD_BU || op == hvm::Opcode::LD_H ||
-                           op == hvm::Opcode::LD_HU || op == hvm::Opcode::LD_W || op == hvm::Opcode::LD_WU) {
-                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                    auto* addr = builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15)));
-                    if (op == hvm::Opcode::LD_B || op == hvm::Opcode::LD_BU) {
+                 else if (op == hvm::Opcode::LD_B || op == hvm::Opcode::LD_BU || op == hvm::Opcode::LD_H ||
+                            op == hvm::Opcode::LD_HU || op == hvm::Opcode::LD_W || op == hvm::Opcode::LD_WU) {
+                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                     auto* addr = builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15)));
+                     const uint64_t alignment = (op == hvm::Opcode::LD_H || op == hvm::Opcode::LD_HU) ? 2 :
+                                                (op == hvm::Opcode::LD_W || op == hvm::Opcode::LD_WU) ? 4 : 1;
+                     if (alignment > 1) {
+                         auto* misaligned = builder.CreateICmpNE(
+                             builder.CreateAnd(addr, builder.getInt64(alignment - 1)), builder.getInt64(0));
+                         auto* okBB = llvm::BasicBlock::Create(*context, "ld_subword_ok", fn);
+                         auto* errBB = llvm::BasicBlock::Create(*context, "ld_subword_err", fn);
+                         builder.CreateCondBr(misaligned, errBB, okBB);
+                         builder.SetInsertPoint(errBB);
+                         builder.CreateRet(builder.getInt64(-1));
+                         builder.SetInsertPoint(okBB);
+                     }
+                     if (op == hvm::Opcode::LD_B || op == hvm::Opcode::LD_BU) {
                         auto* v = builder.CreateLoad(builder.getInt8Ty(), memAddr(addr));
                         writeReg(o.rd, op == hvm::Opcode::LD_B ? builder.CreateSExt(v, i64) : builder.CreateZExt(v, i64));
                     } else if (op == hvm::Opcode::LD_H || op == hvm::Opcode::LD_HU) {
@@ -8630,11 +8696,22 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto* ptr = builder.CreateBitCast(memAddr(addr), llvm::PointerType::get(*context, 0));
                     auto* v = builder.CreateLoad(i64, ptr);
                     writeReg(o.rd, v);
-                } else if (op == hvm::Opcode::ST_B || op == hvm::Opcode::ST_H || op == hvm::Opcode::ST_W) {
-                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                    auto* addr = builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15)));
-                    auto* val = readReg(o.rd);
-                    if (op == hvm::Opcode::ST_B) {
+                 } else if (op == hvm::Opcode::ST_B || op == hvm::Opcode::ST_H || op == hvm::Opcode::ST_W) {
+                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                     auto* addr = builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15)));
+                     auto* val = readReg(o.rd);
+                     const uint64_t alignment = op == hvm::Opcode::ST_H ? 2 : op == hvm::Opcode::ST_W ? 4 : 1;
+                     if (alignment > 1) {
+                         auto* misaligned = builder.CreateICmpNE(
+                             builder.CreateAnd(addr, builder.getInt64(alignment - 1)), builder.getInt64(0));
+                         auto* okBB = llvm::BasicBlock::Create(*context, "st_subword_ok", fn);
+                         auto* errBB = llvm::BasicBlock::Create(*context, "st_subword_err", fn);
+                         builder.CreateCondBr(misaligned, errBB, okBB);
+                         builder.SetInsertPoint(errBB);
+                         builder.CreateRet(builder.getInt64(-1));
+                         builder.SetInsertPoint(okBB);
+                     }
+                     if (op == hvm::Opcode::ST_B) {
                         builder.CreateStore(builder.CreateTrunc(val, builder.getInt8Ty()), memAddr(addr));
                     } else if (op == hvm::Opcode::ST_H) {
                         auto* ptr = builder.CreateBitCast(memAddr(addr), llvm::PointerType::get(*context, 0));
@@ -9053,9 +9130,20 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     }
                     break;
                 } else if (op == hvm::Opcode::CSRRW) {
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
-                    builder.CreateRet(builder.getInt64(-1));
-                    break;
+                    auto o = std::get<hvm::OperandsI>(ins->getOperands());
+                    const uint16_t csrImmediate = static_cast<uint16_t>(o.imm15);
+                    if (o.imm15 < 0 || (csrImmediate & 0x7000U) != 0 ||
+                        (csrImmediate & 0x0FFFU) >= 8) {
+                        builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                        builder.CreateRet(builder.getInt64(-1));
+                        break;
+                    }
+                    const uint64_t csr = csrImmediate & 0x0FFFU;
+                    auto* csrValue = builder.CreateLoad(i64, csrPtr(csr));
+                    writeReg(o.rd, csrValue);
+                    if (csr != 0x006 && o.rs != 0) {
+                        builder.CreateStore(readReg(o.rs), csrPtr(csr));
+                    }
                 } else if (op == hvm::Opcode::SFENCE_VMA) {
                 } else if (op == hvm::Opcode::PREFETCH_R || op == hvm::Opcode::PREFETCH_W || op == hvm::Opcode::PREFETCH_NTA) {
                 } else if (op == hvm::Opcode::MEMZERO_HINT) {

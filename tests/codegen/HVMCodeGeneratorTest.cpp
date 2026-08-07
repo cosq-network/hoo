@@ -55,6 +55,29 @@ TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
     ASSERT_GE(insts.size(), 4);
 }
 
+TEST_F(HVMCodeGeneratorTest, GeneratedFramesAreSixteenByteAligned) {
+    std::string code = R"(
+        func:void test() {
+            var value: int64 = 1;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundEnter = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() != Opcode::ENTER) continue;
+        const auto* operands = std::get_if<OperandsI>(&inst.getOperands());
+        ASSERT_NE(operands, nullptr);
+        EXPECT_EQ(operands->imm15 % 16, 0);
+        foundEnter = true;
+        break;
+    }
+    EXPECT_TRUE(foundEnter);
+}
+
 TEST_F(HVMCodeGeneratorTest, AccessQualifiersAffectMethodSymbolsAndBindings) {
     const std::string code = R"(
         class Secret {

@@ -6,7 +6,7 @@ Normative sources:
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm-spec.md`
 
-This reference defines a **64-bit hardware-ready ISA**. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.5 runtime acceleration instructions with software fallback.
+This reference defines a **64-bit hardware-ready ISA**. HVM is RISC-V-inspired but is not binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.5 runtime acceleration instructions with software fallback.
 
 ## 1. Scope
 
@@ -24,6 +24,13 @@ This reference defines the physical instructions supported by the HVM core and o
 - `r29`: link register (`RET` target)
 - `r30`: frame pointer
 - `r31`: stack pointer
+
+The argument registers are `r1`, `r2`, `r3`, `r5`, `r6`, `r7`, and `r8`.
+`r4` is reserved for the thread pointer and is not an argument register.
+
+These assignments define the HVM calling convention. They are not the RISC-V
+LP64 register convention (`x1=ra`, `x2=sp`, `x10-x17=a0-a7`). The LP64
+reference is limited to the C/C++ data model and 64-bit pointer representation.
 
 ## 3. Instruction Formats
 
@@ -59,10 +66,15 @@ Tooling must encode and decode instructions using this 8-byte layout for any opc
 - `SHL` `SHR` `SAR`
 
 Overflow behavior (signed operations):
-- `ADD`, `SUB`, `MUL`: overflow traps, function returns `-1` and VM enters error state.
+- `ADD`, `SUB`, `MUL`: overflow raises a synchronous trap and does not write `rd`.
 - `DIV`, `REM`: additionally trap on `INT64_MIN / -1` and `INT64_MIN % -1`.
-- `DIV`, `REM`: trap on division by zero.
-- `DIVU`, `SHL`, `SHR`, `SAR`: no overflow path (unsigned or shift operations).
+- `DIV`, `DIVU`, `REM`: trap on division by zero.
+- `DIVU` has no overflow path.
+- `SHL`, `SHR`, `SAR`: have no overflow path because shift counts are reduced modulo 64.
+
+Hosted interpreter/JIT entry points report an unhandled arithmetic trap as
+`-1` and set the VM error state for compatibility with the current API. A
+physical processor enters the architectural trap handler instead.
 
 ### 4.3 Bitwise/logical
 - `AND` `OR` `XOR` `NOT`
@@ -110,6 +122,12 @@ native FP8 instructions.
 ### 4.8 Atomic memory
 - `LR.D` `SC.D`: Load-reserve / store-conditional for atomic synchronisation.
 
+HVM uses an 8-byte reservation granule and defines the pair as acquire-release
+for the atomic operation. HVM does not encode RISC-V `aq`/`rl` bits, so this is
+not RISC-V LR/SC encoding compatibility. The base HVM memory model is
+sequentially consistent; platform-specific device and DMA barriers remain
+profile-defined.
+
 ### 4.9 Stack/frame
 - `PUSH` `POP` `ENTER` `LEAVE` `ADJSP` `FRAME`
 
@@ -126,10 +144,18 @@ The result is written to `rd`. See `docs/hvm/hvm-spec.md` §7 for the full
 syscall number table.
 
 ### 4.12 System/Trap (system profile; privileged)
-- `ECALL`: Trap to supervisor mode (U-mode only; illegal in S-mode).
+- `ECALL`: Trap to supervisor mode (U-mode only; illegal in S-mode). HVM uses
+  `scause=8` for this trap.
 - `TRAPRET`: Return from supervisor trap (S-mode only; illegal in U-mode).
-- `CSRRW`: Atomic read-write of CSR (S-mode only; traps in U-mode).
+- `CSRRW`: Atomic read-write of a CSR (S-mode only; traps in U-mode). The CSR
+  address is the low 12 bits of the HVM `imm15` field; the upper three bits
+  must be zero.
 - `SFENCE.VMA`: TLB flush after page-table modification (S-mode only).
+
+The hosted `HVMJIT` profile does not emulate physical privilege levels, so
+`ECALL` and `TRAPRET` report an unhandled trap there; `SFENCE.VMA` is a no-op.
+Physical processors and system simulators must implement the system-profile
+behavior in `hvm-spec.md` section 9.
 
 ### 4.13 HVM 1.5 runtime and green-compute extensions
 - `RETAIN` `RELEASE`: Non-trapping reference-count update helpers for managed Hoo objects.
@@ -139,7 +165,10 @@ syscall number table.
 - `ALLOC.BUMP`: Optional thread-local allocation-buffer fast path; zero return means fall back to runtime allocator.
 - `RDPROF`: Read HVM profiling/performance counters, subject to privilege and policy.
 - `CHK.B`: Optional bounds/tag check for capability-style memory safety.
-- `LD.D.NZ`: Optional null-checking 64-bit load.
+- `LD.D.NZ`: Optional null-checking 64-bit load. A null base sets the HVM VM
+  trap state; it does not enter the Hoo shadow exception handler, so codegen
+  uses explicit branch plus `SYSCALL 9` checks when a catchable exception is
+  required.
 - `BR.HINT`: Optional branch/code-layout hint.
 - `DOORBELL`: Optional accelerator doorbell dispatch for HVM-A.
 

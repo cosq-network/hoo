@@ -42,6 +42,11 @@ static uint8_t argReg(uint8_t first, size_t i) {
     return reg;
 }
 
+static int32_t alignFrameSize(int32_t size) {
+    if (size <= 0) return 0;
+    return (size + 15) & ~int32_t{15};
+}
+
 
 
 
@@ -1325,7 +1330,7 @@ bool HVMCodeGenerator::isManagedTemporary(const ast::Expression& expr) {
 }
 
 void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
-    int32_t frameSize = -currentStackOffset_;
+    int32_t frameSize = alignFrameSize(-currentStackOffset_);
     instructions_[info.enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
 
     Symbol sym;
@@ -5727,7 +5732,7 @@ void HVMCodeGenerator::emitModuleInit() {
     emit(Opcode::LEAVE, OperandsR{0, 0, 0, 0});
     emit(Opcode::RET, OperandsR{0, 0, 0, 0});
 
-    int32_t frameSize = -currentStackOffset_;
+    int32_t frameSize = alignFrameSize(-currentStackOffset_);
     instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
 
     Symbol sym;
@@ -5925,7 +5930,7 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
     emit(Opcode::RET, OperandsR{0, 0, 0, 0});
 
     // Fix up ENTER frame size
-    int32_t frameSize = -currentStackOffset_;
+    int32_t frameSize = alignFrameSize(-currentStackOffset_);
     instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
 
     // Register symbol
@@ -6099,7 +6104,7 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
     emit(Opcode::RET, OperandsR{0, 0, 0, 0});
 
     // Fix up ENTER frame size
-    int32_t frameSize = -currentStackOffset_;
+    int32_t frameSize = alignFrameSize(-currentStackOffset_);
     instructions_[enterIdx].setOperands(OperandsI{0, 0, static_cast<int16_t>(frameSize)});
 
     // Register symbol

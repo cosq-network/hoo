@@ -460,6 +460,27 @@ TEST_F(HVMJITInstructionSemanticsTest, FloatArithmeticAndComparisonUsingSubnorma
     EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, FloatingNaNResultsUseCanonicalBits) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::LUI, OperandsI{2, 0, 0x3ffc}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1}),
+        makeR(Opcode::LOGIC, OperandsR{2, 2, 3, 1}),
+        makeR(Opcode::FLOAT_ARITH, OperandsR{1, 2, 0, 0}),
+        makeI(Opcode::ST_D, OperandsI{1, 30, -16}),
+        makeI(Opcode::LD_D, OperandsI{1, 30, -16}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["canonical_nan.ho"] = buildModuleBytes("canonical_nan", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("canonical_nan.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), static_cast<int64_t>(0x7ff8000000000000ULL))
+        << jit.getLastError();
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, SubwordIntegerArithmeticWrapsAndUsesUnsignedRemainder) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{2, 0, 0x7F}),
@@ -546,6 +567,23 @@ TEST_F(HVMJITInstructionSemanticsTest, UnalignedDoubleWordAccessReportsError) {
     ASSERT_TRUE(jit.loadInput("unaligned_d.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), -1);
     EXPECT_NE(jit.getLastError().find("Unaligned ST.D address"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, UnalignedHalfWordAccessReportsError) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
+        makeI(Opcode::LDA, OperandsI{2, 30, -15}),
+        makeI(Opcode::LD_H, OperandsI{1, 2, 0}),
+        makeR(Opcode::LEAVE, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["unaligned_half.ho"] = buildModuleBytes("unaligned_half", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("unaligned_half.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_NE(jit.getLastError().find("Unaligned LD.H address"), std::string::npos);
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, SyscallRuntimeIntrinsicsManageRefcount) {
@@ -1412,6 +1450,21 @@ TEST_F(HVMJITInstructionSemanticsTest, LoadReserveLoadsValue) {
 
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("lr_load.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 42) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, CSRRWRoundTripUsesHvmCsrWindow) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 42}),
+        makeI(Opcode::CSRRW, OperandsI{1, 2, 5}),
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 5}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["csrrw.ho"] = buildModuleBytes("csrrw", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("csrrw.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 42) << jit.getLastError();
 }
 

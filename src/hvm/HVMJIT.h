@@ -111,6 +111,7 @@ public:
         uint64_t reservationAddr = UINT64_MAX;
         uint64_t tlabStart = 0;
         uint64_t tlabEnd = 0;
+        uint64_t csrs[8]{}; // HVM system-profile CSR window 0x000..0x007
     };
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};
