@@ -38,6 +38,14 @@ handler PC and transfer control rather than behaving like ordinary calls.
 Catch dispatch preserves the thrown handle across the handler-pop call and uses
 the runtime type-compatibility helper before entering a catch clause.
 
+The compiled throw/rethrow path routes the returned handler PC through a
+switch whose cases are the function's valid exception-dispatch targets (see
+`docs/dev/hvm-jit.md`, "Exception dispatch targets"). The target set spans the
+current function's entire text range — bounded by the next function's entry —
+so catch-handler blocks that follow an early `return` remain reachable; a
+handler PC with no matching case is treated as unhandled and returns `-1`,
+letting `run()` fall back to the interpreter.
+
 **Pointer note**: Syscalls 16-18, 21-23 take HVM-memory offsets (not host virtual addresses) for buffer/string/path arguments. The runtime translates these offsets to real addresses at call time via an internal `g_hvm_memory` base pointer, so HVM code passes raw register values without manual address arithmetic.
 
 **Platform note**: On Windows, syscalls 7-10 are not lowered to LLVM IR. `ensureJITFunctionTable()` returns `false` for these opcodes, causing the JIT to fall back to the interpreter for handler operations. The JIT bridge functions (`jit_hoo_throw`, `jit_hoo_rethrow`, `hoo_hvm_sys_throw_to_handler_state`, `hoo_hvm_sys_rethrow_to_handler_state`) use `hoo_exception_set_current()` instead of C++ try/catch on Windows, while macOS/Linux retain the original C++ exception-based path. Syscalls 12-15 (threading) are implemented via pthreads and are unavailable on Windows.

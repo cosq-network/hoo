@@ -68,6 +68,16 @@ Types can be marked as nullable by appending a `?`.
 - `string?` - A string that could be `null`.
 - `User?` - An object reference that could be `null`.
 
+The code generator enforces null safety for nullable values:
+- Dereferencing a null nullable value (member access, method call, array
+  access, or assignment through one) raises a `NullPointerException`, which
+  can be caught with a surrounding `try`/`catch (e: Exception)` block under
+  both the interpreter and the JIT.
+- Assigning `null` or a nullable value into a non-nullable slot is a
+  compile-time error (declare the target as `T?` or check for `null` first).
+- Nullable types participate in overload resolution: a nullable argument is
+  only accepted by a parameter declared nullable.
+
 ## 3. Qualified Types
 Types can be qualified by their module path using the dot notation.
 - `math.Matrix`

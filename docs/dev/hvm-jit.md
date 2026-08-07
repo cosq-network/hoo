@@ -281,6 +281,23 @@ JIT wrappers:
 - `jit_hoo_throw` / `jit_hoo_rethrow` — Throw/rethrow with handler dispatch
 - `jit_hoo_exception_runtime` / `jit_hoo_exception_clear` — Runtime exception creation/clearing
 
+### Exception dispatch targets (`validPcs`)
+
+When `translateModule` lowers `SYSCALL 9` (`kSysThrowToHandler`) and
+`SYSCALL 10` (`kSysRethrowToHandler`), the returned handler PC is routed
+through a generated switch whose cases are the instruction PCs that may
+legally receive exception dispatch inside the current function. That target
+set is computed per function as the decoded instruction boundaries from the
+function entry PC up to (but not including) the next function's entry PC.
+
+The scan is deliberately **not** terminated at the first `RET`: catch-handler
+blocks emitted after an early `return` sit between that `RET` and the next
+function, and must remain valid dispatch targets. Bounding the scan by the
+next function's entry (a sorted list of `STT_FUNC` symbol values) keeps the
+set inside the current function's text range instead. A handler PC outside the
+set (no matching case) falls to the "unhandled" block, which returns `-1` and
+lets `run()` fall back to the interpreter.
+
 ## Inbound trampoline dispatch
 
 Allows external code to call into Hoo functions via a fixed set of trampoline slots (max 8):

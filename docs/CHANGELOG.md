@@ -11,6 +11,39 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- fix(codegen): release nullable user-object locals in generic type slots
+  - Track ARC cleanup separately from the runtime type ID so nullable named
+    references using type ID 100 are released safely at scope exit.
+
+- fix(jit): dispatch exception handlers located after early returns
+  - The JIT's exception-dispatch target set was computed by a linear scan
+    that stopped at the first `RET`, so catch-handler blocks emitted after an
+    early `return` (e.g. `try { ... return 0; } catch { ... }`) were excluded
+    from the compiled throw/rethrow switch and the throw returned `-1`
+  - Bound the scan by the next function's entry PC instead, keeping handler
+    blocks valid throw targets while staying within the function's text range
+  - Add a JIT regression test that dereferences a null nullable value inside a
+    called function and catches the resulting exception after an early return
+
+- feat(codegen): complete ISSUE-047 nullable deref null-safety
+  - Preserve the underlying type of `T?` in `typeIdFromDeclaredType` instead of
+    collapsing every optional type to generic object
+  - Track nullability on locals, parameters, class fields, and expressions, and
+    make overload selection distinguish `T?` from `T`
+  - Emit null-pointer checks before dereferencing a nullable receiver/base at
+    member access, method call, array access, and assignment sites; the check
+    throws a catchable `NullPointerException` via the shadow-handler syscall path
+  - Add `validateAssignmentNullSafety` compile-time diagnostics rejecting `null`
+    or nullable values assigned into non-nullable slots
+  - Mangle nullable types with the `O` prefix (`mangleTypeId` appends `?`,
+    which `SymbolMangler::mangleType` normalizes to `O`) so overloaded
+    signatures disambiguate
+  - Set the `HVM_NZ` module feature flag when null-checking code is emitted
+  - Register the `_F_hoo_exception_null_pointer_p` runtime bridge in the JIT
+    symbol table and add interpreter/JIT regression coverage
+  - Update ISSUE-047 status to PARTIALLY IMPLEMENTED (ARC policy for nullable
+    object locals and `LD.D.NZ` folding remain open)
+
 - fix(modules): complete ISSUE-036 dependency resolution
   - Traverse each visited module's own dependency edges for correct transitive
     topological ordering

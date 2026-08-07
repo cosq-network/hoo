@@ -536,6 +536,42 @@ TEST_F(HVMCodeGeneratorTest, AssignmentToManagedLocal_ReleasesOldValue) {
     EXPECT_GE(callCount, 1) << "Expected at least one CALL (hoo_release) for managed reassignment";
 }
 
+TEST_F(HVMCodeGeneratorTest, NullableUserClassLocal_EmitsScopeCleanupRelease) {
+    std::string code = R"(
+        class User {
+            var name: String;
+            var age: int64;
+            constructor(name: String, age: int64) {
+                this.name = name;
+                this.age = age;
+            }
+        }
+        func:int64 test() {
+            var nu: User? = new User("a", 1);
+            return 0;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr);
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundCleanupLoad = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() == Opcode::LD_D) {
+            const auto& ops = inst.getOperands();
+            if (auto oi = std::get_if<OperandsI>(&ops)) {
+                if (oi->rd == 1 && oi->rs == 30 && oi->imm15 < 0) {
+                    foundCleanupLoad = true;
+                    break;
+                }
+            }
+        }
+    }
+    EXPECT_TRUE(foundCleanupLoad)
+        << "Expected scope cleanup LD_D (r1 <- [r30+offset]) release load for nullable User? local";
+}
+
 TEST_F(HVMCodeGeneratorTest, ReturnFromBlock_CleansUpManagedLocals) {
     std::string code = R"(
         func:object test() {

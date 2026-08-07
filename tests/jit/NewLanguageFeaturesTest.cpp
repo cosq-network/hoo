@@ -842,6 +842,25 @@ TEST_F(NewLanguageFeaturesTest, TryCatchFinallyHandlesThrownException) {
     EXPECT_TRUE(jit->lastRunUsedJIT());
 }
 
+TEST_F(NewLanguageFeaturesTest, NullableDerefCaughtByCatchAfterEarlyReturn) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s: String? = null;
+            try {
+                var len = s.length();
+                return 0;
+            } catch (e: Exception) {
+                return 42;
+            }
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 42) << jit->getLastError();
+    EXPECT_TRUE(jit->lastRunUsedJIT());
+}
+
 TEST_F(NewLanguageFeaturesTest, ChainedFunctionReturnKeepsArrayType) {
     std::string code = R"(
         import hoo;

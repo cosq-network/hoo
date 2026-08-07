@@ -665,6 +665,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     }
     // For now we look for a marker or use default.
     module_ = std::make_unique<hvm::HOModule>(moduleName);
+    moduleUsesNullChecks_ = false;
     instructions_.clear();
     currentByteOffset_ = 0;
     errors_.clear();
@@ -735,6 +736,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 OverloadReturnInfo overloadInfo;
                 for (const auto& param : funcDecl->getParameters()) {
                     overloadInfo.parameterTypes.push_back(typeIdFromDeclaredType(&param->getType()));
+                    overloadInfo.parameterIsNullable.push_back(isNullableDeclaredType(&param->getType()));
                 }
                 if (funcDecl->getReturnType()) {
                     std::string clsName;
@@ -891,6 +893,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                     layout.fieldClassNames = baseIt->second.fieldClassNames;
                     layout.fieldElementTypeIds = baseIt->second.fieldElementTypeIds;
                     layout.fieldAccess = baseIt->second.fieldAccess;
+                    layout.fieldIsNullable = baseIt->second.fieldIsNullable;
                     currentOffset = baseIt->second.totalSize;
                 }
             }
@@ -902,6 +905,8 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         layout.fieldTypeIds[var->getName()] =
                             var->getType() ? typeIdFromDeclaredType(var->getType(), &fieldClassName) : 100;
                         layout.fieldClassNames[var->getName()] = fieldClassName;
+                        layout.fieldIsNullable[var->getName()] =
+                            var->getType() ? isNullableDeclaredType(var->getType()) : false;
                         if (auto arrType = var->getType()
                                 ? dynamic_cast<const ast::ArrayType*>(var->getType()) : nullptr) {
                             layout.fieldElementTypeIds[var->getName()] =
@@ -945,6 +950,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                             OverloadReturnInfo overloadInfo;
                             for (const auto& param : fn->getParameters()) {
                                 overloadInfo.parameterTypes.push_back(typeIdFromDeclaredType(&param->getType()));
+                                overloadInfo.parameterIsNullable.push_back(isNullableDeclaredType(&param->getType()));
                             }
                             if (fn->getReturnType()) {
                                 std::string returnClass;
@@ -1068,6 +1074,12 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     textSection.virtual_size = textSection.data.size();
     module_->addSection(std::move(textSection));
 
+    if (moduleUsesNullChecks_) {
+        // The module embeds kSysThrowToHandler (SYSCALL 9) after a failed
+        // null check; declare the HVM_NZ feature so loaders accept it.
+        module_->setRequiredFeatures(static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ));
+    }
+
     return std::make_unique<HVMGeneratedModule>(std::move(module_));
 }
 
@@ -1137,7 +1149,8 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         for (size_t i = 0; i < params.size() && i < maxArgRegs; ++i) {
             std::string paramClassName;
             uint32_t paramTypeId = getTypeId(&params[i]->getType(), nullptr, &paramClassName);
-            int32_t offset = reserveLocal(params[i]->getName(), paramTypeId, paramClassName);
+            bool paramNullable = isNullableDeclaredType(&params[i]->getType());
+            int32_t offset = reserveLocal(params[i]->getName(), paramTypeId, paramClassName, 0, 0, paramNullable);
             emit(Opcode::ST_D, OperandsI{argReg(firstArgReg, i), 30, static_cast<int16_t>(offset)});
         }
     };
@@ -1211,7 +1224,8 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         } else if (decl->isAsync()) {
             mp.returnType = "ptr";
         } else if (decl->getReturnType()) {
-            mp.returnType = typeIdToMangleType(typeIdFromDeclaredType(decl->getReturnType()));
+            mp.returnType = mangleTypeId(typeIdFromDeclaredType(decl->getReturnType()),
+                                         isNullableDeclaredType(decl->getReturnType()));
         } else {
             mp.returnType = "void";
         }
@@ -1220,7 +1234,8 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     auto addParamTypes = [&](const auto& params) {
         for (const auto& param : params) {
             if (mp.isOverload) {
-                mp.parameterTypes.push_back(typeIdToMangleType(typeIdFromDeclaredType(&param->getType(), nullptr)));
+                mp.parameterTypes.push_back(mangleTypeId(typeIdFromDeclaredType(&param->getType(), nullptr),
+                                                         isNullableDeclaredType(&param->getType())));
             } else {
                 mp.parameterTypes.push_back("ptr");
             }
@@ -1262,13 +1277,24 @@ static bool isArcManagedTypeId(uint32_t typeId) {
     }
 }
 
+// Named reference types whose instances are allocated with hoo_alloc and must
+// be released with hoo_release (_F_hoo_release_v_p). Types that manage their
+// own lifecycle (Args/Compression/Regex/Mutex/Uuid) or require a dedicated
+// release helper (Exception -> hoo_exception_release) are excluded.
+static bool isHooReleaseManagedClassName(const std::string& className) {
+    static const std::unordered_set<std::string> nonArcClasses = {
+        "Args", "Compression", "Regex", "Mutex", "Uuid", "Exception",
+    };
+    return !className.empty() && nonArcClasses.count(className) == 0;
+}
+
 void HVMCodeGenerator::emitScopeCleanup(size_t from, size_t to) {
     uint8_t saveReg = allocateRegister();
     emit(Opcode::MOV, OperandsR{saveReg, 1, 0, 0});
     for (size_t i = from; i > to; --i) {
         auto& scope = scopeStack_[i - 1];
         for (const auto& [name, local] : scope) {
-            if (isArcManagedTypeId(local.typeId)) {
+            if (local.arcManaged) {
                 emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
                 emitCall(Opcode::CALL, "_F_hoo_release_v_p");
             }
@@ -1749,7 +1775,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 else if (rightElem != 100) elemTypeId = rightElem;
             }
         }
-        int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId);
+        bool declNullable = isNullableDeclaredType(decl.getType());
+        if (decl.getInitializer()) {
+            validateAssignmentNullSafety(declNullable, typeId, decl.getInitializer(), decl.getName());
+        }
+        int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId, declNullable);
         if (decl.getInitializer()) {
             // Set decimal context from declared type if applicable
             int32_t savedPrec = currentDecimalPrecision_;
@@ -2800,10 +2830,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&expr)) {
+        const auto receiverInfo = inferExpressionTypeInfo(memberAccess->getObject());
         uint8_t objReg = visitExpression(memberAccess->getObject());
+        if (receiverInfo.isNullable) {
+            emitNullCheck(objReg);
+        }
         int32_t offset = 0; 
         std::string foundClass;
-        const auto receiverInfo = inferExpressionTypeInfo(memberAccess->getObject());
         std::string receiverClass = receiverInfo.className;
         if (receiverClass.empty()) receiverClass = builtinClassNameFromTypeId(receiverInfo.typeId);
         if (!receiverClass.empty()) {
@@ -3045,6 +3078,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     }
                 }
                 uint8_t objReg = visitExpression(memberAccess->getObject());
+                if (inferExpressionTypeInfo(memberAccess->getObject()).isNullable) {
+                    emitNullCheck(objReg);
+                }
                 emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
                 freeRegister(objReg);
                 for (size_t i = 0; i < argRegs.size(); ++i) {
@@ -3227,7 +3263,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                         if (mp.isOverload) {
-                            mp.parameterTypes.push_back(typeIdToMangleType(inferExpressionTypeId(*arg)));
+                            const auto argInfo = inferExpressionTypeInfo(*arg);
+                            mp.parameterTypes.push_back(mangleTypeId(argInfo.typeId, argInfo.isNullable));
                         } else {
                             mp.parameterTypes.push_back("ptr");
                         }
@@ -3318,7 +3355,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (funcCall->getArguments()) {
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                         if (mp.isOverload) {
-                            mp.parameterTypes.push_back(typeIdToMangleType(inferExpressionTypeId(*arg)));
+                            const auto argInfo = inferExpressionTypeInfo(*arg);
+                            mp.parameterTypes.push_back(mangleTypeId(argInfo.typeId, argInfo.isNullable));
                         } else {
                             mp.parameterTypes.push_back("ptr");
                         }
@@ -3941,6 +3979,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&leftPrimary->getPrimary())) {
                 int32_t offset = getLocalOffset(id->getName());
                 uint32_t oldTypeId = getLocalTypeId(id->getName());
+                validateAssignmentNullSafety(getLocalIsNullable(id->getName()), oldTypeId,
+                                             &assign->getRight(), id->getName());
                 if (oldTypeId >= 100) {
                     emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(offset)});
                     emitCall(Opcode::CALL, "_F_hoo_release_v_p");
@@ -3949,7 +3989,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 return valueReg;
             }
         } else if (auto leftArray = dynamic_cast<const ast::ArrayAccess*>(&assign->getLeft())) {
+            const auto leftArrayInfo = inferExpressionTypeInfo(leftArray->getArray());
             uint8_t objReg = visitExpression(leftArray->getArray());
+            if (leftArrayInfo.isNullable) {
+                emitNullCheck(objReg);
+            }
             uint8_t idxReg = visitExpression(leftArray->getIndex());
             uint32_t sourceTypeId = 0;
             uint32_t valueTypeId = getTypeId(nullptr, &assign->getRight());
@@ -3989,7 +4033,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             freeRegister(idxReg);
             return valueReg;
         } else if (auto leftMember = dynamic_cast<const ast::MemberAccess*>(&assign->getLeft())) {
+            const auto leftMemberInfo = inferExpressionTypeInfo(leftMember->getObject());
             uint8_t objReg = visitExpression(leftMember->getObject());
+            if (leftMemberInfo.isNullable) {
+                emitNullCheck(objReg);
+            }
             int32_t offset = 0;
             std::string foundClass;
             for (const auto& [className, layout] : classes_) {
@@ -4008,6 +4056,15 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (!canWriteField(leftMember->getMember(), foundClass)) {
                     addError("Cannot write to field '" + leftMember->getMember() + "' of class '" + foundClass + "'");
                 }
+                if (classIt != classes_.end()) {
+                    bool fieldNullable = false;
+                    auto fIt = classIt->second.fieldIsNullable.find(leftMember->getMember());
+                    if (fIt != classIt->second.fieldIsNullable.end()) fieldNullable = fIt->second;
+                    uint32_t fieldTypeId = 100;
+                    auto tfIt = classIt->second.fieldTypeIds.find(leftMember->getMember());
+                    if (tfIt != classIt->second.fieldTypeIds.end()) fieldTypeId = tfIt->second;
+                    validateAssignmentNullSafety(fieldNullable, fieldTypeId, &assign->getRight(), leftMember->getMember());
+                }
                 uint8_t setOffsetReg = emitConstant(static_cast<int64_t>(offset));
                 emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, setOffsetReg, 0, 0});
@@ -4025,7 +4082,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
     }
 
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
+        const auto arrayInfo = inferExpressionTypeInfo(arrayAccess->getArray());
         uint8_t arrReg = visitExpression(arrayAccess->getArray());
+        if (arrayInfo.isNullable) {
+            emitNullCheck(arrReg);
+        }
         uint8_t idxReg = visitExpression(arrayAccess->getIndex());
         uint32_t sourceTypeId = 0;
         uint32_t elementTypeId = 0;
@@ -4157,10 +4218,18 @@ void HVMCodeGenerator::emitCompressed(uint8_t opcode4, uint8_t rd, uint8_t rs1, 
     currentByteOffset_ += 2;
 }
 
-int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId, const std::string& className, uint32_t elementTypeId, uint32_t keyTypeId) {
+int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId, const std::string& className, uint32_t elementTypeId, uint32_t keyTypeId, bool isNullable) {
     currentStackOffset_ -= 8;
     if (scopeStack_.empty()) scopeStack_.push_back({});
-    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId, keyTypeId};
+    // A nullable local declared with a named reference type keeps its class
+    // name even when the type ID resolves to the generic-object slot (100).
+    // Such a slot still holds a hoo_alloc-managed object and must be released
+    // by scope cleanup, otherwise non-null values leak on scope exit.
+    bool arcManaged = isArcManagedTypeId(typeId);
+    if (!arcManaged && isNullable) {
+        arcManaged = isHooReleaseManagedClassName(className);
+    }
+    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId, keyTypeId, isNullable, arcManaged};
     return currentStackOffset_;
 }
 
@@ -4261,6 +4330,51 @@ uint32_t HVMCodeGenerator::getLocalKeyTypeId(const std::string& name) const {
         if (found != it->end()) return found->second.keyTypeId;
     }
     return 0;
+}
+
+bool HVMCodeGenerator::getLocalIsNullable(const std::string& name) const {
+    for (auto it = scopeStack_.rbegin(); it != scopeStack_.rend(); ++it) {
+        auto found = it->find(name);
+        if (found != it->end()) return found->second.isNullable;
+    }
+    return false;
+}
+
+bool HVMCodeGenerator::isNullableDeclaredType(const ast::Type* type) {
+    if (!type) return false;
+    auto opt = dynamic_cast<const ast::OptionalType*>(type);
+    return opt && opt->isOptional();
+}
+
+bool HVMCodeGenerator::isNullLiteralExpression(const ast::Expression* expr) {
+    if (!expr) return false;
+    if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(expr)) {
+        return dynamic_cast<const ast::NullLiteral*>(&pe->getPrimary()) != nullptr;
+    }
+    return false;
+}
+
+void HVMCodeGenerator::validateAssignmentNullSafety(bool targetNullable, uint32_t targetTypeId,
+                                                    const ast::Expression* value, const std::string& targetName) {
+    if (targetNullable) return;
+    if (targetTypeId == 0) return; // untyped / any target accepts anything
+    if (!value) return;
+    const auto valueInfo = inferExpressionTypeInfo(*value);
+    if (!valueInfo.isNullable) return;
+    const bool isNullLiteral = isNullLiteralExpression(value);
+    if (targetTypeId >= 100) {
+        // Reference-typed target: the literal null is a valid reference value,
+        // but a possibly-null value must not flow into a non-nullable slot
+        // because a later dereference would be unsafe.
+        if (!isNullLiteral) {
+            addError("Cannot assign a nullable value to non-nullable '" + targetName +
+                     "'; declare it as '" + targetName + "?' or check for null first");
+        }
+        return;
+    }
+    // Value-typed (primitive) target: null and nullable values are rejected.
+    addError("Cannot assign " + std::string(isNullLiteral ? "null" : "a nullable value") +
+             " to non-nullable '" + targetName + "'; declare it as a nullable type (T?)");
 }
 
 bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
@@ -4417,6 +4531,16 @@ void HVMCodeGenerator::emitBranch(Opcode op, uint8_t rs1, uint8_t rs2, Label* ta
     }
 }
 
+void HVMCodeGenerator::emitNullCheck(uint8_t valueReg) {
+    Label* ok = createLabel();
+    emitBranch(Opcode::BNE, valueReg, 0, ok);
+    moduleUsesNullChecks_ = true;
+    emitCall(Opcode::CALL, "_F_hoo_exception_null_pointer_p");
+    emit(Opcode::MOV, OperandsR{2, 1, 0, 0});
+    emit(Opcode::SYSCALL, OperandsI{0, 0, 9});
+    bindLabel(ok);
+}
+
 
 uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName) const {
     if (dynamic_cast<const ast::AnyType*>(type)) return 0;
@@ -4467,7 +4591,18 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
     }
     if (dynamic_cast<const ast::MapType*>(type)) return 103;
     if (dynamic_cast<const ast::TensorType*>(type)) return 104;
-    if (dynamic_cast<const ast::OptionalType*>(type)) return 100;
+    if (auto opt = dynamic_cast<const ast::OptionalType*>(type)) {
+        // Preserve the underlying type of T? instead of collapsing to generic
+        // object. A nullable array (int64[]?) stays an array; a nullable
+        // scalar/object keeps its base type ID and class name. Nullability is
+        // tracked separately by the codegen (Local/ExpressionTypeInfo).
+        const ast::ArrayType& inner = opt->getArrayType();
+        if (inner.getDimensionCount() > 0) {
+            if (outClassName) *outClassName = "";
+            return 102;
+        }
+        return typeIdFromDeclaredType(&inner.getBaseType(), outClassName);
+    }
     return 100;
 }
 
@@ -4489,6 +4624,12 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 123: return "ptr";
         default: return "ptr";
     }
+}
+
+std::string HVMCodeGenerator::mangleTypeId(uint32_t typeId, bool isNullable) const {
+    std::string base = typeIdToMangleType(typeId);
+    if (isNullable) base += "?";
+    return base;
 }
 
 uint32_t HVMCodeGenerator::tensorElementTypeIdFromType(const ast::TensorType& type) const {
@@ -4814,6 +4955,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                     result.className = it->second.className;
                     result.elementTypeId = it->second.elementTypeId;
                     result.keyTypeId = it->second.keyTypeId;
+                    result.isNullable = it->second.isNullable;
                     return result;
                 }
             }
@@ -4840,7 +4982,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             }
             return result;
         }
-        if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) result.typeId = 1;
+        if (dynamic_cast<const ast::NullLiteral*>(&primary)) {
+            result.typeId = 0;
+            result.isNullable = true;
+        }
+        else if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) result.typeId = 1;
         else if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) result.typeId = 2;
         else if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) result.typeId = 3;
         else if (dynamic_cast<const ast::BitLiteral*>(&primary)) result.typeId = 8;
@@ -4871,6 +5017,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         const auto array = inferExpressionTypeInfo(arrayAccess->getArray());
         if (array.elementTypeId != 0) result.typeId = array.elementTypeId;
         else if (array.typeId == 104) result.typeId = 1;
+        result.isNullable = array.isNullable;
         return result;
     }
 
@@ -4905,6 +5052,9 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                     if (fieldClassIt != classIt->second.fieldClassNames.end()) result.className = fieldClassIt->second;
                     auto elemIt = classIt->second.fieldElementTypeIds.find(memberAccess->getMember());
                     if (elemIt != classIt->second.fieldElementTypeIds.end()) result.elementTypeId = elemIt->second;
+                    auto nullableIt = classIt->second.fieldIsNullable.find(memberAccess->getMember());
+                    if (nullableIt != classIt->second.fieldIsNullable.end()) result.isNullable = nullableIt->second;
+                    else result.isNullable = receiver.isNullable;
                     return result;
                 }
             }
@@ -4916,9 +5066,12 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
 
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         std::vector<uint32_t> argumentTypeIds;
+        std::vector<bool> argumentNullable;
         if (funcCall->getArguments()) {
             for (const auto& arg : funcCall->getArguments()->getArguments()) {
-                argumentTypeIds.push_back(inferExpressionTypeInfo(*arg).typeId);
+                const auto argInfo = inferExpressionTypeInfo(*arg);
+                argumentTypeIds.push_back(argInfo.typeId);
+                argumentNullable.push_back(argInfo.isNullable);
             }
         }
         auto selectOverload = [&](const std::vector<OverloadReturnInfo>& overloads) -> const OverloadReturnInfo* {
@@ -4927,10 +5080,10 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 if (overload.parameterTypes.size() != argumentTypeIds.size()) continue;
                 bool exact = true;
                 for (size_t i = 0; i < argumentTypeIds.size(); ++i) {
-                    if (overload.parameterTypes[i] != argumentTypeIds[i]) {
-                        exact = false;
-                        break;
-                    }
+                    const bool argNullable = argumentNullable[i];
+                    const bool paramNullable = i < overload.parameterIsNullable.size() ? overload.parameterIsNullable[i] : false;
+                    if (overload.parameterTypes[i] != argumentTypeIds[i]) { exact = false; break; }
+                    if (argNullable && !paramNullable) { exact = false; break; }
                 }
                 if (exact) return &overload;
                 if (!fallback) fallback = &overload;

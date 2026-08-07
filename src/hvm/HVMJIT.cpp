@@ -899,6 +899,10 @@ extern "C" {
         HooException exc = hoo_exception_runtime("hvm runtime exception");
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
     }
+    uint64_t jit_hoo_exception_null_pointer(void* /*state_ptr*/) {
+        HooException exc = hoo_exception_null_pointer("Null reference accessed");
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
+    }
     uint64_t jit_hoo_exception_clear(void* /*state_ptr*/) {
         hoo_exception_clear();
         return 0;
@@ -4264,6 +4268,7 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Map_new_p_i8", reinterpret_cast<void*>(&jit_hoo_map_new)},
         {"_F_hoo_Map_keys_p", reinterpret_cast<void*>(&jit_hoo_map_keys)},
         {"_F_hoo_exception_runtime_p", reinterpret_cast<void*>(&jit_hoo_exception_runtime)},
+        {"_F_hoo_exception_null_pointer_p", reinterpret_cast<void*>(&jit_hoo_exception_null_pointer)},
         {"_F_hoo_exception_matches_type_i8_p_i8", reinterpret_cast<void*>(&jit_hoo_exception_matches_type)},
         {"_F_hoo_exception_clear_v", reinterpret_cast<void*>(&jit_hoo_exception_clear)},
         {"_F_hoo_push_handler_v_p", reinterpret_cast<void*>(&jit_hoo_push_handler)},
@@ -7655,37 +7660,6 @@ bool HVMJIT::loadModule(std::unique_ptr<hvm::HOModule> module) {
 
     std::shared_ptr<hvm::HOModule> owned(std::move(module));
 
-    // TEMPORARY DISASSEMBLY PRINT
-    if (owned->getName() == "test") {
-        auto* textSec = owned->getSection(".text");
-        if (textSec) {
-            printf("\n--- DISASSEMBLY OF MODULE 'test' ---\n");
-            for (const auto& sym : owned->getSymbols()) {
-                if (sym.type != hvm::Symbol::STT_FUNC) continue;
-                printf("Function %s at offset %llu:\n", sym.name.c_str(), (unsigned long long)sym.value);
-                uint64_t pc = sym.value;
-                while (pc < textSec->data.size()) {
-                    std::vector<uint8_t> slice;
-                    size_t maxRead = static_cast<size_t>(std::min<uint64_t>(8, textSec->data.size() - pc));
-                    slice.insert(slice.end(), textSec->data.begin() + static_cast<ptrdiff_t>(pc),
-                                 textSec->data.begin() + static_cast<ptrdiff_t>(pc + maxRead));
-                    size_t used = 0;
-                    auto ins = hvm::HVMInstruction::decode(slice, used);
-                    if (!ins || used == 0) {
-                        printf("  0x%04llx: <decode failed>\n", (unsigned long long)pc);
-                        break;
-                    }
-                    printf("  0x%04llx: %s\n", (unsigned long long)pc, ins->toAssembly().c_str());
-                    if (ins->getOpcode() == hvm::Opcode::RET) {
-                        break;
-                    }
-                    pc += used;
-                }
-            }
-            printf("------------------------------------\n\n");
-        }
-    }
-
     std::unordered_set<std::string> preExistingModules;
     for (const auto& [name, _] : loadedModules_) {
         preExistingModules.insert(name);
@@ -7811,6 +7785,14 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
             : llvm::Function::InternalLinkage;
         fnMap[sym.name] = llvm::Function::Create(fnTy, linkage, sym.name, module.get());
     }
+
+    std::vector<uint64_t> fnEntryPcs;
+    for (const auto& sym : hvmModule.getSymbols()) {
+        if (sym.type == hvm::Symbol::STT_FUNC && sym.section_index >= 0) {
+            fnEntryPcs.push_back(static_cast<uint64_t>(sym.value));
+        }
+    }
+    std::sort(fnEntryPcs.begin(), fnEntryPcs.end());
 
     for (const auto& sym : hvmModule.getSymbols()) {
         if (sym.type != hvm::Symbol::STT_FUNC) continue;
@@ -7954,16 +7936,22 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
 
         std::vector<uint64_t> validPcs;
         {
+            // Bound the scan by the next function's entry (or end of text),
+            // not by the first RET. Catch-handler blocks emitted after an
+            // early `return` sit between that RET and the next function, and
+            // must remain valid exception-dispatch targets.
+            auto nextFn = std::upper_bound(fnEntryPcs.begin(), fnEntryPcs.end(), pc);
+            const uint64_t scanEnd = (nextFn != fnEntryPcs.end()) ? *nextFn : textSize;
             uint64_t scanPc = pc;
-            while (scanPc < textSize) {
+            while (scanPc < scanEnd) {
                 validPcs.push_back(scanPc);
                 std::vector<uint8_t> scanSlice;
-                size_t scanRead = static_cast<size_t>(std::min<uint64_t>(8, textSize - scanPc));
+                size_t scanRead = static_cast<size_t>(std::min<uint64_t>(8, scanEnd - scanPc));
                 scanSlice.insert(scanSlice.end(), text->data.begin() + static_cast<ptrdiff_t>(scanPc),
                                  text->data.begin() + static_cast<ptrdiff_t>(scanPc + scanRead));
                 size_t used = 0;
                 auto scanIns = hvm::HVMInstruction::decode(scanSlice, used);
-                if (!scanIns || used == 0 || scanIns->getOpcode() == hvm::Opcode::RET) {
+                if (!scanIns || used == 0) {
                     break;
                 }
                 scanPc += used;

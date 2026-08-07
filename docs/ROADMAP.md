@@ -253,7 +253,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-047_nullable_types_missing_codegen.md](issues/ISSUE-047_nullable_types_missing_codegen.md)**
   - **Title**: # ISSUE-047: Nullable/Optional Types Defined in Grammar and AST But Not Implemented in Codegen
-  - **Status**: PROPOSED
+  - **Status**: PARTIALLY IMPLEMENTED (null checks, nullability tracking, assignment validation, and nullable-object ARC cleanup complete; `LD.D.NZ` folding remains deferred because its current trap path is not catchable)
   - **Priority**: HIGH
 
 - **[ISSUE-048_string_interpolation_placeholder.md](issues/ISSUE-048_string_interpolation_placeholder.md)**

@@ -58,6 +58,10 @@ private:
     std::unordered_map<std::string, std::string> importedSymbols_;
     std::unordered_map<std::string, std::pair<std::string, std::string>> externalFunctionImports_;
 
+    // True once any null-checking code (LD.D.NZ / null-pointer trap) is emitted;
+    // triggers the HVM_NZ module feature flag so loaders accept the module.
+    bool moduleUsesNullChecks_ = false;
+
     bool isModuleImported(const std::string& moduleName) const;
     bool isSymbolImported(const std::string& name, const std::string& requiredModule) const;
     std::string getRequiredModule(const std::string& name) const;
@@ -80,15 +84,19 @@ private:
         std::string className; // Class name for user-defined types (empty for primitives)
         uint32_t elementTypeId = 0; // Element type for Array variables (0 = unknown/Object)
         uint32_t keyTypeId = 0; // Key type for HashMap variables
+        bool isNullable = false; // Declared as T? (may hold null)
+        bool arcManaged = false; // Value participates in hoo_release scope cleanup
     };
     struct ExpressionTypeInfo {
         uint32_t typeId = 100;
         std::string className;
         uint32_t elementTypeId = 0;
         uint32_t keyTypeId = 0;
+        bool isNullable = false; // Expression may evaluate to null
     };
     struct OverloadReturnInfo {
         std::vector<uint32_t> parameterTypes;
+        std::vector<bool> parameterIsNullable;
         ExpressionTypeInfo result;
     };
     std::vector<std::unordered_map<std::string, Local>> scopeStack_;
@@ -103,6 +111,7 @@ private:
         std::unordered_map<std::string, uint32_t> fieldTypeIds;
         std::unordered_map<std::string, std::string> fieldClassNames;
         std::unordered_map<std::string, uint32_t> fieldElementTypeIds;
+        std::unordered_map<std::string, bool> fieldIsNullable; // fieldName -> declared T?
         std::unordered_map<std::string, bool> privateMethods; // methodName -> isPrivate
         std::unordered_map<std::string, FieldAccess> fieldAccess; // fieldName -> access level
         std::unordered_map<std::string, uint32_t> methodReturnTypes; // methodName -> typeId
@@ -147,8 +156,13 @@ private:
     /**
      * Reserve space on stack for a local variable.
      */
-    int32_t reserveLocal(const std::string& name, uint32_t typeId, const std::string& className = "", uint32_t elementTypeId = 0, uint32_t keyTypeId = 0);
+    int32_t reserveLocal(const std::string& name, uint32_t typeId, const std::string& className = "", uint32_t elementTypeId = 0, uint32_t keyTypeId = 0, bool isNullable = false);
     int32_t getLocalOffset(const std::string& name);
+
+    /**
+     * Look up whether a local variable was declared nullable (T?).
+     */
+    bool getLocalIsNullable(const std::string& name) const;
 
     // Label & Control Flow
     struct Label {
@@ -221,6 +235,33 @@ private:
      * Convert a runtime typeId to the return-type string used by the mangler.
      */
     std::string typeIdToMangleType(uint32_t typeId) const;
+
+    /**
+     * Convert a runtime typeId plus nullability to the mangler type string.
+     * Nullable types gain the '?' suffix, which SymbolMangler encodes with an
+     * 'O' prefix (e.g. "int64?" -> "Oi8").
+     */
+    std::string mangleTypeId(uint32_t typeId, bool isNullable) const;
+
+    /**
+     * Whether an AST type node is declared nullable (T?).
+     */
+    static bool isNullableDeclaredType(const ast::Type* type);
+
+    /**
+     * Whether an expression is the null literal (possibly parenthesized).
+     */
+    static bool isNullLiteralExpression(const ast::Expression* expr);
+
+    /**
+     * Compile-time null-safety: reject assignments of null / nullable values
+     * into declared non-nullable targets. The literal null remains legal for
+     * reference-typed (object) targets since null is a valid reference value;
+     * nullable values are blocked there because a subsequent dereference would
+     * be unsafe.
+     */
+    void validateAssignmentNullSafety(bool targetNullable, uint32_t targetTypeId,
+                                      const ast::Expression* value, const std::string& targetName);
 
     uint32_t tensorElementTypeIdFromType(const ast::TensorType& type) const;
     uint32_t tensorElementTypeIdFromLiteral(const ast::TensorLiteral& literal);
@@ -306,6 +347,15 @@ private:
     uint8_t emitRoDataAddress(uint32_t offset);
     void addError(const std::string& message);
     // Compressed 16‑bit instruction support
+
+    // Null-safety helpers
+    /**
+     * Emit a null check on the register holding a nullable value; if it is
+     * zero, a NullPointerException is raised via the exception handler
+     * mechanism and execution never continues past this point.
+     * Marks the module as requiring HVM-NZ.
+     */
+    void emitNullCheck(uint8_t valueReg);
 
 };
 
