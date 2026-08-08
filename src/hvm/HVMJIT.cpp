@@ -9171,7 +9171,10 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
                     writeReg(o.rd, builder.getInt64(0));
                 } else if (op == hvm::Opcode::DOORBELL) {
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    // HVM-A is optional; the hosted profile clears feature0.Accel
+                    // (bit 10), so DOORBELL is an unsupported instruction. Soft-trap
+                    // (return -1 without setting trapHit) so run() falls back to the
+                    // interpreter, which reports the precise scause=2 message.
                     builder.CreateRet(builder.getInt64(-1));
                     break;
                 } else if (op == hvm::Opcode::VECTOR_FMA) {

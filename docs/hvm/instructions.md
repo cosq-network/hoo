@@ -196,7 +196,10 @@ behavior in `hvm-spec.md` section 9.
 - `LOOP.SET` `LOOP.DECBR`: Optional hardware-loop support for low-power counted loops.
 - `PREFETCH.R` `PREFETCH.W` `PREFETCH.NTA` `MEMZERO.HINT`: Advisory memory-traffic hints. Legal implementations may ignore them.
 - `ALLOC.BUMP`: Optional thread-local allocation-buffer fast path; zero return means fall back to runtime allocator.
-- `RDPROF`: Read HVM profiling/performance counters, subject to privilege and policy.
+- `RDPROF`: Privileged (S-mode-only) HVM-Prof counter read. `rd = prof_counter(selector, imm15)`;
+  executing in U-mode traps (see section 9.7) with `scause = 2`. The hosted HVMJIT
+  profile exposes no counters, so `rd = 0` and the selector/`imm15` operands are
+  ignored; a platform profile may return nonzero values.
 - `CHK.B`: Optional bounds check (HVM-Cap). If `ptr < bound` then `rd = ptr` and
   execution continues; if `ptr >= bound` the instruction traps with `scause = 20`
   (bounds/null fault) and `rd` is not written. No memory is accessed. The trap is
@@ -208,7 +211,9 @@ behavior in `hvm-spec.md` section 9.
   load proceeds and additionally traps with `scause = 20` if `addr` is not
   8-byte aligned. The trap is precise as for `CHK.B`.
 - `BR.HINT`: Optional branch/code-layout hint.
-- `DOORBELL`: Optional accelerator doorbell dispatch for HVM-A.
+- `DOORBELL`: HVM-A accelerator doorbell dispatch (memory-mapped). Traps with
+  `scause = 2` when `feature0.Accel` is clear (HVM-A not implemented), in which
+  case no accelerator state is touched. See section 9.7.
 
 ### 4.14 HVM-V vector extension
 - Configuration: `VSETVL`

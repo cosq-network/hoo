@@ -1604,7 +1604,43 @@ TEST_F(HVMJITInstructionSemanticsTest, SatpResetsBare) {
     EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, RdprofReturnsZeroInHostedProfile) {
+    // HVM-Prof (RDPROF) is optional; the hosted profile exposes no profiling
+    // counters, so the hosted interpreter and JIT both return rd = 0. This is
+    // not a trap or a fault -- counters are simply unavailable. A future
+    // platform profile that exposes counters may return nonzero values.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::RDPROF, OperandsI{1, 0, 0}),    // rd = r1, selector r0, imm15=0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["rdprof.ho"] = buildModuleBytes("rdprof", ins, syms);
 
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("rdprof.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+    EXPECT_FALSE(jit.hasError());
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, DoorbellTrapsWhenHvmANotAvailable) {
+    // HVM-A is optional; the hosted profile clears feature0.Accel, so DOORBELL
+    // is an unsupported instruction and traps (scause=2) without entering the
+    // accelerator. The interpreter reports the precise reason (no partial effect
+    // on registers or PC beyond the trap).
+    std::vector<HVMInstruction> ins{
+        makeR(Opcode::DOORBELL, OperandsR{0, 1, 2, 0}),      // packet mmio=1, index=2
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),             // must not execute
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["doorbell.ho"] = buildModuleBytes("doorbell", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("doorbell.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("DOORBELL"), std::string::npos);
+}
 TEST_F(HVMJITInstructionSemanticsTest, CmpUnsignedLessThan) {
     std::vector<HVMInstruction> ins{
         // r2 = -1 (0xFFFF...FFFF), r3 = 1, r4 = 0

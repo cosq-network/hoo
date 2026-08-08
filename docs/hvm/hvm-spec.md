@@ -305,6 +305,15 @@ The following extensions are optional unless required by a specific HVM platform
 
 Advisory instructions may be implemented as no-ops. Runtime-specific instructions must have software fallback unless the platform profile says otherwise.
 
+**HVM-Prof (`RDPROF`).** `RDPROF` is a privileged, S-mode-only system-profile
+instruction. It reads a profiling/performance counter addressed by a `selector`
+(`rs1`) and an `imm15` operand; in the hosted HVMJIT profile no profiling
+counters are exposed, so both the interpreter and JIT return `rd = 0` without
+trapping, and any `selector`/`imm15` is ignored. A platform profile that
+implements HVM-Prof may return nonzero counter values (and may expose a
+`profsel` selector register); executing `RDPROF` in U-mode is a mode violation
+that traps with `scause = 2`.
+
 ### 5.5.1 HVM-V vector state and encoding
 
 HVM-V adds the following architectural state (present only when
@@ -750,12 +759,13 @@ and trap with the given `scause` values:
 
 | Condition | scause |
 |-----------|--------|
-| Any privileged instruction (`ECALL`, `TRAPRET`, `CSRRW`, `SFENCE.VMA`) executed in U-mode | 2 (illegal instruction) |
+| Any privileged instruction (`ECALL`, `TRAPRET`, `CSRRW`, `SFENCE.VMA`, `RDPROF`) executed in U-mode | 2 (illegal instruction) |
 | `ECALL` executed in S-mode | 9 |
 | `ECALL` executed in U-mode | 8 |
 | `TRAPRET` executed in U-mode | 2 |
 | CSR address outside the implemented window (`imm15 >=` implemented CSR count) | 2 |
 | Upper three CSR-immediate bits nonzero | 2 |
+| Optional instruction executed when its feature bit is clear (e.g. `DOORBELL` with `feature0.Accel` = 0) | 2 |
 
 `ECALL` is legal in both U-mode (scause = 8) and S-mode (scause = 9); the
 claim in `instructions.md` (version 1.4) that it is "illegal in S-mode" is
