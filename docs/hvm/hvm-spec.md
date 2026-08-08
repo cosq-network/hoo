@@ -483,7 +483,12 @@ profile:
 - `CSRRW` exposes the eight-entry HVM CSR window and is stateful per HVM hart.
 - `SFENCE.VMA` is a no-op because the hosted profile has no TLB.
 - `ECALL` and `TRAPRET` report an unhandled system-profile trap rather than
-  attempting to transition a host process between privilege modes.
+  attempting to transition a host process between privilege modes. HVM resets
+  into S-mode (see section 9.2), so `ECALL` is a legal system-profile trap
+  (`scause = 9`) that the hosted profile cannot service (no host-side S-mode
+  monitor), and `TRAPRET` has no S-mode handler to return from (treated as a
+  trap). Both surface as the soft-trap error reported by the interpreter;
+  they do not perform any host privilege transition.
 - HVM-39, interrupts, device memory, and physical boot behavior are implemented
   only by a conforming hardware or system simulator profile.
 

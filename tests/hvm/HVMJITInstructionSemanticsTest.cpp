@@ -1641,6 +1641,43 @@ TEST_F(HVMJITInstructionSemanticsTest, DoorbellTrapsWhenHvmANotAvailable) {
     EXPECT_TRUE(jit.hasError());
     EXPECT_NE(jit.getLastError().find("DOORBELL"), std::string::npos);
 }
+
+TEST_F(HVMJITInstructionSemanticsTest, EcallTrapsUnhandledInHostedProfile) {
+    // HVM resets into S-mode (section 9.2), so ECALL (not SYSCALL) is a legal
+    // system-profile trap (scause 9) that the hosted profile cannot service:
+    // there is no host-side S-mode monitor. It must surface as an unhandled
+    // trap with no further instructions executed.
+    std::vector<HVMInstruction> ins{
+        makeR(Opcode::ECALL, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),   // must not execute
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["ecall.ho"] = buildModuleBytes("ecall", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("ecall.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("ECALL"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, TrapretTrapsUnhandledInHostedProfile) {
+    // TRAPRET returns from S-mode; the hosted profile has no S-mode handler,
+    // so it surfaces as an unhandled system-profile trap (scause 2) instead of
+    // performing a privilege transition.
+    std::vector<HVMInstruction> ins{
+        makeR(Opcode::TRAPRET, OperandsR{0, 0, 0, 0}),
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),   // must not execute
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["trapret.ho"] = buildModuleBytes("trapret", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("trapret.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("TRAPRET"), std::string::npos);
+}
 TEST_F(HVMJITInstructionSemanticsTest, CmpUnsignedLessThan) {
     std::vector<HVMInstruction> ins{
         // r2 = -1 (0xFFFF...FFFF), r3 = 1, r4 = 0

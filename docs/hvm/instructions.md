@@ -175,8 +175,12 @@ syscall number table.
 - `ECALL`: Trap to supervisor mode. `ECALL` is legal in both U-mode (scause = 8)
   and S-mode (scause = 9); it is illegal in U-mode only when the system profile
   is not active. The syscall number is not encoded in `ECALL` (use `SYSCALL`
-  for runtime services).
+  for runtime services). In the hosted HVMJIT profile HVM runs in S-mode with
+  no host-side monitor, so `ECALL` surfaces as an unhandled system-profile trap
+  rather than performing a privilege transition.
 - `TRAPRET`: Return from supervisor trap (S-mode only; illegal trap/scause=2 in U-mode).
+  In the hosted profile there is no S-mode handler, so it surfaces as an
+  unhandled system-profile trap.
 - `CSRRW`: Atomic read-write of a CSR (S-mode only; traps/scause=2 in U-mode). The CSR
   address is the low 12 bits of the HVM `imm15` field; the upper three bits
   must be zero. CSR addresses in the HVM system window are 0x000..0x008

@@ -7334,11 +7334,16 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 break;
             }
             case hvm::Opcode::ECALL:
-                lastError_ = "ECALL not supported in user mode";
+                // HVM resets into S-mode (see hvm-spec.md section 9.2), so ECALL
+                // here is a legal system-profile trap (scause 9) that the hosted
+                // profile cannot service -- there is no host-side S-mode monitor.
+                lastError_ = "ECALL: unhandled system-profile trap (no S-mode monitor in hosted profile)";
                 state.trapHit = true;
                 return -1;
             case hvm::Opcode::TRAPRET:
-                lastError_ = "TRAPRET not supported in user mode";
+                // TRAPRET returns from S-mode; the hosted profile has no S-mode
+                // trap handler to return from, so it surfaces as an unhandled trap.
+                lastError_ = "TRAPRET: unhandled system-profile trap (no S-mode trap handler in hosted profile)";
                 state.trapHit = true;
                 return -1;
             case hvm::Opcode::LR_D: {
@@ -9110,11 +9115,13 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto* ptr2 = builder.CreateBitCast(memAddr(addr8), llvm::PointerType::get(*context, 0));
                     builder.CreateStore(readReg(o.rs1), ptr2);
                 } else if (op == hvm::Opcode::ECALL) {
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    // S-mode trap per section 9.7 (scause 9 here). Soft-trap so
+                    // run() falls back to the interpreter, which reports the
+                    // precise "unhandled system-profile trap" message and yields
+                    // precise exception semantics (no rd/PC side effect).
                     builder.CreateRet(builder.getInt64(-1));
                     break;
                 } else if (op == hvm::Opcode::TRAPRET) {
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
                     builder.CreateRet(builder.getInt64(-1));
                     break;
                 } else if (op == hvm::Opcode::LR_D) {
