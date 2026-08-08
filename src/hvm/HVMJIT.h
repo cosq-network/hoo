@@ -111,8 +111,45 @@ public:
         uint64_t reservationAddr = UINT64_MAX;
         uint64_t tlabStart = 0;
         uint64_t tlabEnd = 0;
-        uint64_t csrs[8]{}; // HVM system-profile CSR window 0x000..0x007
+        uint64_t csrs[9]{}; // HVM system-profile CSR window 0x000..0x008
     };
+
+    // HVM system-profile CSR addresses (see docs/hvm/hvm-spec.md section 9.2).
+    static constexpr uint64_t kCsrSstatus = 0x000;
+    static constexpr uint64_t kCsrStvec = 0x001;
+    static constexpr uint64_t kCsrSepc = 0x002;
+    static constexpr uint64_t kCsrScause = 0x003;
+    static constexpr uint64_t kCsrStval = 0x004;
+    static constexpr uint64_t kCsrSatp = 0x005;
+    static constexpr uint64_t kCsrStime = 0x006;
+    static constexpr uint64_t kCsrStimecmp = 0x007;
+    static constexpr uint64_t kCsrFeature0 = 0x008;
+    static constexpr uint64_t kCsrCount = 0x009;
+
+    // feature0 (CSR 0x008) is read-only and reports the implemented HVM
+    // feature set. See docs/hvm/hvm-spec.md section 9.2 for the bit layout.
+    static constexpr uint64_t kFeatureBaseCore = 1ULL << 0;   // hvm64-core-system
+    static constexpr uint64_t kFeatureGreenCompute = 1ULL << 1; // RETAIN/RELEASE/ICACHE.RNG/LD.P/ST.P
+    static constexpr uint64_t kFeatureSubWord = 1ULL << 2;    // HVM 1.5 scalar sub-word profile
+    static constexpr uint64_t kFeatureVector = 1ULL << 3;     // HVM-V
+    static constexpr uint64_t kFeatureHardwareLoop = 1ULL << 4; // HVM-L
+    static constexpr uint64_t kFeatureAdvisory = 1ULL << 5;   // PREFETCH.*/MEMZERO.HINT/BR.HINT
+    static constexpr uint64_t kFeatureAlloc = 1ULL << 6;      // HVM-Alloc
+    static constexpr uint64_t kFeatureProf = 1ULL << 7;       // HVM-Prof
+    static constexpr uint64_t kFeatureCap = 1ULL << 8;        // HVM-Cap
+    static constexpr uint64_t kFeatureNz = 1ULL << 9;         // HVM-NZ
+    static constexpr uint64_t kFeatureAccel = 1ULL << 10;     // HVM-A (not implemented in hosted profile)
+
+    // Feature set reported by the hosted interpreter/JIT profile. Every
+    // bit-0..bit-9 extension is implemented; HVM-A (bit 10) is not.
+    static constexpr uint64_t kHostedFeature0 =
+        kFeatureBaseCore | kFeatureGreenCompute | kFeatureSubWord |
+        kFeatureVector | kFeatureHardwareLoop | kFeatureAdvisory |
+        kFeatureAlloc | kFeatureProf | kFeatureCap | kFeatureNz;
+
+    static void initResetState(HVMState& state) {
+        state.csrs[kCsrFeature0] = kHostedFeature0;
+    }
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};
         uint64_t pc = 0;

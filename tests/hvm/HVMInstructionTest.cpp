@@ -118,6 +118,46 @@ TEST_F(HVMInstructionTest, ToAssembly) {
     EXPECT_EQ(inst2.toAssembly(), "sub r5, r10, r15");
 }
 
+TEST_F(HVMInstructionTest, DecodeRejectsReservedFuncOnFuncLessRInstruction) {
+    // MOV (opcode 0x01) does not use func. A word with func=5 is a reserved
+    // encoding and must not decode to MOV.
+    const uint32_t word = (0x01u << 25) | (1u << 20) | (1u << 15) | 5u;
+    auto decoded = HVMInstruction::decode(word);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::UNKNOWN);
+}
+
+TEST_F(HVMInstructionTest, DecodeRejectsUndefinedFuncOnFuncfulRInstruction) {
+    // ARITH (0x10) defines funcs 0,1,2,5,6,7. func=3 is not one of them.
+    const uint32_t word = (0x10u << 25) | (1u << 20) | (2u << 15) | (3u << 10) | 3u;
+    auto decoded = HVMInstruction::decode(word);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::UNKNOWN);
+}
+
+TEST_F(HVMInstructionTest, DecodeAcceptsImmediateBitsOnNonRFormats) {
+    // MOVZ (0x03, I-format) carries an immediate in the low 15 bits. A
+    // nonzero low-10-bit immediate is immediate, not func, and must decode.
+    const uint32_t word = (0x03u << 25) | (1u << 20) | (1u << 15) | 0x1FFu;
+    auto decoded = HVMInstruction::decode(word);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::MOVZ);
+    ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded->getOperands()));
+    const auto& ops = std::get<OperandsI>(decoded->getOperands());
+    EXPECT_EQ(ops.imm15, 0x1FF);
+}
+
+TEST_F(HVMInstructionTest, DecodeRejectsReservedFuncInExtendedEncoding) {
+    // BREAK (0xC1, escape32) does not use func. Encode with func=7 and
+    // confirm the byte-stream decoder rejects it.
+    HVMInstruction orig(Opcode::BREAK, OperandsR{0, 0, 0, 7});
+    auto encoded = orig.encode();
+    ASSERT_EQ(encoded.size(), 8);
+    size_t bytesUsed = 0;
+    auto decoded = HVMInstruction::decode(encoded, bytesUsed);
+    EXPECT_EQ(decoded, nullptr);
+}
+
 TEST_F(HVMInstructionTest, ToAssemblyIFormat) {
     HVMInstruction inst(Opcode::ADDI, OperandsI{3, 5, 100});
     EXPECT_EQ(inst.toAssembly(), "addi r3, r5, 100");
@@ -488,6 +528,22 @@ TEST_F(HVMInstructionTest, ToAssemblySYSCALL) {
     EXPECT_EQ(asmResult, "syscall r1, r0, 5");
 }
 
+TEST_F(HVMInstructionTest, SyscallImm15SurvivesRoundTrip) {
+    // The SYSCALL imm15 carries the syscall number, which a trap handler
+    // recovers from stval/bad_instruction. Verify it survives encode/decode
+    // for a representative syscall number.
+    HVMInstruction syscall(Opcode::SYSCALL, OperandsI{1, 2, 9}); // kSysThrowToHandler
+    syscall.setFormat(InstructionFormat::I);
+    auto encoded = syscall.encode();
+    ASSERT_EQ(encoded.size(), 8);
+    size_t used = 0;
+    auto decoded = HVMInstruction::decode(encoded, used);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::SYSCALL);
+    ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded->getOperands()));
+    EXPECT_EQ(std::get<OperandsI>(decoded->getOperands()).imm15, 9);
+}
+
 TEST_F(HVMInstructionTest, ToAssemblyRET) {
     HVMInstruction ret(Opcode::RET, OperandsR{0, 0, 0, 0});
     auto asmResult = ret.toAssembly();
@@ -584,6 +640,8 @@ static const CsvRow kCsvRows[] = {
     {"cmpne", Opcode::CMP,   InstructionFormat::R, 1},
     {"cmplt", Opcode::CMP,   InstructionFormat::R, 2},
     {"cmple", Opcode::CMP,   InstructionFormat::R, 3},
+    {"cmpult", Opcode::CMP,  InstructionFormat::R, 4},
+    {"cmpule", Opcode::CMP,  InstructionFormat::R, 5},
     {"fcmpeq", Opcode::FCMP, InstructionFormat::R, 0},
     {"fcmplt", Opcode::FCMP, InstructionFormat::R, 1},
     {"fcmple", Opcode::FCMP, InstructionFormat::R, 2},
@@ -706,7 +764,7 @@ TEST_F(HVMInstructionTest, CsvParity_AllRowsRegistered) {
 
     EXPECT_EQ(missingCount, 0) << missingCount << " CSV mnemonics missing from registry";
     EXPECT_EQ(mismatchCount, 0) << mismatchCount << " registry entries differ from CSV";
-    EXPECT_EQ(totalRows, 130) << "CSV parity table has wrong row count";
+    EXPECT_EQ(totalRows, 132) << "CSV parity table has wrong row count";
 }
 
 TEST_F(HVMInstructionTest, CsvParity_StringToOpcodeResolvesAll) {

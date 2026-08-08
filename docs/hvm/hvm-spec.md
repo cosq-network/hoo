@@ -58,6 +58,8 @@ Each hart has the following state:
   `pending` fields as defined in section 9.
 - `reservation`: implementation-defined LR/SC reservation state as defined in
   section 9.6.
+- Optional HVM-V vector state: vector registers `v0..v31` (each `VLEN` bits),
+  `vl`, and `vtype`, present only when `feature0.Vector` is set (section 5.5.1).
 
 The `pc`, privilege state, trap state, and reservation state are not directly
 addressable through general-purpose registers.
@@ -130,13 +132,46 @@ Extended opcode encoding:
 - A target outside the implemented address space raises an instruction-access
   or address-misalignment trap; it is not silently truncated.
 
+Reserved encoding fields:
+- Every base format above uses all 32 bit positions, so an instruction word's
+  fields are always well-formed with respect to the format. The `func` field
+  is only meaningful for instructions that define it in the CSV.
+- The `hvm_instruction_set.csv` `Operands` column marks unused operand fields
+  with `-` (for example, `RET` has `rd`, `rs1`, and `rs2` marked `-`), and the
+  `Func` column marks unused func with `-`. Such fields are reserved for that
+  instruction.
+- Reserved fields must be zero. An instruction whose reserved fields are not
+  all zero is a reserved encoding and raises the illegal-instruction trap
+  (scause = 2) rather than being executed. Encoders must emit zero in every
+  reserved field.
+- An instruction whose opcode is defined but whose `func` value is not listed
+  for that opcode in the CSV is likewise a reserved encoding and must raise
+  the illegal-instruction trap.
+
 ### 4.1 Memory access rules
 
-- Instruction fetches are 4-byte aligned.
+- Instruction fetches are 4-byte aligned. `NOP` and all base 32-bit instructions
+  occupy one 4-byte line starting at a 4-byte-aligned PC.
+- Extended (`escape32`) instructions occupy an 8-byte line that begins on a
+  4-byte-aligned PC (the escape prefix `0xFE` is at offset 0; the 32-bit
+  payload is at offset 4). Such a fetch crosses a 4-byte word boundary. A
+  fetch that crosses a page or protection boundary must be fully mapped and
+  accessible; if either half faults, the entire extended instruction raises the
+  corresponding instruction-access fault and no part is retired. The lower
+  addressed word is fetched and checked first; a fault on the second word does
+  not retire the first.
 - `LD.H`/`ST.H` addresses are 2-byte aligned, `LD.W`/`ST.W` addresses are
   4-byte aligned, and `LD.D`/`ST.D`, `LR.D`/`SC.D`, and pair operations are
   8-byte aligned. Misalignment raises the corresponding address-misaligned
   trap; the core profile does not perform invisible split accesses.
+- `LD.B`/`ST.B` and `LDA` have no alignment requirement.
+- Jump target alignment: `JAL` and `JMP` targets must be 4-byte aligned; a
+  non-4-byte-aligned target raises an instruction-address-misaligned trap
+  (scause = 0) before any register update. `JALR` computes its target as
+  `rs + sign_extend(imm15)`; unlike an architecture that silently masks low
+  bits, HVM requires the resulting target to be 4-byte aligned, otherwise an
+  instruction-address-misaligned trap (scause = 0) is raised before any
+  register update. The check is on the full sum `rs + sign_extend(imm15)`.
 - `LD.B`/`ST.B` and `LDA` have no alignment requirement.
 - All multi-byte values use little-endian byte order.
 - A memory access that crosses an unmapped, inaccessible, or device boundary
@@ -159,7 +194,8 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
   - `DIVU` has no overflow path. Shift counts are reduced modulo 64.
 - Bitwise/logical: `AND`, `OR`, `XOR`, `NOT`
 - Floating-point: `FADD`, `FSUB`, `FMUL`, `FDIV`
-- Comparisons: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`, `FCMPEQ`, `FCMPLT`, `FCMPLE`
+- Comparisons: `CMPEQ`, `CMPNE`, `CMPLT`, `CMPLE`, `CMPULT`, `CMPULE`, `FCMPEQ`, `FCMPLT`, `FCMPLE`
+  - `CMPLT`/`CMPLE` compare signed 64-bit values; `CMPULT`/`CMPULE` compare the same bits as unsigned 64-bit values. The result is 1 or 0 in `rd`.
 - Branch/jump: `BEQ`, `BNE`, `BLT`, `BLE`, `JMP`, `JAL`, `JALR`, `RET`
 - Memory: `LD.B`, `LD.BU`, `LD.H`, `LD.HU`, `LD.W`, `LD.WU`, `LD.D`, `ST.B`, `ST.H`, `ST.W`, `ST.D`, `LDA`
 - Atomic memory: `LR.D`, `SC.D`
@@ -167,10 +203,28 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 - Calls/linking: `CALL`, `TAILCALL`
 - Hardware/System: `SYSCALL`, `BREAK`
 
-Arithmetic traps are architectural synchronous exceptions. A hosted HVM
-execution API reports an unhandled arithmetic trap as `-1` and sets its VM
-error state for compatibility with the current interpreter/JIT API; hardware
-enters the trap handler described in section 9.
+Arithmetic traps are architectural synchronous exceptions. They are precise:
+the trapping instruction is not retired, its destination register `rd` is not
+written, and the exception records the PC of the trapping instruction. Every
+other synchronous exception in this specification — misaligned or faulting
+memory access, reserved or illegal encoding (scause = 2), `BREAK`, and
+`SYSCALL` — follows the same precise-trap rule.
+
+Vectoring: hardware must take every synchronous exception to a trap entry
+point. The trap-entry mechanism is required core behavior, because the core
+instruction set itself raises synchronous exceptions (`SYSCALL`, `BREAK`,
+arithmetic traps, address faults). In a system-profile implementation the
+entry point is `stvec.BASE` and the exception state is recorded in
+`sepc`/`scause`/`stval`/`bad_instruction` (section 9.3). A core-only
+implementation without the system profile must document its trap entry in its
+platform profile (section 8.2): either a minimal trap entry point with the
+same exception-state contract, or a deterministic halt that exposes the
+exception cause. It may not skip the trapping instruction, continue with an
+undefined result, or treat a synchronous exception as non-precise.
+
+A hosted HVM execution API reports an unhandled synchronous trap as `-1` and
+sets its VM error state for compatibility with the current interpreter/JIT
+API.
 
 ### 5.2 HVM 1.5 Required Green-Compute Core Extensions
 
@@ -217,8 +271,13 @@ write their result bit pattern to a general-purpose register.
 - Division by zero, invalid operations, overflow, underflow, and inexact
   results do not raise HVM traps in the core profile; results follow IEEE-754
   binary64 rules.
-- NaN results are canonicalized to one quiet-NaN encoding defined by the
-  platform profile. Signaling NaNs are quieted before the result is written.
+- NaN results are canonicalized to a single quiet-NaN encoding. Signaling NaNs
+  are quieted before the result is written. The canonical quiet-NaN payload is
+  implementation-defined; the hosted HVMJIT profile and this core
+  specification use `0x7ff8'0000'0000'0000` (the canonical quiet NaN). A
+  platform profile may only narrow, never widen, the set of NaN bit patterns
+  accepted as inputs; every NaN result produced by the implementation must be
+  bit-identical to this canonical value.
 - Floating comparisons return integer `0` or `1` in `rd`. Unordered NaN
   comparisons return `0` for equality and less-than/less-than-or-equal.
 - The core does not expose accrued FP exception flags. A future platform
@@ -246,6 +305,47 @@ The following extensions are optional unless required by a specific HVM platform
 
 Advisory instructions may be implemented as no-ops. Runtime-specific instructions must have software fallback unless the platform profile says otherwise.
 
+### 5.5.1 HVM-V vector state and encoding
+
+HVM-V adds the following architectural state (present only when
+`feature0.Vector` is set):
+- `v0..v31`: 32 vector registers, each `VLEN` bits wide.
+- `vl`: active element count (number of elements operated on by a vector
+  instruction).
+- `vtype`: current element-type/layout encoding consumed by `VSETVL` and
+  vector arithmetic.
+- `vregs[32][VLMAX]`: internal backing storage indexed by register and
+  element index `0..vl-1`.
+
+`VSETVL rd, rs1, rs2` sets the vector length and type: `vtype = rs2` and
+`vl = min(as_uint(rs1), VLMAX)`, then writes `vl` to `rd`. `VLMAX` is a
+platform-defined maximum; the hosted HVMJIT profile fixes `VLEN` at 64 bits
+(one 8-byte element), so `VLMAX = 8` regardless of `vtype`. HVM does **not**
+define a `vstart` register — there is no fault-only-first or element-resume
+state. Vector memory instructions (`VLD.V`, `VST.V`, ...) operate over elements
+`0..vl-1` of the configured registers using the active element width.
+
+`vtype` is carried verbatim from `rs2` into the register. The hosted profile
+uses the following element-type encodings consumed by vector arithmetic and
+memory operations:
+
+| `vtype` | element type |
+| --- | --- |
+| `0`    | signed/unsigned integer, 64-bit (`i64`/`u64`) |
+| `2`    | IEEE-754 binary64 floating point (`f64`) |
+| `9`    | IEEE-754 binary64 floating point (`f64`) (alias of `2`) |
+
+A `vtype` value not listed above is reserved; the hosted profile treats every
+reserved value as `0` (integer). Other bits in `vtype` are currently unused and
+ignored, so the effective element width is always 64 bits in this profile —
+element widths narrower than 64 bits (e.g. the 8/16/32-bit SEW values used by
+other platform profiles) are not supported by the hosted HVMJIT interpreter and
+JIT and select integer semantics.
+
+Element encodings for `vtype` beyond this core contract are defined per
+platform profile; the core encoding contract is `vl = min(avl, VLMAX)` and
+`vtype` is carried verbatim.
+
 ### 5.6 Explicitly Excluded from Core (Lowered to Software)
 
 The following are **NOT** in the ISA and must be lowered by the compiler:
@@ -262,6 +362,12 @@ The following are **only** required for the system-level profile (e.g., running 
 - System register access: `CSRRW`
 - TLB management: `SFENCE.VMA`
 
+Omitting the system profile omits privilege-level semantics (U-mode/S-mode
+distinction), the CSR-based exception state, and these instructions. It does
+not remove the requirement to report the synchronous exceptions that the core
+instruction set itself can raise (`SYSCALL`, `BREAK`, arithmetic traps,
+address faults); see section 5.1 for the core-only trap-entry contract.
+
 ## 6. Mapping to Current Grammar
 
 - `newExpression` -> `CALL hoo_alloc` + `CALL` constructor.
@@ -275,8 +381,11 @@ The following are **only** required for the system-level profile (e.g., running 
 In a hosted interpreter or JIT, the service table is a direct runtime bridge.
 On physical hardware, `SYSCALL` is a synchronous trap with cause `16` from
 U-mode or `17` from S-mode; the platform syscall handler implements the same
-register contract. A hardware implementation must not depend on C++ symbols or
-the presence of `hoort` in order to decode or retire the instruction.
+register contract. On trap entry, `stval` is set to the `imm15` syscall number
+and `bad_instruction` holds the faulting `SYSCALL` (section 9.3), so the
+handler can dispatch without re-reading memory. A hardware implementation must
+not depend on C++ symbols or the presence of `hoort` in order to decode or
+retire the instruction.
 
 | imm15 | Name           | Operation                              | Reads Register | Writes Register |
 |-------|----------------|----------------------------------------|----------------|-----------------|
@@ -344,8 +453,11 @@ that defines:
 - interrupt sources, priority, routing, and timer frequency;
 - boot firmware entry state and device-discovery mechanism;
 - cache-coherency and DMA rules;
-- reservation granule and atomicity domain; and
-- debug, halt, single-step, and external-observation behavior.
+- reservation granule and atomicity domain;
+- debug, halt, single-step, and external-observation behavior; and
+- synchronous-exception and trap-entry contract (vector target, or the
+  deterministic halt and cause-exposure mechanism) for implementations that
+  omit the system profile (see section 5.1).
 
 The core specification deliberately does not assign device addresses or
 pretend that the hosted Hoo runtime is present on bare hardware. A bare-metal
@@ -404,6 +516,25 @@ CSRs are addressed by a 12-bit immediate field in the `CSRRW` instruction.
 | 0x005   | `satp`     | Supervisor address translation (mode + ASID + page-table PPN)      |
 | 0x006   | `stime`    | Cycle counter (read-only, 64-bit, increments every cycle)          |
 | 0x007   | `stimecmp` | Timer compare value; when `stime >= stimecmp`, a timer interrupt fires |
+| 0x008   | `feature0` | Read-only implemented-feature bit register (see layout below)     |
+
+**`feature0` field layout** (64-bit, read-only; writes are ignored):
+- Bit 0: `BaseCore`    — `hvm64-core-system` minimal instruction set
+- Bit 1: `GreenCompute` — RETAIN/RELEASE/ICACHE.RNG/LD.P/ST.P
+- Bit 2: `SubWord`     — HVM 1.5 scalar sub-word profile
+- Bit 3: `Vector`      — HVM-V
+- Bit 4: `HardwareLoop` — HVM-L
+- Bit 5: `Advisory`    — PREFETCH.*/MEMZERO.HINT/BR.HINT
+- Bit 6: `Alloc`       — HVM-Alloc
+- Bit 7: `Prof`        — HVM-Prof
+- Bit 8: `Cap`         — HVM-Cap
+- Bit 9: `Nz`          — HVM-NZ
+- Bit 10: `Accel`      — HVM-A (implementations not supporting HVM-A leave this 0)
+- Bits 11–63: reserved, read as 0
+
+Software that needs a feature must first read `feature0` and check the
+corresponding bit. Bits 11–63 are reserved; software must treat them as
+reserved (ignored for behavior, always read as 0).
 
 **`sstatus` field layout** (64-bit):
 - Bit 1: `SIE`   — Supervisor Interrupt Enable (0 = masked, 1 = enabled)
@@ -451,22 +582,47 @@ Additional HVM synchronous causes are:
 - Bits 59–44: ASID (16-bit address-space identifier)
 - Bits 43–0: PPN (physical page number of root page table, shifted right by 12)
 
+**Reset values** (after a hart-level reset, or the equivalent of a TRAPRET
+to the reset vector):
+- `sstatus` = 0 (SPP = S since hardware resets into S-mode; SIE = 0).
+- `stvec` = 0 (direct mode, BASE = 0).
+- `sepc`, `scause`, `stval`, `bad_instruction` = 0.
+- `satp` = 0 (MODE = Bare, no address translation; see section 9.5).
+- `stime` = 0 (or a platform-defined monotonic starting offset; see section
+  9.5). `stimecmp` = 0.
+- `feature0` = the implemented feature set (read-only). See section 9.2.
+
+All CSRs and GPRs are 0 unless otherwise specified. `r0` reads as 0 and writes
+are discarded. A platform profile may not redefine these reset values; it may
+only constrain them further (for example, fixing the `stime` epoch).
+
 ### 9.3 Trap and Interrupt Handling
 
-**Trap entry** (hardware on ECALL, BREAK, page fault, or interrupt):
+**Trap entry** (hardware on ECALL, BREAK, page fault, `SYSCALL`, or interrupt):
 1. `sepc` = PC of trapping instruction (for interrupts: PC of interrupted instruction)
 2. `scause` = cause code (bit 63 set for interrupts)
-3. `stval` = fault address, bad operand, or zero when the cause has no value
-4. `bad_instruction` = complete faulting instruction for an instruction fault,
+3. `stval` = fault address, bad operand, or zero when the cause has no value.
+   For `SYSCALL`, `stval` = the `imm15` syscall number.
+4. `bad_instruction` = complete faulting instruction for any synchronous
+   exception whose instruction can be reconstructed (including `SYSCALL`),
    otherwise unchanged
 5. `sstatus.SPIE` = `sstatus.SIE`; `sstatus.SIE` = 0 (disable interrupts)
 6. `sstatus.SPP` = current privilege level (0 for U-mode traps)
 7. Switch to S-mode
 8. If `stvec.mode == 0` (direct), or if the trap is a synchronous exception: `PC = stvec.BASE`
-9. If `stvec.mode == 1` (vectored) and the trap is an interrupt: `PC = stvec.BASE + interrupt_cause * 4`
+9. If `stvec.mode == 1` (vectored) and the trap is an interrupt: `PC = stvec.BASE + (scause & 0x7FFF_FFFF_FFFF_FFFF) * 4`
+
+In vectored mode the vector offset uses the low cause code (the interrupt bit in
+bit 63 is excluded), so each distinct interrupt cause gets its own 4-byte slot
+(`cause * 4`) within the trap vector. Synchronous exceptions always use direct
+entry at `stvec.BASE` regardless of mode. `stvec.BASE` (and thus the vectored
+target) must be 4-byte aligned; an unaligned BASE is a reserved
+`stvec` encoding (see section 8.2).
 
 Synchronous exceptions always vector to `stvec.BASE`. The handler may inspect
-`scause`, `sepc`, `stval`, and `bad_instruction` to distinguish the fault. A
+`scause`, `sepc`, `stval`, and `bad_instruction` to distinguish the fault. For
+a `SYSCALL` trap, the handler reads the syscall number from `stval` (or decodes
+it from `bad_instruction`) and uses the register contract in section 7. A
 trap taken while already in S-mode remains in S-mode and records `SPP=1`; a
 trap from U-mode records `SPP=0`. Trap entry does not modify general-purpose
 registers.
@@ -493,7 +649,14 @@ Interrupts are taken when `sstatus.SIE == 1` and `sstatus.SPP == 0` (U-mode). In
 
 ### 9.4 Timer
 
-`CSRRW` with CSR address 0x006 reads `stime` (read-only, any write is ignored). `CSRRW` with CSR address 0x007 reads/writes `stimecmp`.
+`CSRRW` with CSR address 0x006 reads `stime` (read-only, any write is ignored).
+`CSRRW` with CSR address 0x007 reads/writes `stimecmp`.
+
+`stime` counts host cycles and is only directly readable by S-mode via
+`CSRRW` (U-mode `CSRRW` traps as scause = 2). A U-mode program that needs wall
+time must obtain it through a `SYSCALL` runtime service (see section 7) or by
+trapping to S-mode first; HVM does not define a U-mode-mapped time counter.
+`stimecmp` is read/write only by S-mode; writes from U-mode trap.
 
 When `stime >= stimecmp`, a timer interrupt (scause = 0x8000_0000_0000_0000) is pending. It fires when interrupts are enabled and not masked.
 
@@ -561,7 +724,11 @@ permit access after a permission-changing page-table write followed by
   - Another `LR.D` by the same hart (new reservation replaces old)
   - Context switch or trap
 - `SC.D` writes `0` to `rd` on success, a nonzero value on failure.
-- HVM `LR.D`/`SC.D` ordering is acquire-release as specified by the HVM platform profile; it must not be described as the default RISC-V ordering. A platform that needs relaxed, acquire-only, or release-only operations must provide an HVM extension or compiler barrier.
+- `LR.D`/`SC.D` ordering is acquire-release and is part of the SC total order of the
+  base memory model (section 9.8); no separate fence is required. A platform must
+  not be documented as using a weaker ordering than this. (HVM does not encode
+  RISC-V `aq`/`rl` bits; relaxed/acquire-only/release-only orderings are reserved
+  for a future weak-memory extension, not the base profile.)
 - ACPI-style spinlock: `loop: LR.D rd, (rs1); SC.D rd, rs1, rs2; bnez rd, loop`
 
 ### 9.7 CSR Access
@@ -571,7 +738,28 @@ of the HVM `imm15` field into `rd`, then writes the value of `rs` to the CSR.
 The upper three immediate bits must be zero. If `rs = r0`, the write is
 suppressed (behaves as a read-only access).
 
-Attempted write to a read-only CSR (e.g., `stime`) is ignored. Access to an undefined CSR address traps as illegal instruction.
+Attempted write to a read-only CSR (e.g., `stime`, `feature0`) is ignored by
+the hosted profile; a physical system-profile implementation raises the
+illegal-instruction trap for such a write (scause = 2). Access to an undefined
+CSR address (an address outside the implemented CSR window, or with an
+unimplemented feature bit set) raises the illegal-instruction trap
+(scause = 2).
+
+**Privilege and mode violations.** The following are synchronous exceptions
+and trap with the given `scause` values:
+
+| Condition | scause |
+|-----------|--------|
+| Any privileged instruction (`ECALL`, `TRAPRET`, `CSRRW`, `SFENCE.VMA`) executed in U-mode | 2 (illegal instruction) |
+| `ECALL` executed in S-mode | 9 |
+| `ECALL` executed in U-mode | 8 |
+| `TRAPRET` executed in U-mode | 2 |
+| CSR address outside the implemented window (`imm15 >=` implemented CSR count) | 2 |
+| Upper three CSR-immediate bits nonzero | 2 |
+
+`ECALL` is legal in both U-mode (scause = 8) and S-mode (scause = 9); the
+claim in `instructions.md` (version 1.4) that it is "illegal in S-mode" is
+incorrect and superseded by this table.
 
 ### 9.8 Memory Model
 

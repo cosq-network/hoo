@@ -72,6 +72,24 @@ bool decodeULEB128(const std::vector<uint8_t>& in, size_t start, uint32_t& value
     return false;
 }
 
+// Resolve the instruction for an opcode given the low 10 bits of a 32-bit
+// payload. In R-format those bits are the func field; in every other format
+// they are immediate bits. An R-format func value that is not registered for
+// the opcode is a reserved encoding (docs/hvm/hvm-spec.md section 4) and must
+// not be accepted. For non-R formats the low 10 bits are part of the
+// immediate, so a func-0 lookup is used as a fallback.
+std::optional<InstructionRegistry::InstructionInfo> resolveOpcodeInfo(Opcode opcode, uint32_t low10) {
+    auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, static_cast<uint16_t>(low10 & 0x3FFU));
+    if (info) {
+        return info;
+    }
+    auto funcZero = InstructionRegistry::instance().getInfoByOpcode(opcode, 0);
+    if (funcZero && funcZero->format != InstructionFormat::R) {
+        return funcZero;
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 HVMInstruction::HVMInstruction()
@@ -164,11 +182,7 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t
         if (!readU32LE(bytes, 4, word)) return nullptr;
 
         Opcode opcode = static_cast<Opcode>(opcodeVal);
-        auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, word & 0x3FF);
-        if (!info) {
-            // Fallback: try with func 0
-            info = InstructionRegistry::instance().getInfoByOpcode(opcode, 0);
-        }
+        auto info = resolveOpcodeInfo(opcode, word & 0x3FFU);
 
         if (!info) return nullptr;
         if (info->encoding != InstructionEncoding::Escape32) return nullptr;
@@ -251,13 +265,9 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const uint32_t word) {
     uint8_t opVal = (word >> 25) & 0x7F;
     Opcode opcode = static_cast<Opcode>(opVal);
 
-    // Try to find the exact instruction info using opcode and potential func
-    auto info = InstructionRegistry::instance().getInfoByOpcode(opcode, word & 0x3FF);
-    if (!info) {
-        // Fallback: try with func 0
-        info = InstructionRegistry::instance().getInfoByOpcode(opcode, 0);
-    }
-
+    // Try to find the exact instruction info using opcode and func. Unknown
+    // func values on R-format opcodes are reserved encodings and are rejected.
+    auto info = resolveOpcodeInfo(opcode, word & 0x3FFU);
     if (!info) {
         auto inst = std::make_unique<HVMInstruction>();
         inst->opcode_ = Opcode::UNKNOWN;

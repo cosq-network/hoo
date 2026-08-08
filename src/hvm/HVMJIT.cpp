@@ -6705,6 +6705,16 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 writeReg(o.rd, nextPc);
                 const uint64_t targetPc =
                     static_cast<uint64_t>(static_cast<int64_t>(readReg(o.rs)) + static_cast<int64_t>(o.imm15));
+                // HVM requires `JALR` targets to be 4-byte aligned; unlike an
+                // architecture that silently masks low bits, a misaligned
+                // target raises an instruction-address-misaligned trap before
+                // any further effect. See docs/hvm/hvm-spec.md section 4.1.
+                if (targetPc & 0x3ULL) {
+                    lastError_ = "JALR target not 4-byte aligned (instruction-address misaligned): " +
+                                 std::to_string(targetPc);
+                    state.trapHit = true;
+                    return -1;
+                }
                 const hvm::Symbol* maybeCalleeSym = [&]() -> const hvm::Symbol* {
                     for (const auto& s : module->getSymbols()) {
                         if ((s.type == hvm::Symbol::STT_FUNC || s.type == hvm::Symbol::STT_NOTYPE) &&
@@ -7174,6 +7184,17 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     return -1;
                 }
                 const uint64_t finalAddr = addr + static_cast<int64_t>(o.imm15);
+                if (finalAddr == 0) {
+                    lastError_ = "Null pointer dereference trap";
+                    state.trapHit = true;
+                    return -1;
+                }
+                if ((finalAddr & 7ULL) != 0) {
+                    lastError_ = "Unaligned LD.D.NZ address: " +
+                                 std::to_string(finalAddr);
+                    state.trapHit = true;
+                    return -1;
+                }
                 uint64_t val = 0;
                 if (!loadU64(finalAddr, val)) {
                     lastError_ = "Invalid memory load address";
@@ -7350,7 +7371,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 auto o = std::get<hvm::OperandsI>(ins->getOperands());
                 const uint16_t csrImmediate = static_cast<uint16_t>(o.imm15);
                 if (o.imm15 < 0 || (csrImmediate & 0x7000U) != 0 ||
-                    (csrImmediate & 0x0FFFU) >= 8) {
+                    (csrImmediate & 0x0FFFU) >= HVMJIT::kCsrCount) {
                     lastError_ = "Invalid HVM CSR address";
                     state.trapHit = true;
                     return -1;
@@ -7358,8 +7379,8 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 const uint64_t csr = csrImmediate & 0x0FFFU;
                 const uint64_t oldValue = state.csrs[csr];
                 writeReg(o.rd, oldValue);
-                // stime (CSR 0x006) is read-only in the system profile.
-                if (csr != 0x006 && o.rs != 0) {
+                // stime (0x006) and feature0 (0x008) are read-only.
+                if (csr != HVMJIT::kCsrStime && csr != HVMJIT::kCsrFeature0 && o.rs != 0) {
                     state.csrs[csr] = readReg(o.rs);
                 }
                 break;
@@ -7586,6 +7607,7 @@ bool HVMJIT::runModuleVTableInitializers(const std::shared_ptr<hvm::HOModule>& m
             }
 
             HVMState state{};
+            HVMJIT::initResetState(state);
             state.io = &io_;
             state.memory = memory_.data();
             state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
@@ -7627,6 +7649,7 @@ bool HVMJIT::runModuleInitializer(const std::shared_ptr<hvm::HOModule>& module) 
     std::string err;
     std::call_once(*onceFlag, [&]() {
         HVMState state{};
+        HVMJIT::initResetState(state);
         state.io = &io_;
         state.memory = memory_.data();
         state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
@@ -7875,7 +7898,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
         };
         auto csrPtr = [&](uint64_t csr) {
             auto* csrs = builder.CreateStructGEP(stateTy, stateArg, 12);
-            return builder.CreateInBoundsGEP(llvm::ArrayType::get(i64, 8), csrs,
+            return builder.CreateInBoundsGEP(llvm::ArrayType::get(i64, HVMJIT::kCsrCount), csrs,
                                              {builder.getInt64(0), builder.getInt64(csr)});
         };
         auto memBase = [&]() -> llvm::Value* {
@@ -8435,22 +8458,19 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto* okBB = llvm::BasicBlock::Create(*context, "bounds_ok", fn);
                     builder.CreateCondBr(cond, trapBB, okBB);
                     builder.SetInsertPoint(trapBB);
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
                     builder.CreateRet(builder.getInt64(-1));
                     builder.SetInsertPoint(okBB);
                     writeReg(o.rd, ptrVal);
                 } else if (op == hvm::Opcode::LD_D_NZ) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                    auto* baseAddr = readReg(o.rs);
-                    auto* isNull = builder.CreateICmpEQ(baseAddr, builder.getInt64(0));
-                    auto* trapBB = llvm::BasicBlock::Create(*context, "lddnz_null", fn);
+                    auto* addr = builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15)));
+                    auto* isNull = builder.CreateICmpEQ(addr, builder.getInt64(0));
+                    auto* nullBB = llvm::BasicBlock::Create(*context, "lddnz_null", fn);
                     auto* activeBB = llvm::BasicBlock::Create(*context, "lddnz_active", fn);
-                    builder.CreateCondBr(isNull, trapBB, activeBB);
-                    builder.SetInsertPoint(trapBB);
-                    builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                    builder.CreateCondBr(isNull, nullBB, activeBB);
+                    builder.SetInsertPoint(nullBB);
                     builder.CreateRet(builder.getInt64(-1));
                     builder.SetInsertPoint(activeBB);
-                    auto* addr = builder.CreateAdd(baseAddr, builder.getInt64(static_cast<int64_t>(o.imm15)));
                     auto* misaligned = builder.CreateICmpNE(builder.CreateAnd(addr, builder.getInt64(7)), builder.getInt64(0));
                     auto* okBB = llvm::BasicBlock::Create(*context, "lddnz_ok", fn);
                     auto* errBB = llvm::BasicBlock::Create(*context, "lddnz_err", fn);
@@ -9133,15 +9153,14 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
                     const uint16_t csrImmediate = static_cast<uint16_t>(o.imm15);
                     if (o.imm15 < 0 || (csrImmediate & 0x7000U) != 0 ||
-                        (csrImmediate & 0x0FFFU) >= 8) {
-                        builder.CreateStore(builder.getInt1(true), builder.CreateStructGEP(stateTy, stateArg, 3));
+                        (csrImmediate & 0x0FFFU) >= HVMJIT::kCsrCount) {
                         builder.CreateRet(builder.getInt64(-1));
                         break;
                     }
                     const uint64_t csr = csrImmediate & 0x0FFFU;
                     auto* csrValue = builder.CreateLoad(i64, csrPtr(csr));
                     writeReg(o.rd, csrValue);
-                    if (csr != 0x006 && o.rs != 0) {
+                    if (csr != HVMJIT::kCsrStime && csr != HVMJIT::kCsrFeature0 && o.rs != 0) {
                         builder.CreateStore(readReg(o.rs), csrPtr(csr));
                     }
                 } else if (op == hvm::Opcode::SFENCE_VMA) {
@@ -9348,6 +9367,7 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
     using EntryFn = int64_t(*)(HVMState*);
     auto fn = reinterpret_cast<EntryFn>(*resolvedAddress);
     HVMState state{};
+    HVMJIT::initResetState(state);
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
@@ -9420,6 +9440,7 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     lastRunUsedJIT_ = false;
     auto primary = loadedModules_[primaryModuleName_];
     HVMState state{};
+    HVMJIT::initResetState(state);
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
@@ -9511,6 +9532,7 @@ int64_t HVMJIT::invokeInboundCallback(size_t slot, const std::vector<uint64_t>& 
         return -1;
     }
     HVMState state{};
+    HVMJIT::initResetState(state);
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);
@@ -9557,6 +9579,7 @@ bool HVMJIT::buildInspectorTrace(const std::string& entryPoint) {
         return false;
     }
     HVMState state{};
+    HVMJIT::initResetState(state);
     state.io = &io_;
     state.memory = memory_.data();
     state.regs[31] = static_cast<int64_t>(memory_.size() - 16);

@@ -444,6 +444,23 @@ TEST_F(HVMJITInstructionSemanticsTest, JalrFinalImportSymbolFallsBackToNormalJum
     EXPECT_EQ(jit.run("_F_main_v"), 52) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, JalrMisalignedTargetTraps) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 13}),          // r2 = 13 (not 4-byte aligned)
+        makeI(Opcode::JALR, OperandsI{29, 2, 0}),          // target = 13 -> misaligned trap
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),          // must not execute
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["jalr_misaligned.ho"] = buildModuleBytes("jalr_misaligned", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("jalr_misaligned.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("not 4-byte aligned"), std::string::npos);
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, FloatArithmeticAndComparisonUsingSubnormalBits) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{2, 0, 1}),
@@ -1433,6 +1450,34 @@ TEST_F(HVMJITInstructionSemanticsTest, ReleaseNonFinalReturnsZero) {
     EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, ReleaseNullPointerReturnsZero) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),          // r2 = 0 (null)
+        makeR(Opcode::RELEASE, OperandsR{1, 2, 0, 0}),   // release(r0) -> rd = 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["release_null.ho"] = buildModuleBytes("release_null", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("release_null.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, RetainNullPointerReturnsZero) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),          // r2 = 0 (null)
+        makeR(Opcode::RETAIN, OperandsR{1, 2, 0, 0}),    // retain(r0) -> rd = 0 (no header access)
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["retain_null.ho"] = buildModuleBytes("retain_null", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("retain_null.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, LoadReserveLoadsValue) {
     std::vector<HVMInstruction> ins{
         makeI(Opcode::ENTER, OperandsI{0, 0, 32}),
@@ -1466,6 +1511,142 @@ TEST_F(HVMJITInstructionSemanticsTest, CSRRWRoundTripUsesHvmCsrWindow) {
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("csrrw.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 42) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, Feature0ReadableReportsImplementedFeatures) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 8}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["feature0_read.ho"] = buildModuleBytes("feature0_read", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("feature0_read.ho")) << jit.getLastError();
+    // Hosted profile implements base core + extensions (bits 0..9); HVM-A (bit 10) is not.
+    EXPECT_EQ(jit.run("_F_main_v"), static_cast<int64_t>(HVMJIT::kHostedFeature0))
+        << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, Feature0WriteIsIgnored) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, -1}),
+        makeI(Opcode::CSRRW, OperandsI{1, 2, 8}),      // attempt write to feature0
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 8}),      // read feature0 back
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["feature0_wo.ho"] = buildModuleBytes("feature0_wo", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("feature0_wo.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), static_cast<int64_t>(HVMJIT::kHostedFeature0))
+        << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, CsrAddressOutsideWindowTraps) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 9}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["csr_oor.ho"] = buildModuleBytes("csr_oor", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("csr_oor.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Invalid HVM CSR address"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, CsrResetValuesMatchSpecification) {
+    // After reset, writable CSRs must read zero and satp must be Bare (=0)
+    // (docs/hvm/hvm-spec.md section 9.2 reset values). feature0 is covered
+    // by its own test; here we verify satp and that the scalar CSRs sum to 0.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::CSRRW, OperandsI{10, 0, 0}),  // sstatus
+        makeI(Opcode::CSRRW, OperandsI{11, 0, 1}),  // stvec
+        makeI(Opcode::CSRRW, OperandsI{12, 0, 2}),  // sepc
+        makeI(Opcode::CSRRW, OperandsI{13, 0, 3}),  // scause
+        makeI(Opcode::CSRRW, OperandsI{14, 0, 4}),  // stval
+        makeI(Opcode::CSRRW, OperandsI{15, 0, 5}),  // satp    -> 0 (Bare)
+        makeI(Opcode::CSRRW, OperandsI{16, 0, 6}),  // stime
+        makeI(Opcode::CSRRW, OperandsI{17, 0, 7}),  // stimecmp
+        // Fold the eight scalar CSRs into r1: expect 0 at reset.
+        makeR(Opcode::ARITH, OperandsR{18, 10, 11, 0}),
+        makeR(Opcode::ARITH, OperandsR{18, 18, 12, 0}),
+        makeR(Opcode::ARITH, OperandsR{18, 18, 13, 0}),
+        makeR(Opcode::ARITH, OperandsR{18, 18, 14, 0}),
+        makeR(Opcode::ARITH, OperandsR{18, 18, 15, 0}),
+        makeR(Opcode::ARITH, OperandsR{18, 18, 16, 0}),
+        makeR(Opcode::ARITH, OperandsR{18, 18, 17, 0}),
+        makeR(Opcode::MOV, OperandsR{1, 18, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["csr_reset.ho"] = buildModuleBytes("csr_reset", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("csr_reset.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SatpResetsBare) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 5}),  // satp -> 0 (Bare)
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["satp_reset.ho"] = buildModuleBytes("satp_reset", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("satp_reset.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+
+TEST_F(HVMJITInstructionSemanticsTest, CmpUnsignedLessThan) {
+    std::vector<HVMInstruction> ins{
+        // r2 = -1 (0xFFFF...FFFF), r3 = 1, r4 = 0
+        makeI(Opcode::MOVZ, OperandsI{2, 0, -1}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 0}),
+        makeR(Opcode::CMP, OperandsR{5, 2, 3, 4}),   // cmpltu r5, r2, r3  -> 0xFFFF... < 1 = false
+        makeR(Opcode::CMP, OperandsR{6, 3, 4, 4}),   // cmpltu r6, r3, r4  -> 1 < 0 = false
+        makeR(Opcode::CMP, OperandsR{7, 4, 3, 4}),   // cmpltu r7, r4, r3  -> 0 < 1 = true
+        // Fold all three results: r1 = r5 + r6 + r7 = 0 + 0 + 1 = 1
+        makeR(Opcode::ARITH, OperandsR{8, 5, 6, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 8, 7, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpltu.ho"] = buildModuleBytes("cmpltu", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpltu.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, CmpUnsignedLessThanEqual) {
+    std::vector<HVMInstruction> ins{
+        // r2 = -1 (0xFFFF...FFFF), r3 = 1, r4 = 1
+        makeI(Opcode::MOVZ, OperandsI{2, 0, -1}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 1}),
+        makeI(Opcode::MOVZ, OperandsI{4, 0, 1}),
+        makeR(Opcode::CMP, OperandsR{5, 2, 3, 5}),   // cmpleu r5, r2, r3  -> 0xFFFF... <= 1 = false
+        makeR(Opcode::CMP, OperandsR{6, 3, 4, 5}),   // cmpleu r6, r3, r4  -> 1 <= 1 = true
+        makeR(Opcode::CMP, OperandsR{7, 4, 2, 5}),   // cmpleu r7, r4, r2  -> 1 <= 0xFFFF... = true
+        // Fold all three results: r1 = r5 + r6 + r7 = 0 + 1 + 1 = 2
+        makeR(Opcode::ARITH, OperandsR{8, 5, 6, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 8, 7, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmpleu.ho"] = buildModuleBytes("cmpleu", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmpleu.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 2) << jit.getLastError();
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, StoreConditionalSuccess) {
@@ -1630,6 +1811,24 @@ TEST_F(HVMJITInstructionSemanticsTest, VectorSetvlCapsAtMaxvl) {
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("vsetvl_cap.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 8) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, VectorSetvlCarriesVtypeVerbatim) {
+    // VSETVL returns vl = min(avl, VLMAX=8); vtype is carried verbatim from rs2
+    // and must be accepted (no trap) even for float-selecting values (2, 9).
+    // The hosted profile caps VLMAX at 8 regardless of vtype.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 3}),    // r2 = 3 (AVL < MAXVL)
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 2}),    // r3 = 2 (float: double)
+        makeR(Opcode::VSETVL, OperandsR{1, 2, 3, 0}), // r1 = vl = min(3,8) = 3
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["vsetvl_vtype.ho"] = buildModuleBytes("vsetvl_vtype", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("vsetvl_vtype.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+    EXPECT_FALSE(jit.hasError());
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, VectorLoadStoreUnitStrideRoundtrip) {
@@ -2288,4 +2487,77 @@ TEST_F(HVMJITInstructionSemanticsTest, VectorStoreIndexed) {
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("vstx.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), 40) << jit.getLastError();
+}
+
+// ---------------------------------------------------------------------------
+// HVM-Cap: CHK.B bounds check
+// ---------------------------------------------------------------------------
+
+TEST_F(HVMJITInstructionSemanticsTest, ChkBBoundsPassReturnsPtr) {
+    // ptr < bound: no trap, rd = ptr.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 16}),              // r1 = ptr = 16
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),              // r2 = bound = 32
+        makeR(Opcode::CHK_B, OperandsR{1, 1, 2, 0}),           // rd=r1 <- r1, since 16 < 32
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["chkpass.ho"] = buildModuleBytes("chkpass", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("chkpass.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 16) << jit.getLastError();
+    EXPECT_FALSE(jit.hasError());
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, ChkBBoundsViolationTraps) {
+    // ptr >= bound: instruction-address/bounds trap, no rd write.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 64}),              // r1 = ptr = 64
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 32}),              // r2 = bound = 32
+        makeR(Opcode::CHK_B, OperandsR{1, 1, 2, 0}),           // 64 >= 32 -> trap
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["chktrap.ho"] = buildModuleBytes("chktrap", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("chktrap.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("bounds"), std::string::npos);
+}
+
+// ---------------------------------------------------------------------------
+// HVM-NZ: LD.D.NZ null / alignment trap
+// ---------------------------------------------------------------------------
+
+TEST_F(HVMJITInstructionSemanticsTest, LdDnzNullTraps) {
+    // Effective address 0 -> null-pointer trap before any load.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 0}),               // r1 = 0
+        makeI(Opcode::LD_D_NZ, OperandsI{2, 1, 0}),            // addr = 0 -> trap
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lddnz_null.ho"] = buildModuleBytes("lddnz_null", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lddnz_null.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Null"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdDnzMisalignedTraps) {
+    // Effective address non-zero but 8-byte misaligned -> alignment trap.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 16}),              // r1 = 16 (aligned)
+        makeI(Opcode::LD_D_NZ, OperandsI{2, 1, 1}),            // addr = 17 -> misaligned
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lddnz_mis.ho"] = buildModuleBytes("lddnz_mis", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lddnz_mis.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Unaligned"), std::string::npos);
 }

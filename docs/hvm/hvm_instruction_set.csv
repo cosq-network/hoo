@@ -4,8 +4,8 @@ MOV,0x01,base32,R,"rd, rs, -, -",rd = rs,Copies the contents of source register 
 MOVZ,0x03,base32,I,"rd, rs, imm15",rd = rs | zero_extend(imm15),Zero-extends a 15-bit immediate value and performs bitwise OR with rs; storing the result in rd.,-,"movz r1, r0, 42"
 LUI,0x04,base32,I,"rd, rs, imm15",rd = rs | (imm15 << 49),Loads a 15-bit immediate value into bits 49-63 of rd; effectively loading the upper portion of a 64-bit register when used with rs.,-,"lui r1, r0, 0x1234"
 ADDI,0x05,base32,I,"rd, rs, imm15",rd = rs + sign_extend(imm15),Adds a sign-extended 15-bit immediate value to the contents of rs and stores the result in rd.,-,"addi r1, r2, 10"
-RETAIN,0x06,base32,R,"rd, rs1, -, -",rd = rs1; if rs1 != 0 then atomic_inc(mem[rs1 - 16]:64),Increments the managed-object reference count header without trapping and returns the original object pointer.,-,"retain r1, r2"
-RELEASE,0x07,base32,R,"rd, rs1, -, -",rd = release_zero_flag(rs1),Decrements the managed-object reference count header without trapping; rd is 1 when the object reaches zero and must be released by runtime slow path.,-,"release r1, r2"
+RETAIN,0x06,base32,R,"rd, rs1, -, -",rd = rs1; if rs1 != 0 then atomic_inc(mem[rs1 - 16]:64),Increments the managed-object reference count header without trapping and returns the original object pointer. If rs1 == 0 (null), no header access occurs and rd is 0.,-,"retain r1, r2"
+RELEASE,0x07,base32,R,"rd, rs1, -, -",rd = release_zero_flag(rs1),Decrements the managed-object reference count header without trapping; rd is 1 when the object reaches zero and must be released by runtime slow path. If rs1 == 0 (null), no header access occurs and rd is 0.,-,"release r1, r2"
 ICACHE.RNG,0x0B,base32,R,"-, base, size, -",invalidate_icache_range(base size),Invalidates instruction/JIT cache state for the byte range [base base+size).,-,"icache.rng r1, r2"
 ADD,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 + rs2,Adds the contents of rs1 and rs2 and stores the 64-bit result in rd. Signed overflow raises a synchronous trap and does not write rd.,0,"add r1, r2, r3"
 SUB,0x10,base32,R,"rd, rs1, rs2, -",rd = rs1 - rs2,Subtracts the contents of rs2 from rs1 and stores the 64-bit result in rd. Signed overflow raises a synchronous trap and does not write rd.,1,"sub r1, r2, r3"
@@ -37,6 +37,8 @@ CMPEQ,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0,Compares rs1 and
 CMPNE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 != rs2) ? 1 : 0,Compares rs1 and rs2 for inequality. Stores 1 in rd if not equal; 0 otherwise.,1,"cmpne r1, r2, r3"
 CMPLT,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 < rs2; 0 otherwise.,2,"cmplt r1, r2, r3"
 CMPLE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (signed),Compares rs1 and rs2 (signed). Stores 1 in rd if rs1 <= rs2; 0 otherwise.,3,"cmple r1, r2, r3"
+CMPULT,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (unsigned),Compares rs1 and rs2 (unsigned). Stores 1 in rd if rs1 < rs2; 0 otherwise.,4,"cmpltu r1, r2, r3"
+CMPULE,0x40,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (unsigned),Compares rs1 and rs2 (unsigned). Stores 1 in rd if rs1 <= rs2; 0 otherwise.,5,"cmpleu r1, r2, r3"
 FCMPEQ,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 == rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2 for equality. Stores 1 in rd if equal; 0 otherwise.,0,"fcmpeq r1, r2, r3"
 FCMPLT,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 < rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 < rs2; 0 otherwise.,1,"fcmplt r1, r2, r3"
 FCMPLE,0x41,base32,R,"rd, rs1, rs2, -",rd = (rs1 <= rs2) ? 1 : 0 (f64),Compares floating-point values in rs1 and rs2. Stores 1 in rd if rs1 <= rs2; 0 otherwise.,2,"fcmple r1, r2, r3"
@@ -54,7 +56,7 @@ BLT,0x52,base32,B,"rs1, rs2, imm15",if rs1 < rs2 (signed) then pc += sign_extend
 BLE,0x53,base32,B,"rs1, rs2, imm15",if rs1 <= rs2 (signed) then pc += sign_extend(imm15) * 4,Branches to PC + sign_extend(imm15) * 4 if rs1 is less than or equal to rs2 (signed).,-,"ble r1, r2, 10"
 JMP,0x60,base32,J,offset,pc += sign_extend(offset) * 4,Performs an unconditional jump to PC + sign_extend(offset) * 4.,-,jmp 100
 JAL,0x61,base32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and stores the return address (PC+4) in rd (typically r29).,-,"jal r29, 100"
-JALR,0x62,base32,I,"rd, rs, imm15",rd = pc+4; pc = rs + sign_extend(imm15),Jumps to rs + sign_extend(imm15) and stores the return address (PC+4) in rd (typically r29).,-,"jalr r29, r1, 0"
+JALR,0x62,base32,I,"rd, rs, imm15",rd = pc+4; pc = rs + sign_extend(imm15),Jumps to rs + sign_extend(imm15) and stores the return address (PC+4) in rd (typically r29). The target must be 4-byte aligned or an instruction-address-misaligned trap (scause=0) is raised before any register update.,-,"jalr r29, r1, 0"
 RET,0x63,base32,R,"-, -, -, -",pc = r29,Returns from a subroutine by jumping to the address stored in the link register (r29).,-,ret
 LD.B,0x70,base32,I,"rd, addr, imm15",rd = sign_extend(mem[addr + imm15]:8),Loads a signed byte from memory at [addr + imm15] and sign-extends it to 64 bits in rd.,-,"ld.b r1, r2, 0"
 LD.BU,0x71,base32,I,"rd, addr, imm15",rd = zero_extend(mem[addr + imm15]:8),Loads an unsigned byte from memory at [addr + imm15] and zero-extends it to 64 bits in rd.,-,"ld.bu r1, r2, 0"
@@ -78,9 +80,9 @@ ADJSP,0x82,escape32,I,"-, -, imm15",sp += sign_extend(imm15),Adjusts the stack p
 FRAME,0x83,escape32,I,"rd, -, imm15",rd = r30 + sign_extend(imm15),Calculates the address [r30 + sign_extend(imm15)] and stores it in rd. Used for local variable access.,-,"frame r1, -8"
 CALL,0xB4,escape32,J,"rd, offset",rd = pc+4; pc += sign_extend(offset) * 4,Jumps to PC + sign_extend(offset) * 4 and saves return address in rd (r29). Used for direct calls.,-,"call r29, 200"
 TAILCALL,0xB6,escape32,J,offset,tail_call offset,Performs an unconditional tail-call jump to PC + sign_extend(offset) * 4 without saving return address.,-,tailcall 200
-SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Arguments passed in r2 (and r3 for two-arg syscalls). Result stored in rd.,-,"syscall r1, r0, 10"
+SYSCALL,0xC0,escape32,I,"rd, -, imm15",rd = os_syscall(imm15),Triggers a system call to the operating system using the ID in imm15. Arguments passed in r2 (and r3 for two-arg syscalls). Result stored in rd. On hardware this is a synchronous trap (scause 16/17); stval receives imm15 and bad_instruction holds the faulting instruction.,-,"syscall r1, r0, 10"
 BREAK,0xC1,escape32,R,"-, -, -, -",trap_to_debugger,Triggers a software breakpoint trap to the host environment or debugger.,-,break
-ECALL,0xC2,escape32,R,"-, -, -, -",trap_to_supervisor,Traps to supervisor mode. Sets sepc=PC scause=8 and jumps to stvec.BASE.,-,ecall
+ECALL,0xC2,escape32,R,"-, -, -, -",trap_to_supervisor,Traps to supervisor mode. Sets sepc=PC; scause=8 from U-mode or 9 from S-mode. The handler dispatches via bad_instruction/scause; stval is 0 for ECALL. Jumps to stvec.BASE.,-,ecall
 TRAPRET,0xC3,escape32,R,"-, -, -, -",return_from_trap,Returns from supervisor trap. Restores privilege from sstatus.SPP and jumps to sepc.,-,trapret
 LR.D,0xC4,escape32,R,"rd, rs1, -, -",rd = *rs1 (load-reserve),Loads a doubleword from memory at rs1 and creates a reservation for a subsequent SC.D.,-,"lr.d r1, r2"
 SC.D,0xC5,escape32,R,"rd, rs1, rs2, -",*rs1 = rs2 if reservation valid,Writes rs2 to memory at rs1 if reservation is still valid. rd=0 on success; rd=1 on failure.,-,"sc.d r1, r2, r3"
@@ -94,8 +96,8 @@ PREFETCH.NTA,0xD4,escape32,I,"-, base, imm15",prefetch_non_temporal(base + sign_
 MEMZERO.HINT,0xD5,escape32,R,"-, base, size, -",hint_zero_range(base size),Advisory hint that a byte range will be zeroed. Correct software must still perform stores or call a runtime helper.,-,memzero.hint r1 r2
 ALLOC.BUMP,0xD6,escape32,I,"rd, size, imm15",rd = tlab_alloc(size align=imm15) or 0,Optional thread-local allocation-buffer fast path. A zero result means software must call the runtime allocator.,-,alloc.bump r1 r2 8
 RDPROF,0xD7,escape32,I,"rd, selector, imm15",rd = prof_counter(selector imm15),Reads an HVM profiling/performance counter subject to privilege and platform policy.,-,rdprof r1 r2 0
-CHK.B,0xD8,escape32,R,"rd, ptr, bound, -",rd = check_bounds(ptr bound),Checks tagged or bounded pointer metadata and traps on violation when HVM-Cap is enabled.,-,chk.b r1 r2 r3
-LD.D.NZ,0xD9,escape32,I,"rd, addr, imm15",if addr == 0 then trap_null else rd = mem[addr + imm15]:64,Loads a 64-bit value and folds a null-check trap into the load when HVM-NZ is enabled.,-,ld.d.nz r1 r2 0
+CHK.B,0xD8,escape32,R,"rd, ptr, bound, -",if ptr < bound then rd = ptr else trap(20),Bounds/tag check. If ptr < bound then rd = ptr and no trap is raised; if ptr >= bound the instruction traps (scause=20 null/bounds fault) and does not write rd. No memory is accessed.,-,chk.b r1 r2 r3
+LD.D.NZ,0xD9,escape32,I,"rd, addr, imm15",if addr == 0 then trap(20) else rd = mem[addr + imm15]:64,Null-checking load. If addr == 0 then trap (scause=20) and rd is not written; otherwise load 8 bytes from [addr+imm15] into rd. The address must be 8-byte aligned or an address-misaligned trap is raised.,-,ld.d.nz r1 r2 0
 BR.HINT,0xDA,escape32,B,"rs1, rs2, imm15",branch_hint(rs1 rs2 imm15),Advisory branch/code-layout hint. It must not affect architectural correctness and may be a no-op.,-,br.hint r1 r2 4
 DOORBELL,0xDB,escape32,R,"-, mmio, packet, -",mmio_write_doorbell(mmio packet),Signals an accelerator or GPU command queue through a memory-mapped doorbell when HVM-A is enabled.,-,doorbell r1 r2
 VSETVL,0xE0,escape32,R,"rd, avl, vtype, -",vl = min(avl VLMAX(vtype)); rd = vl,Configures HVM-V vector length and element type.,-,vsetvl r1 r2 r3
