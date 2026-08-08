@@ -93,6 +93,18 @@ namespace hooc {
 
 namespace {
 constexpr uint64_t kCanonicalQuietNaN = 0x7ff8000000000000ULL;
+constexpr uint64_t kReservationGranuleMask = ~uint64_t{7};
+
+void invalidateReservation(HVMJIT::HVMState& state, uint64_t addr, uint64_t size) {
+    if (state.reservationAddr == UINT64_MAX || size == 0) {
+        return;
+    }
+    const uint64_t end = addr + size - 1;
+    if (end < addr ||
+        (addr <= state.reservationAddr + 7 && state.reservationAddr <= end)) {
+        state.reservationAddr = UINT64_MAX;
+    }
+}
 
 uint64_t canonicalizeF64Bits(uint64_t bits) {
     const uint64_t exponent = bits & 0x7ff0000000000000ULL;
@@ -6852,6 +6864,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                         return -1;
                     }
                     memory_[addr] = static_cast<uint8_t>(data & 0xFFU);
+                    invalidateReservation(state, addr, 1);
                 } else if (ins->getOpcode() == hvm::Opcode::ST_H) {
                     if ((addr & 1ULL) != 0) {
                         lastError_ = "Unaligned ST.H address: " + std::to_string(addr);
@@ -6863,6 +6876,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     }
                     memory_[addr] = static_cast<uint8_t>(data & 0xFFU);
                     memory_[addr + 1] = static_cast<uint8_t>((data >> 8U) & 0xFFU);
+                    invalidateReservation(state, addr, 2);
                 } else {
                     if ((addr & 3ULL) != 0) {
                         lastError_ = "Unaligned ST.W address: " + std::to_string(addr);
@@ -6876,6 +6890,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     memory_[addr + 1] = static_cast<uint8_t>((data >> 8U) & 0xFFU);
                     memory_[addr + 2] = static_cast<uint8_t>((data >> 16U) & 0xFFU);
                     memory_[addr + 3] = static_cast<uint8_t>((data >> 24U) & 0xFFU);
+                    invalidateReservation(state, addr, 4);
                 }
                 break;
             }
@@ -6893,6 +6908,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 }
                 uint64_t newVal = readReg(o.rd);
                 if (newVal == oldVal) {
+                    invalidateReservation(state, addr, 8);
                     break;
                 }
                 if (newVal != 0) {
@@ -6902,6 +6918,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     lastError_ = "Invalid ST.D address: " + std::to_string(addr);
                     return -1;
                 }
+                invalidateReservation(state, addr, 8);
                 if (oldVal != 0) {
                     hooc_hvm_arc_release_if_managed(oldVal);
                 }
@@ -7331,6 +7348,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     state.trapHit = true;
                     return -1;
                 }
+                invalidateReservation(state, addr, 16);
                 break;
             }
             case hvm::Opcode::ECALL:
@@ -7348,13 +7366,19 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 return -1;
             case hvm::Opcode::LR_D: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint64_t addr = readReg(o.rs1);
+                if ((addr & 7ULL) != 0) {
+                    lastError_ = "Unaligned LR.D address: " + std::to_string(addr);
+                    state.trapHit = true;
+                    return -1;
+                }
                 uint64_t val = 0;
-                if (!loadU64(readReg(o.rs1), val)) {
+                if (!loadU64(addr, val)) {
                     lastError_ = "Invalid memory address in LR.D";
                     state.trapHit = true;
                     return -1;
                 }
-                state.reservationAddr = readReg(o.rs1);
+                state.reservationAddr = addr & kReservationGranuleMask;
                 writeReg(o.rd, val);
                 break;
             }
@@ -7362,8 +7386,14 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
                 const uint64_t addr = readReg(o.rs1);
                 const uint64_t val = readReg(o.rs2);
+                if ((addr & 7ULL) != 0) {
+                    lastError_ = "Unaligned SC.D address: " + std::to_string(addr);
+                    state.reservationAddr = UINT64_MAX;
+                    state.trapHit = true;
+                    return -1;
+                }
                 uint64_t result = 1;
-                if (state.reservationAddr == addr) {
+                if (state.reservationAddr == (addr & kReservationGranuleMask)) {
                     if (storeU64(addr, val)) {
                         result = 0;
                     }
@@ -8686,7 +8716,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                      auto* addr = builder.CreateAdd(readReg(o.rs), builder.getInt64(static_cast<int64_t>(o.imm15)));
                      const uint64_t alignment = (op == hvm::Opcode::LD_H || op == hvm::Opcode::LD_HU) ? 2 :
                                                 (op == hvm::Opcode::LD_W || op == hvm::Opcode::LD_WU) ? 4 : 1;
-                     if (alignment > 1) {
+                    if (alignment > 1) {
                          auto* misaligned = builder.CreateICmpNE(
                              builder.CreateAnd(addr, builder.getInt64(alignment - 1)), builder.getInt64(0));
                          auto* okBB = llvm::BasicBlock::Create(*context, "ld_subword_ok", fn);
@@ -8734,9 +8764,10 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                          builder.CreateCondBr(misaligned, errBB, okBB);
                          builder.SetInsertPoint(errBB);
                          builder.CreateRet(builder.getInt64(-1));
-                         builder.SetInsertPoint(okBB);
-                     }
-                     if (op == hvm::Opcode::ST_B) {
+                        builder.SetInsertPoint(okBB);
+                    }
+                    builder.CreateStore(builder.getInt64(UINT64_MAX), builder.CreateStructGEP(stateTy, stateArg, 9));
+                    if (op == hvm::Opcode::ST_B) {
                         builder.CreateStore(builder.CreateTrunc(val, builder.getInt8Ty()), memAddr(addr));
                     } else if (op == hvm::Opcode::ST_H) {
                         auto* ptr = builder.CreateBitCast(memAddr(addr), llvm::PointerType::get(*context, 0));
@@ -8757,6 +8788,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.SetInsertPoint(okBB);
                     auto* ptr = builder.CreateBitCast(memAddr(addr), llvm::PointerType::get(*context, 0));
                     auto* oldVal = builder.CreateLoad(i64, ptr);
+                    builder.CreateStore(builder.getInt64(UINT64_MAX), builder.CreateStructGEP(stateTy, stateArg, 9));
                     auto* newVal = readReg(o.rd);
                     auto* sameVal = builder.CreateICmpEQ(newVal, oldVal);
                     auto* sameContBB = llvm::BasicBlock::Create(*context, "std_same", fn);
@@ -9114,6 +9146,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     builder.CreateStore(readReg(o.rd), ptr1);
                     auto* ptr2 = builder.CreateBitCast(memAddr(addr8), llvm::PointerType::get(*context, 0));
                     builder.CreateStore(readReg(o.rs1), ptr2);
+                    builder.CreateStore(builder.getInt64(UINT64_MAX), builder.CreateStructGEP(stateTy, stateArg, 9));
                 } else if (op == hvm::Opcode::ECALL) {
                     // S-mode trap per section 9.7 (scause 9 here). Soft-trap so
                     // run() falls back to the interpreter, which reports the
@@ -9127,17 +9160,35 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                 } else if (op == hvm::Opcode::LR_D) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* addrVal = readReg(o.rs1);
+                    auto* lrAligned = llvm::BasicBlock::Create(*context, "lrd_align_ok", fn);
+                    auto* lrMisaligned = llvm::BasicBlock::Create(*context, "lrd_align_err", fn);
+                    auto* lrBadAlign = builder.CreateICmpNE(
+                        builder.CreateAnd(addrVal, builder.getInt64(7)), builder.getInt64(0));
+                    builder.CreateCondBr(lrBadAlign, lrMisaligned, lrAligned);
+                    builder.SetInsertPoint(lrMisaligned);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(lrAligned);
                     auto* ptr = builder.CreateBitCast(memAddr(addrVal), llvm::PointerType::get(*context, 0));
                     auto* loaded = builder.CreateLoad(i64, ptr);
-                    builder.CreateStore(addrVal, builder.CreateStructGEP(stateTy, stateArg, 9));
+                    builder.CreateStore(builder.CreateAnd(addrVal, builder.getInt64(kReservationGranuleMask)),
+                                        builder.CreateStructGEP(stateTy, stateArg, 9));
                     writeReg(o.rd, loaded);
                 } else if (op == hvm::Opcode::SC_D) {
                     auto o = std::get<hvm::OperandsR>(ins->getOperands());
                     auto* addrVal = readReg(o.rs1);
                     auto* storeVal = readReg(o.rs2);
+                    auto* scAligned = llvm::BasicBlock::Create(*context, "scd_align_ok", fn);
+                    auto* scMisaligned = llvm::BasicBlock::Create(*context, "scd_align_err", fn);
+                    auto* scBadAlign = builder.CreateICmpNE(
+                        builder.CreateAnd(addrVal, builder.getInt64(7)), builder.getInt64(0));
+                    builder.CreateCondBr(scBadAlign, scMisaligned, scAligned);
+                    builder.SetInsertPoint(scMisaligned);
+                    builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(scAligned);
                     auto* resAddr = builder.CreateLoad(i64, builder.CreateStructGEP(stateTy, stateArg, 9));
                     builder.CreateStore(builder.getInt64(UINT64_MAX), builder.CreateStructGEP(stateTy, stateArg, 9));
-                    auto* match = builder.CreateICmpEQ(addrVal, resAddr);
+                    auto* match = builder.CreateICmpEQ(
+                        builder.CreateAnd(addrVal, builder.getInt64(kReservationGranuleMask)), resAddr);
                     ensureBlock(nextPc);
                     if (!blockByPc.count(nextPc)) { builder.CreateRet(builder.getInt64(-1)); break; }
                     auto* scOkBB = llvm::BasicBlock::Create(*context, "sc_ok", fn);

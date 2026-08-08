@@ -314,6 +314,16 @@ implements HVM-Prof may return nonzero counter values (and may expose a
 `profsel` selector register); executing `RDPROF` in U-mode is a mode violation
 that traps with `scause = 2`.
 
+**HVM-Cap (`CHK.B`).** The hosted profile implements the minimal bounds-check
+form only: it compares the raw unsigned 64-bit values in `rs1` (`ptr`) and
+`rs2` (`bound`), writes `ptr` to `rd` when `ptr < bound`, and traps with
+`scause = 20` otherwise. It does not strip or interpret upper-bit pointer tags,
+consult allocation metadata, validate capability provenance, or perform a
+memory access. A physical HVM-Cap profile may add tagged-pointer and provenance
+checks, but it must preserve the successful `rd = ptr` result and the bounds
+fault contract; the hosted profile must not be described as providing those
+stronger guarantees.
+
 ### 5.5.1 HVM-V vector state and encoding
 
 HVM-V adds the following architectural state (present only when
@@ -732,6 +742,9 @@ permit access after a permission-changing page-table write followed by
 
 **Reservation set:**
 - `LR.D` creates a reservation on the 8-byte reservation granule containing the loaded address. A future platform may use a larger granule only if it publishes that profile and preserves all stated atomicity guarantees.
+- `LR.D` and `SC.D` require 8-byte-aligned addresses. A misaligned `LR.D`
+  raises a load-address-misaligned trap (`scause = 4`); a misaligned `SC.D`
+  raises a store/AMO-address-misaligned trap (`scause = 6`).
 - `SC.D` succeeds only if the reservation is still valid (no intervening store to the same reservation granule by any hart).
 - The reservation is invalidated by:
   - Any store to the reserved granule (by any hart)
@@ -744,6 +757,12 @@ permit access after a permission-changing page-table write followed by
   RISC-V `aq`/`rl` bits; relaxed/acquire-only/release-only orderings are reserved
   for a future weak-memory extension, not the base profile.)
 - ACPI-style spinlock: `loop: LR.D rd, (rs1); SC.D rd, rs1, rs2; bnez rd, loop`
+
+The hosted HVMJIT profile has one reservation state per executing HVM state. Its
+ordinary byte/halfword/word/doubleword and pair stores invalidate an overlapping
+reservation, so same-state intervening stores have the required behavior. A
+multi-hart implementation must extend that invalidation to all harts sharing
+the reservation domain.
 
 ### 9.7 CSR Access
 

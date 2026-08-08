@@ -1904,6 +1904,75 @@ TEST_F(HVMJITInstructionSemanticsTest, VectorSetvlCarriesVtypeVerbatim) {
     EXPECT_FALSE(jit.hasError());
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, HardwareLoopCountsAndBranches) {
+    // LOOP.SET records the count; LOOP.DECBR decrements it and branches back
+    // to the increment while the result remains nonzero. The loop-set
+    // displacement is metadata; the LOOP.DECBR displacement (-1) is the
+    // encoded branch target used by execution.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 3}),       // count = 3
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 0}),       // accumulator = 0
+        makeI(Opcode::LOOP_SET, OperandsI{0, 1, -4}),  // record loop state
+        makeI(Opcode::ADDI, OperandsI{2, 2, 1}),       // accumulator++
+        makeB(Opcode::LOOP_DECBR, OperandsB{0, 0, -1}), // back to ADDI
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["hardware_loop.ho"] = buildModuleBytes("hardware_loop", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("hardware_loop.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+    EXPECT_FALSE(jit.hasError());
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LoadReserveStoreConditionalUsesGranule) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),       // address
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 7}),        // value
+        makeI(Opcode::ST_D, OperandsI{3, 2, 0}),        // initialize memory
+        makeR(Opcode::LR_D, OperandsR{4, 2, 0, 0}),      // reserve address 64
+        makeR(Opcode::SC_D, OperandsR{1, 2, 3, 0}),     // succeeds: rd = 0
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lrsc_success.ho"] = buildModuleBytes("lrsc_success", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lrsc_success.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, StoreInvalidatesLoadReservation) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 64}),       // address
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 7}),        // value
+        makeI(Opcode::ST_D, OperandsI{3, 2, 0}),        // initialize memory
+        makeR(Opcode::LR_D, OperandsR{4, 2, 0, 0}),      // reserve address 64
+        makeI(Opcode::ST_D, OperandsI{3, 2, 0}),        // intervening same-value store
+        makeR(Opcode::SC_D, OperandsR{1, 2, 3, 0}),     // fails: rd = 1
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lrsc_invalidate.ho"] = buildModuleBytes("lrsc_invalidate", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lrsc_invalidate.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LoadReserveMisalignmentTraps) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 65}),       // misaligned address
+        makeR(Opcode::LR_D, OperandsR{1, 2, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lrsc_misaligned.ho"] = buildModuleBytes("lrsc_misaligned", ins, syms);
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lrsc_misaligned.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Unaligned LR.D"), std::string::npos);
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, VectorLoadStoreUnitStrideRoundtrip) {
     // Store [10,20,30,40] starting at mem[0], load into v0, store to mem[64],
     // then load scalar at mem[64] (should be 10) and mem[72] (should be 20).

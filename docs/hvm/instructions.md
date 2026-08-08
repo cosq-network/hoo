@@ -149,6 +149,10 @@ sum to be 4-byte aligned.
 
 ### 4.8 Atomic memory
 - `LR.D` `SC.D`: Load-reserve / store-conditional for atomic synchronisation.
+  Both addresses must be 8-byte aligned (`LR.D` misalignment traps with
+  `scause = 4`; `SC.D` misalignment traps with `scause = 6`). Reservations use
+  the containing 8-byte granule and any overlapping ordinary store invalidates
+  the reservation.
 
 HVM uses an 8-byte reservation granule and defines the pair as acquire-release
 for the atomic operation. HVM does not encode RISC-V `aq`/`rl` bits, so this is
@@ -198,17 +202,25 @@ behavior in `hvm-spec.md` section 9.
 - `RETAIN` `RELEASE`: Non-trapping reference-count update helpers for managed Hoo objects.
 - `ICACHE.RNG`: Invalidate instruction/JIT cache state for an address range after code generation.
 - `LOOP.SET` `LOOP.DECBR`: Optional hardware-loop support for low-power counted loops.
+  `LOOP.SET` copies `rs` to the per-hart `loop_count` state and records its
+  signed `imm15` in `loop_backedge`. `LOOP.DECBR` decrements `loop_count`; when
+  the result is nonzero it branches by its own signed `imm15 * 4` displacement
+  (the encoded `LOOP.DECBR` displacement is authoritative for the branch).
 - `PREFETCH.R` `PREFETCH.W` `PREFETCH.NTA` `MEMZERO.HINT`: Advisory memory-traffic hints. Legal implementations may ignore them.
 - `ALLOC.BUMP`: Optional thread-local allocation-buffer fast path; zero return means fall back to runtime allocator.
 - `RDPROF`: Privileged (S-mode-only) HVM-Prof counter read. `rd = prof_counter(selector, imm15)`;
   executing in U-mode traps (see section 9.7) with `scause = 2`. The hosted HVMJIT
   profile exposes no counters, so `rd = 0` and the selector/`imm15` operands are
   ignored; a platform profile may return nonzero values.
-- `CHK.B`: Optional bounds check (HVM-Cap). If `ptr < bound` then `rd = ptr` and
-  execution continues; if `ptr >= bound` the instruction traps with `scause = 20`
-  (bounds/null fault) and `rd` is not written. No memory is accessed. The trap is
-  precise: in the hosted profile the JIT returns a soft error and the interpreter
-  records the violation, so `rd` holds its pre-instruction value.
+- `CHK.B`: Optional bounds check (HVM-Cap). In the hosted profile `ptr` and
+  `bound` are compared as raw unsigned 64-bit values; no upper-bit tag stripping,
+  allocation metadata, or capability-provenance check is performed. If
+  `ptr < bound` then `rd = ptr` and execution continues; if `ptr >= bound` the
+  instruction traps with `scause = 20` (bounds/null fault) and `rd` is not
+  written. No memory is accessed. The trap is precise: the hosted JIT returns a
+  soft error and the interpreter records the violation, so `rd` holds its
+  pre-instruction value. A physical HVM-Cap profile may add stronger tag and
+  provenance checks without changing the successful result or trap contract.
 - `LD.D.NZ`: Optional null-checking 64-bit load (HVM-NZ). Computes the effective
   address `addr = rs + imm15`. If `addr == 0` the instruction traps with
   `scause = 20` (null-pointer fault) and `rd` is not written; otherwise the 8-byte
