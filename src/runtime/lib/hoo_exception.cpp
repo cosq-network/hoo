@@ -6,7 +6,6 @@
 #include <cstdarg>
 #include <atomic>
 #include <new>
-#include <mutex>
 
 #ifdef _WIN32
 #include <malloc.h>
@@ -52,7 +51,6 @@ static const char* type_names[] = {
 
 static thread_local HooException currentException = nullptr;
 static thread_local std::stack<void*> handlerStack;
-static std::mutex gExceptionReleaseMu;
 
 class HooStdException : public std::exception {
 public:

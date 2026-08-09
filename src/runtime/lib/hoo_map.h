@@ -3,10 +3,7 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-    #include <memory>
-    #include <vector>
     #include <any>
-    #include <typeinfo>
     #include <string>
     #include <unordered_map>
 #endif
@@ -35,6 +32,9 @@ extern "C" {
 //
 // For try_get output, the same convention applies in reverse:
 //   writes *(int64_t*)value, *(double*)value, *(const char**)value, etc.
+//
+// Thread safety: a HooMap is NOT internally synchronised.  Concurrent access
+// from multiple threads must be externally serialised by the caller.
 //
 
 typedef void* HooMap;

@@ -16,14 +16,19 @@ extern "C" {
 /*
  * Internal layout of a HooFuture object.
  * Allocated via hoo_alloc so ARC header is prepended automatically.
+ * Synchronisation primitives are heap-allocated separately to keep the struct
+ * POD-compatible with hoo_alloc's zero-initialisation.  Each future carries
+ * its own mutex+CV pair so concurrent futures do not contend on a global lock.
  */
 typedef struct {
-    int64_t  elem_type_id;   /* type ID of the promised value          */
-    void    *value;           /* resolved value (ARC-managed), or NULL  */
+    int64_t  elem_type_id;     /* type ID of the promised value          */
+    void    *value;             /* resolved value (ARC-managed), or NULL  */
     int64_t  value_is_managed; /* whether value owns an ARC reference    */
-    char    *error_message;  /* non-NULL when resolved with an error   */
-    int32_t  ready;          /* 0 = pending, 1 = resolved              */
+    char    *error_message;    /* non-NULL when resolved with an error   */
+    int32_t  ready;            /* 0 = pending, 1 = resolved              */
     struct HooFutureContinuationNode* continuations;
+    std::mutex              *mutex; /* per-future mutex (heap-allocated) */
+    std::condition_variable *cv;    /* per-future condvar                 */
 } HooFutureImpl;
 
 typedef struct HooFutureContinuationNode {
@@ -31,12 +36,6 @@ typedef struct HooFutureContinuationNode {
     void* arg;
     struct HooFutureContinuationNode* next;
 } HooFutureContinuationNode;
-
-/* Objects are allocated as raw storage by hoo_alloc, so synchronization
- * primitives live outside the object. A single mutex is intentionally used
- * here: future resolution is short and this keeps the opaque ABI layout C-safe. */
-static std::mutex g_future_mutex;
-static std::condition_variable g_future_cv;
 
 static HooFutureImpl* get_impl(HooFuture f) {
     return (HooFutureImpl*)f;
@@ -61,7 +60,7 @@ static void future_destructor(void* obj) {
     char* error_message = NULL;
     HooFutureContinuationNode* continuations = NULL;
     {
-        std::lock_guard<std::mutex> lock(g_future_mutex);
+        std::lock_guard<std::mutex> lock(*impl->mutex);
         value = impl->value;
         value_is_managed = impl->value_is_managed;
         error_message = impl->error_message;
@@ -86,6 +85,9 @@ static void future_destructor(void* obj) {
     if (error_message) {
         free(error_message);
     }
+
+    delete impl->cv;
+    delete impl->mutex;
 }
 
 #ifdef __cplusplus
@@ -110,6 +112,8 @@ HooFuture hoo_future_new(int64_t elem_type_id) {
     impl->error_message = NULL;
     impl->ready        = 0;
     impl->continuations = NULL;
+    impl->mutex = new std::mutex();
+    impl->cv    = new std::condition_variable();
     return (HooFuture)impl;
 }
 
@@ -120,21 +124,22 @@ int64_t hoo_future_get_elem_type_id(HooFuture f) {
 
 int64_t hoo_future_is_ready(HooFuture f) {
     if (!f) return 0;
-    std::lock_guard<std::mutex> lock(g_future_mutex);
-    return get_impl(f)->ready ? 1 : 0;
+    HooFutureImpl* impl = get_impl(f);
+    std::lock_guard<std::mutex> lock(*impl->mutex);
+    return impl->ready ? 1 : 0;
 }
 
 int64_t hoo_future_has_error(HooFuture f) {
     if (!f) return 0;
     HooFutureImpl* impl = get_impl(f);
-    std::lock_guard<std::mutex> lock(g_future_mutex);
+    std::lock_guard<std::mutex> lock(*impl->mutex);
     return (impl->ready && impl->error_message != NULL) ? 1 : 0;
 }
 
 static void trigger_continuation(HooFutureImpl* impl) {
     HooFutureContinuationNode* continuations = NULL;
     {
-        std::lock_guard<std::mutex> lock(g_future_mutex);
+        std::lock_guard<std::mutex> lock(*impl->mutex);
         continuations = impl->continuations;
         impl->continuations = NULL;
     }
@@ -154,7 +159,7 @@ void hoo_future_set_value(HooFuture f, void* value) {
     if (!f) return;
     HooFutureImpl* impl = get_impl(f);
     {
-        std::lock_guard<std::mutex> lock(g_future_mutex);
+        std::lock_guard<std::mutex> lock(*impl->mutex);
         if (impl->ready) return;
         impl->value = value;
         impl->value_is_managed = future_value_is_managed(impl, value);
@@ -163,7 +168,7 @@ void hoo_future_set_value(HooFuture f, void* value) {
         }
         impl->ready = 1;
     }
-    g_future_cv.notify_all();
+    impl->cv->notify_all();
     trigger_continuation(impl);
 }
 
@@ -171,12 +176,12 @@ void hoo_future_set_error(HooFuture f, const char* error_message) {
     if (!f) return;
     HooFutureImpl* impl = get_impl(f);
     {
-        std::lock_guard<std::mutex> lock(g_future_mutex);
+        std::lock_guard<std::mutex> lock(*impl->mutex);
         if (impl->ready) return;
         impl->error_message = error_message ? strdup(error_message) : NULL;
         impl->ready = 1;
     }
-    g_future_cv.notify_all();
+    impl->cv->notify_all();
     trigger_continuation(impl);
 }
 
@@ -190,7 +195,7 @@ void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, vo
     node->arg = arg;
     node->next = NULL;
     {
-        std::lock_guard<std::mutex> lock(g_future_mutex);
+        std::lock_guard<std::mutex> lock(*impl->mutex);
         if (impl->ready) {
             invoke_now = true;
         } else {
@@ -207,13 +212,13 @@ void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, vo
 }
 
 static void wait_for_future(HooFutureImpl* impl) {
-    std::unique_lock<std::mutex> lock(g_future_mutex);
+    std::unique_lock<std::mutex> lock(*impl->mutex);
     while (!impl->ready) {
         lock.unlock();
         hoo_event_loop_run_nowait();
         lock.lock();
         if (!impl->ready) {
-            g_future_cv.wait_for(lock, std::chrono::milliseconds(16));
+            impl->cv->wait_for(lock, std::chrono::milliseconds(16));
         }
     }
 }
@@ -240,8 +245,9 @@ void* _F_hoo_future_await_unwrap_p_p(HooFuture f) {
 
 const char* hoo_future_get_error(HooFuture f) {
     if (!f) return NULL;
-    std::lock_guard<std::mutex> lock(g_future_mutex);
-    return get_impl(f)->error_message;
+    HooFutureImpl* impl = get_impl(f);
+    std::lock_guard<std::mutex> lock(*impl->mutex);
+    return impl->error_message;
 }
 
 HooFuture hoo_future_retain(HooFuture f) {

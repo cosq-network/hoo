@@ -15,6 +15,13 @@ extern "C" {
  * All objects are allocated with a hidden header containing:
  * - Reference count (int64_t)
  * - Type ID (int64_t) for runtime type information
+ *
+ * Conventions for module APIs that return strings:
+ *  - The hoo_string module returns ARC-managed HooString handles.
+ *  - Other modules (exception, net, etc.) return raw const char* pointers
+ *    allocated via malloc/strdup.  Callers must free() these.  This pattern
+ *    exists because these strings are typically short-lived diagnostic or
+ *    property values that don't benefit from ARC overhead in the JIT path.
  */
 
 /**
@@ -33,7 +40,7 @@ extern "C" {
 #define HOO_TYPE_CHARACTER    109  // HooCharacter
 #define HOO_TYPE_UUID         110  // HooUUID
 #define HOO_TYPE_REGEX        111
-#define HOO_TYPE_JSON         112  // HooRegex
+#define HOO_TYPE_JSON         112  // HooJSON
 #define HOO_TYPE_BUFFER       113  // HooBuffer
 #define HOO_TYPE_CSV          114  // HooCsv
 #define HOO_TYPE_HASHMAP      117  // HooHashMap intrinsic

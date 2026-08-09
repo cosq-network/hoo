@@ -3,11 +3,9 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-    #include <memory>
-    #include <vector>
     #include <any>
     #include <typeinfo>
-    #include <string>
+    #include <vector>
 #endif
 
 #ifdef __cplusplus
@@ -23,6 +21,9 @@ extern "C" {
 // Supports multi-dimensional arrays naturally through nested HooArray values.
 //
 // Internally managed with automatic reference counting (ARC).
+//
+// Thread safety: a HooArray is NOT internally synchronised.  Concurrent
+// access from multiple threads must be externally serialised by the caller.
 //
 
 typedef void* HooArray;  // Opaque handle to HooArrayImpl
