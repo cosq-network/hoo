@@ -33,3 +33,4 @@ Use this constant in both the codegen emitters and the JIT interpreter. Document
 - **Priority**: **MEDIUM**
 - **Audit 2026-06-21**: Current code and spec use the corrected 49-bit shift semantics for `LUI`, but the shared named constant/documentation synchronization work remains incomplete.
 - **Resolution**: `hvm::kLuiImmediateShift` is the shared source of truth used by the interpreter and LLVM JIT. The HVM specification and regression tests document and verify the same 49-bit encoding.
+- **Note**: The codegen path (`emitConstant` in `HVMCodeGenerator.cpp`) does not emit `LUI` instructions (it uses `MOVZ`/`ADDI`/`.rodata`+`LD.D` instead), so there is no codegen-side consumer to synchronize. The shared constant is the interface between the interpreter and JIT IR, and `LuiRespectsSharedShiftConstant` (`tests/hvm/HVMJITInstructionSemanticsTest.cpp`) pins the result against it.

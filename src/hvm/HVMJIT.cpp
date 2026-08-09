@@ -7449,15 +7449,17 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             case hvm::Opcode::LD_D_NZ: {
                 auto o = std::get<hvm::OperandsI>(ins->getOperands());
                 const uint64_t addr = readReg(o.rs);
-                if (addr == 0) {
-                    lastError_ = "Null pointer dereference trap";
-                    state.trapHit = true;
-                    return -1;
-                }
                 const uint64_t finalAddr = addr + static_cast<int64_t>(o.imm15);
-                if (finalAddr == 0) {
-                    lastError_ = "Null pointer dereference trap";
-                    state.trapHit = true;
+                if (addr == 0 || finalAddr == 0) {
+                    HooException exc = hoo_exception_null_pointer("Null reference accessed");
+                    const uint64_t targetPc = hooc_hvm_sys_throw_to_handler_state(
+                        &state, reinterpret_cast<uint64_t>(exc));
+                    if (targetPc != kNoHandlerPc) {
+                        pc = targetPc;
+                        jumped = true;
+                        break;
+                    }
+                    lastError_ = "Unhandled exception trap (no registered handler)";
                     return -1;
                 }
                 if ((finalAddr & 7ULL) != 0) {
@@ -8771,7 +8773,23 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     auto* activeBB = llvm::BasicBlock::Create(*context, "lddnz_active", fn);
                     builder.CreateCondBr(isNull, nullBB, activeBB);
                     builder.SetInsertPoint(nullBB);
+                    auto nullExcCallee = module->getOrInsertFunction(
+                        "_F_hoo_exception_null_pointer_p", llvm::FunctionType::get(i64, {statePtrTy}, false));
+                    auto* excObj = builder.CreateCall(nullExcCallee, {stateArg});
+                    auto* throwPc = builder.CreateCall(throwToHandlerStateCallee, {stateArg, excObj});
+                    auto* throwUnhandled = llvm::BasicBlock::Create(*context, "lddnz_throw_unhandled", fn);
+                    auto* throwSwitch = llvm::BasicBlock::Create(*context, "lddnz_throw_switch", fn);
+                    builder.CreateCondBr(
+                        builder.CreateICmpEQ(throwPc, builder.getInt64(kNoHandlerPc)),
+                        throwUnhandled, throwSwitch);
+                    builder.SetInsertPoint(throwUnhandled);
                     builder.CreateRet(builder.getInt64(-1));
+                    builder.SetInsertPoint(throwSwitch);
+                    auto* throwSw = builder.CreateSwitch(throwPc, throwUnhandled, static_cast<unsigned>(validPcs.size()));
+                    for (uint64_t vp : validPcs) {
+                        ensureBlock(vp);
+                        throwSw->addCase(builder.getInt64(vp), blockByPc[vp]);
+                    }
                     builder.SetInsertPoint(activeBB);
                     auto* misaligned = builder.CreateICmpNE(builder.CreateAnd(addr, builder.getInt64(7)), builder.getInt64(0));
                     auto* okBB = llvm::BasicBlock::Create(*context, "lddnz_ok", fn);

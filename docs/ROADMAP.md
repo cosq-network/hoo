@@ -118,7 +118,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-014_jit_exception_state_race.md](issues/ISSUE-014_jit_exception_state_race.md)**
   - **Title**: # ISSUE-014: Unsynchronized Global State in JIT Exception Handling
-  - **Status**: FIXED — exception-state map has dedicated synchronization
+  - **Status**: FIXED — exception-state map has dedicated synchronization and concurrent regression; lock-ordering invariant documented
   - **Priority**: LOW
 
 - **[ISSUE-015_method_dispatch_conflict.md](issues/ISSUE-015_method_dispatch_conflict.md)**
@@ -253,7 +253,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-047_nullable_types_missing_codegen.md](issues/ISSUE-047_nullable_types_missing_codegen.md)**
   - **Title**: # ISSUE-047: Nullable/Optional Types Defined in Grammar and AST But Not Implemented in Codegen
-  - **Status**: PARTIALLY IMPLEMENTED (null checks, nullability tracking, assignment validation, and nullable-object ARC cleanup complete; `LD.D.NZ` folding remains deferred because its current trap path is not catchable)
+  - **Status**: IMPLEMENTED (null checks, nullability tracking, assignment validation, ARC cleanup, and catchable LD.D.NZ folding are complete)
   - **Priority**: HIGH
 
 - **[ISSUE-048_string_interpolation_placeholder.md](issues/ISSUE-048_string_interpolation_placeholder.md)**
@@ -298,8 +298,8 @@ This document provides a high-level overview of the current status of all tracke
    compile-time errors until runtime type dispatch is designed.
 
 2. **Complete small correctness and specification hardening**
-   - Finish ISSUE-018 by centralizing the LUI shift constant across codegen, interpreter, JIT, and specification tests.
-   - Add a dedicated concurrent regression for ISSUE-014's exception-state ownership and document the shared-lock invariant.
+    - ~~Finish ISSUE-018 by centralizing the LUI shift constant across codegen, interpreter, JIT, and specification tests.~~ ✅ COMPLETE — constant `hvm::kLuiImmediateShift` used by interpreter and JIT IR, pinned by `LuiRespectsSharedShiftConstant` test; codegen does not emit LUI so no codegen-side consumer exists.
+    - ~~Add a dedicated concurrent regression for ISSUE-014's exception-state ownership and document the shared-lock invariant.~~ ✅ COMPLETE — `ConcurrentExceptionThrowCatchIsSafeAcrossThreadsAndStates` in `HVMJITLoaderTest.cpp`; lock-ordering invariant documented in `ISSUE-014`.
    - Remove remaining dead grammar and AST helper code from ISSUE-020.
 
 3. **Design concurrency APIs together**

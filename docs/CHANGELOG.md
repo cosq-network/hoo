@@ -11,6 +11,19 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(hvm): make LD.D.NZ null dereference catchable (ISSUE-047)
+  - Route interpreter and JIT IR null-dereference through the
+    `_F_hoo_exception_null_pointer_p` + `hooc_hvm_sys_throw_to_handler_state`
+    path so a registered handler can catch and resume.
+  - Without a handler the runtime reports "Unhandled exception trap".
+  - Add JIT+interpreter catchable-handler regression tests and pin the
+    shared LUI shift constant (`kLuiImmediateShift`) with a semantics test.
+  - Add a multi-thread concurrent regression exercising the shadow-handler
+    exception-state maps under contention (ISSUE-014), document the
+    `gShadowHandlersMu` → `gCurrentExceptionMu` lock-ordering invariant.
+  - Update ISSUE-047 status to fully implemented (LD.D.NZ folding is
+    resolved through the catchable throw path).
+
 - ci: consolidate CI badges and docs on build-and-test.yml
   - README badges now point at the actual `build-and-test.yml` workflow with
     job-scoped links (macOS, Linux, Windows) instead of removed workflow files.
@@ -57,6 +70,7 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 - fix(hvm): centralize the LUI immediate shift and exception-state lock
   - Share the 49-bit LUI shift constant across interpreter/JIT code.
   - Give JIT current-exception state its own mutex.
+  - Add concurrent regression test and document the lock-ordering invariant.
 
 - fix(runtime): remove the destructor table type-ID ceiling (ISSUE-055)
   - Replace the fixed 256-entry array with a synchronized, dynamically growing
@@ -107,8 +121,7 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
   - Set the `HVM_NZ` module feature flag when null-checking code is emitted
   - Register the `_F_hoo_exception_null_pointer_p` runtime bridge in the JIT
     symbol table and add interpreter/JIT regression coverage
-  - Update ISSUE-047 status to PARTIALLY IMPLEMENTED (ARC policy for nullable
-    object locals and `LD.D.NZ` folding remain open)
+  - Update ISSUE-047 status to IMPLEMENTED (null-pointer checks, nullability tracking, assignment validation, and catchable LD.D.NZ folding are complete).
 
 - fix(modules): complete ISSUE-036 dependency resolution
   - Traverse each visited module's own dependency edges for correct transitive

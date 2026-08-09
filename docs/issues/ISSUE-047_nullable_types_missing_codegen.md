@@ -62,12 +62,12 @@ This is now largely resolved: the codegen tracks nullability end-to-end, emits n
 
 ## 8. Suggested Fix — Status of each item
 1. **Track `T?` distinctly in codegen** — **DONE**: nullable flag carried on params, locals, fields, and expressions; underlying `T` preserved; `selectOverload` distinguishes `T?` from `T`.
-2. **Emit null checks before dereference** — **DONE** (via explicit branches + `SYSCALL 9` shadow throw; see section 4). Folding into `LD.D.NZ` remains optional future work.
+2. **Emit null checks before dereference** — **DONE** (via explicit branches + `SYSCALL 9` shadow throw; see section 4). `LD.D.NZ` folding into the instruction's native null branch is also complete — interpreter and JIT IR null paths now route through the catchable `hooc_hvm_sys_throw_to_handler_state` dispatch.
 3. **Compile-time null-safety validation** — **DONE**: `validateAssignmentNullSafety` covers var declarations and plain assignments; call-argument binding rejects nullable arguments for non-nullable parameters via `selectOverload`.
 4. **Resolve ARC policy** for nullable object locals — **DONE**: nullable named reference locals in generic-object slots carry an explicit `arcManaged` cleanup bit and are released with `hoo_release`; non-ARC runtime classes remain excluded. Regression coverage is in `HVMCodeGeneratorTest.NullableUserClassLocal_EmitsScopeCleanupRelease`.
 
 ## 9. Status
-- **Date**: 2026-06-23 (reviewed 2026-08-07)
-- **Status**: **PARTIALLY IMPLEMENTED** (correctness work complete; `LD.D.NZ` folding remains deferred until it preserves catchable exception dispatch)
+- **Date**: 2026-08-09
+- **Status**: **IMPLEMENTED** (null checks, nullability tracking, assignment validation, arc cleanup, and catchable `LD.D.NZ` folding are complete)
 - **Priority**: **HIGH**
 - **Related**: `ISSUE-034` (ergonomics — proposes desugaring `T?` → `Option<T>`, `docs/issues/ISSUE-034_language_ergonomics_proposals.md:247,302-303,653`); `docs/ROADMAP.md:254`; CHANGELOG entry "implement implicit nullable conversions" (`docs/CHANGELOG.md:334`) refers to a prior inference/overload ergonomics pass, not null-safety.

@@ -2691,10 +2691,11 @@ TEST_F(HVMJITInstructionSemanticsTest, ChkBBoundsViolationTraps) {
 // ---------------------------------------------------------------------------
 
 TEST_F(HVMJITInstructionSemanticsTest, LdDnzNullTraps) {
-    // Effective address 0 -> null-pointer trap before any load.
+    // Effective address 0 -> null-pointer throws catchable exception;
+    // without a handler it fails as unhandled.
     std::vector<HVMInstruction> ins{
         makeI(Opcode::MOVZ, OperandsI{1, 0, 0}),               // r1 = 0
-        makeI(Opcode::LD_D_NZ, OperandsI{2, 1, 0}),            // addr = 0 -> trap
+        makeI(Opcode::LD_D_NZ, OperandsI{2, 1, 0}),            // addr = 0 -> throw
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
     };
     std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
@@ -2703,7 +2704,7 @@ TEST_F(HVMJITInstructionSemanticsTest, LdDnzNullTraps) {
     ASSERT_TRUE(jit.loadInput("lddnz_null.ho")) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_main_v"), -1);
     EXPECT_TRUE(jit.hasError());
-    EXPECT_NE(jit.getLastError().find("Null"), std::string::npos);
+    EXPECT_NE(jit.getLastError().find("Unhandled exception trap"), std::string::npos);
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, LdDnzMisalignedTraps) {
@@ -2720,4 +2721,78 @@ TEST_F(HVMJITInstructionSemanticsTest, LdDnzMisalignedTraps) {
     EXPECT_EQ(jit.run("_F_main_v"), -1);
     EXPECT_TRUE(jit.hasError());
     EXPECT_NE(jit.getLastError().find("Unaligned"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdDnzNullWithHandlerIsCatchable) {
+    // Push a handler with PC at the handler-start instruction, then
+    // trigger LD_D_NZ with a null address; the null dereference must
+    // dispatch through the catchable exception path and land in the
+    // registered handler.  Mirror the frame-restore + exception-r1
+    // verification of SyscallThrowTransfersControlToRegisteredHandler.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{30, 0, 111}),             // fp sentinel
+        makeI(Opcode::MOVZ, OperandsI{31, 0, 222}),             // sp sentinel
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 40}),              // handler pc (byte offset)
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 7}),             // push handler
+        makeI(Opcode::MOVZ, OperandsI{30, 0, 1}),               // clobber fp
+        makeI(Opcode::MOVZ, OperandsI{31, 0, 2}),               // clobber sp
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 0}),                // r1 = 0 (null address)
+        makeI(Opcode::LD_D_NZ, OperandsI{2, 1, 0}),             // addr = 0 -> throw null
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),               // skipped
+        makeI(Opcode::MOVZ, OperandsI{7, 0, 111}),              // handler start
+        makeR(Opcode::CMP, OperandsR{8, 30, 7, 0}),             // fp restored?
+        makeI(Opcode::MOVZ, OperandsI{9, 0, 222}),
+        makeR(Opcode::CMP, OperandsR{10, 31, 9, 0}),            // sp restored?
+        makeR(Opcode::CMP, OperandsR{11, 1, 0, 1}),             // exception in r1?
+        makeR(Opcode::ARITH, OperandsR{1, 8, 10, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 1, 11, 0}),           // 3 if all true
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lddnz_catch.ho"] = buildModuleBytes("lddnz_catch", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lddnz_catch.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 3) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LdDnzNullWithoutHandlerFailsAsUnhandled) {
+    // Pop any handler (none registered) then trigger LD_D_NZ with null;
+    // the throw must fail unhandled.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 20}),
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 7}),            // push
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 8}),            // pop
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 0}),               // r1 = 0
+        makeI(Opcode::LD_D_NZ, OperandsI{2, 1, 0}),            // throw, unhandled
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lddnz_nohandler.ho"] = buildModuleBytes("lddnz_nohandler", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lddnz_nohandler.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    EXPECT_NE(jit.getLastError().find("Unhandled exception trap"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, LuiRespectsSharedShiftConstant) {
+    // ISSUE-018: verify that LUI produces imm15 << kLuiImmediateShift
+    // through the JIT path, so the shared constant is the single source
+    // of truth for both interpreter and JIT IR.
+    const uint16_t imm = 0x0ABCD;
+    const int64_t expected = static_cast<int64_t>(static_cast<uint64_t>(imm) << hvm::kLuiImmediateShift);
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::LUI, OperandsI{1, 0, static_cast<int16_t>(imm)}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["lui_shift_pin.ho"] = buildModuleBytes("lui_shift_pin", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("lui_shift_pin.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), expected) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
 }

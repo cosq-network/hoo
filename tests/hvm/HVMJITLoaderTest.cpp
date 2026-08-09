@@ -624,6 +624,59 @@ TEST_F(HVMJITLoaderTest, StopExecutionInterruptsCompiledInfiniteLoop) {
     EXPECT_EQ(rv, -1);
 }
 
+TEST_F(HVMJITLoaderTest, ConcurrentExceptionThrowCatchIsSafeAcrossThreadsAndStates) {
+    // ISSUE-014 regression: exercise the shared global exception-state maps
+    // (gShadowHandlers/gCurrentExceptionByState) from multiple threads, each
+    // with its own HVMJIT instance and per-thread HVM state.  Data-race
+    // detectors (TSan) gate this; the test also verifies correctness of
+    // catchable-throw results.
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{30, 0, 111}),             // fp sentinel
+        makeI(Opcode::MOVZ, OperandsI{31, 0, 222}),             // sp sentinel
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 52}),              // handler pc
+        makeI(Opcode::SYSCALL, OperandsI{0, 0, 7}),             // push handler
+        makeI(Opcode::MOVZ, OperandsI{30, 0, 1}),               // clobber fp
+        makeI(Opcode::MOVZ, OperandsI{31, 0, 2}),               // clobber sp
+        makeI(Opcode::SYSCALL, OperandsI{4, 0, 6}),             // runtime exception
+        makeR(Opcode::MOV, OperandsR{2, 4, 0, 0}),              // arg: exc
+        makeI(Opcode::SYSCALL, OperandsI{5, 0, 9}),             // throw -> handler
+        makeI(Opcode::MOVZ, OperandsI{1, 0, 99}),               // skipped
+        makeI(Opcode::MOVZ, OperandsI{7, 0, 111}),              // handler start
+        makeR(Opcode::CMP, OperandsR{8, 30, 7, 0}),             // fp restored?
+        makeI(Opcode::MOVZ, OperandsI{9, 0, 222}),
+        makeR(Opcode::CMP, OperandsR{10, 31, 9, 0}),            // sp restored?
+        makeR(Opcode::CMP, OperandsR{11, 1, 0, 1}),             // exception in r1?
+        makeR(Opcode::ARITH, OperandsR{1, 8, 10, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 1, 11, 0}),           // 3 if all true
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    const auto modBytes = buildModuleBytes("exc_conc", ins, syms);
+
+    io.binaryFiles["exc_conc.ho"] = modBytes;
+
+    constexpr int kThreads = 4;
+    constexpr int kIterations = 20;
+    std::vector<std::thread> workers;
+    workers.reserve(kThreads);
+    for (int t = 0; t < kThreads; ++t) {
+        workers.emplace_back([&, t]() {
+            for (int i = 0; i < kIterations; ++i) {
+                HVMJIT jit(io);
+                if (!jit.loadInput("exc_conc.ho")) {
+                    ADD_FAILURE() << "thread " << t << " iter " << i
+                                  << " load: " << jit.getLastError();
+                    return;
+                }
+                const int64_t rv = jit.run("_F_main_v");
+                EXPECT_EQ(rv, 3) << "thread " << t << " iter " << i
+                                 << " err=" << jit.getLastError();
+            }
+        });
+    }
+    for (auto& w : workers) w.join();
+}
+
 TEST_F(HVMJITLoaderTest, ModuleInitIsInvokedBeforeMain) {
     std::vector<HVMInstruction> ins{
         makeR(Opcode::BREAK, OperandsR{0, 0, 0, 0}),
