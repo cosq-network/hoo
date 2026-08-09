@@ -26,6 +26,11 @@ The thread API provides only `spawn`, `join`, `self`, `mutex_create`, `mutex_loc
 3. Add a language-level `sync { ... }` or `condition` keyword for ergonomic use.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **IMPLEMENTED**
 - **Priority**: **MEDIUM**
+
+## 6. Resolution
+The libuv-backed runtime provides condition-variable create/wait/timed-wait,
+notify-one, notify-all, and destroy operations. It also provides semaphore
+create/wait/try-wait/post/destroy primitives.

@@ -17,6 +17,7 @@ The compiler build depends on several key components. Below is a summary of ever
 | LLVM 22.1+ dev headers/libs | Yes | LLVM core libraries, ORC JIT, Target, etc. |
 | ANTLR4 C++ Runtime | Yes | Runtime library for the generated parser |
 | Java 17+ | Yes | Runs the ANTLR generator jar |
+| OpenSSL development libraries | Yes | TLS socket support and cryptographic runtime integration |
 | Ninja or Make | Yes | Executes the generated build files |
 | GoogleTest | Optional | Enables unit tests (`hoo-tests` target) |
 
@@ -54,7 +55,7 @@ java -version             # Must be 17+
 
 2. **Install all build dependencies**:
    ```bash
-   brew install cmake ninja llvm antlr4-cpp-runtime googletest
+    brew install cmake ninja llvm openssl@3 antlr4-cpp-runtime googletest
    ```
 
 3. **Configure PATH** (Homebrew LLVM is "keg-only" — not in default PATH):

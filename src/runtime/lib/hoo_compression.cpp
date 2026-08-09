@@ -206,4 +206,24 @@ HooBuffer hoo_compression_deflate_decompress_buffer(HooBuffer buf) {
     return result;
 }
 
+HooBuffer hoo_compression_gzip_compress_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    uint8_t* data = nullptr;
+    int64_t length = 0;
+    if (hoo_compression_gzip_compress(view.data, view.length, &data, &length) != 0) return nullptr;
+    HooBuffer result = hoo_buffer_from_bytes(data, length);
+    hoo_compression_free_bytes(data);
+    return result;
+}
+
+HooBuffer hoo_compression_deflate_compress_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    uint8_t* data = nullptr;
+    int64_t length = 0;
+    if (hoo_compression_deflate_compress(view.data, view.length, &data, &length) != 0) return nullptr;
+    HooBuffer result = hoo_buffer_from_bytes(data, length);
+    hoo_compression_free_bytes(data);
+    return result;
+}
+
 } // extern "C"

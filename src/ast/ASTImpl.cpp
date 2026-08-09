@@ -110,6 +110,10 @@ std::string AnyArrayType::toString() const {
     return "AnyArrayType";
 }
 
+std::string ByteSliceType::toString() const {
+    return "ByteSliceType";
+}
+
 std::string PrimitiveType::toString() const {
     return "PrimitiveType";
 }

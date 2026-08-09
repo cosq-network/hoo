@@ -61,3 +61,23 @@ TEST_F(HooThreadJitTest, MutexNullLockUnlock) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), -3);
 }
+
+TEST_F(HooThreadJitTest, ConditionAndSemaphoreClasses) {
+    const std::string source = R"(
+        import hoo.thread;
+        func:int64 test() {
+            var m = new Mutex();
+            var c = new Condition();
+            var s = new Semaphore(1);
+            var result = s.tryWait();
+            c.notifyAll();
+            s.post();
+            c.release();
+            s.release();
+            m.release();
+            return result;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0) << jit.getLastError();
+}

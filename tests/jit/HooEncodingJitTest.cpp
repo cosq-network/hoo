@@ -68,3 +68,19 @@ TEST_F(HooEncodingJitTest, BufferOverloads) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
 }
+
+TEST_F(HooEncodingJitTest, ByteSliceJitWrappers) {
+    const std::string source = R"(
+        import hoo.encoding;
+        import hoo.buffer;
+        func:int64 test() {
+            var buf = buffer_fromBytes("Hello", 5);
+            var view = byte_slice_from_buffer(buf);
+            var encoded = encoding_base64_encode_slice(view);
+            byte_slice_release(view);
+            return encoded.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 8) << jit.getLastError();
+}

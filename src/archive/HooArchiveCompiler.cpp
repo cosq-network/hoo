@@ -61,7 +61,7 @@ HooArchiveCompiler::HooArchiveCompiler(IOProvider& ioProvider) : ioProvider_(ioP
 void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, const std::filesystem::path& outPath) {
     HAArchiveBuilder builder;
     HAManifest manifest;
-    std::unordered_map<std::string, std::unordered_map<std::string, std::string>> exportsByModule;
+    std::unordered_map<std::string, ExternalFunctionMetadataSets> exportsByModule;
     
     for (const auto& modInfo : modules) {
         auto sourceCode = ioProvider_.readFile(modInfo.sourcePath.string());
@@ -70,17 +70,18 @@ void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, con
         }
 
         HooCompiler compiler;
-        std::unordered_map<std::string, std::pair<std::string, std::string>> visibleExternalFunctions;
+        ExternalFunctionMetadataSets visibleExternalFunctions;
         for (const auto& importName : modInfo.localImports) {
             auto exportIt = exportsByModule.find(importName);
             if (exportIt == exportsByModule.end()) {
                 continue;
             }
-            for (const auto& [functionName, returnType] : exportIt->second) {
-                visibleExternalFunctions.emplace(functionName, std::make_pair(importName, returnType));
+            for (const auto& [functionName, overloads] : exportIt->second) {
+                auto& destination = visibleExternalFunctions[functionName];
+                destination.insert(destination.end(), overloads.begin(), overloads.end());
             }
         }
-        compiler.setExternalFunctionImports(visibleExternalFunctions);
+        compiler.setExternalFunctionMetadataSets(visibleExternalFunctions);
         auto hoModule = compiler.compile(modInfo.moduleName, *sourceCode);
         if (!hoModule) {
             throw std::runtime_error("Compile error in " + modInfo.sourcePath.string() + ": " + compiler.getLastError());
@@ -106,6 +107,7 @@ void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, con
         hmInfo.imports = modInfo.localImports;
         
         // Extract symbols
+        const auto& sourceMetadata = compiler.getExportedFunctionMetadataSets();
         for (const auto& sym : hoModule->getSymbols()) {
             if (sym.binding == hvm::Symbol::STB_GLOBAL) {
                 HASymbolInfo sInfo;
@@ -122,7 +124,24 @@ void HooArchiveCompiler::compile(const std::vector<ResolvedModule>& modules, con
                             : demangled.functionName;
                     }
                     if (!functionName.empty()) {
-                        exportsByModule[modInfo.moduleName][functionName] = demangled.returnType;
+                        ExternalFunctionInfo info;
+                        auto metadataIt = sourceMetadata.find(functionName);
+                        if (metadataIt != sourceMetadata.end() && !metadataIt->second.empty()) {
+                            info = metadataIt->second.front();
+                        }
+                        info.modulePath = modInfo.moduleName;
+                        if (info.returnType.empty()) info.returnType = demangled.returnType;
+                        if (info.parameterTypes.empty()) info.parameterTypes = demangled.parameterTypes;
+                        auto& exportedOverloads = exportsByModule[modInfo.moduleName][functionName];
+                        bool alreadyPresent = false;
+                        for (const auto& existing : exportedOverloads) {
+                            if (existing.parameterTypes == info.parameterTypes &&
+                                existing.returnType == info.returnType) {
+                                alreadyPresent = true;
+                                break;
+                            }
+                        }
+                        if (!alreadyPresent) exportedOverloads.push_back(std::move(info));
                     }
                 }
                 hmInfo.symbols.push_back(sInfo);

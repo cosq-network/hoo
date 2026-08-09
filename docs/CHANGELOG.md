@@ -11,6 +11,72 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- ci: consolidate CI badges and docs on build-and-test.yml
+  - README badges now point at the actual `build-and-test.yml` workflow with
+    job-scoped links (macOS, Linux, Windows) instead of removed workflow files.
+  - Correct the DEVELOPMENT.md pipeline table, add Windows notes, and add a
+    concurrency guard that cancels in-flight runs on the same branch/ref.
+
+- feat(compiler): propagate homogeneous `any[]` element types (ISSUE-031)
+  - `any`-array literals whose elements share one inferred type propagate that
+    element type through array access and chained method dispatch, so
+    `values[0].length()` resolves against `String` and scalar elements type as
+    `int64`. Mixed and empty `any` literals keep a dynamic element type.
+
+- feat(net): complete DNS, timeout, and TLS socket extensions
+  - Resolve hostnames with libuv, enforce configurable operation timeouts, and
+    support TLS client and PEM-configured TLS server handshakes.
+
+- feat(compiler): preserve archive overload sets and JIT byte-slice APIs
+  - Archive metadata now carries every external overload candidate, including
+    user-defined return classes and parameter types.
+  - Register slice construction, encoding, hashing, and compression wrappers in
+    the HVM JIT for direct Hoo calls.
+
+- feat(runtime): add synchronization primitives (ISSUE-050, ISSUE-052)
+  - Add non-copyable/move-aware `hoo::thread::ScopedLock` and mutex try-lock.
+  - Add libuv-backed condition variables with timed waits and semaphores.
+
+- feat(runtime): define borrowed byte-slice ABI (ISSUE-053)
+  - Add `HooByteSlice` construction from raw bytes and `Buffer` without
+    ownership transfer or ARC side effects.
+
+- feat(net): add libuv-backed TCP sockets (ISSUE-037)
+  - Add DNS-aware connect, IPv4 bind/listen/accept, borrowed-slice send, Buffer
+    receive, configurable timeouts, TLS client connect, close, error, retain,
+    and release operations.
+  - TLS server certificates and protocol-level asynchronous events remain future
+    work.
+
+- fix(codegen): carry external function signatures into chained inference
+  - Local archive exports now preserve module path, return type, and parameter
+    metadata for imported functions.
+  - Widening overload conversions are ranked consistently in codegen and the
+    runtime overload registry.
+
+- fix(hvm): centralize the LUI immediate shift and exception-state lock
+  - Share the 49-bit LUI shift constant across interpreter/JIT code.
+  - Give JIT current-exception state its own mutex.
+
+- fix(runtime): remove the destructor table type-ID ceiling (ISSUE-055)
+  - Replace the fixed 256-entry array with a synchronized, dynamically growing
+    registry for arbitrary non-negative `int64_t` type IDs.
+  - Invoke callbacks outside the registry lock and fail explicitly on invalid
+    IDs or allocation failure.
+
+- fix(codegen): make method dispatch receiver-safe (ISSUE-015, ISSUE-031)
+  - Retain all classes declaring a method name instead of overwriting a single
+    candidate.
+  - Extend recursive expression inference through binary/logical, unary, await,
+    free-function, field, collection, and chained method results.
+  - Reject ambiguous unknown receivers rather than dispatching arbitrarily.
+
+- feat(hvm): add native 8-bit comparison family (ISSUE-029)
+  - Add `CMP_B` opcode `0x42` with signed and unsigned equality/order forms.
+  - Lower byte-to-byte comparisons through the interpreter and LLVM ORC JIT;
+    preserve existing wide comparisons for mixed byte/integer expressions.
+  - Add instruction, codegen, interpreter, and end-to-end regression coverage.
+
 - fix(codegen): release nullable user-object locals in generic type slots
   - Track ARC cleanup separately from the runtime type ID so nullable named
     references using type ID 100 are released safely at scope exit.

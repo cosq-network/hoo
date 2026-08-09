@@ -41,6 +41,7 @@
 #include <memory>
 #include <unordered_map>
 #include <utility>
+#include "codegen/CodeGeneratorTypes.h"
 
 
 namespace hvm {
@@ -92,6 +93,8 @@ public:
                                           const std::string& sourceCode);
 
     void setExternalFunctionImports(const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions);
+    void setExternalFunctionMetadata(const std::unordered_map<std::string, ExternalFunctionInfo>& functions);
+    void setExternalFunctionMetadataSets(const ExternalFunctionMetadataSets& functions);
 
     /// @brief Get error message from last failed compilation
     /// @return Error message string
@@ -104,6 +107,13 @@ public:
     /// @return true if last compile() call succeeded
     bool wasLastCompilationSuccessful() const {
         return lastCompilationSuccessful_;
+    }
+
+    const std::unordered_map<std::string, ExternalFunctionInfo>& getExportedFunctionMetadata() const {
+        return exportedFunctionMetadata_;
+    }
+    const ExternalFunctionMetadataSets& getExportedFunctionMetadataSets() const {
+        return exportedFunctionMetadataSets_;
     }
 
 private:
@@ -130,6 +140,8 @@ private:
 
     /// @brief Success flag from last compilation
     bool        lastCompilationSuccessful_;
+    std::unordered_map<std::string, ExternalFunctionInfo> exportedFunctionMetadata_;
+    ExternalFunctionMetadataSets exportedFunctionMetadataSets_;
 
 
 

@@ -110,14 +110,12 @@ public:
      * @param node Terminal node containing operator.
      * @return The corresponding BinaryOperator enum value.
      */
-    ast::BinaryOperator getBinaryOperator(antlr4::tree::TerminalNode* node);
 
     /**
      * @brief Parses boolean literal token.
      * @param node TRUE or FALSE terminal node.
      * @return The boolean value.
      */
-    bool getBoolValue(antlr4::tree::TerminalNode* node);
 
     /**
      * @brief Checks if a string literal contains interpolation syntax.

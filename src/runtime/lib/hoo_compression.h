@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "hoo_buffer.h"
+#include "hoo_byte_slice.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -23,6 +24,8 @@ HooBuffer hoo_compression_gzip_compress_buffer(HooBuffer buf);
 HooBuffer hoo_compression_gzip_decompress_buffer(HooBuffer buf);
 HooBuffer hoo_compression_deflate_compress_buffer(HooBuffer buf);
 HooBuffer hoo_compression_deflate_decompress_buffer(HooBuffer buf);
+HooBuffer hoo_compression_gzip_compress_slice(HooByteSliceHandle slice);
+HooBuffer hoo_compression_deflate_compress_slice(HooByteSliceHandle slice);
 void    hoo_compression_free_bytes(uint8_t* data);
 
 #ifdef __cplusplus

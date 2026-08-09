@@ -27,9 +27,23 @@ Every object managed by the runtime (including Arrays, Strings, Maps, and User O
 - `117`: HooHashMap
 - `118`: HooAnyArray
 
+Type IDs are not limited to the reserved built-in range. The runtime
+destructor registry accepts any non-negative `int64_t` type ID and grows as
+needed. Registration, replacement, removal, and lookup are synchronized;
+destructor callbacks execute after the registry lock is released.
+
 Type ID `0` is reserved for the virtual `any` tagged value. It is not a managed object header type; it identifies the two-slot `{ type_id, data }` value shape used by heterogeneous runtime containers.
 
-## 2. Thread-Local Allocation Buffer (TLAB)
+## 2. Borrowed Byte Slices
+
+Hoo source may declare a borrowed byte view as `slice<byte>`. Its ABI is a
+pointer to a `HooByteSliceHandle`; the handle contains a pointer and length but
+does not retain or own the backing `Buffer`. The producer must keep the backing
+Buffer alive for the entire slice lifetime. Slice-aware encoding, hashing,
+compression, and socket functions consume the view and return independent
+strings or owned Buffers.
+
+## 3. Thread-Local Allocation Buffer (TLAB)
 To minimize lock contention during allocation, the runtime utilizes a TLAB.
 
 - **Block Size**: 64 KB per thread block (`HOO_TLAB_BLOCK_SIZE`).
@@ -37,7 +51,7 @@ To minimize lock contention during allocation, the runtime utilizes a TLAB.
 - **Fallback**: Objects > 2048 bytes (or when a block is exhausted) fall back to the system `malloc`.
 - **Tracking**: TLAB allocations are tracked in a thread-local linked list (`g_tlab_objects`) so they can be properly identified and freed independently of block lifetimes upon release.
 
-## 3. Core API (C ABI)
+## 4. Core API (C ABI)
 
 - `void* hoo_alloc(size_t size, int64_t type_id)`: Allocates zeroed memory, initializing the header with `refcount = 1` and the specified `type_id`.
 - `void* hoo_realloc(void* obj, size_t new_size)`: Resizes a managed object, copying data if necessary.
@@ -45,8 +59,11 @@ To minimize lock contention during allocation, the runtime utilizes a TLAB.
 - `void hoo_release(void* obj)`: Atomically decrements the `refcount`. If it reaches `0`, the memory (and linked structures) are freed.
 - `int64_t hoo_get_refcount(void* obj)`: Returns the current reference count.
 - `int64_t hoo_get_type_id(void* obj)`: Returns the object's runtime `type_id`.
+- `void hoo_register_destructor(int64_t type_id, HooDestructor dtor)`: Registers
+  or removes a destructor for a managed type. Negative IDs and allocation
+  failures are reported as fatal runtime errors rather than ignored.
 
-## 4. Diagnostics & Statistics
+## 5. Diagnostics & Statistics
 The runtime tracks allocation telemetry which can be dumped using:
 - `hoo_print_memory_stats()`: Prints total allocations, deallocations, and current live object count (leak detection).
 - `hoo_get_tlab_stats()`: Returns TLAB hit/miss ratios and blocks allocated.

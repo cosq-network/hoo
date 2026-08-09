@@ -14,6 +14,27 @@ import hoo.net;
 
 The `net` module provides URL parsing and HTTP client functionality through three classes: `Url`, `HttpClient`, and `HttpResponse`. All string values returned by `Url` and `HttpResponse` methods must be freed with the corresponding `free_string` method.
 
+## Native TCP Socket ABI
+
+`HooSocket` is an ARC-managed TCP handle. `HooByteSlice` arguments are borrowed
+read-only views; socket operations never retain or free their backing memory.
+`hoo_net_socket_receive` returns a new owned `HooBuffer`. The current API
+supports DNS-aware connect, IPv4 bind/listen/accept, send, receive, error
+inspection, close, retain, release, configurable operation timeouts, TLS client
+connect with optional peer verification, and TLS server configuration from PEM
+certificate/key files. Calls block at the C boundary while libuv performs the
+underlying non-blocking stream operations.
+
+```c
+HooSocket socket = hoo_net_socket_new();
+hoo_net_socket_connect(socket, "127.0.0.1", 8080);
+const uint8_t data[] = {'h', 'i'};
+hoo_net_socket_send(socket, hoo_byte_slice_from_bytes(data, 2));
+HooBuffer response = hoo_net_socket_receive(socket, 4096);
+hoo_buffer_release(response);
+hoo_net_socket_release(socket);
+```
+
 ## Class: Url
 
 ### Declaration

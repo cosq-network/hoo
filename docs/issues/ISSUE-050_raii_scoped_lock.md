@@ -22,6 +22,11 @@ The `Mutex` API provides raw `lock()` and `unlock()` operations with no RAII sco
 3. Add `try_lock` variants for non-blocking acquisition.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **IMPLEMENTED**
 - **Priority**: **MEDIUM**
+
+## 6. Resolution
+The runtime provides `hoo::thread::ScopedLock`, a non-copyable and move-aware
+C++ RAII wrapper over `HooMutex`, plus `hoo_thread_mutex_try_lock`. The C ABI
+remains available for generated Hoo code.

@@ -159,6 +159,26 @@ uint64_t hoo_hashing_crc32_buffer(HooBuffer buf) {
     return hoo_hashing_crc32(hoo_buffer_data(buf), hoo_buffer_length(buf));
 }
 
+char* hoo_hashing_sha256_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    return hoo_hashing_sha256(view.data, view.length);
+}
+
+char* hoo_hashing_sha1_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    return hoo_hashing_sha1(view.data, view.length);
+}
+
+char* hoo_hashing_md5_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    return hoo_hashing_md5(view.data, view.length);
+}
+
+uint64_t hoo_hashing_crc32_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    return hoo_hashing_crc32(view.data, view.length);
+}
+
 char* hoo_hashing_hmac_sha256_buffer(HooBuffer key_buf, HooBuffer data_buf) {
     return hoo_hashing_hmac_sha256(hoo_buffer_data(key_buf), hoo_buffer_length(key_buf), hoo_buffer_data(data_buf), hoo_buffer_length(data_buf));
 }

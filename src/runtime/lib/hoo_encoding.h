@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include "hoo_buffer.h"
+#include "hoo_byte_slice.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -17,6 +18,8 @@ char*    hoo_encoding_base64_encode_buffer(HooBuffer buf);
 HooBuffer hoo_encoding_base64_decode_buffer(const char* encoded);
 char*    hoo_encoding_hex_encode_buffer(HooBuffer buf);
 HooBuffer hoo_encoding_hex_decode_buffer(const char* hex);
+char*    hoo_encoding_base64_encode_slice(HooByteSliceHandle slice);
+char*    hoo_encoding_hex_encode_slice(HooByteSliceHandle slice);
 
 char*   hoo_encoding_url_encode(const char* str);
 char*   hoo_encoding_url_decode(const char* encoded);

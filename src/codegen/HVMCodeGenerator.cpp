@@ -17,6 +17,7 @@
 #include <atomic>
 #include <sstream>
 #include <functional>
+#include <climits>
 
 using namespace hvm;
 
@@ -121,6 +122,8 @@ static std::string classToPrefix(const std::string& className) {
         {"HttpClient", "net_http_client"},
         {"HttpResponse", "net_http_response"},
         {"Thread", "thread"},
+        {"Condition", "thread_condition"},
+        {"Semaphore", "thread_semaphore"},
         {"Decimal", "decimal"},
         {"Mutex", "thread_mutex"},
         {"Array", "array"},
@@ -153,8 +156,11 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"DateTime", 119},
         {"Regex", 120},
         {"Mutex", 121},
+        {"Condition", 128},
+        {"Semaphore", 129},
         {"Uuid", 122},
         {"Decimal", 125},
+        {"Socket", 127},
     };
     auto it = typeIds.find(className);
     return it != typeIds.end() ? it->second : 100;
@@ -167,7 +173,9 @@ static std::string builtinClassNameFromTypeId(uint32_t typeId) {
         {108, "HttpClient"}, {109, "Character"}, {110, "Args"},
         {111, "Compression"}, {113, "Buffer"}, {114, "Csv"},
         {117, "HashMap"}, {118, "AnyArray"}, {119, "DateTime"},
-        {120, "Regex"}, {121, "Mutex"}, {122, "Uuid"}, {125, "Decimal"}
+        {120, "Regex"}, {121, "Mutex"}, {122, "Uuid"}, {125, "Decimal"},
+        {127, "Socket"},
+        {128, "Condition"}, {129, "Semaphore"}
     };
     auto it = names.find(typeId);
     return it == names.end() ? std::string{} : it->second;
@@ -196,7 +204,8 @@ static uint32_t jsonFreeFunctionReturnTypeId(const std::string& functionName) {
 }
 
 static bool isBufferFreeFunction(const std::string& functionName) {
-    return functionName == "buffer_fromBytes";
+    return functionName == "buffer_fromBytes" || functionName == "byte_slice_from_buffer" ||
+           functionName == "byte_slice_release";
 }
 
 static bool isCsvFreeFunction(const std::string& functionName) {
@@ -267,6 +276,8 @@ static bool isEncodingFreeFunction(const std::string& functionName) {
         "encoding_base64_decode_buffer",
         "encoding_hex_encode_buffer",
         "encoding_hex_decode_buffer",
+        "encoding_base64_encode_slice",
+        "encoding_hex_encode_slice",
     };
     return names.count(functionName) > 0;
 }
@@ -287,6 +298,7 @@ static bool isHashingFreeFunction(const std::string& functionName) {
     static const std::unordered_set<std::string> names = {
         "hashing_sha256", "hashing_sha256_file", "hashing_sha1", "hashing_md5", "hashing_crc32", "hashing_hmac_sha256",
         "hashing_sha256_buffer", "hashing_sha1_buffer", "hashing_md5_buffer", "hashing_crc32_buffer", "hashing_hmac_sha256_buffer"
+        , "hashing_sha256_slice", "hashing_sha1_slice", "hashing_md5_slice", "hashing_crc32_slice"
     };
     return names.count(functionName) > 0;
 }
@@ -400,6 +412,25 @@ static uint32_t stringFreeFunctionReturnTypeId(const std::string& functionName) 
     return 101; // string
 }
 
+static bool isNetFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "net_socket_new", "net_socket_bind", "net_socket_listen", "net_socket_connect",
+        "net_socket_connect_tls", "net_socket_enable_tls_server", "net_socket_set_timeout",
+        "net_socket_accept", "net_socket_send", "net_socket_receive", "net_socket_last_error",
+        "net_socket_local_port", "net_socket_close", "net_socket_retain", "net_socket_release",
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t netFreeFunctionReturnTypeId(const std::string& functionName) {
+    if (functionName == "net_socket_new" || functionName == "net_socket_accept" ||
+        functionName == "net_socket_retain") return 127; // Socket
+    if (functionName == "net_socket_receive") return 113; // Buffer
+    if (functionName == "net_socket_last_error") return 101; // String
+    if (functionName == "net_socket_release") return 4; // void
+    return 1; // int64
+}
+
 static bool isHooModuleFreeFunction(const std::string& functionName) {
     return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
            isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) ||
@@ -409,7 +440,7 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
            isRegexFreeFunction(functionName) || isThreadFreeFunction(functionName) ||
            isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName) ||
            isPathFreeFunction(functionName) || isArgsFreeFunction(functionName) ||
-           isStringFreeFunction(functionName);
+           isStringFreeFunction(functionName) || isNetFreeFunction(functionName);
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -479,7 +510,11 @@ static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) 
 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
-    if (isBufferFreeFunction(functionName)) return 113;
+    if (isBufferFreeFunction(functionName)) {
+        if (functionName == "byte_slice_from_buffer") return 130;
+        if (functionName == "byte_slice_release") return 4;
+        return 113;
+    }
     if (isCsvFreeFunction(functionName)) return 114;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
     if (isDatetimeFreeFunction(functionName)) return datetimeFreeFunctionReturnTypeId(functionName);
@@ -501,6 +536,7 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isPathFreeFunction(functionName)) return pathFreeFunctionReturnTypeId(functionName);
     if (isArgsFreeFunction(functionName)) return argsFreeFunctionReturnTypeId(functionName);
     if (isStringFreeFunction(functionName)) return stringFreeFunctionReturnTypeId(functionName);
+    if (isNetFreeFunction(functionName)) return netFreeFunctionReturnTypeId(functionName);
     return 100;
 }
 
@@ -593,6 +629,7 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name == "Regex") return "hoo.regex";
     if (name == "Net" || name == "URL" || name == "HttpClient" || name == "HttpResponse") return "hoo.net";
     if (name == "Mutex") return "hoo.thread";
+    if (name == "Condition" || name == "Semaphore") return "hoo.thread";
     if (name == "Path") return "hoo.path";
     if (name == "Hashing") return "hoo.hashing";
     if (name == "Uuid") return "hoo.uuid";
@@ -610,7 +647,7 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name.rfind("datetime_", 0) == 0) return "hoo.datetime";
     if (name.rfind("fs_", 0) == 0) return "hoo.io";
     if (name.rfind("json_", 0) == 0) return "hoo.json";
-    if (name.rfind("buffer_", 0) == 0) return "hoo.buffer";
+    if (name.rfind("buffer_", 0) == 0 || name.rfind("byte_slice_", 0) == 0) return "hoo.buffer";
     if (name.rfind("csv_", 0) == 0) return "hoo.csv";
     if (name.rfind("math_", 0) == 0) return "hoo.math";
     if (name.rfind("net_", 0) == 0) return "hoo.net";
@@ -637,6 +674,39 @@ void HVMCodeGenerator::setModuleContext(const std::string& moduleName) {
 void HVMCodeGenerator::setExternalFunctionImports(
     const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions) {
     externalFunctionImports_ = functions;
+}
+
+void HVMCodeGenerator::setExternalFunctionMetadata(
+    const std::unordered_map<std::string, ExternalFunctionInfo>& functions) {
+    externalFunctionMetadata_ = functions;
+    externalFunctionMetadataSets_.clear();
+    for (const auto& [name, info] : functions) externalFunctionMetadataSets_[name].push_back(info);
+    for (const auto& [name, info] : functions) {
+        if (functionReturnTypes_.find(name) == functionReturnTypes_.end()) {
+            const std::string& type = info.returnType;
+            if (type == "int64") functionReturnTypes_[name] = 1;
+            else if (type == "double") functionReturnTypes_[name] = 2;
+            else if (type == "bool") functionReturnTypes_[name] = 3;
+            else if (type == "void") functionReturnTypes_[name] = 4;
+            else if (type == "int8") functionReturnTypes_[name] = 5;
+            else if (type == "byte") functionReturnTypes_[name] = 6;
+            else if (type == "char") functionReturnTypes_[name] = 7;
+            else if (type == "bit") functionReturnTypes_[name] = 8;
+            else if (type == "f8") functionReturnTypes_[name] = 9;
+            else if (type == "string") functionReturnTypes_[name] = 101;
+            else if (type == "tensor") functionReturnTypes_[name] = 104;
+            else if (type == "any") functionReturnTypes_[name] = 0;
+            else functionReturnTypes_[name] = 100;
+        }
+    }
+}
+
+void HVMCodeGenerator::setExternalFunctionMetadataSets(const ExternalFunctionMetadataSets& functions) {
+    externalFunctionMetadataSets_ = functions;
+    externalFunctionMetadata_.clear();
+    for (const auto& [name, overloads] : functions) {
+        if (!overloads.empty()) externalFunctionMetadata_[name] = overloads.front();
+    }
 }
 
 std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::CompilationUnit& compilationUnit) {
@@ -682,6 +752,74 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     functionReturnClass_.clear();
     functionOverloadReturns_.clear();
     functionFutureElementTypes_.clear();
+    for (const auto& [name, info] : externalFunctionMetadata_) {
+        const std::string& type = info.returnType;
+        uint32_t typeId = 100;
+        if (type == "int64") typeId = 1;
+        else if (type == "double") typeId = 2;
+        else if (type == "bool") typeId = 3;
+        else if (type == "void") typeId = 4;
+        else if (type == "int8") typeId = 5;
+        else if (type == "byte") typeId = 6;
+        else if (type == "char") typeId = 7;
+        else if (type == "bit") typeId = 8;
+        else if (type == "f8") typeId = 9;
+        else if (type == "string") typeId = 101;
+        else if (type == "tensor") typeId = 104;
+        else if (type == "any") typeId = 0;
+        functionReturnTypes_[name] = typeId;
+        if (!info.returnClass.empty()) functionReturnClass_[name] = info.returnClass;
+        if (!info.parameterTypes.empty()) {
+            OverloadReturnInfo overload;
+            for (const auto& parameter : info.parameterTypes) {
+                uint32_t parameterId = 100;
+                if (parameter == "int64") parameterId = 1;
+                else if (parameter == "double") parameterId = 2;
+                else if (parameter == "bool") parameterId = 3;
+                else if (parameter == "int8") parameterId = 5;
+                else if (parameter == "byte") parameterId = 6;
+                else if (parameter == "char") parameterId = 7;
+                else if (parameter == "bit") parameterId = 8;
+                else if (parameter == "f8") parameterId = 9;
+                else if (parameter == "string") parameterId = 101;
+                else if (parameter == "tensor") parameterId = 104;
+                else if (parameter == "any") parameterId = 0;
+                overload.parameterTypes.push_back(parameterId);
+                overload.parameterIsNullable.push_back(false);
+            }
+            overload.result.typeId = typeId;
+            functionOverloadReturns_[name].push_back(std::move(overload));
+        }
+    }
+    auto externalTypeId = [](const std::string& type) -> uint32_t {
+        if (type == "int64") return 1;
+        if (type == "double") return 2;
+        if (type == "bool") return 3;
+        if (type == "void") return 4;
+        if (type == "int8") return 5;
+        if (type == "byte") return 6;
+        if (type == "char") return 7;
+        if (type == "bit") return 8;
+        if (type == "f8") return 9;
+        if (type == "string") return 101;
+        if (type == "tensor") return 104;
+        if (type == "any") return 0;
+        return 100;
+    };
+    for (const auto& [name, overloads] : externalFunctionMetadataSets_) {
+        for (size_t index = externalFunctionMetadata_.count(name) ? 1 : 0;
+             index < overloads.size(); ++index) {
+            const auto& info = overloads[index];
+            OverloadReturnInfo overload;
+            for (const auto& parameter : info.parameterTypes) {
+                overload.parameterTypes.push_back(externalTypeId(parameter));
+                overload.parameterIsNullable.push_back(false);
+            }
+            overload.result.typeId = externalTypeId(info.returnType);
+            overload.result.className = info.returnClass;
+            functionOverloadReturns_[name].push_back(std::move(overload));
+        }
+    }
     classDeclarations_.clear();
 
     importedModules_.clear();
@@ -934,11 +1072,15 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             }
             classes_[layout.name] = layout;
 
-            // Index methods for name-based mangling resolution
+            // Index methods for fallback resolution. A method name may be
+            // declared by unrelated classes, so retain all candidates.
             for (const auto& member : classDecl->getBody().getMembers()) {
                 if (auto declMember = member->getDeclaration()) {
                     if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
-                        methodNameToClass_[fn->getName()] = layout.name;
+                        auto& candidates = methodNameToClasses_[fn->getName()];
+                        if (std::find(candidates.begin(), candidates.end(), layout.name) == candidates.end()) {
+                            candidates.push_back(layout.name);
+                        }
                         layout.privateMethods[fn->getName()] = fn->isPrivate();
                         if (fn->getReturnType()) {
                             std::string returnClass;
@@ -950,6 +1092,10 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         }
                     } else if (auto overList = dynamic_cast<const ast::OverloadList*>(declMember)) {
                         for (const auto& fn : overList->getFunctions()) {
+                            auto& candidates = methodNameToClasses_[fn->getName()];
+                            if (std::find(candidates.begin(), candidates.end(), layout.name) == candidates.end()) {
+                                candidates.push_back(layout.name);
+                            }
                             isOverloadedMethod_[layout.name][fn->getName()] = true;
                             layout.privateMethods[fn->getName()] = fn->isPrivate();
                             OverloadReturnInfo overloadInfo;
@@ -1276,6 +1422,8 @@ static bool isArcManagedTypeId(uint32_t typeId) {
         case 120: // Regex - uses delete with custom refcounting
         case 121: // Mutex - uses delete
         case 122: // Uuid - uses std::free with custom refcounting
+        case 128: // Condition - explicit destroy
+        case 129: // Semaphore - explicit destroy
             return false;
         default:
             return typeId >= 100;
@@ -1289,6 +1437,7 @@ static bool isArcManagedTypeId(uint32_t typeId) {
 static bool isHooReleaseManagedClassName(const std::string& className) {
     static const std::unordered_set<std::string> nonArcClasses = {
         "Args", "Compression", "Regex", "Mutex", "Uuid", "Exception",
+        "Condition", "Semaphore",
     };
     return !className.empty() && nonArcClasses.count(className) == 0;
 }
@@ -1713,9 +1862,6 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                     elemTypeId = mapConstructorValueTypeId(*newObj);
                 }
             } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
-                if (arrLit->isAnyArray()) {
-                    elemTypeId = 0;
-                } else {
                 auto& elements = arrLit->getElements()->getExpressions();
                 uint32_t commonType = 100;
                 for (const auto& elem : elements) {
@@ -1725,13 +1871,28 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                         else if (commonType != t) { commonType = 100; break; }
                     }
                 }
-                elemTypeId = commonType;
+                if (arrLit->isAnyArray()) {
+                    elemTypeId = (commonType == 100) ? 0 : commonType;
+                } else {
+                    elemTypeId = commonType;
                 }
             } else if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(decl.getInitializer())) {
                 if (auto tensorLit = dynamic_cast<const ast::TensorLiteral*>(&pe->getPrimary())) {
                     elemTypeId = tensorElementTypeIdFromLiteral(*tensorLit);
                 } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
-                    if (arrLit->isAnyArray()) elemTypeId = 0;
+                    if (arrLit->isAnyArray()) {
+                        uint32_t commonType = 100;
+                        if (arrLit->getElements()) {
+                            for (const auto& elem : arrLit->getElements()->getExpressions()) {
+                                uint32_t t = getTypeId(nullptr, elem.get());
+                                if (t != 100) {
+                                    if (commonType == 100) commonType = t;
+                                    else if (commonType != t) { commonType = 100; break; }
+                                }
+                            }
+                        }
+                        elemTypeId = (commonType == 100) ? 0 : commonType;
+                    }
                 }
             } else if (auto binExpr = dynamic_cast<const ast::BinaryExpression*>(decl.getInitializer())) {
                 auto inferTensorElemType = [&](const ast::Expression& operand) -> uint32_t {
@@ -2936,11 +3097,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            // Detect instance calls on user-defined classes
+            // Keep the fallback candidates until all receiver-specific paths
+            // have been tried. Selecting the last class seen is unsafe when
+            // unrelated classes share a method name.
+            std::vector<std::string> fallbackCandidates;
             if (resolvedClass.empty()) {
-                auto it = methodNameToClass_.find(methodName);
-                if (it != methodNameToClass_.end()) {
-                    resolvedClass = it->second;
+                auto it = methodNameToClasses_.find(methodName);
+                if (it != methodNameToClasses_.end()) {
+                    fallbackCandidates = it->second;
+                    if (fallbackCandidates.size() == 1) {
+                        resolvedClass = fallbackCandidates.front();
+                    }
                 }
             }
 
@@ -3017,7 +3184,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
 
             if (resolvedClass.empty()) {
-                addError("Cannot resolve method '" + methodName + "'");
+                if (fallbackCandidates.size() > 1) {
+                    std::string candidates;
+                    for (size_t i = 0; i < fallbackCandidates.size(); ++i) {
+                        if (i) candidates += ", ";
+                        candidates += fallbackCandidates[i];
+                    }
+                    addError("Cannot safely resolve method '" + methodName +
+                             "' for an unknown receiver; candidates: " + candidates);
+                } else {
+                    addError("Cannot resolve method '" + methodName + "'");
+                }
             } else if (isBuiltinClassName(resolvedClass)) {
                 std::string requiredModule = getRequiredModule(resolvedClass);
                 if (!isSymbolImported(resolvedClass, requiredModule)) {
@@ -3307,8 +3484,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 mp.functionName = functionName;
                 mp.isOverload = isOverloadedFunction_[functionName];
                 auto externalIt = externalFunctionImports_.find(functionName);
+                auto externalMetaIt = externalFunctionMetadata_.find(functionName);
                 if (isHooModuleFreeFunction(functionName)) {
                     mp.modulePath = std::vector<std::string>{"hoo"};
+                } else if (externalMetaIt != externalFunctionMetadata_.end() &&
+                           !externalMetaIt->second.modulePath.empty()) {
+                    std::stringstream ss(externalMetaIt->second.modulePath);
+                    std::string part;
+                    while (std::getline(ss, part, '.')) {
+                        if (!part.empty()) mp.modulePath.push_back(part);
+                    }
                 } else if (externalIt != externalFunctionImports_.end() &&
                            functionReturnTypes_.find(functionName) == functionReturnTypes_.end()) {
                     std::stringstream ss(externalIt->second.first);
@@ -3345,12 +3530,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                         }
                         uint32_t typeId = hooModuleFreeFunctionReturnTypeId(functionName, argTypeIds);
                         mp.returnType = typeIdToMangleType(typeId);
+                    } else if (functionName == "byte_slice_release" || functionName == "net_socket_release") {
+                        mp.returnType = "void";
                     } else {
                         mp.returnType = "ptr";
                     }
                 } else {
                     if (retIt != functionReturnTypes_.end()) {
                         mp.returnType = typeIdToMangleType(retIt->second);
+                    } else if (externalMetaIt != externalFunctionMetadata_.end()) {
+                        mp.returnType = externalMetaIt->second.returnType.empty()
+                            ? "void" : externalMetaIt->second.returnType;
                     } else if (externalIt != externalFunctionImports_.end()) {
                         mp.returnType = externalIt->second.second.empty() ? "void" : externalIt->second.second;
                     } else {
@@ -3358,13 +3548,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     }
                 }
                 if (funcCall->getArguments()) {
+                    size_t argIndex = 0;
                     for (const auto& arg : funcCall->getArguments()->getArguments()) {
                         if (mp.isOverload) {
                             const auto argInfo = inferExpressionTypeInfo(*arg);
                             mp.parameterTypes.push_back(mangleTypeId(argInfo.typeId, argInfo.isNullable));
+                        } else if (externalMetaIt != externalFunctionMetadata_.end() &&
+                                   argIndex < externalMetaIt->second.parameterTypes.size()) {
+                            mp.parameterTypes.push_back(externalMetaIt->second.parameterTypes[argIndex]);
                         } else {
                             mp.parameterTypes.push_back("ptr");
                         }
+                        ++argIndex;
                     }
                 }
                 
@@ -3470,6 +3665,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightType = rightExprType;
         const bool isFloatExpr = leftType == 2 || leftType == 9 || rightType == 2 || rightType == 9;
         const bool isUnsigned = leftType == 6 || rightType == 6;
+        const bool isNativeByteCompare = leftType == 6 && rightType == 6;
         const bool isSubwordInt = ((leftType == 5 || leftType == 6) &&
                                    (rightType == 5 || rightType == 6)) ||
                                   (leftType == 8 && rightType == 8);
@@ -3573,18 +3769,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             case ast::BinaryOperator::SHIFT_RIGHT:
                 op = isSubwordInt ? Opcode::SHIFT_B : Opcode::SHIFT;
                 func = 1; break;
-            case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = 0; break;
-            case ast::BinaryOperator::NOT_EQUALS: op = Opcode::CMP; func = 1; break;
-            case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2); break;
-            case ast::BinaryOperator::LESS_EQUALS: op = isFloatExpr ? Opcode::FCMP : Opcode::CMP; func = isFloatExpr ? 2 : (isUnsigned ? 5 : 3); break;
+            case ast::BinaryOperator::EQUALS: op = isFloatExpr ? Opcode::FCMP : (isNativeByteCompare ? Opcode::CMP_B : Opcode::CMP); func = 0; break;
+            case ast::BinaryOperator::NOT_EQUALS: op = isNativeByteCompare ? Opcode::CMP_B : Opcode::CMP; func = 1; break;
+            case ast::BinaryOperator::LESS: op = isFloatExpr ? Opcode::FCMP : (isNativeByteCompare ? Opcode::CMP_B : Opcode::CMP); func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2); break;
+            case ast::BinaryOperator::LESS_EQUALS: op = isFloatExpr ? Opcode::FCMP : (isNativeByteCompare ? Opcode::CMP_B : Opcode::CMP); func = isFloatExpr ? 2 : (isUnsigned ? 5 : 3); break;
             case ast::BinaryOperator::GREATER: {
-                op = isFloatExpr ? Opcode::FCMP : Opcode::CMP;
+                op = isFloatExpr ? Opcode::FCMP : (isNativeByteCompare ? Opcode::CMP_B : Opcode::CMP);
                 func = isFloatExpr ? 1 : (isUnsigned ? 4 : 2);
                 std::swap(left, right);
                 break;
             }
             case ast::BinaryOperator::GREATER_EQUALS: {
-                op = isFloatExpr ? Opcode::FCMP : Opcode::CMP;
+                op = isFloatExpr ? Opcode::FCMP : (isNativeByteCompare ? Opcode::CMP_B : Opcode::CMP);
                 func = isFloatExpr ? 2 : (isUnsigned ? 5 : 3);
                 std::swap(left, right);
                 break;
@@ -4391,6 +4587,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "Args", "Csv", "Console", "StringBuilder",
         "Buffer", "Random", "HashMap", "AnyArray",
         "Mutex", "Decimal"
+        , "Condition", "Semaphore"
     };
     return builtinClasses.count(name) > 0;
 }
@@ -4553,6 +4750,7 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
         if (outClassName) *outClassName = "AnyArray";
         return 118;
     }
+    if (dynamic_cast<const ast::ByteSliceType*>(type)) return 130;
     if (dynamic_cast<const ast::HashMapType*>(type)) {
         if (outClassName) *outClassName = "HashMap";
         return 117;
@@ -4622,6 +4820,7 @@ std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
         case 7: return "char";
         case 8: return "bit";
         case 9: return "f8";
+        case 130: return "ptr";
         case 0: return "any";
         case 101: return "string";
         case 104: return "tensor";
@@ -4975,7 +5174,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         }
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
             result.typeId = arr->isAnyArray() ? 118 : 102;
-            if (!arr->isAnyArray() && arr->getElements()) {
+            if (arr->getElements()) {
                 uint32_t common = 0;
                 for (const auto& element : arr->getElements()->getExpressions()) {
                     const auto elementInfo = inferExpressionTypeInfo(*element);
@@ -4983,7 +5182,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                     if (common == 0) common = elementInfo.typeId;
                     else if (common != elementInfo.typeId) { common = 100; break; }
                 }
-                result.elementTypeId = common == 0 ? 100 : common;
+                if (arr->isAnyArray()) {
+                    if (common != 0 && common != 100) result.elementTypeId = common;
+                } else {
+                    result.elementTypeId = common == 0 ? 100 : common;
+                }
             }
             return result;
         }
@@ -5014,7 +5217,9 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         const auto future = inferExpressionTypeInfo(awaitExpr->getFuture());
         if (future.typeId == 123) {
             result.typeId = future.elementTypeId != 0 ? future.elementTypeId : 100;
+            result.className = builtinClassNameFromTypeId(result.typeId);
         }
+        result.isNullable = future.isNullable;
         return result;
     }
 
@@ -5040,6 +5245,77 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         result.className = "HashMap";
         result.keyTypeId = hashMapKeyTypeId(newHash->getHashMapType());
         result.elementTypeId = typeIdFromDeclaredType(&newHash->getHashMapType().getValueType());
+        return result;
+    }
+
+    if (auto unaryMinus = dynamic_cast<const ast::UnaryMinus*>(&expr)) {
+        return inferExpressionTypeInfo(unaryMinus->getOperand());
+    }
+
+    if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
+        const auto operand = inferExpressionTypeInfo(logicalNot->getOperand());
+        result.typeId = operand.typeId == 104 ? 104 : 3;
+        result.elementTypeId = operand.elementTypeId;
+        return result;
+    }
+
+    if (auto logicalAnd = dynamic_cast<const ast::LogicalAnd*>(&expr)) {
+        const auto left = inferExpressionTypeInfo(logicalAnd->getLeft());
+        const auto right = inferExpressionTypeInfo(logicalAnd->getRight());
+        result.typeId = (left.typeId == 104 || right.typeId == 104) ? 104 : 3;
+        return result;
+    }
+
+    if (auto logicalOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
+        const auto left = inferExpressionTypeInfo(logicalOr->getLeft());
+        const auto right = inferExpressionTypeInfo(logicalOr->getRight());
+        result.typeId = (left.typeId == 104 || right.typeId == 104) ? 104 : 3;
+        return result;
+    }
+
+    if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
+        const auto left = inferExpressionTypeInfo(binary->getLeft());
+        const auto right = inferExpressionTypeInfo(binary->getRight());
+        // Tensor comparisons and logical operations return tensor masks, not
+        // scalar booleans. Preserve that shape so the code generator selects
+        // the tensor runtime path for chained indexing and composition.
+        if (left.typeId == 104 || right.typeId == 104) {
+            result.typeId = 104;
+            result.elementTypeId = 8;
+            return result;
+        }
+        switch (binary->getOperator()) {
+            case ast::BinaryOperator::EQUALS:
+            case ast::BinaryOperator::NOT_EQUALS:
+            case ast::BinaryOperator::LESS:
+            case ast::BinaryOperator::LESS_EQUALS:
+            case ast::BinaryOperator::GREATER:
+            case ast::BinaryOperator::GREATER_EQUALS:
+                result.typeId = 3;
+                return result;
+            case ast::BinaryOperator::PLUS:
+                if (left.typeId == 101 || right.typeId == 101) {
+                    result.typeId = 101;
+                    result.className = "String";
+                    return result;
+                }
+                break;
+            default:
+                break;
+        }
+        if (left.typeId == 125 || right.typeId == 125) {
+            result.typeId = 125;
+        } else if (left.typeId == 9 || right.typeId == 9) {
+            result.typeId = 9;
+        } else if (left.typeId == 2 || right.typeId == 2) {
+            result.typeId = 2;
+        } else if (left.typeId == right.typeId) {
+            result = left;
+        } else if (left.typeId != 100) {
+            result = left;
+        } else {
+            result = right;
+        }
         return result;
     }
 
@@ -5080,20 +5356,33 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             }
         }
         auto selectOverload = [&](const std::vector<OverloadReturnInfo>& overloads) -> const OverloadReturnInfo* {
-            const OverloadReturnInfo* fallback = nullptr;
+            const OverloadReturnInfo* best = nullptr;
+            int bestScore = INT_MAX;
             for (const auto& overload : overloads) {
                 if (overload.parameterTypes.size() != argumentTypeIds.size()) continue;
-                bool exact = true;
+                int score = 0;
+                bool viable = true;
                 for (size_t i = 0; i < argumentTypeIds.size(); ++i) {
                     const bool argNullable = argumentNullable[i];
                     const bool paramNullable = i < overload.parameterIsNullable.size() ? overload.parameterIsNullable[i] : false;
-                    if (overload.parameterTypes[i] != argumentTypeIds[i]) { exact = false; break; }
-                    if (argNullable && !paramNullable) { exact = false; break; }
+                    const uint32_t actual = argumentTypeIds[i];
+                    const uint32_t expected = overload.parameterTypes[i];
+                    if (argNullable && !paramNullable) { viable = false; break; }
+                    if (actual == expected) continue;
+                    if (expected == 1 && (actual == 5 || actual == 6)) score += 1;
+                    else if (expected == 2 && actual == 9) score += 1;
+                    else if (expected == 2 && (actual == 1 || actual == 5 || actual == 6)) score += 2;
+                    else if (expected == 3 && actual == 8) score += 1;
+                    else if (expected == 100) score += 3;
+                    else if (expected == 0) score += 20;
+                    else { viable = false; break; }
                 }
-                if (exact) return &overload;
-                if (!fallback) fallback = &overload;
+                if (viable && score < bestScore) {
+                    best = &overload;
+                    bestScore = score;
+                }
             }
-            return fallback;
+            return best;
         };
         const ast::Identifier* functionId = dynamic_cast<const ast::Identifier*>(&funcCall->getFunction());
         if (!functionId) {
@@ -5102,6 +5391,17 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             }
         }
         if (auto id = functionId) {
+            if (isHooModuleFreeFunction(id->getName())) {
+                std::vector<uint32_t> freeFunctionArgs;
+                if (funcCall->getArguments()) {
+                    for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                        freeFunctionArgs.push_back(inferExpressionTypeInfo(*arg).typeId);
+                    }
+                }
+                result.typeId = hooModuleFreeFunctionReturnTypeId(id->getName(), freeFunctionArgs);
+                result.className = builtinClassNameFromTypeId(result.typeId);
+                return result;
+            }
             auto overloadIt = functionOverloadReturns_.find(id->getName());
             if (overloadIt != functionOverloadReturns_.end()) {
                 if (const auto* selected = selectOverload(overloadIt->second)) return selected->result;
@@ -5111,6 +5411,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 result.typeId = it->second;
                 auto classIt = functionReturnClass_.find(id->getName());
                 if (classIt != functionReturnClass_.end()) result.className = classIt->second;
+                auto externalMeta = externalFunctionMetadata_.find(id->getName());
+                if (externalMeta != externalFunctionMetadata_.end() && result.className.empty()) {
+                    result.className = externalMeta->second.returnClass;
+                }
+                if (result.className.empty()) result.className = builtinClassNameFromTypeId(result.typeId);
                 if (result.typeId == 123) {
                     auto futureIt = functionFutureElementTypes_.find(id->getName());
                     if (futureIt != functionFutureElementTypes_.end()) result.elementTypeId = futureIt->second;
@@ -5179,6 +5484,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 result.typeId = 113; result.className = "Buffer"; return result;
             }
             result.typeId = inferExpressionTypeIdLegacy(expr);
+            result.className = builtinClassNameFromTypeId(result.typeId);
             return result;
         }
     }

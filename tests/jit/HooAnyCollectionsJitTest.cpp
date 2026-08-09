@@ -238,6 +238,56 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralIndexRead) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 20);
 }
 
+TEST_F(HooAnyCollectionsJitTest, AnyArrayHomogeneousStringElementChainedLength) {
+    const std::string source = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = ["ab", "cdef"]any;
+            return values[0].length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
+}
+
+TEST_F(HooAnyCollectionsJitTest, AnyArrayHomogeneousIntElementInfersScalar) {
+    const std::string source = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = [10, 20, 30]any;
+            var v = values[1];
+            return v;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 20);
+}
+
+TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedElementsStayDynamic) {
+    const std::string source = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = ["ab", 42]any;
+            return values.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
+}
+
+TEST_F(HooAnyCollectionsJitTest, AnyArrayEmptyLiteralStaysDynamic) {
+    const std::string source = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = []any;
+            values.push("x");
+            return values.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
 TEST_F(HooAnyCollectionsJitTest, AnyFunctionReturnAndUse) {
     const std::string source = R"(
         import hoo;

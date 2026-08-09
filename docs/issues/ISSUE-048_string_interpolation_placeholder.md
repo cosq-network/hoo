@@ -19,6 +19,11 @@ The grammar defines an `interpolatedString` production, but it is explicitly mar
 4. Add runtime helpers if needed for efficient multi-part concatenation.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **FIXED**
 - **Priority**: **MEDIUM**
+
+## 6. Resolution
+Interpolation is parsed into text and expression parts by the AST builder and
+lowered to managed string construction and concatenation by the HVM code
+generator. Parser, AST, codegen, cleanup, and JIT regressions are covered.

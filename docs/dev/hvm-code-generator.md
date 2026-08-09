@@ -127,6 +127,24 @@ The codegen inserts `retain` calls after object allocations and `release` calls 
 - Method dispatch
 - Serialization
 
+`inferExpressionTypeInfo()` is the authoritative recursive path. It preserves
+type ID, class name, element type, key type, and nullability through method and
+function chains, fields, array access, await, collection expressions, and
+scalar/logical expressions. Method dispatch keeps a multi-class candidate index
+(`methodNameToClasses_`) and only uses a single class after receiver inference;
+ambiguous unknown receivers are rejected during code generation.
+
+For low-precision comparisons, byte-to-byte relational expressions use the
+native HVM 1.5 `CMP_B` family. Mixed byte/integer expressions continue to use
+the wide comparison family so their existing 64-bit ABI behavior is preserved.
+
+Imported archive functions may provide `ExternalFunctionInfo` metadata with
+module path, return type, and parameter types. The code generator retains this
+metadata across module generation and uses it for direct chained inference and
+external symbol mangling. Overload ranking prefers exact matches, then safe
+widening conversions (`int8`/`byte` to `int64`, numeric values to `double`,
+`f8` to `double`, and `bit` to `bool`), followed by generic/object fallbacks.
+
 ### Module imports
 
 Three tracking structures manage imports:

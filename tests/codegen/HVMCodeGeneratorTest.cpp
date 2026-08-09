@@ -108,6 +108,141 @@ TEST_F(HVMCodeGeneratorTest, AccessQualifiersAffectMethodSymbolsAndBindings) {
               std::vector<std::string>{"PRIVATE"});
 }
 
+TEST_F(HVMCodeGeneratorTest, UnknownReceiverDoesNotUseArbitraryMethodCandidate) {
+    const std::string code = R"(
+        class First {
+            constructor() {}
+            func :int64 value() { return 1; }
+        }
+        class Second {
+            constructor() {}
+            func :int64 value() { return 2; }
+        }
+        func :any makeUnknown() { return null; }
+        func :int64 test() {
+            var value = makeUnknown();
+            return value.value();
+        }
+    )";
+
+    auto module = compiler_->compile("dispatch_safety", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_NE(compiler_->getLastError().find("unknown receiver"), std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorTest, ExternalReturnMetadataSupportsChainedDispatch) {
+    ExternalFunctionInfo info;
+    info.modulePath = "dep";
+    info.returnType = "string";
+    compiler_->setExternalFunctionMetadata({{"makeText", info}});
+
+    const std::string code = R"(
+        import dep;
+        func :int64 test() {
+            return makeText().length();
+        }
+    )";
+    auto module = compiler_->compile("root", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+}
+
+TEST_F(HVMCodeGeneratorTest, AnyArrayHomogeneousStringElementChainsToString) {
+    const std::string code = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = ["ab", "cd"]any;
+            return values[0].length();
+        }
+    )";
+    auto module = compiler_->compile("root", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_String_length"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorTest, AnyArrayHomogeneousIntElementDoesNotChainToObject) {
+    const std::string code = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = [10, 20]any;
+            return values[0].length();
+        }
+    )";
+    auto module = compiler_->compile("root", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_NE(compiler_->getLastError().find("Cannot resolve method 'length'"), std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorTest, AnyArrayMixedElementsRemainDynamic) {
+    const std::string code = R"(
+        import hoo.collections;
+        func :int64 test() {
+            var values = ["ab", 42]any;
+            return values.length();
+        }
+    )";
+    auto module = compiler_->compile("root", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+}
+
+TEST_F(HVMCodeGeneratorTest, ExternalUserClassReturnMetadataSurvivesInference) {
+    ExternalFunctionInfo info;
+    info.modulePath = "dep";
+    info.returnType = "ptr";
+    info.returnClass = "RemoteResult";
+    compiler_->setExternalFunctionMetadata({{"makeResult", info}});
+
+    const std::string code = R"(
+        import dep;
+        func :int64 test() {
+            var result = makeResult();
+            return result.value();
+        }
+    )";
+    auto module = compiler_->compile("root", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+}
+
+TEST_F(HVMCodeGeneratorTest, ExternalOverloadMetadataKeepsAllCandidates) {
+    ExternalFunctionInfo intInfo;
+    intInfo.modulePath = "dep";
+    intInfo.returnType = "int64";
+    intInfo.parameterTypes = {"int64"};
+    ExternalFunctionInfo stringInfo;
+    stringInfo.modulePath = "dep";
+    stringInfo.returnType = "string";
+    stringInfo.parameterTypes = {"string"};
+    ExternalFunctionMetadataSets metadata;
+    metadata["choose"] = {intInfo, stringInfo};
+    compiler_->setExternalFunctionMetadataSets(metadata);
+
+    const std::string code = R"(
+        import dep;
+        func :int64 test() { return choose(7); }
+    )";
+    auto module = compiler_->compile("root", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+}
+
+TEST_F(HVMCodeGeneratorTest, OverloadInferencePrefersWideningRankOverGenericFallback) {
+    const std::string code = R"(
+        func :int64 choose(value: int64) { return 11; }
+        func :double choose(value: double) { return 22.0; }
+        func :int64 test() { return choose(7); }
+    )";
+    auto module = compiler_->compile("overload_rank", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+    EXPECT_NE(findSymbol(*module, "choose"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorTest, ByteSliceTypeIsAcceptedAsBorrowedPointerType) {
+    const std::string code = R"(
+        func :int64 length(data: slice<byte>) { return 1; }
+    )";
+    auto module = compiler_->compile("slice_type", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+    EXPECT_NE(findSymbol(*module, "length"), nullptr);
+}
+
 TEST_F(HVMCodeGeneratorTest, AsyncAwaitCodeGeneration) {
     std::string code = R"(
         async func:Future<int64> fetchData() {

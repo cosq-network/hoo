@@ -1,8 +1,21 @@
 #pragma once
 
 #include <memory>
+#include <string>
+#include <vector>
+#include <unordered_map>
 
 namespace hooc {
+
+struct ExternalFunctionInfo {
+    std::string modulePath;
+    std::string returnType;
+    std::string returnClass;
+    std::vector<std::string> parameterTypes;
+};
+
+using ExternalFunctionMetadataSets =
+    std::unordered_map<std::string, std::vector<ExternalFunctionInfo>>;
 
 /**
  * Opaque types for code generator output.

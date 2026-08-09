@@ -153,9 +153,7 @@ message(STATUS "ANTLR4 Library: ${ANTLR4_LIBRARY}")
 
 find_package(ZLIB REQUIRED)
 
-if(NOT APPLE)
-    find_package(OpenSSL REQUIRED)
-endif()
+find_package(OpenSSL REQUIRED)
 
 find_package(CURL REQUIRED)
 find_package(libzip REQUIRED)
@@ -298,6 +296,7 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/hoo_thread.cpp
     src/runtime/lib/hoo_json.cpp
     src/runtime/lib/hoo_buffer.cpp
+    src/runtime/lib/hoo_byte_slice.cpp
     src/runtime/lib/hoo_overload.cpp
     src/runtime/lib/hoo_decimal.cpp
 )
@@ -313,9 +312,7 @@ target_compile_definitions(hoort PRIVATE
     $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
 )
 
-if(NOT APPLE)
-    target_link_libraries(hoort PUBLIC OpenSSL::Crypto)
-endif()
+target_link_libraries(hoort PUBLIC OpenSSL::Crypto OpenSSL::SSL)
 target_link_libraries(hoort PUBLIC ZLIB::ZLIB)
 target_link_libraries(hoort PUBLIC $<TARGET_NAME_IF_EXISTS:libuv::uv>)
 target_link_libraries(hoort PUBLIC $<TARGET_NAME_IF_EXISTS:libuv::uv_a>)

@@ -1404,6 +1404,24 @@ TEST_F(HVMJITInstructionSemanticsTest, UnsignedCmpLessEqualFalse) {
     EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
 }
 
+TEST_F(HVMJITInstructionSemanticsTest, NativeByteUnsignedComparisonsUseLowEightBits) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 200}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 10}),
+        makeR(Opcode::CMP_B, OperandsR{4, 2, 3, 4}), // 200 <u 10 == false
+        makeR(Opcode::CMP_B, OperandsR{5, 3, 2, 4}), // 10 <u 200 == true
+        makeR(Opcode::ARITH, OperandsR{1, 4, 5, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["cmp_b_unsigned.ho"] = buildModuleBytes("cmp_b_unsigned", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("cmp_b_unsigned.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 1) << jit.getLastError();
+    EXPECT_TRUE(jit.lastRunUsedJIT());
+}
+
 TEST_F(HVMJITInstructionSemanticsTest, ReleaseNullReturnsZero) {
     std::vector<HVMInstruction> ins{
         makeR(Opcode::RELEASE, OperandsR{1, 0, 0, 0}),

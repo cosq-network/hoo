@@ -1,5 +1,14 @@
 #include <gtest/gtest.h>
 #include "runtime/lib/hoo_runtime.h"
+#include <atomic>
+
+namespace {
+std::atomic<int> g_highTypeDestructorCalls{0};
+
+void highTypeDestructor(void*) {
+    g_highTypeDestructorCalls.fetch_add(1, std::memory_order_relaxed);
+}
+}
 
 class HooRuntimeTest : public ::testing::Test {
 protected:
@@ -79,4 +88,17 @@ TEST_F(HooRuntimeTest, TLABThreadCacheResetIsSafe) {
     ASSERT_NE(obj3, nullptr);
     EXPECT_EQ(hoo_get_refcount(obj3), 1);
     hoo_release(obj3);
+}
+
+TEST_F(HooRuntimeTest, DestructorRegistrySupportsTypeIdsBeyondLegacyLimit) {
+    constexpr int64_t typeId = 1000000;
+    g_highTypeDestructorCalls.store(0, std::memory_order_relaxed);
+    hoo_register_destructor(typeId, highTypeDestructor);
+
+    void* obj = hoo_alloc(16, typeId);
+    ASSERT_NE(obj, nullptr);
+    hoo_release(obj);
+
+    EXPECT_EQ(g_highTypeDestructorCalls.load(std::memory_order_relaxed), 1);
+    hoo_register_destructor(typeId, nullptr);
 }

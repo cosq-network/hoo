@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "hoo_byte_slice.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -12,7 +13,8 @@ extern "C" {
 //
 // Provides network operations for the hoo.net module.
 // Includes URL parsing, HTTP client, and HTTP response handling.
-// Note: Full socket support is planned for future implementation.
+// Raw sockets use libuv handles underneath. Calls are synchronous at the C
+// ABI boundary, but all I/O is performed through non-blocking libuv streams.
 
 // ============================================================================
 // URL Class
@@ -210,6 +212,69 @@ HooHttpClient hoo_net_http_client_retain(HooHttpClient client);
  * @param client HTTP client
  */
 void hoo_net_http_client_release(HooHttpClient client);
+
+// ============================================================================
+// TCP Socket API
+// ============================================================================
+
+typedef void* HooSocket;
+
+HooSocket hoo_net_socket_new(void);
+int64_t hoo_net_socket_connect(HooSocket socket, const char* host, int64_t port);
+int64_t hoo_net_socket_connect_tls(HooSocket socket, const char* host, int64_t port, int64_t verify_peer);
+int64_t hoo_net_socket_enable_tls_server(HooSocket socket, const char* certificate_file, const char* private_key_file);
+int64_t hoo_net_socket_set_timeout(HooSocket socket, int64_t timeout_ms);
+int64_t hoo_net_socket_bind(HooSocket socket, const char* host, int64_t port);
+int64_t hoo_net_socket_listen(HooSocket socket, int64_t backlog);
+HooSocket hoo_net_socket_accept(HooSocket socket);
+int64_t hoo_net_socket_send(HooSocket socket, HooByteSlice data);
+HooBuffer hoo_net_socket_receive(HooSocket socket, int64_t max_length);
+const char* hoo_net_socket_last_error(HooSocket socket);
+int64_t hoo_net_socket_local_port(HooSocket socket);
+int64_t hoo_net_socket_close(HooSocket socket);
+HooSocket hoo_net_socket_retain(HooSocket socket);
+void hoo_net_socket_release(HooSocket socket);
+
+// ----------------------------------------------------------------------------
+// TLS server certificate rotation
+// ----------------------------------------------------------------------------
+
+/**
+ * Replace the PEM certificate/key served by an already-configured TLS server
+ * socket. New accepted connections use the rotated certificate while existing
+ * connections keep the previous one.
+ * @return 0 on success, -1 on failure
+ */
+int64_t hoo_net_socket_set_tls_server_certificate(HooSocket socket, const char* certificate_file, const char* private_key_file);
+
+/**
+ * Return the subject common name of the peer certificate presented during the
+ * TLS handshake (must be released by the caller), or NULL when unavailable.
+ */
+char* hoo_net_socket_peer_cert_subject(HooSocket socket);
+
+// ----------------------------------------------------------------------------
+// Protocol-level asynchronous socket callbacks
+//
+// These functions register event callbacks driven by the socket's libuv event
+// loop instead of blocking at the C boundary. After registering callbacks, call
+// hoo_net_socket_run() to pump the loop until no handles remain active, or
+// hoo_net_socket_run_nowait() to process ready events once. The data callback
+// receives 0 for length on EOF/error, and NULL data on a closed stream.
+// ----------------------------------------------------------------------------
+
+typedef void (*HooSocketConnectCallback)(int64_t status, void* userdata);
+typedef void (*HooSocketDataCallback)(const void* data, int64_t length, void* userdata);
+typedef void (*HooSocketAcceptCallback)(HooSocket client, void* userdata);
+typedef void (*HooSocketCloseCallback)(void* userdata);
+
+int64_t hoo_net_socket_async_connect(HooSocket socket, const char* host, int64_t port,
+                                     HooSocketConnectCallback callback, void* userdata);
+int64_t hoo_net_socket_async_accept(HooSocket socket, HooSocketAcceptCallback callback, void* userdata);
+int64_t hoo_net_socket_async_start_read(HooSocket socket, HooSocketDataCallback callback, void* userdata);
+int64_t hoo_net_socket_async_close(HooSocket socket, HooSocketCloseCallback callback, void* userdata);
+int64_t hoo_net_socket_run(HooSocket socket);
+int64_t hoo_net_socket_run_nowait(HooSocket socket);
 
 #ifdef __cplusplus
 }

@@ -26,6 +26,11 @@ public:
     std::string toString() const override;
 };
 
+class ByteSliceType : public Type {
+public:
+    std::string toString() const override;
+};
+
 // Primitive types
 enum class PrimitiveTypeKind {
     INT8,

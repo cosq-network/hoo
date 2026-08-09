@@ -31,6 +31,19 @@ ISSUE-041 (function overloading) explicitly notes: "raw byte overloads only afte
 4. Unify paired APIs into single overloads accepting `byte[]`.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **IMPLEMENTED**
 - **Priority**: **MEDIUM**
+
+## 6. Resolution
+The runtime defines `HooByteSlice { const uint8_t* data; int64_t length; }`
+as a borrowed, read-only C ABI view. It has explicit constructors from raw
+bytes and `Buffer`, validity checks, and no ownership or ARC side effects.
+The `slice<byte>` source type is now accepted as a borrowed pointer ABI type,
+and encoding, hashing, compression, and socket runtime entry points accept
+slice handles. Existing raw and `Buffer` APIs remain compatible aliases while
+callers migrate.
+
+The backing `Buffer` must outlive the slice handle. Releasing a slice never
+releases or copies its backing storage; APIs that produce results return new
+owned strings or `Buffer` objects.

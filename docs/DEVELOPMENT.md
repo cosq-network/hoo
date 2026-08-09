@@ -53,23 +53,37 @@ python scripts/generate_changelog.py v0.2.0 > RELEASE_NOTES.md
 
 ## CI/CD Pipelines
 
-| Workflow | File | Trigger |
-|----------|------|---------|
-| **macOS Build & Test** | `.github/workflows/build-and-test.yml` | Push / PR to `main`, `develop` |
-| **Linux Build & Test** | `.github/workflows/linux-build.yml` | Push / PR to `main`, `develop` |
-| **GitHub Release** | `.github/workflows/release.yml` | Tag push `v*` or manual dispatch |
+All jobs live in `.github/workflows/build-and-test.yml`:
+
+| Job | Trigger |
+|-----|---------|
+| **build-macos** (Apple Silicon) | Push / PR to `main`, `develop`; tag push `v*` |
+| **build-linux** (x64, Release) | Push / PR to `main`, `develop`; tag push `v*` |
+| **build-windows** (x64, Release) | Push / PR to `main`, `develop`; tag push `v*` |
+| **create-release-bundle** | Push to `main` (after the three build jobs) |
+| **bump-version** | Push to `main` (after the three build jobs) |
+| **create-release** | Tag push `v*` or manual dispatch |
 
 ### Linux Pipeline Notes
-- Runs on `ubuntu-latest` with LLVM 22, Ninja, CMake, ANTLR4, GoogleTest, and libuv installed from apt.
-- Builds both `Debug` and `Release` configurations.
-- Uploads `hoo-linux-x86_64.tar.gz` artifact for Release builds.
+- Runs on `ubuntu-latest` with LLVM 22 (downloaded from the LLVM release asset),
+  Ninja, CMake, ANTLR4 (via vcpkg), GoogleTest, and libuv/ssl/curl/zip/zstd
+  installed from apt.
+- Configures a single `Release` build and runs `ctest` after the binary check.
+- Uploads `hoo-linux-x86_64.tar.gz` as an artifact.
 
-### GitHub Release Notes
-- Triggered automatically on tag pushes matching `v*`.
-- Builds Linux and macOS binaries in parallel.
-- Validates each binary (`./hoo --version`) before packaging.
-- Generates a categorised changelog from git history.
-- Publishes a GitHub Release with attached `.tar.gz` assets and the generated changelog.
+### Windows Pipeline Notes
+- Runs on `windows-latest` with the MSVC toolchain and LLVM 22.
+- Uses the `windows-vs18-env` CMake preset; dependencies (ANTLR4, curl, etc.)
+  come from vcpkg.
+- Runs `ctest` and packages `hoo-windows-x64.zip`.
+
+### Release Pipeline Notes
+- On a push to `main` the macOS, Linux, and Windows builds run first, then a
+  combined `hoo-all-platforms.tar.gz` bundle is assembled and the version is
+  bumped automatically.
+- On tag pushes matching `v*` (or a manual `workflow_dispatch`), a GitHub
+  Release is published with the platform binaries attached and a categorised
+  changelog generated from git history.
 
 ## Conventional Commit Format
 

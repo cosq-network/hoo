@@ -71,6 +71,8 @@ executed.
 
 ### 4.1 Data movement
 - `NOP` `MOV` `MOVZ` `LUI` `ADDI`
+- `LUI` shifts its 15-bit immediate by 49 bits, matching
+  `hvm::kLuiImmediateShift` in the implementation.
 
 ### 4.2 Integer arithmetic and shifts
 - `ADD` `SUB` `MUL` `DIV` `DIVU` `REM`
@@ -106,6 +108,7 @@ NaN canonicalization: every NaN result is the canonical quiet NaN
 
 ### 4.5 Comparisons
 - Integer: `CMPEQ` `CMPNE` `CMPLT` `CMPLE` `CMPULT` `CMPULE` (`CMPLT`/`CMPLE` are signed, `CMPULT`/`CMPULE` unsigned)
+- Native 8-bit: `CMPEQ.B` `CMPNE.B` `CMPLT.B` `CMPLE.B` `CMPULT.B` `CMPULE.B` (opcode `0x42`; operands are truncated to 8 bits before comparison)
 - Float: `FCMPEQ` `FCMPLT` `FCMPLE`
 
 ### 4.5a HVM 1.5 scalar sub-word operations
@@ -122,6 +125,8 @@ the low-byte operation explicit:
   bit 0.
 - `FLOAT_ARITH_B` (`0x31`): `FADD.B`, `FSUB.B`, `FMUL.B`, and `FDIV.B` over
   canonical E4M3 FP8 bytes.
+- `CMP_B` (`0x42`): `CMPEQ.B`, `CMPNE.B`, `CMPLT.B`, `CMPLE.B`, `CMPULT.B`,
+  and `CMPULE.B` over the low 8 bits of each operand.
 
 Inputs are sampled from bits 7:0. Native integer add/subtract/multiply wrap at
 8 bits; signed division/remainder use signed int8 values and trap on zero or
@@ -130,6 +135,9 @@ shifts, logical right shifts, and signed arithmetic right shifts. Codegen
 sign-extends `int8` results and zero-extends `byte`/`bit` results. FP8
 conversion helpers preserve the existing f64 language ABI when the host lacks
 native FP8 instructions.
+
+For `CMP_B`, functions 2/3 use signed int8 ordering and functions 4/5 use
+unsigned uint8 ordering; all comparison results are normalized to 0 or 1.
 
 ### 4.6 Branch/jump
 - `BEQ` `BNE` `BLT` `BLE`

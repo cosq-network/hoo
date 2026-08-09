@@ -66,7 +66,11 @@ static int scoreArgument(int64_t actual, int64_t expected) {
     // Approved widening conversions
     if (expected == HOO_TYPE_INT64 &&
         (actual == HOO_TYPE_INT8 || actual == HOO_TYPE_BYTE))  return 1;
-    if (expected == HOO_TYPE_FLOAT64 && actual == 7 /*f8*/)   return 1;
+    if (expected == HOO_TYPE_FLOAT64 && actual == HOO_TYPE_INT8) return 2;
+    if (expected == HOO_TYPE_FLOAT64 && actual == HOO_TYPE_BYTE) return 2;
+    if (expected == HOO_TYPE_FLOAT64 && actual == HOO_TYPE_INT64) return 2;
+    if (expected == HOO_TYPE_FLOAT64 && actual == 9 /*f8*/) return 1;
+    if (expected == HOO_TYPE_BOOL && actual == 8 /*bit*/) return 1;
 
     // Object / any fallback
     if (expected == HOO_TYPE_OBJECT) return 3;

@@ -41,7 +41,8 @@ This gap is separate from the higher-level URL/HTTP APIs already described in th
 - Limits integration with servers, custom protocols, and low-level networking scenarios.
 
 ## 5. Status
-- **Date**: 2026-06-19
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **IMPLEMENTED**
 - **Priority**: Medium (runtime capability gap)
 - **Audit 2026-06-21**: URL parsing and HTTP-oriented runtime pieces exist, but the runtime header still marks full socket support as planned. Raw socket APIs remain unimplemented.
+- **Resolution 2026-08-09**: Added libuv-backed TCP creation, DNS-aware connect, IPv4 bind/listen/accept, byte-slice send, Buffer receive, configurable operation timeouts, TLS client connect with optional peer verification, TLS server configuration from PEM certificate/key files, error reporting, retain/release, and close operations. Protocol-level event-loop callbacks remain a future extension.

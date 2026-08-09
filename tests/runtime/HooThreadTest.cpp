@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <atomic>
 #include "runtime/lib/hoo_thread.h"
+#include <thread>
 
 class HooThreadTest : public ::testing::Test {
 };
@@ -89,4 +90,58 @@ TEST_F(HooThreadTest, MutexProtectsSharedCounter) {
     EXPECT_EQ(gSharedCounter, kCounterIterations * 2);
 
     hoo_thread_mutex_destroy(mutex);
+}
+
+TEST_F(HooThreadTest, ScopedLockReleasesOnScopeExit) {
+    HooMutex mutex = hoo_thread_mutex_create();
+    ASSERT_NE(mutex, nullptr);
+    {
+        hoo::thread::ScopedLock lock(mutex);
+        EXPECT_TRUE(lock.owns_lock());
+        EXPECT_EQ(hoo_thread_mutex_try_lock(mutex), 1);
+    }
+    EXPECT_EQ(hoo_thread_mutex_try_lock(mutex), 0);
+    EXPECT_EQ(hoo_thread_mutex_unlock(mutex), 0);
+    EXPECT_EQ(hoo_thread_mutex_destroy(mutex), 0);
+}
+
+struct ConditionState {
+    HooMutex mutex;
+    HooCondition condition;
+    bool ready = false;
+};
+
+static int64_t condition_signal_thread(void* arg) {
+    auto* state = static_cast<ConditionState*>(arg);
+    hoo_thread_mutex_lock(state->mutex);
+    state->ready = true;
+    hoo_thread_condition_notify_one(state->condition);
+    hoo_thread_mutex_unlock(state->mutex);
+    return 0;
+}
+
+TEST_F(HooThreadTest, ConditionVariableWaitAndNotify) {
+    ConditionState state{hoo_thread_mutex_create(), hoo_thread_condition_create(), false};
+    ASSERT_NE(state.mutex, nullptr);
+    ASSERT_NE(state.condition, nullptr);
+    int64_t tid = hoo_thread_spawn(condition_signal_thread, &state);
+    ASSERT_GT(tid, 0);
+
+    hoo_thread_mutex_lock(state.mutex);
+    while (!state.ready) {
+        EXPECT_EQ(hoo_thread_condition_wait(state.condition, state.mutex), 0);
+    }
+    hoo_thread_mutex_unlock(state.mutex);
+    EXPECT_EQ(hoo_thread_join(tid), 0);
+    hoo_thread_condition_destroy(state.condition);
+    hoo_thread_mutex_destroy(state.mutex);
+}
+
+TEST_F(HooThreadTest, SemaphoreTryWaitAndPost) {
+    HooSemaphore semaphore = hoo_thread_semaphore_create(0);
+    ASSERT_NE(semaphore, nullptr);
+    EXPECT_EQ(hoo_thread_semaphore_try_wait(semaphore), 1);
+    EXPECT_EQ(hoo_thread_semaphore_post(semaphore), 0);
+    EXPECT_EQ(hoo_thread_semaphore_try_wait(semaphore), 0);
+    EXPECT_EQ(hoo_thread_semaphore_destroy(semaphore), 0);
 }

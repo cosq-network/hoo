@@ -118,12 +118,12 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-014_jit_exception_state_race.md](issues/ISSUE-014_jit_exception_state_race.md)**
   - **Title**: # ISSUE-014: Unsynchronized Global State in JIT Exception Handling
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: FIXED — exception-state map has dedicated synchronization
   - **Priority**: LOW
 
 - **[ISSUE-015_method_dispatch_conflict.md](issues/ISSUE-015_method_dispatch_conflict.md)**
   - **Title**: # ISSUE-015: Method Name Resolution Uses Single-Class Map, Causing Wrong Dispatch
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: FIXED — receiver-aware dispatch, multi-class indexing, and safe ambiguity diagnostics
   - **Priority**: HIGH
 
 - **[ISSUE-017_test_infrastructure.md](issues/ISSUE-017_test_infrastructure.md)**
@@ -133,7 +133,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-018_lui_shift.md](issues/ISSUE-018_lui_shift.md)**
   - **Title**: # ISSUE-018: LUI Shift Value Mismatch with Encoding
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: FIXED — shared constant and encoding regression coverage
   - **Priority**: MEDIUM
 
 - **[ISSUE-019_register_leaks.md](issues/ISSUE-019_register_leaks.md)**
@@ -143,7 +143,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-020_class_modifiers_pruned.md](issues/ISSUE-020_class_modifiers_pruned.md)**
   - **Title**: # ISSUE-020: Removed Class Modifiers and Legacy Grammar Dead Code
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: FIXED — dead grammar and AST helper remnants removed
   - **Priority**: LOW
 
 - **[ISSUE-021_missing_statement_types.md](issues/ISSUE-021_missing_statement_types.md)**
@@ -169,7 +169,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-031_chained_inference.md](issues/ISSUE-031_chained_inference.md)**
   - **Title**: # ISSUE-031: Advanced Return Type Inference for Method Chains
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: IMPLEMENTED — recursive propagation, archive overload metadata, and generic `any[]` element propagation are complete; dynamic `any`-return receivers stay conservative until runtime dispatch exists
   - **Priority**: Medium (Affects code ergonomics and dispatch safety)
 
 - **[ISSUE-035_serializable_class_modifier.md](issues/ISSUE-035_serializable_class_modifier.md)**
@@ -179,7 +179,7 @@ This document provides a high-level overview of the current status of all tracke
   - **Notes**: Grammar, AST, modifier-aware symbol mangling and source dispatch, constructor/type/cycle validation, inherited and nested field lowering, tagged buffer/tensor JSON round-trips, and runtime/codegen regression coverage. Phase 11.3 complete.
 
 
-## Proposed / Open / Backlog
+## Open / Backlog
 
 - **[ISSUE-013_unicode_escapes.md](issues/ISSUE-013_unicode_escapes.md)**
   - **Title**: # ISSUE-013: Missing Unicode and Hex Escape Sequences in String Literals
@@ -198,7 +198,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-029_unsigned_comparisons.md](issues/ISSUE-029_unsigned_comparisons.md)**
   - **Title**: # ISSUE-029: Missing Unsigned Comparison Instructions in HVM
-  - **Status**: PARTIALLY IMPLEMENTED
+  - **Status**: FIXED — wide unsigned comparisons and native HVM 1.5 `CMP_B` comparisons are implemented
   - **Priority**: High (Crucial for `byte` type correctness)
 
 - **[ISSUE-030_tensor_scalar_arithmetic.md](issues/ISSUE-030_tensor_scalar_arithmetic.md)**
@@ -220,7 +220,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-037_network_runtime_socket_support.md](issues/ISSUE-037_network_runtime_socket_support.md)**
   - **Title**: # ISSUE-037: Runtime Networking API Is Missing Full Socket Support
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED — DNS-aware TCP, timeouts, and TLS client support are available
   - **Priority**: Medium (runtime capability gap)
 
 - **[ISSUE-039_list_intrinsic.md](issues/ISSUE-039_list_intrinsic.md)**
@@ -248,7 +248,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-046_managed_object_linked_list.md](issues/ISSUE-046_managed_object_linked_list.md)**
   - **Title**: # ISSUE-046: `hoo_is_managed_object` O(n) Linked-List Walk With Global Mutex
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED — hashed tracking with striped mutexes replaced the global linked-list walk
   - **Priority**: HIGH
 
 - **[ISSUE-047_nullable_types_missing_codegen.md](issues/ISSUE-047_nullable_types_missing_codegen.md)**
@@ -258,30 +258,57 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-048_string_interpolation_placeholder.md](issues/ISSUE-048_string_interpolation_placeholder.md)**
   - **Title**: # ISSUE-048: String Interpolation Is a Placeholder Only
-  - **Status**: PROPOSED
+  - **Status**: FIXED — AST parsing, concatenation lowering, and JIT coverage are implemented
   - **Priority**: MEDIUM
 
 - **[ISSUE-049_json_deserialize_type_promotion.md](issues/ISSUE-049_json_deserialize_type_promotion.md)**
   - **Title**: # ISSUE-049: JSON Deserialization Does Not Reverse Serialization Type Promotion
-  - **Status**: PROPOSED
+  - **Status**: FIXED — narrow integer, FP8, bit, and Buffer round trips are covered
   - **Priority**: HIGH
 
 - **[ISSUE-050_raii_scoped_lock.md](issues/ISSUE-050_raii_scoped_lock.md)**
   - **Title**: # ISSUE-050: No RAII Scoped Lock for Mutex
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED — native `ScopedLock` and mutex try-lock are available
   - **Priority**: MEDIUM
 
 - **[ISSUE-052_condition_variables_thread_notification.md](issues/ISSUE-052_condition_variables_thread_notification.md)**
   - **Title**: # ISSUE-052: No Condition Variables or Thread Notification Mechanism
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED — condition variables and semaphores are available in the C ABI
   - **Priority**: MEDIUM
 
 - **[ISSUE-053_byte_slice_type.md](issues/ISSUE-053_byte_slice_type.md)**
   - **Title**: # ISSUE-053: Missing First-Class `byte[]` / Slice Type Causes Runtime API Duplication
-  - **Status**: PROPOSED
+  - **Status**: IMPLEMENTED — `slice<byte>` syntax and slice-aware encoding/hash/compression/socket APIs are available
   - **Priority**: MEDIUM
 
 - **[ISSUE-055_destructor_table_limit.md](issues/ISSUE-055_destructor_table_limit.md)**
   - **Title**: # ISSUE-055: Destructor Table Size Limited to 256 Type IDs
-  - **Status**: PROPOSED
+  - **Status**: FIXED — synchronized dynamic destructor registry supports arbitrary non-negative type IDs
   - **Priority**: MEDIUM
+
+## Recommended Next Work
+
+1. **Finish ISSUE-031 advanced inference**
+   - Add explicit return metadata for external/module signatures.
+   - Define generic type propagation and overload-set metadata across archives.
+   - Keep ambiguous dynamic receivers as compile-time errors until runtime type dispatch is designed.
+
+   Completed: archive overload sets, user-defined return classes, and generic
+   `any[]` element propagation. Dynamic `any`-return receivers remain
+   compile-time errors until runtime type dispatch is designed.
+
+2. **Complete small correctness and specification hardening**
+   - Finish ISSUE-018 by centralizing the LUI shift constant across codegen, interpreter, JIT, and specification tests.
+   - Add a dedicated concurrent regression for ISSUE-014's exception-state ownership and document the shared-lock invariant.
+   - Remove remaining dead grammar and AST helper code from ISSUE-020.
+
+3. **Design concurrency APIs together**
+   - Implement ISSUE-050 mutex ownership and scoped-lock semantics first.
+   - Build ISSUE-052 condition variables and notification primitives on that stable ABI.
+
+4. **Define the byte-view ABI before expanding networking**
+   - Add source-level/JIT wrappers for every slice-aware encoding, hashing, and compression operation.
+   - Add protocol-level asynchronous socket events and certificate rotation.
+
+5. **Treat ISSUE-026 ANN support as a product phase**
+   - Stabilize tensor shape/type inference, serialization, and profiling APIs before adding `grad`, optimizer, and accelerator work.

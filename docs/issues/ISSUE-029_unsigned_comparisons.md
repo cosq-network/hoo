@@ -1,10 +1,12 @@
 # ISSUE-029: Missing Unsigned Comparison Instructions in HVM
 
 ## 1. Overview
-The HVM ISA (v1.4 and proposed v1.5) currently lacks explicit support for unsigned integer comparisons (`<`, `<=`, `>`, `>=`). This causes semantic errors when using the `byte` type, which is intended to be unsigned.
+Before this fix, the HVM ISA implementation lacked explicit native support
+for unsigned sub-word integer comparisons. This caused semantic errors when
+using the `byte` type, which is intended to be unsigned.
 
 ## 2. Technical Analysis
-Currently, `Opcode::CMP` (0x40) only implements signed comparisons:
+The original implementation of `Opcode::CMP` (0x40) only implemented signed comparisons:
 - `func 2`: `CMPLT` (Signed Less Than)
 - `func 3`: `CMPLE` (Signed Less Than or Equal)
 
@@ -17,13 +19,17 @@ When the Hoo compiler encounters `byte a < byte b`, it generates a `CMPLT` instr
 - **Codegen Update**: Update `visitBinaryExpression` to check if operands are unsigned (`byte`) and emit the unsigned comparison opcodes.
 
 ## 4. Status
-- **Date**: 2026-06-16
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-08-09
+- **Status**: **FIXED**
 - **Priority**: High (Crucial for `byte` type correctness)
-- **Audit 2026-06-21**: No unsigned comparison opcodes or LLVM unsigned integer comparisons were found for byte/sub-word comparisons; this remains unimplemented.
+- **Audit 2026-06-21**: No unsigned comparison opcodes or LLVM unsigned integer comparisons were found for byte/sub-word comparisons; this was the pre-fix state.
 - **Fix 2026-06-24**: Codegen emits `CMP` with func=4 (`CMPULT`) / func=5 (`CMPULE`) when either operand is `byte` (typeId==6). JIT lowers to LLVM `ICmpULT`/`ICmpULE`. ISA mnemonics `cmpult`/`cmpule` registered in `HVMInstruction.cpp`.
-- **Fix 2026-06-29**: Added test coverage: 4 JIT instruction semantics tests for func=4/5, 2 codegen tests verifying unsigned opcode emission, and an end-to-end `.hoo` test with all byte comparison operators. `CMP_B` family (native 8-bit ops) not yet implemented.
+- **Fix 2026-06-29**: Added test coverage for the wide `CMPULT`/`CMPULE` implementation. The native `CMP_B` family remained for the follow-up fix.
 
-## 5. Remaining Gaps
-- `CMP_B` family (native 8-bit unsigned comparison, HVM 1.5 extension) not implemented
-- No zero-extension issue: byte values are stored/loaded as full 64-bit via `ST_D`/`LD_D`, so unsigned semantics work correctly for HVM's current 64-bit register model
+## 5. Resolution
+The HVM 1.5 `CMP_B` family is implemented as opcode `0x42`, including signed
+and unsigned 8-bit equality/ordering forms. The interpreter and LLVM ORC
+translator compare truncated 8-bit operands, and byte-to-byte Hoo comparisons
+emit `CMP_B` while mixed byte/integer comparisons retain the existing wide
+`CMPULT`/`CMPULE` semantics. No zero-extension issue exists: byte values are
+stored/loaded as full 64-bit values via `ST_D`/`LD_D`.

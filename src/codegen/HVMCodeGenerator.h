@@ -25,6 +25,8 @@ public:
     virtual ~HVMCodeGenerator() = default;
     void setModuleContext(const std::string& moduleName);
     void setExternalFunctionImports(const std::unordered_map<std::string, std::pair<std::string, std::string>>& functions);
+    void setExternalFunctionMetadata(const std::unordered_map<std::string, ExternalFunctionInfo>& functions);
+    void setExternalFunctionMetadataSets(const ExternalFunctionMetadataSets& functions);
 
     /**
      * Main entry point: translates a full AST unit into a bytecode module.
@@ -57,6 +59,8 @@ private:
     std::unordered_set<std::string> importedModules_;
     std::unordered_map<std::string, std::string> importedSymbols_;
     std::unordered_map<std::string, std::pair<std::string, std::string>> externalFunctionImports_;
+    std::unordered_map<std::string, ExternalFunctionInfo> externalFunctionMetadata_;
+    ExternalFunctionMetadataSets externalFunctionMetadataSets_;
 
     // True once any null-checking code (LD.D.NZ / null-pointer trap) is emitted;
     // triggers the HVM_NZ module feature flag so loaders accept the module.
@@ -129,7 +133,9 @@ private:
     // AST declarations are retained while generating a module so generated
     // serializable methods can include inherited fields in layout order.
     std::unordered_map<std::string, const ast::ClassDeclaration*> classDeclarations_;
-    std::unordered_map<std::string, std::string> methodNameToClass_;
+    // A method name is not globally unique. Keep every class candidate and
+    // only select one after resolving the receiver type.
+    std::unordered_map<std::string, std::vector<std::string>> methodNameToClasses_;
     std::unordered_map<std::string, bool> isOverloadedFunction_;
     std::unordered_map<std::string, std::unordered_map<std::string, bool>> isOverloadedMethod_; // methodName -> className
     std::unordered_map<std::string, uint32_t> functionReturnTypes_; // functionName -> typeId

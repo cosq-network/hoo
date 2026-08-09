@@ -213,7 +213,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ByteComparisonOperators) {
     auto insts = module->decodeInstructions(module->getSection(".text")->data);
     int unsignedCmpCount = 0;
     for (const auto& inst : insts) {
-        if (inst.getOpcode() == Opcode::CMP) {
+        if (inst.getOpcode() == Opcode::CMP_B) {
             auto ops = inst.getOperands();
             if (std::holds_alternative<OperandsR>(ops)) {
                 auto rOps = std::get<OperandsR>(ops);
@@ -252,6 +252,26 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ByteComparisonSignedVsUnsigned) {
             }
         }
     }
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, ByteToByteComparisonUsesNativeComparisonFamily) {
+    std::string code = R"(
+        func :bool compareBytes(a: byte, b: byte) {
+            return a < b;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+
+    auto insts = module->decodeInstructions(module->getSection(".text")->data);
+    bool foundNativeUnsignedLess = false;
+    for (const auto& inst : insts) {
+        if (inst.getOpcode() != Opcode::CMP_B) continue;
+        const auto* operands = std::get_if<OperandsR>(&inst.getOperands());
+        if (operands && operands->func == 4) foundNativeUnsignedLess = true;
+    }
+    EXPECT_TRUE(foundNativeUnsignedLess);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, SubwordTypesSelectNativeOpcodeFamilies) {

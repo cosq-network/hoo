@@ -21,6 +21,16 @@ The destructor registration table is a fixed-size array of 256 entries. With typ
 3. Add a bounds check and clear error when registration exceeds capacity.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **FIXED**
 - **Priority**: **MEDIUM**
+
+## 6. Resolution
+The fixed 256-entry array was replaced with a synchronized, dynamically
+growing registry keyed by the full non-negative `int64_t` type ID. Callback
+lookup is performed under the registry lock and callbacks run after the lock
+is released. Invalid negative IDs and allocation failures now fail explicitly
+instead of being silently ignored.
+
+The fixed-array definitions in the technical analysis above describe the
+former implementation and are retained only as historical context.

@@ -200,6 +200,10 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
         return std::make_unique<AnyArrayType>();
     }
 
+    if (ctx->sliceType()) {
+        return std::make_unique<ByteSliceType>();
+    }
+
     if (ctx->futureType()) {
         return buildFutureType(ctx->futureType());
     }
@@ -1424,11 +1428,6 @@ int64_t SimpleASTBuilder::getCharValue(antlr4::tree::TerminalNode* node) {
         return data[0]; // Fallback
     }
     throw std::runtime_error("Invalid character literal format: " + text);
-}
-
-bool SimpleASTBuilder::getBoolValue(antlr4::tree::TerminalNode* node) {
-    std::string text = node->getText();
-    return text == "true";
 }
 
 bool SimpleASTBuilder::isInterpolatedString(antlr4::tree::TerminalNode* node) {

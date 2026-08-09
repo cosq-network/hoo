@@ -187,6 +187,7 @@ The normative list is `docs/hvm/hvm_instruction_set.csv`.
 ### 5.1 Required Families (`hvm64-core-system`)
 
 - Data movement: `NOP`, `MOV`, `MOVZ`, `LUI`, `ADDI`
+  - `LUI` places its 15-bit immediate at bit shift 49 (`hvm::kLuiImmediateShift`); the shared constant is the implementation/spec synchronization point.
 - Integer arithmetic: `ADD`, `SUB`, `MUL`, `DIV`, `DIVU`, `REM`, `SHL`, `SHR`, `SAR`
   - Signed integer overflow (`ADD`, `SUB`, `MUL`) raises an arithmetic-overflow trap and does not write `rd`.
   - `DIV` and `REM` raise an arithmetic-overflow trap on `INT64_MIN / -1` and `INT64_MIN % -1`.
@@ -238,7 +239,7 @@ These instructions remain 64-bit operations. They do not change pointer width, r
 
 ### 5.3 HVM 1.5 scalar sub-word profile
 
-The HVM 1.5 scalar profile adds four base-encoded instruction families while
+The HVM 1.5 scalar profile adds five base-encoded instruction families while
 retaining the 64-bit register machine:
 
 - `ARITH_B` (`0x11`) samples operands from bits 7:0 and provides wrapping
@@ -252,6 +253,9 @@ retaining the 64-bit register machine:
 - `FLOAT_ARITH_B` (`0x31`) performs arithmetic on canonical E4M3 FP8 byte
   encodings. The interpreter and LLVM JIT use a software-compatible shim when
   host FP8 instructions are unavailable.
+- `CMP_B` (`0x42`) compares the low 8 bits of two registers. Functions 0/1 are
+  equality/inequality, 2/3 are signed less-than/less-than-or-equal, and 4/5
+  are unsigned less-than/less-than-or-equal. Results are normalized to 0 or 1.
 
 Integer sub-word instructions write a low-byte result. The compiler applies
 sign extension for `int8` and zero extension for `byte`/`bit` when values

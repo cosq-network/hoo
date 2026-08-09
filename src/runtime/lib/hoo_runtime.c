@@ -98,14 +98,70 @@ typedef struct TLABObjNode {
 
 static _Thread_local TLABObjNode* g_tlab_objects = NULL;
 
-#define HOO_DESTRUCTOR_TABLE_SIZE 256
+typedef struct {
+    int64_t type_id;
+    HooDestructor destructor;
+} HooDestructorEntry;
 
-static HooDestructor g_destructors[HOO_DESTRUCTOR_TABLE_SIZE] = {NULL};
+static hoo_mutex_t g_destructors_mutex = HOO_MUTEX_INIT;
+static HooDestructorEntry* g_destructors = NULL;
+static size_t g_destructor_count = 0;
+static size_t g_destructor_capacity = 0;
 
 void hoo_register_destructor(int64_t type_id, HooDestructor dtor) {
-    if (type_id >= 0 && type_id < HOO_DESTRUCTOR_TABLE_SIZE) {
-        g_destructors[type_id] = dtor;
+    if (type_id < 0) {
+        fprintf(stderr, "FATAL: Invalid negative destructor type ID: %lld\n", (long long)type_id);
+        abort();
     }
+
+    hoo_mutex_lock(&g_destructors_mutex);
+    for (size_t i = 0; i < g_destructor_count; ++i) {
+        if (g_destructors[i].type_id != type_id) continue;
+
+        if (dtor) {
+            g_destructors[i].destructor = dtor;
+        } else {
+            g_destructors[i] = g_destructors[g_destructor_count - 1];
+            --g_destructor_count;
+        }
+        hoo_mutex_unlock(&g_destructors_mutex);
+        return;
+    }
+
+    if (!dtor) {
+        hoo_mutex_unlock(&g_destructors_mutex);
+        return;
+    }
+
+    if (g_destructor_count == g_destructor_capacity) {
+        size_t new_capacity = g_destructor_capacity ? g_destructor_capacity * 2 : 16;
+        HooDestructorEntry* entries = (HooDestructorEntry*)realloc(
+            g_destructors, new_capacity * sizeof(HooDestructorEntry));
+        if (!entries) {
+            hoo_mutex_unlock(&g_destructors_mutex);
+            fprintf(stderr, "FATAL: Out of memory while registering destructor for type ID %lld\n",
+                    (long long)type_id);
+            abort();
+        }
+        g_destructors = entries;
+        g_destructor_capacity = new_capacity;
+    }
+
+    g_destructors[g_destructor_count++] = (HooDestructorEntry){type_id, dtor};
+    hoo_mutex_unlock(&g_destructors_mutex);
+}
+
+static HooDestructor hoo_find_destructor(int64_t type_id) {
+    HooDestructor result = NULL;
+    hoo_mutex_lock(&g_destructors_mutex);
+    for (size_t i = 0; i < g_destructor_count; ++i) {
+        if (g_destructors[i].type_id == type_id) {
+            result = g_destructors[i].destructor;
+            break;
+        }
+    }
+    hoo_mutex_unlock(&g_destructors_mutex);
+    return result;
 }
 
 #define HOO_MANAGED_HASH_BITS 10
@@ -340,12 +396,9 @@ static void hoo_release_finalize(void* obj, HooObjectHeader* header) {
     atomic_thread_fence(memory_order_acquire);
 
     // Call registered destructor before freeing
-    int64_t type_id = header->type_id;
-    if (type_id >= 0 && type_id < HOO_DESTRUCTOR_TABLE_SIZE) {
-        HooDestructor dtor = g_destructors[type_id];
-        if (dtor) {
-            dtor(obj);
-        }
+    HooDestructor dtor = hoo_find_destructor(header->type_id);
+    if (dtor) {
+        dtor(obj);
     }
 
     managed_unregister(obj);

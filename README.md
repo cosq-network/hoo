@@ -1,11 +1,12 @@
 # Hoo
 
 [![Version](https://img.shields.io/badge/version-1.4.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v1.4.0)
-[![macOS Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
-[![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml/badge.svg)](https://github.com/cosq-network/hoo/actions/workflows/linux-build.yml)
+[![macOS Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-macos)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
+[![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-linux)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
+[![Windows Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-windows)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
 [![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
 
-Last Updated: 2026-08-07
+Last Updated: 2026-08-09
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -37,19 +38,42 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 11 (Buffer Type Integration)**: Added managed mutable byte array (`Buffer`) with a single Hoo constructor (`new Buffer()`), free function byte-source creation (`buffer_fromBytes(...)`), ARC management, JIT wrappers, and symbol registration. Buffer handle points to `BufferImpl` (right after ARC header), matching the HooString memory layout. Includes copy, append, clear, slice, byte-level access, and Buffer-aware overloads in Fs, Encoding, Uuid, Hashing, and Compression modules. Runtime and JIT test coverage updated.
 - [x] **Phase 11.1 (Map OOP API Redesign)**: Consolidated 70+ type-specific C-ABI functions into 15 polymorphic functions (`hoo_map_new`, `hoo_map_set`, `hoo_map_try_get`, `hoo_map_contains_key`, `hoo_map_remove`, `hoo_map_clear`, `hoo_map_count`, `hoo_map_is_empty`, etc.) with internal key/value type dispatch via template helpers. Key/value type-erased via `void*` at the C-ABI layer. JIT wrappers rewritten to delegate to the polymorphic C-ABI. 23 runtime tests + 21 JIT tests pass. Cross-platform fix: char map storage uses `int8_t` instead of `char` to avoid signedness differences on ARM64 Linux.
 - [x] **Phase 11.2 (DateTime Redesign as Instantiable Class)**: Converted DateTime from a raw-int64 singleton API into an ARC-managed instantiable class (type ID 119) with `timestamp: int64` field, enabling future `serializable` modifier support. Added instance methods (`dt.format()`, `dt.addDays()`, `dt.compare()`, etc.), built-in class-qualified factory dispatch (`DateTime.now()`, `DateTime.parse()`), module-level free functions (`datetime_now()`, `datetime_new(ts)`), and full C-level free function wrappers (`hoo_datetime_now`, `hoo_datetime_format`, etc.). 15 JIT tests + 24 runtime tests pass.
-- [x] **Phase 11.3 (Serializable Class Modifier)**: Added `serializable` class modifier to grammar, AST, symbol mangling, and code generation. Implements constructor/type/cycle validation, modifier-aware static and instance dispatch, inherited and nested field lowering, tagged buffer/tensor JSON round-trips, and regression coverage. Full preset verification passes (`2068 tests`, 2 disabled).
+- [x] **Phase 11.3 (Serializable Class Modifier)**: Added `serializable` class modifier to grammar, AST, symbol mangling, and code generation. Implements constructor/type/cycle validation, modifier-aware static and instance dispatch, inherited and nested field lowering, tagged buffer/tensor JSON round-trips, and regression coverage. Full preset verification passes (`2117 tests`, 2 disabled).
 - [x] **Phase 12 (REPL Integration)**: Added interactive REPL shell mode via `--repl` flag, with nested multiline brace matching, built-in commands (`/exit`, `/quit`, `/help`, `/reset`), static library target `hoorepl`, and complete unit testing coverage.
 - [x] **Phase 13 (Function Overloading)**: Implemented function and method overloading capabilities for both built-in core APIs and user-defined functions. Integrates name mangling strategies based on argument types, an `OverloadList` AST grouping node to gracefully handle multiple method declarations, and dynamic runtime dispatch leveraging `CALL_OVERLOADED` instructions directly into the LLVM ORC JIT. Includes robust ambiguity detection with `AmbiguousOverloadException`.
 - [x] **Phase 14 (Archive Loading)**: Cross-file local imports and `.ha` archive format with Zstd compression, manifest, and multi-module JIT loading.
 - [x] **ISSUE-036 (Module Dependency Resolution)**: Corrected per-module dependency graph traversal, transitive topological ordering, explicit cycle detection, bundle/JIT cycle agreement, and loader regression coverage. Removed the obsolete circular-dependency helper.
 - [x] **Phase 15 (Async/Await via libuv)**: Native `async`/`await` syntax, `Future<T>` values (type ID 123), managed and primitive result handling, multiple continuations, and a mutex-protected libuv event loop with cooperative waiting. HVM async functions currently execute through the Future ABI and pump the event loop while awaiting; true VM stack-frame suspension requires future HVM suspend/resume instructions. Coverage includes `NewLanguageFeaturesTest.cpp` and `HooFutureJitTest.cpp`. Language docs: `docs/language/async_await.md`.
-- [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity (113/113 mnemonics), all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion (25 new JIT semantics tests).
+- [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity, including the native `CMP_B` comparison family, all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion.
 - [x] **Nullable Types (ISSUE-047 correctness complete)**: End-to-end `T?` tracking, catchable null checks for member/method/array dereferences, compile-time null-safety validation, distinct nullable overload mangling, and ARC cleanup for nullable named references stored in generic type-ID-100 slots. No required correctness work remains; optional `LD.D.NZ` folding is deferred because its current VM-trap path is not catchable.
 - [x] **Tensor Precision and Broadcasting (ISSUE-025/030)**: Completed low-precision tensor storage, canonical FP8 fallback, native-width integer semantics, scalar promotion, safe tensor-scalar runtime/JIT lowering, and reshape/transpose/softmax utilities.
-- [x] **Verification**: full preset test run passing (`2068 tests`, 2 disabled, 0 failures).
+- [x] **Verification**: full preset test run passing (`2117 tests`, 2 disabled, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 ## Recent Changes
+
+- **Networking and archive integration**: DNS-aware sockets now support
+  configurable timeouts and TLS client/server handshakes. Archive imports
+  preserve complete overload sets and user-defined return classes, while
+  slice-aware encoding, hashing, compression, and construction are registered
+  in the HVM JIT.
+
+- **Runtime concurrency and networking**: added scoped native mutex locking,
+  condition variables, semaphores, borrowed `HooByteSlice` views, and libuv
+  TCP socket operations. Socket receives return owned `Buffer` handles.
+- **Compiler metadata and HVM hardening**: archive imports now preserve external
+  function signatures for chained inference and ranked overload conversion;
+  LUI encoding uses a shared constant and JIT exception state has dedicated
+  synchronization.
+
+- **Runtime safety and dispatch hardening (ISSUE-055, ISSUE-015, ISSUE-031)**:
+  destructor registration now supports arbitrary non-negative type IDs through a
+  synchronized dynamic registry; method dispatch retains all class candidates,
+  uses recursive receiver-aware inference, and rejects ambiguous unknown
+  receivers.
+- **Native byte comparisons (ISSUE-029)**: added HVM 1.5 `CMP_B` (`0x42`) with
+  signed and unsigned 8-bit comparison semantics across codegen, interpreter,
+  and LLVM ORC JIT.
 
 - **Cross-File Local Imports & `.ha` Archives (Phase 14)**: Added native support for cross-file local imports, resolving and compiling local dependencies automatically. The CLI now outputs `.ha` (Hoo Archive) files, a ZIP-compatible, Zstd-compressed container with `manifest.json`, replacing the intermediate `.ho` files.
 - **Archive Loading & CLI Updates**: Added `HooArchiveLoader` to seamlessly load multi-module `.ha` archives into the JIT. Introduced `--exec` to directly execute `.hoo` source files after building.
@@ -71,6 +95,7 @@ For detailed instructions on dependencies, platform-specific guides, and trouble
 - C++17 compliant toolchain (Clang 15+ recommended)
 - LLVM 22.1+ development headers
 - ANTLR4 runtime
+- OpenSSL development libraries (TLS socket support)
 
 ### Standard Workflow
 ```bash
@@ -104,7 +129,7 @@ src/
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Tensors, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-tests/         Exhaustive unit and integration test suites (2068 tests in the current preset run).
+tests/         Exhaustive unit and integration test suites (2117 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 

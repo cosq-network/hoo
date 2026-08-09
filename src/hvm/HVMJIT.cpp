@@ -512,6 +512,7 @@ bool isSpecDevirtualizableName(const std::string& name) {
 }
 
 std::mutex gShadowHandlersMu;
+std::mutex gCurrentExceptionMu;
 
 struct ShadowHandlerFrame {
     uint64_t handlerPc = 0;
@@ -558,11 +559,13 @@ uint64_t shadow_throw_to_handler(HVMJIT::HVMState* state, uint64_t exc, bool ret
     std::lock_guard<std::mutex> lk(gShadowHandlersMu);
     uint64_t effectiveExc = exc;
     if (rethrow) {
+        std::lock_guard<std::mutex> exceptionLock(gCurrentExceptionMu);
         auto exIt = gCurrentExceptionByState.find(state);
         if (exIt != gCurrentExceptionByState.end()) {
             effectiveExc = exIt->second;
         }
     } else {
+        std::lock_guard<std::mutex> exceptionLock(gCurrentExceptionMu);
         gCurrentExceptionByState[state] = exc;
     }
 
@@ -588,6 +591,7 @@ void shadow_clear_state(HVMJIT::HVMState* state) {
     if (!state) return;
     std::lock_guard<std::mutex> lk(gShadowHandlersMu);
     gShadowHandlers.erase(state);
+    std::lock_guard<std::mutex> exceptionLock(gCurrentExceptionMu);
     gCurrentExceptionByState.erase(state);
 }
 
@@ -2498,6 +2502,51 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_thread_mutex_destroy(reinterpret_cast<HooMutex>(state->regs[1])));
     }
+    uint64_t jit_thread_condition_new(void* /*state_ptr*/) {
+        return reinterpret_cast<uint64_t>(hoo_thread_condition_create());
+    }
+    uint64_t jit_thread_condition_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_condition_destroy(reinterpret_cast<HooCondition>(state->regs[1])));
+    }
+    uint64_t jit_thread_condition_wait(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_condition_wait(
+            reinterpret_cast<HooCondition>(state->regs[1]), reinterpret_cast<HooMutex>(state->regs[2])));
+    }
+    uint64_t jit_thread_condition_timed_wait(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_condition_timed_wait(
+            reinterpret_cast<HooCondition>(state->regs[1]), reinterpret_cast<HooMutex>(state->regs[2]), state->regs[3]));
+    }
+    uint64_t jit_thread_condition_notify_one(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_condition_notify_one(reinterpret_cast<HooCondition>(state->regs[1])));
+    }
+    uint64_t jit_thread_condition_notify_all(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_condition_notify_all(reinterpret_cast<HooCondition>(state->regs[1])));
+    }
+    uint64_t jit_thread_semaphore_new(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_thread_semaphore_create(static_cast<uint32_t>(state->regs[1])));
+    }
+    uint64_t jit_thread_semaphore_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_semaphore_destroy(reinterpret_cast<HooSemaphore>(state->regs[1])));
+    }
+    uint64_t jit_thread_semaphore_wait(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_semaphore_wait(reinterpret_cast<HooSemaphore>(state->regs[1])));
+    }
+    uint64_t jit_thread_semaphore_try_wait(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_semaphore_try_wait(reinterpret_cast<HooSemaphore>(state->regs[1])));
+    }
+    uint64_t jit_thread_semaphore_post(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_thread_semaphore_post(reinterpret_cast<HooSemaphore>(state->regs[1])));
+    }
 
     uint64_t jit_encoding_base64_encode(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2586,6 +2635,70 @@ extern "C" {
         const char* hex = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         HooBuffer buf = hoo_encoding_hex_decode_buffer(hex);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
+    }
+    uint64_t jit_byte_slice_from_buffer(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_byte_slice_from_buffer_handle(
+            reinterpret_cast<HooBuffer>(state->regs[1])));
+    }
+    uint64_t jit_byte_slice_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_byte_slice_release(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+        return 0;
+    }
+    uint64_t jit_encoding_base64_encode_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char* value = hoo_encoding_base64_encode_slice(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+        if (!value) return 0;
+        void* result = hoo_string_from_cstr(value);
+        hoo_encoding_free_string(value);
+        return reinterpret_cast<uint64_t>(result);
+    }
+    uint64_t jit_encoding_hex_encode_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char* value = hoo_encoding_hex_encode_slice(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+        if (!value) return 0;
+        void* result = hoo_string_from_cstr(value);
+        hoo_encoding_free_string(value);
+        return reinterpret_cast<uint64_t>(result);
+    }
+    uint64_t jit_hashing_sha256_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char* value = hoo_hashing_sha256_slice(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+        if (!value) return 0;
+        void* result = hoo_string_from_cstr(value);
+        hoo_hashing_free_string(value);
+        return reinterpret_cast<uint64_t>(result);
+    }
+    uint64_t jit_hashing_sha1_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char* value = hoo_hashing_sha1_slice(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+        if (!value) return 0;
+        void* result = hoo_string_from_cstr(value);
+        hoo_hashing_free_string(value);
+        return reinterpret_cast<uint64_t>(result);
+    }
+    uint64_t jit_hashing_md5_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        char* value = hoo_hashing_md5_slice(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+        if (!value) return 0;
+        void* result = hoo_string_from_cstr(value);
+        hoo_hashing_free_string(value);
+        return reinterpret_cast<uint64_t>(result);
+    }
+    uint64_t jit_hashing_crc32_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return hoo_hashing_crc32_slice(reinterpret_cast<HooByteSliceHandle>(state->regs[1]));
+    }
+    uint64_t jit_compression_gzip_compress_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_compression_gzip_compress_slice(
+            reinterpret_cast<HooByteSliceHandle>(state->regs[1])));
+    }
+    uint64_t jit_compression_deflate_compress_slice(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return reinterpret_cast<uint64_t>(hoo_compression_deflate_compress_slice(
+            reinterpret_cast<HooByteSliceHandle>(state->regs[1])));
     }
 
     // ── CSV module (instance-based, self in regs[1]) ──────────────────────
@@ -3479,6 +3592,89 @@ extern "C" {
     uint64_t jit_net_http_client_release(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         hoo_net_http_client_release(reinterpret_cast<HooHttpClient>(state->regs[1]));
+        return 0;
+    }
+    uint64_t jit_net_socket_new(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_socket_new()));
+    }
+    uint64_t jit_net_socket_bind(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        const char* host = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_net_socket_bind(socket, host, static_cast<int64_t>(state->regs[3])));
+    }
+    uint64_t jit_net_socket_listen(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_net_socket_listen(socket, static_cast<int64_t>(state->regs[2])));
+    }
+    uint64_t jit_net_socket_connect(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        const char* host = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_net_socket_connect(socket, host, static_cast<int64_t>(state->regs[3])));
+    }
+    uint64_t jit_net_socket_connect_tls(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        const char* host = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_net_socket_connect_tls(socket, host, static_cast<int64_t>(state->regs[3]),
+                                                               static_cast<int64_t>(state->regs[4])));
+    }
+    uint64_t jit_net_socket_enable_tls_server(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        const char* cert = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        const char* key = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
+        return static_cast<uint64_t>(hoo_net_socket_enable_tls_server(socket, cert, key));
+    }
+    uint64_t jit_net_socket_set_timeout(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_net_socket_set_timeout(socket, static_cast<int64_t>(state->regs[2])));
+    }
+    uint64_t jit_net_socket_accept(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_socket_accept(socket)));
+    }
+    uint64_t jit_net_socket_send(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        HooBuffer buffer = reinterpret_cast<HooBuffer>(state->regs[2]);
+        HooByteSlice slice = hoo_byte_slice_from_buffer(buffer);
+        return static_cast<uint64_t>(hoo_net_socket_send(socket, slice));
+    }
+    uint64_t jit_net_socket_receive(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
+            hoo_net_socket_receive(socket, static_cast<int64_t>(state->regs[2]))));
+    }
+    uint64_t jit_net_socket_last_error(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        const char* error = hoo_net_socket_last_error(socket);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(error)));
+    }
+    uint64_t jit_net_socket_local_port(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_net_socket_local_port(socket));
+    }
+    uint64_t jit_net_socket_close(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(hoo_net_socket_close(socket));
+    }
+    uint64_t jit_net_socket_retain(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooSocket socket = reinterpret_cast<HooSocket>(state->regs[1]);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_net_socket_retain(socket)));
+    }
+    uint64_t jit_net_socket_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_net_socket_release(reinterpret_cast<HooSocket>(state->regs[1]));
         return 0;
     }
 
@@ -4696,6 +4892,18 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_thread_mutex_lock_v", reinterpret_cast<void*>(&jit_thread_mutex_lock)},
         {"_F_M_hoo_E_thread_mutex_unlock_v", reinterpret_cast<void*>(&jit_thread_mutex_unlock)},
         {"_F_M_hoo_E_thread_mutex_release_v", reinterpret_cast<void*>(&jit_thread_mutex_release)},
+        // Condition and semaphore classes
+        {"_F_M_hoo_E_thread_condition_new_v", reinterpret_cast<void*>(&jit_thread_condition_new)},
+        {"_F_M_hoo_E_thread_condition_wait_v_p", reinterpret_cast<void*>(&jit_thread_condition_wait)},
+        {"_F_M_hoo_E_thread_condition_timedWait_v_p_p", reinterpret_cast<void*>(&jit_thread_condition_timed_wait)},
+        {"_F_M_hoo_E_thread_condition_notifyOne_v", reinterpret_cast<void*>(&jit_thread_condition_notify_one)},
+        {"_F_M_hoo_E_thread_condition_notifyAll_v", reinterpret_cast<void*>(&jit_thread_condition_notify_all)},
+        {"_F_M_hoo_E_thread_condition_release_v", reinterpret_cast<void*>(&jit_thread_condition_release)},
+        {"_F_M_hoo_E_thread_semaphore_new_v_p", reinterpret_cast<void*>(&jit_thread_semaphore_new)},
+        {"_F_M_hoo_E_thread_semaphore_wait_v", reinterpret_cast<void*>(&jit_thread_semaphore_wait)},
+        {"_F_M_hoo_E_thread_semaphore_tryWait_v", reinterpret_cast<void*>(&jit_thread_semaphore_try_wait)},
+        {"_F_M_hoo_E_thread_semaphore_post_v", reinterpret_cast<void*>(&jit_thread_semaphore_post)},
+        {"_F_M_hoo_E_thread_semaphore_release_v", reinterpret_cast<void*>(&jit_thread_semaphore_release)},
 
         // CSV module (instance-based, prefix-style)
         {"_F_M_hoo_E_csv_new_v", reinterpret_cast<void*>(&jit_csv_new)},
@@ -4801,6 +5009,14 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_encoding_base64_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_base64_decode_buffer)},
         {"_F_M_hoo_E_encoding_hex_encode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode_buffer)},
         {"_F_M_hoo_E_encoding_hex_decode_buffer_p_p", reinterpret_cast<void*>(&jit_encoding_hex_decode_buffer)},
+        {"_F_M_hoo_E_byte_slice_from_buffer_p_p", reinterpret_cast<void*>(&jit_byte_slice_from_buffer)},
+        {"_F_M_hoo_E_byte_slice_release_v_p", reinterpret_cast<void*>(&jit_byte_slice_release)},
+        {"_F_M_hoo_E_encoding_base64_encode_slice_p_p", reinterpret_cast<void*>(&jit_encoding_base64_encode_slice)},
+        {"_F_M_hoo_E_encoding_hex_encode_slice_p_p", reinterpret_cast<void*>(&jit_encoding_hex_encode_slice)},
+        {"_F_M_hoo_E_hashing_sha256_slice_p_p", reinterpret_cast<void*>(&jit_hashing_sha256_slice)},
+        {"_F_M_hoo_E_hashing_sha1_slice_p_p", reinterpret_cast<void*>(&jit_hashing_sha1_slice)},
+        {"_F_M_hoo_E_hashing_md5_slice_p_p", reinterpret_cast<void*>(&jit_hashing_md5_slice)},
+        {"_F_M_hoo_E_hashing_crc32_slice_i8_p", reinterpret_cast<void*>(&jit_hashing_crc32_slice)},
 
         // Process module
         {"_F_M_hoo_E_process_kill_p_p_p", reinterpret_cast<void*>(&jit_process_kill)},
@@ -4816,6 +5032,8 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_compression_gzipDecompress_v_p_p", reinterpret_cast<void*>(&jit_compression_gzip_decompress)},
         {"_F_M_hoo_E_compression_deflateCompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress)},
         {"_F_M_hoo_E_compression_deflateDecompress_v_p_p", reinterpret_cast<void*>(&jit_compression_deflate_decompress)},
+        {"_F_M_hoo_E_compression_gzip_compress_slice_p_p", reinterpret_cast<void*>(&jit_compression_gzip_compress_slice)},
+        {"_F_M_hoo_E_compression_deflate_compress_slice_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress_slice)},
         // Args module (prefix-based instance methods)
         {"_F_M_hoo_E_args_new_v", reinterpret_cast<void*>(&jit_args_new)},
         {"_F_M_hoo_E_args_count_v", reinterpret_cast<void*>(&jit_args_count)},
@@ -4897,6 +5115,23 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_http_response_isSuccess_v", reinterpret_cast<void*>(&jit_net_http_response_is_success)},
         {"_F_M_hoo_E_net_http_response_release_v", reinterpret_cast<void*>(&jit_net_http_response_release)},
         {"_F_M_hoo_E_net_http_client_release_v", reinterpret_cast<void*>(&jit_net_http_client_release)},
+        // Net module socket free functions
+        {"_F_M_hoo_E_net_socket_new_p", reinterpret_cast<void*>(&jit_net_socket_new)},
+        {"_F_M_hoo_E_net_socket_bind_p_p_p_p", reinterpret_cast<void*>(&jit_net_socket_bind)},
+        {"_F_M_hoo_E_net_socket_listen_p_p_p", reinterpret_cast<void*>(&jit_net_socket_listen)},
+        {"_F_M_hoo_E_net_socket_connect_p_p_p_p", reinterpret_cast<void*>(&jit_net_socket_connect)},
+        {"_F_M_hoo_E_net_socket_connect_tls_p_p_p_p_p", reinterpret_cast<void*>(&jit_net_socket_connect_tls)},
+        {"_F_M_hoo_E_net_socket_enable_tls_server_p_p_p_p", reinterpret_cast<void*>(&jit_net_socket_enable_tls_server)},
+        {"_F_M_hoo_E_net_socket_set_timeout_p_p_p", reinterpret_cast<void*>(&jit_net_socket_set_timeout)},
+        {"_F_M_hoo_E_net_socket_accept_p_p", reinterpret_cast<void*>(&jit_net_socket_accept)},
+        {"_F_M_hoo_E_net_socket_send_p_p_p", reinterpret_cast<void*>(&jit_net_socket_send)},
+        {"_F_M_hoo_E_net_socket_receive_p_p_p", reinterpret_cast<void*>(&jit_net_socket_receive)},
+        {"_F_M_hoo_E_net_socket_last_error_p_p", reinterpret_cast<void*>(&jit_net_socket_last_error)},
+        {"_F_M_hoo_E_net_socket_local_port_p_p", reinterpret_cast<void*>(&jit_net_socket_local_port)},
+        {"_F_M_hoo_E_net_socket_close_p_p", reinterpret_cast<void*>(&jit_net_socket_close)},
+        {"_F_M_hoo_E_net_socket_retain_p_p", reinterpret_cast<void*>(&jit_net_socket_retain)},
+        {"_F_M_hoo_E_net_socket_release_p_p", reinterpret_cast<void*>(&jit_net_socket_release)},
+        {"_F_M_hoo_E_net_socket_release_v_p", reinterpret_cast<void*>(&jit_net_socket_release)},
         // URL class methods
         {"_F_M_hoo_E_URL_new_static_p_p", reinterpret_cast<void*>(&jit_net_url_new)},
         {"_F_M_hoo_E_URL_scheme_p", reinterpret_cast<void*>(&jit_net_url_get_scheme)},
@@ -6152,6 +6387,8 @@ bool HVMJIT::isSupportedForIRLowering(hvm::Opcode op, uint16_t func) const {
             return func <= 2;
         case hvm::Opcode::CMP:
             return func <= 5;
+        case hvm::Opcode::CMP_B:
+            return func <= 5;
         case hvm::Opcode::FCMP:
             return func <= 2;
         default:
@@ -6428,7 +6665,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             }
             case hvm::Opcode::LUI: {
                 auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                writeReg(o.rd, readReg(o.rs) | (static_cast<uint64_t>(static_cast<uint16_t>(o.imm15)) << 49U));
+                writeReg(o.rd, readReg(o.rs) | (static_cast<uint64_t>(static_cast<uint16_t>(o.imm15)) << hvm::kLuiImmediateShift));
                 break;
             }
             case hvm::Opcode::ADDI: {
@@ -6586,6 +6823,23 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     case 5: writeReg(o.rd, a <= b ? 1 : 0); break;
                     default:
                         lastError_ = "Unsupported CMP func: " + std::to_string(o.func);
+                        return -1;
+                }
+                break;
+            }
+            case hvm::Opcode::CMP_B: {
+                auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                const uint8_t a = static_cast<uint8_t>(readReg(o.rs1));
+                const uint8_t b = static_cast<uint8_t>(readReg(o.rs2));
+                switch (o.func) {
+                    case 0: writeReg(o.rd, a == b ? 1 : 0); break;
+                    case 1: writeReg(o.rd, a != b ? 1 : 0); break;
+                    case 2: writeReg(o.rd, static_cast<int8_t>(a) < static_cast<int8_t>(b) ? 1 : 0); break;
+                    case 3: writeReg(o.rd, static_cast<int8_t>(a) <= static_cast<int8_t>(b) ? 1 : 0); break;
+                    case 4: writeReg(o.rd, a < b ? 1 : 0); break;
+                    case 5: writeReg(o.rd, a <= b ? 1 : 0); break;
+                    default:
+                        lastError_ = "Unsupported CMP_B func: " + std::to_string(o.func);
                         return -1;
                 }
                 break;
@@ -8231,7 +8485,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     writeReg(o.rd, builder.CreateOr(readReg(o.rs), builder.getInt64(static_cast<uint16_t>(o.imm15))));
                 } else if (op == hvm::Opcode::LUI) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
-                    auto hi = builder.CreateShl(builder.getInt64(static_cast<uint16_t>(o.imm15)), builder.getInt64(49));
+                    auto hi = builder.CreateShl(builder.getInt64(static_cast<uint16_t>(o.imm15)), builder.getInt64(hvm::kLuiImmediateShift));
                     writeReg(o.rd, builder.CreateOr(readReg(o.rs), hi));
                 } else if (op == hvm::Opcode::ADDI) {
                     auto o = std::get<hvm::OperandsI>(ins->getOperands());
@@ -8402,6 +8656,19 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     else if (o.func == 3) pred = builder.CreateICmpSLE(readReg(o.rs1), readReg(o.rs2));
                     else if (o.func == 4) pred = builder.CreateICmpULT(readReg(o.rs1), readReg(o.rs2));
                     else if (o.func == 5) pred = builder.CreateICmpULE(readReg(o.rs1), readReg(o.rs2));
+                    else { builder.CreateRet(builder.getInt64(-1)); break; }
+                     writeReg(o.rd, builder.CreateZExt(pred, i64));
+                } else if (op == hvm::Opcode::CMP_B) {
+                    auto o = std::get<hvm::OperandsR>(ins->getOperands());
+                    auto* a = builder.CreateTrunc(readReg(o.rs1), builder.getInt8Ty());
+                    auto* b = builder.CreateTrunc(readReg(o.rs2), builder.getInt8Ty());
+                    llvm::Value* pred = nullptr;
+                    if (o.func == 0) pred = builder.CreateICmpEQ(a, b);
+                    else if (o.func == 1) pred = builder.CreateICmpNE(a, b);
+                    else if (o.func == 2) pred = builder.CreateICmpSLT(a, b);
+                    else if (o.func == 3) pred = builder.CreateICmpSLE(a, b);
+                    else if (o.func == 4) pred = builder.CreateICmpULT(a, b);
+                    else if (o.func == 5) pred = builder.CreateICmpULE(a, b);
                     else { builder.CreateRet(builder.getInt64(-1)); break; }
                     writeReg(o.rd, builder.CreateZExt(pred, i64));
                 } else if (op == hvm::Opcode::FLOAT_ARITH) {

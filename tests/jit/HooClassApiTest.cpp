@@ -61,6 +61,28 @@ TEST_F(HooClassApiTest, ChainedUserFieldReturnTypeDispatch) {
     EXPECT_TRUE(jit.lastRunUsedJIT());
 }
 
+TEST_F(HooClassApiTest, SameMethodNameDispatchesByReceiverClass) {
+    const std::string source = R"(
+        class First {
+            constructor() {}
+            func :int64 value() { return 11; }
+        }
+        class Second {
+            constructor() {}
+            func :int64 value() { return 22; }
+        }
+        func :int64 test() {
+            var first = new First();
+            var second = new Second();
+            // Keep the operands distinguishable so an accidental dispatch to
+            // the same class cannot pass the regression test.
+            return first.value() * 100 + second.value();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1122) << jit.getLastError();
+}
+
 TEST_F(HooClassApiTest, StringConcatMethod) {
     const std::string source = R"(
         import hoo;
@@ -102,6 +124,17 @@ TEST_F(HooClassApiTest, FreeFuncDateTimeNow) {
     auto r = jit.run("_F_M_test_E_test_i8");
     // Now should return a non-zero timestamp
     EXPECT_GT(r, 1000000);
+}
+
+TEST_F(HooClassApiTest, ChainedFreeFunctionReturnTypeDispatch) {
+    const std::string source = R"(
+        import hoo.datetime;
+        func :int64 test() {
+            return datetime_now().getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_GT(jit.run("_F_M_test_E_test_i8"), 1000000) << jit.getLastError();
 }
 
 TEST_F(HooClassApiTest, FreeFuncMathAbs) {

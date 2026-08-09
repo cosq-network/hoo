@@ -642,6 +642,12 @@ static const CsvRow kCsvRows[] = {
     {"cmple", Opcode::CMP,   InstructionFormat::R, 3},
     {"cmpult", Opcode::CMP,  InstructionFormat::R, 4},
     {"cmpule", Opcode::CMP,  InstructionFormat::R, 5},
+    {"cmpeq.b", Opcode::CMP_B, InstructionFormat::R, 0},
+    {"cmpne.b", Opcode::CMP_B, InstructionFormat::R, 1},
+    {"cmplt.b", Opcode::CMP_B, InstructionFormat::R, 2},
+    {"cmple.b", Opcode::CMP_B, InstructionFormat::R, 3},
+    {"cmpult.b", Opcode::CMP_B, InstructionFormat::R, 4},
+    {"cmpule.b", Opcode::CMP_B, InstructionFormat::R, 5},
     {"fcmpeq", Opcode::FCMP, InstructionFormat::R, 0},
     {"fcmplt", Opcode::FCMP, InstructionFormat::R, 1},
     {"fcmple", Opcode::FCMP, InstructionFormat::R, 2},
@@ -764,7 +770,11 @@ TEST_F(HVMInstructionTest, CsvParity_AllRowsRegistered) {
 
     EXPECT_EQ(missingCount, 0) << missingCount << " CSV mnemonics missing from registry";
     EXPECT_EQ(mismatchCount, 0) << mismatchCount << " registry entries differ from CSV";
-    EXPECT_EQ(totalRows, 132) << "CSV parity table has wrong row count";
+    EXPECT_EQ(totalRows, 138) << "CSV parity table has wrong row count";
+}
+
+TEST_F(HVMInstructionTest, LuiImmediateShiftMatchesHVMEncodingContract) {
+    EXPECT_EQ(hvm::kLuiImmediateShift, 49);
 }
 
 TEST_F(HVMInstructionTest, CsvParity_StringToOpcodeResolvesAll) {

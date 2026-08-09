@@ -54,6 +54,7 @@ TENSOR: 'tensor';
 ASYNC: 'async';
 AWAIT: 'await';
 FUTURE: 'Future';
+SLICE: 'slice';
 
 
 // Primitive Types
@@ -204,7 +205,9 @@ constantDeclaration
     ;
 
 // Types
-type: futureType | tensorType | hashMapType | mapType | decimalType | anyType | anyArrayType | optionalType;
+type: futureType | tensorType | hashMapType | mapType | decimalType | sliceType | anyType | anyArrayType | optionalType;
+
+sliceType: SLICE LESS BYTE GREATER;
 
 optionalType: arrayType QUESTION?;
 
@@ -379,7 +382,6 @@ newExpression
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)
-interpolatedString: STRING_LITERAL; // Placeholder for interpolated strings with ${...}
 
 argumentList: expression (COMMA expression)*;
 expressionList: expression (COMMA expression)*;

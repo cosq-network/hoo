@@ -22,6 +22,11 @@
 - At minimum, switch from `std::list` to `std::unordered_set` to get O(1) expected lookups while keeping the global mutex.
 
 ## 5. Status
-- **Date**: 2026-06-23
-- **Status**: **PROPOSED**
+- **Date**: 2026-08-09
+- **Status**: **FIXED**
 - **Priority**: **HIGH**
+
+## 6. Resolution
+Managed-object tracking now uses hashed buckets protected by striped mutexes
+instead of one global linked list and mutex. Registration, removal, and lookup
+remain synchronized while reducing expected lookup work and global contention.

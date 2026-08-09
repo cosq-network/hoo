@@ -11,6 +11,9 @@
 
 namespace hvm {
 
+// HVM encodes the 15-bit LUI immediate in bits 63:49.
+static constexpr uint8_t kLuiImmediateShift = 49;
+
 /**
  * @brief HVM opcodes as defined by the HVM64 core/system profile.
  * Note: Multiple instructions may share the same opcode value (e.g., Arithmetic family 0x10),
@@ -36,6 +39,7 @@ enum class Opcode : uint16_t {
     FLOAT_ARITH_B = 0x31, // FADD.B, FSUB.B, FMUL.B, FDIV.B
     CMP      = 0x40, // CMPEQ, CMPNE, CMPLT, CMPLE
     FCMP     = 0x41, // FCMPEQ, FCMPLT, FCMPLE
+    CMP_B    = 0x42, // Native 8-bit comparisons (HVM 1.5)
     BEQ      = 0x50,
     BNE      = 0x51,
     BLT      = 0x52,

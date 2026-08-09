@@ -589,6 +589,12 @@ InstructionRegistry::InstructionRegistry() {
     reg("cmple", Opcode::CMP,   InstructionFormat::R, 3);
     reg("cmpult", Opcode::CMP,  InstructionFormat::R, 4);
     reg("cmpule", Opcode::CMP,  InstructionFormat::R, 5);
+    reg("cmpeq.b", Opcode::CMP_B, InstructionFormat::R, 0);
+    reg("cmpne.b", Opcode::CMP_B, InstructionFormat::R, 1);
+    reg("cmplt.b", Opcode::CMP_B, InstructionFormat::R, 2);
+    reg("cmple.b", Opcode::CMP_B, InstructionFormat::R, 3);
+    reg("cmpult.b", Opcode::CMP_B, InstructionFormat::R, 4);
+    reg("cmpule.b", Opcode::CMP_B, InstructionFormat::R, 5);
     reg("fcmpeq", Opcode::FCMP, InstructionFormat::R, 0);
     reg("fcmplt", Opcode::FCMP, InstructionFormat::R, 1);
     reg("fcmple", Opcode::FCMP, InstructionFormat::R, 2);

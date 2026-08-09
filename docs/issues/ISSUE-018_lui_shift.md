@@ -28,7 +28,8 @@ constexpr uint64_t kLuiShift = 49U;
 Use this constant in both the codegen emitters and the JIT interpreter. Document it in `hvm-spec.md` with a cross-reference to the constant.
 
 ## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-08-09
+- **Status**: **FIXED**
 - **Priority**: **MEDIUM**
 - **Audit 2026-06-21**: Current code and spec use the corrected 49-bit shift semantics for `LUI`, but the shared named constant/documentation synchronization work remains incomplete.
+- **Resolution**: `hvm::kLuiImmediateShift` is the shared source of truth used by the interpreter and LLVM JIT. The HVM specification and regression tests document and verify the same 49-bit encoding.

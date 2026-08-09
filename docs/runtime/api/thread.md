@@ -14,6 +14,24 @@ import hoo.thread;
 
 The `thread` module provides free functions for thread spawning and sleeping, and a `Mutex` class for synchronization. Threading enables concurrent execution of Hoo functions. Mutexes protect shared state from concurrent access.
 
+## Native Synchronization ABI
+
+The C runtime additionally exposes `hoo_thread_mutex_try_lock`, `HooCondition`,
+and `HooSemaphore` handles. Condition waits require the caller to hold the
+associated `HooMutex`; timed waits use nanoseconds and return a non-zero status
+on timeout or error. `hoo::thread::ScopedLock` is the non-copyable C++ RAII
+wrapper for native integrations.
+
+```cpp
+HooMutex mutex = hoo_thread_mutex_create();
+HooCondition condition = hoo_thread_condition_create();
+hoo_thread_mutex_lock(mutex);
+hoo_thread_condition_wait(condition, mutex);
+hoo_thread_mutex_unlock(mutex);
+hoo_thread_condition_destroy(condition);
+hoo_thread_mutex_destroy(mutex);
+```
+
 ## Class: Mutex
 
 ### Declaration

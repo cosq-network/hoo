@@ -43,8 +43,9 @@ std::unordered_map<void*, uint64_t> gCurrentExceptionByState;
 ```
 
 ## 5. Status
-- **Date**: 2026-06-08
-- **Status**: **PARTIALLY IMPLEMENTED**
+- **Date**: 2026-08-09
+- **Status**: **FIXED**
 - **Priority**: **LOW**
 - **Audit 2026-06-21**: Verified accesses remain protected through the shared shadow-handler mutex, but there is still no dedicated lock documenting ownership of `gCurrentExceptionByState`.
 - **Note**: As of 2026-06-11, `gCurrentExceptionByState` IS protected by `gShadowHandlersMu` — it was never truly unlocked. The remaining concern is that no dedicated mutex exists, but there is no data race. Priority has been downgraded accordingly.
+- **Resolution**: `gCurrentExceptionByState` now has its own mutex. Shadow-handler stack operations and exception-state operations have separate ownership boundaries.

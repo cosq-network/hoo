@@ -250,3 +250,13 @@ HooBuffer hoo_encoding_hex_decode_buffer(const char* hex) {
     free(data);
     return buf;
 }
+
+char* hoo_encoding_base64_encode_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    return hoo_encoding_base64_encode(view.data, view.length);
+}
+
+char* hoo_encoding_hex_encode_slice(HooByteSliceHandle slice) {
+    HooByteSlice view = hoo_byte_slice_view(slice);
+    return hoo_encoding_hex_encode(view.data, view.length);
+}
