@@ -4843,24 +4843,24 @@ uint32_t HVMCodeGenerator::tensorElementTypeIdFromType(const ast::TensorType& ty
 uint32_t HVMCodeGenerator::tensorElementTypeIdFromLiteral(const ast::TensorLiteral& literal) {
     uint32_t commonType = 100;
     if (!literal.getElements()) return commonType;
-    for (const auto& elem : literal.getElements()->getExpressions()) {
-        uint32_t type = 100;
-        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(elem.get())) {
+    std::function<uint32_t(const ast::Expression&)> leafType = [&](const ast::Expression& expression) -> uint32_t {
+        if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&expression)) {
             if (auto nested = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
-                type = 100;
-                for (const auto& nestedElem : nested->getElements()->getExpressions()) {
-                    uint32_t nestedType = getTypeId(nullptr, nestedElem.get());
-                    if (nestedType != 100) {
-                        if (type == 100) type = nestedType;
-                        else if (type != nestedType) { type = 100; break; }
-                    }
+                uint32_t nestedCommon = 100;
+                if (!nested->getElements()) return nestedCommon;
+                for (const auto& child : nested->getElements()->getExpressions()) {
+                    uint32_t childType = leafType(*child);
+                    if (childType == 100) continue;
+                    if (nestedCommon == 100) nestedCommon = childType;
+                    else if (nestedCommon != childType) return 100;
                 }
-            } else {
-                type = getTypeId(nullptr, elem.get());
+                return nestedCommon;
             }
-        } else {
-            type = getTypeId(nullptr, elem.get());
         }
+        return getTypeId(nullptr, &expression);
+    };
+    for (const auto& elem : literal.getElements()->getExpressions()) {
+        uint32_t type = leafType(*elem);
 
         if (type != 100) {
             if (commonType == 100) commonType = type;
@@ -4979,6 +4979,20 @@ uint8_t HVMCodeGenerator::emitTensorScalarCall(const ast::BinaryExpression& bina
 }
 
 uint8_t HVMCodeGenerator::emitTensorVectorArith(const ast::BinaryExpression& binary, hvm::Opcode vecOp, uint16_t func) {
+    // Tensor handles are opaque ABI objects; the old vector lowering assumed
+    // an inline payload at a fixed offset and is not valid for dynamic-rank
+    // tensors. Keep the HVM instruction available for native vector code, but
+    // route tensor expressions through the checked runtime kernels.
+    (void)vecOp;
+    switch (func) {
+        case 0: return emitTensorBinaryCall(binary, "_F_hoo_Tensor_add_p_p_p");
+        case 2: return emitTensorBinaryCall(binary, "_F_hoo_Tensor_sub_p_p_p");
+        case 4: return emitTensorBinaryCall(binary, "_F_hoo_Tensor_elementMul_p_p_p");
+        case 6: return emitTensorBinaryCall(binary, "_F_hoo_Tensor_elementDiv_p_p_p");
+        default: return emitTensorBinaryCall(binary, "_F_hoo_Tensor_add_p_p_p");
+    }
+
+#if 0
     uint8_t left = visitExpression(binary.getLeft());
     uint8_t right = visitExpression(binary.getRight());
     // elemTypeReg = _F_hoo_Tensor_elementType_i8_p(left)
@@ -5105,6 +5119,7 @@ uint8_t HVMCodeGenerator::emitTensorVectorArith(const ast::BinaryExpression& bin
     freeRegister(right);
     
     return dest;
+#endif
 }
 uint8_t HVMCodeGenerator::emitDecimalBinaryOp(const ast::BinaryExpression& binary) {
     uint8_t lhs = visitExpression(binary.getLeft());

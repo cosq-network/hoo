@@ -52,6 +52,7 @@ extern "C" {
 #define HOO_TYPE_CONDITION   128  // HooCondition synchronization handle
 #define HOO_TYPE_SEMAPHORE   129  // HooSemaphore synchronization handle
 #define HOO_TYPE_BYTE_SLICE  130  // Borrowed byte-slice view handle
+#define HOO_TYPE_TENSOR      131  // Versioned Tensor handle
 #define HOO_TYPE_TENSOR_SERIALIZED 126 // Tensor value stored inside HooAnyValue
 
 // Primitive Type IDs (for runtime conversion/reflection)

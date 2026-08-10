@@ -5,34 +5,168 @@
 #include <cstring>
 #include <algorithm>
 #include <limits>
+#include <cstdlib>
+#include <mutex>
 
-#define HOO_TYPE_TENSOR 113
-#define TENSOR_ELEMENT_BIT 8
-#define TENSOR_ELEMENT_F8 9
-#define TENSOR_ELEMENT_F64 2
-#define TENSOR_ELEMENT_INT8 5
-#define TENSOR_ELEMENT_BYTE 6
-#define TENSOR_ELEMENT_INT64 1
+#define TENSOR_ELEMENT_BIT HOO_TENSOR_DTYPE_BIT
+#define TENSOR_ELEMENT_F8 HOO_TENSOR_DTYPE_F8
+#define TENSOR_ELEMENT_F64 HOO_TENSOR_DTYPE_F64
+#define TENSOR_ELEMENT_INT8 HOO_TENSOR_DTYPE_INT8
+#define TENSOR_ELEMENT_BYTE HOO_TENSOR_DTYPE_BYTE
+#define TENSOR_ELEMENT_INT64 HOO_TENSOR_DTYPE_INT64
+#define TENSOR_ELEMENT_F32 HOO_TENSOR_DTYPE_F32
+#define TENSOR_ELEMENT_F16 HOO_TENSOR_DTYPE_F16
+#define TENSOR_ELEMENT_BF16 HOO_TENSOR_DTYPE_BF16
+#define TENSOR_ELEMENT_INT32 HOO_TENSOR_DTYPE_INT32
 
 struct HooTensorHeader {
     int64_t element_type;
     int64_t rank;
-    int64_t dims[3];
+    int64_t legacy_dims[3];
     int64_t length;
     int64_t next_index;
     int64_t storage_bytes;
+    uint32_t abi_version;
+    uint32_t flags;
+    int64_t* dims;
+    int64_t* strides;
+    uint8_t* data_ptr;
+    HooTensor base;
 };
+
+static constexpr uint32_t TENSOR_OWNS_DATA = 1u << 0;
+static constexpr uint32_t TENSOR_OWNS_METADATA = 1u << 1;
+
+static void destroy_tensor(void* object) {
+    auto* h = static_cast<HooTensorHeader*>(object);
+    if (!h) return;
+    if (h->base) hoo_release(h->base);
+    if (h->flags & TENSOR_OWNS_DATA) std::free(h->data_ptr);
+    if (h->flags & TENSOR_OWNS_METADATA) {
+        std::free(h->dims);
+        std::free(h->strides);
+    }
+    h->data_ptr = nullptr;
+    h->dims = nullptr;
+    h->strides = nullptr;
+    h->base = nullptr;
+}
+
+static void ensure_tensor_runtime() {
+    static std::once_flag once;
+    std::call_once(once, [] {
+        hoo_register_destructor(HOO_TYPE_TENSOR, &destroy_tensor);
+    });
+}
 
 static HooTensorHeader* header(HooTensor tensor) {
     return reinterpret_cast<HooTensorHeader*>(tensor);
 }
 
 static uint8_t* data(HooTensor tensor) {
-    return reinterpret_cast<uint8_t*>(tensor) + sizeof(HooTensorHeader);
+    auto* h = header(tensor);
+    return h ? h->data_ptr : nullptr;
 }
 
-static bool is_float_element(int64_t element_type) {
-    return element_type == TENSOR_ELEMENT_F64 || element_type == TENSOR_ELEMENT_F8;
+static bool valid_element_type(int64_t element_type) {
+    /* Type ID 3 is retained for compatibility with existing opaque/bool
+       tensor callers even though it is not an ANN training dtype. */
+    return element_type == 3 || element_type == TENSOR_ELEMENT_BIT || element_type == TENSOR_ELEMENT_F8 ||
+           element_type == TENSOR_ELEMENT_F64 || element_type == TENSOR_ELEMENT_INT8 ||
+           element_type == TENSOR_ELEMENT_BYTE || element_type == TENSOR_ELEMENT_INT64 ||
+           element_type == TENSOR_ELEMENT_F32 || element_type == TENSOR_ELEMENT_INT32;
+}
+
+static int64_t element_bytes(int64_t element_type) {
+    if (element_type == TENSOR_ELEMENT_BIT || element_type == TENSOR_ELEMENT_INT8 ||
+        element_type == TENSOR_ELEMENT_BYTE || element_type == TENSOR_ELEMENT_F8) return 1;
+    if (element_type == TENSOR_ELEMENT_F16 || element_type == TENSOR_ELEMENT_BF16) return 2;
+    if (element_type == TENSOR_ELEMENT_F32 || element_type == TENSOR_ELEMENT_INT32) return 4;
+    return 8;
+}
+
+static bool checked_shape(int64_t rank, const int64_t* dims, int64_t* length) {
+    if (!dims || rank < 1 || rank > 64 || !length) return false;
+    int64_t result = 1;
+    for (int64_t i = 0; i < rank; ++i) {
+        if (dims[i] <= 0 || result > std::numeric_limits<int64_t>::max() / dims[i]) return false;
+        result *= dims[i];
+    }
+    *length = result;
+    return true;
+}
+
+static bool checked_storage_bytes(int64_t element_type, int64_t length, int64_t* bytes) {
+    if (!bytes || length <= 0 || !valid_element_type(element_type)) return false;
+    if (element_type == TENSOR_ELEMENT_BIT) {
+        if (length > std::numeric_limits<int64_t>::max() - 7) return false;
+        *bytes = (length + 7) / 8;
+        return true;
+    }
+    const int64_t width = element_bytes(element_type);
+    if (length > std::numeric_limits<int64_t>::max() / width) return false;
+    *bytes = length * width;
+    return true;
+}
+
+static bool set_error(HooStatus status, const char* message) {
+    hoo_ai_set_last_error(status, message);
+    return false;
+}
+
+static HooTensorHeader* allocate_tensor(int64_t element_type, int64_t rank,
+                                         const int64_t* dims, HooTensor base,
+                                         int64_t offset_bytes) {
+    ensure_tensor_runtime();
+    int64_t length = 0;
+    int64_t bytes = 0;
+    if (!checked_shape(rank, dims, &length) ||
+        !checked_storage_bytes(element_type, length, &bytes)) return nullptr;
+
+    auto* h = static_cast<HooTensorHeader*>(hoo_alloc(sizeof(HooTensorHeader), HOO_TYPE_TENSOR));
+    if (!h) return nullptr;
+    std::memset(h, 0, sizeof(*h));
+    h->abi_version = HOO_TENSOR_ABI_VERSION;
+    h->element_type = element_type;
+    h->rank = rank;
+    h->length = length;
+    h->storage_bytes = bytes;
+
+    h->dims = static_cast<int64_t*>(std::calloc(static_cast<size_t>(rank), sizeof(int64_t)));
+    h->strides = static_cast<int64_t*>(std::calloc(static_cast<size_t>(rank), sizeof(int64_t)));
+    if (!h->dims || !h->strides) {
+        std::free(h->dims);
+        std::free(h->strides);
+        hoo_release(h);
+        return nullptr;
+    }
+    h->flags |= TENSOR_OWNS_METADATA;
+    std::memcpy(h->dims, dims, static_cast<size_t>(rank) * sizeof(int64_t));
+    // Packed bit tensors report strides in bits; all other tensors report
+    // byte strides. This keeps the metadata meaningful without pretending
+    // that each bit occupies a byte.
+    int64_t stride = element_type == TENSOR_ELEMENT_BIT ? 1 : element_bytes(element_type);
+    for (int64_t axis = rank - 1; axis >= 0; --axis) {
+        h->strides[axis] = stride;
+        if (h->dims[axis] > 0 && stride > std::numeric_limits<int64_t>::max() / h->dims[axis]) {
+            hoo_release(h);
+            return nullptr;
+        }
+        stride *= h->dims[axis];
+    }
+
+    if (base) {
+        h->base = static_cast<HooTensor>(hoo_retain(base));
+        h->data_ptr = data(base) + offset_bytes;
+    } else {
+        h->data_ptr = static_cast<uint8_t*>(std::calloc(1, static_cast<size_t>(bytes)));
+        if (!h->data_ptr) {
+            hoo_release(h);
+            return nullptr;
+        }
+        h->flags |= TENSOR_OWNS_DATA;
+    }
+    return h;
 }
 
 static uint8_t fp8_encode_e4m3(double value) {
@@ -94,14 +228,6 @@ static int64_t checked_length(int64_t rank, int64_t d0, int64_t d1, int64_t d2) 
     return length;
 }
 
-static int64_t storage_bytes(int64_t element_type, int64_t length) {
-    if (length <= 0) return 0;
-    if (element_type == TENSOR_ELEMENT_BIT) return (length + 7) / 8;
-    if (element_type == TENSOR_ELEMENT_INT8 || element_type == TENSOR_ELEMENT_BYTE ||
-        element_type == TENSOR_ELEMENT_F8) return length;
-    return length * 8;
-}
-
 static bool same_shape(HooTensor left, HooTensor right) {
     auto* l = header(left);
     auto* r = header(right);
@@ -125,9 +251,19 @@ static double get_numeric(HooTensor tensor, int64_t index) {
         return data(tensor)[index];
     if (h->element_type == TENSOR_ELEMENT_F8)
         return fp8_decode_e4m3(data(tensor)[index]);
+    if (h->element_type == TENSOR_ELEMENT_F32) {
+        float value = 0.0f;
+        std::memcpy(&value, data(tensor) + index * sizeof(float), sizeof(value));
+        return static_cast<double>(value);
+    }
+    if (h->element_type == TENSOR_ELEMENT_INT32) {
+        int32_t value = 0;
+        std::memcpy(&value, data(tensor) + index * sizeof(value), sizeof(value));
+        return static_cast<double>(value);
+    }
     int64_t bits = 0;
     std::memcpy(&bits, data(tensor) + index * 8, sizeof(bits));
-    if (is_float_element(h->element_type)) {
+    if (h->element_type == TENSOR_ELEMENT_F64) {
         double value = 0.0;
         std::memcpy(&value, &bits, sizeof(value));
         return value;
@@ -141,12 +277,19 @@ static int64_t pack_numeric(int64_t element_type, double value) {
         std::memcpy(&bits, &value, sizeof(value));
         return bits;
     }
+    if (element_type == TENSOR_ELEMENT_F32) {
+        float narrowed = static_cast<float>(value);
+        int64_t bits = 0;
+        std::memcpy(&bits, &narrowed, sizeof(narrowed));
+        return bits;
+    }
     if (element_type == TENSOR_ELEMENT_INT8)
         return static_cast<int8_t>(static_cast<int64_t>(value));
     if (element_type == TENSOR_ELEMENT_BYTE)
         return static_cast<uint8_t>(static_cast<int64_t>(value));
     if (element_type == TENSOR_ELEMENT_BIT)
         return value != 0.0;
+    if (element_type == TENSOR_ELEMENT_INT32) return static_cast<int32_t>(value);
     return static_cast<int64_t>(value);
 }
 
@@ -154,8 +297,10 @@ static int64_t result_element_type(HooTensor left, HooTensor right) {
     int64_t lt = header(left)->element_type;
     int64_t rt = header(right)->element_type;
     if (lt == TENSOR_ELEMENT_F64 || rt == TENSOR_ELEMENT_F64) return TENSOR_ELEMENT_F64;
+    if (lt == TENSOR_ELEMENT_F32 || rt == TENSOR_ELEMENT_F32) return TENSOR_ELEMENT_F32;
     if (lt == TENSOR_ELEMENT_F8 || rt == TENSOR_ELEMENT_F8) return TENSOR_ELEMENT_F8;
     if (lt == TENSOR_ELEMENT_INT64 || rt == TENSOR_ELEMENT_INT64) return TENSOR_ELEMENT_INT64;
+    if (lt == TENSOR_ELEMENT_INT32 || rt == TENSOR_ELEMENT_INT32) return TENSOR_ELEMENT_INT32;
     if (lt == TENSOR_ELEMENT_BIT && rt == TENSOR_ELEMENT_BIT) return TENSOR_ELEMENT_BIT;
     if (lt == rt) return lt;
     if ((lt == TENSOR_ELEMENT_BYTE && rt == TENSOR_ELEMENT_INT8) ||
@@ -173,6 +318,13 @@ static double scalar_numeric(int64_t scalar_bits, int64_t scalar_type) {
         return static_cast<int8_t>(scalar_bits);
     if (scalar_type == TENSOR_ELEMENT_BYTE)
         return static_cast<uint8_t>(scalar_bits);
+    if (scalar_type == TENSOR_ELEMENT_F32) {
+        float value = 0.0f;
+        std::memcpy(&value, &scalar_bits, sizeof(value));
+        return static_cast<double>(value);
+    }
+    if (scalar_type == TENSOR_ELEMENT_INT32)
+        return static_cast<int32_t>(scalar_bits);
     if (scalar_type == TENSOR_ELEMENT_BIT)
         return scalar_bits != 0 ? 1.0 : 0.0;
     return static_cast<double>(scalar_bits);
@@ -182,8 +334,14 @@ static int64_t scalar_result_element_type(HooTensor tensor, int64_t scalar_type)
     const int64_t tensor_type = header(tensor)->element_type;
     if (tensor_type == TENSOR_ELEMENT_F64 || scalar_type == TENSOR_ELEMENT_F64)
         return TENSOR_ELEMENT_F64;
+    if (tensor_type == TENSOR_ELEMENT_F32 || scalar_type == TENSOR_ELEMENT_F32)
+        return TENSOR_ELEMENT_F32;
     if (tensor_type == TENSOR_ELEMENT_F8 || scalar_type == TENSOR_ELEMENT_F8)
         return TENSOR_ELEMENT_F8;
+    if (tensor_type == TENSOR_ELEMENT_INT64 || scalar_type == TENSOR_ELEMENT_INT64)
+        return TENSOR_ELEMENT_INT64;
+    if (tensor_type == TENSOR_ELEMENT_INT32 || scalar_type == TENSOR_ELEMENT_INT32)
+        return TENSOR_ELEMENT_INT32;
     if (tensor_type == TENSOR_ELEMENT_BIT && scalar_type != TENSOR_ELEMENT_BIT)
         return TENSOR_ELEMENT_INT64;
     return tensor_type;
@@ -217,7 +375,9 @@ static HooTensor scalar_binary(HooTensor tensor, int64_t scalar_bits, int64_t sc
 
 static HooTensor make_like(HooTensor source, int64_t element_type) {
     auto* h = header(source);
-    return hoo_tensor_new(element_type, h->rank, h->dims[0], h->dims[1], h->dims[2]);
+    HooTensor result = nullptr;
+    if (hoo_tensor_new_ex(element_type, h->rank, h->dims, &result) != HOO_STATUS_OK) return nullptr;
+    return result;
 }
 
 static HooTensor binary_numeric(HooTensor left, HooTensor right, int op) {
@@ -262,20 +422,10 @@ static HooTensor binary_compare(HooTensor left, HooTensor right, int op) {
 }
 
 HooTensor hoo_tensor_new(int64_t element_type, int64_t rank, int64_t d0, int64_t d1, int64_t d2) {
-    int64_t length = checked_length(rank, d0, d1, d2);
-    int64_t bytes = storage_bytes(element_type, length);
-    auto* h = reinterpret_cast<HooTensorHeader*>(hoo_alloc(sizeof(HooTensorHeader) + bytes, HOO_TYPE_TENSOR));
-    if (!h) return nullptr;
-    h->element_type = element_type;
-    h->rank = rank;
-    h->dims[0] = d0;
-    h->dims[1] = rank >= 2 ? d1 : 1;
-    h->dims[2] = rank >= 3 ? d2 : 1;
-    h->length = length;
-    h->next_index = 0;
-    h->storage_bytes = bytes;
-    std::memset(reinterpret_cast<uint8_t*>(h) + sizeof(HooTensorHeader), 0, static_cast<size_t>(bytes));
-    return reinterpret_cast<HooTensor>(h);
+    if (rank < 1 || rank > 3) return nullptr;
+    const int64_t dims[3] = {d0, d1, d2};
+    HooTensor result = nullptr;
+    return hoo_tensor_new_ex(element_type, rank, dims, &result) == HOO_STATUS_OK ? result : nullptr;
 }
 
 HooTensor hoo_tensor_new1(int64_t element_type, int64_t d0) {
@@ -288,6 +438,104 @@ HooTensor hoo_tensor_new2(int64_t element_type, int64_t d0, int64_t d1) {
 
 HooTensor hoo_tensor_new3(int64_t element_type, int64_t d0, int64_t d1, int64_t d2) {
     return hoo_tensor_new(element_type, 3, d0, d1, d2);
+}
+
+HooStatus hoo_tensor_new_ex(int64_t element_type, int64_t rank,
+                            const int64_t* dims, HooTensor* out) {
+    if (!out) {
+        set_error(HOO_STATUS_INVALID_ARGUMENT, "tensor output is null");
+        return HOO_STATUS_INVALID_ARGUMENT;
+    }
+    *out = nullptr;
+    if (!valid_element_type(element_type)) {
+        set_error(HOO_STATUS_INVALID_DTYPE, "unsupported tensor element type");
+        return HOO_STATUS_INVALID_DTYPE;
+    }
+    int64_t length = 0;
+    if (!checked_shape(rank, dims, &length)) {
+        set_error(HOO_STATUS_INVALID_SHAPE, "invalid tensor rank or dimensions");
+        return HOO_STATUS_INVALID_SHAPE;
+    }
+    *out = allocate_tensor(element_type, rank, dims, nullptr, 0);
+    if (!*out) {
+        set_error(HOO_STATUS_OUT_OF_MEMORY, "tensor allocation failed");
+        return HOO_STATUS_OUT_OF_MEMORY;
+    }
+    (void)length;
+    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    return HOO_STATUS_OK;
+}
+
+HooStatus hoo_tensor_shape(HooTensor tensor, int64_t capacity,
+                           int64_t* dims, int64_t* out_count) {
+    auto* h = header(tensor);
+    if (!h || !out_count || capacity < 0 || (capacity > 0 && !dims)) {
+        set_error(HOO_STATUS_INVALID_ARGUMENT, "invalid tensor shape query");
+        return HOO_STATUS_INVALID_ARGUMENT;
+    }
+    *out_count = h->rank;
+    if (capacity < h->rank) {
+        set_error(HOO_STATUS_OUT_OF_BOUNDS, "shape output capacity is too small");
+        return HOO_STATUS_OUT_OF_BOUNDS;
+    }
+    std::memcpy(dims, h->dims, static_cast<size_t>(h->rank) * sizeof(int64_t));
+    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    return HOO_STATUS_OK;
+}
+
+HooStatus hoo_tensor_strides(HooTensor tensor, int64_t capacity,
+                             int64_t* strides, int64_t* out_count) {
+    auto* h = header(tensor);
+    if (!h || !out_count || capacity < 0 || (capacity > 0 && !strides)) {
+        set_error(HOO_STATUS_INVALID_ARGUMENT, "invalid tensor stride query");
+        return HOO_STATUS_INVALID_ARGUMENT;
+    }
+    *out_count = h->rank;
+    if (capacity < h->rank) {
+        set_error(HOO_STATUS_OUT_OF_BOUNDS, "stride output capacity is too small");
+        return HOO_STATUS_OUT_OF_BOUNDS;
+    }
+    std::memcpy(strides, h->strides, static_cast<size_t>(h->rank) * sizeof(int64_t));
+    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    return HOO_STATUS_OK;
+}
+
+HooStatus hoo_tensor_numel(HooTensor tensor, int64_t* out_numel) {
+    auto* h = header(tensor);
+    if (!h || !out_numel) {
+        set_error(HOO_STATUS_INVALID_ARGUMENT, "invalid tensor numel query");
+        return HOO_STATUS_INVALID_ARGUMENT;
+    }
+    *out_numel = h->length;
+    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    return HOO_STATUS_OK;
+}
+
+HooStatus hoo_tensor_abi_version(HooTensor tensor, int32_t* out_version) {
+    auto* h = header(tensor);
+    if (!h || !out_version) {
+        set_error(HOO_STATUS_INVALID_ARGUMENT, "invalid tensor ABI query");
+        return HOO_STATUS_INVALID_ARGUMENT;
+    }
+    *out_version = static_cast<int32_t>(h->abi_version);
+    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    return HOO_STATUS_OK;
+}
+
+HooStatus hoo_tensor_copy(HooTensor tensor, HooTensor* out) {
+    auto* h = header(tensor);
+    if (!h || !out) {
+        set_error(HOO_STATUS_INVALID_ARGUMENT, "invalid tensor copy argument");
+        return HOO_STATUS_INVALID_ARGUMENT;
+    }
+    *out = nullptr;
+    HooTensor result = nullptr;
+    HooStatus status = hoo_tensor_new_ex(h->element_type, h->rank, h->dims, &result);
+    if (status != HOO_STATUS_OK) return status;
+    std::memcpy(data(result), data(tensor), static_cast<size_t>(h->storage_bytes));
+    *out = result;
+    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    return HOO_STATUS_OK;
 }
 
 int64_t hoo_tensor_length(HooTensor tensor) {
@@ -319,6 +567,17 @@ int64_t hoo_tensor_set_value(HooTensor tensor, int64_t index, int64_t value_bits
     }
     if (h->element_type == TENSOR_ELEMENT_INT8 || h->element_type == TENSOR_ELEMENT_BYTE) {
         data(tensor)[index] = static_cast<uint8_t>(value_bits);
+        return 1;
+    }
+    if (h->element_type == TENSOR_ELEMENT_F32) {
+        float value = 0.0f;
+        std::memcpy(&value, &value_bits, sizeof(value));
+        std::memcpy(data(tensor) + index * sizeof(value), &value, sizeof(value));
+        return 1;
+    }
+    if (h->element_type == TENSOR_ELEMENT_INT32) {
+        int32_t value = static_cast<int32_t>(value_bits);
+        std::memcpy(data(tensor) + index * sizeof(value), &value, sizeof(value));
         return 1;
     }
     if (h->element_type == TENSOR_ELEMENT_F8) {
@@ -353,6 +612,16 @@ int64_t hoo_tensor_get_bits(HooTensor tensor, int64_t index) {
         return data(tensor)[index];
     if (h->element_type == TENSOR_ELEMENT_F8)
         return data(tensor)[index];
+    if (h->element_type == TENSOR_ELEMENT_F32) {
+        int64_t bits = 0;
+        std::memcpy(&bits, data(tensor) + index * sizeof(float), sizeof(float));
+        return bits;
+    }
+    if (h->element_type == TENSOR_ELEMENT_INT32) {
+        int32_t value = 0;
+        std::memcpy(&value, data(tensor) + index * sizeof(value), sizeof(value));
+        return value;
+    }
     int64_t bits = 0;
     std::memcpy(&bits, data(tensor) + index * 8, sizeof(bits));
     return bits;

@@ -16,6 +16,17 @@ protected:
     }
 };
 
+TEST_F(HooTensorTest, VersionedAiAbiReportsCapabilitiesAndErrors) {
+    EXPECT_EQ(hoo_ai_abi_version(), 2);
+    EXPECT_EQ(hoo_ai_has_feature("tensor_abi_v2"), 1);
+    EXPECT_EQ(hoo_ai_has_feature("tensor_dynamic_rank"), 1);
+    EXPECT_EQ(hoo_ai_has_feature("tensor_f32"), 1);
+    EXPECT_EQ(hoo_ai_has_feature("tensor_int32"), 1);
+    EXPECT_EQ(hoo_ai_has_feature("tensor_f16"), 0);
+    EXPECT_EQ(hoo_ai_has_feature("unknown_feature"), 0);
+    EXPECT_EQ(hoo_ai_last_status(), HOO_STATUS_OK);
+}
+
 TEST_F(HooTensorTest, CreateSetGetInt64Tensor) {
     HooTensor t = hoo_tensor_new2(1, 2, 2);
     ASSERT_NE(t, nullptr);
@@ -686,4 +697,109 @@ TEST_F(HooTensorTest, MatrixMultiplyRankTwoTensors) {
     hoo_release(c);
     hoo_release(b);
     hoo_release(a);
+}
+
+TEST_F(HooTensorTest, VersionedAbiSupportsDynamicRankAndMetadata) {
+    const int64_t dims[] = {2, 3, 4, 5};
+    HooTensor tensor = nullptr;
+    ASSERT_EQ(hoo_tensor_new_ex(HOO_TENSOR_DTYPE_F32, 4, dims, &tensor), HOO_STATUS_OK);
+    ASSERT_NE(tensor, nullptr);
+
+    int32_t version = 0;
+    EXPECT_EQ(hoo_tensor_abi_version(tensor, &version), HOO_STATUS_OK);
+    EXPECT_EQ(version, HOO_TENSOR_ABI_VERSION);
+
+    int64_t shape[4] = {};
+    int64_t strides[4] = {};
+    int64_t count = 0;
+    EXPECT_EQ(hoo_tensor_shape(tensor, 4, shape, &count), HOO_STATUS_OK);
+    EXPECT_EQ(count, 4);
+    EXPECT_EQ(std::memcmp(shape, dims, sizeof(dims)), 0);
+    EXPECT_EQ(hoo_tensor_strides(tensor, 4, strides, &count), HOO_STATUS_OK);
+    EXPECT_EQ(strides[0], 240);
+    EXPECT_EQ(strides[1], 80);
+    EXPECT_EQ(strides[2], 20);
+    EXPECT_EQ(strides[3], 4);
+
+    int64_t numel = 0;
+    EXPECT_EQ(hoo_tensor_numel(tensor, &numel), HOO_STATUS_OK);
+    EXPECT_EQ(numel, 120);
+    EXPECT_EQ(hoo_get_type_id(tensor), HOO_TYPE_TENSOR);
+    EXPECT_NE(hoo_get_type_id(tensor), HOO_TYPE_BUFFER);
+    hoo_release(tensor);
+}
+
+TEST_F(HooTensorTest, VersionedAbiRejectsInvalidShapeAndDtype) {
+    const int64_t dims[] = {2, 0};
+    HooTensor tensor = nullptr;
+    EXPECT_EQ(hoo_tensor_new_ex(HOO_TENSOR_DTYPE_F64, 2, dims, &tensor),
+              HOO_STATUS_INVALID_SHAPE);
+    EXPECT_EQ(tensor, nullptr);
+
+    const int64_t valid_dims[] = {2, 2};
+    EXPECT_EQ(hoo_tensor_new_ex(999, 2, valid_dims, &tensor),
+              HOO_STATUS_INVALID_DTYPE);
+    EXPECT_EQ(tensor, nullptr);
+    EXPECT_EQ(hoo_ai_last_status(), HOO_STATUS_INVALID_DTYPE);
+}
+
+TEST_F(HooTensorTest, VersionedAbiCopyPreservesF32Values) {
+    const int64_t dims[] = {3};
+    HooTensor source = nullptr;
+    ASSERT_EQ(hoo_tensor_new_ex(HOO_TENSOR_DTYPE_F32, 1, dims, &source), HOO_STATUS_OK);
+    ASSERT_NE(source, nullptr);
+
+    float value = 3.5f;
+    int64_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(value));
+    ASSERT_EQ(hoo_tensor_set_value(source, 1, bits), 1);
+
+    HooTensor copy = nullptr;
+    ASSERT_EQ(hoo_tensor_copy(source, &copy), HOO_STATUS_OK);
+    ASSERT_NE(copy, nullptr);
+    EXPECT_FLOAT_EQ(static_cast<float>(hoo_tensor_get_double(copy, 1)), value);
+    EXPECT_EQ(hoo_tensor_get_bits(copy, 1), bits);
+
+    hoo_release(copy);
+    hoo_release(source);
+}
+
+TEST_F(HooTensorTest, VersionedAbiReportsPackedBitStrides) {
+    const int64_t dims[] = {2, 3};
+    HooTensor tensor = nullptr;
+    ASSERT_EQ(hoo_tensor_new_ex(HOO_TENSOR_DTYPE_BIT, 2, dims, &tensor), HOO_STATUS_OK);
+
+    int64_t strides[2] = {};
+    int64_t count = 0;
+    ASSERT_EQ(hoo_tensor_strides(tensor, 2, strides, &count), HOO_STATUS_OK);
+    EXPECT_EQ(count, 2);
+    EXPECT_EQ(strides[0], 3); // three bits per row
+    EXPECT_EQ(strides[1], 1); // one bit per element
+    hoo_release(tensor);
+}
+
+TEST_F(HooTensorTest, VersionedAbiPromotesF32AndInt32Arithmetic) {
+    const int64_t dims[] = {2};
+    HooTensor f32 = nullptr;
+    HooTensor i32 = nullptr;
+    ASSERT_EQ(hoo_tensor_new_ex(HOO_TENSOR_DTYPE_F32, 1, dims, &f32), HOO_STATUS_OK);
+    ASSERT_EQ(hoo_tensor_new_ex(HOO_TENSOR_DTYPE_INT32, 1, dims, &i32), HOO_STATUS_OK);
+
+    float f32Value = 1.5f;
+    int64_t f32Bits = 0;
+    std::memcpy(&f32Bits, &f32Value, sizeof(f32Value));
+    ASSERT_EQ(hoo_tensor_set_value(f32, 0, f32Bits), 1);
+    ASSERT_EQ(hoo_tensor_set_value(f32, 1, f32Bits), 1);
+    ASSERT_EQ(hoo_tensor_set_value(i32, 0, 2), 1);
+    ASSERT_EQ(hoo_tensor_set_value(i32, 1, 4), 1);
+
+    HooTensor sum = hoo_tensor_add(i32, f32);
+    ASSERT_NE(sum, nullptr);
+    EXPECT_EQ(hoo_tensor_element_type(sum), HOO_TENSOR_DTYPE_F32);
+    EXPECT_FLOAT_EQ(static_cast<float>(hoo_tensor_get_double(sum, 0)), 3.5f);
+    EXPECT_FLOAT_EQ(static_cast<float>(hoo_tensor_get_double(sum, 1)), 5.5f);
+
+    hoo_release(sum);
+    hoo_release(i32);
+    hoo_release(f32);
 }

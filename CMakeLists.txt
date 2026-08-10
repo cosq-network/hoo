@@ -267,6 +267,7 @@ else()
 endif()
 
 add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
+    src/runtime/lib/hoo_ai.cpp
     src/runtime/lib/hoo_runtime.c
     src/runtime/lib/hoo_any.cpp
     src/runtime/lib/hoo_anyarray.cpp

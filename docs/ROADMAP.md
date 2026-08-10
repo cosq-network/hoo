@@ -187,8 +187,8 @@ This document provides a high-level overview of the current status of all tracke
   - **Priority**: HIGH
 
 - **[ISSUE-026_native_ann_support.md](issues/ISSUE-026_native_ann_support.md)**
-  - **Title**: # ISSUE-026: Implementation Plan for Native Artificial Neural Network (ANN) Support
-  - **Status**: PROPOSED
+  - **Title**: # ISSUE-026: Native Neural Network and AI Data Support
+  - **Status**: IN PROGRESS — versioned tensor/AI ABI foundation implemented; autograd, `hoo.nn`, data pipelines, model formats, and training remain planned
   - **Priority**: CRITICAL** (Core differentiator for the Hoo ecosystem)
 
 - **[ISSUE-028_subword_modulo_shift.md](issues/ISSUE-028_subword_modulo_shift.md)**
