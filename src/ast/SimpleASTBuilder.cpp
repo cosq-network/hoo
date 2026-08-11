@@ -1059,9 +1059,11 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
         } else {
             args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
         }
-        auto qualifiedClassName = buildQualifiedIdentifier(factoryCtx->qualifiedIdentifier());
-        std::string factoryName = factoryCtx->IDENTIFIER()->getText();
-        return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), factoryName, std::move(args));
+        auto identifiers = factoryCtx->IDENTIFIER();
+        auto className = std::make_unique<QualifiedIdentifier>(
+            std::vector<std::string>{identifiers[0]->getText()});
+        std::string factoryName = identifiers[1]->getText();
+        return std::make_unique<NewObjectExpression>(std::move(className), factoryName, std::move(args));
     }
 
     // HashMap construction: new HashMap<K,V>(args)

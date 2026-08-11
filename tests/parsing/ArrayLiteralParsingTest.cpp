@@ -600,7 +600,7 @@ TEST_F(ArrayLiteralParsingTest, MultiDimensionalArrayReturnType) {
 // Test 15: Array return type with qualified base type
 TEST_F(ArrayLiteralParsingTest, QualifiedArrayReturnType) {
     std::string code = R"(
-        func getStrings(): hoo.String[] {
+        func :hoo.String[] getStrings() {
             return [new hoo.String("a"), new hoo.String("b")];
         }
     )";

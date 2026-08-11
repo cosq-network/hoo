@@ -464,9 +464,6 @@ const NewObjectExpression* extractNewExpression(const Statement* stmt) {
     return nullptr;
 }
 
-// NOTE: This test is disabled due to a pre-existing parser bug
-// (__next_prime overflow) that affects new expressions with empty argument
-// lists. The bug exists independently of the factory constructor feature.
 TEST_F(NewExpressionParsingTest, AST_SimpleNewObjectExpressionNode) {
     std::string code = R"(
         class Widget {
@@ -600,11 +597,6 @@ TEST_F(NewExpressionParsingTest, AST_NewExpressionInExpressionStatement) {
     EXPECT_EQ(newExpr->getClassName(), "Logger");
 }
 
-// NOTE: The following tests are disabled due to a pre-existing parser bug
-// (__next_prime overflow) that affects new expressions with empty argument
-// lists and factory new expressions (new Class.factory()). The bug exists
-// independently of the factory constructor feature and is tracked separately.
-
 TEST_F(NewExpressionParsingTest, FactoryNewExpression) {
     std::string code = R"(
         class Point {
@@ -665,14 +657,15 @@ TEST_F(NewExpressionParsingTest, QualifiedFactoryNewExpression) {
     ASSERT_NE(stmt, nullptr);
     auto* newExpr = extractNewExpression(stmt);
     ASSERT_NE(newExpr, nullptr);
-    // The dotted prefix "a.b.C" becomes the qualified class, the final
-    // identifier is the factory name.
-    EXPECT_EQ(newExpr->getClassName(), "C");
+    // Factory construction requires an unqualified class name
+    // (new Class.factory(args)). A multi-segment dotted name is always a
+    // qualified class constructor, so `new a.b.C.origin(1)` is the class
+    // "a.b.C.origin" (module path a.b.C), not a factory call.
+    EXPECT_EQ(newExpr->getClassName(), "origin");
     auto* qn = newExpr->getQualifiedClassName();
     ASSERT_NE(qn, nullptr);
-    EXPECT_EQ(qn->getFullName(), "a.b.C");
-    EXPECT_TRUE(newExpr->isFactoryConstruction());
-    EXPECT_EQ(newExpr->getFactoryName(), "origin");
+    EXPECT_EQ(qn->getFullName(), "a.b.C.origin");
+    EXPECT_FALSE(newExpr->isFactoryConstruction());
 }
 
 } // namespace tests

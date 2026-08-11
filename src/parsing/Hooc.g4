@@ -384,19 +384,19 @@ awaitExpression
 
 // Object creation expression
 newExpression
-    : NEW (newHashMapExpression | newArrayExpression | newClassExpression | newFactoryExpression)
-    ;
-
-newClassExpression
-    : qualifiedIdentifier LPAREN argumentList RPAREN
+    : NEW (newHashMapExpression | newArrayExpression | newFactoryExpression | newClassExpression)
     ;
 
 newFactoryExpression
-    : qualifiedIdentifier DOT IDENTIFIER LPAREN argumentList RPAREN
+    : IDENTIFIER DOT IDENTIFIER LPAREN argumentList? RPAREN
+    ;
+
+newClassExpression
+    : qualifiedIdentifier LPAREN argumentList? RPAREN
     ;
 
 newHashMapExpression
-    : hashMapType LPAREN argumentList RPAREN
+    : hashMapType LPAREN argumentList? RPAREN
     ;
 
 newArrayExpression

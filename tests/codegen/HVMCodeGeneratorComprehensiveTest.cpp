@@ -2431,8 +2431,8 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorSymbol) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr) << compiler_->getLastError();
 
-    // Factory function should be emitted as _F_Point_FC_origin_p
-    auto* fcSym = module->getSymbol("_F_Point_FC_origin_p");
+    // Factory function should be emitted as _F_M_test_E_Point_FC_origin_p
+    auto* fcSym = module->getSymbol("_F_M_test_E_Point_FC_origin_p");
     EXPECT_NE(fcSym, nullptr);
 }
 
@@ -2454,8 +2454,8 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorMultiple) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr) << compiler_->getLastError();
 
-    EXPECT_NE(module->getSymbol("_F_Point_FC_origin_p"), nullptr);
-    EXPECT_NE(module->getSymbol("_F_Point_FC_unit_p_p"), nullptr);
+    EXPECT_NE(module->getSymbol("_F_M_test_E_Point_FC_origin_p"), nullptr);
+    EXPECT_NE(module->getSymbol("_F_M_test_E_Point_FC_unit_p_p"), nullptr);
 }
 
 TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorMissing) {
