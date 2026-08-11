@@ -695,8 +695,6 @@ TEST_F(HVMCodeGeneratorTest, AssignmentToManagedLocal_ReleasesOldValue) {
     EXPECT_GE(callCount, 1) << "Expected at least one CALL (hoo_release) for managed reassignment";
 }
 
-// NOTE: This test is disabled due to a pre-existing parser bug (__next_prime overflow)
-// that affects parsing of class declarations in certain compilation unit contexts.
 TEST_F(HVMCodeGeneratorTest, NullableUserClassLocal_EmitsScopeCleanupRelease) {
     std::string code = "class User {\n"
                        "    var name: string;\n"

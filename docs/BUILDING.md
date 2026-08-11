@@ -15,13 +15,24 @@ The compiler build depends on several key components. Below is a summary of ever
 | CMake 3.20+ | Yes | Configures the build tree (3.16+ works for manual builds; 3.20+ needed for Presets) |
 | C++17 Compiler | Yes | Clang 15+ (recommended) or MSVC 2022+ |
 | LLVM 22.1+ dev headers/libs | Yes | LLVM core libraries, ORC JIT, Target, etc. |
-| ANTLR4 C++ Runtime | Yes | Runtime library for the generated parser |
+| ANTLR4 C++ Runtime | Yes (auto) | Runtime library for the generated parser; built from source via `FetchContent` by default (see note below) |
 | Java 17+ | Yes | Runs the ANTLR generator jar |
 | OpenSSL development libraries | Yes | TLS socket support and cryptographic runtime integration |
 | Ninja or Make | Yes | Executes the generated build files |
 | GoogleTest | Optional | Enables unit tests (`hoo-tests` target) |
 
 The repository includes the ANTLR generator jar at `tools/antlr-4.13.2-complete.jar`.
+
+### ANTLR C++ Runtime note
+
+The CMake build compiles the ANTLR4 4.13.2 C++ runtime **from source** (via `FetchContent`)
+by default, so its `std::libc++` layout always matches the rest of the project. This is
+required on macOS with Xcode 26+: the Homebrew `antlr4-cpp-runtime` bottle is built against
+an older SDK, and its incompatible `std::unordered_map` layout corrupts the parser's shared
+ATN prediction cache, crashing with `std::overflow_error: __next_prime overflow`.
+
+To use a system-installed runtime instead, configure with `-DHOO_ANTLR4_USE_SYSTEM=ON` or
+point `-DANTLR4_ROOT=...` at an install built with the same toolchain.
 
 ### How to Verify Each Dependency
 
@@ -55,8 +66,10 @@ java -version             # Must be 17+
 
 2. **Install all build dependencies**:
    ```bash
-    brew install cmake ninja llvm openssl@3 antlr4-cpp-runtime googletest
+    brew install cmake ninja llvm openssl@3 googletest
    ```
+   > ANTLR4 is compiled from source automatically (see [ANTLR C++ Runtime note](#antlr-c-runtime-note));
+   > you do **not** need to install `antlr4-cpp-runtime`.
 
 3. **Configure PATH** (Homebrew LLVM is "keg-only" — not in default PATH):
    ```bash
@@ -88,20 +101,9 @@ java -version             # Must be 17+
      libgtest-dev uuid-dev wget unzip
    ```
 
-3. **Build ANTLR4 C++ Runtime from source** (Ubuntu's `libantlr4-runtime-dev` package is often outdated):
-   ```bash
-   ANTLR_VERSION="4.13.2"
-   wget -q "https://www.antlr.org/download/antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip"
-   unzip -q "antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip" -d antlr4-src
-   mkdir antlr4-build && cd antlr4-build
-   cmake -G Ninja -DCMAKE_BUILD_TYPE=Release \
-     -DCMAKE_INSTALL_PREFIX=/tmp/antlr4-runtime \
-     -DANTLR_BUILD_SHARED=OFF \
-     -DANTLR_BUILD_CPP_TESTS=OFF \
-     ../antlr4-src
-   ninja && ninja install
-   cd .. && rm -rf antlr4-src antlr4-build antlr4-cpp-runtime-*-source.zip
-   ```
+3. **ANTLR4 C++ Runtime**: compiled automatically from source by CMake via `FetchContent`
+   (Ubuntu's `libantlr4-runtime-dev` package is often outdated and may not ABI-match your
+   toolchain). No manual step required.
 
 4. **Install Java** (if not present):
    ```bash
@@ -114,7 +116,6 @@ java -version             # Must be 17+
    clang++ --version
    llvm-config --version
    java -version
-   ls /tmp/antlr4-runtime/lib/libantlr4-runtime.a  # Should exist
    ```
 
 #### Fedora / RedHat / CentOS
@@ -123,8 +124,9 @@ java -version             # Must be 17+
    ```bash
    sudo dnf groupinstall -y "Development Tools" "C Development Tools and Libraries"
    sudo dnf install -y cmake ninja-build clang lldb gdb llvm-devel \
-     antlr4-cpp-runtime-devel gtest-devel java-latest-openjdk
+     gtest-devel java-latest-openjdk
    ```
+   ANTLR4 is compiled from source automatically via `FetchContent`.
 
 #### Dev Container (Docker) & GitHub Codespaces
 
@@ -294,7 +296,8 @@ cmake --build build -j$(nproc)
 ```
 
 ### Overriding Dependency Paths
-If CMake cannot find LLVM or ANTLR4, pass paths explicitly:
+If CMake cannot find LLVM or ANTLR4, pass paths explicitly. The ANTLR4 overrides are only
+needed when using a system-installed runtime (auto-built via `FetchContent` otherwise):
 ```bash
 cmake -S . -B build \
   -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm \
@@ -425,8 +428,8 @@ cmake --preset macos-homebrew-ninja
 - **Windows**: Visual Studio's bundled Clang does NOT include LLVM dev headers. Download the pre-built LLVM 22.1.4 `clang+llvm-*-x86_64-pc-windows-msvc.tar.xz` from [LLVM releases](https://github.com/llvm/llvm-project/releases/tag/llvmorg-22.1.4) and extract it. Set `LLVM_DIR` to point to the `lib/cmake/llvm` directory inside.
 
 ### "Could NOT find ANTLR4"
-- **macOS**: `brew install antlr4-cpp-runtime`
-- **Linux**: Build from source (see [Ubuntu section above](#ubuntu-linux)). The system `libantlr4-runtime-dev` is often too old.
+- **macOS**: ANTLR4 is built from source automatically (see [ANTLR C++ Runtime note](#antlr-c-runtime-note)). If you opt out with `-DHOO_ANTLR4_USE_SYSTEM=ON`, run `brew install antlr4-cpp-runtime` — but make sure it was compiled with the same SDK/toolchain as the project.
+- **Linux**: Built from source automatically; or build manually (see [Ubuntu section above](#ubuntu-linux)). The system `libantlr4-runtime-dev` is often too old.
 - **Windows**: ANTLR4 is built from source via `FetchContent` automatically — no manual step needed. If the download fails, ensure your network can reach GitHub.
 
 ### "Java not found" / "ANTLR jar failed"

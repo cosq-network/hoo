@@ -45,7 +45,7 @@ jobs:
       - name: Install build tools and dependencies
         run: |
           brew install cmake ninja
-          brew install llvm antlr4-cpp-runtime googletest
+          brew install llvm googletest
 
       - name: Configure CMake
         run: |
@@ -141,14 +141,6 @@ jobs:
       - name: Add LLVM to PATH
         run: echo "/opt/llvm/bin" >> $GITHUB_PATH
 
-      - name: Setup vcpkg
-        uses: vcpkg/actions/setup-vcpkg@v1
-
-      - name: Install ANTLR4 via vcpkg
-        run: |
-          vcpkg install antlr4 --triplet x64-linux
-          echo "VCPKG_DIR=${VCPKG_ROOT}/installed/x64-linux" >> $GITHUB_ENV
-
       - name: Cache GoogleTest
         id: cache-gtest
         uses: actions/cache@v4
@@ -173,8 +165,7 @@ jobs:
             -DCMAKE_C_COMPILER=/opt/llvm/bin/clang \
             -DCMAKE_CXX_COMPILER=/opt/llvm/bin/clang++ \
             -DLLVM_DIR=/opt/llvm/lib/cmake/llvm \
-            -DHOO_BUILD_TESTS=ON \
-            -DCMAKE_PREFIX_PATH=$VCPKG_DIR
+            -DHOO_BUILD_TESTS=ON
 
       - name: Build all targets
         run: cmake --build build --parallel $(nproc)

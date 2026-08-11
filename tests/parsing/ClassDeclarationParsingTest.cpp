@@ -977,8 +977,6 @@ TEST_F(ClassDeclarationParsingTest, SerializableClassWithOnlyPrivateFieldParsing
     EXPECT_FALSE(varDecl->isPublic());
 }
 
-// NOTE: This test is disabled due to a pre-existing ANTLR4 runtime / libc++ std::unordered_map
-// hash table issue (__next_prime overflow) during prediction/ATN evaluation for nested class field types.
 TEST_F(ClassDeclarationParsingTest, SerializableClassWithNestedSerializableField) {
     std::string code = R"(
         serializable class Point {

@@ -14,7 +14,9 @@ This guide covers setting up a development environment, building for debugging, 
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
 # Install all dependencies
-brew install cmake ninja llvm antlr4-cpp-runtime googletest
+brew install cmake ninja llvm googletest
+# ANTLR4 is compiled from source automatically (FetchContent); do not install
+# the antlr4-cpp-runtime bottle (it can ABI-mismatch the Xcode 26 toolchain).
 ```
 
 **PATH Configuration** (Homebrew LLVM is keg-only):
@@ -41,25 +43,15 @@ sudo apt update
 sudo apt install -y build-essential cmake ninja-build clang lldb gdb \
   llvm-dev libgtest-dev uuid-dev wget unzip
 
-# Build ANTLR4 C++ runtime from source (system package is often outdated)
-ANTLR_VERSION="4.13.2"
-wget -q "https://www.antlr.org/download/antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip"
-unzip -q "antlr4-cpp-runtime-${ANTLR_VERSION}-source.zip" -d antlr4-src
-mkdir antlr4-build && cd antlr4-build
-cmake -G Ninja -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_INSTALL_PREFIX=/tmp/antlr4-runtime \
-  -DANTLR_BUILD_SHARED=OFF \
-  -DANTLR_BUILD_CPP_TESTS=OFF \
-  ../antlr4-src
-ninja && ninja install
-cd .. && rm -rf antlr4-src antlr4-build antlr4-cpp-runtime-*-source.zip
+# ANTLR4 C++ runtime is compiled automatically by CMake via FetchContent
+# (the system libantlr4-runtime-dev package is often outdated).
 ```
 
 ### 1.3. Linux (RedHat / Fedora / CentOS)
 ```bash
 sudo dnf groupinstall -y "Development Tools" "C Development Tools and Libraries"
 sudo dnf install -y cmake ninja-build clang lldb gdb llvm-devel \
-  antlr4-cpp-runtime-devel gtest-devel java-latest-openjdk
+  gtest-devel java-latest-openjdk
 ```
 
 ### 1.4. Dev Container & GitHub Codespaces
@@ -131,9 +123,7 @@ cmake --build --preset macos-homebrew-ninja
 
 # Ubuntu / Linux (native)
 cmake --preset ninja-relwithdebinfo -DCMAKE_BUILD_TYPE=Debug \
-  -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm \
-  -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime \
-  -DANTLR4_LIBRARY=/tmp/antlr4-runtime/lib/libantlr4-runtime.a
+  -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm
 cmake --build --preset ninja-relwithdebinfo
 
 # Dev Container / Codespaces (use ninja-relwithdebinfo and override LLVM/ANTLR4 paths)
@@ -603,9 +593,12 @@ export DYLD_LIBRARY_PATH=/opt/homebrew/opt/llvm/lib:$DYLD_LIBRARY_PATH
 ```
 
 ### Build failed: "fatal error: 'antlr4-runtime.h' file not found"
-The ANTLR4 include path is not configured. On macOS, the `macos-homebrew-ninja` preset handles this automatically. On Linux, pass the path manually:
+The ANTLR4 include path is not configured. The runtime is built automatically via
+`FetchContent`, so this usually means the CMake configure failed or the `_deps`
+sources were removed; delete the build dir and reconfigure. On Linux, if you use a
+system-installed runtime instead, pass the path manually:
 ```bash
-cmake --preset ninja-relwithdebinfo -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DANTLR4_INCLUDE_DIR=/tmp/antlr4-runtime/include/antlr4-runtime
+cmake --preset ninja-relwithdebinfo -DLLVM_DIR=/path/to/llvm/lib/cmake/llvm -DANTLR4_INCLUDE_DIR=/path/to/antlr4/include/antlr4-runtime
 ```
 
 ### Dev Container / Codespaces first build is slow

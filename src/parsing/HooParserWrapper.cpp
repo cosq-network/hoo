@@ -37,22 +37,9 @@ HoocParser::CompilationUnitContext* HooParserWrapper::parseForAST(const std::str
         stage = "creating Hooc parser";
         parser_ = std::make_unique<HoocParser>(tokens_.get());
         
-        // Configure SLL prediction mode for fast parsing with fallback to LL mode
-        parser_->getInterpreter<antlr4::atn::ParserATNSimulator>()->setPredictionMode(antlr4::atn::PredictionMode::SLL);
-        parser_->setErrorHandler(std::make_shared<antlr4::BailErrorStrategy>());
-        
         stage = "parsing compilation unit";
-        try {
-            currentParseTree_ = parser_->compilationUnit();
-        } catch (...) {
-            tokens_->reset();
-            parser_->reset();
-            parser_->setErrorHandler(std::make_shared<antlr4::DefaultErrorStrategy>());
-            parser_->getInterpreter<antlr4::atn::ParserATNSimulator>()->setPredictionMode(antlr4::atn::PredictionMode::LL);
-            parser_->getInterpreter<antlr4::atn::ParserATNSimulator>()->clearDFA();
-            currentParseTree_ = parser_->compilationUnit();
-        }
-        
+        currentParseTree_ = parser_->compilationUnit();
+
         // Check for parsing errors
         bool hasErrors = (parser_->getNumberOfSyntaxErrors() > 0);
         

@@ -66,7 +66,15 @@ if(MSVC)
 endif()
 
 # Dependencies
-if(WIN32 AND NOT ANTLR4_ROOT)
+#
+# ANTLR4 is built from source by default (FetchContent) so the runtime is
+# compiled with the same toolchain/SDK as the rest of the project. Prebuilt
+# runtime libraries (e.g. the Homebrew antlr4-cpp-runtime bottle) are compiled
+# against an older libc++ and crash with `std::overflow_error: __next_prime
+# overflow` when their std::unordered_map layout is read by newer SDK headers.
+# Set HOO_ANTLR4_USE_SYSTEM=ON or -DANTLR4_ROOT=... to use a system install.
+option(HOO_ANTLR4_USE_SYSTEM "Use a system-installed ANTLR4 C++ runtime instead of building from source" OFF)
+if(NOT ANTLR4_ROOT AND NOT HOO_ANTLR4_USE_SYSTEM)
     include(FetchContent)
     FetchContent_Declare(
         antlr4_runtime

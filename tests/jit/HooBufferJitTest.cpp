@@ -13,15 +13,6 @@ protected:
     HVMJIT jit{io};
 };
 
-// NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
-// LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
-
-// NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
-// LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
-
-// NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
-// LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
-
 TEST_F(HooBufferJitTest, NewBuffer) {
     const std::string source = R"(
         import hoo.buffer;
