@@ -550,6 +550,13 @@ private:
     std::unique_ptr<ast::ConstructorDeclaration> buildConstructorDeclaration(HoocParser::ConstructorDeclarationContext* ctx);
 
     /**
+     * @brief Builds a named factory ConstructorDeclaration from its context.
+     * @param ctx Factory constructor declaration context.
+     * @return Unique pointer to ConstructorDeclaration with isFactory() == true.
+     */
+    std::unique_ptr<ast::ConstructorDeclaration> buildFactoryConstructorDeclaration(HoocParser::FactoryConstructorDeclarationContext* ctx);
+
+    /**
      * @brief Builds a ClassBody from its context.
      * @param ctx Class body context.
      * @return Unique pointer to ClassBody.

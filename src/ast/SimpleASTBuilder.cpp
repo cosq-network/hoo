@@ -1,6 +1,7 @@
 #include "SimpleASTBuilder.h"
 #include "AST.h"
 #include "parsing/HooParserWrapper.h"
+#include <algorithm>
 #include <iostream>
 #include <stdexcept>
 
@@ -1038,27 +1039,55 @@ std::unique_ptr<AwaitExpression> SimpleASTBuilder::buildAwaitExpression(HoocPars
 }
 
 std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::NewExpressionContext* ctx) {
-    std::unique_ptr<ArgumentList> args;
-    if (ctx->argumentList()) {
-        args = buildArgumentList(ctx->argumentList());
-    } else {
-        args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+    // Class construction: new <Class>(args)
+    if (auto classCtx = ctx->newClassExpression()) {
+        std::unique_ptr<ArgumentList> args;
+        if (classCtx->argumentList()) {
+            args = buildArgumentList(classCtx->argumentList());
+        } else {
+            args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+        }
+        auto qualifiedClassName = buildQualifiedIdentifier(classCtx->qualifiedIdentifier());
+        return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), std::move(args));
     }
 
-    if (ctx->hashMapType()) {
+    // Factory construction: new <Class>.<factoryName>(args)
+    if (auto factoryCtx = ctx->newFactoryExpression()) {
+        std::unique_ptr<ArgumentList> args;
+        if (factoryCtx->argumentList()) {
+            args = buildArgumentList(factoryCtx->argumentList());
+        } else {
+            args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+        }
+        auto qualifiedClassName = buildQualifiedIdentifier(factoryCtx->qualifiedIdentifier());
+        std::string factoryName = factoryCtx->IDENTIFIER()->getText();
+        return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), factoryName, std::move(args));
+    }
+
+    // HashMap construction: new HashMap<K,V>(args)
+    if (auto hashMapCtx = ctx->newHashMapExpression()) {
+        std::unique_ptr<ArgumentList> args;
+        if (hashMapCtx->argumentList()) {
+            args = buildArgumentList(hashMapCtx->argumentList());
+        } else {
+            args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+        }
         return std::make_unique<NewHashMapExpression>(
-            buildHashMapType(ctx->hashMapType()),
-            std::move(args));
+            buildHashMapType(hashMapCtx->hashMapType()), std::move(args));
     }
 
-    if (ctx->anyArrayType()) {
+    // AnyArray construction: new AnyArray(args)
+    if (auto arrayCtx = ctx->newArrayExpression()) {
+        std::unique_ptr<ArgumentList> args;
+        if (arrayCtx->argumentList()) {
+            args = buildArgumentList(arrayCtx->argumentList());
+        } else {
+            args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
+        }
         return std::make_unique<NewObjectExpression>("AnyArray", std::move(args));
     }
 
-    // Get the qualified class name
-    auto qualifiedClassName = buildQualifiedIdentifier(ctx->qualifiedIdentifier());
-
-    return std::make_unique<NewObjectExpression>(std::move(qualifiedClassName), std::move(args));
+    throw std::runtime_error("Unknown new expression target encountered");
 }
 
 // Import building methods
@@ -1173,18 +1202,50 @@ std::unique_ptr<ConstructorDeclaration> SimpleASTBuilder::buildConstructorDeclar
     return std::make_unique<ConstructorDeclaration>(std::move(parameters), std::move(body));
 }
 
+std::unique_ptr<ConstructorDeclaration> SimpleASTBuilder::buildFactoryConstructorDeclaration(HoocParser::FactoryConstructorDeclarationContext* ctx) {
+    if (!ctx) {
+        throw std::runtime_error("FactoryConstructorDeclarationContext is null");
+    }
+
+    std::string name = ctx->IDENTIFIER()->getText();
+
+    std::vector<std::unique_ptr<Parameter>> parameters;
+    if (ctx->parameterList()) {
+        for (auto paramCtx : ctx->parameterList()->parameter()) {
+            auto param = buildParameter(paramCtx);
+            if (param) {
+                parameters.push_back(std::move(param));
+            }
+        }
+    }
+
+    auto body = buildBlock(ctx->block());
+
+    return std::make_unique<ConstructorDeclaration>(name, std::move(parameters), std::move(body));
+}
+
 std::unique_ptr<ClassBody> SimpleASTBuilder::buildClassBody(HoocParser::ClassBodyContext* ctx) {
     std::vector<std::unique_ptr<ClassMember>> members;
     int constructorCount = 0;
+    std::vector<std::string> factoryNames;
 
     for (auto memberCtx : ctx->classMember()) {
         auto member = buildClassMember(memberCtx);
         if (member) {
-            // Check if this member is a constructor
+            // Check if this member is a generative constructor (factories are
+            // independent named construction paths and do not count).
             if (member->isConstructor()) {
-                constructorCount++;
-                if (constructorCount > 1) {
-                    throw std::runtime_error("Class cannot have multiple constructors. Only one constructor is allowed per class.");
+                const ConstructorDeclaration* ctor = member->getConstructor();
+                if (ctor->isFactory()) {
+                    if (std::find(factoryNames.begin(), factoryNames.end(), ctor->getName()) != factoryNames.end()) {
+                        throw std::runtime_error("Class cannot have multiple factory constructors named '" + ctor->getName() + "'.");
+                    }
+                    factoryNames.push_back(ctor->getName());
+                } else {
+                    constructorCount++;
+                    if (constructorCount > 1) {
+                        throw std::runtime_error("Class cannot have multiple constructors. Only one constructor is allowed per class.");
+                    }
                 }
             }
             members.push_back(std::move(member));
@@ -1242,6 +1303,9 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
         return std::make_unique<ClassMember>(std::move(varDecl));
     } else if (ctx->constructorDeclaration()) {
         auto constructor = buildConstructorDeclaration(ctx->constructorDeclaration());
+        return std::make_unique<ClassMember>(std::move(constructor));
+    } else if (ctx->factoryConstructorDeclaration()) {
+        auto constructor = buildFactoryConstructorDeclaration(ctx->factoryConstructorDeclaration());
         return std::make_unique<ClassMember>(std::move(constructor));
     } else if (ctx->functionDeclaration()) {
         std::vector<FunctionModifier> modifiers;

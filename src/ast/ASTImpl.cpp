@@ -75,6 +75,9 @@ std::string Parameter::toString() const {
 
 // Class-related implementations
 std::string ConstructorDeclaration::toString() const {
+    if (isFactory_) {
+        return "FactoryConstructorDeclaration " + name_;
+    }
     return "ConstructorDeclaration";
 }
 
@@ -251,6 +254,9 @@ std::string FunctionCall::toString() const {
 std::string NewObjectExpression::toString() const {
     std::stringstream ss;
     ss << "NewObjectExpression " << className_->toString();
+    if (!factoryName_.empty()) {
+        ss << "." << factoryName_;
+    }
     return ss.str();
 }
 

@@ -1133,6 +1133,9 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
             if (layout.isSingleton) {
                 for (const auto& member : classDecl->getBody().getMembers()) {
                     if (auto ctor = member->getConstructor()) {
+                        if (ctor->isFactory()) {
+                            addError("Singleton class '" + layout.name + "' cannot declare factory constructors");
+                        }
                         if (!ctor->getParameters().empty()) {
                             addError("Singleton class '" + layout.name + "' constructor must have no parameters");
                         }
@@ -1165,6 +1168,9 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         visitMethod(*fn);
                     }
                 } else if (auto ctor = member->getConstructor()) {
+                    if (ctor->isFactory()) {
+                        classes_[layout.name].factoryNames.push_back(ctor->getName());
+                    }
                     visitConstructor(*ctor);
                 }
             }
@@ -1289,6 +1295,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     info.funcStartOffset = currentByteOffset_;
     info.enterIdx = instructions_.size();
     info.isPrivate = decl && decl->isPrivate();
+    bool isFactory = ctorDecl && ctorDecl->isFactory();
     scopeStack_.push_back({});
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
 
@@ -1338,6 +1345,10 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         addError("Non-void function '" + decl->getName() + "' has no return statement");
     }
 
+    if (isFactory && !currentFunctionHasReturn_) {
+        addError("Factory constructor '" + ctorDecl->getName() + "' must return an instance");
+    }
+
     if (instructions_.empty() || instructions_.back().getOpcode() != Opcode::RET) {
         if (decl && decl->isAsync() && asyncFutureOffset_ != 0) {
             /* A fallthrough async body is a successful Future<void> result. */
@@ -1356,6 +1367,11 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     mp.modulePath = modulePath_;
     if (currentClass_) mp.className = currentClass_->name;
     mp.isConstructor = isConstructor;
+    if (isFactory) {
+        mp.isFactoryConstructor = true;
+        mp.functionName = ctorDecl->getName();
+        mp.returnType = "ptr";
+    }
 
     if (decl) {
         mp.functionName = decl->getName();
@@ -1400,7 +1416,9 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     }
 
     bool shouldMangle = !modulePath_.empty() || currentClass_ != nullptr || mp.isOverload;
-    if (isConstructor) {
+    if (isFactory) {
+        info.mangledName = shouldMangle ? SymbolMangler::mangleFunctionName(mp) : ctorDecl->getName();
+    } else if (isConstructor) {
         info.mangledName = shouldMangle ? SymbolMangler::mangleFunctionName(mp) : "constructor";
     } else if (decl) {
         info.mangledName = shouldMangle ? SymbolMangler::mangleFunctionName(mp) : decl->getName();
@@ -1518,6 +1536,14 @@ void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
 }
 
 void HVMCodeGenerator::visitConstructor(const ast::ConstructorDeclaration& decl) {
+    // Factory constructors have no 'this' (isMethod=false) and do not run the
+    // generative constructor path: inConstructor_ stays false so immutable
+    // field writes are rejected and 'this' is unbound.
+    if (decl.isFactory()) {
+        auto info = beginFunction(nullptr, &decl, false, false);
+        endFunction(info);
+        return;
+    }
     inConstructor_ = true;
     auto info = beginFunction(nullptr, &decl, true, true);
     endFunction(info);
@@ -1546,10 +1572,12 @@ void HVMCodeGenerator::validateSerializableClass(
         return;
     }
 
-    // Phase 3: Constructor validation — exactly one constructor with zero parameters
+    // Phase 3: Constructor validation — exactly one generative constructor with
+    // zero parameters. Named factory constructors are not counted.
     int ctorCount = 0;
     for (const auto& member : classDecl.getBody().getMembers()) {
         if (auto ctor = member->getConstructor()) {
+            if (ctor->isFactory()) continue;
             ++ctorCount;
             if (!ctor->getParameters().empty()) {
                 addError("Serializable class '" + name + "' constructor must have no parameters");
@@ -2845,6 +2873,53 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (!isSymbolImported(className, requiredModule)) {
             addError("Use of '" + className + "' requires 'import " + requiredModule + ";'");
             return 0;
+        }
+        // Factory construction: new <Class>.<factoryName>(args). The factory is
+        // a plain function that returns an instance — no hoo_alloc, no
+        // generative-constructor call. The dotted prefix may be a
+        // module-qualified reference; the last dotted component is the class.
+        if (!newExpr->getFactoryName().empty()) {
+            const std::string& factoryName = newExpr->getFactoryName();
+            auto classIt = classes_.find(className);
+            if (classIt == classes_.end()) {
+                addError("Unknown class: " + className);
+                return 0;
+            }
+            if (classIt->second.isService) {
+                addError("Cannot create instance of service class '" + className + "'");
+                return 0;
+            }
+            auto& factoryNames = classIt->second.factoryNames;
+            if (std::find(factoryNames.begin(), factoryNames.end(), factoryName) == factoryNames.end()) {
+                addError("Class '" + className + "' has no factory constructor named '" + factoryName + "'");
+                return 0;
+            }
+
+            // Evaluate arguments into the shared temporary registers r1..
+            const auto* argumentList = newExpr->getArguments();
+            const size_t argCount = argumentList ? argumentList->getArguments().size() : 0;
+            std::vector<uint8_t> argRegs;
+            for (size_t i = 0; argumentList && i < argCount && i < 7; ++i) {
+                argRegs.push_back(visitExpression(*argumentList->getArguments()[i]));
+            }
+            for (size_t i = 0; i < argRegs.size(); ++i) {
+                emit(Opcode::MOV, OperandsR{argReg(1, i), argRegs[i], 0, 0});
+                freeRegister(argRegs[i]);
+            }
+
+            MangledFunctionParams mp;
+            mp.modulePath = modulePath_;
+            mp.className = className;
+            mp.isFactoryConstructor = true;
+            mp.functionName = factoryName;
+            mp.returnType = "ptr";
+            for (size_t i = 0; i < argCount; ++i) {
+                mp.parameterTypes.push_back("ptr");
+            }
+            emitCall(Opcode::CALL, SymbolMangler::mangleFunctionName(mp));
+            uint8_t dest = allocateRegister();
+            emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+            return dest;
         }
         if (className == "Exception") {
             const auto* argumentList = newExpr->getArguments();

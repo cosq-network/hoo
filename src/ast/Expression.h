@@ -101,11 +101,17 @@ public:
     NewObjectExpression(const std::string& className,
                        std::unique_ptr<ArgumentList> arguments)
         : className_(std::make_unique<QualifiedIdentifier>(std::vector<std::string>{className})),
-          arguments_(std::move(arguments)) {}
+          factoryName_(), arguments_(std::move(arguments)) {}
 
     NewObjectExpression(std::unique_ptr<QualifiedIdentifier> className,
                        std::unique_ptr<ArgumentList> arguments)
-        : className_(std::move(className)), arguments_(std::move(arguments)) {}
+        : className_(std::move(className)), factoryName_(), arguments_(std::move(arguments)) {}
+
+    // Factory construction: new Class.factoryName(args).
+    NewObjectExpression(std::unique_ptr<QualifiedIdentifier> className,
+                       const std::string& factoryName,
+                       std::unique_ptr<ArgumentList> arguments)
+        : className_(std::move(className)), factoryName_(factoryName), arguments_(std::move(arguments)) {}
 
     std::string toString() const override;
 
@@ -117,10 +123,14 @@ public:
     // Get qualified class name (new API)
     const QualifiedIdentifier* getQualifiedClassName() const { return className_.get(); }
 
+    const std::string& getFactoryName() const { return factoryName_; }
+    bool isFactoryConstruction() const { return !factoryName_.empty(); }
+
     const ArgumentList* getArguments() const { return arguments_.get(); }
 
 private:
     std::unique_ptr<QualifiedIdentifier> className_;
+    std::string factoryName_;
     std::unique_ptr<ArgumentList> arguments_;
 };
 

@@ -236,6 +236,39 @@ TEST_F(ASTCoreTest, ClassMemberConstructor) {
     EXPECT_EQ(member.getDeclaration(), nullptr);
 }
 
+TEST_F(ASTCoreTest, FactoryConstructorDeclaration) {
+    auto body = std::make_unique<Block>(std::vector<std::unique_ptr<Statement>>{});
+    ConstructorDeclaration cd("origin", std::vector<std::unique_ptr<Parameter>>{}, std::move(body));
+    EXPECT_TRUE(cd.isFactory());
+    EXPECT_EQ(cd.getName(), "origin");
+    EXPECT_TRUE(cd.getParameters().empty());
+}
+
+TEST_F(ASTCoreTest, GenerativeConstructorIsNotFactory) {
+    auto body = std::make_unique<Block>(std::vector<std::unique_ptr<Statement>>{});
+    ConstructorDeclaration cd(std::vector<std::unique_ptr<Parameter>>{}, std::move(body));
+    EXPECT_FALSE(cd.isFactory());
+    EXPECT_TRUE(cd.getName().empty());
+}
+
+TEST_F(ASTCoreTest, NewObjectExpressionWithFactoryName) {
+    auto qi = std::make_unique<QualifiedIdentifier>(std::vector<std::string>{"Point"});
+    auto args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>{});
+    NewObjectExpression expr(std::move(qi), "origin", std::move(args));
+    EXPECT_TRUE(expr.isFactoryConstruction());
+    EXPECT_EQ(expr.getFactoryName(), "origin");
+    EXPECT_EQ(expr.getClassName(), "Point");
+}
+
+TEST_F(ASTCoreTest, NewObjectExpressionWithoutFactoryName) {
+    auto qi = std::make_unique<QualifiedIdentifier>(std::vector<std::string>{"Point"});
+    auto args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>{});
+    NewObjectExpression expr(std::move(qi), std::move(args));
+    EXPECT_FALSE(expr.isFactoryConstruction());
+    EXPECT_TRUE(expr.getFactoryName().empty());
+    EXPECT_EQ(expr.getClassName(), "Point");
+}
+
 TEST_F(ASTCoreTest, ClassMemberDeclaration) {
     auto returnType = std::make_unique<PrimitiveType>(PrimitiveTypeKind::VOID);
     auto body = std::make_unique<Block>(std::vector<std::unique_ptr<Statement>>{});

@@ -27,6 +27,7 @@ FINAL: 'final';
 SINGLETON: 'singleton';
 IMMUTABLE: 'immutable';
 CONSTRUCTOR: 'constructor';
+FACTORY: 'factory';
 SERVICE: 'service';
 SERIALIZABLE: 'serializable';
 HOO_INIT: '__hoo_init';
@@ -66,6 +67,7 @@ DOUBLE: 'double';
 F64: 'f64';
 F8: 'f8';
 BIT: 'bit';
+BUFFER: 'buffer';
 BOOL: 'bool';
 CHAR: 'char';
 STRING: 'string';
@@ -187,9 +189,11 @@ classBody: LBRACE classMember* RBRACE;
 classMember
     : functionModifier* (variableDeclaration SEMICOLON | functionDeclaration)
     | constructorDeclaration
+    | factoryConstructorDeclaration
     ;
 
 constructorDeclaration: CONSTRUCTOR LPAREN parameterList? RPAREN block;
+factoryConstructorDeclaration: FACTORY IDENTIFIER LPAREN parameterList? RPAREN block;
 
 functionModifier: PUBLIC | PRIVATE;
 
@@ -229,7 +233,7 @@ mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
 hashMapKeyType: BYTE | INT8 | INT64;
 decimalType: DECIMAL LESS INTEGER_LITERAL COMMA INTEGER_LITERAL GREATER;
 
-primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BOOL | CHAR | STRING | VOID;
+primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BUFFER | BOOL | CHAR | STRING | VOID;
 
 
 // Statements
@@ -378,7 +382,23 @@ awaitExpression
 
 // Object creation expression
 newExpression
-    : NEW (hashMapType | anyArrayType | qualifiedIdentifier) LPAREN argumentList? RPAREN
+    : NEW (newHashMapExpression | newArrayExpression | newClassExpression | newFactoryExpression)
+    ;
+
+newClassExpression
+    : qualifiedIdentifier LPAREN argumentList RPAREN
+    ;
+
+newFactoryExpression
+    : qualifiedIdentifier DOT IDENTIFIER LPAREN argumentList RPAREN
+    ;
+
+newHashMapExpression
+    : hashMapType LPAREN argumentList RPAREN
+    ;
+
+newArrayExpression
+    : anyArrayType LPAREN argumentList RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

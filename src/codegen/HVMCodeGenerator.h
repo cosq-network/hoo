@@ -128,6 +128,7 @@ private:
         bool isService = false;
         bool isSerializable = false;
         uint32_t singletonDataOffset = 0; // .data offset for singleton pointer
+        std::vector<std::string> factoryNames; // named factory constructors
     };
     std::unordered_map<std::string, ClassLayout> classes_;
     // AST declarations are retained while generating a module so generated

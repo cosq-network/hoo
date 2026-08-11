@@ -18,6 +18,7 @@ struct DemangledSymbol {
     std::vector<std::string> parameterTypes;
     bool isConstructor = false;
     bool isDestructor = false;
+    bool isFactoryConstructor = false;
     bool isStatic = false;
     bool isVirtual = false;
     bool isOverload = false;
@@ -35,6 +36,7 @@ struct MangledFunctionParams {
     std::vector<std::string> parameterTypes;
     bool isConstructor = false;
     bool isDestructor = false;
+    bool isFactoryConstructor = false;
     bool isStatic = false;
     bool isVirtual = false;
     bool isOverload = false;

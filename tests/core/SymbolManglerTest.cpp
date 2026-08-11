@@ -422,6 +422,59 @@ TEST_F(SymbolManglerTest, DemanglingConstructor) {
     EXPECT_TRUE(sym.isConstructor);
 }
 
+TEST_F(SymbolManglerTest, FactoryConstructorMangling) {
+    auto params = makeParams();
+    params.className = "Point";
+    params.isFactoryConstructor = true;
+    params.functionName = "origin";
+    params.returnType = "ptr";
+    params.parameterTypes = {"ptr"};
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    EXPECT_EQ(mangled, "_F_Point_FC_origin_p_p");
+}
+
+TEST_F(SymbolManglerTest, FactoryConstructorNoParamsMangling) {
+    auto params = makeParams();
+    params.className = "Point";
+    params.isFactoryConstructor = true;
+    params.functionName = "origin";
+    params.returnType = "ptr";
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    EXPECT_EQ(mangled, "_F_Point_FC_origin_p");
+}
+
+TEST_F(SymbolManglerTest, DemanglingFactoryConstructor) {
+    DemangledSymbol sym = SymbolMangler::demangleSymbol("_F_Point_FC_origin_p");
+    EXPECT_EQ(sym.className, "Point");
+    EXPECT_FALSE(sym.isConstructor);
+    EXPECT_TRUE(sym.isFactoryConstructor);
+    EXPECT_EQ(sym.functionName, "origin");
+}
+
+TEST_F(SymbolManglerTest, FactoryConstructorRoundTrip) {
+    auto params = makeParams();
+    params.className = "Point";
+    params.isFactoryConstructor = true;
+    params.functionName = "unitCircle";
+    params.returnType = "ptr";
+    params.parameterTypes = {"ptr"};
+
+    std::string mangled = SymbolMangler::mangleFunctionName(params);
+    DemangledSymbol demangled = SymbolMangler::demangleSymbol(mangled);
+    EXPECT_TRUE(demangled.isFactoryConstructor);
+    EXPECT_FALSE(demangled.isConstructor);
+    EXPECT_EQ(demangled.className, "Point");
+    EXPECT_EQ(demangled.functionName, "unitCircle");
+    EXPECT_EQ(demangled.returnType, "ptr");
+}
+
+TEST_F(SymbolManglerTest, FactoryConstructorPrettyDemangle) {
+    EXPECT_EQ(SymbolMangler::demangle("_F_Point_FC_origin_p"), "func Point.origin()");
+}
+
+
 TEST_F(SymbolManglerTest, DemanglingWithInheritance) {
     DemangledSymbol sym = SymbolMangler::demangleSymbol("_F_Student_Person_study_v");
     EXPECT_EQ(sym.className, "Student");

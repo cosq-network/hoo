@@ -22,19 +22,29 @@ enum class ClassModifier {
     SERIALIZABLE
 };
 
-// Constructor declaration (Kotlin-style)
+// Constructor declaration (Kotlin-style generative constructor)
 class ConstructorDeclaration : public ASTNode {
 public:
     ConstructorDeclaration(std::vector<std::unique_ptr<Parameter>> parameters,
                           std::unique_ptr<Block> body)
-        : parameters_(std::move(parameters)), body_(std::move(body)) {}
+        : name_(), isFactory_(false), parameters_(std::move(parameters)), body_(std::move(body)) {}
+
+    // Named factory constructor (Dart-style): alternative construction path.
+    ConstructorDeclaration(const std::string& name,
+                           std::vector<std::unique_ptr<Parameter>> parameters,
+                           std::unique_ptr<Block> body)
+        : name_(name), isFactory_(true), parameters_(std::move(parameters)), body_(std::move(body)) {}
 
     std::string toString() const override;
 
+    const std::string& getName() const { return name_; }
+    bool isFactory() const { return isFactory_; }
     const std::vector<std::unique_ptr<Parameter>>& getParameters() const { return parameters_; }
     const Block& getBody() const { return *body_; }
 
 private:
+    std::string name_;
+    bool isFactory_;
     std::vector<std::unique_ptr<Parameter>> parameters_;
     std::unique_ptr<Block> body_;
 };

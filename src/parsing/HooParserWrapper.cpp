@@ -22,22 +22,18 @@ HooParserWrapper::~HooParserWrapper() {
 HoocParser::CompilationUnitContext* HooParserWrapper::parseForAST(const std::string& source) {
     const char* stage = "initializing";
     try {
-        // Clean up previous parse state
         currentParseTree_ = nullptr;
         
-        // Create ANTLR4 input stream from source
+        // Create local ANTLR4 components
         stage = "creating ANTLR input stream";
         input_ = std::make_unique<antlr4::ANTLRInputStream>(source);
         
-        // Create lexer
         stage = "creating Hooc lexer";
         lexer_ = std::make_unique<HoocLexer>(input_.get());
         
-        // Create token stream
         stage = "creating token stream";
         tokens_ = std::make_unique<antlr4::CommonTokenStream>(lexer_.get());
         
-        // Create parser
         stage = "creating Hooc parser";
         parser_ = std::make_unique<HoocParser>(tokens_.get());
         

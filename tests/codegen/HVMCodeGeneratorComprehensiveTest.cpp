@@ -2413,3 +2413,107 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableFailsWithServiceModifier) 
     EXPECT_EQ(module, nullptr);
     EXPECT_TRUE(compiler_->getLastError().find("cannot also be serializable") != std::string::npos);
 }
+
+// ---------- Factory constructors ----------
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorSymbol) {
+    std::string code = R"(
+        import hoo;
+        class Point {
+            var x: int64;
+            constructor(x: int64) { this.x = x; }
+            factory origin() { return 1; }
+        }
+        func : void test() {
+            var p = new Point.origin(0);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+
+    // Factory function should be emitted as _F_Point_FC_origin_p
+    auto* fcSym = module->getSymbol("_F_Point_FC_origin_p");
+    EXPECT_NE(fcSym, nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorMultiple) {
+    std::string code = R"(
+        import hoo;
+        class Point {
+            var x: int64;
+            var y: int64;
+            constructor(x: int64, y: int64) { this.x = x; this.y = y; }
+            factory origin() { return 1; }
+            factory unit(a: int64) { return 1; }
+        }
+        func : void test() {
+            var p = new Point.origin(0);
+            var q = new Point.unit(1);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+
+    EXPECT_NE(module->getSymbol("_F_Point_FC_origin_p"), nullptr);
+    EXPECT_NE(module->getSymbol("_F_Point_FC_unit_p_p"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorMissing) {
+    std::string code = R"(
+        import hoo;
+        class Point {
+            var x: int64;
+            constructor(x: int64) { this.x = x; }
+        }
+        func : void test() {
+            var p = new Point.origin(0);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("has no factory constructor named 'origin'") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorNoReturn) {
+    std::string code = R"(
+        import hoo;
+        class Point {
+            var x: int64;
+            constructor(x: int64) { this.x = x; }
+            factory origin() { var a = 1; }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("must return an instance") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorSingletonRejected) {
+    std::string code = R"(
+        import hoo;
+        singleton class App {
+            var x: int64;
+            constructor() { this.x = 1; }
+            factory create() { return 1; }
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("cannot declare factory constructors") != std::string::npos);
+}
+
+TEST_F(HVMCodeGeneratorComprehensiveTest, FactoryConstructorServiceRejected) {
+    std::string code = R"(
+        import hoo;
+        service class Logger {
+            constructor() {}
+            factory create() { return 1; }
+        }
+        func : void test() {
+            var l = new Logger.create(0);
+        }
+    )";
+    auto module = compiler_->compile("test", code);
+    EXPECT_EQ(module, nullptr);
+    EXPECT_TRUE(compiler_->getLastError().find("Cannot create instance of service class") != std::string::npos);
+}

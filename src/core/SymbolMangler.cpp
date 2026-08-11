@@ -218,6 +218,8 @@ std::string SymbolMangler::mangleFunctionName(const MangledFunctionParams& param
             oss << "CT_";
         } else if (params.isDestructor) {
             oss << "DT_";
+        } else if (params.isFactoryConstructor) {
+            oss << "FC_" << encodeComponent(params.functionName) << "_";
         } else {
             oss << encodeComponent(params.functionName) << "_";
         }
@@ -395,7 +397,7 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
         }
 
         auto isSpecialToken = [&](const std::string& comp) {
-            return comp == "CT" || comp == "DT" || comp == "static" || comp == "virtual" ||
+            return comp == "CT" || comp == "DT" || comp == "FC" || comp == "static" || comp == "virtual" ||
                    isFunctionModifierCode(comp) || isClassModifierCode(comp) ||
                    demangleType(comp) != "unknown";
         };
@@ -414,7 +416,7 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
             i++;
         }
 
-        // 4. Handle CT/DT or FunctionName
+        // 4. Handle CT/DT/FC or FunctionName
         bool hasSpecialCtor = false;
         if (i < components.size()) {
             if (components[i] == "CT") {
@@ -425,6 +427,15 @@ DemangledSymbol SymbolMangler::demangleSymbol(const std::string& mangledName) {
                 result.isDestructor = true;
                 hasSpecialCtor = true;
                 i++;
+            } else if (components[i] == "FC") {
+                result.isFactoryConstructor = true;
+                hasSpecialCtor = true;
+                i++;
+                // The component following FC is the factory constructor name.
+                if (i < components.size() && demangleType(components[i]) == "unknown") {
+                    result.functionName = components[i];
+                    i++;
+                }
             }
         }
 
@@ -511,6 +522,8 @@ std::string SymbolMangler::demangle(const std::string& mangledName) {
         if (symbol.isVirtual) oss << "virtual ";
         if (symbol.isConstructor) {
             oss << symbol.className << "(";
+        } else if (symbol.isFactoryConstructor) {
+            oss << symbol.className << "." << symbol.functionName << "(";
         } else if (symbol.isDestructor) {
             oss << "~" << symbol.className << "(";
         } else {
