@@ -2913,8 +2913,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             mp.isFactoryConstructor = true;
             mp.functionName = factoryName;
             mp.returnType = "ptr";
-            for (size_t i = 0; i < argCount; ++i) {
-                mp.parameterTypes.push_back("ptr");
+
+            if (argumentList) {
+                for (size_t i = 0; i < argCount; ++i) {
+                    auto typeInfo = inferExpressionTypeInfo(*argumentList->getArguments()[i]);
+                    mp.parameterTypes.push_back(typeIdToMangleType(typeInfo.typeId));
+                }
             }
             emitCall(Opcode::CALL, SymbolMangler::mangleFunctionName(mp));
             uint8_t dest = allocateRegister();
