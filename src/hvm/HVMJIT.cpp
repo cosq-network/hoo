@@ -4381,8 +4381,8 @@ constexpr InboundTrampolineFn2 kInboundTrampolines2[kMaxInboundTrampolineSlots] 
     &hooc_hvm_inbound_trampoline2_7,
 };
 
-std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
-    return {
+const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
+    static const std::vector<RuntimeSymbolContract> kRuntimeSymbols = {
         {"_F_hoo_f8_encode_i1_d", reinterpret_cast<void*>(&jit_f8_encode)},
         {"_F_hoo_f8_decode_d_i1", reinterpret_cast<void*>(&jit_f8_decode)},
         {"_F_hoo_future_new_i64", reinterpret_cast<void*>(&jit_hoo_future_new)},
@@ -5183,13 +5183,12 @@ std::vector<RuntimeSymbolContract> buildRuntimeSymbols() {
         {"_F_hoo_Decimal_le_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_le)},
         {"_F_hoo_Decimal_gt_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_gt)},
         {"_F_hoo_Decimal_ge_p_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_ge)},
-        {"_F_M_hoo_E_Decimal_toString_v", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
-        {"_F_M_hoo_E_Decimal_toString_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
         {"_F_M_hoo_E_Decimal_toString_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
         {"_F_M_hoo_E_decimal_toString_v", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
         {"_F_M_hoo_E_decimal_toString_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
         {"_F_M_hoo_E_decimal_toString_p_p", reinterpret_cast<void*>(&jit_hoo_Decimal_toString)},
     };
+    return kRuntimeSymbols;
 }
 
 void* lookupPlainRuntimeSymbolAddress(const std::string& name) {
