@@ -154,10 +154,12 @@ importStatement
     | FROM modulePath IMPORT importItem (COMMA importItem)* SEMICOLON  # fromImport
     ;
 
-modulePath: IDENTIFIER (DOT IDENTIFIER)*;
+modulePath: modulePathIdentifier (DOT modulePathIdentifier)*;
 
 // Qualified identifier (for module.Type syntax in type and constructor contexts)
 qualifiedIdentifier: IDENTIFIER (DOT IDENTIFIER)*;
+
+modulePathIdentifier: IDENTIFIER | BUFFER | BYTE | INT8 | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BOOL | CHAR | STRING | VOID;
 
 importItem: IDENTIFIER (AS IDENTIFIER)?;
 

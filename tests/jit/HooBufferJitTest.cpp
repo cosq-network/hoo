@@ -16,9 +16,15 @@ protected:
 // NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
 // LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
 
+// NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
+// LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
+
+// NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
+// LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
+
 TEST_F(HooBufferJitTest, DISABLED_NewBuffer) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() { return new Buffer(); }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -31,7 +37,7 @@ TEST_F(HooBufferJitTest, DISABLED_NewBuffer) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferLength) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             return b.length();
@@ -44,7 +50,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferLength) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferCapacity) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             return b.capacity();
@@ -57,7 +63,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferCapacity) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferFromBytesFreeFunction) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = buffer_fromBytes("Hello", 5);
             if (b.length() != 5) { return 0; }
@@ -70,7 +76,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferFromBytesFreeFunction) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferCopy) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = buffer_fromBytes("abc", 3);
             return b.copy();
@@ -86,7 +92,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferCopy) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferClear) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             b.clear();
@@ -99,7 +105,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferClear) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferByteAtIndex) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer();
             return b.byteAt(0);
@@ -111,7 +117,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferByteAtIndex) {
 
 TEST_F(HooBufferJitTest, DISABLED_BufferSetByte) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = buffer_fromBytes("abc", 3);
             var old = b.setByte(0, 65);
@@ -125,7 +131,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferSetByte) {
 
 TEST_F(HooBufferJitTest, DISABLED_ConstructorWithCapacityIsNotSupported) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = new Buffer(64);
             return b.length();
@@ -136,7 +142,7 @@ TEST_F(HooBufferJitTest, DISABLED_ConstructorWithCapacityIsNotSupported) {
 
 TEST_F(HooBufferJitTest, DISABLED_StaticFromBytesIsNotSupported) {
     const std::string source = R"(
-        import hoo;
+        import hoo.buffer;
         func :int64 test() {
             var b = Buffer.fromBytes("abc", 3);
             return b.length();

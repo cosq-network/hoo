@@ -3414,6 +3414,26 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
+            if (resolvedClass == "Buffer") {
+                std::string symbol;
+                if (methodName == "length") symbol = "_F_M_hoo_E_buffer_length_v";
+                else if (methodName == "capacity") symbol = "_F_M_hoo_E_buffer_capacity_v";
+                else if (methodName == "copy") symbol = "_F_M_hoo_E_buffer_copy_v";
+                else if (methodName == "clear") symbol = "_F_M_hoo_E_buffer_clear_v";
+                else if (methodName == "byteAt") symbol = "_F_M_hoo_E_buffer_byteAt_v_p";
+                else if (methodName == "setByte") symbol = "_F_M_hoo_E_buffer_setByte_v_p_p";
+                else if (methodName == "append") symbol = "_F_M_hoo_E_buffer_append_v_p_p";
+                else if (methodName == "appendBuffer") symbol = "_F_M_hoo_E_buffer_appendBuffer_v_p";
+                else if (methodName == "slice") symbol = "_F_M_hoo_E_buffer_slice_v_p_p";
+                else if (methodName == "data") symbol = "_F_M_hoo_E_buffer_data_v";
+                if (!symbol.empty()) {
+                    emitCall(Opcode::CALL, symbol);
+                    uint8_t dest = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                    return dest;
+                }
+            }
+
             // DateTime instance methods
             if (resolvedClass == "DateTime" && !isStaticCall) {
                 MangledFunctionParams mp;

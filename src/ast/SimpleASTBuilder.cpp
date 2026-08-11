@@ -1131,8 +1131,8 @@ std::unique_ptr<FromImport> SimpleASTBuilder::buildFromImport(HoocParser::FromIm
 
 std::unique_ptr<ModulePath> SimpleASTBuilder::buildModulePath(HoocParser::ModulePathContext* ctx) {
     std::vector<std::string> components;
-    for (auto id : ctx->IDENTIFIER()) {
-        components.push_back(id->getText());
+    for (auto comp : ctx->modulePathIdentifier()) {
+        components.push_back(comp->getText());
     }
     return std::make_unique<ModulePath>(std::move(components));
 }
