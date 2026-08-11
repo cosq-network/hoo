@@ -22,7 +22,7 @@ protected:
 // NOTE: HooBufferJitTest cases are disabled due to a pre-existing ANTLR4 C++ runtime
 // LL(*) prediction engine issue (__next_prime overflow) when parsing certain AST compilation units.
 
-TEST_F(HooBufferJitTest, DISABLED_NewBuffer) {
+TEST_F(HooBufferJitTest, NewBuffer) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() { return new Buffer(); }
@@ -35,7 +35,7 @@ TEST_F(HooBufferJitTest, DISABLED_NewBuffer) {
     hoo_buffer_release(buf);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferLength) {
+TEST_F(HooBufferJitTest, BufferLength) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -48,7 +48,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferLength) {
     EXPECT_EQ(r, 0);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferCapacity) {
+TEST_F(HooBufferJitTest, BufferCapacity) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -61,7 +61,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferCapacity) {
     EXPECT_GE(r, 0);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferFromBytesFreeFunction) {
+TEST_F(HooBufferJitTest, BufferFromBytesFreeFunction) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -74,7 +74,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferFromBytesFreeFunction) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 101);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferCopy) {
+TEST_F(HooBufferJitTest, BufferCopy) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -90,7 +90,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferCopy) {
     hoo_buffer_release(copy);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferClear) {
+TEST_F(HooBufferJitTest, BufferClear) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -103,7 +103,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferClear) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferByteAtIndex) {
+TEST_F(HooBufferJitTest, BufferByteAtIndex) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -115,7 +115,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferByteAtIndex) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), -1); // empty buffer, out of bounds
 }
 
-TEST_F(HooBufferJitTest, DISABLED_BufferSetByte) {
+TEST_F(HooBufferJitTest, BufferSetByte) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -129,7 +129,7 @@ TEST_F(HooBufferJitTest, DISABLED_BufferSetByte) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 65);
 }
 
-TEST_F(HooBufferJitTest, DISABLED_ConstructorWithCapacityIsNotSupported) {
+TEST_F(HooBufferJitTest, ConstructorWithCapacityIsNotSupported) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
@@ -140,7 +140,7 @@ TEST_F(HooBufferJitTest, DISABLED_ConstructorWithCapacityIsNotSupported) {
     EXPECT_FALSE(jit.loadSourceCode("test", source));
 }
 
-TEST_F(HooBufferJitTest, DISABLED_StaticFromBytesIsNotSupported) {
+TEST_F(HooBufferJitTest, StaticFromBytesIsNotSupported) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {

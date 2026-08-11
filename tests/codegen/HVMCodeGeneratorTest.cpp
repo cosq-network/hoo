@@ -697,7 +697,7 @@ TEST_F(HVMCodeGeneratorTest, AssignmentToManagedLocal_ReleasesOldValue) {
 
 // NOTE: This test is disabled due to a pre-existing parser bug (__next_prime overflow)
 // that affects parsing of class declarations in certain compilation unit contexts.
-TEST_F(HVMCodeGeneratorTest, DISABLED_NullableUserClassLocal_EmitsScopeCleanupRelease) {
+TEST_F(HVMCodeGeneratorTest, NullableUserClassLocal_EmitsScopeCleanupRelease) {
     std::string code = "class User {\n"
                        "    var name: string;\n"
                        "    var age: int64;\n"

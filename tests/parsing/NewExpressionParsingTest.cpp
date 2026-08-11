@@ -467,7 +467,7 @@ const NewObjectExpression* extractNewExpression(const Statement* stmt) {
 // NOTE: This test is disabled due to a pre-existing parser bug
 // (__next_prime overflow) that affects new expressions with empty argument
 // lists. The bug exists independently of the factory constructor feature.
-TEST_F(NewExpressionParsingTest, DISABLED_AST_SimpleNewObjectExpressionNode) {
+TEST_F(NewExpressionParsingTest, AST_SimpleNewObjectExpressionNode) {
     std::string code = R"(
         class Widget {
             constructor() {}
@@ -605,7 +605,7 @@ TEST_F(NewExpressionParsingTest, AST_NewExpressionInExpressionStatement) {
 // lists and factory new expressions (new Class.factory()). The bug exists
 // independently of the factory constructor feature and is tracked separately.
 
-TEST_F(NewExpressionParsingTest, DISABLED_FactoryNewExpression) {
+TEST_F(NewExpressionParsingTest, FactoryNewExpression) {
     std::string code = R"(
         class Point {
             factory origin() {
@@ -629,7 +629,7 @@ TEST_F(NewExpressionParsingTest, DISABLED_FactoryNewExpression) {
     EXPECT_EQ(newExpr->getArguments()->getArguments().size(), 1);
 }
 
-TEST_F(NewExpressionParsingTest, DISABLED_FactoryNewExpressionWithArguments) {
+TEST_F(NewExpressionParsingTest, FactoryNewExpressionWithArguments) {
     std::string code = R"(
         class Point {
             factory unitCircle(angle: f64) {
@@ -653,7 +653,7 @@ TEST_F(NewExpressionParsingTest, DISABLED_FactoryNewExpressionWithArguments) {
     EXPECT_EQ(newExpr->getArguments()->getArguments().size(), 1);
 }
 
-TEST_F(NewExpressionParsingTest, DISABLED_QualifiedFactoryNewExpression) {
+TEST_F(NewExpressionParsingTest, QualifiedFactoryNewExpression) {
     std::string code = R"(
         func test() {
             var p = new a.b.C.origin(1);

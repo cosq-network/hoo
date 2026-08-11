@@ -1295,7 +1295,7 @@ TEST_F(SimpleASTBuilderTest, BuildNewExpressionWithNoArgs) {
 
 TEST_F(SimpleASTBuilderTest, BuildMemberAccess) {
     std::string code = R"(
-        func:int64 test() {
+        func :int64 test() {
             var p = new Point(1, 2);
             return p.x;
         }

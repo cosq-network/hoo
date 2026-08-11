@@ -400,7 +400,7 @@ newHashMapExpression
     ;
 
 newArrayExpression
-    : anyArrayType LPAREN argumentList RPAREN
+    : anyArrayType LPAREN argumentList? RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)
