@@ -313,8 +313,6 @@ TEST_F(NewLanguageFeaturesTest, NewExpressionSimple2) {
     EXPECT_EQ(jit->run("_F_test_i8"), 1) << jit->getLastError();
 }
 
-TEST_F(NewLanguageFeaturesTest, DISABLED_NewExpressionWithConstructorArgs) {}
-
 TEST_F(NewLanguageFeaturesTest, NewExpressionWithConstructorArgs) {
     std::string code = R"(
         import hoo;

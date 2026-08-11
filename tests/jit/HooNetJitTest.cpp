@@ -66,7 +66,10 @@ TEST_F(HooNetJitTest, UrlNoPort) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 443);
 }
 
-TEST_F(HooNetJitTest, DISABLED_HttpStatusOk) {
+// Exercise HttpClient through the JIT. No network is required: the runtime
+// serves mock responses for URLs containing "example" (see real_http_request
+// in src/runtime/lib/hoo_net.cpp).
+TEST_F(HooNetJitTest, HttpStatusOk) {
     const std::string source = R"(
         import hoo.net;
         func :int64 test() {
