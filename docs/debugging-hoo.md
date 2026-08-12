@@ -567,7 +567,7 @@ cmake --build build/debug --target generate_parser
 ```
 
 ### Test crashes with "unexpected instruction"
-The JIT test suite includes expectations for HVM bytecode expansion. If you change the code generator, update the corresponding test expectations in `tests/hvm/` or `tests/jit/`. Run the specific failing test verbosely:
+The JIT test suite includes expectations for HVM bytecode expansion. If you change the code generator, update the corresponding test expectations in `tests/hvm/` or `tests/integration/jit/`. Run the specific failing test verbosely:
 ```bash
 ./build/debug/hoo-tests --gtest_filter="*NameOfFailingTest*" --gtest_print_time=1
 ```

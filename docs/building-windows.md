@@ -319,13 +319,13 @@ The following test files have `#ifdef _WIN32` guards for platform-specific behav
 
 | File | Changes |
 |------|---------|
-| `tests/jit/HooCsvJitTest.cpp` | Guarded `#include <unistd.h>` with `#ifndef _WIN32`; compat header provides `write`/`close`/`unlink`/`mkstemp` shims |
-| `tests/jit/HooHashingJitTest.cpp` | Same as above |
-| `tests/core/HooCLIIntegrationTest.cpp` | Added `NOMINMAX` before `<windows.h>`, uses `_stat` on Windows, uses `Z:\` nonexistent path for FileNotFound test, and captures CLI output through `cmd.exe /S /C` with redirected temp files instead of `_popen` |
+| `tests/integration/jit/HooCsvJitTest.cpp` | Guarded `#include <unistd.h>` with `#ifndef _WIN32`; compat header provides `write`/`close`/`unlink`/`mkstemp` shims |
+| `tests/integration/jit/HooHashingJitTest.cpp` | Same as above |
+| `tests/integration/cli/HooCLIIntegrationTest.cpp` | Added `NOMINMAX` before `<windows.h>`, uses `_stat` on Windows, uses `Z:\` nonexistent path for FileNotFound test, and captures CLI output through `cmd.exe /S /C` with redirected temp files instead of `_popen` |
 | `tests/runtime/HooCsvTest.cpp` | `ReadWriteFile` uses `GetTempPathA` for temp directory on Windows |
 | `tests/runtime/HooHashingTest.cpp` | `Sha256File` creates a temp file instead of `/dev/null`; `Sha256FileNotFound` uses `Z:\` path |
 | `tests/runtime/HooSystemTest.cpp` | `UserHome` checks for drive letter prefix; `SetCurrentDir` uses drive root instead of `/tmp` |
 | `tests/runtime/HooPathTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix; `HasRoot` uses `C:\` prefix |
-| `tests/jit/HooPathJitTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix |
+| `tests/integration/jit/HooPathJitTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix |
 | `tests/runtime/HooProcessTest.cpp` | `echo` → `cmd.exe /c echo`; `false` → `cmd.exe /c exit 1`; `sleep` → `cmd.exe /c timeout` |
-| `tests/jit/HooProcessJitTest.cpp` | `Capture` uses `cmd.exe /c echo` on Windows |
+| `tests/integration/jit/HooProcessJitTest.cpp` | `Capture` uses `cmd.exe /c echo` on Windows |

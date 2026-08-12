@@ -470,8 +470,8 @@ Tests are split across:
 
 | File | Purpose |
 |---|---|
-| `tests/jit/HVMJITLifecycleTest.cpp` | Basic lifecycle test (load then destroy) |
-| `tests/jit/Hoo*JitTest.cpp` (28 files) | Domain-specific JIT tests (math, string, array, map, tensor, datetime, etc.) |
+| `tests/integration/jit/HVMJITLifecycleTest.cpp` | Basic lifecycle test (load then destroy) |
+| `tests/integration/jit/Hoo*JitTest.cpp` (28 files) | Domain-specific JIT tests (math, string, array, map, tensor, datetime, etc.) |
 | `tests/hvm/HVMJITLoaderTest.cpp` | Module loader tests |
 | `tests/hvm/HVMJITInstructionSemanticsTest.cpp` | Instruction-level semantics tests |
 

@@ -30,7 +30,7 @@ Three touch points are required for every new runtime function:
 | 2 | **JIT wrapper** | `src/hvm/HVMJIT.cpp` | `jit_*` wrapper + symbol table entry |
 | 3 | **Codegen redirect** | `src/codegen/HVMCodeGenerator.cpp` | Prefix match in the redirect block |
 | 4 | **Build** | `CMakeLists.txt` | Source file for `hoort` library |
-| 5 | **Tests** | `tests/jit/*.cpp` | JIT integration tests |
+| 5 | **Tests** | `tests/integration/jit/*.cpp` | JIT integration tests |
 
 ---
 
@@ -187,7 +187,7 @@ When this block fires, `mp.modulePath = {"hoo"}` causes the mangler to produce
 
 ## Layer 4: JIT integration tests
 
-**Location:** `tests/jit/Hoo<Module>JitTest.cpp`
+**Location:** `tests/integration/jit/Hoo<Module>JitTest.cpp`
 
 ### Test pattern
 
@@ -226,7 +226,7 @@ TEST_F(HooThreadJitTest, SelfId) {
 ### CMake registration
 Add the test `.cpp` to `CMakeLists.txt` in the `hoo-tests` sources section:
 ```cmake
-tests/jit/HooThreadJitTest.cpp
+tests/integration/jit/HooThreadJitTest.cpp
 ```
 
 ---
@@ -246,7 +246,7 @@ Example: adding a new module (e.g. `hoo.xml`).
 - [ ] **Symbol table** — entries in `buildRuntimeSymbols()` with mangled names
 - [ ] **Codegen prefix** — `functionName.rfind("<module>_", 0) == 0` in the
       redirect block
-- [ ] **JIT tests** — `tests/jit/Hoo<Module>JitTest.cpp` exercising the full
+- [ ] **JIT tests** — `tests/integration/jit/Hoo<Module>JitTest.cpp` exercising the full
       compile → JIT → run pipeline
 - [ ] **Runtime tests** — `tests/runtime/Hoo<Module>Test.cpp` for C-level
       complex scenarios

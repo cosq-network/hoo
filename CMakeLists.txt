@@ -578,40 +578,40 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooNetTest.cpp
         tests/runtime/HooThreadTest.cpp
         tests/runtime/HooOverloadTest.cpp
-        tests/jit/HooMathJitTest.cpp
-        tests/jit/HooStringJitTest.cpp
-        tests/jit/HooMapJitTest.cpp
-        tests/jit/HooAnyCollectionsJitTest.cpp
-        tests/jit/HooArrayJitTest.cpp
-        tests/jit/HooTensorJitTest.cpp
-        tests/jit/HooDecimalJitTest.cpp
-        tests/jit/HooStandardLibraryJitTest.cpp
-        tests/jit/HooThreadJitTest.cpp
-        tests/jit/HooCsvJitTest.cpp
-        tests/jit/HooDatetimeJitTest.cpp
-        tests/jit/HooPathJitTest.cpp
-        tests/jit/HooHashingJitTest.cpp
-        tests/jit/HooEncodingJitTest.cpp
-        tests/jit/HooProcessJitTest.cpp
-        tests/jit/HooCompressionJitTest.cpp
-        tests/jit/HooClassApiTest.cpp
-        tests/jit/HooArgsJitTest.cpp
-        tests/jit/HooNetJitTest.cpp
-        tests/jit/HooBufferJitTest.cpp
-        tests/jit/HooJsonJitTest.cpp
-        tests/jit/IntegerTypesTest.cpp
-        tests/jit/NewLanguageFeaturesTest.cpp
-        tests/jit/HooFutureJitTest.cpp
-        tests/jit/CharacterLiteralTest.cpp
-        tests/jit/HooCharacterApiJitTest.cpp
-        tests/jit/FloatingLiteralTest.cpp
-        tests/jit/LowPrecisionTypesTest.cpp
-        tests/jit/InterpolatedStringTest.cpp
-        tests/jit/BugFixVerificationTest.cpp
-        tests/jit/HVMJITLifecycleTest.cpp
+        tests/integration/jit/HooMathJitTest.cpp
+        tests/integration/jit/HooStringJitTest.cpp
+        tests/integration/jit/HooMapJitTest.cpp
+        tests/integration/jit/HooAnyCollectionsJitTest.cpp
+        tests/integration/jit/HooArrayJitTest.cpp
+        tests/integration/jit/HooTensorJitTest.cpp
+        tests/integration/jit/HooDecimalJitTest.cpp
+        tests/integration/jit/HooStandardLibraryJitTest.cpp
+        tests/integration/jit/HooThreadJitTest.cpp
+        tests/integration/jit/HooCsvJitTest.cpp
+        tests/integration/jit/HooDatetimeJitTest.cpp
+        tests/integration/jit/HooPathJitTest.cpp
+        tests/integration/jit/HooHashingJitTest.cpp
+        tests/integration/jit/HooEncodingJitTest.cpp
+        tests/integration/jit/HooProcessJitTest.cpp
+        tests/integration/jit/HooCompressionJitTest.cpp
+        tests/integration/jit/HooClassApiTest.cpp
+        tests/integration/jit/HooArgsJitTest.cpp
+        tests/integration/jit/HooNetJitTest.cpp
+        tests/integration/jit/HooBufferJitTest.cpp
+        tests/integration/jit/HooJsonJitTest.cpp
+        tests/integration/jit/IntegerTypesTest.cpp
+        tests/integration/jit/NewLanguageFeaturesTest.cpp
+        tests/integration/jit/HooFutureJitTest.cpp
+        tests/integration/jit/CharacterLiteralTest.cpp
+        tests/integration/jit/HooCharacterApiJitTest.cpp
+        tests/integration/jit/FloatingLiteralTest.cpp
+        tests/integration/jit/LowPrecisionTypesTest.cpp
+        tests/integration/jit/InterpolatedStringTest.cpp
+        tests/integration/jit/BugFixVerificationTest.cpp
+        tests/integration/jit/HVMJITLifecycleTest.cpp
         tests/core/HooCompilerTest.cpp
         tests/core/HooCLITest.cpp
-        tests/core/HooCLIIntegrationTest.cpp
+        tests/integration/cli/HooCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

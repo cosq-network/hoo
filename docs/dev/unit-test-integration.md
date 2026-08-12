@@ -9,7 +9,7 @@ When `HOO_BUILD_TESTS=ON`, the build creates the `hoo-tests` executable.
 The target is assembled from:
 
 - `tests/test_main.cpp` as the entry point
-- C++ test files under `tests/ast/`, `tests/codegen/`, `tests/core/`, `tests/hvm/`, `tests/jit/`, `tests/parsing/`, `tests/repl/`, and `tests/runtime/`
+- C++ test files under `tests/ast/`, `tests/codegen/`, `tests/core/`, `tests/hvm/`, `tests/integration/jit/`, `tests/integration/cli/`, `tests/parsing/`, `tests/repl/`, and `tests/runtime/`
 - Google Test, linked as `GTest::gtest` and `GTest::gtest_main`
 - Project libraries such as `hoo-core` and `hoorepl`
 
@@ -89,7 +89,7 @@ The suite is organized by responsibility:
 - parser and AST shape checks in `tests/parsing/`
 - code generation checks in `tests/codegen/`
 - runtime library checks in `tests/runtime/`
-- JIT lifecycle and execution checks in `tests/jit/`
+- JIT lifecycle and execution checks in `tests/integration/jit/`
 - compiler, CLI, and mangling checks in `tests/core/`
 - module and instruction checks in `tests/hvm/`
 - AST node behavior in `tests/ast/`

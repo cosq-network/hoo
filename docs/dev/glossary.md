@@ -68,7 +68,7 @@
 
 | Term | Definition |
 |---|---|
-| **JIT** | Just-In-Time compilation — HVMJIT uses LLVM ORC to compile bytecode to native code at runtime. Tested extensively in `tests/jit/` (28 test files). |
+| **JIT** | Just-In-Time compilation — HVMJIT uses LLVM ORC to compile bytecode to native code at runtime. Tested extensively in `tests/integration/jit/` (28 test files). |
 
 ## L
 

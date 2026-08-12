@@ -31,7 +31,7 @@ A: Tests are in `tests/`. There is no `src/tests/`. The test directory mirrors `
 - `tests/parsing/` — Parser and SimpleASTBuilder tests (26 files)
 - `tests/codegen/` — HVMCodeGenerator tests (2 files)
 - `tests/core/` — SymbolMangler, compiler, and CLI tests (4 files)
-- `tests/jit/` — JIT execution tests (28 files)
+- `tests/integration/jit/` — JIT execution tests (28 files)
 - `tests/hvm/`, `tests/ast/`, `tests/runtime/`, `tests/repl/`, `tests/examples/` — Other test categories
 
 ## Mangling
