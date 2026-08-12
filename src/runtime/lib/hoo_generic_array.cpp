@@ -104,9 +104,23 @@ int64_t hoo_array_get(HooArray arr, int64_t index, void* dest) {
 
 int64_t hoo_array_set(HooArray arr, int64_t index, const void* value) {
     if (!arr || !value) return 0;
-    int64_t length = *(int64_t*)arr;
+    int64_t* raw = (int64_t*)arr;
+    int64_t length = raw[0];
     if (index < 0 || index >= length) return 0;
-    ((int64_t*)arr)[index + ARRAY_HEADER_WORDS] = *(const int64_t*)value;
+    int64_t elem_type = raw[2];
+    int64_t new_elem = *(const int64_t*)value;
+    if (elem_type >= 100) {
+        // Managed-element array: replacing a slot drops the reference held by
+        // the array (caller transfers ownership of the new element, matching
+        // hoo_array_push).  Skip release when writing the same handle back.
+        void* old_elem = (void*)raw[index + ARRAY_HEADER_WORDS];
+        if (old_elem != (void*)new_elem) {
+            raw[index + ARRAY_HEADER_WORDS] = new_elem;
+            if (old_elem) hoo_release(old_elem);
+        }
+    } else {
+        raw[index + ARRAY_HEADER_WORDS] = new_elem;
+    }
     return 1;
 }
 
@@ -117,13 +131,33 @@ HooArray hoo_array_push(HooArray arr_handle, const void* value) {
     int64_t cap = raw[1];
     int64_t elem_type = raw[2]; // preserve element type
     if (len >= cap) {
-        int64_t new_cap = (cap <= 0) ? 8 : cap * 2;
-        size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
-        int64_t* new_raw = (int64_t*)hoo_realloc(arr_handle, new_size);
-        if (!new_raw) return nullptr;
-        raw = new_raw;
-        raw[1] = new_cap;
-        raw[2] = elem_type; // restore element type
+        int64_t new_cap = (cap <= 0) ? 8 : (cap > 0x7FFFFFFFFFFFFFFFLL / 2) ? 0x7FFFFFFFFFFFFFFFLL : cap * 2;
+        if (elem_type >= 100) {
+            // Managed-element array: hoo_realloc would release the old block,
+            // running array_destructor over elements the new block still
+            // references.  Grow by copying, retaining each element for the new
+            // block, then releasing the old block.
+            size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
+            int64_t* new_raw = (int64_t*)hoo_alloc(new_size, HOO_TYPE_ARRAY);
+            std::memcpy(new_raw, raw, ARRAY_HEADER_WORDS * 8);
+            new_raw[1] = new_cap;
+            if (len > 0) {
+                std::memcpy(new_raw + ARRAY_HEADER_WORDS, raw + ARRAY_HEADER_WORDS, (size_t)len * 8);
+                for (int64_t i = 0; i < len; i++) {
+                    void* elem = (void*)new_raw[i + ARRAY_HEADER_WORDS];
+                    if (elem) hoo_retain(elem);
+                }
+            }
+            hoo_release(arr_handle);
+            raw = new_raw;
+        } else {
+            size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
+            int64_t* new_raw = (int64_t*)hoo_realloc(arr_handle, new_size);
+            if (!new_raw) return nullptr;
+            raw = new_raw;
+            raw[1] = new_cap;
+            raw[2] = elem_type; // restore element type
+        }
     }
     raw[len + ARRAY_HEADER_WORDS] = *(const int64_t*)value;
     raw[0] = len + 1;
@@ -150,7 +184,19 @@ int64_t hoo_array_pop(HooArray arr, void* dest) {
 
 void hoo_array_clear(HooArray arr) {
     if (!arr) return;
-    *(int64_t*)arr = 0;
+    int64_t* raw = (int64_t*)arr;
+    int64_t len = raw[0];
+    int64_t elem_type = raw[2];
+    if (elem_type >= 100 && len > 0) {
+        // Managed-element array: drop the array's reference on each element and
+        // zero the slot so a later clear/destructor cannot release it twice.
+        for (int64_t i = 0; i < len; i++) {
+            void* elem = (void*)raw[i + ARRAY_HEADER_WORDS];
+            raw[i + ARRAY_HEADER_WORDS] = 0;
+            if (elem) hoo_release(elem);
+        }
+    }
+    raw[0] = 0;
 }
 
 int64_t hoo_array_empty(HooArray arr) {
@@ -247,7 +293,7 @@ HooArray hoo_array_push_vector_int64(HooArray arr, const int64_t* src, int64_t c
     if (len + count > cap) {
         int64_t new_cap = cap;
         while (len + count > new_cap) {
-            new_cap = (new_cap <= 0) ? 8 : new_cap * 2;
+            new_cap = (new_cap <= 0) ? 8 : (new_cap > 0x7FFFFFFFFFFFFFFFLL / 2) ? 0x7FFFFFFFFFFFFFFFLL : new_cap * 2;
         }
         size_t new_size = ARRAY_HEADER_WORDS * 8 + (size_t)new_cap * 8;
         int64_t* new_raw = (int64_t*)hoo_realloc(arr, new_size);

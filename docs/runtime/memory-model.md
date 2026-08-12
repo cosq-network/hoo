@@ -43,6 +43,15 @@ Buffer alive for the entire slice lifetime. Slice-aware encoding, hashing,
 compression, and socket functions consume the view and return independent
 strings or owned Buffers.
 
+### Buffer storage
+
+A `HooBuffer` stores its bytes out-of-line: the managed block holds only
+`length`, `capacity`, and a heap pointer to the byte storage. Growing a buffer
+reallocates only the byte storage, so the buffer **handle never moves** and
+refcount state is never disturbed. A pointer from `hoo_buffer_data` may become
+stale after an append; re-query it afterwards. Appending a buffer to itself is
+safe.
+
 ## 3. Thread-Local Allocation Buffer (TLAB)
 To minimize lock contention during allocation, the runtime utilizes a TLAB.
 
@@ -54,7 +63,7 @@ To minimize lock contention during allocation, the runtime utilizes a TLAB.
 ## 4. Core API (C ABI)
 
 - `void* hoo_alloc(size_t size, int64_t type_id)`: Allocates zeroed memory, initializing the header with `refcount = 1` and the specified `type_id`.
-- `void* hoo_realloc(void* obj, size_t new_size)`: Resizes a managed object, copying data if necessary.
+- `void* hoo_realloc(void* obj, size_t new_size)`: Resizes a managed object, copying data if necessary. **Caveat:** releasing the old block runs the type's registered destructor. Do not use `hoo_realloc` on types whose destructor frees values the new block still references (e.g. arrays of managed elements). Managed arrays grow by allocating a new block, copying element handles with a `hoo_retain` per element, then releasing the old block — the old block's destructor drops the old references, leaving each element owned exactly once.
 - `void* hoo_retain(void* obj)`: Atomically increments the `refcount`. Returns the original pointer.
 - `void hoo_release(void* obj)`: Atomically decrements the `refcount`. If it reaches `0`, the memory (and linked structures) are freed.
 - `int64_t hoo_get_refcount(void* obj)`: Returns the current reference count.

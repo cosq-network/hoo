@@ -68,7 +68,7 @@ func :int64 main() {
 
 #### `write`
 
-Appends string data to the end of the buffer. The buffer may reallocate as it grows.
+Appends string data to the end of the buffer. The internal storage may be reallocated as the buffer grows, but the buffer **handle stays valid** (growth happens out-of-line and never moves or invalidates the handle). A pointer returned earlier by `data()` may become stale after an append; call `data()` again.
 
 **Syntax:**
 
@@ -378,7 +378,7 @@ func :int64 main() {
 
 #### `appendBuffer`
 
-Appends the contents of another buffer to the end of this buffer.
+**Description:** Appends the contents of another buffer to the end of this buffer. Appending a buffer to itself (`a.appendBuffer(a)`) is supported and safely doubles the buffer.
 
 **Syntax:**
 

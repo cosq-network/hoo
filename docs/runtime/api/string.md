@@ -207,7 +207,7 @@ func :void example() {
 
 ### `s.split`
 
-**Description:** Splits the string by the specified delimiter. Empty strings between delimiters are not included in the result.
+**Description:** Splits the string by the specified delimiter. Empty strings between delimiters are not included in the result. The returned array **owns** its elements: each element is an independent `string`, and releasing the array releases them. Do not release individual elements yourself.
 
 **Syntax:**
 ```hoo
@@ -217,9 +217,9 @@ s.split(delim: string) :array
 **Parameters:**
 - `delim: string` — The delimiter string.
 
-**Returns:** `array` — An array of strings.
+**Returns:** `array` — An array of strings owned by the array.
 
-**Errors:** If `delim` is empty, an array containing the original string is returned.
+**Errors:** If `delim` is empty (or null), an **empty** array is returned.
 
 **Complete Example:**
 ```hoo

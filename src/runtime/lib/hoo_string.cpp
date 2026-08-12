@@ -269,6 +269,11 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
     HooArray result = hoo_array_new();
     if (!result) return nullptr;
 
+    // The result array owns its HooString parts: array_destructor releases
+    // them when the array is released, so parts are transferred (not
+    // released) into the array as they are produced.
+    ((int64_t*)result)[2] = HOO_TYPE_STRING;
+
     if (!str) {
         return result;
     }
@@ -277,7 +282,6 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
     HooStringImpl* delim_impl = get_impl(delimiter);
 
     if (!delim_impl || delim_impl->length == 0) {
-        hoo_array_release(result);
         return result;
     }
 
@@ -297,7 +301,6 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
                     hoo_array_release(result);
                     return nullptr;
                 }
-                hoo_string_release(part);
             }
 
             pos = match_pos + delim_impl->length;
@@ -311,7 +314,6 @@ HooArray hoo_string_split(HooString str, HooString delimiter) {
                     hoo_array_release(result);
                     return nullptr;
                 }
-                hoo_string_release(part);
             }
             break;
         }
