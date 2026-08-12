@@ -68,7 +68,7 @@ TEST_F(HooNetJitTest, UrlNoPort) {
 
 // Exercise HttpClient through the JIT. No network is required: the runtime
 // serves mock responses for URLs containing "example" (see real_http_request
-// in src/runtime/lib/hoo_net.cpp).
+// in src/runtime/lib/net/hoo_net.cpp).
 TEST_F(HooNetJitTest, HttpStatusOk) {
     const std::string source = R"(
         import hoo.net;

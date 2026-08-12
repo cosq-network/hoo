@@ -275,47 +275,44 @@ else()
 endif()
 
 add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
-    src/runtime/lib/hoo_ai.cpp
-    src/runtime/lib/hoo_runtime.c
-    src/runtime/lib/hoo_any.cpp
-    src/runtime/lib/hoo_anyarray.cpp
-    src/runtime/lib/hoo_hashmap.cpp
-    src/runtime/lib/hoo_string.cpp
-    src/runtime/lib/hoo_character.cpp
-    src/runtime/lib/hoo_generic_array.cpp
-    src/runtime/lib/hoo_tensor.cpp
-    src/runtime/lib/hoo_map.cpp
-    src/runtime/lib/hoo_io.cpp
-    src/runtime/lib/hoo_exception.cpp
-    src/runtime/lib/hoo_math.cpp
-    src/runtime/lib/hoo_net.cpp
-    src/runtime/lib/hoo_future.cpp
-    src/runtime/lib/hoo_event_loop.cpp
-    src/runtime/lib/hoo_fs.cpp
-    src/runtime/lib/hoo_datetime.cpp
-    src/runtime/lib/hoo_encoding.cpp
-    src/runtime/lib/hoo_system.cpp
-    src/runtime/lib/hoo_regex.cpp
-    src/runtime/lib/hoo_csv.cpp
-    src/runtime/lib/hoo_uuid.cpp
-    src/runtime/lib/hoo_hashing.cpp
-    src/runtime/lib/hoo_process.cpp
-    src/runtime/lib/hoo_compression.cpp
-    src/runtime/lib/hoo_args.cpp
-    src/runtime/lib/hoo_thread.cpp
-    src/runtime/lib/hoo_json.cpp
-    src/runtime/lib/hoo_buffer.cpp
-    src/runtime/lib/hoo_byte_slice.cpp
-    src/runtime/lib/hoo_overload.cpp
-    src/runtime/lib/hoo_decimal.cpp
+    src/runtime/lib/ai/hoo_ai.cpp
+    src/runtime/lib/runtime/hoo_runtime.c
+    src/runtime/lib/any/hoo_any.cpp
+    src/runtime/lib/anyarray/hoo_anyarray.cpp
+    src/runtime/lib/hashmap/hoo_hashmap.cpp
+    src/runtime/lib/string/hoo_string.cpp
+    src/runtime/lib/character/hoo_character.cpp
+    src/runtime/lib/generic_array/hoo_generic_array.cpp
+    src/runtime/lib/tensor/hoo_tensor.cpp
+    src/runtime/lib/map/hoo_map.cpp
+    src/runtime/lib/io/hoo_io.cpp
+    src/runtime/lib/exception/hoo_exception.cpp
+    src/runtime/lib/math/hoo_math.cpp
+    src/runtime/lib/net/hoo_net.cpp
+    src/runtime/lib/future/hoo_future.cpp
+    src/runtime/lib/event_loop/hoo_event_loop.cpp
+    src/runtime/lib/fs/hoo_fs.cpp
+    src/runtime/lib/datetime/hoo_datetime.cpp
+    src/runtime/lib/encoding/hoo_encoding.cpp
+    src/runtime/lib/system/hoo_system.cpp
+    src/runtime/lib/regex/hoo_regex.cpp
+    src/runtime/lib/csv/hoo_csv.cpp
+    src/runtime/lib/uuid/hoo_uuid.cpp
+    src/runtime/lib/hashing/hoo_hashing.cpp
+    src/runtime/lib/process/hoo_process.cpp
+    src/runtime/lib/compression/hoo_compression.cpp
+    src/runtime/lib/args/hoo_args.cpp
+    src/runtime/lib/thread/hoo_thread.cpp
+    src/runtime/lib/json/hoo_json.cpp
+    src/runtime/lib/buffer/hoo_buffer.cpp
+    src/runtime/lib/byte_slice/hoo_byte_slice.cpp
+    src/runtime/lib/overload/hoo_overload.cpp
+    src/runtime/lib/decimal/hoo_decimal.cpp
 )
 if(MSVC)
     hoo_use_static_msvc_runtime(hoort)
 endif()
 
-target_include_directories(hoort PUBLIC
-    ${CMAKE_SOURCE_DIR}/src/runtime/lib
-)
 
 target_compile_definitions(hoort PRIVATE
     $<$<CONFIG:Debug>:HOO_DEBUG_MEMORY>
@@ -328,14 +325,14 @@ target_link_libraries(hoort PUBLIC $<TARGET_NAME_IF_EXISTS:libuv::uv_a>)
 
 
 set_source_files_properties(
-    src/runtime/lib/hoo_runtime.c
+    src/runtime/lib/runtime/hoo_runtime.c
     PROPERTIES
         LANGUAGE C
 )
 
 if(MSVC)
     set_source_files_properties(
-        src/runtime/lib/hoo_runtime.c
+        src/runtime/lib/runtime/hoo_runtime.c
         PROPERTIES
             COMPILE_OPTIONS "/TC;/std:c11;/experimental:c11atomics"
     )

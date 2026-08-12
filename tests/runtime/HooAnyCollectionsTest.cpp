@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 
-#include "runtime/lib/hoo_anyarray.h"
-#include "runtime/lib/hoo_hashmap.h"
-#include "runtime/lib/hoo_runtime.h"
-#include "runtime/lib/hoo_string.h"
+#include "runtime/lib/anyarray/hoo_anyarray.h"
+#include "runtime/lib/hashmap/hoo_hashmap.h"
+#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/string/hoo_string.h"
 
 #include <cstring>
 

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/hoo_map.h"
-#include "runtime/lib/hoo_string.h"
+#include "runtime/lib/map/hoo_map.h"
+#include "runtime/lib/string/hoo_string.h"
 #include <cstring>
 
 using namespace hooc;

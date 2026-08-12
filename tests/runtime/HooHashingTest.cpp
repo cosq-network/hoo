@@ -5,7 +5,7 @@
 #define NOMINMAX
 #include <windows.h>
 #endif
-#include "runtime/lib/hoo_hashing.h"
+#include "runtime/lib/hashing/hoo_hashing.h"
 
 class HooHashingTest : public ::testing::Test {
 };

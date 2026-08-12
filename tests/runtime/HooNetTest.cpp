@@ -6,10 +6,10 @@
 #include <condition_variable>
 #include <string>
 #include <vector>
-#include "runtime/lib/hoo_net.h"
-#include "runtime/lib/hoo_encoding.h"
-#include "runtime/lib/hoo_hashing.h"
-#include "runtime/lib/hoo_compression.h"
+#include "runtime/lib/net/hoo_net.h"
+#include "runtime/lib/encoding/hoo_encoding.h"
+#include "runtime/lib/hashing/hoo_hashing.h"
+#include "runtime/lib/compression/hoo_compression.h"
 #include <thread>
 #include <openssl/evp.h>
 #include <openssl/pem.h>

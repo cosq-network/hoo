@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/hoo_character.h"
+#include "runtime/lib/character/hoo_character.h"
 
 using namespace hooc;
 

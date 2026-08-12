@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/hoo_exception.h"
+#include "runtime/lib/exception/hoo_exception.h"
 
 class HooExceptionTest : public ::testing::Test {
 };

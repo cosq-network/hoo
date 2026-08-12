@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
-#include "runtime/lib/hoo_compression.h"
+#include "runtime/lib/compression/hoo_compression.h"
 
 class HooCompressionTest : public ::testing::Test {
 };

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstdlib>
 #include <atomic>
-#include "runtime/lib/hoo_thread.h"
+#include "runtime/lib/thread/hoo_thread.h"
 #include <thread>
 
 class HooThreadTest : public ::testing::Test {

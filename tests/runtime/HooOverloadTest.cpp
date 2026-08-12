@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/hoo_runtime.h"
-#include "runtime/lib/hoo_overload.h"
+#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/overload/hoo_overload.h"
 #include <string>
 
 class HooOverloadTest : public ::testing::Test {

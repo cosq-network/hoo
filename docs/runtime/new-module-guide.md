@@ -26,7 +26,7 @@ Three touch points are required for every new runtime function:
 
 | # | Layer | File | What to add |
 |---|-------|------|-------------|
-| 1 | **Runtime** | `src/runtime/lib/hoo_*.h/.cpp` | C function implementation |
+| 1 | **Runtime** | `src/runtime/lib/<module>/hoo_*.h/.cpp` | C function implementation |
 | 2 | **JIT wrapper** | `src/hvm/HVMJIT.cpp` | `jit_*` wrapper + symbol table entry |
 | 3 | **Codegen redirect** | `src/codegen/HVMCodeGenerator.cpp` | Prefix match in the redirect block |
 | 4 | **Build** | `CMakeLists.txt` | Source file for `hoort` library |
@@ -36,7 +36,7 @@ Three touch points are required for every new runtime function:
 
 ## Layer 1: Runtime implementation
 
-**Location:** `src/runtime/lib/hoo_<module>.h` and `src/runtime/lib/hoo_<module>.cpp`
+**Location:** `src/runtime/lib/<module>/hoo_<module>.h` and `src/runtime/lib/<module>/hoo_<module>.cpp`
 
 ### Header conventions
 - Functions must be declared `extern "C"` for stable ABI
@@ -45,7 +45,7 @@ Three touch points are required for every new runtime function:
 - Return type `void*` for objects (maps to opaque ptr in Hoo)
 
 ```c
-// src/runtime/lib/hoo_thread.h
+// src/runtime/lib/thread/hoo_thread.h
 #pragma once
 #include <stdint.h>
 
@@ -65,7 +65,7 @@ int64_t hoo_thread_self(void);
 ### CMake registration
 Add the `.cpp` to the `hoort` library in `CMakeLists.txt` alongside the other modules:
 ```cmake
-src/runtime/lib/hoo_thread.cpp
+src/runtime/lib/thread/hoo_thread.cpp
 ```
 
 ---
@@ -79,7 +79,7 @@ src/runtime/lib/hoo_thread.cpp
 Insert alongside the other runtime includes (alphabetically):
 
 ```cpp
-#include "runtime/lib/hoo_thread.h"
+#include "runtime/lib/thread/hoo_thread.h"
 ```
 
 ### 2b — Write a JIT wrapper function
@@ -235,13 +235,13 @@ tests/jit/HooThreadJitTest.cpp
 
 Example: adding a new module (e.g. `hoo.xml`).
 
-- [ ] **Runtime header** — `src/runtime/lib/hoo_<module>.h`
+- [ ] **Runtime header** — `src/runtime/lib/<module>/hoo_<module>.h`
   - `extern "C"` functions with `int64_t`/`void*` types
-- [ ] **Runtime impl** — `src/runtime/lib/hoo_<module>.cpp`
+- [ ] **Runtime impl** — `src/runtime/lib/<module>/hoo_<module>.cpp`
   - Implementation using platform APIs
 - [ ] **CMake (runtime)** — source file added to `hoort` in `CMakeLists.txt`
 - [ ] **CMake (tests)** — JIT test file added to `hoo-tests` in `CMakeLists.txt`
-- [ ] **JIT include** — `#include "runtime/lib/hoo_<module>.h"` in `HVMJIT.cpp`
+- [ ] **JIT include** — `#include "runtime/lib/<module>/hoo_<module>.h"` in `HVMJIT.cpp`
 - [ ] **JIT wrappers** — `jit_<module>_*()` functions in the `extern "C"` block
 - [ ] **Symbol table** — entries in `buildRuntimeSymbols()` with mangled names
 - [ ] **Codegen prefix** — `functionName.rfind("<module>_", 0) == 0` in the

@@ -232,5 +232,5 @@ func :int64 main() {
 
 ## Reference Links
 
-- [C implementation: `hoo_tensor.cpp`](file:///Users/benoybose/Projects/hoo/src/runtime/lib/hoo_tensor.cpp)
+- [C implementation: `hoo_tensor.cpp`](file:///Users/benoybose/Projects/hoo/src/runtime/lib/tensor/hoo_tensor.cpp)
 - [Collections API](file:///Users/benoybuse/Projects/hoo/docs/runtime/api/collections.md)

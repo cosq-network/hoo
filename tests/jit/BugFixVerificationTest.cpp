@@ -5,9 +5,9 @@
 
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/hoo_runtime.h"
-#include "runtime/lib/hoo_string.h"
-#include "runtime/lib/hoo_generic_array.h"
+#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/string/hoo_string.h"
+#include "runtime/lib/generic_array/hoo_generic_array.h"
 
 using namespace hooc;
 

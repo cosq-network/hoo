@@ -3,7 +3,7 @@
 #include <string>
 #include "src/hvm/HVMJIT.h"
 #include "src/core/DefaultIOProvider.h"
-#include "src/runtime/lib/hoo_future.h"
+#include "runtime/lib/future/hoo_future.h"
 
 using namespace hooc;
 

@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <cmath>
 #include <cstring>
-#include "runtime/lib/hoo_tensor.h"
-#include "runtime/lib/hoo_runtime.h"
+#include "runtime/lib/tensor/hoo_tensor.h"
+#include "runtime/lib/runtime/hoo_runtime.h"
 
 class HooTensorTest : public ::testing::Test {
 protected:

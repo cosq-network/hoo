@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/hoo_map.h"
+#include "runtime/lib/map/hoo_map.h"
 
 class HooMapTest : public ::testing::Test {
 };

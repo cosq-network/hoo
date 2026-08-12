@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
-#include "runtime/lib/hoo_args.h"
+#include "runtime/lib/args/hoo_args.h"
 
 class HooArgsTest : public ::testing::Test {
 protected:

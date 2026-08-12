@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <cstring>
-#include "runtime/lib/hoo_uuid.h"
+#include "runtime/lib/uuid/hoo_uuid.h"
 
 class HooUuidTest : public ::testing::Test {
 protected:

@@ -4,7 +4,7 @@
 #define NOMINMAX
 #include <windows.h>
 #endif
-#include "runtime/lib/hoo_system.h"
+#include "runtime/lib/system/hoo_system.h"
 
 class HooSystemTest : public ::testing::Test {
 };

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/hoo_io.h"
-#include "runtime/lib/hoo_string.h"
-#include "runtime/lib/hoo_runtime.h"
+#include "runtime/lib/io/hoo_io.h"
+#include "runtime/lib/string/hoo_string.h"
+#include "runtime/lib/runtime/hoo_runtime.h"
 
 class HooIOTest : public ::testing::Test {
 };
@@ -17,7 +17,7 @@ TEST_F(HooIOTest, BasicPrint) {
     hoo_string_release(str);
 }
 
-#include "runtime/lib/hoo_character.h"
+#include "runtime/lib/character/hoo_character.h"
 
 TEST_F(HooIOTest, ReadChar) {
     // Basic test to ensure it returns a Character (or NULL if no input)
