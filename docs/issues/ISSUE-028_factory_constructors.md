@@ -292,7 +292,7 @@ Run: `cmake --build build --target hoo-tests && ctest --test-dir build`.
 - Factories cannot access `this`, cannot write immutable fields, and must
   return an instance; violations are compile-time errors.
 - Existing `new` forms (`new Point(x)`, `new hoo.String(x)`,
-  `new mymodule.Point(x)`, `new AnyArray()`) are unchanged.
+  `new mymodule.Point(x)`, `new List()`) are unchanged.
 - All existing tests continue to pass; new parsing, AST, mangler, codegen, and
   JIT tests pass.
 

@@ -25,7 +25,7 @@
 #endif
 
 // Integration tests for composite/built-in collection types: Array, Map,
-// HashMap, Tensor, Future, Optional, Slice, any, AnyArray. Each test is a
+// Dict, Tensor, Future, Optional, Slice, any, List. Each test is a
 // complete program compiled to a .ha archive and executed via the hoo CLI.
 class CompositeTypesCLIIntegrationTest : public ::testing::Test {
 protected:
@@ -235,15 +235,15 @@ TEST_F(CompositeTypesCLIIntegrationTest, MapStringKeyStringValue) {
 }
 
 // ============================================================================
-// HashMap
+// Dict
 // ============================================================================
 
-TEST_F(CompositeTypesCLIIntegrationTest, HashMapInt64KeySubscript) {
+TEST_F(CompositeTypesCLIIntegrationTest, DictInt64KeySubscript) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[10] = 42;
             m[11] = 8;
             return m[10] + m.count();
@@ -251,12 +251,12 @@ TEST_F(CompositeTypesCLIIntegrationTest, HashMapInt64KeySubscript) {
     )", "44");
 }
 
-TEST_F(CompositeTypesCLIIntegrationTest, HashMapRemoveAndCount) {
+TEST_F(CompositeTypesCLIIntegrationTest, DictRemoveAndCount) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[10] = 42;
             m[11] = 8;
             m.remove(10);
@@ -265,12 +265,12 @@ TEST_F(CompositeTypesCLIIntegrationTest, HashMapRemoveAndCount) {
     )", "1");
 }
 
-TEST_F(CompositeTypesCLIIntegrationTest, HashMapInt64KeyStringValue) {
+TEST_F(CompositeTypesCLIIntegrationTest, DictInt64KeyStringValue) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var m: HashMap<int64, string> = new HashMap<int64, string>();
+            var m: Dict<int64, string> = new Dict<int64, string>();
             m[1] = "hello";
             var s: string = m[1];
             return s.length();
@@ -278,12 +278,12 @@ TEST_F(CompositeTypesCLIIntegrationTest, HashMapInt64KeyStringValue) {
     )", "5");
 }
 
-TEST_F(CompositeTypesCLIIntegrationTest, HashMapAnyValueMixedTypes) {
+TEST_F(CompositeTypesCLIIntegrationTest, DictAnyValueMixedTypes) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var m: HashMap<int64, any> = new HashMap<int64, any>();
+            var m: Dict<int64, any> = new Dict<int64, any>();
             m[1] = 42;
             m[2] = "hello";
             return m.count();
@@ -503,7 +503,7 @@ TEST_F(CompositeTypesCLIIntegrationTest, AnyInHashMapValue) {
         import hoo.collections;
 
         func :int64 main() {
-            var m: HashMap<int64, any> = new HashMap<int64, any>();
+            var m: Dict<int64, any> = new Dict<int64, any>();
             m[1] = 42;
             m[2] = "hello";
             return m.count();
@@ -526,15 +526,15 @@ TEST_F(CompositeTypesCLIIntegrationTest, AnyParameterRejected) {
 }
 
 // ============================================================================
-// AnyArray
+// List
 // ============================================================================
 
-TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayPushAndLength) {
+TEST_F(CompositeTypesCLIIntegrationTest, ListPushAndLength) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(5);
             values.push(8);
             values[0] = 7;
@@ -543,12 +543,12 @@ TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayPushAndLength) {
     )", "9");
 }
 
-TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayPop) {
+TEST_F(CompositeTypesCLIIntegrationTest, ListPop) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(10);
             values.push(20);
             values.pop();
@@ -557,12 +557,12 @@ TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayPop) {
     )", "1");
 }
 
-TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayMixedTypes) {
+TEST_F(CompositeTypesCLIIntegrationTest, ListMixedTypes) {
     compileAndRun(R"(
         import hoo.collections;
 
         func :int64 main() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(42);
             values.push("hello");
             return values.length();
@@ -575,7 +575,7 @@ TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayStringElement) {
         import hoo.collections;
 
         func :int64 main() {
-            var values = new AnyArray();
+            var values = new List();
             values.push("hello");
             values.push("world");
             var s: string = values[0];
@@ -584,7 +584,7 @@ TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayStringElement) {
     )", "5");
 }
 
-TEST_F(CompositeTypesCLIIntegrationTest, AnyArrayLiteral) {
+TEST_F(CompositeTypesCLIIntegrationTest, ListLiteral) {
     compileAndRun(R"(
         import hoo.collections;
 

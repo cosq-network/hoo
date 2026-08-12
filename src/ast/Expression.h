@@ -134,19 +134,19 @@ private:
     std::unique_ptr<ArgumentList> arguments_;
 };
 
-class NewHashMapExpression : public Expression {
+class NewDictExpression : public Expression {
 public:
-    NewHashMapExpression(std::unique_ptr<HashMapType> type,
+    NewDictExpression(std::unique_ptr<DictType> type,
                          std::unique_ptr<ArgumentList> arguments)
         : type_(std::move(type)), arguments_(std::move(arguments)) {}
 
     std::string toString() const override;
 
-    const HashMapType& getHashMapType() const { return *type_; }
+    const DictType& getDictType() const { return *type_; }
     const ArgumentList* getArguments() const { return arguments_.get(); }
 
 private:
-    std::unique_ptr<HashMapType> type_;
+    std::unique_ptr<DictType> type_;
     std::unique_ptr<ArgumentList> arguments_;
 };
 
@@ -344,17 +344,17 @@ private:
 // Array literal
 class ArrayLiteral : public Expression {
 public:
-    ArrayLiteral(std::unique_ptr<ExpressionList> elements, bool isAnyArray = false)
-        : elements_(std::move(elements)), isAnyArray_(isAnyArray) {}
+    ArrayLiteral(std::unique_ptr<ExpressionList> elements, bool isList = false)
+        : elements_(std::move(elements)), isList_(isList) {}
 
     std::string toString() const override;
 
     const ExpressionList* getElements() const { return elements_.get(); }
-    bool isAnyArray() const { return isAnyArray_; }
+    bool isList() const { return isList_; }
 
 private:
     std::unique_ptr<ExpressionList> elements_;
-    bool isAnyArray_;
+    bool isList_;
 };
 
 class TensorLiteral : public Expression {

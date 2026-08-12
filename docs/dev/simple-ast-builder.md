@@ -34,7 +34,7 @@ The single public entry point takes a parser `CompilationUnitContext` and return
 | Category | Examples | Purpose |
 |---|---|---|
 | Declarations | `buildFunctionDeclaration`, `buildVariableDeclaration`, `buildConstantDeclaration` | Functions, variables, constants |
-| Types | `buildPrimitiveType`, `buildOptionalType`, `buildArrayType`, `buildMapType`, `buildHashMapType`, `buildTensorType`, `buildBaseType` | Type expressions |
+| Types | `buildPrimitiveType`, `buildOptionalType`, `buildArrayType`, `buildMapType`, `buildDictType`, `buildTensorType`, `buildBaseType` | Type expressions |
 | Statements | `buildIfStatement`, `buildWhileStatement`, `buildForInStatement`, `buildForRangeStatement`, `buildTryCatchStatement`, `buildThrowStatement` | Control flow |
 | Expressions | `buildAssignmentExpression`, `buildLogicalOrExpression`, `buildAdditiveExpression`, `buildMultiplicativeExpression`, `buildUnaryExpression`, `buildPostfixExpression`, `buildPrimary`, `buildNewExpression` | Value computations |
 | Supporting | `buildBlock`, `buildParameter`, `buildArgumentList`, `buildArrayLiteral`, `buildTensorLiteral`, `buildExpressionList` | Structural helpers |
@@ -63,7 +63,7 @@ Public helper methods (used in tests and internally):
 
 - **Overloaded functions** — Abstract functions at the same name (no body) are grouped into an `OverloadList` node. Concrete bodies are compiled individually.
 - **Class member overloading** — Class member declarations with the same name are collected into an `ASTNode` with `OverloadList` flag.
-- **Serializable/any validation** — `buildClassDeclaration` calls `rejectAnyTypeInPosition` to forbid `any` fields in `serializable` classes. `any` is only allowed as a function return type or inside container type parameters (Map, HashMap).
+- **Serializable/any validation** — `buildClassDeclaration` calls `rejectAnyTypeInPosition` to forbid `any` fields in `serializable` classes. `any` is only allowed as a function return type or inside container type parameters (Map, Dict).
 - **Modifiers** — Constructor modifiers (`getClassModifier`) and function modifiers (`getFunctionModifier`) are parsed from the grammar and stored as enum values on the AST node.
 - **Single constructor enforcement** — `buildClassDeclaration` validates that each class has at most one constructor.
 - **Type inference in variable declarations** — `buildVariableDeclaration` handles both explicit types and `var` inference.

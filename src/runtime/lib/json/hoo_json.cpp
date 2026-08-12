@@ -1,11 +1,11 @@
 #include "runtime/lib/json/hoo_json.h"
 
 #include "runtime/lib/any/hoo_any.h"
-#include "runtime/lib/anyarray/hoo_anyarray.h"
+#include "runtime/lib/anyarray/hoo_list.h"
 #include "runtime/lib/buffer/hoo_buffer.h"
 #include "runtime/lib/encoding/hoo_encoding.h"
 #include "runtime/lib/exception/hoo_exception.h"
-#include "runtime/lib/hashmap/hoo_hashmap.h"
+#include "runtime/lib/hashmap/hoo_dict.h"
 #include "runtime/lib/runtime/hoo_runtime.h"
 #include "runtime/lib/string/hoo_string.h"
 #include "runtime/lib/tensor/hoo_tensor.h"
@@ -417,30 +417,30 @@ void serializeTensor(HooTensor tensor, std::string& out) {
     out += "]}";
 }
 
-void serializeAnyArray(HooAnyArray array, std::string& out) {
-    if (!array) throw std::runtime_error("AnyArray is nil");
-    int64_t length = hoo_anyarray_length(array);
-    if (length < 0) throw std::runtime_error("AnyArray length is invalid");
+void serializeList(HooList array, std::string& out) {
+    if (!array) throw std::runtime_error("List is nil");
+    int64_t length = hoo_list_length(array);
+    if (length < 0) throw std::runtime_error("List length is invalid");
     out += '[';
     for (int64_t i = 0; i < length; ++i) {
         HooAnyValue value{0, 0};
-        if (!hoo_anyarray_get(array, i, &value)) throw std::runtime_error("failed to read AnyArray element");
+        if (!hoo_list_get(array, i, &value)) throw std::runtime_error("failed to read List element");
         if (i > 0) out += ',';
         serializeAnyValue(value, out);
     }
     out += ']';
 }
 
-void serializeHashMap(HooHashMap map, std::string& out) {
-    if (!map) throw std::runtime_error("HashMap is nil");
-    int64_t count = hoo_hashmap_count(map);
-    if (count < 0) throw std::runtime_error("HashMap count is invalid");
+void serializeDict(HooDict map, std::string& out) {
+    if (!map) throw std::runtime_error("Dict is nil");
+    int64_t count = hoo_dict_count(map);
+    if (count < 0) throw std::runtime_error("Dict count is invalid");
 
     std::vector<int64_t> keys(static_cast<size_t>(count));
-    int64_t actual = count == 0 ? 0 : hoo_hashmap_get_keys_i8(map, keys.data(), count);
-    if (actual < 0) throw std::runtime_error("failed to enumerate HashMap keys");
+    int64_t actual = count == 0 ? 0 : hoo_dict_get_keys_i8(map, keys.data(), count);
+    if (actual < 0) throw std::runtime_error("failed to enumerate Dict keys");
 
-    int64_t valueType = hoo_hashmap_value_type(map);
+    int64_t valueType = hoo_dict_value_type(map);
     out += '{';
     for (int64_t i = 0; i < actual; ++i) {
         if (i > 0) out += ',';
@@ -449,14 +449,14 @@ void serializeHashMap(HooHashMap map, std::string& out) {
         out += "\":";
         if (valueType == HOO_TYPE_ANY) {
             HooAnyValue value{0, 0};
-            if (!hoo_hashmap_get_any_at_i8(map, keys[static_cast<size_t>(i)], &value)) {
-                throw std::runtime_error("failed to read HashMap any value");
+            if (!hoo_dict_get_any_at_i8(map, keys[static_cast<size_t>(i)], &value)) {
+                throw std::runtime_error("failed to read Dict any value");
             }
             serializeAnyValue(value, out);
         } else {
             uint64_t data = 0;
-            if (!hoo_hashmap_get_fixed_at_i8(map, keys[static_cast<size_t>(i)], &data)) {
-                throw std::runtime_error("failed to read HashMap value");
+            if (!hoo_dict_get_fixed_at_i8(map, keys[static_cast<size_t>(i)], &data)) {
+                throw std::runtime_error("failed to read Dict value");
             }
             HooAnyValue value{valueType, data};
             serializeAnyValue(value, out);
@@ -516,11 +516,11 @@ void serializeAnyValue(HooAnyValue value, std::string& out) {
         case HOO_TYPE_TENSOR_SERIALIZED:
             serializeTensor(dataToPointer<void>(value.data), out);
             return;
-        case HOO_TYPE_HASHMAP:
-            serializeHashMap(dataToPointer<void>(value.data), out);
+        case HOO_TYPE_DICT:
+            serializeDict(dataToPointer<void>(value.data), out);
             return;
-        case HOO_TYPE_ANYARRAY:
-            serializeAnyArray(dataToPointer<void>(value.data), out);
+        case HOO_TYPE_LIST:
+            serializeList(dataToPointer<void>(value.data), out);
             return;
         case HOO_TYPE_VOID:
             out += "null";
@@ -546,46 +546,46 @@ bool numberIsFloat(const std::string& text) {
 
 HooAnyValue nodeToAnyValue(const JsonNode& node);
 
-HooAnyArray nodeToAnyArray(const JsonNode& node) {
+HooList nodeToList(const JsonNode& node) {
     if (node.kind != JsonKind::Array) throw std::runtime_error("JSON root is not an array");
-    HooAnyArray array = hoo_anyarray_new_capacity(static_cast<int64_t>(node.arrayValues.size()));
-    if (!array) throw std::runtime_error("failed to allocate AnyArray");
+    HooList array = hoo_list_new_capacity(static_cast<int64_t>(node.arrayValues.size()));
+    if (!array) throw std::runtime_error("failed to allocate List");
     try {
         for (const auto& item : node.arrayValues) {
             HooAnyValue value = nodeToAnyValue(*item);
-            if (!hoo_anyarray_push(array, value.type_id, value.data)) {
+            if (!hoo_list_push(array, value.type_id, value.data)) {
                 hoo_any_release(value);
-                throw std::runtime_error("failed to append AnyArray element");
+                throw std::runtime_error("failed to append List element");
             }
             hoo_any_release(value);
         }
         return array;
     } catch (...) {
-        hoo_anyarray_release(array);
+        hoo_list_release(array);
         throw;
     }
 }
 
-HooHashMap nodeToHashMap(const JsonNode& node) {
+HooDict nodeToDict(const JsonNode& node) {
     if (node.kind != JsonKind::Object) throw std::runtime_error("JSON root is not an object");
-    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
-    if (!map) throw std::runtime_error("failed to allocate HashMap");
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    if (!map) throw std::runtime_error("failed to allocate Dict");
     try {
         for (const auto& [keyText, valueNode] : node.objectValues) {
             int64_t key = 0;
             if (!parseInt64Text(keyText, key)) {
-                throw std::runtime_error("JSON object key '" + keyText + "' is not a valid int64 HashMap key");
+                throw std::runtime_error("JSON object key '" + keyText + "' is not a valid int64 Dict key");
             }
             HooAnyValue value = nodeToAnyValue(*valueNode);
-            if (!hoo_hashmap_set_any_i8(map, key, value.type_id, value.data)) {
+            if (!hoo_dict_set_any_i8(map, key, value.type_id, value.data)) {
                 hoo_any_release(value);
-                throw std::runtime_error("failed to set HashMap value");
+                throw std::runtime_error("failed to set Dict value");
             }
             hoo_any_release(value);
         }
         return map;
     } catch (...) {
-        hoo_hashmap_release(map);
+        hoo_dict_release(map);
         throw;
     }
 }
@@ -620,8 +620,8 @@ HooAnyValue nodeToAnyValue(const JsonNode& node) {
             return HooAnyValue{HOO_TYPE_STRING, pointerToData(str)};
         }
         case JsonKind::Array: {
-            HooAnyArray array = nodeToAnyArray(node);
-            return HooAnyValue{HOO_TYPE_ANYARRAY, pointerToData(array)};
+            HooList array = nodeToList(node);
+            return HooAnyValue{HOO_TYPE_LIST, pointerToData(array)};
         }
         case JsonKind::Object: {
             const JsonNode* bufferMarker = nullptr;
@@ -683,8 +683,8 @@ HooAnyValue nodeToAnyValue(const JsonNode& node) {
                     throw;
                 }
             }
-            HooHashMap map = nodeToHashMap(node);
-            return HooAnyValue{HOO_TYPE_HASHMAP, pointerToData(map)};
+            HooDict map = nodeToDict(node);
+            return HooAnyValue{HOO_TYPE_DICT, pointerToData(map)};
         }
     }
     throw std::runtime_error("unsupported JSON value");
@@ -706,10 +706,10 @@ HooString parseAndFormat(const char* json, bool pretty) {
 
 extern "C" {
 
-HooString hoo_json_serialize_hashmap(HooHashMap map) {
+HooString hoo_json_serialize_hashmap(HooDict map) {
     try {
         std::string out;
-        serializeHashMap(map, out);
+        serializeDict(map, out);
         HooString result = hoo_string_from_cstr(out.c_str());
         if (!result) throw std::runtime_error("failed to allocate output string");
         return result;
@@ -720,10 +720,10 @@ HooString hoo_json_serialize_hashmap(HooHashMap map) {
     }
 }
 
-HooString hoo_json_serialize_anyarray(HooAnyArray array) {
+HooString hoo_json_serialize_anyarray(HooList array) {
     try {
         std::string out;
-        serializeAnyArray(array, out);
+        serializeList(array, out);
         HooString result = hoo_string_from_cstr(out.c_str());
         if (!result) throw std::runtime_error("failed to allocate output string");
         return result;
@@ -734,13 +734,13 @@ HooString hoo_json_serialize_anyarray(HooAnyArray array) {
     }
 }
 
-HooHashMap hoo_json_deserialize_hashmap(const char* json) {
+HooDict hoo_json_deserialize_hashmap(const char* json) {
     try {
         if (!json) throw std::runtime_error("input string is nil");
         Parser parser(json);
         auto root = parser.parseDocument();
         if (!root) throw std::runtime_error("invalid JSON input");
-        return nodeToHashMap(*root);
+        return nodeToDict(*root);
     } catch (const std::exception& e) {
         rethrowAsJsonRuntime("deserialization", e);
     } catch (...) {
@@ -748,13 +748,13 @@ HooHashMap hoo_json_deserialize_hashmap(const char* json) {
     }
 }
 
-HooAnyArray hoo_json_deserialize_anyarray(const char* json) {
+HooList hoo_json_deserialize_anyarray(const char* json) {
     try {
         if (!json) throw std::runtime_error("input string is nil");
         Parser parser(json);
         auto root = parser.parseDocument();
         if (!root) throw std::runtime_error("invalid JSON input");
-        return nodeToAnyArray(*root);
+        return nodeToList(*root);
     } catch (const std::exception& e) {
         rethrowAsJsonRuntime("deserialization", e);
     } catch (...) {

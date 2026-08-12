@@ -197,8 +197,8 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
         return std::make_unique<AnyType>();
     }
 
-    if (ctx->anyArrayType()) {
-        return std::make_unique<AnyArrayType>();
+    if (ctx->listType()) {
+        return std::make_unique<ListType>();
     }
 
     if (ctx->sliceType()) {
@@ -209,8 +209,8 @@ std::unique_ptr<Type> SimpleASTBuilder::buildType(HoocParser::TypeContext* ctx) 
         return buildFutureType(ctx->futureType());
     }
 
-    if (ctx->hashMapType()) {
-        return buildHashMapType(ctx->hashMapType());
+    if (ctx->dictType()) {
+        return buildDictType(ctx->dictType());
     }
      if (ctx->decimalType()) {
     return buildDecimalType(ctx->decimalType());
@@ -359,33 +359,33 @@ std::unique_ptr<MapType> SimpleASTBuilder::buildMapType(HoocParser::MapTypeConte
     return std::make_unique<MapType>(keyType, std::move(valueType));
 }
 
-std::unique_ptr<HashMapType> SimpleASTBuilder::buildHashMapType(HoocParser::HashMapTypeContext* ctx) {
+std::unique_ptr<DictType> SimpleASTBuilder::buildDictType(HoocParser::DictTypeContext* ctx) {
     if (!ctx) {
-        throw std::runtime_error("HashMapTypeContext is null");
+        throw std::runtime_error("DictTypeContext is null");
     }
 
-    auto keyTypeCtx = ctx->hashMapKeyType();
+    auto keyTypeCtx = ctx->dictKeyType();
     if (!keyTypeCtx) {
-        throw std::runtime_error("HashMapKeyType missing in HashMapType");
+        throw std::runtime_error("DictKeyType missing in DictType");
     }
 
-    HashMapKeyType keyType;
+    DictKeyType keyType;
     if (keyTypeCtx->BYTE()) {
-        keyType = HashMapKeyType::BYTE;
+        keyType = DictKeyType::BYTE;
     } else if (keyTypeCtx->INT8()) {
-        keyType = HashMapKeyType::INT8;
+        keyType = DictKeyType::INT8;
     } else if (keyTypeCtx->INT64()) {
-        keyType = HashMapKeyType::INT64;
+        keyType = DictKeyType::INT64;
     } else {
-        throw std::runtime_error("Unknown HashMapKeyType encountered");
+        throw std::runtime_error("Unknown DictKeyType encountered");
     }
 
     auto valueType = buildType(ctx->type());
     if (!valueType) {
-        throw std::runtime_error("Failed to build value type for HashMapType");
+        throw std::runtime_error("Failed to build value type for DictType");
     }
 
-    return std::make_unique<HashMapType>(keyType, std::move(valueType));
+    return std::make_unique<DictType>(keyType, std::move(valueType));
 }
 
 std::unique_ptr<FutureType> SimpleASTBuilder::buildFutureType(HoocParser::FutureTypeContext* ctx) {
@@ -1066,19 +1066,19 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
         return std::make_unique<NewObjectExpression>(std::move(className), factoryName, std::move(args));
     }
 
-    // HashMap construction: new HashMap<K,V>(args)
-    if (auto hashMapCtx = ctx->newHashMapExpression()) {
+    // Dict construction: new Dict<K,V>(args)
+    if (auto hashMapCtx = ctx->newDictExpression()) {
         std::unique_ptr<ArgumentList> args;
         if (hashMapCtx->argumentList()) {
             args = buildArgumentList(hashMapCtx->argumentList());
         } else {
             args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
         }
-        return std::make_unique<NewHashMapExpression>(
-            buildHashMapType(hashMapCtx->hashMapType()), std::move(args));
+        return std::make_unique<NewDictExpression>(
+            buildDictType(hashMapCtx->dictType()), std::move(args));
     }
 
-    // AnyArray construction: new AnyArray(args)
+    // List construction: new List(args)
     if (auto arrayCtx = ctx->newArrayExpression()) {
         std::unique_ptr<ArgumentList> args;
         if (arrayCtx->argumentList()) {
@@ -1086,7 +1086,7 @@ std::unique_ptr<Expression> SimpleASTBuilder::buildNewExpression(HoocParser::New
         } else {
             args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>());
         }
-        return std::make_unique<NewObjectExpression>("AnyArray", std::move(args));
+        return std::make_unique<NewObjectExpression>("List", std::move(args));
     }
 
     throw std::runtime_error("Unknown new expression target encountered");
@@ -1323,7 +1323,7 @@ std::unique_ptr<ClassMember> SimpleASTBuilder::buildClassMember(HoocParser::Clas
 void SimpleASTBuilder::rejectAnyTypeInPosition(const ast::Type* type, const std::string& context) {
     if (dynamic_cast<const AnyType*>(type)) {
         throw std::runtime_error("The 'any' meta type is not allowed in " + context +
-            ". It may only be used as a function return type or inside container type parameters (e.g., Map<K, any>, HashMap<K, any>).");
+            ". It may only be used as a function return type or inside container type parameters (e.g., Map<K, any>, Dict<K, any>).");
     }
 }
 

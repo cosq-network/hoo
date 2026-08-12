@@ -217,8 +217,8 @@ if (functionName == "print" || functionName == "println" ||
 | Class method, no module | method `bar` in class `Foo` | `_F_Foo_bar_v` |
 | Class constructor, module `app` | constructor of class `Foo` | `_F_M_app_E_Foo_CT_v` |
 | Core runtime intrinsic | `hoo_alloc(size, typeId)` | `_F_hoo_alloc_p_i8_i8` |
-| AnyArray core intrinsic | `hoo_anyarray_push(arr,type,data)` | `_F_hoo_anyarray_push_i8_p_i8_i8` |
-| HashMap core intrinsic | `hoo_hashmap_new(keyType,valueType)` | `_F_hoo_hashmap_new_p_i8_i8` |
+| List core intrinsic | `hoo_anyarray_push(arr,type,data)` | `_F_hoo_anyarray_push_i8_p_i8_i8` |
+| Dict core intrinsic | `hoo_hashmap_new(keyType,valueType)` | `_F_hoo_hashmap_new_p_i8_i8` |
 
 ---
 

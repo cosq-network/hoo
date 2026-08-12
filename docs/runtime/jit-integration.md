@@ -60,9 +60,9 @@ The JIT maintains a registry of host-native functions that can be called directl
 
 Defined function symbols now set `section_index = 0` (instead of leaving it uninitialized) to ensure consistent section-aware lookups in `HVMCodeGenerator::endFunction()`.
 
-### 3.1 `any`, `HashMap`, and `AnyArray` Bridges
+### 3.1 `any`, `Dict`, and `List` Bridges
 
-The heterogeneous collection intrinsics introduced by ISSUE-033 use ordinary HVM `CALL` lowering and do not add opcodes. `HashMap` and `AnyArray` handles are opaque 64-bit managed-object pointers. The shared `any` payload layout is two 64-bit fields: `type_id` and `data`.
+The heterogeneous collection intrinsics introduced by ISSUE-033 use ordinary HVM `CALL` lowering and do not add opcodes. `Dict` and `List` handles are opaque 64-bit managed-object pointers. The shared `any` payload layout is two 64-bit fields: `type_id` and `data`.
 
 Raw runtime APIs that return `any` write into an explicit out-buffer:
 

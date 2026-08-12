@@ -1806,10 +1806,10 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, ArgR4ReservedTpNotUsed) {
     }
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64AnyModuleLevelVariable) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, DictInt64AnyModuleLevelVariable) {
     std::string code = R"(
         import hoo.collections;
-        var m: HashMap<int64, any>;
+        var m: Dict<int64, any>;
         func :int64 test() { return 0; }
     )";
     auto module = compiler_->compile("test", code);
@@ -1822,10 +1822,10 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64AnyModuleLevelVariable) {
     EXPECT_EQ(sym->type, Symbol::STT_OBJECT);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64Int64ModuleLevelVariable) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, DictInt64Int64ModuleLevelVariable) {
     std::string code = R"(
         import hoo.collections;
-        var m: HashMap<int64, int64>;
+        var m: Dict<int64, int64>;
         func :int64 test() { return 0; }
     )";
     auto module = compiler_->compile("test", code);
@@ -1838,11 +1838,11 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapInt64Int64ModuleLevelVariable) 
     EXPECT_EQ(sym->type, Symbol::STT_OBJECT);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapExpressionInFunction) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewDictExpressionInFunction) {
     std::string code = R"(
         import hoo.collections;
         func :int64 test() {
-            var m = new HashMap<int64, int64>();
+            var m = new Dict<int64, int64>();
             return 0;
         }
     )";
@@ -1863,11 +1863,11 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapExpressionInFunction) {
     EXPECT_TRUE(foundCall);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithAnyValueType) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewDictWithAnyValueType) {
     std::string code = R"(
         import hoo.collections;
         func :int64 test() {
-            var m = new HashMap<int64, any>();
+            var m = new Dict<int64, any>();
             return 0;
         }
     )";
@@ -1887,10 +1887,10 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithAnyValueType) {
     EXPECT_TRUE(foundCall);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayModuleLevelVariable) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, ListModuleLevelVariable) {
     std::string code = R"(
         import hoo.collections;
-        var values: AnyArray;
+        var values: List;
         func :int64 test() { return 0; }
     )";
     auto module = compiler_->compile("test", code);
@@ -1903,7 +1903,7 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayModuleLevelVariable) {
     EXPECT_EQ(sym->type, Symbol::STT_OBJECT);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, AnyArrayLiteralCodegen) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, ListLiteralCodegen) {
     std::string code = R"(
         import hoo.collections;
         func :int64 test() {
@@ -1954,11 +1954,11 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, MapTypeModuleLevelVariable) {
     ASSERT_NE(sym, nullptr);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithStringValue) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, NewDictWithStringValue) {
     std::string code = R"(
         import hoo.collections;
         func :int64 test() {
-            var m = new HashMap<int8, string>();
+            var m = new Dict<int8, string>();
             return 0;
         }
     )";
@@ -1969,11 +1969,11 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, NewHashMapWithStringValue) {
     ASSERT_NE(module, nullptr);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, HashMapByteKeyAnyValue) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, DictByteKeyAnyValue) {
     std::string code = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<byte, any> = new HashMap<byte, any>();
+            var m: Dict<byte, any> = new Dict<byte, any>();
             return 0;
         }
     )";
@@ -2090,11 +2090,11 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithMultiplePublicFie
     EXPECT_TRUE(foundDeserialize);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithHashMapField) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithDictField) {
     std::string code = R"(
         import hoo.collections;
         serializable class Config {
-            public var labels: HashMap<int64, string>;
+            public var labels: Dict<int64, string>;
             public var version: int64;
             constructor() {}
         }
@@ -2112,11 +2112,11 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithHashMapField) {
     EXPECT_TRUE(foundSerialize);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithAnyArrayField) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassWithListField) {
     std::string code = R"(
         import hoo.collections;
         serializable class Container {
-            public var items: AnyArray;
+            public var items: List;
             constructor() {}
         }
     )";
@@ -2339,30 +2339,30 @@ TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithNonSerializa
     EXPECT_TRUE(compiler_->getLastError().find("non-serializable class") != std::string::npos);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatHashMapValue) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithFloatDictValue) {
     std::string code = R"(
         import hoo.collections;
         serializable class Bad {
-            public var values: HashMap<int64, float>;
+            public var values: Dict<int64, float>;
             constructor() {}
         }
     )";
     auto module = compiler_->compile("test", code);
     EXPECT_EQ(module, nullptr);
-    EXPECT_TRUE(compiler_->getLastError().find("float not allowed as HashMap value") != std::string::npos);
+    EXPECT_TRUE(compiler_->getLastError().find("float not allowed as Dict value") != std::string::npos);
 }
 
-TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharHashMapValue) {
+TEST_F(HVMCodeGeneratorComprehensiveTest, SerializableClassFailsWithCharDictValue) {
     std::string code = R"(
         import hoo.collections;
         serializable class Bad {
-            public var values: HashMap<int64, char>;
+            public var values: Dict<int64, char>;
             constructor() {}
         }
     )";
     auto module = compiler_->compile("test", code);
     EXPECT_EQ(module, nullptr);
-    EXPECT_TRUE(compiler_->getLastError().find("char not allowed as HashMap value") != std::string::npos);
+    EXPECT_TRUE(compiler_->getLastError().find("char not allowed as Dict value") != std::string::npos);
 }
 
 // ---------- Error cases: cycle detection ----------

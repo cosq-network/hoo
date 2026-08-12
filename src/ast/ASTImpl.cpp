@@ -109,8 +109,8 @@ std::string AnyType::toString() const {
     return "AnyType";
 }
 
-std::string AnyArrayType::toString() const {
-    return "AnyArrayType";
+std::string ListType::toString() const {
+    return "ListType";
 }
 
 std::string ByteSliceType::toString() const {
@@ -150,8 +150,8 @@ std::string MapType::toString() const {
     return "MapType";
 }
 
-std::string HashMapType::toString() const {
-    return "HashMapType";
+std::string DictType::toString() const {
+    return "DictType";
 }
 
 std::string TensorType::toString() const {
@@ -260,8 +260,8 @@ std::string NewObjectExpression::toString() const {
     return ss.str();
 }
 
-std::string NewHashMapExpression::toString() const {
-    return "NewHashMapExpression";
+std::string NewDictExpression::toString() const {
+    return "NewDictExpression";
 }
 
 std::string UnaryMinus::toString() const {
@@ -309,7 +309,7 @@ std::string ExpressionList::toString() const {
 }
 
 std::string ArrayLiteral::toString() const {
-    return isAnyArray_ ? "AnyArrayLiteral" : "ArrayLiteral";
+    return isList_ ? "ListLiteral" : "ArrayLiteral";
 }
 
 std::string TensorLiteral::toString() const {

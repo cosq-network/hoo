@@ -47,8 +47,8 @@ FINALLY: 'finally';
 THROW: 'throw';
 RETHROW: 'rethrow';
 MAP: 'map';
-HASHMAP: 'HashMap';
-ANYARRAY: 'AnyArray';
+DICT: 'Dict';
+LIST: 'List';
 ANY: 'any';
 FUNCTION: 'function';
 TENSOR: 'tensor';
@@ -211,7 +211,7 @@ constantDeclaration
     ;
 
 // Types
-type: futureType | tensorType | hashMapType | mapType | decimalType | sliceType | anyType | anyArrayType | optionalType;
+type: futureType | tensorType | dictType | mapType | decimalType | sliceType | anyType | listType | optionalType;
 
 sliceType: SLICE LESS BYTE GREATER;
 
@@ -225,14 +225,14 @@ baseType
     ;
 
 mapType: MAP LESS mapKeyType COMMA type GREATER;
-hashMapType: HASHMAP LESS hashMapKeyType COMMA type GREATER;
+dictType: DICT LESS dictKeyType COMMA type GREATER;
 anyType: ANY;
-anyArrayType: ANYARRAY;
+listType: LIST;
 tensorType: TENSOR LESS baseType GREATER LBRACKET INTEGER_LITERAL (COMMA INTEGER_LITERAL)* RBRACKET;
 futureType: FUTURE LESS type GREATER;
 
 mapKeyType: BYTE | INT8 | INT64 | CHAR | STRING;
-hashMapKeyType: BYTE | INT8 | INT64;
+dictKeyType: BYTE | INT8 | INT64;
 decimalType: DECIMAL LESS INTEGER_LITERAL COMMA INTEGER_LITERAL GREATER;
 
 primitiveType: INT8 | BYTE | INT64 | FLOAT | DOUBLE | F64 | F8 | BIT | BUFFER | BOOL | CHAR | STRING | VOID;
@@ -384,7 +384,7 @@ awaitExpression
 
 // Object creation expression
 newExpression
-    : NEW (newHashMapExpression | newArrayExpression | newFactoryExpression | newClassExpression)
+    : NEW (newDictExpression | newArrayExpression | newFactoryExpression | newClassExpression)
     ;
 
 newFactoryExpression
@@ -395,12 +395,12 @@ newClassExpression
     : qualifiedIdentifier LPAREN argumentList? RPAREN
     ;
 
-newHashMapExpression
-    : hashMapType LPAREN argumentList? RPAREN
+newDictExpression
+    : dictType LPAREN argumentList? RPAREN
     ;
 
 newArrayExpression
-    : anyArrayType LPAREN argumentList? RPAREN
+    : listType LPAREN argumentList? RPAREN
     ;
 
 // String Interpolation (simplified - would need custom lexer handling for full implementation)

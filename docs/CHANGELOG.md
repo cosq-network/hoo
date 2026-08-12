@@ -250,10 +250,10 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 - Migrate Fs static-like class methods to free functions; fix hoo_fs.cpp bugs
 - feat(csv): refactor to single-constructor, harden ARC, register array destructor
 - Refactor Buffer API to single-constructor free-function model
-- Refactor JSON runtime to free-function HashMap/AnyArray API
-- feat: restrict \ny\ meta type and expand Map/HashMap/AnyArray test coverage
-- Add native any, HashMap, and AnyArray intrinsic support
-- Add Random math runtime coverage and HashMap planning docs
+- Refactor JSON runtime to free-function Dict/List API
+- feat: restrict \ny\ meta type and expand Map/Dict/List test coverage
+- Add native any, Dict, and List intrinsic support
+- Add Random math runtime coverage and Dict planning docs
 - Unify built-in runtime constructor syntax
 - feat(json): add HooMap interop, string transformation, and float type support
 - feat(csv): add DataFrame-like API with type validation exceptions

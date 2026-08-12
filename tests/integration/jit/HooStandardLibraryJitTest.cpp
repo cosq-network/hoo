@@ -328,20 +328,20 @@ TEST_F(HooStandardLibraryJitTest, MissingImportBufferFunc) {
     EXPECT_NE(jit.getLastError().find("requires 'import hoo.buffer;'"), std::string::npos);
 }
 
-TEST_F(HooStandardLibraryJitTest, MissingImportHashMap) {
+TEST_F(HooStandardLibraryJitTest, MissingImportDict) {
     const std::string source = R"(
         func:ptr test() {
-            return new HashMap<int64, int64>();
+            return new Dict<int64, int64>();
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));
     EXPECT_NE(jit.getLastError().find("requires 'import hoo.collections;'"), std::string::npos);
 }
 
-TEST_F(HooStandardLibraryJitTest, MissingImportAnyArray) {
+TEST_F(HooStandardLibraryJitTest, MissingImportList) {
     const std::string source = R"(
         func:ptr test() {
-            return new AnyArray();
+            return new List();
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));

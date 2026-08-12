@@ -15,9 +15,9 @@ static std::string exportedTypeName(const ast::Type* type, std::string* returnCl
     if (dynamic_cast<const ast::ArrayType*>(type) ||
         dynamic_cast<const ast::FutureType*>(type) ||
         dynamic_cast<const ast::MapType*>(type) ||
-        dynamic_cast<const ast::HashMapType*>(type) ||
+        dynamic_cast<const ast::DictType*>(type) ||
         dynamic_cast<const ast::TensorType*>(type) ||
-        dynamic_cast<const ast::AnyArrayType*>(type)) return "ptr";
+        dynamic_cast<const ast::ListType*>(type)) return "ptr";
     if (auto base = dynamic_cast<const ast::BaseType*>(type)) {
         if (!base->isPrimitive()) {
             if (returnClass) *returnClass = base->getIdentifier();

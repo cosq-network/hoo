@@ -34,7 +34,7 @@ json_parse(text: string): Any
 |-----------|----------|----------------------|
 | `text`    | `string` | The JSON text to parse. |
 
-**Returns:** `Any` — The parsed value (can be `null`, `bool`, `int64`, `f64`, `string`, `HashMap<int64, any>`, or `AnyArray`), or `null` if the input is malformed.
+**Returns:** `Any` — The parsed value (can be `null`, `bool`, `int64`, `f64`, `string`, `Dict<int64, any>`, or `List`), or `null` if the input is malformed.
 
 **Errors:** Returns `null` on parse error. No exceptions are thrown.
 
@@ -45,7 +45,7 @@ import hoo.json;
 
 func :int64 main() {
     var parsed = json_parse("{\"1\":42,\"2\":\"hello\",\"3\":[true, false]}");
-    // parsed is HashMap<int64, any> with 3 entries
+    // parsed is Dict<int64, any> with 3 entries
     return 0;
 }
 ```
@@ -78,7 +78,7 @@ json_stringify(value: Any): string
 import hoo.json;
 
 func :int64 main() {
-    var map = new HashMap<int64, any>();
+    var map = new Dict<int64, any>();
     map[1] = "Alice";
     map[2] = 30;
     var json = json_stringify(map);
@@ -115,7 +115,7 @@ json_pretty(value: Any): string
 import hoo.json;
 
 func :int64 main() {
-    var map = new HashMap<int64, any>();
+    var map = new Dict<int64, any>();
     map[1] = "Alice";
     map[2] = [1, 2, 3]any;
     var pretty = json_pretty(map);

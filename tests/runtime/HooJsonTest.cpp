@@ -3,10 +3,10 @@
 #include <cstdint>
 #include <cstring>
 
-#include "runtime/lib/anyarray/hoo_anyarray.h"
+#include "runtime/lib/anyarray/hoo_list.h"
 #include "runtime/lib/buffer/hoo_buffer.h"
 #include "runtime/lib/exception/hoo_exception.h"
-#include "runtime/lib/hashmap/hoo_hashmap.h"
+#include "runtime/lib/hashmap/hoo_dict.h"
 #include "runtime/lib/json/hoo_json.h"
 #include "runtime/lib/runtime/hoo_runtime.h"
 #include "runtime/lib/string/hoo_string.h"
@@ -44,11 +44,11 @@ static void expectJsonThrows(void (*fn)()) {
     expectJsonThrowsContaining(fn, nullptr);
 }
 
-TEST_F(HooJsonTest, SerializeHashMapInt64Values) {
-    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_INT64);
+TEST_F(HooJsonTest, SerializeDictInt64Values) {
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_INT64);
     ASSERT_NE(map, nullptr);
-    ASSERT_EQ(hoo_hashmap_set_fixed_i8(map, 1, 42), 1);
-    ASSERT_EQ(hoo_hashmap_set_fixed_i8(map, 2, 7), 1);
+    ASSERT_EQ(hoo_dict_set_fixed_i8(map, 1, 42), 1);
+    ASSERT_EQ(hoo_dict_set_fixed_i8(map, 2, 7), 1);
 
     HooString json = hoo_json_serialize_hashmap(map);
     ASSERT_NE(json, nullptr);
@@ -58,34 +58,34 @@ TEST_F(HooJsonTest, SerializeHashMapInt64Values) {
     EXPECT_EQ(text[0], '{');
 
     hoo_string_release(json);
-    hoo_hashmap_release(map);
+    hoo_dict_release(map);
 }
 
-TEST_F(HooJsonTest, SerializeHashMapStringValuesEscapesOutput) {
-    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_STRING);
+TEST_F(HooJsonTest, SerializeDictStringValuesEscapesOutput) {
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_STRING);
     ASSERT_NE(map, nullptr);
     HooString value = hoo_string_from_cstr("hello\nworld");
     ASSERT_NE(value, nullptr);
-    ASSERT_EQ(hoo_hashmap_set_fixed_i8(map, 5, testPointerToData(value)), 1);
+    ASSERT_EQ(hoo_dict_set_fixed_i8(map, 5, testPointerToData(value)), 1);
 
     HooString json = hoo_json_serialize_hashmap(map);
     ASSERT_NE(json, nullptr);
     EXPECT_NE(std::strstr(hoo_string_data(json), "\"5\":\"hello\\nworld\""), nullptr);
 
     hoo_string_release(json);
-    hoo_hashmap_release(map);
+    hoo_dict_release(map);
     hoo_string_release(value);
 }
 
-TEST_F(HooJsonTest, SerializeAnyArrayMixedValues) {
-    HooAnyArray values = hoo_anyarray_new();
+TEST_F(HooJsonTest, SerializeListMixedValues) {
+    HooList values = hoo_list_new();
     ASSERT_NE(values, nullptr);
     HooString text = hoo_string_from_cstr("two");
     ASSERT_NE(text, nullptr);
 
-    ASSERT_EQ(hoo_anyarray_push(values, HOO_TYPE_INT64, 1), 1);
-    ASSERT_EQ(hoo_anyarray_push(values, HOO_TYPE_STRING, testPointerToData(text)), 1);
-    ASSERT_EQ(hoo_anyarray_push(values, HOO_TYPE_BOOL, 1), 1);
+    ASSERT_EQ(hoo_list_push(values, HOO_TYPE_INT64, 1), 1);
+    ASSERT_EQ(hoo_list_push(values, HOO_TYPE_STRING, testPointerToData(text)), 1);
+    ASSERT_EQ(hoo_list_push(values, HOO_TYPE_BOOL, 1), 1);
 
     HooString json = hoo_json_serialize_anyarray(values);
     ASSERT_NE(json, nullptr);
@@ -93,24 +93,24 @@ TEST_F(HooJsonTest, SerializeAnyArrayMixedValues) {
 
     hoo_string_release(json);
     hoo_string_release(text);
-    hoo_anyarray_release(values);
+    hoo_list_release(values);
 }
 
-TEST_F(HooJsonTest, SerializeAnyArrayWithNestedHashMap) {
-    HooAnyArray values = hoo_anyarray_new();
-    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_INT64);
+TEST_F(HooJsonTest, SerializeListWithNestedHashMap) {
+    HooList values = hoo_list_new();
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_INT64);
     ASSERT_NE(values, nullptr);
     ASSERT_NE(map, nullptr);
-    ASSERT_EQ(hoo_hashmap_set_fixed_i8(map, 9, 99), 1);
-    ASSERT_EQ(hoo_anyarray_push(values, HOO_TYPE_HASHMAP, testPointerToData(map)), 1);
+    ASSERT_EQ(hoo_dict_set_fixed_i8(map, 9, 99), 1);
+    ASSERT_EQ(hoo_list_push(values, HOO_TYPE_DICT, testPointerToData(map)), 1);
 
     HooString json = hoo_json_serialize_anyarray(values);
     ASSERT_NE(json, nullptr);
     EXPECT_STREQ(hoo_string_data(json), "[{\"9\":99}]");
 
     hoo_string_release(json);
-    hoo_hashmap_release(map);
-    hoo_anyarray_release(values);
+    hoo_dict_release(map);
+    hoo_list_release(values);
 }
 
 TEST_F(HooJsonTest, SerializeAndDeserializeBufferUsesTaggedBase64) {
@@ -118,26 +118,26 @@ TEST_F(HooJsonTest, SerializeAndDeserializeBufferUsesTaggedBase64) {
     HooBuffer buffer = hoo_buffer_from_bytes(bytes, static_cast<int64_t>(sizeof(bytes)));
     ASSERT_NE(buffer, nullptr);
 
-    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
     ASSERT_NE(map, nullptr);
-    ASSERT_EQ(hoo_hashmap_set_any_i8(map, 4, HOO_TYPE_BUFFER, testPointerToData(buffer)), 1);
+    ASSERT_EQ(hoo_dict_set_any_i8(map, 4, HOO_TYPE_BUFFER, testPointerToData(buffer)), 1);
 
     HooString json = hoo_json_serialize_hashmap(map);
     ASSERT_NE(json, nullptr);
     EXPECT_NE(std::strstr(hoo_string_data(json), "__hoo_buffer__"), nullptr);
 
-    HooHashMap decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    HooDict decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
     ASSERT_NE(decoded, nullptr);
     HooAnyValue value{0, 0};
-    ASSERT_EQ(hoo_hashmap_get_any_i8(decoded, 4, &value), 1);
+    ASSERT_EQ(hoo_dict_get_any_i8(decoded, 4, &value), 1);
     EXPECT_EQ(value.type_id, HOO_TYPE_BUFFER);
     HooBuffer decodedBuffer = reinterpret_cast<HooBuffer>(value.data);
     ASSERT_EQ(hoo_buffer_length(decodedBuffer), static_cast<int64_t>(sizeof(bytes)));
     EXPECT_EQ(std::memcmp(hoo_buffer_data(decodedBuffer), bytes, sizeof(bytes)), 0);
 
     hoo_string_release(json);
-    hoo_hashmap_release(decoded);
-    hoo_hashmap_release(map);
+    hoo_dict_release(decoded);
+    hoo_dict_release(map);
     hoo_buffer_release(buffer);
 }
 
@@ -148,16 +148,16 @@ TEST_F(HooJsonTest, SerializeAndDeserializeTensorPreservesShapeAndBits) {
     ASSERT_EQ(hoo_tensor_set_value(tensor, 1, 22), 1);
     ASSERT_EQ(hoo_tensor_set_value(tensor, 2, 33), 1);
 
-    HooHashMap map = hoo_hashmap_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
     ASSERT_NE(map, nullptr);
-    ASSERT_EQ(hoo_hashmap_set_any_i8(map, 8, HOO_TYPE_TENSOR_SERIALIZED, testPointerToData(tensor)), 1);
+    ASSERT_EQ(hoo_dict_set_any_i8(map, 8, HOO_TYPE_TENSOR_SERIALIZED, testPointerToData(tensor)), 1);
     HooString json = hoo_json_serialize_hashmap(map);
     ASSERT_NE(json, nullptr);
 
-    HooHashMap decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    HooDict decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
     ASSERT_NE(decoded, nullptr);
     HooAnyValue value{0, 0};
-    ASSERT_EQ(hoo_hashmap_get_any_i8(decoded, 8, &value), 1);
+    ASSERT_EQ(hoo_dict_get_any_i8(decoded, 8, &value), 1);
     EXPECT_EQ(value.type_id, HOO_TYPE_TENSOR_SERIALIZED);
     HooTensor decodedTensor = reinterpret_cast<HooTensor>(value.data);
     ASSERT_EQ(hoo_tensor_rank(decodedTensor), 1);
@@ -167,15 +167,15 @@ TEST_F(HooJsonTest, SerializeAndDeserializeTensorPreservesShapeAndBits) {
     EXPECT_EQ(hoo_tensor_get_int64(decodedTensor, 2), 33);
 
     hoo_string_release(json);
-    hoo_hashmap_release(decoded);
-    hoo_hashmap_release(map);
+    hoo_dict_release(decoded);
+    hoo_dict_release(map);
     hoo_release(tensor);
 }
 
 TEST_F(HooJsonTest, SerializeUnsupportedAnyValueThrowsRuntimeException) {
-    HooAnyArray values = hoo_anyarray_new();
+    HooList values = hoo_list_new();
     ASSERT_NE(values, nullptr);
-    ASSERT_EQ(hoo_anyarray_push(values, HOO_TYPE_CHAR, 65), 1);
+    ASSERT_EQ(hoo_list_push(values, HOO_TYPE_CHAR, 65), 1);
 
     try {
         (void)hoo_json_serialize_anyarray(values);
@@ -187,53 +187,53 @@ TEST_F(HooJsonTest, SerializeUnsupportedAnyValueThrowsRuntimeException) {
         hoo_exception_clear();
     }
 
-    hoo_anyarray_release(values);
+    hoo_list_release(values);
 }
 
-TEST_F(HooJsonTest, DeserializeHashMapObject) {
-    HooHashMap map = hoo_json_deserialize_hashmap(R"({"1":42,"2":"two","3":[7,true]})");
+TEST_F(HooJsonTest, DeserializeDictObject) {
+    HooDict map = hoo_json_deserialize_hashmap(R"({"1":42,"2":"two","3":[7,true]})");
     ASSERT_NE(map, nullptr);
-    EXPECT_EQ(hoo_hashmap_count(map), 3);
+    EXPECT_EQ(hoo_dict_count(map), 3);
 
     HooAnyValue value{0, 0};
-    ASSERT_EQ(hoo_hashmap_get_any_i8(map, 1, &value), 1);
+    ASSERT_EQ(hoo_dict_get_any_i8(map, 1, &value), 1);
     EXPECT_EQ(value.type_id, HOO_TYPE_INT64);
     EXPECT_EQ(testDataToInt64(value.data), 42);
 
-    ASSERT_EQ(hoo_hashmap_get_any_i8(map, 2, &value), 1);
+    ASSERT_EQ(hoo_dict_get_any_i8(map, 2, &value), 1);
     ASSERT_EQ(value.type_id, HOO_TYPE_STRING);
     EXPECT_STREQ(hoo_string_data(reinterpret_cast<HooString>(value.data)), "two");
 
-    ASSERT_EQ(hoo_hashmap_get_any_i8(map, 3, &value), 1);
-    ASSERT_EQ(value.type_id, HOO_TYPE_ANYARRAY);
-    HooAnyArray nested = reinterpret_cast<HooAnyArray>(value.data);
-    EXPECT_EQ(hoo_anyarray_length(nested), 2);
+    ASSERT_EQ(hoo_dict_get_any_i8(map, 3, &value), 1);
+    ASSERT_EQ(value.type_id, HOO_TYPE_LIST);
+    HooList nested = reinterpret_cast<HooList>(value.data);
+    EXPECT_EQ(hoo_list_length(nested), 2);
 
-    hoo_hashmap_release(map);
+    hoo_dict_release(map);
 }
 
-TEST_F(HooJsonTest, DeserializeAnyArray) {
-    HooAnyArray array = hoo_json_deserialize_anyarray(R"([1,"two",false,null,{"7":8}])");
+TEST_F(HooJsonTest, DeserializeList) {
+    HooList array = hoo_json_deserialize_anyarray(R"([1,"two",false,null,{"7":8}])");
     ASSERT_NE(array, nullptr);
-    EXPECT_EQ(hoo_anyarray_length(array), 5);
+    EXPECT_EQ(hoo_list_length(array), 5);
 
     HooAnyValue value{0, 0};
-    ASSERT_EQ(hoo_anyarray_get(array, 1, &value), 1);
+    ASSERT_EQ(hoo_list_get(array, 1, &value), 1);
     ASSERT_EQ(value.type_id, HOO_TYPE_STRING);
     EXPECT_STREQ(hoo_string_data(reinterpret_cast<HooString>(value.data)), "two");
 
-    ASSERT_EQ(hoo_anyarray_get(array, 2, &value), 1);
+    ASSERT_EQ(hoo_list_get(array, 2, &value), 1);
     EXPECT_EQ(value.type_id, HOO_TYPE_BOOL);
     EXPECT_EQ(value.data, 0ULL);
 
-    ASSERT_EQ(hoo_anyarray_get(array, 3, &value), 1);
+    ASSERT_EQ(hoo_list_get(array, 3, &value), 1);
     EXPECT_EQ(value.type_id, HOO_TYPE_VOID);
     EXPECT_EQ(value.data, 0ULL);
 
-    ASSERT_EQ(hoo_anyarray_get(array, 4, &value), 1);
-    EXPECT_EQ(value.type_id, HOO_TYPE_HASHMAP);
+    ASSERT_EQ(hoo_list_get(array, 4, &value), 1);
+    EXPECT_EQ(value.type_id, HOO_TYPE_DICT);
 
-    hoo_anyarray_release(array);
+    hoo_list_release(array);
 }
 
 TEST_F(HooJsonTest, DeserializeRejectsWrongRootAndNonIntegerKeys) {

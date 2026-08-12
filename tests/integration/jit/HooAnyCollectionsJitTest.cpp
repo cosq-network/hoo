@@ -11,7 +11,7 @@ protected:
     HVMJIT jit{io};
 };
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralLength) {
+TEST_F(HooAnyCollectionsJitTest, ListLiteralLength) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
@@ -23,11 +23,11 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralLength) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayPushSetAndLength) {
+TEST_F(HooAnyCollectionsJitTest, ListPushSetAndLength) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(5);
             values.push(8);
             values[0] = 7;
@@ -38,11 +38,11 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayPushSetAndLength) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayCapacityConstructorAndLength) {
+TEST_F(HooAnyCollectionsJitTest, ListCapacityConstructorAndLength) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(31);
             return values.length();
         }
@@ -51,11 +51,11 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayCapacityConstructorAndLength) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapFixedSubscriptSetGet) {
+TEST_F(HooAnyCollectionsJitTest, DictFixedSubscriptSetGet) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[10] = 42;
             m[11] = 8;
             return m[10] + m.count();
@@ -65,11 +65,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapFixedSubscriptSetGet) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 44);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapAnySubscriptSetAndCount) {
+TEST_F(HooAnyCollectionsJitTest, DictAnySubscriptSetAndCount) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<byte, any> = new HashMap<byte, any>();
+            var m: Dict<byte, any> = new Dict<byte, any>();
             m[1] = 100;
             m[2] = 5;
             return m.count();
@@ -79,11 +79,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapAnySubscriptSetAndCount) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapRemove) {
+TEST_F(HooAnyCollectionsJitTest, DictRemove) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[10] = 42;
             m[11] = 8;
             m.remove(10);
@@ -94,11 +94,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapRemove) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapClear) {
+TEST_F(HooAnyCollectionsJitTest, DictClear) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[10] = 42;
             m[11] = 8;
             m.clear();
@@ -109,11 +109,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapClear) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapFixedValuesReadBack) {
+TEST_F(HooAnyCollectionsJitTest, DictFixedValuesReadBack) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[10] = 42;
             m[11] = 8;
             return m[10] + m[11];
@@ -123,11 +123,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapFixedValuesReadBack) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 50);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringSetGet) {
+TEST_F(HooAnyCollectionsJitTest, DictInt64StringSetGet) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, string> = new HashMap<int64, string>();
+            var m: Dict<int64, string> = new Dict<int64, string>();
             m[1] = "hello";
             m[2] = "world";
             var s = m[1];
@@ -138,11 +138,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringSetGet) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringCount) {
+TEST_F(HooAnyCollectionsJitTest, DictInt64StringCount) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, string> = new HashMap<int64, string>();
+            var m: Dict<int64, string> = new Dict<int64, string>();
             m[1] = "hello";
             m[2] = "world";
             return m.count();
@@ -152,11 +152,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapInt64StringCount) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapAnyMixedTypes) {
+TEST_F(HooAnyCollectionsJitTest, DictAnyMixedTypes) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, any> = new HashMap<int64, any>();
+            var m: Dict<int64, any> = new Dict<int64, any>();
             m[1] = 42;
             m[2] = "hello";
             m[3] = 3.14;
@@ -167,11 +167,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapAnyMixedTypes) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapAnyOverwriteValue) {
+TEST_F(HooAnyCollectionsJitTest, DictAnyOverwriteValue) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int64, any> = new HashMap<int64, any>();
+            var m: Dict<int64, any> = new Dict<int64, any>();
             m[1] = 42;
             m[1] = 99;
             return m.count();
@@ -181,11 +181,11 @@ TEST_F(HooAnyCollectionsJitTest, HashMapAnyOverwriteValue) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArraySetAndGet) {
+TEST_F(HooAnyCollectionsJitTest, ListSetAndGet) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(10);
             values.push(20);
             values[0] = 99;
@@ -196,11 +196,11 @@ TEST_F(HooAnyCollectionsJitTest, AnyArraySetAndGet) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 99);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayPopAndLength) {
+TEST_F(HooAnyCollectionsJitTest, ListPopAndLength) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(10);
             values.push(20);
             var popped = values.pop();
@@ -211,11 +211,11 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayPopAndLength) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedTypes) {
+TEST_F(HooAnyCollectionsJitTest, ListMixedTypes) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var values = new AnyArray();
+            var values = new List();
             values.push(42);
             values.push("hello");
             values.push(3.14);
@@ -226,7 +226,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedTypes) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralIndexRead) {
+TEST_F(HooAnyCollectionsJitTest, ListLiteralIndexRead) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
@@ -238,7 +238,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayLiteralIndexRead) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 20);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayHomogeneousStringElementChainedLength) {
+TEST_F(HooAnyCollectionsJitTest, ListHomogeneousStringElementChainedLength) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
@@ -250,7 +250,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayHomogeneousStringElementChainedLength) 
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayHomogeneousIntElementInfersScalar) {
+TEST_F(HooAnyCollectionsJitTest, ListHomogeneousIntElementInfersScalar) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
@@ -263,7 +263,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayHomogeneousIntElementInfersScalar) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 20);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedElementsStayDynamic) {
+TEST_F(HooAnyCollectionsJitTest, ListMixedElementsStayDynamic) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
@@ -275,7 +275,7 @@ TEST_F(HooAnyCollectionsJitTest, AnyArrayMixedElementsStayDynamic) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooAnyCollectionsJitTest, AnyArrayEmptyLiteralStaysDynamic) {
+TEST_F(HooAnyCollectionsJitTest, ListEmptyLiteralStaysDynamic) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
@@ -318,11 +318,11 @@ TEST_F(HooAnyCollectionsJitTest, AnyFunctionReturnAndCall) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 42);
 }
 
-TEST_F(HooAnyCollectionsJitTest, HashMapInt8KeyAnyValue) {
+TEST_F(HooAnyCollectionsJitTest, DictInt8KeyAnyValue) {
     const std::string source = R"(
         import hoo.collections;
         func :int64 test() {
-            var m: HashMap<int8, any> = new HashMap<int8, any>();
+            var m: Dict<int8, any> = new Dict<int8, any>();
             m[1] = 42;
             m[2] = 99;
             return m.count();

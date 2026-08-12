@@ -170,9 +170,9 @@ hoo runtime APIs follow one of three patterns:
 
 ---
 
-## [Collections](collections.md) — Classes `Array`, `Map`, `HashMap`, `Any`, `AnyArray`, `Tensor`
+## [Collections](collections.md) — Classes `Array`, `Map`, `Dict`, `Any`, `List`, `Tensor`
 
-**Import:** `import hoo;` for Array, Map, Any. `import hoo.collections;` for HashMap, AnyArray, Tensor.
+**Import:** `import hoo;` for Array, Map, Any. `import hoo.collections;` for Dict, List, Tensor.
 
 **Pattern:** Instance classes + free functions
 
@@ -213,11 +213,11 @@ hoo runtime APIs follow one of three patterns:
 
 Key-specific operations (int64, string, char, byte): `m.put(key, value)`, `m.get(key)`, `m.has(key)`, `m.remove(key)`
 
-### HashMap
+### Dict
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Free | `hashmap_new` | `hashmap_new(size: int64) :HashMap` |
+| Free | `hashmap_new` | `hashmap_new(size: int64) :Dict` |
 | Instance | `hm.put` | `hm.put(key, value) :void` |
 | Instance | `hm.get` | `hm.get(key)` |
 | Instance | `hm.has` | `hm.has(key) :int64` |
@@ -246,7 +246,7 @@ Key-specific operations (int64, string, char, byte): `m.put(key, value)`, `m.get
 | Instance | `any.as_bool` | `any.as_bool() :int64` |
 | Instance | `any.as_array` | `any.as_array() :array` |
 
-### AnyArray
+### List
 
 | Kind | API | Signature |
 |------|-----|-----------|
@@ -610,7 +610,7 @@ and custom subtypes.
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Free | `csv_new_with_opts` | `csv_new_with_opts(opts: HashMap) :Csv` |
+| Free | `csv_new_with_opts` | `csv_new_with_opts(opts: Dict) :Csv` |
 | Free | `csv_parse` | `csv_parse(text: string) :array` |
 | Free | `csv_serialize` | `csv_serialize(data: array) :string` |
 | Instance | `csv.retain` / `csv.release` / `csv.refcount` | Reference counting |

@@ -63,7 +63,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 
 ### Data Interchange
 19. **[JSON](json.md)**
-    * `hoo.json` — free-function JSON serialization/deserialization for `HashMap<int64, any>` and `AnyArray`, plus JSON minify/beautify helpers. There is no `Json` class, instance API, or opaque JSON handle.
+    * `hoo.json` — free-function JSON serialization/deserialization for `Dict<int64, any>` and `List`, plus JSON minify/beautify helpers. There is no `Json` class, instance API, or opaque JSON handle.
 
 ### Network & Concurrency
 20. **[Networking & HTTP](net.md)**

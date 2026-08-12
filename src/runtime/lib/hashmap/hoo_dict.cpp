@@ -1,4 +1,4 @@
-#include "runtime/lib/hashmap/hoo_hashmap.h"
+#include "runtime/lib/hashmap/hoo_dict.h"
 #include "runtime/lib/runtime/hoo_runtime.h"
 
 #include <new>
@@ -6,16 +6,16 @@
 
 namespace {
 
-struct HooHashMapImpl {
+struct HooDictImpl {
     int64_t key_type_id;
     int64_t value_type_id;
     std::unordered_map<int64_t, uint64_t> fixed_values;
     std::unordered_map<int64_t, HooAnyValue> any_values;
 
-    HooHashMapImpl(int64_t keyType, int64_t valueType)
+    HooDictImpl(int64_t keyType, int64_t valueType)
         : key_type_id(keyType), value_type_id(valueType) {}
 
-    ~HooHashMapImpl() {
+    ~HooDictImpl() {
         clear();
     }
 
@@ -34,67 +34,67 @@ bool isSupportedKeyType(int64_t typeId) {
     return typeId == HOO_TYPE_INT64 || typeId == HOO_TYPE_INT8 || typeId == HOO_TYPE_BYTE;
 }
 
-bool registerHashMapDestructor() {
-    hoo_register_destructor(HOO_TYPE_HASHMAP, [](void* obj) {
-        static_cast<HooHashMapImpl*>(obj)->~HooHashMapImpl();
+bool registerDictDestructor() {
+    hoo_register_destructor(HOO_TYPE_DICT, [](void* obj) {
+        static_cast<HooDictImpl*>(obj)->~HooDictImpl();
     });
     return true;
 }
 
-bool g_hashMapDtorRegistered = registerHashMapDestructor();
+bool g_dictDtorRegistered = registerDictDestructor();
 
 }
 
 extern "C" {
 
-HooHashMap hoo_hashmap_new(int64_t key_type_id, int64_t value_type_id) {
+HooDict hoo_dict_new(int64_t key_type_id, int64_t value_type_id) {
     if (!isSupportedKeyType(key_type_id)) return nullptr;
     try {
-        void* mem = hoo_alloc(sizeof(HooHashMapImpl), HOO_TYPE_HASHMAP);
-        return new (mem) HooHashMapImpl(key_type_id, value_type_id);
+        void* mem = hoo_alloc(sizeof(HooDictImpl), HOO_TYPE_DICT);
+        return new (mem) HooDictImpl(key_type_id, value_type_id);
     } catch (...) {
         return nullptr;
     }
 }
 
-HooHashMap hoo_hashmap_retain(HooHashMap map) {
+HooDict hoo_dict_retain(HooDict map) {
     return hoo_retain(map);
 }
 
-void hoo_hashmap_release(HooHashMap map) {
+void hoo_dict_release(HooDict map) {
     if (map) hoo_release(map);
 }
 
-int64_t hoo_hashmap_refcount(HooHashMap map) {
+int64_t hoo_dict_refcount(HooDict map) {
     return hoo_get_refcount(map);
 }
 
-int64_t hoo_hashmap_count(HooHashMap map) {
+int64_t hoo_dict_count(HooDict map) {
     if (!map) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     return static_cast<int64_t>(impl->value_type_id == HOO_TYPE_ANY
         ? impl->any_values.size()
         : impl->fixed_values.size());
 }
 
-int64_t hoo_hashmap_key_type(HooHashMap map) {
+int64_t hoo_dict_key_type(HooDict map) {
     if (!map) return -1;
-    return static_cast<HooHashMapImpl*>(map)->key_type_id;
+    return static_cast<HooDictImpl*>(map)->key_type_id;
 }
 
-int64_t hoo_hashmap_value_type(HooHashMap map) {
+int64_t hoo_dict_value_type(HooDict map) {
     if (!map) return -1;
-    return static_cast<HooHashMapImpl*>(map)->value_type_id;
+    return static_cast<HooDictImpl*>(map)->value_type_id;
 }
 
-void hoo_hashmap_clear(HooHashMap map) {
+void hoo_dict_clear(HooDict map) {
     if (!map) return;
-    static_cast<HooHashMapImpl*>(map)->clear();
+    static_cast<HooDictImpl*>(map)->clear();
 }
 
-int64_t hoo_hashmap_remove_i8(HooHashMap map, int64_t key) {
+int64_t hoo_dict_remove_i8(HooDict map, int64_t key) {
     if (!map) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     if (impl->value_type_id == HOO_TYPE_ANY) {
         auto it = impl->any_values.find(key);
         if (it == impl->any_values.end()) return 0;
@@ -105,17 +105,17 @@ int64_t hoo_hashmap_remove_i8(HooHashMap map, int64_t key) {
     return impl->fixed_values.erase(key) ? 1 : 0;
 }
 
-int64_t hoo_hashmap_set_fixed_i8(HooHashMap map, int64_t key, uint64_t data) {
+int64_t hoo_dict_set_fixed_i8(HooDict map, int64_t key, uint64_t data) {
     if (!map) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     if (impl->value_type_id == HOO_TYPE_ANY) return 0;
     impl->fixed_values[key] = data;
     return 1;
 }
 
-int64_t hoo_hashmap_get_fixed_i8(HooHashMap map, int64_t key, uint64_t* out) {
+int64_t hoo_dict_get_fixed_i8(HooDict map, int64_t key, uint64_t* out) {
     if (!map || !out) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     if (impl->value_type_id == HOO_TYPE_ANY) return 0;
     auto it = impl->fixed_values.find(key);
     if (it == impl->fixed_values.end()) return 0;
@@ -123,9 +123,9 @@ int64_t hoo_hashmap_get_fixed_i8(HooHashMap map, int64_t key, uint64_t* out) {
     return 1;
 }
 
-int64_t hoo_hashmap_set_any_i8(HooHashMap map, int64_t key, int64_t type_id, uint64_t data) {
+int64_t hoo_dict_set_any_i8(HooDict map, int64_t key, int64_t type_id, uint64_t data) {
     if (!map) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     if (impl->value_type_id != HOO_TYPE_ANY) return 0;
 
     HooAnyValue next{type_id, data};
@@ -140,9 +140,9 @@ int64_t hoo_hashmap_set_any_i8(HooHashMap map, int64_t key, int64_t type_id, uin
     return 1;
 }
 
-int64_t hoo_hashmap_get_any_i8(HooHashMap map, int64_t key, HooAnyValue* out) {
+int64_t hoo_dict_get_any_i8(HooDict map, int64_t key, HooAnyValue* out) {
     if (!map || !out) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     if (impl->value_type_id != HOO_TYPE_ANY) return 0;
     auto it = impl->any_values.find(key);
     if (it == impl->any_values.end()) return 0;
@@ -150,9 +150,9 @@ int64_t hoo_hashmap_get_any_i8(HooHashMap map, int64_t key, HooAnyValue* out) {
     return 1;
 }
 
-int64_t hoo_hashmap_get_keys_i8(HooHashMap map, int64_t* keys, int64_t max_count) {
+int64_t hoo_dict_get_keys_i8(HooDict map, int64_t* keys, int64_t max_count) {
     if (!map || !keys || max_count <= 0) return 0;
-    auto* impl = static_cast<HooHashMapImpl*>(map);
+    auto* impl = static_cast<HooDictImpl*>(map);
     int64_t written = 0;
     if (impl->value_type_id == HOO_TYPE_ANY) {
         for (const auto& [key, value] : impl->any_values) {
@@ -170,12 +170,12 @@ int64_t hoo_hashmap_get_keys_i8(HooHashMap map, int64_t* keys, int64_t max_count
     return written;
 }
 
-int64_t hoo_hashmap_get_fixed_at_i8(HooHashMap map, int64_t key, uint64_t* out) {
-    return hoo_hashmap_get_fixed_i8(map, key, out);
+int64_t hoo_dict_get_fixed_at_i8(HooDict map, int64_t key, uint64_t* out) {
+    return hoo_dict_get_fixed_i8(map, key, out);
 }
 
-int64_t hoo_hashmap_get_any_at_i8(HooHashMap map, int64_t key, HooAnyValue* out) {
-    return hoo_hashmap_get_any_i8(map, key, out);
+int64_t hoo_dict_get_any_at_i8(HooDict map, int64_t key, HooAnyValue* out) {
+    return hoo_dict_get_any_i8(map, key, out);
 }
 
 }

@@ -815,11 +815,11 @@ TEST_F(ClassDeclarationParsingTest, AllClassModifiersToString) {
     EXPECT_EQ(classModifierToString(ClassModifier::SERIALIZABLE), "serializable");
 }
 
-// Test 26: Serializable class with HashMap field
-TEST_F(ClassDeclarationParsingTest, SerializableClassWithHashMapField) {
+// Test 26: Serializable class with Dict field
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithDictField) {
     std::string code = R"(
         serializable class Config {
-            public var labels: HashMap<int64, string>;
+            public var labels: Dict<int64, string>;
             public var version: int64;
             constructor() {}
         }
@@ -846,11 +846,11 @@ TEST_F(ClassDeclarationParsingTest, SerializableClassWithHashMapField) {
     EXPECT_TRUE(field1->isPublic());
 }
 
-// Test 27: Serializable class with AnyArray field
-TEST_F(ClassDeclarationParsingTest, SerializableClassWithAnyArrayField) {
+// Test 27: Serializable class with List field
+TEST_F(ClassDeclarationParsingTest, SerializableClassWithListField) {
     std::string code = R"(
         serializable class Container {
-            public var items: AnyArray;
+            public var items: List;
             constructor() {}
         }
     )";

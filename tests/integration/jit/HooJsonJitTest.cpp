@@ -11,12 +11,12 @@ protected:
     HVMJIT jit{io};
 };
 
-TEST_F(HooJsonJitTest, SerializeHashMapFreeFunction) {
+TEST_F(HooJsonJitTest, SerializeDictFreeFunction) {
     const std::string source = R"(
         import hoo.collections;
         import hoo.json;
         func :int64 test() {
-            var m: HashMap<int64, int64> = new HashMap<int64, int64>();
+            var m: Dict<int64, int64> = new Dict<int64, int64>();
             m[1] = 42;
             var json = json_serialize_hashmap(m);
             return json.contains("\"1\":42");
@@ -26,7 +26,7 @@ TEST_F(HooJsonJitTest, SerializeHashMapFreeFunction) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooJsonJitTest, SerializeAnyArrayFreeFunction) {
+TEST_F(HooJsonJitTest, SerializeListFreeFunction) {
     const std::string source = R"(
         import hoo.collections;
         import hoo.json;
@@ -52,7 +52,7 @@ TEST_F(HooJsonJitTest, MinifyFreeFunction) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
-TEST_F(HooJsonJitTest, DeserializeHashMapFreeFunction) {
+TEST_F(HooJsonJitTest, DeserializeDictFreeFunction) {
     const std::string source = R"(
         import hoo.collections;
         import hoo.json;
@@ -65,7 +65,7 @@ TEST_F(HooJsonJitTest, DeserializeHashMapFreeFunction) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 2);
 }
 
-TEST_F(HooJsonJitTest, DeserializeAnyArrayFreeFunction) {
+TEST_F(HooJsonJitTest, DeserializeListFreeFunction) {
     const std::string source = R"(
         import hoo.collections;
         import hoo.json;

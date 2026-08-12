@@ -88,7 +88,7 @@ private:
         uint32_t typeId;
         std::string className; // Class name for user-defined types (empty for primitives)
         uint32_t elementTypeId = 0; // Element type for Array variables (0 = unknown/Object)
-        uint32_t keyTypeId = 0; // Key type for HashMap variables
+        uint32_t keyTypeId = 0; // Key type for Dict variables
         bool isNullable = false; // Declared as T? (may hold null)
         bool arcManaged = false; // Value participates in hoo_release scope cleanup
     };

@@ -14,7 +14,7 @@ Some types (Array, Map, Any) are available via `import hoo;` — see each class 
 
 ## Module Description
 
-The Collections module provides managed data structures for storing and organizing data: dynamic arrays (Array), heterogeneous arrays (AnyArray), associative maps (Map), native hash maps (HashMap), and multi-dimensional tensors (Tensor). All collection types use automatic reference counting (ARC) for memory management.
+The Collections module provides managed data structures for storing and organizing data: dynamic arrays (Array), heterogeneous arrays (List), associative maps (Map), native hash maps (Dict), and multi-dimensional tensors (Tensor). All collection types use automatic reference counting (ARC) for memory management.
 
 ## Class: Array
 
@@ -647,14 +647,14 @@ m.refcount(): int64
 
 ---
 
-## Class: HashMap
+## Class: Dict
 
 A native hash map with fixed key and value types. Keys are restricted to `byte`, `int8`, or `int64`.
 
 ### Declaration
 
 ```hoo
-class HashMap
+class Dict
 ```
 
 ### Import
@@ -669,9 +669,9 @@ None.
 
 ### Constructor
 
-#### HashMap(size: int64) :HashMap
+#### Dict(size: int64) :Dict
 
-Creates a new HashMap with the specified initial bucket count.
+Creates a new Dict with the specified initial bucket count.
 
 **Parameters:**
 
@@ -679,7 +679,7 @@ Creates a new HashMap with the specified initial bucket count.
 |-----------|---------|-------------------------------------|
 | `size`    | `int64` | Initial bucket count. |
 
-**Returns:** `HashMap`
+**Returns:** `Dict`
 
 ### Public Instance Functions
 
@@ -835,10 +835,10 @@ m.value_type(): int64
 Increments the reference count.
 
 ```hoo
-m.retain(): HashMap
+m.retain(): Dict
 ```
 
-**Returns:** `HashMap` — The same map handle.
+**Returns:** `Dict` — The same map handle.
 
 ---
 
@@ -1030,14 +1030,14 @@ val.as_array(): array
 
 ---
 
-## Class: AnyArray
+## Class: List
 
 A heterogeneous dynamic array whose elements are typed as `any`. Elements are stored as a tagged pair of type ID and data payload.
 
 ### Declaration
 
 ```hoo
-class AnyArray
+class List
 ```
 
 ### Import
@@ -1052,9 +1052,9 @@ None.
 
 ### Constructor
 
-#### AnyArray(capacity: int64) :AnyArray
+#### List(capacity: int64) :List
 
-Creates a new AnyArray with the given initial capacity.
+Creates a new List with the given initial capacity.
 
 **Parameters:**
 
@@ -1062,7 +1062,7 @@ Creates a new AnyArray with the given initial capacity.
 |------------|---------|----------------------------------|
 | `capacity` | `int64` | Initial capacity. |
 
-**Returns:** `AnyArray`
+**Returns:** `List`
 
 ### Public Instance Functions
 
@@ -1142,10 +1142,10 @@ arr.set(index: int64, val)
 Increments the reference count.
 
 ```hoo
-arr.retain(): AnyArray
+arr.retain(): List
 ```
 
-**Returns:** `AnyArray`
+**Returns:** `List`
 
 ---
 
@@ -1356,13 +1356,13 @@ func :int64 main() {
         var port = config.get("port");
     }
 
-    // HashMap example
-    var hmap = HashMap(16);
+    // Dict example
+    var hmap = Dict(16);
     hmap.put(1, "hello");
     hmap.put(2, "world");
 
-    // AnyArray example
-    var anyarr = AnyArray(0);
+    // List example
+    var anyarr = List(0);
     anyarr.push_back(42);
     anyarr.push_back("text");
 

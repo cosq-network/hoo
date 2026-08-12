@@ -52,7 +52,7 @@ static int32_t alignFrameSize(int32_t size) {
 
 
 
-static uint32_t hashMapKeyTypeId(const ast::HashMapType& type);
+static uint32_t dictKeyTypeId(const ast::DictType& type);
 static uint32_t mapKeyTypeId(const ast::MapType& type);
 static uint32_t mapConstructorKeyTypeId(const ast::NewObjectExpression& expr);
 static uint32_t mapConstructorValueTypeId(const ast::NewObjectExpression& expr);
@@ -130,8 +130,8 @@ static std::string classToPrefix(const std::string& className) {
         {"Map", "map"},
         {"Buffer", "buffer"},
         {"Random", "random"},
-        {"AnyArray", "anyarray"},
-        {"HashMap", "hashmap"},
+        {"List", "list"},
+        {"Dict", "dict"},
     };
     auto it = map.find(className);
     return it != map.end() ? it->second : "";
@@ -151,8 +151,8 @@ static uint32_t builtinConstructedTypeId(const std::string& className) {
         {"HttpClient", 108},
         {"HttpResponse", 107},
         {"Random", 105},
-        {"HashMap", 117},
-        {"AnyArray", 118},
+        {"Dict", 117},
+        {"List", 118},
         {"DateTime", 119},
         {"Regex", 120},
         {"Mutex", 121},
@@ -172,7 +172,7 @@ static std::string builtinClassNameFromTypeId(uint32_t typeId) {
         {105, "Random"}, {106, "URL"}, {107, "HttpResponse"},
         {108, "HttpClient"}, {109, "Character"}, {110, "Args"},
         {111, "Compression"}, {113, "Buffer"}, {114, "Csv"},
-        {117, "HashMap"}, {118, "AnyArray"}, {119, "DateTime"},
+        {117, "Dict"}, {118, "List"}, {119, "DateTime"},
         {120, "Regex"}, {121, "Mutex"}, {122, "Uuid"}, {125, "Decimal"},
         {127, "Socket"},
         {128, "Condition"}, {129, "Semaphore"}
@@ -640,7 +640,7 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name == "Thread") return "hoo.thread";
     if (name == "Character") return "hoo.character";
     if (name == "Buffer") return "hoo.buffer";
-    if (name == "HashMap" || name == "AnyArray") return "hoo.collections";
+    if (name == "Dict" || name == "List") return "hoo.collections";
     if (name == "StringBuilder") return "hoo.string";
 
     // Free functions or other symbols with prefixes
@@ -1490,7 +1490,7 @@ bool HVMCodeGenerator::isManagedTemporary(const ast::Expression& expr) {
     if (dynamic_cast<const ast::StringLiteral*>(current)) return true;
     if (dynamic_cast<const ast::InterpolatedString*>(current)) return true;
     if (dynamic_cast<const ast::NewObjectExpression*>(current)) return true;
-    if (dynamic_cast<const ast::NewHashMapExpression*>(current)) return true;
+    if (dynamic_cast<const ast::NewDictExpression*>(current)) return true;
     if (dynamic_cast<const ast::ArrayLiteral*>(current)) return true;
     if (dynamic_cast<const ast::TensorLiteral*>(current)) return true;
     return false;
@@ -1624,8 +1624,8 @@ bool HVMCodeGenerator::isValidSerializableType(
     const std::string& className,
     const std::string& fieldName)
 {
-    // Check for HashMapType
-    if (auto hmType = dynamic_cast<const ast::HashMapType*>(&type)) {
+    // Check for DictType
+    if (auto hmType = dynamic_cast<const ast::DictType*>(&type)) {
         const ast::Type& valueType = hmType->getValueType();
         // Value type must be a restricted primitive (no float, char, or serializable class)
         if (auto bt = dynamic_cast<const ast::BaseType*>(&valueType)) {
@@ -1646,10 +1646,10 @@ bool HVMCodeGenerator::isValidSerializableType(
                     case ast::PrimitiveTypeKind::BUFFER:
                         return true;
                     case ast::PrimitiveTypeKind::FLOAT:
-                        addError("Serializable class '" + className + "' field '" + fieldName + "': float not allowed as HashMap value type");
+                        addError("Serializable class '" + className + "' field '" + fieldName + "': float not allowed as Dict value type");
                         return false;
                     case ast::PrimitiveTypeKind::CHAR:
-                        addError("Serializable class '" + className + "' field '" + fieldName + "': char not allowed as HashMap value type");
+                        addError("Serializable class '" + className + "' field '" + fieldName + "': char not allowed as Dict value type");
                         return false;
                     default:
                         return false;
@@ -1658,19 +1658,19 @@ bool HVMCodeGenerator::isValidSerializableType(
             // Check if it's a BaseType referencing a class name
             if (bt->getIdentifier() == "String" || bt->getIdentifier() == "string") return true;
             if (bt->getIdentifier() == "Buffer" || bt->getIdentifier() == "buffer") return true;
-            // Serializable class as HashMap value is NOT allowed
-            addError("Serializable class '" + className + "' field '" + fieldName + "': serializable class not allowed as HashMap value type");
+            // Serializable class as Dict value is NOT allowed
+            addError("Serializable class '" + className + "' field '" + fieldName + "': serializable class not allowed as Dict value type");
             return false;
         }
         if (dynamic_cast<const ast::TensorType*>(&valueType)) {
             return true;
         }
-        addError("Serializable class '" + className + "' field '" + fieldName + "': unsupported HashMap value type");
+        addError("Serializable class '" + className + "' field '" + fieldName + "': unsupported Dict value type");
         return false;
     }
 
-    // Check for AnyArrayType
-    if (dynamic_cast<const ast::AnyArrayType*>(&type)) {
+    // Check for ListType
+    if (dynamic_cast<const ast::ListType*>(&type)) {
         return true;
     }
 
@@ -1733,7 +1733,7 @@ bool HVMCodeGenerator::isValidSerializableType(
             return true;
         }
         // Also check common wrapper types
-        if (typeName == "String" || typeName == "Buffer" || typeName == "AnyArray") {
+        if (typeName == "String" || typeName == "Buffer" || typeName == "List") {
             return true;
         }
         addError("Serializable class '" + className + "' field '" + fieldName + "' references non-serializable class '" + typeName + "'");
@@ -1748,7 +1748,7 @@ bool HVMCodeGenerator::isValidSerializableType(
 
     // MapType — not allowed
     if (dynamic_cast<const ast::MapType*>(&type)) {
-        addError("Serializable class '" + className + "' field '" + fieldName + "': Map type not allowed for serialization (use HashMap)");
+        addError("Serializable class '" + className + "' field '" + fieldName + "': Map type not allowed for serialization (use Dict)");
         return false;
     }
 
@@ -1869,21 +1869,21 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 elemTypeId = typeIdFromDeclaredType(&arrType->getBaseType());
             } else if (auto tensorType = dynamic_cast<const ast::TensorType*>(decl.getType())) {
                 elemTypeId = tensorElementTypeIdFromType(*tensorType);
-            } else if (auto hashMapType = dynamic_cast<const ast::HashMapType*>(decl.getType())) {
-                keyTypeId = hashMapKeyTypeId(*hashMapType);
+            } else if (auto hashMapType = dynamic_cast<const ast::DictType*>(decl.getType())) {
+                keyTypeId = dictKeyTypeId(*hashMapType);
                 elemTypeId = typeIdFromDeclaredType(&hashMapType->getValueType());
             } else if (auto mapType = dynamic_cast<const ast::MapType*>(decl.getType())) {
                 keyTypeId = mapKeyTypeId(*mapType);
                 elemTypeId = typeIdFromDeclaredType(&mapType->getValueType());
-            } else if (dynamic_cast<const ast::AnyArrayType*>(decl.getType())) {
+            } else if (dynamic_cast<const ast::ListType*>(decl.getType())) {
                 elemTypeId = 0;
             } else if (auto futureType = dynamic_cast<const ast::FutureType*>(decl.getType())) {
                 elemTypeId = typeIdFromDeclaredType(&futureType->getElementType());
             }
         } else if (decl.getInitializer()) {
-            if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(decl.getInitializer())) {
-                keyTypeId = hashMapKeyTypeId(newHash->getHashMapType());
-                elemTypeId = typeIdFromDeclaredType(&newHash->getHashMapType().getValueType());
+            if (auto newHash = dynamic_cast<const ast::NewDictExpression*>(decl.getInitializer())) {
+                keyTypeId = dictKeyTypeId(newHash->getDictType());
+                elemTypeId = typeIdFromDeclaredType(&newHash->getDictType().getValueType());
             } else if (auto newObj = dynamic_cast<const ast::NewObjectExpression*>(decl.getInitializer())) {
                 if (newObj->getClassName() == "Map") {
                     keyTypeId = mapConstructorKeyTypeId(*newObj);
@@ -1899,7 +1899,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                         else if (commonType != t) { commonType = 100; break; }
                     }
                 }
-                if (arrLit->isAnyArray()) {
+                if (arrLit->isList()) {
                     elemTypeId = (commonType == 100) ? 0 : commonType;
                 } else {
                     elemTypeId = commonType;
@@ -1908,7 +1908,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 if (auto tensorLit = dynamic_cast<const ast::TensorLiteral*>(&pe->getPrimary())) {
                     elemTypeId = tensorElementTypeIdFromLiteral(*tensorLit);
                 } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
-                    if (arrLit->isAnyArray()) {
+                    if (arrLit->isList()) {
                         uint32_t commonType = 100;
                         if (arrLit->getElements()) {
                             for (const auto& elem : arrLit->getElements()->getExpressions()) {
@@ -2616,8 +2616,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (auto arrayLit = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
             auto& elements = arrayLit->getElements()->getExpressions();
 
-            if (arrayLit->isAnyArray()) {
-                emitCall(Opcode::CALL, "_F_hoo_anyarray_new_p");
+            if (arrayLit->isList()) {
+                emitCall(Opcode::CALL, "_F_hoo_list_new_p");
                 uint8_t arrReg = allocateRegister();
                 emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
 
@@ -2628,7 +2628,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
                     emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
                     emit(Opcode::MOV, OperandsR{3, elemReg, 0, 0});
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_push_i8_p_i8_i8");
+                    emitCall(Opcode::CALL, "_F_hoo_list_push_i8_p_i8_i8");
                     freeRegister(typeReg);
                     if (isManagedTemporary(*elem)) {
                         emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
@@ -2863,18 +2863,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         return dest;
     }
 
-    if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
-        std::string requiredModule = getRequiredModule("HashMap");
-        if (!isSymbolImported("HashMap", requiredModule)) {
-            addError("Use of 'HashMap' requires 'import " + requiredModule + ";'");
+    if (auto newHash = dynamic_cast<const ast::NewDictExpression*>(&expr)) {
+        std::string requiredModule = getRequiredModule("Dict");
+        if (!isSymbolImported("Dict", requiredModule)) {
+            addError("Use of 'Dict' requires 'import " + requiredModule + ";'");
             return 0;
         }
-        const auto& type = newHash->getHashMapType();
-        uint8_t keyTypeReg = emitConstant(static_cast<int64_t>(hashMapKeyTypeId(type)));
+        const auto& type = newHash->getDictType();
+        uint8_t keyTypeReg = emitConstant(static_cast<int64_t>(dictKeyTypeId(type)));
         uint8_t valueTypeReg = emitConstant(static_cast<int64_t>(typeIdFromDeclaredType(&type.getValueType())));
         emit(Opcode::MOV, OperandsR{1, keyTypeReg, 0, 0});
         emit(Opcode::MOV, OperandsR{2, valueTypeReg, 0, 0});
-        emitCall(Opcode::CALL, "_F_hoo_hashmap_new_p_i8_i8");
+        emitCall(Opcode::CALL, "_F_hoo_dict_new_p_i8_i8");
         freeRegister(keyTypeReg);
         freeRegister(valueTypeReg);
         uint8_t dest = allocateRegister();
@@ -2971,12 +2971,12 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 freeRegister(argRegs[i]);
             }
 
-            if (className == "AnyArray") {
+            if (className == "List") {
                 if (argCount != 0) {
-                    addError("AnyArray constructor expects zero arguments");
+                    addError("List constructor expects zero arguments");
                     return 0;
                 }
-                emitCall(Opcode::CALL, "_F_hoo_anyarray_new_p");
+                emitCall(Opcode::CALL, "_F_hoo_list_new_p");
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
                 return dest;
@@ -3266,8 +3266,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case 108: resolvedClass = "HttpClient"; break;
                     case 107: resolvedClass = "HttpResponse"; break;
                     case 105: resolvedClass = "Random"; break;
-                    case 117: resolvedClass = "HashMap"; break;
-                    case 118: resolvedClass = "AnyArray"; break;
+                    case 117: resolvedClass = "Dict"; break;
+                    case 118: resolvedClass = "List"; break;
                     case 119: resolvedClass = "DateTime"; break;
                     case 120: resolvedClass = "Regex"; break;
                     case 121: resolvedClass = "Mutex"; break;
@@ -3365,7 +3365,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            if (resolvedClass == "AnyArray") {
+            if (resolvedClass == "List") {
                 if (methodName == "push") {
                     uint32_t argType = 100;
                     if (funcCall->getArguments() && !funcCall->getArguments()->getArguments().empty()) {
@@ -3374,35 +3374,35 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     uint8_t typeReg = emitConstant(static_cast<int64_t>(argType));
                     emit(Opcode::MOV, OperandsR{3, 2, 0, 0});
                     emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_push_i8_p_i8_i8");
+                    emitCall(Opcode::CALL, "_F_hoo_list_push_i8_p_i8_i8");
                     freeRegister(typeReg);
                 } else if (methodName == "length") {
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_length_i8_p");
+                    emitCall(Opcode::CALL, "_F_hoo_list_length_i8_p");
                 } else if (methodName == "clear") {
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_clear_v_p");
+                    emitCall(Opcode::CALL, "_F_hoo_list_clear_v_p");
                 } else if (methodName == "pop") {
-                    emitCall(Opcode::CALL, "_F_hoo_anyarray_pop_data_i8_p");
+                    emitCall(Opcode::CALL, "_F_hoo_list_pop_data_i8_p");
                 } else if (methodName == "release") {
                     emitCall(Opcode::CALL, "_F_M_hoo_E_anyarray_release_v");
                 } else {
-                    addError("Unsupported AnyArray method '" + methodName + "'");
+                    addError("Unsupported List method '" + methodName + "'");
                 }
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
                 return dest;
             }
 
-            if (resolvedClass == "HashMap") {
+            if (resolvedClass == "Dict") {
                 if (methodName == "count") {
-                    emitCall(Opcode::CALL, "_F_hoo_hashmap_count_i8_p");
+                    emitCall(Opcode::CALL, "_F_hoo_dict_count_i8_p");
                 } else if (methodName == "clear") {
-                    emitCall(Opcode::CALL, "_F_hoo_hashmap_clear_v_p");
+                    emitCall(Opcode::CALL, "_F_hoo_dict_clear_v_p");
                 } else if (methodName == "remove") {
-                    emitCall(Opcode::CALL, "_F_hoo_hashmap_remove_i8_p_i8");
+                    emitCall(Opcode::CALL, "_F_hoo_dict_remove_i8_p_i8");
                 } else if (methodName == "release") {
                     emitCall(Opcode::CALL, "_F_M_hoo_E_hashmap_release_v");
                 } else {
-                    addError("Unsupported HashMap method '" + methodName + "'");
+                    addError("Unsupported Dict method '" + methodName + "'");
                 }
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
@@ -4326,7 +4326,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{5, valueReg, 0, 0});
-                emitCall(Opcode::CALL, "_F_hoo_anyarray_set_i8_p_i8_i8_i8");
+                emitCall(Opcode::CALL, "_F_hoo_list_set_i8_p_i8_i8_i8");
                 freeRegister(typeReg);
             } else if (sourceTypeId == 117) {
                 emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
@@ -4335,11 +4335,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     uint8_t typeReg = emitConstant(static_cast<int64_t>(valueTypeId));
                     emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
                     emit(Opcode::MOV, OperandsR{5, valueReg, 0, 0});
-                    emitCall(Opcode::CALL, "_F_hoo_hashmap_set_any_i8_p_i8_i8_i8");
+                    emitCall(Opcode::CALL, "_F_hoo_dict_set_any_i8_p_i8_i8_i8");
                     freeRegister(typeReg);
                 } else {
                     emit(Opcode::MOV, OperandsR{3, valueReg, 0, 0});
-                    emitCall(Opcode::CALL, "_F_hoo_hashmap_set_fixed_i8_p_i8_i8");
+                    emitCall(Opcode::CALL, "_F_hoo_dict_set_fixed_i8_p_i8_i8");
                 }
             } else {
                 addError("Unsupported indexed assignment target");
@@ -4415,7 +4415,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (sourceTypeId == 118) {
             emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
             emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_hoo_anyarray_get_data_i8_p_i8");
+            emitCall(Opcode::CALL, "_F_hoo_list_get_data_i8_p_i8");
             freeRegister(arrReg);
             freeRegister(idxReg);
             uint8_t dest = allocateRegister();
@@ -4427,9 +4427,9 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
             emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
             if (elementTypeId == 0) {
-                emitCall(Opcode::CALL, "_F_hoo_hashmap_get_any_data_i8_p_i8");
+                emitCall(Opcode::CALL, "_F_hoo_dict_get_any_data_i8_p_i8");
             } else {
-                emitCall(Opcode::CALL, "_F_hoo_hashmap_get_fixed_data_i8_p_i8");
+                emitCall(Opcode::CALL, "_F_hoo_dict_get_fixed_data_i8_p_i8");
             }
             freeRegister(arrReg);
             freeRegister(idxReg);
@@ -4548,11 +4548,11 @@ int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId,
     return currentStackOffset_;
 }
 
-static uint32_t hashMapKeyTypeId(const ast::HashMapType& type) {
+static uint32_t dictKeyTypeId(const ast::DictType& type) {
     switch (type.getKeyType()) {
-        case ast::HashMapKeyType::INT64: return 1;
-        case ast::HashMapKeyType::INT8: return 5;
-        case ast::HashMapKeyType::BYTE: return 6;
+        case ast::DictKeyType::INT64: return 1;
+        case ast::DictKeyType::INT8: return 5;
+        case ast::DictKeyType::BYTE: return 6;
     }
     return 1;
 }
@@ -4699,7 +4699,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
         "Net", "URL", "HttpClient", "HttpResponse",
         "Path", "Uuid", "Compression",
         "Args", "Csv", "Console", "StringBuilder",
-        "Buffer", "Random", "HashMap", "AnyArray",
+        "Buffer", "Random", "Dict", "List",
         "Mutex", "Decimal"
         , "Condition", "Semaphore"
     };
@@ -4860,13 +4860,13 @@ void HVMCodeGenerator::emitNullCheck(uint8_t valueReg) {
 
 uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName) const {
     if (dynamic_cast<const ast::AnyType*>(type)) return 0;
-    if (dynamic_cast<const ast::AnyArrayType*>(type)) {
-        if (outClassName) *outClassName = "AnyArray";
+    if (dynamic_cast<const ast::ListType*>(type)) {
+        if (outClassName) *outClassName = "List";
         return 118;
     }
     if (dynamic_cast<const ast::ByteSliceType*>(type)) return 130;
-    if (dynamic_cast<const ast::HashMapType*>(type)) {
-        if (outClassName) *outClassName = "HashMap";
+    if (dynamic_cast<const ast::DictType*>(type)) {
+        if (outClassName) *outClassName = "Dict";
         return 117;
     }
     if (dynamic_cast<const ast::DecimalType*>(type)) {
@@ -5342,7 +5342,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             return inferExpressionTypeInfo(paren->getExpression());
         }
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
-            result.typeId = arr->isAnyArray() ? 118 : 102;
+            result.typeId = arr->isList() ? 118 : 102;
             if (arr->getElements()) {
                 uint32_t common = 0;
                 for (const auto& element : arr->getElements()->getExpressions()) {
@@ -5351,7 +5351,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                     if (common == 0) common = elementInfo.typeId;
                     else if (common != elementInfo.typeId) { common = 100; break; }
                 }
-                if (arr->isAnyArray()) {
+                if (arr->isList()) {
                     if (common != 0 && common != 100) result.elementTypeId = common;
                 } else {
                     result.elementTypeId = common == 0 ? 100 : common;
@@ -5409,11 +5409,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         }
         return result;
     }
-    if (auto newHash = dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
+    if (auto newHash = dynamic_cast<const ast::NewDictExpression*>(&expr)) {
         result.typeId = 117;
-        result.className = "HashMap";
-        result.keyTypeId = hashMapKeyTypeId(newHash->getHashMapType());
-        result.elementTypeId = typeIdFromDeclaredType(&newHash->getHashMapType().getValueType());
+        result.className = "Dict";
+        result.keyTypeId = dictKeyTypeId(newHash->getDictType());
+        result.elementTypeId = typeIdFromDeclaredType(&newHash->getDictType().getValueType());
         return result;
     }
 
@@ -5718,7 +5718,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
         if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
         if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return 101;
         if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) return 125;
-        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isAnyArray() ? 118 : 102;
+        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isList() ? 118 : 102;
         if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
             return getLocalTypeId(id->getName());
@@ -5787,7 +5787,7 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
         uint32_t typeId = builtinConstructedTypeId(newExpr->getClassName());
         return typeId != 100 ? typeId : 100;
     }
-    if (dynamic_cast<const ast::NewHashMapExpression*>(&expr)) {
+    if (dynamic_cast<const ast::NewDictExpression*>(&expr)) {
         return 117;
     }
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
@@ -5836,8 +5836,8 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
                             {"Random", 105}, {"DateTime", 119}, {"Args", 110},
                             {"Compression", 111}, {"Csv", 114}, {"Path", 114},
                             {"URL", 106}, {"HttpClient", 108}, {"HttpResponse", 107},
-                            {"Http", 108}, {"Response", 107}, {"HashMap", 117},
-                            {"AnyArray", 118}, {"Regex", 120}, {"Mutex", 121},
+                            {"Http", 108}, {"Response", 107}, {"Dict", 117},
+                            {"List", 118}, {"Regex", 120}, {"Mutex", 121},
                             {"Uuid", 122}
                         };
                         auto it = builtinTypeIds.find(className);
@@ -5915,7 +5915,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 if (dynamic_cast<const ast::F8Literal*>(&node)) return 9;
                 if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
                 if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
-                if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&node)) return arr->isAnyArray() ? 118 : 102;
+                if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&node)) return arr->isList() ? 118 : 102;
                 if (dynamic_cast<const ast::TensorLiteral*>(&node)) return 104;
                 if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
             }
@@ -6139,8 +6139,8 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                     }
                 }
             }
-            if (dynamic_cast<const ast::NewHashMapExpression*>(initializer)) {
-                if (outClassName) *outClassName = "HashMap";
+            if (dynamic_cast<const ast::NewDictExpression*>(initializer)) {
+                if (outClassName) *outClassName = "Dict";
                 return 117;
             }
             // Inference from array subscript (arr[0])
@@ -6298,8 +6298,8 @@ uint32_t HVMCodeGenerator::serializeFieldTypeId(const ast::Type& type) const {
         if (name == "Buffer" || name == "buffer") return 113; // HOO_TYPE_BUFFER
         return 0;
     }
-    if (dynamic_cast<const ast::HashMapType*>(&type)) return 117;  // HOO_TYPE_HASHMAP
-    if (dynamic_cast<const ast::AnyArrayType*>(&type)) return 118; // HOO_TYPE_ANYARRAY
+    if (dynamic_cast<const ast::DictType*>(&type)) return 117;  // HOO_TYPE_HASHMAP
+    if (dynamic_cast<const ast::ListType*>(&type)) return 118; // HOO_TYPE_ANYARRAY
     if (dynamic_cast<const ast::TensorType*>(&type)) return 126;  // HOO_TYPE_TENSOR_SERIALIZED
     return 0;
 }
@@ -6310,18 +6310,18 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
     scopeStack_.push_back({});
 
-    // 1. Create HashMap<int64, any>: hoo_hashmap_new(HOO_TYPE_INT64=1, HOO_TYPE_ANY=0)
+    // 1. Create Dict<int64, any>: hoo_dict_new(HOO_TYPE_INT64=1, HOO_TYPE_ANY=0)
     uint8_t keyTypeReg = emitConstant(1);
     emit(Opcode::MOV, OperandsR{1, keyTypeReg, 0, 0});
     uint8_t valTypeReg = emitConstant(0);
     emit(Opcode::MOV, OperandsR{2, valTypeReg, 0, 0});
-    emitCall(Opcode::CALL, "_F_hoo_hashmap_new_p_i8_i8");
+    emitCall(Opcode::CALL, "_F_hoo_dict_new_p_i8_i8");
     freeRegister(keyTypeReg);
     freeRegister(valTypeReg);
     uint8_t mapReg = allocateRegister();
     emit(Opcode::MOV, OperandsR{mapReg, 1, 0, 0});
 
-    // 2. For each public field, store in HashMap with a stable positional key.
+    // 2. For each public field, store in Dict with a stable positional key.
     // Walk the inheritance chain first so base fields are not silently lost.
     std::vector<std::pair<const ast::VariableDeclaration*, int32_t>> fields;
     std::function<void(const ast::ClassDeclaration&)> collectFields =
@@ -6357,8 +6357,8 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
                 }
 
                 // Nested serializable objects are represented as ordinary
-                // JSON objects in the enclosing HashMap.  Convert the nested
-                // object's generated JSON back to a managed HashMap before
+                // JSON objects in the enclosing Dict.  Convert the nested
+                // object's generated JSON back to a managed Dict before
                 // inserting it as an any value.
                 if (auto nested = dynamic_cast<const ast::BaseType*>(fieldType)) {
                     if (!nested->isPrimitive()) {
@@ -6388,14 +6388,14 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
                 uint8_t typeReg = emitConstant(static_cast<int64_t>(hooType));
                 emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{5, fieldReg, 0, 0});
-                emitCall(Opcode::CALL, "_F_hoo_hashmap_set_any_i8_p_i8_i8_i8");
+                emitCall(Opcode::CALL, "_F_hoo_dict_set_any_i8_p_i8_i8_i8");
                 freeRegister(keyReg);
                 freeRegister(typeReg);
                 freeRegister(fieldReg);
         ++fieldIndex;
     }
 
-    // 3. Serialize HashMap to JSON
+    // 3. Serialize Dict to JSON
     emit(Opcode::MOV, OperandsR{1, mapReg, 0, 0});
     emitCall(Opcode::CALL, "_F_M_hoo_E_json_serialize_hashmap_p_p");
     freeRegister(mapReg);
@@ -6440,7 +6440,7 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
     scopeStack_.push_back({});
 
-    // 1. Parse JSON into HashMap<int64, any>: json_deserialize_hashmap(json)
+    // 1. Parse JSON into Dict<int64, any>: json_deserialize_hashmap(json)
     // json string pointer is in r1 (first parameter)
     emitCall(Opcode::CALL, "_F_M_hoo_E_json_deserialize_hashmap_p_p");
     uint8_t mapReg = allocateRegister();
@@ -6471,7 +6471,7 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
     emit(Opcode::MOV, OperandsR{1, instanceReg, 0, 0});
     emitCall(Opcode::CALL, ctorName);
 
-    // 4. For each public field, extract from HashMap and assign.  The same
+    // 4. For each public field, extract from Dict and assign.  The same
     // base-first traversal used by serialization keeps both sides aligned.
     std::vector<std::pair<const ast::VariableDeclaration*, int32_t>> fields;
     std::function<void(const ast::ClassDeclaration&)> collectFields =
@@ -6500,15 +6500,15 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
                 const ast::Type* fieldType = var->getType();
                 uint32_t serializedType = fieldType ? serializeFieldTypeId(*fieldType) : 0;
 
-                // Extract value from HashMap by field index
+                // Extract value from Dict by field index
                 emit(Opcode::MOV, OperandsR{1, mapReg, 0, 0});
                 uint8_t keyReg = emitConstant(fieldIndex);
                 emit(Opcode::MOV, OperandsR{2, keyReg, 0, 0});
-                emitCall(Opcode::CALL, "_F_hoo_hashmap_get_any_data_i8_p_i8");
+                emitCall(Opcode::CALL, "_F_hoo_dict_get_any_data_i8_p_i8");
                 freeRegister(keyReg);
 
                 // Nested serializable fields arrive as a JSON object backed
-                // by HashMap<int64, any>. Re-encode that object and invoke the
+                // by Dict<int64, any>. Re-encode that object and invoke the
                 // nested class's generated static deserializer.
                 if (auto nested = dynamic_cast<const ast::BaseType*>(fieldType)) {
                     if (!nested->isPrimitive()) {

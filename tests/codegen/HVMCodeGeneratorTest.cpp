@@ -146,7 +146,7 @@ TEST_F(HVMCodeGeneratorTest, ExternalReturnMetadataSupportsChainedDispatch) {
     ASSERT_NE(module, nullptr) << compiler_->getLastError();
 }
 
-TEST_F(HVMCodeGeneratorTest, AnyArrayHomogeneousStringElementChainsToString) {
+TEST_F(HVMCodeGeneratorTest, ListHomogeneousStringElementChainsToString) {
     const std::string code = R"(
         import hoo.collections;
         func :int64 test() {
@@ -159,7 +159,7 @@ TEST_F(HVMCodeGeneratorTest, AnyArrayHomogeneousStringElementChainsToString) {
     EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_String_length"), nullptr);
 }
 
-TEST_F(HVMCodeGeneratorTest, AnyArrayHomogeneousIntElementDoesNotChainToObject) {
+TEST_F(HVMCodeGeneratorTest, ListHomogeneousIntElementDoesNotChainToObject) {
     const std::string code = R"(
         import hoo.collections;
         func :int64 test() {
@@ -172,7 +172,7 @@ TEST_F(HVMCodeGeneratorTest, AnyArrayHomogeneousIntElementDoesNotChainToObject) 
     EXPECT_NE(compiler_->getLastError().find("Cannot resolve method 'length'"), std::string::npos);
 }
 
-TEST_F(HVMCodeGeneratorTest, AnyArrayMixedElementsRemainDynamic) {
+TEST_F(HVMCodeGeneratorTest, ListMixedElementsRemainDynamic) {
     const std::string code = R"(
         import hoo.collections;
         func :int64 test() {

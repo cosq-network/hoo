@@ -31,7 +31,7 @@ class HVMCodeGenerator : public CodeGenerator {
         uint32_t typeId;
         std::string className;
         uint32_t elementTypeId;  // For Array types
-        uint32_t keyTypeId;      // For HashMap types
+        uint32_t keyTypeId;      // For Dict types
     };
     std::vector<std::unordered_map<std::string, Local>> scopeStack_;
     int32_t currentStackOffset_ = 0;
@@ -168,7 +168,7 @@ static std::string classToPrefix(const std::string& className) {
         {"HttpClient", "net_http_client"}, {"HttpResponse", "net_http_response"},
         {"Thread", "thread"}, {"Mutex", "thread_mutex"},
         {"Array", "array"}, {"Map", "map"}, {"Buffer", "buffer"},
-        {"Random", "random"}, {"AnyArray", "anyarray"}, {"HashMap", "hashmap"},
+        {"Random", "random"}, {"List", "anyarray"}, {"Dict", "hashmap"},
     };
     ...
 }
@@ -204,13 +204,13 @@ Each has a corresponding `*ReturnTypeId()` helper that maps the function name to
 
 `validateSerializableClass()` enforces:
 - All fields must be valid serializable types (supported primitives, buffers,
-  tensors, AnyArray, numeric-keyed HashMap values, or serializable classes)
+  tensors, List, numeric-keyed Dict values, or serializable classes)
 - No `any` type fields
 - Cycle detection via `serializableAdjacency_` and `detectSerializableCycles()`
 - `isValidSerializableType()` recursively validates field types
 
 Generated serializable methods use a base-first positional schema backed by
-`HashMap<int64, any>`. Nested classes are lowered by calling their generated
+`Dict<int64, any>`. Nested classes are lowered by calling their generated
 methods; buffers use tagged base64 objects and tensors use tagged element-type,
 dimensions, and raw-bit data objects. The source-level `Class.deserialize(json)`
 form is recognized as a generated static call, while `instance.serialize()`

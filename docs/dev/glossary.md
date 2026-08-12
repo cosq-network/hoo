@@ -76,7 +76,7 @@
 |---|---|
 | **Label** | Control flow target in `HVMCodeGenerator` with a `targetByteOffset` and a list of `Fixup` entries for patching forward references. |
 | **LE** | Little-Endian byte encoding for all binary module data in HOModule. |
-| **Local** | Struct in `HVMCodeGenerator` tracking a local variable's stack offset, type ID, class name, element type ID (for arrays), and key type ID (for HashMaps). |
+| **Local** | Struct in `HVMCodeGenerator` tracking a local variable's stack offset, type ID, class name, element type ID (for arrays), and key type ID (for Dicts). |
 
 ## M
 

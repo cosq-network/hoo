@@ -76,7 +76,7 @@ A: Yes. Add a new `SHT_*` constant, add serialization/deserialization logic in `
 
 **Q: How do I find the runtime type ID for a given type?**
 
-A: Use `typeIdFromDeclaredType()` for static type declarations or `inferExpressionTypeId()` for dynamic expression types. Built-in types have fixed IDs: `String`=101, `Array`=102, `Map`=103, `Random`=105, `Character`=109, `Args`=110, `Compression`=111, `Csv`=112, `Buffer`=113, `URL`=114, `HttpClient`=115, `HttpResponse`=116, `HashMap`=117, `AnyArray`=118, `DateTime`=119, `Regex`=120, `Mutex`=121, `Uuid`=122.
+A: Use `typeIdFromDeclaredType()` for static type declarations or `inferExpressionTypeId()` for dynamic expression types. Built-in types have fixed IDs: `String`=101, `Array`=102, `Map`=103, `Random`=105, `Character`=109, `Args`=110, `Compression`=111, `Csv`=112, `Buffer`=113, `URL`=114, `HttpClient`=115, `HttpResponse`=116, `Dict`=117, `List`=118, `DateTime`=119, `Regex`=120, `Mutex`=121, `Uuid`=122.
 
 **Q: How do I add support for a new built-in class?**
 

@@ -22,10 +22,10 @@ Every object managed by the runtime (including Arrays, Strings, Maps, and User O
 - `109`: HooCharacter
 - `110`: HooUUID
 - `111`: HooRegex
-- `112`: Reserved legacy JSON type ID. The current JSON API does not allocate or return a managed JSON document handle; it operates on `HashMap<int64, any>`, `AnyArray`, and `HooString`.
+- `112`: Reserved legacy JSON type ID. The current JSON API does not allocate or return a managed JSON document handle; it operates on `Dict<int64, any>`, `List`, and `HooString`.
 - `113`: HooBuffer
-- `117`: HooHashMap
-- `118`: HooAnyArray
+- `117`: HooDict
+- `118`: HooList
 
 Type IDs are not limited to the reserved built-in range. The runtime
 destructor registry accepts any non-negative `int64_t` type ID and grows as

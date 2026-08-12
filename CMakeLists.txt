@@ -278,8 +278,8 @@ add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
     src/runtime/lib/ai/hoo_ai.cpp
     src/runtime/lib/runtime/hoo_runtime.c
     src/runtime/lib/any/hoo_any.cpp
-    src/runtime/lib/anyarray/hoo_anyarray.cpp
-    src/runtime/lib/hashmap/hoo_hashmap.cpp
+    src/runtime/lib/anyarray/hoo_list.cpp
+    src/runtime/lib/hashmap/hoo_dict.cpp
     src/runtime/lib/string/hoo_string.cpp
     src/runtime/lib/character/hoo_character.cpp
     src/runtime/lib/generic_array/hoo_generic_array.cpp
@@ -537,7 +537,7 @@ if(HOO_BUILD_TESTS)
         tests/parsing/ClassDeclarationParsingTest.cpp
         tests/parsing/SimpleASTBuilderTest.cpp
         tests/parsing/MapTypeParsingTest.cpp
-        tests/parsing/AnyHashMapParsingTest.cpp
+        tests/parsing/DictListParsingTest.cpp
         tests/parsing/OptionalReturnTypeTest.cpp
         tests/parsing/MathModuleParsingTest.cpp
         tests/parsing/NetworkModuleParsingTest.cpp
@@ -616,6 +616,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/primitive-types/PrimitiveTypeOperationMatrixTest.cpp
         tests/integration/primitive-types/PrimitiveTypeFailureTest.cpp
         tests/integration/primitive-types/CompositeTypesCLIIntegrationTest.cpp
+        tests/integration/expressions/ExpressionOperatorsIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

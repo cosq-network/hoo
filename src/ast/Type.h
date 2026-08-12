@@ -21,7 +21,7 @@ public:
     std::string toString() const override;
 };
 
-class AnyArrayType : public Type {
+class ListType : public Type {
 public:
     std::string toString() const override;
 };
@@ -181,34 +181,34 @@ private:
     std::unique_ptr<Type> valueType_;
 };
 
-// HashMap key types (restricted to hardware-friendly integer scalars)
-enum class HashMapKeyType {
+// Dict key types (restricted to hardware-friendly integer scalars)
+enum class DictKeyType {
     BYTE,
     INT8,
     INT64
 };
 
-class HashMapType : public Type {
+class DictType : public Type {
 public:
-    HashMapType(HashMapKeyType keyType, std::unique_ptr<Type> valueType)
+    DictType(DictKeyType keyType, std::unique_ptr<Type> valueType)
         : keyType_(keyType), valueType_(std::move(valueType)) {}
 
     std::string toString() const override;
 
-    HashMapKeyType getKeyType() const { return keyType_; }
+    DictKeyType getKeyType() const { return keyType_; }
     const Type& getValueType() const { return *valueType_; }
 
     std::string keyTypeToString() const {
         switch (keyType_) {
-            case HashMapKeyType::BYTE: return "byte";
-            case HashMapKeyType::INT8: return "int8";
-            case HashMapKeyType::INT64: return "int64";
+            case DictKeyType::BYTE: return "byte";
+            case DictKeyType::INT8: return "int8";
+            case DictKeyType::INT64: return "int64";
             default: return "unknown";
         }
     }
 
 private:
-    HashMapKeyType keyType_;
+    DictKeyType keyType_;
     std::unique_ptr<Type> valueType_;
 };
 

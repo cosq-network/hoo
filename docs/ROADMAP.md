@@ -65,7 +65,7 @@ This document provides a high-level overview of the current status of all tracke
   - **Priority**: Medium (Bug in mathematical correctness)
 
 - **[ISSUE-033_hashmap_intrinsic.md](issues/ISSUE-033_hashmap_intrinsic.md)**
-  - **Title**: # ISSUE-033: Implementation Plan for Native `HashMap`, `AnyArray`, and `any` Intrinsic Types
+  - **Title**: # ISSUE-033: Implementation Plan for Native `Dict`, `List`, and `any` Intrinsic Types
   - **Status**: IMPLEMENTED - CORE RUNTIME, GRAMMAR, AST, CODEGEN, JIT BRIDGE, AND TEST COVERAGE
   - **Priority**: HIGH** (Fundamental heterogeneous collection and type expansion)
 

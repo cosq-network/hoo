@@ -65,7 +65,7 @@ hooModule->registerFunction("alloc", (void*)&hoo_alloc, "_F_hoo_alloc_p_i8_i8");
 Runtime modules are accessible via class-based method-call syntax for singleton utility APIs (e.g., `Math.abs(x)`) and instance syntax for object APIs (e.g., `new Character(65)`, `map.length()`, `arr.push(val)`). The code generator in `HVMCodeGenerator.cpp` resolves class names to module prefixes via `classToPrefix()` and redirects the call to the `hoo` module path, where JIT wrapper functions registered in `buildRuntimeSymbols()` perform the actual C-ABI dispatch. Instance methods on `var` variables (e.g., `s.length()`, `arr.push(val)`) are resolved through type-ID inference and follow the same path. JSON is intentionally free-function only (`json_serialize_hashmap`, `json_serialize_anyarray`, `json_deserialize_hashmap`, `json_deserialize_anyarray`, `json_minify`, `json_beautify`) and has no `Json` class or opaque `ptr` document handles. All built-in classes listed in `isBuiltinClassName()` are covered; see `classToPrefix()` for the full mapping (e.g., `Character` -> `character`, `Array` -> `array`, `Thread` -> `thread`).
 
 Serializable class support builds on the JSON free functions. Generated class
-methods use numeric positional HashMap keys, tagged Base64 objects for buffers,
+methods use numeric positional Dict keys, tagged Base64 objects for buffers,
 and tagged element-type/dimension/raw-bit objects for tensors. Nested
 serializable objects are recursively converted through their generated methods.
 
@@ -87,5 +87,5 @@ The runtime library is verified through the `tests/runtime/` suite, which perfor
 - ARC integrity checks (leak detection).
 - Stack-unwinding verification.
 - String UTF-8 encoding/decoding accuracy.
-- JSON `HashMap`/`AnyArray` serialization, deserialization, minify/beautify, and exception paths.
+- JSON `Dict`/`List` serialization, deserialization, minify/beautify, and exception paths.
 - Multi-threaded map contention tests.

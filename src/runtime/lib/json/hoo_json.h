@@ -6,48 +6,48 @@
 extern "C" {
 #endif
 
-typedef void* HooAnyArray;
-typedef void* HooHashMap;
+typedef void* HooList;
+typedef void* HooDict;
 typedef void* HooString;
 
 /**
- * Serialize a HashMap to a JSON object string.
+ * Serialize a Dict to a JSON object string.
  *
  * Supported map values:
- * - fixed scalar HashMap values: int64, int8, byte, bool, string
+ * - fixed scalar Dict values: int64, int8, byte, bool, string
  * - any values containing int64, int8, byte, bool, f64, string, Buffer,
- *   HashMap, AnyArray, and Tensor.
+ *   Dict, List, and Tensor.
  *
- * Buffers and tensors use tagged objects. HashMap keys are numeric in Hoo and
+ * Buffers and tensors use tagged objects. Dict keys are numeric in Hoo and
  * are serialized as JSON object field names.
  * Returns a HooString with refcount=1, or NULL on unsupported input.
  */
-HooString hoo_json_serialize_hashmap(HooHashMap map);
+HooString hoo_json_serialize_hashmap(HooDict map);
 
 /**
- * Serialize an AnyArray to a JSON array string.
+ * Serialize a List to a JSON array string.
  *
- * Supported elements: int64, int8, byte, bool, f64, string, HashMap, AnyArray.
+ * Supported elements: int64, int8, byte, bool, f64, string, Dict, List.
  * Returns a HooString with refcount=1, or NULL on unsupported input.
  */
-HooString hoo_json_serialize_anyarray(HooAnyArray array);
+HooString hoo_json_serialize_anyarray(HooList array);
 
 /**
- * Deserialize a JSON object into a HashMap<int64, any>.
+ * Deserialize a JSON object into a Dict<int64, any>.
  *
  * JSON object field names must be valid int64 keys. Values may be null, bool,
  * integer, floating-point, string, object, or array. Throws a runtime exception
  * on invalid JSON or unsupported object keys.
  */
-HooHashMap hoo_json_deserialize_hashmap(const char* json);
+HooDict hoo_json_deserialize_hashmap(const char* json);
 
 /**
- * Deserialize a JSON array into an AnyArray.
+ * Deserialize a JSON array into a List.
  *
  * Values may be null, bool, integer, floating-point, string, object, or array.
  * Throws a runtime exception on invalid JSON or non-array input.
  */
-HooAnyArray hoo_json_deserialize_anyarray(const char* json);
+HooList hoo_json_deserialize_anyarray(const char* json);
 
 /**
  * Minify a JSON string by removing insignificant whitespace.

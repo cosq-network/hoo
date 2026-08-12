@@ -107,33 +107,33 @@ TEST_F(ASTTypeTest, MapTakeValueType) {
     EXPECT_NE(taken, nullptr);
 }
 
-TEST_F(ASTTypeTest, HashMapTypeConstruction) {
+TEST_F(ASTTypeTest, DictTypeConstruction) {
     auto vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
-    HashMapType hm(HashMapKeyType::INT64, std::move(vt));
-    EXPECT_EQ(hm.getKeyType(), HashMapKeyType::INT64);
+    DictType hm(DictKeyType::INT64, std::move(vt));
+    EXPECT_EQ(hm.getKeyType(), DictKeyType::INT64);
     EXPECT_EQ(hm.keyTypeToString(), "int64");
-    EXPECT_EQ(hm.toString(), "HashMapType");
+    EXPECT_EQ(hm.toString(), "DictType");
 }
 
-TEST_F(ASTTypeTest, HashMapTypeAllKeyTypes) {
+TEST_F(ASTTypeTest, DictTypeAllKeyTypes) {
     auto vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
-    EXPECT_EQ(HashMapType(HashMapKeyType::BYTE, std::move(vt)).keyTypeToString(), "byte");
+    EXPECT_EQ(DictType(DictKeyType::BYTE, std::move(vt)).keyTypeToString(), "byte");
     vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
-    EXPECT_EQ(HashMapType(HashMapKeyType::INT8, std::move(vt)).keyTypeToString(), "int8");
+    EXPECT_EQ(DictType(DictKeyType::INT8, std::move(vt)).keyTypeToString(), "int8");
     vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::INT64);
-    EXPECT_EQ(HashMapType(HashMapKeyType::INT64, std::move(vt)).keyTypeToString(), "int64");
+    EXPECT_EQ(DictType(DictKeyType::INT64, std::move(vt)).keyTypeToString(), "int64");
 }
 
-TEST_F(ASTTypeTest, HashMapTypeWithAnyValue) {
+TEST_F(ASTTypeTest, DictTypeWithAnyValue) {
     auto vt = std::make_unique<AnyType>();
-    HashMapType hm(HashMapKeyType::INT64, std::move(vt));
-    EXPECT_EQ(hm.toString(), "HashMapType");
+    DictType hm(DictKeyType::INT64, std::move(vt));
+    EXPECT_EQ(hm.toString(), "DictType");
     EXPECT_NE(dynamic_cast<const AnyType*>(&hm.getValueType()), nullptr);
 }
 
-TEST_F(ASTTypeTest, AnyArrayTypeConstruction) {
-    AnyArrayType aat;
-    EXPECT_EQ(aat.toString(), "AnyArrayType");
+TEST_F(ASTTypeTest, ListTypeConstruction) {
+    ListType aat;
+    EXPECT_EQ(aat.toString(), "ListType");
 }
 
 TEST_F(ASTTypeTest, AnyTypeConstruction) {
@@ -141,13 +141,13 @@ TEST_F(ASTTypeTest, AnyTypeConstruction) {
     EXPECT_EQ(at.toString(), "AnyType");
 }
 
-TEST_F(ASTTypeTest, NewHashMapExpressionConstruction) {
+TEST_F(ASTTypeTest, NewDictExpressionConstruction) {
     auto vt = std::make_unique<PrimitiveType>(PrimitiveTypeKind::STRING);
-    auto hmType = std::make_unique<HashMapType>(HashMapKeyType::INT64, std::move(vt));
+    auto hmType = std::make_unique<DictType>(DictKeyType::INT64, std::move(vt));
     auto args = std::make_unique<ArgumentList>(std::vector<std::unique_ptr<Expression>>{});
-    NewHashMapExpression expr(std::move(hmType), std::move(args));
-    EXPECT_EQ(expr.toString(), "NewHashMapExpression");
-    EXPECT_EQ(expr.getHashMapType().getKeyType(), HashMapKeyType::INT64);
+    NewDictExpression expr(std::move(hmType), std::move(args));
+    EXPECT_EQ(expr.toString(), "NewDictExpression");
+    EXPECT_EQ(expr.getDictType().getKeyType(), DictKeyType::INT64);
     EXPECT_NE(expr.getArguments(), nullptr);
 }
 

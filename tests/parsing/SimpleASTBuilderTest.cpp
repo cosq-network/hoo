@@ -663,7 +663,7 @@ TEST_F(SimpleASTBuilderTest, BuildBasicImportWithAlias) {
 }
 
 TEST_F(SimpleASTBuilderTest, BuildFromImport) {
-    std::string code = "from std import String, List;";
+    std::string code = "from std import String, Buffer;";
     auto* parseTree = parseCode(code);
 
     ASSERT_NE(parseTree, nullptr);
@@ -1424,7 +1424,7 @@ TEST_F(SimpleASTBuilderTest, BuildComplexFunction) {
 
 TEST_F(SimpleASTBuilderTest, BuildMultipleDeclarations) {
     std::string code = R"(
-        import hoo.List;
+        import hoo.Buffer;
         class MyClass {
             var value: int64;
         }

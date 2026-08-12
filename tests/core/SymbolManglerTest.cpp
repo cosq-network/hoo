@@ -621,26 +621,26 @@ TEST_F(SymbolManglerTest, MalformedTypeDoesNotCollapseToGenericUnknownCode) {
     EXPECT_EQ(SymbolMangler::demangleType(mangled), malformed);
 }
 
-TEST_F(SymbolManglerTest, HashMapTypeManglingRoundTrip) {
-    std::string mangled = SymbolMangler::mangleType("HashMap[int64,any]");
+TEST_F(SymbolManglerTest, DictTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("Dict[int64,any]");
     EXPECT_NE(mangled, "o");
-    EXPECT_EQ(SymbolMangler::demangleType(mangled), "HashMap[int64,any]");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "Dict[int64,any]");
 }
 
-TEST_F(SymbolManglerTest, HashMapWithInt64ValueManglingRoundTrip) {
-    std::string mangled = SymbolMangler::mangleType("HashMap[int8,int64]");
+TEST_F(SymbolManglerTest, DictWithInt64ValueManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("Dict[int8,int64]");
     EXPECT_NE(mangled, "o");
-    EXPECT_EQ(SymbolMangler::demangleType(mangled), "HashMap[int8,int64]");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "Dict[int8,int64]");
 }
 
-TEST_F(SymbolManglerTest, AnyArrayTypeManglingRoundTrip) {
-    std::string mangled = SymbolMangler::mangleType("AnyArray");
+TEST_F(SymbolManglerTest, ListTypeManglingRoundTrip) {
+    std::string mangled = SymbolMangler::mangleType("List");
     EXPECT_NE(mangled, "o");
-    EXPECT_EQ(SymbolMangler::demangleType(mangled), "AnyArray");
+    EXPECT_EQ(SymbolMangler::demangleType(mangled), "List");
 }
 
 TEST_F(SymbolManglerTest, NestedHashMapManglingRoundTrip) {
-    std::string type = "HashMap[int64,HashMap[byte,string]]";
+    std::string type = "Dict[int64,Dict[byte,string]]";
     std::string mangled = SymbolMangler::mangleType(type);
     EXPECT_NE(mangled, "o");
     EXPECT_EQ(SymbolMangler::demangleType(mangled), type);

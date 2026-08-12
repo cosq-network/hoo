@@ -21,8 +21,8 @@
 #include "runtime/lib/decimal/hoo_decimal.h"
 #include "runtime/lib/map/hoo_map.h"
 #include "runtime/lib/any/hoo_any.h"
-#include "runtime/lib/anyarray/hoo_anyarray.h"
-#include "runtime/lib/hashmap/hoo_hashmap.h"
+#include "runtime/lib/anyarray/hoo_list.h"
+#include "runtime/lib/hashmap/hoo_dict.h"
 #include "runtime/lib/exception/hoo_exception.h"
 #include "runtime/lib/future/hoo_future.h"
 #include "runtime/lib/math/hoo_math.h"
@@ -1468,26 +1468,26 @@ extern "C" {
     }
 
     uint64_t jit_anyarray_new(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_anyarray_new()));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_list_new()));
     }
     uint64_t jit_anyarray_new_capacity(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_anyarray_new_capacity(state->regs[1])));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_list_new_capacity(state->regs[1])));
     }
     uint64_t jit_anyarray_length(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_anyarray_length(reinterpret_cast<void*>(state->regs[1])));
+        return static_cast<uint64_t>(hoo_list_length(reinterpret_cast<void*>(state->regs[1])));
     }
     uint64_t jit_anyarray_push(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_anyarray_push(
+        return static_cast<uint64_t>(hoo_list_push(
             reinterpret_cast<void*>(state->regs[1]),
             static_cast<int64_t>(state->regs[2]),
             state->regs[3]));
     }
     uint64_t jit_anyarray_set(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_anyarray_set(
+        return static_cast<uint64_t>(hoo_list_set(
             reinterpret_cast<void*>(state->regs[1]),
             static_cast<int64_t>(state->regs[2]),
             static_cast<int64_t>(state->regs[3]),
@@ -1496,7 +1496,7 @@ extern "C" {
     uint64_t jit_anyarray_get_data(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         HooAnyValue value{0, 0};
-        if (!hoo_anyarray_get(reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]), &value)) {
+        if (!hoo_list_get(reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]), &value)) {
             return 0;
         }
         return value.data;
@@ -1504,34 +1504,34 @@ extern "C" {
     uint64_t jit_anyarray_pop_data(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         HooAnyValue value{0, 0};
-        if (!hoo_anyarray_pop(reinterpret_cast<void*>(state->regs[1]), &value)) {
+        if (!hoo_list_pop(reinterpret_cast<void*>(state->regs[1]), &value)) {
             return 0;
         }
         return value.data;
     }
     uint64_t jit_anyarray_clear(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        hoo_anyarray_clear(reinterpret_cast<void*>(state->regs[1]));
+        hoo_list_clear(reinterpret_cast<void*>(state->regs[1]));
         return 0;
     }
     uint64_t jit_anyarray_release(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        hoo_anyarray_release(reinterpret_cast<void*>(state->regs[1]));
+        hoo_list_release(reinterpret_cast<void*>(state->regs[1]));
         return 0;
     }
 
     uint64_t jit_hashmap_new(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
-            hoo_hashmap_new(static_cast<int64_t>(state->regs[1]), static_cast<int64_t>(state->regs[2]))));
+            hoo_dict_new(static_cast<int64_t>(state->regs[1]), static_cast<int64_t>(state->regs[2]))));
     }
     uint64_t jit_hashmap_count(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_hashmap_count(reinterpret_cast<void*>(state->regs[1])));
+        return static_cast<uint64_t>(hoo_dict_count(reinterpret_cast<void*>(state->regs[1])));
     }
     uint64_t jit_hashmap_set_fixed(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_hashmap_set_fixed_i8(
+        return static_cast<uint64_t>(hoo_dict_set_fixed_i8(
             reinterpret_cast<void*>(state->regs[1]),
             static_cast<int64_t>(state->regs[2]),
             state->regs[3]));
@@ -1539,12 +1539,12 @@ extern "C" {
     uint64_t jit_hashmap_get_fixed_data(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         uint64_t value = 0;
-        hoo_hashmap_get_fixed_i8(reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]), &value);
+        hoo_dict_get_fixed_i8(reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]), &value);
         return value;
     }
     uint64_t jit_hashmap_set_any(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_hashmap_set_any_i8(
+        return static_cast<uint64_t>(hoo_dict_set_any_i8(
             reinterpret_cast<void*>(state->regs[1]),
             static_cast<int64_t>(state->regs[2]),
             static_cast<int64_t>(state->regs[3]),
@@ -1553,25 +1553,25 @@ extern "C" {
     uint64_t jit_hashmap_get_any_data(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         HooAnyValue value{0, 0};
-        if (!hoo_hashmap_get_any_i8(reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]), &value)) {
+        if (!hoo_dict_get_any_i8(reinterpret_cast<void*>(state->regs[1]), static_cast<int64_t>(state->regs[2]), &value)) {
             return 0;
         }
         return value.data;
     }
     uint64_t jit_hashmap_remove(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        return static_cast<uint64_t>(hoo_hashmap_remove_i8(
+        return static_cast<uint64_t>(hoo_dict_remove_i8(
             reinterpret_cast<void*>(state->regs[1]),
             static_cast<int64_t>(state->regs[2])));
     }
     uint64_t jit_hashmap_clear(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        hoo_hashmap_clear(reinterpret_cast<void*>(state->regs[1]));
+        hoo_dict_clear(reinterpret_cast<void*>(state->regs[1]));
         return 0;
     }
     uint64_t jit_hashmap_release(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
-        hoo_hashmap_release(reinterpret_cast<void*>(state->regs[1]));
+        hoo_dict_release(reinterpret_cast<void*>(state->regs[1]));
         return 0;
     }
     // ── Math functions ────────────────────────────────────────────────────────
@@ -4632,25 +4632,25 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_map_empty_v_p", reinterpret_cast<void*>(&jit_map_empty)},
         {"_F_map_key_type_v_p", reinterpret_cast<void*>(&jit_map_key_type)},
         {"_F_map_value_type_v_p", reinterpret_cast<void*>(&jit_map_value_type)},
-        // ISSUE-033 any/AnyArray/HashMap intrinsic symbols
-        {"_F_hoo_anyarray_new_p", reinterpret_cast<void*>(&jit_anyarray_new)},
-        {"_F_hoo_anyarray_new_capacity_p_i8", reinterpret_cast<void*>(&jit_anyarray_new_capacity)},
-        {"_F_hoo_anyarray_length_i8_p", reinterpret_cast<void*>(&jit_anyarray_length)},
-        {"_F_hoo_anyarray_push_i8_p_i8_i8", reinterpret_cast<void*>(&jit_anyarray_push)},
-        {"_F_hoo_anyarray_set_i8_p_i8_i8_i8", reinterpret_cast<void*>(&jit_anyarray_set)},
-        {"_F_hoo_anyarray_get_data_i8_p_i8", reinterpret_cast<void*>(&jit_anyarray_get_data)},
-        {"_F_hoo_anyarray_pop_data_i8_p", reinterpret_cast<void*>(&jit_anyarray_pop_data)},
-        {"_F_hoo_anyarray_clear_v_p", reinterpret_cast<void*>(&jit_anyarray_clear)},
+        // ISSUE-033 any/List/Dict intrinsic symbols
+        {"_F_hoo_list_new_p", reinterpret_cast<void*>(&jit_anyarray_new)},
+        {"_F_hoo_list_new_capacity_p_i8", reinterpret_cast<void*>(&jit_anyarray_new_capacity)},
+        {"_F_hoo_list_length_i8_p", reinterpret_cast<void*>(&jit_anyarray_length)},
+        {"_F_hoo_list_push_i8_p_i8_i8", reinterpret_cast<void*>(&jit_anyarray_push)},
+        {"_F_hoo_list_set_i8_p_i8_i8_i8", reinterpret_cast<void*>(&jit_anyarray_set)},
+        {"_F_hoo_list_get_data_i8_p_i8", reinterpret_cast<void*>(&jit_anyarray_get_data)},
+        {"_F_hoo_list_pop_data_i8_p", reinterpret_cast<void*>(&jit_anyarray_pop_data)},
+        {"_F_hoo_list_clear_v_p", reinterpret_cast<void*>(&jit_anyarray_clear)},
         {"_F_M_hoo_E_anyarray_new_v", reinterpret_cast<void*>(&jit_anyarray_new)},
         {"_F_M_hoo_E_anyarray_release_v", reinterpret_cast<void*>(&jit_anyarray_release)},
-        {"_F_hoo_hashmap_new_p_i8_i8", reinterpret_cast<void*>(&jit_hashmap_new)},
-        {"_F_hoo_hashmap_count_i8_p", reinterpret_cast<void*>(&jit_hashmap_count)},
-        {"_F_hoo_hashmap_set_fixed_i8_p_i8_i8", reinterpret_cast<void*>(&jit_hashmap_set_fixed)},
-        {"_F_hoo_hashmap_get_fixed_data_i8_p_i8", reinterpret_cast<void*>(&jit_hashmap_get_fixed_data)},
-        {"_F_hoo_hashmap_set_any_i8_p_i8_i8_i8", reinterpret_cast<void*>(&jit_hashmap_set_any)},
-        {"_F_hoo_hashmap_get_any_data_i8_p_i8", reinterpret_cast<void*>(&jit_hashmap_get_any_data)},
-        {"_F_hoo_hashmap_remove_i8_p_i8", reinterpret_cast<void*>(&jit_hashmap_remove)},
-        {"_F_hoo_hashmap_clear_v_p", reinterpret_cast<void*>(&jit_hashmap_clear)},
+        {"_F_hoo_dict_new_p_i8_i8", reinterpret_cast<void*>(&jit_hashmap_new)},
+        {"_F_hoo_dict_count_i8_p", reinterpret_cast<void*>(&jit_hashmap_count)},
+        {"_F_hoo_dict_set_fixed_i8_p_i8_i8", reinterpret_cast<void*>(&jit_hashmap_set_fixed)},
+        {"_F_hoo_dict_get_fixed_data_i8_p_i8", reinterpret_cast<void*>(&jit_hashmap_get_fixed_data)},
+        {"_F_hoo_dict_set_any_i8_p_i8_i8_i8", reinterpret_cast<void*>(&jit_hashmap_set_any)},
+        {"_F_hoo_dict_get_any_data_i8_p_i8", reinterpret_cast<void*>(&jit_hashmap_get_any_data)},
+        {"_F_hoo_dict_remove_i8_p_i8", reinterpret_cast<void*>(&jit_hashmap_remove)},
+        {"_F_hoo_dict_clear_v_p", reinterpret_cast<void*>(&jit_hashmap_clear)},
         {"_F_M_hoo_E_hashmap_release_v", reinterpret_cast<void*>(&jit_hashmap_release)},
         // Array hoo-module-qualified symbols (codegen redirects array_* to hoo module)
         {"_F_M_hoo_E_array_new_v", reinterpret_cast<void*>(&jit_hoo_array_new)},
@@ -5255,22 +5255,22 @@ void* lookupPlainRuntimeSymbolAddress(const std::string& name) {
         {"hoo_map_try_get", reinterpret_cast<void*>(&hoo_map_try_get)},
         {"hoo_map_remove", reinterpret_cast<void*>(&hoo_map_remove)},
         {"hoo_map_clear", reinterpret_cast<void*>(&hoo_map_clear)},
-        {"hoo_anyarray_new", reinterpret_cast<void*>(&hoo_anyarray_new)},
-        {"hoo_anyarray_new_capacity", reinterpret_cast<void*>(&hoo_anyarray_new_capacity)},
-        {"hoo_anyarray_length", reinterpret_cast<void*>(&hoo_anyarray_length)},
-        {"hoo_anyarray_push", reinterpret_cast<void*>(&hoo_anyarray_push)},
-        {"hoo_anyarray_set", reinterpret_cast<void*>(&hoo_anyarray_set)},
-        {"hoo_anyarray_get", reinterpret_cast<void*>(&hoo_anyarray_get)},
-        {"hoo_anyarray_pop", reinterpret_cast<void*>(&hoo_anyarray_pop)},
-        {"hoo_anyarray_clear", reinterpret_cast<void*>(&hoo_anyarray_clear)},
-        {"hoo_hashmap_new", reinterpret_cast<void*>(&hoo_hashmap_new)},
-        {"hoo_hashmap_count", reinterpret_cast<void*>(&hoo_hashmap_count)},
-        {"hoo_hashmap_set_fixed_i8", reinterpret_cast<void*>(&hoo_hashmap_set_fixed_i8)},
-        {"hoo_hashmap_get_fixed_i8", reinterpret_cast<void*>(&hoo_hashmap_get_fixed_i8)},
-        {"hoo_hashmap_set_any_i8", reinterpret_cast<void*>(&hoo_hashmap_set_any_i8)},
-        {"hoo_hashmap_get_any_i8", reinterpret_cast<void*>(&hoo_hashmap_get_any_i8)},
-        {"hoo_hashmap_remove_i8", reinterpret_cast<void*>(&hoo_hashmap_remove_i8)},
-        {"hoo_hashmap_clear", reinterpret_cast<void*>(&hoo_hashmap_clear)},
+        {"hoo_list_new", reinterpret_cast<void*>(&hoo_list_new)},
+        {"hoo_list_new_capacity", reinterpret_cast<void*>(&hoo_list_new_capacity)},
+        {"hoo_list_length", reinterpret_cast<void*>(&hoo_list_length)},
+        {"hoo_list_push", reinterpret_cast<void*>(&hoo_list_push)},
+        {"hoo_list_set", reinterpret_cast<void*>(&hoo_list_set)},
+        {"hoo_list_get", reinterpret_cast<void*>(&hoo_list_get)},
+        {"hoo_list_pop", reinterpret_cast<void*>(&hoo_list_pop)},
+        {"hoo_list_clear", reinterpret_cast<void*>(&hoo_list_clear)},
+        {"hoo_dict_new", reinterpret_cast<void*>(&hoo_dict_new)},
+        {"hoo_dict_count", reinterpret_cast<void*>(&hoo_dict_count)},
+        {"hoo_dict_set_fixed_i8", reinterpret_cast<void*>(&hoo_dict_set_fixed_i8)},
+        {"hoo_dict_get_fixed_i8", reinterpret_cast<void*>(&hoo_dict_get_fixed_i8)},
+        {"hoo_dict_set_any_i8", reinterpret_cast<void*>(&hoo_dict_set_any_i8)},
+        {"hoo_dict_get_any_i8", reinterpret_cast<void*>(&hoo_dict_get_any_i8)},
+        {"hoo_dict_remove_i8", reinterpret_cast<void*>(&hoo_dict_remove_i8)},
+        {"hoo_dict_clear", reinterpret_cast<void*>(&hoo_dict_clear)},
         {"hoo_buffer_new", reinterpret_cast<void*>(&hoo_buffer_new)},
         {"hoo_buffer_from_bytes", reinterpret_cast<void*>(&hoo_buffer_from_bytes)},
         {"hoo_csv_from_opts", reinterpret_cast<void*>(&hoo_csv_from_opts)},

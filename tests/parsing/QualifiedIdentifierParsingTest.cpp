@@ -43,7 +43,7 @@ TEST_F(QualifiedIdentifierParsingTest, NestedQualifiedTypeInVariableDeclaration)
 TEST_F(QualifiedIdentifierParsingTest, DeeplyNestedQualifiedType) {
     std::string code = R"(
         func test() {
-            var x: hoo.collections.generic.List;
+            var x: hoo.collections.generic.Buffer;
         }
     )";
     auto ast = parseCode(code);
