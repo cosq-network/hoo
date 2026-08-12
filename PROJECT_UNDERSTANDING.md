@@ -348,7 +348,7 @@ try {
 ## 6. Performance & Testing
 
 ### Test Coverage
-- **2,520 tests** passing (0 failures)
+- **2,535 tests** passing (0 failures)
 - **Unit tests**: Parsing, AST, codegen, HVM instruction semantics, runtime (ARC, strings, arrays, etc.)
 - **Integration tests**: CLI, JIT compilation, exception handling, async operations
 - **End-to-end tests**: Collections, operators, literals, statements, arguments

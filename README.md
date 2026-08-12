@@ -47,7 +47,7 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity, including the native `CMP_B` comparison family, all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion.
 - [x] **Nullable Types (ISSUE-047 correctness complete)**: End-to-end `T?` tracking, catchable null checks for member/method/array dereferences, compile-time null-safety validation, distinct nullable overload mangling, and ARC cleanup for nullable named references stored in generic type-ID-100 slots. No required correctness work remains; optional `LD.D.NZ` folding is deferred because its current VM-trap path is not catchable.
 - [x] **Tensor Precision and Broadcasting (ISSUE-025/030)**: Completed low-precision tensor storage, canonical FP8 fallback, native-width integer semantics, scalar promotion, safe tensor-scalar runtime/JIT lowering, and reshape/transpose/softmax utilities.
-- [x] **Verification**: full preset test run passing (`2520 tests`, 0 failures).
+- [x] **Verification**: full preset test run passing (`2535 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 ## Recent Changes
@@ -69,6 +69,9 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
   operators, logical operators, nested ifs, variable assignments, multiple
   statements per branch, return statements, float/char conditions, and deep
   else-if chains.
+- **Exception-handling integration tests**: added CLI integration tests for
+  `try/catch`, `try/finally`, `try/catch/finally`, `throw`, multiple catch
+  clauses, nested try/catch, and uncaught exception behavior.
 
 - **Networking and archive integration**: DNS-aware sockets now support
   configurable timeouts and TLS client/server handshakes. Archive imports
@@ -147,7 +150,7 @@ src/
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Tensors, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-  tests/         Exhaustive unit and integration test suites (2520 tests in the current preset run).
+  tests/         Exhaustive unit and integration test suites (2535 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
