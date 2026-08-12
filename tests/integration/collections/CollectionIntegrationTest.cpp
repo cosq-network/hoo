@@ -274,10 +274,10 @@ TEST_F(CollectionIntegrationTest, ArrayPushAndGetInt64) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 10);
-            Array.pushInt64(a, 20);
-            Array.pushInt64(a, 30);
-            return Array.getInt64(a, 0) + Array.getInt64(a, 1) + Array.getInt64(a, 2);
+            a.pushInt64(10);
+            a.pushInt64(20);
+            a.pushInt64(30);
+            return a.getInt64(0) + a.getInt64(1) + a.getInt64(2);
         }
     )", "60");
 }
@@ -288,10 +288,10 @@ TEST_F(CollectionIntegrationTest, ArrayPushAndGetString) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushString(a, "hello");
-            Array.pushString(a, "world");
-            var s1: string = Array.getString(a, 0);
-            var s2: string = Array.getString(a, 1);
+            a.pushString("hello");
+            a.pushString("world");
+            var s1: string = a.getString(0);
+            var s2: string = a.getString(1);
             return s1.length() + s2.length();
         }
     )", "10");
@@ -303,8 +303,8 @@ TEST_F(CollectionIntegrationTest, ArrayPushAndGetDouble) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushDouble(a, 3.14);
-            Array.pushDouble(a, 2.71);
+            a.pushDouble(3.14);
+            a.pushDouble(2.71);
             return 1;
         }
     )", "1");
@@ -316,10 +316,10 @@ TEST_F(CollectionIntegrationTest, ArrayPushAndGetBool) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushBool(a, true);
-            Array.pushBool(a, false);
-            var b1: bool = Array.getBool(a, 0);
-            var b2: bool = Array.getBool(a, 1);
+            a.pushBool(true);
+            a.pushBool(false);
+            var b1: bool = a.getBool(0);
+            var b2: bool = a.getBool(1);
             if (b1 && !b2) {
                 return 1;
             }
@@ -334,11 +334,11 @@ TEST_F(CollectionIntegrationTest, ArrayLengthAndEmpty) {
 
         func :int64 main() {
             var a = new Array();
-            var e1 = Array.empty(a);
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            var len = Array.length(a);
-            var e2 = Array.empty(a);
+            var e1 = a.empty();
+            a.pushInt64(1);
+            a.pushInt64(2);
+            var len = a.length();
+            var e2 = a.empty();
             return e1 * 100 + len * 10 + e2;
         }
     )", "120");
@@ -350,11 +350,11 @@ TEST_F(CollectionIntegrationTest, ArrayClear) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            Array.pushInt64(a, 3);
-            Array.clear(a);
-            return Array.length(a);
+            a.pushInt64(1);
+            a.pushInt64(2);
+            a.pushInt64(3);
+            a.clear();
+            return a.length();
         }
     )", "0");
 }
@@ -365,11 +365,11 @@ TEST_F(CollectionIntegrationTest, ArrayReverse) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            Array.pushInt64(a, 3);
-            Array.reverse(a);
-            return Array.getInt64(a, 0) * 100 + Array.getInt64(a, 1) * 10 + Array.getInt64(a, 2);
+            a.pushInt64(1);
+            a.pushInt64(2);
+            a.pushInt64(3);
+            a.reverse();
+            return a.getInt64(0) * 100 + a.getInt64(1) * 10 + a.getInt64(2);
         }
     )", "321");
 }
@@ -380,11 +380,11 @@ TEST_F(CollectionIntegrationTest, ArraySort) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 30);
-            Array.pushInt64(a, 10);
-            Array.pushInt64(a, 20);
-            Array.sort(a);
-            return Array.getInt64(a, 0) + Array.getInt64(a, 1) + Array.getInt64(a, 2);
+            a.pushInt64(30);
+            a.pushInt64(10);
+            a.pushInt64(20);
+            a.sort();
+            return a.getInt64(0) + a.getInt64(1) + a.getInt64(2);
         }
     )", "6");
 }
@@ -395,10 +395,10 @@ TEST_F(CollectionIntegrationTest, ArrayMixedTypeElements) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 42);
-            Array.pushString(a, "test");
-            Array.pushBool(a, true);
-            return Array.length(a);
+            a.pushInt64(42);
+            a.pushString("test");
+            a.pushBool(true);
+            return a.length();
         }
     )", "3");
 }
@@ -905,10 +905,10 @@ TEST_F(CollectionIntegrationTest, ListAndArrayTogether) {
             list.push(20);
 
             var arr = new Array();
-            Array.pushInt64(arr, 30);
-            Array.pushInt64(arr, 40);
+            arr.pushInt64(30);
+            arr.pushInt64(40);
 
-            return list[0] + list[1] + Array.getInt64(arr, 0) + Array.getInt64(arr, 1);
+            return list[0] + list[1] + arr.getInt64(0) + arr.getInt64(1);
         }
     )", "100");
 }
@@ -954,14 +954,14 @@ TEST_F(CollectionIntegrationTest, ArrayAndMapTogether) {
 
         func :int64 main() {
             var arr = new Array();
-            Array.pushInt64(arr, 1);
-            Array.pushInt64(arr, 2);
+            arr.pushInt64(1);
+            arr.pushInt64(2);
 
             var m = new Map(2, 1);
             m.setInt64Int64(1, 10);
             m.setInt64Int64(2, 20);
 
-            var arrLen = Array.length(arr);
+            var arrLen = arr.length();
             var mapLen = m.length();
             return arrLen + mapLen;
         }
@@ -989,8 +989,8 @@ TEST_F(CollectionIntegrationTest, EmptyArrayLengthAndEmpty) {
 
         func :int64 main() {
             var a = new Array();
-            var len = Array.length(a);
-            var empty = Array.empty(a);
+            var len = a.length();
+            var empty = a.empty();
             return len + empty;
         }
     )", "1");
@@ -1014,8 +1014,8 @@ TEST_F(CollectionIntegrationTest, SingleElementArray) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 42);
-            return Array.getInt64(a, 0);
+            a.pushInt64(42);
+            return a.getInt64(0);
         }
     )", "42");
 }
@@ -1082,17 +1082,17 @@ TEST_F(CollectionIntegrationTest, LargeArrayPush) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            Array.pushInt64(a, 3);
-            Array.pushInt64(a, 4);
-            Array.pushInt64(a, 5);
-            Array.pushInt64(a, 6);
-            Array.pushInt64(a, 7);
-            Array.pushInt64(a, 8);
-            Array.pushInt64(a, 9);
-            Array.pushInt64(a, 10);
-            return Array.getInt64(a, 9);
+            a.pushInt64(1);
+            a.pushInt64(2);
+            a.pushInt64(3);
+            a.pushInt64(4);
+            a.pushInt64(5);
+            a.pushInt64(6);
+            a.pushInt64(7);
+            a.pushInt64(8);
+            a.pushInt64(9);
+            a.pushInt64(10);
+            return a.getInt64(9);
         }
     )", "10");
 }

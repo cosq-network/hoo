@@ -68,7 +68,7 @@ TEST_F(HooCsvJitTest, ParseBasic) {
             var input = "a,b,c\n1,2,3";
             var rows = csv.parse(input);
             csv.release();
-            return Array.length(rows);
+            return rows.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -83,7 +83,7 @@ TEST_F(HooCsvJitTest, ParseCustomOpts) {
             var input = "a;b;c";
             var rows = csv.parse(input);
             csv.release();
-            return Array.length(rows);
+            return rows.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -120,7 +120,7 @@ TEST_F(HooCsvJitTest, ReadFile) {
             var csv = new Csv();
             var rows = csv.readFile(")") + hooc_path + R"(");
             csv.release();
-            return Array.length(rows);
+            return rows.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();

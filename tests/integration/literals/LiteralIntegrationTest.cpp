@@ -581,7 +581,7 @@ TEST_F(LiteralIntegrationTest, ArrayLiteral_Integers) {
         import hoo;
         func :int64 main() {
             var arr = [1, 2, 3];
-            return Array.length(arr);
+            return arr.length();
         }
     )", "3");
 }
@@ -601,7 +601,7 @@ TEST_F(LiteralIntegrationTest, ArrayLiteral_Floats) {
         import hoo;
         func :int64 main() {
             var arr = [1.0, 2.0, 3.0];
-            return Array.length(arr);
+            return arr.length();
         }
     )", "3");
 }
@@ -611,7 +611,7 @@ TEST_F(LiteralIntegrationTest, ArrayLiteral_Booleans) {
         import hoo;
         func :int64 main() {
             var arr = [true, false, true];
-            return Array.length(arr);
+            return arr.length();
         }
     )", "3");
 }
@@ -621,7 +621,7 @@ TEST_F(LiteralIntegrationTest, ArrayLiteral_Strings) {
         import hoo;
         func :int64 main() {
             var arr = ["a", "bb", "ccc"];
-            return Array.length(arr);
+            return arr.length();
         }
     )", "3");
 }
@@ -631,7 +631,7 @@ TEST_F(LiteralIntegrationTest, ArrayLiteral_Nested) {
         import hoo;
         func :int64 main() {
             var arr = [[1, 2], [3, 4]];
-            return Array.length(arr);
+            return arr.length();
         }
     )", "2");
 }

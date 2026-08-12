@@ -32,8 +32,8 @@ TEST_F(HooArrayJitTest, PushGetDouble) {
         import hoo;
         func :double test() {
             var a = new Array();
-            Array.pushDouble(a, 3.14);
-            return Array.getDouble(a, 0);
+            a.pushDouble(3.14);
+            return a.getDouble(0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -48,12 +48,25 @@ TEST_F(HooArrayJitTest, PushGetInt64) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 42);
-            return Array.getInt64(a, 0);
+            a.pushInt64(42);
+            return a.getInt64(0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 42);
+}
+
+TEST_F(HooArrayJitTest, StaticArrayMethodsRejected) {
+    const std::string source = R"(
+        import hoo;
+        func :int64 test() {
+            var a = new Array();
+            Array.pushInt64(a, 42);
+            return 0;
+        }
+    )";
+    EXPECT_FALSE(jit.loadSourceCode("test", source));
+    EXPECT_NE(jit.getLastError().find("not supported as a static method"), std::string::npos);
 }
 
 TEST_F(HooArrayJitTest, ArrayLength) {
@@ -61,9 +74,9 @@ TEST_F(HooArrayJitTest, ArrayLength) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 10);
-            Array.pushInt64(a, 20);
-return Array.length(a);
+            a.pushInt64(10);
+            a.pushInt64(20);
+return a.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -75,9 +88,9 @@ TEST_F(HooArrayJitTest, ArrayClear) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 10);
-            Array.clear(a);
-            return Array.length(a);
+            a.pushInt64(10);
+            a.clear();
+            return a.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -89,7 +102,7 @@ TEST_F(HooArrayJitTest, ArrayEmpty) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            return Array.empty(a);
+            return a.empty();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -101,8 +114,8 @@ TEST_F(HooArrayJitTest, PushGetString) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushString(a, "hello");
-            var s = Array.getString(a, 0);
+            a.pushString("hello");
+            var s: string = a.getString(0);
             return s.length();
         }
     )";
@@ -115,8 +128,8 @@ TEST_F(HooArrayJitTest, PushGetBool) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushBool(a, 1);
-            return Array.getBool(a, 0);
+            a.pushBool(1);
+            return a.getBool(0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -128,16 +141,16 @@ TEST_F(HooArrayJitTest, ArraySortInt64) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 5);
-            Array.pushInt64(a, 3);
-            Array.pushInt64(a, 9);
-            Array.pushInt64(a, 1);
-            Array.sort(a);
+            a.pushInt64(5);
+            a.pushInt64(3);
+            a.pushInt64(9);
+            a.pushInt64(1);
+            a.sort();
             var r = 1;
-            if (Array.getInt64(a, 0) != 1) { r = 0; }
-            if (Array.getInt64(a, 1) != 3) { r = 0; }
-            if (Array.getInt64(a, 2) != 5) { r = 0; }
-            if (Array.getInt64(a, 3) != 9) { r = 0; }
+            if (a.getInt64(0) != 1) { r = 0; }
+            if (a.getInt64(1) != 3) { r = 0; }
+            if (a.getInt64(2) != 5) { r = 0; }
+            if (a.getInt64(3) != 9) { r = 0; }
             return r;
         }
     )";
@@ -150,8 +163,8 @@ TEST_F(HooArrayJitTest, ArraySortEmpty) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.sort(a);
-            return Array.length(a);
+            a.sort();
+            return a.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -163,9 +176,9 @@ TEST_F(HooArrayJitTest, ArraySortSingle) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 42);
-            Array.sort(a);
-            return Array.getInt64(a, 0);
+            a.pushInt64(42);
+            a.sort();
+            return a.getInt64(0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -177,15 +190,15 @@ TEST_F(HooArrayJitTest, ArraySortReverse) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 10);
-            Array.pushInt64(a, 20);
-            Array.pushInt64(a, 30);
-            Array.sort(a);
-            Array.reverse(a);
+            a.pushInt64(10);
+            a.pushInt64(20);
+            a.pushInt64(30);
+            a.sort();
+            a.reverse();
             var r = 1;
-            if (Array.getInt64(a, 0) != 30) { r = 0; }
-            if (Array.getInt64(a, 1) != 20) { r = 0; }
-            if (Array.getInt64(a, 2) != 10) { r = 0; }
+            if (a.getInt64(0) != 30) { r = 0; }
+            if (a.getInt64(1) != 20) { r = 0; }
+            if (a.getInt64(2) != 10) { r = 0; }
             return r;
         }
     )";
@@ -198,14 +211,14 @@ TEST_F(HooArrayJitTest, ArrayReverseInt64) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            Array.pushInt64(a, 3);
-            Array.reverse(a);
+            a.pushInt64(1);
+            a.pushInt64(2);
+            a.pushInt64(3);
+            a.reverse();
             var r = 1;
-            if (Array.getInt64(a, 0) != 3) { r = 0; }
-            if (Array.getInt64(a, 1) != 2) { r = 0; }
-            if (Array.getInt64(a, 2) != 1) { r = 0; }
+            if (a.getInt64(0) != 3) { r = 0; }
+            if (a.getInt64(1) != 2) { r = 0; }
+            if (a.getInt64(2) != 1) { r = 0; }
             return r;
         }
     )";
@@ -218,8 +231,8 @@ TEST_F(HooArrayJitTest, ArrayReverseEmpty) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.reverse(a);
-            return Array.length(a);
+            a.reverse();
+            return a.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -231,9 +244,9 @@ TEST_F(HooArrayJitTest, ArrayReverseSingle) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 99);
-            Array.reverse(a);
-            return Array.getInt64(a, 0);
+            a.pushInt64(99);
+            a.reverse();
+            return a.getInt64(0);
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -245,11 +258,11 @@ TEST_F(HooArrayJitTest, ArrayShuffle) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            Array.pushInt64(a, 3);
-            Array.shuffle(a);
-            return Array.length(a);
+            a.pushInt64(1);
+            a.pushInt64(2);
+            a.pushInt64(3);
+            a.shuffle();
+            return a.length();
         }
     )";
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
@@ -261,18 +274,18 @@ TEST_F(HooArrayJitTest, ArraySortRange) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 5);
-            Array.pushInt64(a, 4);
-            Array.pushInt64(a, 3);
-            Array.pushInt64(a, 2);
-            Array.pushInt64(a, 1);
-            Array.sortRange(a, 1, 4);
+            a.pushInt64(5);
+            a.pushInt64(4);
+            a.pushInt64(3);
+            a.pushInt64(2);
+            a.pushInt64(1);
+            a.sortRange(1, 4);
             var r = 1;
-            if (Array.getInt64(a, 0) != 5) { r = 0; }
-            if (Array.getInt64(a, 1) != 2) { r = 0; }
-            if (Array.getInt64(a, 2) != 3) { r = 0; }
-            if (Array.getInt64(a, 3) != 4) { r = 0; }
-            if (Array.getInt64(a, 4) != 1) { r = 0; }
+            if (a.getInt64(0) != 5) { r = 0; }
+            if (a.getInt64(1) != 2) { r = 0; }
+            if (a.getInt64(2) != 3) { r = 0; }
+            if (a.getInt64(3) != 4) { r = 0; }
+            if (a.getInt64(4) != 1) { r = 0; }
             return r;
         }
     )";
@@ -285,12 +298,12 @@ TEST_F(HooArrayJitTest, ArrayBinarySearch) {
         import hoo;
         func :int64 test() {
             var a = new Array();
-            Array.pushInt64(a, 10);
-            Array.pushInt64(a, 20);
-            Array.pushInt64(a, 30);
-            Array.pushInt64(a, 40);
-            var idx1 = Array.binarySearch(a, 20);
-            var idx2 = Array.binarySearch(a, 25);
+            a.pushInt64(10);
+            a.pushInt64(20);
+            a.pushInt64(30);
+            a.pushInt64(40);
+            var idx1 = a.binarySearch(20);
+            var idx2 = a.binarySearch(25);
             if (idx1 == 1 && idx2 == -1) { return 1; }
             return 0;
         }

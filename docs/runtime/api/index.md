@@ -174,28 +174,27 @@ hoo runtime APIs follow one of three patterns:
 
 **Import:** `import hoo;` for Array, Map, Any. `import hoo.collections;` for Dict, List, Tensor.
 
-**Pattern:** Instance classes + free functions
+**Pattern:** Instance classes and instance methods
 
 ### Array
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Free | `array_new` | `array_new(capacity: int64) :array` |
-| Free | `array_new_int64` | `array_new_int64(capacity: int64, default_value: int64) :array` |
-| Free | `array_new_double` | `array_new_double(capacity: int64, default_value: double) :array` |
-| Free | `array_new_string` | `array_new_string(capacity: int64) :array` |
 | Instance | `arr.length` | `arr.length() :int64` |
-| Instance | `arr.push_int64` | `arr.push_int64(val: int64) :array` |
-| Instance | `arr.push_double` | `arr.push_double(val: double) :array` |
-| Instance | `arr.push_string` | `arr.push_string(val: string) :array` |
-| Instance | `arr.get_int64` | `arr.get_int64(index: int64) :int64` |
-| Instance | `arr.get_double` | `arr.get_double(index: int64) :double` |
-| Instance | `arr.get_string` | `arr.get_string(index: int64) :string` |
-| Instance | `arr.set_int64` | `arr.set_int64(index: int64, val: int64) :void` |
-| Instance | `arr.set_double` | `arr.set_double(index: int64, val: double) :void` |
-| Instance | `arr.set_string` | `arr.set_string(index: int64, val: string) :void` |
+| Instance | `arr.pushInt64` | `arr.pushInt64(val: int64) :array` |
+| Instance | `arr.pushDouble` | `arr.pushDouble(val: double) :array` |
+| Instance | `arr.pushString` | `arr.pushString(val: string) :array` |
+| Instance | `arr.pushBool` | `arr.pushBool(val: bool) :array` |
+| Instance | `arr.getInt64` | `arr.getInt64(index: int64) :int64` |
+| Instance | `arr.getDouble` | `arr.getDouble(index: int64) :double` |
+| Instance | `arr.getString` | `arr.getString(index: int64) :string` |
+| Instance | `arr.getBool` | `arr.getBool(index: int64) :bool` |
+| Instance | `arr.setInt64` | `arr.setInt64(index: int64, val: int64) :void` |
+| Instance | `arr.setDouble` | `arr.setDouble(index: int64, val: double) :void` |
+| Instance | `arr.setString` | `arr.setString(index: int64, val: string) :void` |
 | Instance | `arr.sort` | `arr.sort() :array` |
 | Instance | `arr.reverse` | `arr.reverse() :array` |
+| Instance | `arr.empty` | `arr.empty() :int64` |
 | Instance | `arr.clear` | `arr.clear() :void` |
 | Instance | `arr.retain` / `arr.release` / `arr.refcount` | Reference counting |
 

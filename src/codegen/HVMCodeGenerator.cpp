@@ -3302,6 +3302,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 return 0;
             }
 
+            if (isStaticCall && resolvedClass == "Array") {
+                addError("Array." + methodName + " is not supported as a static method; use an Array instance");
+                return 0;
+            }
+
             if (isStaticCall && resolvedClass == "DateTime") {
                 std::string suggest;
                 if (methodName == "now") suggest = "datetime_now()";
@@ -3415,12 +3420,24 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             // fail symbol resolution even though their type is known.
             if (resolvedClass == "Array") {
                 std::string symbol;
-                if (methodName == "length") symbol = "_F_array_length_v_p";
-                else if (methodName == "empty") symbol = "_F_array_empty_v_p";
-                else if (methodName == "clear") symbol = "_F_array_clear_v_p";
-                else if (methodName == "sort") symbol = "_F_array_sort_v_p";
-                else if (methodName == "reverse") symbol = "_F_array_reverse_v_p";
-                else if (methodName == "shuffle") symbol = "_F_array_shuffle_v_p";
+                if (methodName == "length") symbol = "_F_M_hoo_E_array_length_v_p";
+                else if (methodName == "empty") symbol = "_F_M_hoo_E_array_empty_v_p";
+                else if (methodName == "clear") symbol = "_F_M_hoo_E_array_clear_v_p";
+                else if (methodName == "sort") symbol = "_F_M_hoo_E_array_sort_v_p";
+                else if (methodName == "reverse") symbol = "_F_M_hoo_E_array_reverse_v_p";
+                else if (methodName == "shuffle") symbol = "_F_M_hoo_E_array_shuffle_v_p";
+                else if (methodName == "sortRange") symbol = "_F_M_hoo_E_array_sortRange_v_p_p_p";
+                else if (methodName == "binarySearch") symbol = "_F_M_hoo_E_array_binarySearch_v_p_p";
+                else if (methodName == "pushInt64") symbol = "_F_M_hoo_E_array_pushInt64_v_p_p";
+                else if (methodName == "getInt64") symbol = "_F_M_hoo_E_array_getInt64_v_p_p";
+                else if (methodName == "pushDouble") symbol = "_F_M_hoo_E_array_pushDouble_v_p_p";
+                else if (methodName == "getDouble") symbol = "_F_M_hoo_E_array_getDouble_v_p_p";
+                else if (methodName == "pushString") symbol = "_F_M_hoo_E_array_pushString_v_p_p";
+                else if (methodName == "getString") symbol = "_F_M_hoo_E_array_getString_v_p_p";
+                else if (methodName == "pushBool") symbol = "_F_M_hoo_E_array_pushBool_v_p_p";
+                else if (methodName == "getBool") symbol = "_F_M_hoo_E_array_getBool_v_p_p";
+                else if (methodName == "pushObject") symbol = "_F_M_hoo_E_array_pushObject_v_p_p";
+                else if (methodName == "getObject") symbol = "_F_M_hoo_E_array_getObject_v_p_p";
                 if (!symbol.empty()) {
                     emitCall(Opcode::CALL, symbol);
                     uint8_t dest = allocateRegister();

@@ -4682,6 +4682,8 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_array_getString_v_p_p", reinterpret_cast<void*>(&jit_array_get_string)},
         {"_F_M_hoo_E_array_pushBool_v_p_p", reinterpret_cast<void*>(&jit_array_push_bool)},
         {"_F_M_hoo_E_array_getBool_v_p_p", reinterpret_cast<void*>(&jit_array_get_bool)},
+        {"_F_M_hoo_E_array_pushObject_v_p_p", reinterpret_cast<void*>(&jit_array_push_object)},
+        {"_F_M_hoo_E_array_getObject_v_p_p", reinterpret_cast<void*>(&jit_array_get_object)},
         // Buffer hoo-module-qualified symbols (codegen redirects buffer_* to hoo module)
         {"_F_M_hoo_E_buffer_new_v", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
         {"_F_M_hoo_E_buffer_fromBytes_p_p_p", reinterpret_cast<void*>(&jit_hoo_buffer_from_bytes)},

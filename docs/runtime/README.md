@@ -2,7 +2,7 @@
 
 This directory contains the normative documentation for the hoo Runtime Library (`hoort`). The runtime provides the high-level services and intrinsic functions necessary to execute hoo applications, acting as a bridge between the physical HVM RISC core and the host system.
 
-> **Note on syntax**: Runtime object constructors use the same `new Class(...)` convention as user-defined classes (for example, `new Character(cp)`, `new Array()`, `new Map(1, 0)`). Instance methods are called on the variable (`s.length()`, `ch.codepoint()`, `arr.push(val)`), while singleton utility functions remain class-qualified (`Math.abs(x)`). JSON is the exception: its API is free-function only (`json_serialize_hashmap(m)`, `json_serialize_anyarray(values)`, `json_deserialize_hashmap(s)`, `json_deserialize_anyarray(s)`, `json_minify(s)`, `json_beautify(s)`) and does not expose a `Json` class or `ptr` JSON handles.
+> **Note on syntax**: Runtime object constructors use the same `new Class(...)` convention as user-defined classes (for example, `new Character(cp)`, `new Array()`, `new Map(1, 0)`). Array operations are instance-only: use `arr.pushInt64(value)`, `arr.getString(index)`, and `arr.length()`, not `Array.pushInt64(arr, value)` or other `Array.method(array, ...)` forms. Other instance methods are called on the variable (`s.length()`, `ch.codepoint()`), while singleton utility functions remain class-qualified (`Math.abs(x)`). JSON is the exception: its API is free-function only (`json_serialize_hashmap(m)`, `json_serialize_anyarray(values)`, `json_deserialize_hashmap(s)`, `json_deserialize_anyarray(s)`, `json_minify(s)`, `json_beautify(s)`) and does not expose a `Json` class or `ptr` JSON handles.
 
 ## Core Philosophy: The Opaque Handle Model
 

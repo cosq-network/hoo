@@ -63,8 +63,8 @@ TEST_F(HooProcessJitTest, SpawnAndWait) {
         import hoo.process;
         func :int64 test() {
             var args = new Array();
-            Array.pushString(args, "/c");
-            Array.pushString(args, "echo hi");
+            args.pushString("/c");
+            args.pushString("echo hi");
             var pid = process_spawn("cmd.exe", args);
             if (pid <= 0) {
                 return -1;
@@ -78,7 +78,7 @@ TEST_F(HooProcessJitTest, SpawnAndWait) {
         import hoo.process;
         func :int64 test() {
             var args = new Array();
-            Array.pushString(args, "hi");
+            args.pushString("hi");
             var pid = process_spawn("echo", args);
             if (pid <= 0) {
                 return -1;

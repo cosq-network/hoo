@@ -36,63 +36,14 @@ import hoo;
 
 None.
 
-### Free Functions
+### Construction
 
-#### array_new(capacity: int64) :array
+Arrays are created with the class constructor. Array operations are instance
+methods; there are no source-level `Array.method(array, ...)` static helpers.
 
-Creates a new empty Array with the given initial capacity.
-
-**Parameters:**
-
-| Parameter  | Type    | Description                     |
-|------------|---------|----------------------------------|
-| `capacity` | `int64` | Initial capacity. |
-
-**Returns:** `array` — A new Array handle.
-
----
-
-#### array_new_int64(capacity: int64, default_value: int64) :array
-
-Creates a new Array pre-filled with int64 values.
-
-**Parameters:**
-
-| Parameter      | Type    | Description                         |
-|----------------|---------|--------------------------------------|
-| `capacity`     | `int64` | Initial capacity. |
-| `default_value`| `int64` | Default element value. |
-
-**Returns:** `array`
-
----
-
-#### array_new_double(capacity: int64, default_value: double) :array
-
-Creates a new Array pre-filled with double values.
-
-**Parameters:**
-
-| Parameter      | Type    | Description                           |
-|----------------|---------|----------------------------------------|
-| `capacity`     | `int64` | Initial capacity. |
-| `default_value`| `double`| Default element value. |
-
-**Returns:** `array`
-
----
-
-#### array_new_string(capacity: int64) :array
-
-Creates a new Array for storing strings.
-
-**Parameters:**
-
-| Parameter  | Type    | Description                     |
-|------------|---------|----------------------------------|
-| `capacity` | `int64` | Initial capacity. |
-
-**Returns:** `array`
+```hoo
+var arr = new Array();
+```
 
 ### Public Instance Functions
 
@@ -117,26 +68,25 @@ arr.length(): int64
 > - `string` (UTF‑8)
 > - `character` (Unicode code point)
 >
-> **Homogeneity rule** – The element type is fixed on the first `push_*` or by using a type‑specific constructor (`array_new_int64`, `array_new_string`, …). All subsequent operations must use the same type; mismatched pushes raise a runtime type‑mismatch error.
+> **Homogeneity rule** – The element type is fixed on the first typed instance push (`pushInt64`, `pushString`, …). All subsequent operations must use the same type; mismatched pushes raise a runtime type-mismatch error.
 >
 > **Syntax flavors**
-> - **Typed constructor** – `array_new_int64(capacity)` creates an `Array` of `int64`.
-> - **Generic constructor** – `array_new(capacity)` creates an empty array; the type is inferred from the first push.
+> - **Constructor** – `new Array()` creates an empty array; the type is inferred from the first typed instance push.
 > - **Literal** – `[1, 2, 3]` or `["a","b"]` creates a homogeneous array with the inferred type.
 >
 > **Validations**
 > - Compile‑time: mixed‑type literals are rejected.
-> - Runtime: `push_*` with a mismatched type aborts with a type‑mismatch error.
-> - Index bounds are checked on `get_*`, `set_*`, `clear`, etc.
+> - Runtime: a typed instance push with a mismatched type aborts with a type-mismatch error.
+> - Index bounds are checked on typed getters, setters, and other operations.
 >
 >---
 
-#### push_int64
+#### pushInt64
 
 Appends an int64 element to the end of the array and returns the array itself for chaining.
 
 ```hoo
-arr.push_int64(val: int64): array
+arr.pushInt64(val: int64): array
 ```
 
 **Parameters:**
@@ -151,12 +101,12 @@ arr.push_int64(val: int64): array
 
 ---
 
-#### push_double
+#### pushDouble
 
 Appends a double element to the end of the array and returns the array itself for chaining.
 
 ```hoo
-arr.push_double(val: double): array
+arr.pushDouble(val: double): array
 ```
 
 **Parameters:**
@@ -171,12 +121,12 @@ arr.push_double(val: double): array
 
 ---
 
-#### push_string
+#### pushString
 
 Appends a string element to the end of the array and returns the array itself for chaining.
 
 ```hoo
-arr.push_string(val: string): array
+arr.pushString(val: string): array
 ```
 
 **Parameters:**
@@ -191,12 +141,12 @@ arr.push_string(val: string): array
 
 ---
 
-#### get_int64
+#### getInt64
 
 Retrieves the int64 element at the specified index.
 
 ```hoo
-arr.get_int64(index: int64): int64
+arr.getInt64(index: int64): int64
 ```
 
 **Parameters:**
@@ -211,12 +161,12 @@ arr.get_int64(index: int64): int64
 
 ---
 
-#### get_double
+#### getDouble
 
 Retrieves the double element at the specified index.
 
 ```hoo
-arr.get_double(index: int64): double
+arr.getDouble(index: int64): double
 ```
 
 **Parameters:**
@@ -231,12 +181,12 @@ arr.get_double(index: int64): double
 
 ---
 
-#### get_string
+#### getString
 
 Retrieves the string element at the specified index.
 
 ```hoo
-arr.get_string(index: int64): string
+arr.getString(index: int64): string
 ```
 
 **Parameters:**
@@ -251,12 +201,12 @@ arr.get_string(index: int64): string
 
 ---
 
-#### set_int64
+#### setInt64
 
 Sets the int64 element at the specified index.
 
 ```hoo
-arr.set_int64(index: int64, val: int64)
+arr.setInt64(index: int64, val: int64)
 ```
 
 **Parameters:**
@@ -272,12 +222,12 @@ arr.set_int64(index: int64, val: int64)
 
 ---
 
-#### set_double
+#### setDouble
 
 Sets the double element at the specified index.
 
 ```hoo
-arr.set_double(index: int64, val: double)
+arr.setDouble(index: int64, val: double)
 ```
 
 **Parameters:**
@@ -293,12 +243,12 @@ arr.set_double(index: int64, val: double)
 
 ---
 
-#### set_string
+#### setString
 
 Sets the string element at the specified index.
 
 ```hoo
-arr.set_string(index: int64, val: string)
+arr.setString(index: int64, val: string)
 ```
 
 **Parameters:**
@@ -365,9 +315,9 @@ arr.reverse(): array
 **Example:**
 ```hoo
 var a = new Array();
-Array.pushInt64(a, 1);
-Array.pushInt64(a, 2);
-Array.pushInt64(a, 3);
+a.pushInt64(1);
+a.pushInt64(2);
+a.pushInt64(3);
 a.reverse();  // a is now [3, 2, 1]
 ```
 
@@ -379,25 +329,27 @@ a.reverse();  // a is now [3, 2, 1]
 import hoo;
 
 // int64 array example
-arr = array_new_int64(0);
-arr = arr.push_int64(10).push_int64(20).push_int64(30);
+arr = new Array();
+arr.pushInt64(10);
+arr.pushInt64(20);
+arr.pushInt64(30);
 println("len=" + arr.length());
-println("elem[1]=" + arr.get_int64(1));
+println("elem[1]=" + arr.getInt64(1));
 
-// double array using generic constructor and first push type inference
-arr2 = array_new(0);
-arr2 = arr2.push_double(1.5);
-arr2 = arr2.push_double(2.5);
+// double array using the first push to infer its element type
+arr2 = new Array();
+arr2.pushDouble(1.5);
+arr2.pushDouble(2.5);
 for (i in arr2) {
     println(i);
 }
 
 // string array literal
 strArr = ["foo", "bar", "baz"];
-strArr = strArr.push_string("qux"); // type already inferred as string
+strArr = strArr.pushString("qux"); // type already inferred as string
 
 // error handling: mismatched push (runtime abort) – shown as comment
-// strArr.push_int64(123); // ❌ type‑mismatch error
+// strArr.pushInt64(123); // ❌ type‑mismatch error
 ```
 ---
 
@@ -1343,11 +1295,11 @@ import hoo.collections;
 
 func :int64 main() {
     // Array example
-    var numbers = array_new(0);
-    numbers.push_int64(10);
-    numbers.push_int64(20);
-    numbers.push_int64(30);
-    var first = numbers.get_int64(0);
+    var numbers = new Array();
+    numbers.pushInt64(10);
+    numbers.pushInt64(20);
+    numbers.pushInt64(30);
+    var first = numbers.getInt64(0);
 
     // Map example
     var config = map_new();

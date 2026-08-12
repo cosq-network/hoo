@@ -136,9 +136,9 @@ TEST_F(CompositeTypesCLIIntegrationTest, ArrayPushGetInt64) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 42);
-            Array.pushInt64(a, 100);
-            return Array.getInt64(a, 0) + Array.getInt64(a, 1);
+            a.pushInt64(42);
+            a.pushInt64(100);
+            return a.getInt64(0) + a.getInt64(1);
         }
     )", "142");
 }
@@ -149,10 +149,10 @@ TEST_F(CompositeTypesCLIIntegrationTest, ArrayPushGetString) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushString(a, "hello");
-            Array.pushString(a, "world");
-            var s1 = Array.getString(a, 0);
-            var s2 = Array.getString(a, 1);
+            a.pushString("hello");
+            a.pushString("world");
+            var s1: string = a.getString(0);
+            var s2: string = a.getString(1);
             return s1.length() + s2.length();
         }
     )", "10");
@@ -164,14 +164,26 @@ TEST_F(CompositeTypesCLIIntegrationTest, ArrayLengthClearEmpty) {
 
         func :int64 main() {
             var a = new Array();
-            Array.pushInt64(a, 1);
-            Array.pushInt64(a, 2);
-            var len = Array.length(a);
-            Array.clear(a);
-            var empty = Array.empty(a);
+            a.pushInt64(1);
+            a.pushInt64(2);
+            var len = a.length();
+            a.clear();
+            var empty = a.empty();
             return len * 10 + empty;
         }
     )", "21");
+}
+
+TEST_F(CompositeTypesCLIIntegrationTest, ArrayStaticMethodsAreRejected) {
+    expectCompileFailure(R"(
+        import hoo;
+
+        func :int64 main() {
+            var a = new Array();
+            Array.pushInt64(a, 42);
+            return 0;
+        }
+    )", "Array.pushInt64 is not supported as a static method");
 }
 
 // ============================================================================

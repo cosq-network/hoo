@@ -11,6 +11,13 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- refactor(api): make Array operations instance-only
+  - Use `arr.pushInt64(value)`, `arr.getString(index)`, `arr.length()`, and
+    the other Array operations on an Array instance.
+  - Reject source-level static forms such as `Array.getString(arr, index)`.
+  - Update the Array API reference, runtime syntax notes, JIT documentation,
+    and examples.
+
 - feat(hvm): make LD.D.NZ null dereference catchable (ISSUE-047)
   - Route interpreter and JIT IR null-dereference through the
     `_F_hoo_exception_null_pointer_p` + `hooc_hvm_sys_throw_to_handler_state`
