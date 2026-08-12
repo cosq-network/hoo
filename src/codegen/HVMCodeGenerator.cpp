@@ -3385,7 +3385,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 } else if (methodName == "remove") {
                     emitCall(Opcode::CALL, "_F_hoo_hashmap_remove_i8_p_i8");
                 } else if (methodName == "release") {
-                    emitCall(Opcode::CALL, "_F_hoo_hashmap_release_v");
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_hashmap_release_v");
                 } else {
                     addError("Unsupported HashMap method '" + methodName + "'");
                 }
@@ -6501,11 +6501,12 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
                         emit(Opcode::LOGIC, OperandsR{1, 1, 2, 0}); // AND
                         freeRegister(maskReg);
                     } else if (origFieldType == 9) {
-                        // F8 promoted to FLOAT64: call f8 conversion
-                        emitCall(Opcode::CALL, "_F_M_hoo_E_F8_fromDouble_d_d");
+                        // F8 values are stored as float64 bits in registers and
+                        // fields, so the deserialized double needs no conversion.
                     } else if (origFieldType == 113) {
-                        // BUFFER promoted to STRING: call base64 decode
-                        emitCall(Opcode::CALL, "_F_M_hoo_E_Buffer_fromBase64_p_p");
+                        // Buffer fields are JSON round-tripped as base64 and
+                        // decoded back into a Buffer handle by the JSON layer,
+                        // so the value is already in field-ready form.
                     }
                 }
 
