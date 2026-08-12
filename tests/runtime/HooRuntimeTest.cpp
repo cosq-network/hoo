@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include "runtime/lib/hoo_runtime.h"
 #include <atomic>
+#include <thread>
 
 namespace {
 std::atomic<int> g_highTypeDestructorCalls{0};
@@ -88,6 +89,28 @@ TEST_F(HooRuntimeTest, TLABThreadCacheResetIsSafe) {
     ASSERT_NE(obj3, nullptr);
     EXPECT_EQ(hoo_get_refcount(obj3), 1);
     hoo_release(obj3);
+}
+
+TEST_F(HooRuntimeTest, TLABCrossThreadReleaseIsSafe) {
+    void* obj = nullptr;
+    std::thread allocator([&] { obj = hoo_alloc(64, 305); });
+    allocator.join();
+    ASSERT_NE(obj, nullptr);
+    EXPECT_EQ(hoo_get_refcount(obj), 1);
+    hoo_release(obj);
+}
+
+TEST_F(HooRuntimeTest, TLABObjectSurvivesAllocatorThreadExit) {
+    void* obj = nullptr;
+    std::thread allocator([&] {
+        obj = hoo_alloc(64, 306);
+        hoo_retain(obj);
+    });
+    allocator.join();
+    ASSERT_NE(obj, nullptr);
+    EXPECT_EQ(hoo_get_refcount(obj), 2);
+    hoo_release(obj);
+    hoo_release(obj);
 }
 
 TEST_F(HooRuntimeTest, DestructorRegistrySupportsTypeIdsBeyondLegacyLimit) {

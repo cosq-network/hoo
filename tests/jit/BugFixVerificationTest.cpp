@@ -5,7 +5,9 @@
 
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
+#include "runtime/lib/hoo_runtime.h"
 #include "runtime/lib/hoo_string.h"
+#include "runtime/lib/hoo_generic_array.h"
 
 using namespace hooc;
 
@@ -474,4 +476,84 @@ TEST_F(BugFixVerificationTest, JitMemory_MutualRecursion) {
     )";
     ASSERT_TRUE(loadCode(code)) << jit->getLastError();
     EXPECT_EQ(runEntry("_F_M_test_E_test_i8"), 1) << jit->getLastError();
+}
+
+// ============================================================================
+// ARC ownership of string/object array elements
+// ============================================================================
+
+TEST_F(BugFixVerificationTest, ArrayLiteralStringElementsOwned) {
+    std::string code = R"(
+        import hoo;
+        func :ptr test() {
+            var a = ["hello", "world"];
+            return a;
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    int64_t r = runEntry("_F_M_test_E_test_p");
+    ASSERT_GT(r, 0) << jit->getLastError();
+    HooArray a = (HooArray)r;
+    EXPECT_EQ(hoo_array_length(a), 2);
+    EXPECT_EQ(((int64_t*)a)[2], HOO_TYPE_STRING);
+    HooString s0 = nullptr, s1 = nullptr;
+    ASSERT_TRUE(hoo_array_get_object(a, 0, (void**)&s0));
+    ASSERT_TRUE(hoo_array_get_object(a, 1, (void**)&s1));
+    EXPECT_STREQ("hello", hoo_string_data(s0));
+    EXPECT_STREQ("world", hoo_string_data(s1));
+    EXPECT_EQ(hoo_get_refcount(s0), 1);
+    EXPECT_EQ(hoo_get_refcount(s1), 1);
+    while (hoo_get_refcount(a) > 0) {
+        hoo_array_release(a);
+    }
+    EXPECT_EQ(hoo_is_managed_object(s0), 0);
+    EXPECT_EQ(hoo_is_managed_object(s1), 0);
+}
+
+TEST_F(BugFixVerificationTest, MapStringKeysAreValidStrings) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var m: map<string, int64> = new Map(4, 1);
+            m.setStringInt64("aa", 1);
+            m.setStringInt64("bb", 2);
+            var total: int64 = 0;
+            for key in m {
+                total = total + key.length();
+            }
+            return total;
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_M_test_E_test_i8"), 4) << jit->getLastError();
+}
+
+TEST_F(BugFixVerificationTest, RegexSplitPartsAreValidStrings) {
+    std::string code = R"(
+        import hoo;
+        import hoo.regex;
+        func :ptr test() {
+            var parts = regex_split(",", "a,b,c");
+            return parts;
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    int64_t r = runEntry("_F_M_test_E_test_p");
+    ASSERT_GT(r, 0) << jit->getLastError();
+    HooArray a = (HooArray)r;
+    EXPECT_EQ(hoo_array_length(a), 3);
+    EXPECT_EQ(((int64_t*)a)[2], HOO_TYPE_STRING);
+    HooString s0 = nullptr, s1 = nullptr, s2 = nullptr;
+    ASSERT_TRUE(hoo_array_get_object(a, 0, (void**)&s0));
+    ASSERT_TRUE(hoo_array_get_object(a, 1, (void**)&s1));
+    ASSERT_TRUE(hoo_array_get_object(a, 2, (void**)&s2));
+    EXPECT_STREQ("a", hoo_string_data(s0));
+    EXPECT_STREQ("b", hoo_string_data(s1));
+    EXPECT_STREQ("c", hoo_string_data(s2));
+    while (hoo_get_refcount(a) > 0) {
+        hoo_array_release(a);
+    }
+    EXPECT_EQ(hoo_is_managed_object(s0), 0);
+    EXPECT_EQ(hoo_is_managed_object(s1), 0);
+    EXPECT_EQ(hoo_is_managed_object(s2), 0);
 }

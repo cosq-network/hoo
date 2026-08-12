@@ -2333,7 +2333,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         } else if (forInElemTypeId == 3 || forInElemTypeId == 8) {
             emitCall(Opcode::CALL, "_F_array_get_bool_v_p_p");
         } else if (forInElemTypeId == 101) {
-            emitCall(Opcode::CALL, "_F_array_get_string_v_p_p");
+            emitCall(Opcode::CALL, "_F_array_get_object_v_p_p");
         } else if (forInElemTypeId == 100 || forInElemTypeId == 109) {
             emitCall(Opcode::CALL, "_F_array_get_object_v_p_p");
         } else {
@@ -2641,6 +2641,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     emit(Opcode::MOV, OperandsR{3, elemReg, 0, 0});
                     emitCall(Opcode::CALL, "_F_hoo_anyarray_push_i8_p_i8_i8");
                     freeRegister(typeReg);
+                    if (isManagedTemporary(*elem)) {
+                        emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
+                        emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                    }
                     freeRegister(elemReg);
                 }
 
@@ -2650,6 +2654,24 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emitCall(Opcode::CALL, "_F_hoo_Array_new_p");
             uint8_t arrReg = allocateRegister();
             emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
+
+            uint32_t commonElemType = 0;
+            for (const auto& elem : elements) {
+                uint32_t t = getTypeId(nullptr, elem.get());
+                if (t == 100) { commonElemType = 100; break; }
+                if (commonElemType == 0) commonElemType = t;
+                else if (commonElemType != t) { commonElemType = 100; break; }
+            }
+            if (commonElemType >= 100 && commonElemType != 100 && commonElemType != 109) {
+                uint8_t offReg = emitConstant(16);
+                uint8_t typeReg = emitConstant(static_cast<int64_t>(commonElemType));
+                emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, offReg, 0, 0});
+                emit(Opcode::MOV, OperandsR{3, typeReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_object_set_field_v_p_i8_p");
+                freeRegister(offReg);
+                freeRegister(typeReg);
+            }
             
             for (const auto& elem : elements) {
                 uint8_t elemReg = visitExpression(*elem);
@@ -2680,6 +2702,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
                 
                 emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
+                if (isManagedTemporary(*elem)) {
+                    emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
+                    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                }
                 freeRegister(elemReg);
             }
             

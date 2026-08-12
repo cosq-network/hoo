@@ -8,6 +8,7 @@
 #include "runtime/lib/hoo_map.h"
 #include "runtime/lib/hoo_string.h"
 #include "runtime/lib/hoo_exception.h"
+#include "runtime/lib/hoo_runtime.h"
 
 // Helper: parse CSV into HooArray<HooMap> using the OOP API
 static HooArray parse_to_maps(const char* csv_str) {
@@ -22,9 +23,11 @@ static HooArray make_string_array(const char** strs, int64_t count) {
     HooArray arr = hoo_array_new();
     for (int64_t i = 0; i < count; i++) {
         HooString s = hoo_string_from_cstr(strs[i]);
+        hoo_string_retain(s);
         hoo_array_push_object(arr, s);
         hoo_string_release(s);
     }
+    if (arr && count > 0) ((int64_t*)arr)[2] = HOO_TYPE_STRING;
     return arr;
 }
 

@@ -61,6 +61,7 @@ typedef struct TLABBlock {
     struct TLABBlock* next;
     size_t used;
     size_t capacity;
+    _Atomic int64_t live_objects;
     unsigned char data[];
 } TLABBlock;
 
@@ -90,13 +91,6 @@ typedef struct {
     int64_t capacity;
     int64_t reserved; // Padding for 32-byte alignment
 } HooObjectHeader;
-
-typedef struct TLABObjNode {
-    void* obj;
-    struct TLABObjNode* next;
-} TLABObjNode;
-
-static _Thread_local TLABObjNode* g_tlab_objects = NULL;
 
 typedef struct {
     int64_t type_id;
@@ -174,11 +168,16 @@ typedef struct ManagedObjNode {
 
 #define HOO_MANAGED_MUTEX_COUNT 64
 static hoo_mutex_t g_managed_mutexes[HOO_MANAGED_MUTEX_COUNT];
-static pthread_once_t g_managed_mutexes_once = PTHREAD_ONCE_INIT;
+static _Atomic int g_managed_mutexes_ready = 0;
 
-static void managed_mutexes_init(void) {
-    for (int i = 0; i < HOO_MANAGED_MUTEX_COUNT; i++) {
-        pthread_mutex_init(&g_managed_mutexes[i], NULL);
+static void managed_mutexes_ensure_init(void) {
+    if (!atomic_load_explicit(&g_managed_mutexes_ready, memory_order_acquire)) {
+#ifndef _WIN32
+        for (int i = 0; i < HOO_MANAGED_MUTEX_COUNT; i++) {
+            pthread_mutex_init(&g_managed_mutexes[i], NULL);
+        }
+#endif
+        atomic_store_explicit(&g_managed_mutexes_ready, 1, memory_order_release);
     }
 }
 static ManagedObjNode* g_managed_hash[HOO_MANAGED_HASH_SIZE] = {NULL};
@@ -189,7 +188,7 @@ static inline uint32_t managed_hash(const void* obj) {
 }
 
 static void managed_register(void* obj) {
-    pthread_once(&g_managed_mutexes_once, managed_mutexes_init);
+    managed_mutexes_ensure_init();
     ManagedObjNode* node = (ManagedObjNode*)malloc(sizeof(ManagedObjNode));
     if (!node) {
         fprintf(stderr, "FATAL: Out of memory while tracking managed allocation\n");
@@ -205,7 +204,7 @@ static void managed_register(void* obj) {
 }
 
 static void managed_unregister(void* obj) {
-    pthread_once(&g_managed_mutexes_once, managed_mutexes_init);
+    managed_mutexes_ensure_init();
     uint32_t idx = managed_hash(obj);
     uint32_t lock_idx = idx % HOO_MANAGED_MUTEX_COUNT;
     hoo_mutex_lock(&g_managed_mutexes[lock_idx]);
@@ -230,7 +229,7 @@ static void managed_unregister(void* obj) {
 
 int64_t hoo_is_managed_object(const void* obj) {
     if (!obj) return 0;
-    pthread_once(&g_managed_mutexes_once, managed_mutexes_init);
+    managed_mutexes_ensure_init();
     uint32_t idx = managed_hash(obj);
     uint32_t lock_idx = idx % HOO_MANAGED_MUTEX_COUNT;
     hoo_mutex_lock(&g_managed_mutexes[lock_idx]);
@@ -267,6 +266,7 @@ static TLABBlock* tlab_alloc_block(size_t min_payload_size) {
     block->next = g_thread_tlab.head;
     block->used = 0;
     block->capacity = block_cap;
+    atomic_store_explicit(&block->live_objects, 0, memory_order_relaxed);
     g_thread_tlab.head = block;
     atomic_fetch_add_explicit(&tlab_stats.blocks_allocated, 1, memory_order_relaxed);
     return block;
@@ -276,7 +276,9 @@ static void tlab_reset_thread_cache_impl(void) {
     TLABBlock* it = g_thread_tlab.head;
     while (it) {
         TLABBlock* next = it->next;
-        free(it);
+        if (atomic_load_explicit(&it->live_objects, memory_order_acquire) == 0) {
+            free(it);
+        }
         it = next;
     }
     g_thread_tlab.head = NULL;
@@ -288,9 +290,10 @@ void* hoo_alloc(size_t size, int64_t type_id) {
     const size_t total_bytes = align_up(header_size + size, align);
 
     HooObjectHeader* header = NULL;
+    TLABBlock* block = NULL;
     bool used_tlab = false;
     if (size <= HOO_TLAB_MAX_OBJECT_SIZE) {
-        TLABBlock* block = g_thread_tlab.head;
+        block = g_thread_tlab.head;
         if (!block || (block->used + total_bytes) > block->capacity) {
             block = tlab_alloc_block(total_bytes);
         }
@@ -316,6 +319,7 @@ void* hoo_alloc(size_t size, int64_t type_id) {
     header->refcount = 1;
     header->type_id = type_id;
     header->capacity = (int64_t)size;
+    header->reserved = used_tlab ? (int64_t)(intptr_t)block : 0;
     memset((char*)header + header_size, 0, size);
 
     // Update statistics
@@ -326,14 +330,7 @@ void* hoo_alloc(size_t size, int64_t type_id) {
     // Return pointer to object data (skip header)
     void* obj = (char*)header + header_size;
     if (used_tlab) {
-        TLABObjNode* node = (TLABObjNode*)malloc(sizeof(TLABObjNode));
-        if (!node) {
-            fprintf(stderr, "FATAL: Out of memory while tracking TLAB allocation\n");
-            exit(1);
-        }
-        node->obj = obj;
-        node->next = g_tlab_objects;
-        g_tlab_objects = node;
+        atomic_fetch_add_explicit(&block->live_objects, 1, memory_order_relaxed);
     }
     managed_register(obj);
 
@@ -406,25 +403,10 @@ static void hoo_release_finalize(void* obj, HooObjectHeader* header) {
     memory_stats.total_deallocations++;
     memory_stats.current_live_objects--;
 
-    bool is_tlab_obj = false;
-    TLABObjNode* prev = NULL;
-    TLABObjNode* it = g_tlab_objects;
-    while (it) {
-        if (it->obj == obj) {
-            is_tlab_obj = true;
-            if (prev) {
-                prev->next = it->next;
-            } else {
-                g_tlab_objects = it->next;
-            }
-            free(it);
-            break;
-        }
-        prev = it;
-        it = it->next;
-    }
-
-    if (!is_tlab_obj) {
+    TLABBlock* owner = (TLABBlock*)(intptr_t)header->reserved;
+    if (owner) {
+        atomic_fetch_sub_explicit(&owner->live_objects, 1, memory_order_relaxed);
+    } else {
         free(header);
     }
 }
@@ -564,13 +546,5 @@ void hoo_reset_tlab_stats(void) {
 }
 
 void hoo_tlab_reset_thread_cache(void) {
-    TLABObjNode* it = g_tlab_objects;
-    while (it) {
-        TLABObjNode* next = it->next;
-        managed_unregister(it->obj);
-        free(it);
-        it = next;
-    }
-    g_tlab_objects = NULL;
     tlab_reset_thread_cache_impl();
 }

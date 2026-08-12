@@ -1120,9 +1120,13 @@ extern "C" {
     }
     uint64_t jit_array_push_object(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* arr = reinterpret_cast<void*>(state->regs[1]);
+        void* value = reinterpret_cast<void*>(state->regs[2]);
+        if (arr && value && hoo_is_managed_object(value)) {
+            hoo_retain(value);
+        }
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
-            hoo_array_push_object(reinterpret_cast<void*>(state->regs[1]),
-                                 reinterpret_cast<void*>(state->regs[2]))));
+            hoo_array_push_object(arr, value)));
     }
     uint64_t jit_tensor_new1(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -1426,8 +1430,12 @@ extern "C" {
                 int64_t written = hoo_map_get_keys(map, keys.data(), count);
                 for (int64_t i = 0; i < written; ++i) {
                     HooString key = hoo_string_from_cstr(keys[static_cast<size_t>(i)]);
+                    hoo_retain(key);
                     arr = hoo_array_push_object(arr, key);
                     hoo_string_release(key);
+                }
+                if (arr && written > 0) {
+                    ((int64_t*)arr)[2] = HOO_TYPE_STRING;
                 }
                 break;
             }
@@ -2265,9 +2273,14 @@ extern "C" {
         if (parts) {
             for (int64_t i = 0; i < count; ++i) {
                 void* s = hoo_string_from_cstr(parts[i]);
+                hoo_retain(s);
                 arr = hoo_array_push_object(arr, s);
+                hoo_string_release(s);
             }
             hoo_regex_free_matches(parts, count);
+        }
+        if (arr && count > 0) {
+            ((int64_t*)arr)[2] = HOO_TYPE_STRING;
         }
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
     }
@@ -2330,9 +2343,14 @@ extern "C" {
             if (parts) {
                 for (int64_t i = 0; i < count; ++i) {
                     void* s = hoo_string_from_cstr(parts[i]);
+                    hoo_retain(s);
                     arr = hoo_array_push_object(arr, s);
+                    hoo_string_release(s);
                 }
                 hoo_regex_free_matches(parts, count);
+            }
+            if (arr && count > 0) {
+                ((int64_t*)arr)[2] = HOO_TYPE_STRING;
             }
             hoo_regex_release(re);
         }
