@@ -3341,6 +3341,12 @@ extern "C" {
         void* args = hoo_args_new();
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(args));
     }
+    uint64_t jit_args_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        hoo_args_release(handle);
+        return 0;
+    }
     uint64_t jit_args_count(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* handle = reinterpret_cast<void*>(state->regs[1]);
@@ -3428,6 +3434,13 @@ extern "C" {
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
         const char* help = hoo_string_data(reinterpret_cast<void*>(state->regs[3]));
         hoo_args_add_positional(handle, name, help);
+        return 0;
+    }
+    uint64_t jit_args_set_required(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        hoo_args_set_required(handle, name, state->regs[3]);
         return 0;
     }
     uint64_t jit_args_parse(void* state_ptr) {
@@ -5073,6 +5086,7 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_compression_deflate_compress_slice_p_p", reinterpret_cast<void*>(&jit_compression_deflate_compress_slice)},
         // Args module (prefix-based instance methods)
         {"_F_M_hoo_E_args_new_v", reinterpret_cast<void*>(&jit_args_new)},
+        {"_F_M_hoo_E_args_release_v", reinterpret_cast<void*>(&jit_args_release)},
         {"_F_M_hoo_E_args_count_v", reinterpret_cast<void*>(&jit_args_count)},
         {"_F_M_hoo_E_args_count_p", reinterpret_cast<void*>(&jit_args_count)},
         {"_F_M_hoo_E_args_get_v_p", reinterpret_cast<void*>(&jit_args_get)},
@@ -5086,6 +5100,7 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_args_addFlag_v_p_p_p_p", reinterpret_cast<void*>(&jit_args_add_flag)},
         {"_F_M_hoo_E_args_addFloat_v_p_p_p_p_p", reinterpret_cast<void*>(&jit_args_add_float)},
         {"_F_M_hoo_E_args_addPositional_v_p_p", reinterpret_cast<void*>(&jit_args_add_positional)},
+        {"_F_M_hoo_E_args_setRequired_v_p_p", reinterpret_cast<void*>(&jit_args_set_required)},
         {"_F_M_hoo_E_args_parse_v", reinterpret_cast<void*>(&jit_args_parse)},
         {"_F_M_hoo_E_args_getString_v_p", reinterpret_cast<void*>(&jit_args_get_string)},
         {"_F_M_hoo_E_args_getInt_v_p", reinterpret_cast<void*>(&jit_args_get_int)},

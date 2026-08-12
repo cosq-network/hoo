@@ -12,6 +12,7 @@ extern "C" {
 void   hoo_args_init(int64_t argc, const char* const* argv);
 void   hoo_args_shutdown(void);
 void*  hoo_args_new(void);
+void   hoo_args_release(void* args);
 
 int64_t       hoo_args_count(void* args);
 const char*   hoo_args_get(void* args, int64_t index);
@@ -61,9 +62,10 @@ void hoo_args_add_float(void* args, const char* name,
                         const char* short_opt, const char* long_opt,
                         const char* help, double default_val);
 void hoo_args_add_positional(void* args, const char* name, const char* help);
+int64_t hoo_args_set_required(void* args, const char* name, int64_t required);
 
 // Parse against defined arguments. Returns 1 on success, 0 on failure
-// (e.g. --help flag or missing required argument).
+// (e.g. --help, missing values, invalid typed values, or missing required arguments).
 int64_t hoo_args_parse(void* args);
 
 // Access parsed values

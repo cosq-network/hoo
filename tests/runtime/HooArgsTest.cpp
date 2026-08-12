@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
+#include <string>
 #include "runtime/lib/args/hoo_args.h"
 
 class HooArgsTest : public ::testing::Test {
@@ -351,4 +352,85 @@ TEST_F(HooArgsTest, ParseWithNoDefinitions) {
     void* h = hoo_args_new();
     ASSERT_NE(h, nullptr);
     EXPECT_EQ(hoo_args_parse(h), 1);
+}
+
+TEST_F(HooArgsTest, InvalidIntegerValueFailsParsing) {
+    const char* argv[] = {"program", "--count=not-a-number"};
+    hoo_args_init(2, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_add_int(h, "count", "-c", "--count", "Count", 7);
+    EXPECT_EQ(hoo_args_parse(h), 0);
+}
+
+TEST_F(HooArgsTest, NegativeNumericValuesAreAccepted) {
+    const char* argv[] = {"program", "--count", "-5", "--threshold", "-0.25"};
+    hoo_args_init(5, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_add_int(h, "count", "-c", "--count", "Count", 0);
+    hoo_args_add_float(h, "threshold", "-t", "--threshold", "Threshold", 0.0);
+    ASSERT_EQ(hoo_args_parse(h), 1);
+    EXPECT_EQ(hoo_args_get_int(h, "count"), -5);
+    EXPECT_DOUBLE_EQ(hoo_args_get_float(h, "threshold"), -0.25);
+}
+
+TEST_F(HooArgsTest, MissingValueFailsParsing) {
+    const char* argv[] = {"program", "--count"};
+    hoo_args_init(2, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_add_int(h, "count", "-c", "--count", "Count", 7);
+    EXPECT_EQ(hoo_args_parse(h), 0);
+}
+
+TEST_F(HooArgsTest, RequiredArgumentIsEnforced) {
+    const char* argv[] = {"program"};
+    hoo_args_init(1, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_add_string(h, "input", "", "--input", "Input", "");
+    ASSERT_EQ(hoo_args_set_required(h, "input", 1), 1);
+    EXPECT_EQ(hoo_args_parse(h), 0);
+}
+
+TEST_F(HooArgsTest, HandleCanBeReleased) {
+    const char* argv[] = {"program"};
+    hoo_args_init(1, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_add_string(h, "name", "", "--name", "Name", "default");
+    hoo_args_release(h);
+}
+
+TEST_F(HooArgsTest, NullArgvIsSafe) {
+    hoo_args_init(1, nullptr);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    EXPECT_EQ(hoo_args_count(h), 0);
+    hoo_args_release(h);
+}
+
+TEST_F(HooArgsTest, HelpTextHandlesLongProgramName) {
+    std::string program(8192, 'p');
+    const char* argv[] = {program.c_str(), "input"};
+    hoo_args_init(2, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_add_positional(h, "input", "Input");
+    char* help = hoo_args_help_text(h);
+    ASSERT_NE(help, nullptr);
+    EXPECT_NE(strstr(help, "usage:"), nullptr);
+    free(help);
+    hoo_args_release(h);
+}
+
+TEST_F(HooArgsTest, HandleRetainsArgumentsAfterGlobalShutdown) {
+    const char* argv[] = {"program", "input.txt"};
+    hoo_args_init(2, argv);
+    void* h = hoo_args_new();
+    ASSERT_NE(h, nullptr);
+    hoo_args_shutdown();
+    EXPECT_STREQ(hoo_args_get(h, 0), "input.txt");
+    hoo_args_release(h);
 }

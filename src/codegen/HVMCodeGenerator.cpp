@@ -1435,7 +1435,7 @@ static bool isArcManagedTypeId(uint32_t typeId) {
     // or primitive values that cannot be passed to hoo_release.
     switch (typeId) {
         case 100: // Unknown - could be raw pointer, int64, etc.
-        case 110: // Args - uses calloc, no hoo_release
+        case 110: // Args - uses calloc and dedicated args_release cleanup
         case 111: // Compression - uses std::free
         case 120: // Regex - uses delete with custom refcounting
         case 121: // Mutex - uses delete
@@ -1466,9 +1466,10 @@ void HVMCodeGenerator::emitScopeCleanup(size_t from, size_t to) {
     for (size_t i = from; i > to; --i) {
         auto& scope = scopeStack_[i - 1];
         for (const auto& [name, local] : scope) {
-            if (local.arcManaged) {
+            if (local.arcManaged && !local.explicitlyReleased) {
                 emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(local.offset)});
-                emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+                emitCall(Opcode::CALL, local.cleanupSymbol.empty()
+                    ? "_F_hoo_release_v_p" : local.cleanupSymbol);
             }
         }
     }
@@ -1974,6 +1975,11 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             validateAssignmentNullSafety(declNullable, typeId, decl.getInitializer(), decl.getName());
         }
         int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId, declNullable);
+        if (typeId == 110 && decl.getInitializer()) {
+            auto& local = scopeStack_.back()[decl.getName()];
+            local.arcManaged = true;
+            local.cleanupSymbol = "_F_M_hoo_E_args_release_v";
+        }
         if (decl.getInitializer()) {
             // Set decimal context from declared type if applicable
             int32_t savedPrec = currentDecimalPrecision_;
@@ -3169,6 +3175,15 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             // Detect static calls on built-in class names (DateTime.now())
             std::string objName = resolveObjectName(*memberAccess);
+            if (methodName == "release" && !objName.empty()) {
+                for (auto scopeIt = scopeStack_.rbegin(); scopeIt != scopeStack_.rend(); ++scopeIt) {
+                    auto localIt = scopeIt->find(objName);
+                    if (localIt != scopeIt->end() && localIt->second.typeId == 110) {
+                        localIt->second.explicitlyReleased = true;
+                        break;
+                    }
+                }
+            }
             if (!objName.empty() && isBuiltinClassName(objName) && getLocalTypeId(objName) == 0 && !classes_.count(objName)) {
                 resolvedClass = objName;
                 isStaticCall = true;
@@ -4561,7 +4576,8 @@ int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId,
     if (!arcManaged && isNullable) {
         arcManaged = isHooReleaseManagedClassName(className);
     }
-    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId, keyTypeId, isNullable, arcManaged};
+    scopeStack_.back()[name] = {currentStackOffset_, typeId, className, elementTypeId, keyTypeId,
+                                isNullable, arcManaged, "", false};
     return currentStackOffset_;
 }
 

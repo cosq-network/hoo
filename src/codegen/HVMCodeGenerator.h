@@ -91,6 +91,8 @@ private:
         uint32_t keyTypeId = 0; // Key type for Dict variables
         bool isNullable = false; // Declared as T? (may hold null)
         bool arcManaged = false; // Value participates in hoo_release scope cleanup
+        std::string cleanupSymbol; // Dedicated cleanup for non-ARC managed locals
+        bool explicitlyReleased = false;
     };
     struct ExpressionTypeInfo {
         uint32_t typeId = 100;

@@ -476,16 +476,17 @@ and custom subtypes.
 
 ---
 
-## [Args](args.md) — Free Functions
+## [Args](args.md) — Class and Free Functions
 
 **Import:** `import hoo.args;`
 
-**Pattern:** Free functions
+**Pattern:** `Args` instance methods plus free functions for raw positional access
 
 | API | Signature |
 |-----|-----------|
 | `args_get` | `args_get(index: int64) :string` |
 | `args_count` | `args_count() :int64` |
+| `parser.has` | `parser.has(key: string) :int64` — 1 when the named argument was explicitly supplied, otherwise 0 |
 
 ---
 

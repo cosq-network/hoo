@@ -59,7 +59,7 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 17. **[Process](process.md)**
     * `hoo.process` — spawn (fork/exec), wait, kill, self-pid, and command capture via POSIX APIs and `popen`.
 18. **[Args](args.md)**
-    * `hoo.args` — CLI argument parser for `--key=value`, `--flag`, `-k`, and positional args. Returns a struct result (`HooArgsResult`).
+    * `hoo.args` — CLI argument parsing through the `Args` class and raw `args_get`/`args_count` helpers for `--key=value`, `--flag`, `-k`, and positional args.
 
 ### Data Interchange
 19. **[JSON](json.md)**

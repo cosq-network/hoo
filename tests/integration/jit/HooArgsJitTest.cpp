@@ -393,3 +393,30 @@ TEST_F(HooArgsJitTest, MultipleOptionalArgsAllDefaults) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 12);
 }
+
+TEST_F(HooArgsJitTest, RequiredArgumentIsEnforced) {
+    const std::string source = R"(
+        import hoo.args;
+        func :int64 test() {
+            var args = new Args();
+            args.addString("input", "", "--input", "", "");
+            args.setRequired("input", true);
+            return args.parse();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
+}
+
+TEST_F(HooArgsJitTest, ReleaseHandle) {
+    const std::string source = R"(
+        import hoo.args;
+        func :int64 test() {
+            var args = new Args();
+            args.release();
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}

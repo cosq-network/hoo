@@ -3,6 +3,9 @@
 #include <cstring>
 #include <cstdio>
 #include <cmath>
+#include <cerrno>
+#include <climits>
+#include <mutex>
 
 extern "C" {
 
@@ -12,15 +15,18 @@ struct HooArg {
     const char* key;
     const char* value;
     int64_t index;
+    int has_value;
 };
 
 struct HooArgsResult {
     HooArg* args;
     int64_t count;
     char* program_name;
+    int64_t refs;
 };
 
 static HooArgsResult* g_result = NULL;
+static std::mutex g_result_mutex;
 
 // ── Argparse-style high-level API types ────────────────────────────────────
 
@@ -43,6 +49,7 @@ struct ArgDef {
 };
 
 struct HooArgsHandle {
+    HooArgsResult* result;
     ArgDef* defs;
     int64_t def_count;
     int64_t def_capacity;
@@ -65,8 +72,8 @@ static HooArgsResult args_parse(int64_t argc, const char* const* argv) {
     int64_t positional_index = 0;
     int positional_mode = 0;
 
-    for (int64_t i = 1; i < argc; i++) {
-        const char* token = argv[i];
+    for (int64_t i = 1; i < argc && argv; i++) {
+        const char* token = argv[i] ? argv[i] : "";
 
         if (!positional_mode && strcmp(token, "--") == 0) {
             positional_mode = 1;
@@ -76,6 +83,7 @@ static HooArgsResult args_parse(int64_t argc, const char* const* argv) {
         const char* key = NULL;
         const char* value = NULL;
         int64_t idx = -1;
+        int has_value = 0;
 
         if (!positional_mode && token[0] == '-' && token[1] == '-') {
             const char* eq = strchr(token + 2, '=');
@@ -86,11 +94,16 @@ static HooArgsResult args_parse(int64_t argc, const char* const* argv) {
                 k[key_len] = '\0';
                 key = k;
                 value = strdup(eq + 1);
+                has_value = 1;
             } else {
                 key = strdup(token + 2);
-                if (i + 1 < argc && argv[i + 1][0] != '-') {
+                if (i + 1 < argc && argv[i + 1] &&
+                    (argv[i + 1][0] != '-' ||
+                     (argv[i + 1][1] >= '0' && argv[i + 1][1] <= '9') ||
+                     argv[i + 1][1] == '.')) {
                     i++;
                     value = strdup(argv[i]);
+                    has_value = 1;
                 } else {
                     value = strdup("");
                 }
@@ -100,9 +113,13 @@ static HooArgsResult args_parse(int64_t argc, const char* const* argv) {
             k[0] = token[1];
             k[1] = '\0';
             key = k;
-            if (i + 1 < argc && argv[i + 1][0] != '-') {
+            if (i + 1 < argc && argv[i + 1] &&
+                (argv[i + 1][0] != '-' ||
+                 (argv[i + 1][1] >= '0' && argv[i + 1][1] <= '9') ||
+                 argv[i + 1][1] == '.')) {
                 i++;
                 value = strdup(argv[i]);
+                has_value = 1;
             } else {
                 value = strdup("");
             }
@@ -110,6 +127,7 @@ static HooArgsResult args_parse(int64_t argc, const char* const* argv) {
             key = strdup("");
             value = strdup(token);
             idx = positional_index++;
+            has_value = 1;
         }
 
         if (result.count >= capacity) {
@@ -121,84 +139,122 @@ static HooArgsResult args_parse(int64_t argc, const char* const* argv) {
         arg->key = key;
         arg->value = value;
         arg->index = idx;
+        arg->has_value = has_value;
     }
 
     return result;
 }
 
+static void free_result(HooArgsResult* result) {
+    if (!result) return;
+    for (int64_t i = 0; i < result->count; i++) {
+        free((void*)result->args[i].key);
+        free((void*)result->args[i].value);
+    }
+    free(result->args);
+    free(result->program_name);
+    free(result);
+}
+
+static void release_result_locked(HooArgsResult* result) {
+    if (!result) return;
+    if (--result->refs == 0) free_result(result);
+}
+
+static void release_result(HooArgsResult* result) {
+    std::lock_guard<std::mutex> lock(g_result_mutex);
+    release_result_locked(result);
+}
+
+static HooArgsResult* result_for_handle(void* args) {
+    if (args) return ((HooArgsHandle*)args)->result;
+    return g_result;
+}
+
 // ── Existing public API ────────────────────────────────────────────────────
 
 void hoo_args_init(int64_t argc, const char* const* argv) {
-    if (g_result) {
-        hoo_args_shutdown();
-    }
-    g_result = (HooArgsResult*)malloc(sizeof(HooArgsResult));
-    *g_result = args_parse(argc, argv);
+    HooArgsResult* result = (HooArgsResult*)malloc(sizeof(HooArgsResult));
+    if (!result) return;
+    *result = args_parse(argc, argv);
+    result->refs = 1; // global owner
+
+    std::lock_guard<std::mutex> lock(g_result_mutex);
+    HooArgsResult* old_result = g_result;
+    g_result = result;
+    release_result_locked(old_result);
 }
 
 void hoo_args_shutdown(void) {
-    if (g_result) {
-        for (int64_t i = 0; i < g_result->count; i++) {
-            free((void*)g_result->args[i].key);
-            free((void*)g_result->args[i].value);
-        }
-        free(g_result->args);
-        free(g_result->program_name);
-        free(g_result);
-        g_result = NULL;
-    }
+    std::lock_guard<std::mutex> lock(g_result_mutex);
+    HooArgsResult* result = g_result;
+    g_result = NULL;
+    release_result_locked(result);
 }
 
 void* hoo_args_new(void) {
-    if (!g_result) return NULL;
     HooArgsHandle* handle = (HooArgsHandle*)calloc(1, sizeof(HooArgsHandle));
+    if (!handle) return NULL;
+    std::lock_guard<std::mutex> lock(g_result_mutex);
+    if (g_result) {
+        handle->result = g_result;
+        handle->result->refs++;
+    }
     return handle;
 }
 
+void hoo_args_release(void* args) {
+    if (!args) return;
+    HooArgsHandle* handle = (HooArgsHandle*)args;
+    hoo_args_clear(args);
+    release_result(handle->result);
+    free(args);
+}
+
 int64_t hoo_args_count(void* args) {
-    (void)args;
-    if (!g_result) return 0;
+    HooArgsResult* result = result_for_handle(args);
+    if (!result) return 0;
     int64_t count = 0;
-    for (int64_t i = 0; i < g_result->count; i++) {
-        if (g_result->args[i].index >= 0) count++;
+    for (int64_t i = 0; i < result->count; i++) {
+        if (result->args[i].index >= 0) count++;
     }
     return count;
 }
 
 const char* hoo_args_get(void* args, int64_t index) {
-    (void)args;
-    if (!g_result) return NULL;
-    for (int64_t i = 0; i < g_result->count; i++) {
-        if (g_result->args[i].index == index)
-            return g_result->args[i].value;
+    HooArgsResult* result = result_for_handle(args);
+    if (!result) return NULL;
+    for (int64_t i = 0; i < result->count; i++) {
+        if (result->args[i].index == index)
+            return result->args[i].value;
     }
     return NULL;
 }
 
 int64_t hoo_args_has(void* args, const char* key) {
-    (void)args;
-    if (!g_result) return 0;
-    for (int64_t i = 0; i < g_result->count; i++) {
-        if (g_result->args[i].key && strcmp(g_result->args[i].key, key) == 0)
+    HooArgsResult* result = result_for_handle(args);
+    if (!result || !key) return 0;
+    for (int64_t i = 0; i < result->count; i++) {
+        if (result->args[i].key && strcmp(result->args[i].key, key) == 0)
             return 1;
     }
     return 0;
 }
 
 const char* hoo_args_value(void* args, const char* key) {
-    (void)args;
-    if (!g_result) return NULL;
-    for (int64_t i = 0; i < g_result->count; i++) {
-        if (g_result->args[i].key && strcmp(g_result->args[i].key, key) == 0)
-            return g_result->args[i].value;
+    HooArgsResult* result = result_for_handle(args);
+    if (!result || !key) return NULL;
+    for (int64_t i = 0; i < result->count; i++) {
+        if (result->args[i].key && strcmp(result->args[i].key, key) == 0)
+            return result->args[i].value;
     }
     return NULL;
 }
 
 const char* hoo_args_program_name(void* args) {
-    (void)args;
-    if (!g_result) return "";
-    return g_result->program_name ? g_result->program_name : "";
+    HooArgsResult* result = result_for_handle(args);
+    if (!result) return "";
+    return result->program_name ? result->program_name : "";
 }
 
 // ── Internal: argparse helpers ─────────────────────────────────────────────
@@ -213,20 +269,33 @@ static void ensure_capacity(HooArgsHandle* handle) {
     }
 }
 
-static int64_t parse_int64(const char* s) {
-    if (!s || !*s) return 0;
+static int parse_int64(const char* s, int64_t* out) {
+    if (!s || !*s || !out) return 0;
+    errno = 0;
     char* end = NULL;
     int64_t val = strtoll(s, &end, 10);
-    if (end && *end != '\0') return 0;
-    return val;
+    if (errno == ERANGE || !end || *end != '\0') return 0;
+    *out = val;
+    return 1;
 }
 
-static double parse_double(const char* s) {
-    if (!s || !*s) return 0.0;
+static int parse_double(const char* s, double* out) {
+    if (!s || !*s || !out) return 0;
+    errno = 0;
     char* end = NULL;
     double val = strtod(s, &end);
-    if (end && *end != '\0') return 0.0;
-    return val;
+    if (errno == ERANGE || !end || *end != '\0' || !std::isfinite(val)) return 0;
+    *out = val;
+    return 1;
+}
+
+static const HooArg* find_named_arg(HooArgsResult* result, const char* key) {
+    if (!result || !key) return NULL;
+    for (int64_t i = 0; i < result->count; i++) {
+        if (result->args[i].key && strcmp(result->args[i].key, key) == 0)
+            return &result->args[i];
+    }
+    return NULL;
 }
 
 // ── New argparse-style API ─────────────────────────────────────────────────
@@ -294,13 +363,37 @@ void hoo_args_add_positional(void* args, const char* name, const char* help) {
                      NULL, 0, 0.0, 1);
 }
 
-int64_t hoo_args_parse(void* args) {
-    if (!args || !g_result) return 0;
+int64_t hoo_args_set_required(void* args, const char* name, int64_t required) {
+    if (!args || !name) return 0;
     HooArgsHandle* handle = (HooArgsHandle*)args;
+    for (int64_t i = 0; i < handle->def_count; i++) {
+        if (handle->defs[i].name && strcmp(handle->defs[i].name, name) == 0) {
+            handle->defs[i].is_required = required != 0;
+            return 1;
+        }
+    }
+    return 0;
+}
 
-    for (int64_t i = 0; i < g_result->count; i++) {
-        if (g_result->args[i].key &&
-            (strcmp(g_result->args[i].key, "help") == 0)) {
+int64_t hoo_args_parse(void* args) {
+    HooArgsHandle* handle = (HooArgsHandle*)args;
+    HooArgsResult* result = result_for_handle(args);
+    if (!handle || !result) return 0;
+
+    handle->parsed = 0;
+    handle->positional_index = 0;
+    for (int64_t i = 0; i < handle->def_count; i++) {
+        free(handle->defs[i].parsed_str);
+        handle->defs[i].parsed_str = NULL;
+        handle->defs[i].parsed_int = 0;
+        handle->defs[i].parsed_float = 0.0;
+        handle->defs[i].parsed_flag = 0;
+        handle->defs[i].parsed_ok = 0;
+    }
+
+    for (int64_t i = 0; i < result->count; i++) {
+        if (result->args[i].key &&
+            (strcmp(result->args[i].key, "help") == 0)) {
             handle->parsed = 1;
             return 0;
         }
@@ -311,39 +404,48 @@ int64_t hoo_args_parse(void* args) {
         ArgDef* def = &handle->defs[i];
         const char* raw_value = NULL;
         int found = 0;
+        int has_value = 0;
 
         if (def->is_positional) {
             raw_value = hoo_args_get(args, pos_idx);
             if (raw_value) {
                 found = 1;
+                has_value = 1;
                 pos_idx++;
             }
         } else {
             if (def->long_opt && def->long_opt[0] != '\0') {
                 const char* lookup = def->long_opt;
                 if (lookup[0] == '-' && lookup[1] == '-') lookup += 2;
-                if (hoo_args_has(args, lookup)) {
-                    raw_value = hoo_args_value(args, lookup);
+                const HooArg* raw = find_named_arg(result, lookup);
+                if (raw) {
+                    raw_value = raw->value;
                     found = 1;
+                    has_value = raw->has_value;
                 }
             }
             if (!found && def->short_opt && def->short_opt[0] != '\0') {
                 const char* lookup = def->short_opt;
                 if (lookup[0] == '-') lookup += 1;
-                if (hoo_args_has(args, lookup)) {
-                    raw_value = hoo_args_value(args, lookup);
+                const HooArg* raw = find_named_arg(result, lookup);
+                if (raw) {
+                    raw_value = raw->value;
                     found = 1;
+                    has_value = raw->has_value;
                 }
             }
         }
+
+        if (def->is_required && !found) return 0;
 
         if (def->type == HOO_ARG_FLAG) {
             def->parsed_flag = found ? 1 : 0;
             def->parsed_ok = 1;
         } else if (found) {
+            if (!has_value) return 0;
             def->parsed_str = strdup(raw_value);
-            def->parsed_int = parse_int64(raw_value);
-            def->parsed_float = parse_double(raw_value);
+            if (def->type == HOO_ARG_INT && !parse_int64(raw_value, &def->parsed_int)) return 0;
+            if (def->type == HOO_ARG_FLOAT && !parse_double(raw_value, &def->parsed_float)) return 0;
             def->parsed_ok = 1;
         } else {
             def->parsed_str = strdup(def->default_str ? def->default_str : "");
@@ -410,7 +512,8 @@ char* hoo_args_help_text(void* args) {
     if (!args) return strdup("");
     HooArgsHandle* handle = (HooArgsHandle*)args;
 
-    const char* prog = g_result ? g_result->program_name : "program";
+    HooArgsResult* result = result_for_handle(args);
+    const char* prog = result ? result->program_name : "program";
     if (!prog || !*prog) prog = "program";
 
     size_t buf_size = 4096;
@@ -418,7 +521,7 @@ char* hoo_args_help_text(void* args) {
     size_t pos = 0;
 
     int r = snprintf(buf + pos, buf_size - pos, "usage: %s", prog);
-    if (r > 0) pos += (size_t)(r > 0 ? (size_t)r : 0);
+    if (r > 0) pos = strlen(buf);
 
     int has_positional = 0;
     for (int64_t i = 0; i < handle->def_count; i++) {

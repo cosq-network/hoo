@@ -15,7 +15,7 @@ import hoo.args;
 The `args` module provides two ways to access command-line arguments:
 
 1. **Free functions** `args_get` and `args_count` for quick positional argument access using the global runtime state.
-2. **`Args` class** — a full argparse-style parser with named flags, positional arguments, typed access, and help text generation.
+2. **`Args` class** — a full argparse-style parser with named flags, positional arguments, typed access, required arguments, and help text generation.
 
 ---
 
@@ -296,9 +296,25 @@ func :void example() {
 
 ---
 
+#### `setRequired`
+
+Marks a previously defined argument as required. The default convenience
+helpers create optional arguments; call this method when omission should make
+`parse()` fail.
+
+**Syntax:**
+
+```hoo
+parser.setRequired(name: string, required: bool) :void
+```
+
+**Returns:** `void`
+
+---
+
 #### `parse`
 
-Parses the actual command-line arguments against the defined argument specifications. Returns 1 on success, 0 on failure (e.g. `--help` was passed).
+Parses the actual command-line arguments against the defined argument specifications. Returns 1 on success and 0 on failure. Parsing fails for `--help`, missing required arguments or values, and invalid integer or floating-point values.
 
 **Syntax:**
 
@@ -308,7 +324,7 @@ parser.parse() :int64
 
 **Parameters:** None.
 
-**Returns:** `int64` — 1 if parsing succeeded, 0 if `--help` was requested or a required argument is missing.
+**Returns:** `int64` — 1 if parsing succeeded; 0 if `--help` was requested, a required argument or value is missing, or a typed value is invalid.
 
 **Complete Example:**
 
@@ -469,6 +485,8 @@ func :void example() {
 #### `has`
 
 Checks whether a named argument was explicitly provided on the command line.
+This checks presence, not the parsed value or the default value. It returns
+`1` even when the supplied option has an empty string value.
 
 **Syntax:**
 
@@ -564,6 +582,21 @@ parser.clear() :void
 ```
 
 **Parameters:** None.
+
+**Returns:** `void`
+
+---
+
+#### `release`
+
+Releases the parser handle and all argument definitions owned by it. Do not
+use the parser after calling `release()`.
+
+**Syntax:**
+
+```hoo
+parser.release() :void
+```
 
 **Returns:** `void`
 

@@ -619,6 +619,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/expressions/ExpressionOperatorsIntegrationTest.cpp
         tests/integration/literals/LiteralIntegrationTest.cpp
         tests/integration/collections/CollectionIntegrationTest.cpp
+        tests/integration/args/ArgsCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
