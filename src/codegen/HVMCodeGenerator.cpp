@@ -1991,20 +1991,9 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             freeRegister(reg);
         } else if (auto tensorType = dynamic_cast<const ast::TensorType*>(decl.getType())) {
             uint32_t elemType = tensorElementTypeIdFromType(*tensorType);
-            uint8_t elemReg = emitConstant(static_cast<int64_t>(elemType));
-            emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
-            freeRegister(elemReg);
             const auto& dims = tensorType->getDimensions();
-            for (size_t i = 0; i < dims.size() && i < 3; ++i) {
-                uint8_t dimReg = visitExpression(*dims[i]);
-                emit(Opcode::MOV, OperandsR{argReg(2, i), dimReg, 0, 0});
-                freeRegister(dimReg);
-            }
-            if (dims.size() == 1) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
-            else if (dims.size() == 2) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
-            else emitCall(Opcode::CALL, "_F_hoo_Tensor_new3_p_i8_i8_i8_i8");
-            uint8_t reg = allocateRegister();
-            emit(Opcode::MOV, OperandsR{reg, 1, 0, 0});
+            uint8_t reg = emitTensorNewCall(elemType, dims.size(),
+                [this, &dims](size_t i) -> uint8_t { return visitExpression(*dims[i]); });
             emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(offset)});
             freeRegister(reg);
         }
@@ -5010,7 +4999,7 @@ std::vector<int64_t> HVMCodeGenerator::tensorShapeFromLiteral(const ast::TensorL
     if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(first)) {
         currentArray = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary());
     }
-    while (currentArray && shape.size() < 3) {
+    while (currentArray) {
         auto* nestedElements = currentArray->getElements();
         int64_t dim = nestedElements ? static_cast<int64_t>(nestedElements->getExpressions().size()) : 0;
         shape.push_back(dim);
@@ -5041,26 +5030,66 @@ void HVMCodeGenerator::emitFlattenTensorLiteralElements(const ast::Expression& e
     freeRegister(valueReg);
 }
 
+uint8_t HVMCodeGenerator::emitTensorNewEx(uint32_t elemTypeId, size_t rank,
+                                          const std::function<uint8_t(size_t)>& emitDim) {
+    emitCall(Opcode::CALL, "_F_hoo_Array_new_p");
+    uint8_t arrReg = allocateRegister();
+    emit(Opcode::MOV, OperandsR{arrReg, 1, 0, 0});
+    for (size_t i = 0; i < rank; ++i) {
+        uint8_t dimReg = emitDim(i);
+        emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+        emit(Opcode::MOV, OperandsR{2, dimReg, 0, 0});
+        emitCall(Opcode::CALL, "_F_hoo_Array_pushInt64_p_i8");
+        freeRegister(dimReg);
+    }
+
+    uint8_t elemReg = emitConstant(static_cast<int64_t>(elemTypeId));
+    uint8_t rankReg = emitConstant(static_cast<int64_t>(rank));
+    emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{2, rankReg, 0, 0});
+    emit(Opcode::MOV, OperandsR{3, arrReg, 0, 0});
+    freeRegister(elemReg);
+    freeRegister(rankReg);
+    emitCall(Opcode::CALL, "_F_hoo_Tensor_new_ex_p_i8_i8_p");
+
+    uint8_t result = allocateRegister();
+    emit(Opcode::MOV, OperandsR{result, 1, 0, 0});
+
+    emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
+    emitCall(Opcode::CALL, "_F_hoo_release_v_p");
+    freeRegister(arrReg);
+    return result;
+}
+
+uint8_t HVMCodeGenerator::emitTensorNewCall(uint32_t elemTypeId, size_t rank,
+                                            const std::function<uint8_t(size_t)>& emitDim) {
+    if (rank == 1 || rank == 2 || rank == 3) {
+        uint8_t elemReg = emitConstant(static_cast<int64_t>(elemTypeId));
+        emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
+        freeRegister(elemReg);
+        for (size_t i = 0; i < rank; ++i) {
+            uint8_t dimReg = emitDim(i);
+            emit(Opcode::MOV, OperandsR{argReg(2, i), dimReg, 0, 0});
+            freeRegister(dimReg);
+        }
+        if (rank == 1) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
+        else if (rank == 2) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
+        else emitCall(Opcode::CALL, "_F_hoo_Tensor_new3_p_i8_i8_i8_i8");
+        uint8_t result = allocateRegister();
+        emit(Opcode::MOV, OperandsR{result, 1, 0, 0});
+        return result;
+    }
+    return emitTensorNewEx(elemTypeId, rank, emitDim);
+}
+
 uint8_t HVMCodeGenerator::emitTensorLiteral(const ast::TensorLiteral& literal) {
     uint32_t elemType = tensorElementTypeIdFromLiteral(literal);
     std::vector<int64_t> shape = tensorShapeFromLiteral(literal);
     if (shape.empty()) shape.push_back(0);
 
-    uint8_t elemReg = emitConstant(static_cast<int64_t>(elemType));
-    emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
-    freeRegister(elemReg);
-    for (size_t i = 0; i < shape.size() && i < 3; ++i) {
-        uint8_t dimReg = emitConstant(shape[i]);
-        emit(Opcode::MOV, OperandsR{argReg(2, i), dimReg, 0, 0});
-        freeRegister(dimReg);
-    }
+    uint8_t tensorReg = emitTensorNewCall(elemType, shape.size(),
+        [this, &shape](size_t i) -> uint8_t { return emitConstant(shape[i]); });
 
-    if (shape.size() == 1) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
-    else if (shape.size() == 2) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
-    else emitCall(Opcode::CALL, "_F_hoo_Tensor_new3_p_i8_i8_i8_i8");
-
-    uint8_t tensorReg = allocateRegister();
-    emit(Opcode::MOV, OperandsR{tensorReg, 1, 0, 0});
     if (literal.getElements()) {
         for (const auto& elem : literal.getElements()->getExpressions()) {
             emitFlattenTensorLiteralElements(*elem, tensorReg);

@@ -1242,6 +1242,22 @@ extern "C" {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(
             hoo_tensor_new(state->regs[1], state->regs[2], state->regs[3], state->regs[4], state->regs[5])));
     }
+    uint64_t jit_tensor_new_ex(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const int64_t element_type = static_cast<int64_t>(state->regs[1]);
+        const int64_t rank = static_cast<int64_t>(state->regs[2]);
+        HooArray dimsArray = reinterpret_cast<void*>(state->regs[3]);
+        std::vector<int64_t> dims;
+        dims.reserve(static_cast<size_t>(rank));
+        for (int64_t i = 0; i < rank; ++i) {
+            int64_t d = 0;
+            if (!hoo_array_get_int64(dimsArray, i, &d)) return 0;
+            dims.push_back(d);
+        }
+        HooTensor out = nullptr;
+        hoo_tensor_new_ex(element_type, rank, dims.data(), &out);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(out));
+    }
     // ── Map aliases (match codegen-generated _F_map_*_v_p names) ─────────────
     uint64_t jit_map_new_plain(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -4551,6 +4567,7 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_hoo_Tensor_new2_p_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new2)},
         {"_F_hoo_Tensor_new3_p_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new3)},
         {"_F_hoo_Tensor_new_p_i8_i8_i8_i8_i8", reinterpret_cast<void*>(&jit_tensor_new)},
+        {"_F_hoo_Tensor_new_ex_p_i8_i8_p", reinterpret_cast<void*>(&jit_tensor_new_ex)},
         {"_F_hoo_Tensor_pushValue_i8_p_i8", reinterpret_cast<void*>(&jit_tensor_push_value)},
         {"_F_hoo_Tensor_length_i8_p", reinterpret_cast<void*>(&jit_tensor_length)},
         {"_F_hoo_Tensor_rank_i8_p", reinterpret_cast<void*>(&jit_tensor_rank)},

@@ -87,6 +87,25 @@ TEST_F(TensorTypeParsingTest, Parses3DTensorType) {
     EXPECT_EQ(paramType->getRank(), 3u);
 }
 
+TEST_F(TensorTypeParsingTest, Parses4DTensorType) {
+    const std::string code = R"(
+        func:int64 test(x:tensor<int8>[2, 3, 4, 5]) {
+            return 0;
+        }
+    )";
+
+    auto ast = parseTensorCode(code);
+    ASSERT_NE(ast, nullptr);
+    auto* func = dynamic_cast<const FunctionDeclaration*>(ast->getDeclarations()[0].get());
+    ASSERT_NE(func, nullptr);
+    ASSERT_EQ(func->getParameters().size(), 1u);
+    auto* paramType = dynamic_cast<const TensorType*>(&func->getParameters()[0]->getType());
+    ASSERT_NE(paramType, nullptr);
+    EXPECT_EQ(tensorElementKind(paramType), PrimitiveTypeKind::INT8);
+    EXPECT_EQ(paramType->getRank(), 4u);
+    EXPECT_EQ(paramType->getDimensions().size(), 4u);
+}
+
 TEST_F(TensorTypeParsingTest, ParsesAllElementTypes) {
     auto testElem = [](const std::string& elem, PrimitiveTypeKind kind) {
         std::string code = "func:int64 test(x:tensor<" + elem + ">[2]) { return 0; }";

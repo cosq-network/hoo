@@ -405,8 +405,8 @@ std::unique_ptr<TensorType> SimpleASTBuilder::buildTensorType(HoocParser::Tensor
             std::make_unique<IntegerLiteral>(getIntValue(intNode))));
     }
 
-    if (dimensions.empty() || dimensions.size() > 3) {
-        throw std::runtime_error("tensor type requires 1, 2, or 3 dimensions");
+    if (dimensions.empty()) {
+        throw std::runtime_error("tensor type requires at least one dimension");
     }
 
     return std::make_unique<TensorType>(std::move(elementType), std::move(dimensions));

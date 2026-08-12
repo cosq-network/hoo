@@ -11,6 +11,7 @@
 #include "hvm/HOModule.h"
 #include <vector>
 #include <cstdint>
+#include <functional>
 #include <unordered_map>
 #include <unordered_set>
 #include <stack>
@@ -353,6 +354,11 @@ private:
     uint8_t emitConstant(int64_t value);
     uint8_t emitRoDataAddress(uint32_t offset);
     void addError(const std::string& message);
+    // Tensor construction helpers
+    uint8_t emitTensorNewCall(uint32_t elemTypeId, size_t rank,
+                              const std::function<uint8_t(size_t)>& emitDim);
+    uint8_t emitTensorNewEx(uint32_t elemTypeId, size_t rank,
+                            const std::function<uint8_t(size_t)>& emitDim);
     // Compressed 16‑bit instruction support
 
     // Null-safety helpers

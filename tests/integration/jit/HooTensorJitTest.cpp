@@ -451,3 +451,55 @@ TEST_F(HooTensorJitTest, Tensor3DZeroFilled) {
     ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
     EXPECT_EQ(jit->run("_F_test_i8"), 0) << jit->getLastError();
 }
+
+TEST_F(HooTensorJitTest, Tensor4DLiteralAndLinearIndexing) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var t4 = [[[[1, 2], [3, 4]], [[5, 6], [7, 8]]], [[[9, 10], [11, 12]], [[13, 14], [15, 16]]]]t;
+            return t4[0] + t4[7] + t4[8] + t4[15];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 34) << jit->getLastError(); // 1 + 8 + 9 + 16 = 34
+}
+
+TEST_F(HooTensorJitTest, Tensor4DDeclaredType) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var t4: tensor<int64>[2, 2, 2, 2] = [[[[1, 2], [3, 4]], [[5, 6], [7, 8]]], [[[9, 10], [11, 12]], [[13, 14], [15, 16]]]]t;
+            return t4[5] + t4[10];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 17) << jit->getLastError(); // 6 + 11 = 17
+}
+
+TEST_F(HooTensorJitTest, Tensor4DZeroFilled) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var t4: tensor<int64>[2, 2, 2, 2];
+            return t4[0] + t4[15];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 0) << jit->getLastError();
+}
+
+TEST_F(HooTensorJitTest, Tensor5DDeclaredType) {
+    const std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var t5: tensor<int64>[2, 2, 2, 2, 2];
+            return t5[31];
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+    EXPECT_EQ(jit->run("_F_test_i8"), 0) << jit->getLastError();
+}
