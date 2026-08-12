@@ -615,6 +615,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/primitive-types/PrimitiveTypesCLIIntegrationTest.cpp
         tests/integration/primitive-types/PrimitiveTypeOperationMatrixTest.cpp
         tests/integration/primitive-types/PrimitiveTypeFailureTest.cpp
+        tests/integration/primitive-types/CompositeTypesCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
