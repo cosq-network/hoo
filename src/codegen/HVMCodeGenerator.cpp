@@ -432,7 +432,8 @@ static uint32_t netFreeFunctionReturnTypeId(const std::string& functionName) {
 }
 
 static bool isHooModuleFreeFunction(const std::string& functionName) {
-    return isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
+    return functionName == "print" || functionName == "println" ||
+           isJsonFreeFunction(functionName) || isBufferFreeFunction(functionName) ||
            isCsvFreeFunction(functionName) || isFsFreeFunction(functionName) ||
            isDatetimeFreeFunction(functionName) || isEncodingFreeFunction(functionName) ||
            isMathFreeFunction(functionName) || isHashingFreeFunction(functionName) ||
@@ -509,6 +510,7 @@ static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) 
 }
 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
+    if (functionName == "print" || functionName == "println") return 4; // void
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) {
         if (functionName == "byte_slice_from_buffer") return 130;

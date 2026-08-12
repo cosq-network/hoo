@@ -4521,6 +4521,8 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_character_release_v", reinterpret_cast<void*>(&jit_hoo_character_release)},
         {"_F_M_hoo_E_print_v_p", reinterpret_cast<void*>(&jit_hoo_print)},
         {"_F_M_hoo_E_println_v_p", reinterpret_cast<void*>(&jit_hoo_println)},
+        {"_F_M_hoo_E_print_p_p", reinterpret_cast<void*>(&jit_hoo_print)},
+        {"_F_M_hoo_E_println_p_p", reinterpret_cast<void*>(&jit_hoo_println)},
         {"_F_hoo_Array_new_p", reinterpret_cast<void*>(&jit_hoo_array_new)},
         {"_F_hoo_Array_pushInt64_p_i8", reinterpret_cast<void*>(&jit_array_push_int64_plain)},
         {"_F_hoo_Array_pushString_p_p", reinterpret_cast<void*>(&jit_array_push_string)},
