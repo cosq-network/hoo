@@ -9,7 +9,7 @@ When `HOO_BUILD_TESTS=ON`, the build creates the `hoo-tests` executable.
 The target is assembled from:
 
 - `tests/test_main.cpp` as the entry point
-- C++ test files under `tests/ast/`, `tests/codegen/`, `tests/core/`, `tests/hvm/`, `tests/integration/jit/`, `tests/integration/cli/`, `tests/parsing/`, `tests/repl/`, and `tests/runtime/`
+- C++ test files under `tests/ast/`, `tests/codegen/`, `tests/core/`, `tests/hvm/`, `tests/integration/jit/`, `tests/integration/cli/`, `tests/integration/statements/`, `tests/parsing/`, `tests/repl/`, and `tests/runtime/`
 - Google Test, linked as `GTest::gtest` and `GTest::gtest_main`
 - Project libraries such as `hoo-core` and `hoorepl`
 
@@ -74,7 +74,7 @@ ctest --test-dir build --output-on-failure
 
 The `ctest` invocation runs the `HooUnitTests` CTest entry that executes `hoo-tests`.
 
-At the current build snapshot, `hoo-tests` registers 2,038 GoogleTest cases.
+At the current build snapshot, `hoo-tests` registers 2,599 GoogleTest cases.
 The count is dynamic; refresh it with:
 
 ```sh

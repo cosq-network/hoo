@@ -11,6 +11,31 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(tests): add CLI integration tests for statements
+  - Add `WhileLoopCLIIntegrationTest` (17 tests) covering `while` and `do..while`
+    loops: basic counting, array traversal, break/continue, nested loops,
+    float/bool conditions, and print execution.
+  - Add `IfStatementCLIIntegrationTest` (24 tests) covering `if`, `if..else`,
+    `if..else if`, and `if..else if..else`: comparison operators, logical
+    operators, nested ifs, variable assignments, multiple statements per branch,
+    return statements, float/char conditions, and deep else-if chains.
+  - Add `ExceptionHandlingCLIIntegrationTest` (15 tests) covering `try/catch`,
+    `try/finally`, `try/catch/finally`, `throw`, multiple catch clauses,
+    nested try/catch, and uncaught exception behavior.
+  - Add `SwitchStatementCLIIntegrationTest` (22 tests) covering `switch/case/default`:
+    basic matching, default fallback, fall-through semantics, break/continue
+    behavior inside loops, nested switch, if/else and loops inside cases,
+    variable declarations in cases, expression discriminants, int8/byte/bool/bit
+    discriminant types, and string-discriminant rejection.
+  - Add `VariableDeclarationCLIIntegrationTest` (42 tests) covering `var` and
+    `const` declarations: type inference and explicit types for all primitives
+    (int64, double, bool, char, byte, bit, int8, f8), strings, arrays, and maps;
+    variables without initializers; reassignment; multiple declarations;
+    arithmetic/boolean/comparison/negative initializers; string concatenation;
+    scope rules in if/while/for; variable shadowing; module-level constants;
+    function/method call results; and complex type annotations.
+  - Total test count increased to 2,599 passing tests.
+
 - refactor(api): make Array operations instance-only
   - Use `arr.pushInt64(value)`, `arr.getString(index)`, `arr.length()`, and
     the other Array operations on an Array instance.
