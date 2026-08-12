@@ -621,6 +621,8 @@ if(HOO_BUILD_TESTS)
         tests/integration/collections/CollectionIntegrationTest.cpp
         tests/integration/args/ArgsCLIIntegrationTest.cpp
         tests/integration/statements/ForLoopCLIIntegrationTest.cpp
+        tests/integration/statements/WhileLoopCLIIntegrationTest.cpp
+        tests/integration/statements/IfStatementCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

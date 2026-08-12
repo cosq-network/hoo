@@ -6,7 +6,7 @@
 [![Windows Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-windows)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
 [![License](https://img.shields.io/github/license/cosq-network/hoo)](LICENSE)
 
-Last Updated: 2026-08-09
+Last Updated: 2026-08-12
 
 Hoo is a high-performance, statically-typed systems programming language and compiler ecosystem. It features an aggressive lowering pipeline that translates high-level object-oriented code into a pure, physical-silicon-ready 64-bit RISC architecture.
 
@@ -47,10 +47,28 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity, including the native `CMP_B` comparison family, all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion.
 - [x] **Nullable Types (ISSUE-047 correctness complete)**: End-to-end `T?` tracking, catchable null checks for member/method/array dereferences, compile-time null-safety validation, distinct nullable overload mangling, and ARC cleanup for nullable named references stored in generic type-ID-100 slots. No required correctness work remains; optional `LD.D.NZ` folding is deferred because its current VM-trap path is not catchable.
 - [x] **Tensor Precision and Broadcasting (ISSUE-025/030)**: Completed low-precision tensor storage, canonical FP8 fallback, native-width integer semantics, scalar promotion, safe tensor-scalar runtime/JIT lowering, and reshape/transpose/softmax utilities.
-- [x] **Verification**: full preset test run passing (`2117 tests`, 2 disabled, 0 failures).
+- [x] **Verification**: full preset test run passing (`2520 tests`, 0 failures).
 - [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
 
 ## Recent Changes
+
+- **Args module hardening**: added validated typed parsing, required-argument
+  support, negative numeric values, safe repeated parsing, retained argument
+  snapshots, explicit and automatic handle cleanup, and executable CLI coverage.
+- **Array API consistency**: Array operations are instance-only (`arr.pushInt64`,
+  `arr.getString`, `arr.length`); static forms such as `Array.getString(arr, 0)`
+  are rejected by the compiler.
+- **Statement integration coverage**: added executable-target integration tests
+  for `for-in` loops, range loops, stepped ranges, empty ranges, loop control,
+  strings, arrays, maps, and real `print` execution.
+- **While and do-while loop integration tests**: added CLI integration tests for
+  `while` and `do..while` loops covering basic counting, array traversal,
+  break/continue, nested loops, float/bool conditions, and print execution.
+- **If-statement integration tests**: added CLI integration tests for `if`,
+  `if..else`, `if..else if`, and `if..else if..else` covering comparison
+  operators, logical operators, nested ifs, variable assignments, multiple
+  statements per branch, return statements, float/char conditions, and deep
+  else-if chains.
 
 - **Networking and archive integration**: DNS-aware sockets now support
   configurable timeouts and TLS client/server handshakes. Archive imports
@@ -129,7 +147,7 @@ src/
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Tensors, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-tests/         Exhaustive unit and integration test suites (2164 tests in the current preset run).
+  tests/         Exhaustive unit and integration test suites (2520 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
