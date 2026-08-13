@@ -34,7 +34,16 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
     arithmetic/boolean/comparison/negative initializers; string concatenation;
     scope rules in if/while/for; variable shadowing; module-level constants;
     function/method call results; and complex type annotations.
-  - Total test count increased to 2,599 passing tests.
+   - Total test count increased to 2,637 passing tests.
+   - Add `BufferCLIIntegrationTest` (14 tests) covering `hoo.buffer`:
+     `Buffer.fromBytes`, `new Buffer()`, `append`, `appendBuffer`, `byteAt`,
+     `setByte`, `copy`, `clear`, `sub` (slice alias), `data`, empty buffer
+     behavior, capacity growth, out-of-bounds safety, multiple appends, and
+     out-of-range sub returning an empty buffer.
+   - Add `EncodingCLIIntegrationTest` (19 tests) covering `hoo.encoding`:
+     Base64/hex/URL encode/decode round-trips, empty input, invalid input,
+     buffer-aware overloads, `ByteSlice` wrappers, binary data round-trips
+     via `setByte`, and empty-buffer encoding.
 
 - refactor(api): make Array operations instance-only
   - Use `arr.pushInt64(value)`, `arr.getString(index)`, `arr.length()`, and
