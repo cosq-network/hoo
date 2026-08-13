@@ -5279,7 +5279,6 @@ void* lookupPlainRuntimeSymbolAddress(const std::string& name) {
         {"hoo_dict_remove_i8", reinterpret_cast<void*>(&hoo_dict_remove_i8)},
         {"hoo_dict_clear", reinterpret_cast<void*>(&hoo_dict_clear)},
         {"hoo_buffer_new", reinterpret_cast<void*>(&hoo_buffer_new)},
-        {"hoo_buffer_from_bytes", reinterpret_cast<void*>(&hoo_buffer_from_bytes)},
         {"hoo_csv_from_opts", reinterpret_cast<void*>(&hoo_csv_from_opts)},
         {"hoo_buffer_copy", reinterpret_cast<void*>(&hoo_buffer_copy)},
         {"hoo_buffer_length", reinterpret_cast<void*>(&hoo_buffer_length)},
@@ -6053,8 +6052,6 @@ bool HVMJIT::bootstrapRuntimeModules() {
     runtime->registerFunction("map_new", reinterpret_cast<void*>(&hoo_map_new), "_F_hoo_Map_new_p_i8");
 
     runtime->registerFunction("buffer_new", reinterpret_cast<void*>(&hoo_buffer_new), "_F_hoo_Buffer_new_p");
-    runtime->registerFunction("buffer_from_bytes", reinterpret_cast<void*>(&hoo_buffer_from_bytes),
-                              "_F_hoo_Buffer_from_bytes_p_p_i8");
     runtime->registerFunction("buffer_copy", reinterpret_cast<void*>(&hoo_buffer_copy), "_F_hoo_Buffer_copy_p_p");
     runtime->registerFunction("buffer_length", reinterpret_cast<void*>(&hoo_buffer_length), "_F_hoo_Buffer_length_i8_p");
     runtime->registerFunction("buffer_capacity", reinterpret_cast<void*>(&hoo_buffer_capacity), "_F_hoo_Buffer_capacity_i8_p");

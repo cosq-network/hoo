@@ -52,11 +52,11 @@ TEST_F(HooBufferJitTest, BufferCapacity) {
     EXPECT_GE(r, 0);
 }
 
-TEST_F(HooBufferJitTest, BufferFromBytesFreeFunction) {
+TEST_F(HooBufferJitTest, BufferFromBytesFactory) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
-            var b = buffer_fromBytes("Hello", 5);
+            var b = Buffer.fromBytes("Hello", 5);
             if (b.length() != 5) { return 0; }
             return b.byteAt(1);
         }
@@ -69,7 +69,7 @@ TEST_F(HooBufferJitTest, BufferCopy) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
-            var b = buffer_fromBytes("abc", 3);
+            var b = Buffer.fromBytes("abc", 3);
             return b.copy();
         }
     )";
@@ -110,7 +110,7 @@ TEST_F(HooBufferJitTest, BufferSetByte) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
-            var b = buffer_fromBytes("abc", 3);
+            var b = Buffer.fromBytes("abc", 3);
             var old = b.setByte(0, 65);
             if (old != 97) { return 0; }
             return b.byteAt(0);
@@ -129,19 +129,6 @@ TEST_F(HooBufferJitTest, ConstructorWithCapacityIsNotSupported) {
         }
     )";
     EXPECT_FALSE(jit.loadSourceCode("test", source));
-}
-
-TEST_F(HooBufferJitTest, BufferFromBytesFactory) {
-    const std::string source = R"(
-        import hoo.buffer;
-        func :int64 test() {
-            var b = Buffer.fromBytes("abc", 3);
-            if (b.length() != 3) { return 0; }
-            return b.byteAt(1);
-        }
-    )";
-    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
-    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 98);
 }
 
 TEST_F(HooBufferJitTest, BufferAppend) {
@@ -191,7 +178,7 @@ TEST_F(HooBufferJitTest, BufferDataPointer) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
-            var b = buffer_fromBytes("abc", 3);
+            var b = Buffer.fromBytes("abc", 3);
             var ptr = b.data();
             if (ptr == 0) { return 0; }
             return 1;
@@ -206,7 +193,7 @@ TEST_F(HooBufferJitTest, BufferWithEncodingBase64) {
         import hoo.encoding;
         import hoo.buffer;
         func :int64 test() {
-            var data = buffer_fromBytes("Hello", 5);
+            var data = Buffer.fromBytes("Hello", 5);
             var enc = encoding_base64_encode_buffer(data);
             if (enc.length() != 8) { return 0; }
             var dec = encoding_base64_decode_buffer(enc);
@@ -224,7 +211,7 @@ TEST_F(HooBufferJitTest, BufferWithHashingSha256) {
         import hoo.buffer;
         import hoo.hashing;
         func :int64 test() {
-            var data = buffer_fromBytes("Hello", 5);
+            var data = Buffer.fromBytes("Hello", 5);
             var hash = hashing_sha256_buffer(data);
             if (hash.length() != 64) { return 0; }
             return 1;

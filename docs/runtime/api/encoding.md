@@ -104,7 +104,7 @@ encoding_base64_encode_buffer(buf: Buffer) :string
 import hoo.buffer;
 import hoo.encoding;
 
-let buf = buffer_fromBytes("Hello", 5);
+let buf = Buffer.fromBytes("Hello", 5);
 let encoded = encoding_base64_encode_buffer(buf);
 // encoded == "SGVsbG8="
 ```
@@ -279,7 +279,7 @@ The base64 and hex functions also accept and return `Buffer` objects directly (r
 import hoo.buffer;
 import hoo.encoding;
 
-let buf = buffer_fromBytes("Hello", 5);
+let buf = Buffer.fromBytes("Hello", 5);
 let b64 = encoding_base64_encode_buffer(buf);    // "SGVsbG8="
 let hex = encoding_hex_encode_buffer(buf);       // "48656c6c6f"
 
@@ -311,7 +311,7 @@ func :int64 main() {
     println(decoded == "a b=c/d?e=f"); // true
 
     // Buffer encoding
-    var buf = buffer_fromBytes("Hello", 5);
+    var buf = Buffer.fromBytes("Hello", 5);
     var b64buf = encoding_base64_encode_buffer(buf);
     println(b64buf == "SGVsbG8="); // true
 

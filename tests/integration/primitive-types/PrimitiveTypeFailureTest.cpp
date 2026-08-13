@@ -159,7 +159,7 @@ TEST_F(PrimitiveTypeFailureTest, AnyVariableDeclaration) {
 TEST_F(PrimitiveTypeFailureTest, BufferSliceIsKeyword) {
     expectCompileFailure(R"(
         import hoo.buffer;
-        func :int64 main() { var b = buffer_fromBytes("abc", 3); var s = b.slice(1, 2); return 0; }
+        func :int64 main() { var b = Buffer.fromBytes("abc", 3); var s = b.slice(1, 2); return 0; }
     )", "Parse errors");
 }
 

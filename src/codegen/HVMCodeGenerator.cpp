@@ -204,7 +204,7 @@ static uint32_t jsonFreeFunctionReturnTypeId(const std::string& functionName) {
 }
 
 static bool isBufferFreeFunction(const std::string& functionName) {
-    return functionName == "buffer_fromBytes" || functionName == "byte_slice_from_buffer" ||
+    return functionName == "byte_slice_from_buffer" ||
            functionName == "byte_slice_release";
 }
 
@@ -515,7 +515,6 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isBufferFreeFunction(functionName)) {
         if (functionName == "byte_slice_from_buffer") return 130;
         if (functionName == "byte_slice_release") return 4;
-        return 113;
     }
     if (isCsvFreeFunction(functionName)) return 114;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);

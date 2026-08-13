@@ -100,8 +100,6 @@ func :int64 main() {
 }
 ```
 
-**Alternative:** The free function `buffer_fromBytes(data, length)` provides the same behavior and remains available for backward compatibility.
-
 ---
 
 #### `write`

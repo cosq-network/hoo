@@ -321,7 +321,7 @@ TEST_F(HooStandardLibraryJitTest, MissingImportBufferFunc) {
     const std::string source = R"(
         func:ptr test() {
             var data = "hello";
-            return buffer_fromBytes(data.data(), 5);
+            return Buffer.fromBytes(data.data(), 5);
         }
     )";
     ASSERT_FALSE(jit.loadSourceCode("test", source));

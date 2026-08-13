@@ -259,7 +259,7 @@ Defines Hoo's complete grammar:
 Accessible via `new ClassName(...)` or class-qualified factory methods:
 
 - `new String(...)` / `String.fromUtf8(buf)` / `String.join([...])`
-- `new Buffer()` / `Buffer.fromBytes(data, len)` / `buffer_fromBytes(data, len)`
+- `new Buffer()` / `Buffer.fromBytes(data, len)`
 - `new Array<T>(capacity)` / `Array<T>.empty()`
 - `new Map<K, V>()` / `Map<K, V>.fromPairs([...])`
 - `new Character(codepoint)` / `Character.fromUtf8(bytes)`

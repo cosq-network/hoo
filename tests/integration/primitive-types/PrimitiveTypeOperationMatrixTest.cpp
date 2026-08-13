@@ -434,7 +434,7 @@ TEST_F(PrimitiveTypeOperationMatrixTest, BufferAllOperations) {
     compileAndRun(R"(
         import hoo.buffer;
 
-        func :Buffer makeBuf() { return buffer_fromBytes("abc", 3); }
+        func :Buffer makeBuf() { return Buffer.fromBytes("abc", 3); }
 
         func :int64 main() {
             var b: Buffer = makeBuf();
@@ -448,7 +448,7 @@ TEST_F(PrimitiveTypeOperationMatrixTest, BufferAllOperations) {
             if (cp.length() == 3) { r = r + 16; }
             b.append("de", 2);
             if (b.length() == 5) { r = r + 32; }
-            var b2 = buffer_fromBytes("fg", 2);
+            var b2 = Buffer.fromBytes("fg", 2);
             b.appendBuffer(b2);
             if (b.length() == 7) { r = r + 64; }
             if (b.byteAt(6) == 103) { r = r + 128; }

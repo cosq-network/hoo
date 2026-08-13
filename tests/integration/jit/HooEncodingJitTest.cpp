@@ -57,7 +57,7 @@ TEST_F(HooEncodingJitTest, BufferOverloads) {
         import hoo.encoding;
         import hoo.buffer;
         func:int64 test() {
-            var buf = buffer_fromBytes("Hello", 5);
+            var buf = Buffer.fromBytes("Hello", 5);
             var enc = encoding_base64_encode_buffer(buf);
             var dec = encoding_base64_decode_buffer(enc);
             var hex = encoding_hex_encode_buffer(dec);
@@ -74,7 +74,7 @@ TEST_F(HooEncodingJitTest, ByteSliceJitWrappers) {
         import hoo.encoding;
         import hoo.buffer;
         func:int64 test() {
-            var buf = buffer_fromBytes("Hello", 5);
+            var buf = Buffer.fromBytes("Hello", 5);
             var view = byte_slice_from_buffer(buf);
             var encoded = encoding_base64_encode_slice(view);
             byte_slice_release(view);

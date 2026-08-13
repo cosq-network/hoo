@@ -335,7 +335,7 @@ TEST_F(PrimitiveTypesCLIIntegrationTest, BufferOperations) {
     compileAndRun(R"(
         import hoo.buffer;
 
-        func :Buffer makeBuffer() { return buffer_fromBytes("abc", 3); }
+        func :Buffer makeBuffer() { return Buffer.fromBytes("abc", 3); }
 
         func :int64 main() {
             var b: Buffer = makeBuffer();

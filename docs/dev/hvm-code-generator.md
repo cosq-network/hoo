@@ -183,7 +183,7 @@ Separate static helper functions identify and route external library calls:
 | Helper | Purpose |
 |---|---|
 | `isJsonFreeFunction()` | JSON serialization/deserialization functions |
-| `isBufferFreeFunction()` | `buffer_fromBytes` |
+| `isBufferFreeFunction()` | `byte_slice_from_buffer`, `byte_slice_release` |
 | `isCsvFreeFunction()` | CSV parsing |
 | `isFsFreeFunction()` | Filesystem operations (23 functions) |
 | `isDatetimeFreeFunction()` | Date/time operations (16 functions) |

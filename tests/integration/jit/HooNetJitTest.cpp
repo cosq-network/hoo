@@ -145,7 +145,7 @@ TEST_F(HooNetJitTest, SocketTcpSendReceive) {
             if (net_socket_connect(client, "127.0.0.1", port) != 0) { return 4; }
             var accepted = net_socket_accept(server);
             if (accepted == 0) { return 5; }
-            var payload = buffer_fromBytes("ok", 2);
+            var payload = Buffer.fromBytes("ok", 2);
             if (net_socket_send(client, payload) != 2) { return 6; }
             var received = net_socket_receive(accepted, 16);
             if (received == 0) { return 7; }
