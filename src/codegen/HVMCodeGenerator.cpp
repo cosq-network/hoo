@@ -3473,7 +3473,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 else if (methodName == "setByte") symbol = "_F_M_hoo_E_buffer_setByte_v_p_p";
                 else if (methodName == "append") symbol = "_F_M_hoo_E_buffer_append_v_p_p";
                 else if (methodName == "appendBuffer") symbol = "_F_M_hoo_E_buffer_appendBuffer_v_p";
-                else if (methodName == "slice") symbol = "_F_M_hoo_E_buffer_slice_v_p_p";
+                else if (methodName == "slice" || methodName == "sub") symbol = "_F_M_hoo_E_buffer_slice_v_p_p";
                 else if (methodName == "data") symbol = "_F_M_hoo_E_buffer_data_v";
                 if (!symbol.empty()) {
                     emitCall(Opcode::CALL, symbol);
@@ -5684,7 +5684,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             if (className == "Map" && (method == "getInt64String" || method == "getStringString")) {
                 result.typeId = 101; result.className = "String"; return result;
             }
-            if (className == "Buffer" && (method == "copy" || method == "slice")) {
+            if (className == "Buffer" && (method == "copy" || method == "slice" || method == "sub")) {
                 result.typeId = 113; result.className = "Buffer"; return result;
             }
             result.typeId = inferExpressionTypeIdLegacy(expr);

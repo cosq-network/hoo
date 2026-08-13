@@ -141,3 +141,93 @@ TEST_F(HooBufferJitTest, StaticFromBytesIsNotSupported) {
     )";
     EXPECT_FALSE(jit.loadSourceCode("test", source));
 }
+
+TEST_F(HooBufferJitTest, BufferAppend) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = new Buffer();
+            b.append("Hello", 5);
+            return b.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+}
+
+TEST_F(HooBufferJitTest, BufferAppendBuffer) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b1 = new Buffer();
+            b1.append("Hello", 5);
+            var b2 = new Buffer();
+            b2.append(" World", 6);
+            b1.appendBuffer(b2);
+            return b1.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 11);
+}
+
+TEST_F(HooBufferJitTest, BufferSubSliceAlias) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = new Buffer();
+            b.append("HelloWorld", 10);
+            var s = b.sub(0, 5);
+            return s.length();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+}
+
+TEST_F(HooBufferJitTest, BufferDataPointer) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = buffer_fromBytes("abc", 3);
+            var ptr = b.data();
+            if (ptr == 0) { return 0; }
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooBufferJitTest, BufferWithEncodingBase64) {
+    const std::string source = R"(
+        import hoo.encoding;
+        import hoo.buffer;
+        func :int64 test() {
+            var data = buffer_fromBytes("Hello", 5);
+            var enc = encoding_base64_encode_buffer(data);
+            if (enc.length() != 8) { return 0; }
+            var dec = encoding_base64_decode_buffer(enc);
+            if (dec.length() != 5) { return 0; }
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooBufferJitTest, BufferWithHashingSha256) {
+    const std::string source = R"(
+        import hoo;
+        import hoo.buffer;
+        import hoo.hashing;
+        func :int64 test() {
+            var data = buffer_fromBytes("Hello", 5);
+            var hash = hashing_sha256_buffer(data);
+            if (hash.length() != 64) { return 0; }
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
