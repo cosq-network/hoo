@@ -74,7 +74,7 @@ ctest --test-dir build --output-on-failure
 
 The `ctest` invocation runs the `HooUnitTests` CTest entry that executes `hoo-tests`.
 
-At the current build snapshot, `hoo-tests` registers 2,637 GoogleTest cases.
+At the current build snapshot, `hoo-tests` registers 2,643 GoogleTest cases.
 The count is dynamic; refresh it with:
 
 ```sh

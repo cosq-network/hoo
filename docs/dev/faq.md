@@ -28,10 +28,10 @@ You can also dump raw bytes with `std::hex` for manual inspection, or add loggin
 **Q: What's the difference between `src/tests/` and `tests/`?**
 
 A: Tests are in `tests/`. There is no `src/tests/`. The test directory mirrors `src/`:
-- `tests/parsing/` — Parser and SimpleASTBuilder tests (26 files)
+- `tests/parsing/` — Parser and SimpleASTBuilder tests (28 files)
 - `tests/codegen/` — HVMCodeGenerator tests (2 files)
-- `tests/core/` — SymbolMangler, compiler, and CLI tests (4 files)
-- `tests/integration/jit/` — JIT execution tests (28 files)
+- `tests/core/` — SymbolMangler, compiler, and CLI tests (3 files)
+- `tests/integration/jit/` — JIT execution tests (31 files)
 - `tests/hvm/`, `tests/ast/`, `tests/runtime/`, `tests/repl/`, `tests/examples/` — Other test categories
 
 ## Mangling
@@ -76,7 +76,7 @@ A: Yes. Add a new `SHT_*` constant, add serialization/deserialization logic in `
 
 **Q: How do I find the runtime type ID for a given type?**
 
-A: Use `typeIdFromDeclaredType()` for static type declarations or `inferExpressionTypeId()` for dynamic expression types. Built-in types have fixed IDs: `String`=101, `Array`=102, `Map`=103, `Random`=105, `Character`=109, `Args`=110, `Compression`=111, `Csv`=112, `Buffer`=113, `URL`=114, `HttpClient`=115, `HttpResponse`=116, `Dict`=117, `List`=118, `DateTime`=119, `Regex`=120, `Mutex`=121, `Uuid`=122.
+A: Use `typeIdFromDeclaredType()` for static type declarations or `inferExpressionTypeId()` for dynamic expression types. Built-in types have fixed IDs: `String`=101, `Array`=102, `Map`=103, `Tensor`=104, `Random`=105, `URL`=106, `HttpResponse`=107, `HttpClient`=108, `Character`=109, `Args`=110, `Compression`=111, `Csv`=114, `Buffer`=113, `Dict`=117, `List`=118, `DateTime`=119, `Regex`=120, `Mutex`=121, `Uuid`=122, `Decimal`=125, `Socket`=127, `Condition`=128, `Semaphore`=129.
 
 **Q: How do I add support for a new built-in class?**
 
@@ -84,7 +84,7 @@ A: Add it to `classToPrefix()` in `HVMCodeGenerator.cpp`, assign a type ID in `b
 
 **Q: How do I diagnose a JIT symbol resolution failure?**
 
-A: Check that the symbol is registered in `HVMJIT.cpp` as a `jit_hoo_*` wrapper. Verify the mangled name matches what the codegen emits (the `SymbolFixup` list in `symbolFixups_` shows what the codegen expects). Check that `LLVMOrcLookupSymbol` can find the symbol.
+A: Check that the symbol is registered in `HVMJIT.cpp` as a `jit_hoo_*` wrapper. Verify the mangled name matches what the codegen emits (the `SymbolFixup` list in `symbolFixups_` shows what the codegen expects). Check that `HVMJIT::getSymbolAddress()` (which wraps the ORC lookup) can find the symbol.
 
 **Q: What header should I include for a given component?**
 

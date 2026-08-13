@@ -1,8 +1,8 @@
 # How HVMCodeGenerator Works
 
-**File:** `src/codegen/HVMCodeGenerator.h` / `.cpp` (~4492 lines)
+**File:** `src/codegen/HVMCodeGenerator.h` / `.cpp` (~6,700 lines)
 
-The code generator walks the `ASTNode` tree and emits bytecode into an `HOModule`. It is the heart of the compiler and spans over 4400 lines.
+The code generator walks the `ASTNode` tree and emits bytecode into an `HOModule`. It is the heart of the compiler and spans over 6,600 lines.
 
 ## Architecture
 
@@ -68,7 +68,7 @@ class HVMCodeGenerator : public CodeGenerator {
 
 ## Register allocation
 
-Register r4 is reserved as the thread pointer. Arguments start at r0, skipping r4:
+Register r4 is reserved as the thread pointer. Arguments start at r1 for free functions (r2 for instance methods, where r1 carries the receiver), skipping r4:
 
 ```cpp
 static uint8_t argReg(uint8_t first, size_t i) {
@@ -166,9 +166,11 @@ static std::string classToPrefix(const std::string& className) {
         {"Character", "character"}, {"Args", "args"}, {"Csv", "csv"},
         {"Console", "console"}, {"URL", "net_url"},
         {"HttpClient", "net_http_client"}, {"HttpResponse", "net_http_response"},
-        {"Thread", "thread"}, {"Mutex", "thread_mutex"},
-        {"Array", "array"}, {"Map", "map"}, {"Buffer", "buffer"},
-        {"Random", "random"}, {"List", "anyarray"}, {"Dict", "hashmap"},
+        {"Thread", "thread"}, {"Condition", "thread_condition"},
+        {"Semaphore", "thread_semaphore"}, {"Decimal", "decimal"},
+        {"Mutex", "thread_mutex"}, {"Array", "array"}, {"Map", "map"},
+        {"Buffer", "buffer"}, {"Random", "random"}, {"List", "list"},
+        {"Dict", "dict"},
     };
     ...
 }
@@ -186,9 +188,9 @@ Separate static helper functions identify and route external library calls:
 | `isBufferFreeFunction()` | `byte_slice_from_buffer`, `byte_slice_release` |
 | `isCsvFreeFunction()` | CSV parsing |
 | `isFsFreeFunction()` | Filesystem operations (23 functions) |
-| `isDatetimeFreeFunction()` | Date/time operations (16 functions) |
+| `isDatetimeFreeFunction()` | Date/time operations (17 functions) |
 | `isEncodingFreeFunction()` | Base64/hex/URL encoding |
-| `isMathFreeFunction()` | Math functions (37 functions) |
+| `isMathFreeFunction()` | Math functions (40 functions) |
 | `isHashingFreeFunction()` | SHA256/SHA1/MD5/CRC32/HMAC |
 | `isSystemFreeFunction()` | Environment, process, system info |
 | `isProcessFreeFunction()` | Process spawn/capture/kill |
@@ -197,6 +199,10 @@ Separate static helper functions identify and route external library calls:
 | `isUuidFreeFunction()` | UUID generation/manipulation |
 | `isCharacterFreeFunction()` | UTF-8 character conversion |
 | `isPathFreeFunction()` | Path manipulation (17 functions) |
+| `isArgsFreeFunction()` | Command-line argument access (`args_get`, `args_count`) |
+| `isStringFreeFunction()` | String factories (`string_repeat`, `string_from_int64`, `string_from_double`, `string_join`) |
+| `isNetFreeFunction()` | Sockets, TLS, HTTP client (`net_socket_*`) |
+| `isHooModuleFreeFunction()` | Top-level dispatcher aggregating every `is*FreeFunction` category plus `print`/`println` |
 
 Each has a corresponding `*ReturnTypeId()` helper that maps the function name to its runtime type ID.
 
@@ -247,7 +253,7 @@ Forward references are resolved via:
 
 ## Important globals
 
-The code generator references ~100+ runtime functions via `extern` declarations (e.g., `jit_hoo_*` wrappers). These are linked at JIT time through `HVMJIT`. Each built-in class and free function set has corresponding JIT symbols registered in the ORC runtime.
+The code generator references ~190 runtime functions via `extern` declarations (e.g., `jit_hoo_*` wrappers). These are linked at JIT time through `HVMJIT`. Each built-in class and free function set has corresponding JIT symbols registered in the ORC runtime.
 
 ## Test patterns
 

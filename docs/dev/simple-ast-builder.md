@@ -2,24 +2,24 @@
 
 **File:** `src/ast/SimpleASTBuilder.h` / `.cpp`
 
-`SimpleASTBuilder` is a single-pass AST builder driven by the ANTLR visitor pattern. It transforms a flat parse tree into a structured `ASTNode` tree, producing a `std::unique_ptr<ast::CompilationUnit>` as the root.
+`SimpleASTBuilder` is a single-pass AST builder that consumes ANTLR parse-tree contexts directly. It transforms a flat parse tree into a structured `ASTNode` tree, producing a `std::unique_ptr<ast::CompilationUnit>` as the root.
 
 ## Architecture
 
 ```cpp
-class SimpleASTBuilder : public ho_parser_base_visitor {
-    std::vector<ASTNode *> _nodeStack;    // operand stack
-    ASTNode *              _result;       // root after walk
-    // ... state for current class, module, etc.
+class SimpleASTBuilder {
+    std::unique_ptr<ast::CompilationUnit> buildAST(HoocParser::CompilationUnitContext* ctx);
+    // ... private build* helpers for declarations, statements, expressions, types
 };
 ```
 
-It uses a **stack-based evaluation model**:
+`SimpleASTBuilder` is a standalone class (it no longer subclasses the ANTLR
+visitor). It uses a **context-dispatch model**:
 
-1. Each `visit*` method receives a parser rule context.
-2. It visits children (pushing their results onto the stack).
-3. It pops operands off the stack, constructs a new `ASTNode`, and pushes the result.
-4. The root stays on the stack after the walk finishes.
+1. `buildAST()` iterates the `CompilationUnitContext` children, dispatching on the context type with `dynamic_cast`.
+2. Each `build*` method receives a parser rule context and constructs a typed `ASTNode` (or `ast::*` value).
+3. Top-level overloaded functions are grouped into `OverloadList` nodes during the same pass.
+4. The finished tree is returned as `std::unique_ptr<ast::CompilationUnit>`.
 
 ## Entry point
 
@@ -85,7 +85,7 @@ Source text  →  ANTLR Lexer  →  Token stream
                                   ↓
                               ANTLR Parser  →  Parse tree (CST)
                                   ↓
-                      SimpleASTBuilder (visitor)  →  ASTNode tree
+                SimpleASTBuilder (context dispatch)  →  ASTNode tree
                                   ↓
                         HVMCodeGenerator  →  Bytecode
 ```

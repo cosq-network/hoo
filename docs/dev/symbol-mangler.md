@@ -1,6 +1,6 @@
 # How Mangling and Demangling Works with SymbolMangler
 
-**File:** `src/core/SymbolMangler.h` / `.cpp` (~744 lines)
+**File:** `src/core/SymbolMangler.h` / `.cpp` (~805 lines)
 
 `SymbolMangler` converts Hoo identifiers into unique linker-visible symbol names. The mangler and demangler must always be symmetric — any change to one requires a corresponding change to the other.
 

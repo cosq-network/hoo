@@ -128,6 +128,7 @@ Current profile: **Silicon MVP** (Physical Silicon Ready)
 | Document | Description |
 | :--- | :--- |
 | `docs/hvm/hvm-spec.md` | Normative ISA specification and execution model. |
+| `docs/hvm/hvm-abi.md` | Normative calling convention, frame layout, and runtime ABI. |
 | `docs/hvm/hvm_instruction_set.csv` | Machine-readable opcode/format table. |
 | `docs/hvm/ho-file-format.md` | Binary container format for `.ho` modules. |
 | `docs/runtime/jit-integration.md` | SYSCALL interface mapping and ARC optimization passes. |

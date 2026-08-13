@@ -43,7 +43,7 @@
 
 | Term | Definition |
 |---|---|
-| **Free function** | A top-level function that maps to a JIT runtime symbol, not a class method. Categories: JSON, buffer, CSV, filesystem, datetime, encoding, math, hashing, system, process, regex, thread, UUID, character, path. |
+| **Free function** | A top-level function that maps to a JIT runtime symbol, not a class method. Categories: JSON, buffer, CSV, filesystem, datetime, encoding, math, hashing, system, process, regex, thread, UUID, character, path, args, string, net. |
 | **FromImport** | An import statement of the form `from module import item, ...`. |
 | **FunctionPrologueInfo** | Struct returned by `beginFunction()` containing the entry instruction index, byte offset, and mangled name for function prologue/epilogue pairing. |
 
@@ -51,11 +51,11 @@
 
 | Term | Definition |
 |---|---|
-| **HOModule** | Binary container format for compiled Hoo bytecode. Contains 8 section types (`.text`, `.data`, `.rodata`, `.symtab`, `.reloc`, `.export`, `.import`, `.funcmeta`). Supports `serialize()`/`deserialize()` with LE encoding. |
+| **HOModule** | Binary container format for compiled Hoo bytecode. Contains 24 `SHT_*` section types (core eight: `.text`, `.data`, `.rodata`, `.symtab`, `.reloc`, `.export`, `.import`, `.funcmeta`, plus `.bss`, `.strtab`, `.types`, `.note`, `.tls`, and DWARF debug sections). Supports `serialize()`/`deserialize()` with LE encoding. |
 | **HooCompiler** | Top-level compiler driver (`src/core/HooCompiler.h`) that orchestrates parsing → AST building → codegen → module output. Used directly in tests. |
 | **HVM** | Hoo Virtual Machine — the target runtime for compiled bytecode. |
-| **HVMCodeGenerator** | The AST-to-bytecode compiler (~4492 lines). Walks `ASTNode` tree, allocates registers, manages scopes, emits instructions, handles built-in class dispatch. |
-| **HVMJIT** | LLVM ORC-based JIT execution engine. Registers ~100+ `jit_hoo_*` runtime wrappers, handles trampoline dispatch, and provides `jit_hoo_retain`/`jit_hoo_release` for ARC. |
+| **HVMCodeGenerator** | The AST-to-bytecode compiler (~6,700 lines). Walks `ASTNode` tree, allocates registers, manages scopes, emits instructions, handles built-in class dispatch. |
+| **HVMJIT** | LLVM ORC-based JIT execution engine. Registers ~190 `jit_hoo_*` runtime wrappers, handles trampoline dispatch, and provides `jit_hoo_retain`/`jit_hoo_release` for ARC. |
 | **HooParserWrapper** | Parser wrapper used in tests (`src/parsing/HooParserWrapper.h`). Provides `parseForAST()` to get a parse tree from source string. |
 
 ## I
@@ -68,7 +68,7 @@
 
 | Term | Definition |
 |---|---|
-| **JIT** | Just-In-Time compilation — HVMJIT uses LLVM ORC to compile bytecode to native code at runtime. Tested extensively in `tests/integration/jit/` (28 test files). |
+| **JIT** | Just-In-Time compilation — HVMJIT uses LLVM ORC to compile bytecode to native code at runtime. Tested extensively in `tests/integration/jit/` (31 test files). |
 
 ## L
 
@@ -111,9 +111,9 @@
 | Term | Definition |
 |---|---|
 | **Section** | A named region in an `HOModule` (text, data, symbol table, etc.). Each section has a type constant (`SHT_*`), size, and payload. |
-| **SimpleASTBuilder** | The ANTLR visitor that converts parse trees to ASTs. Uses a stack-based evaluation model with ~50 methods organized by category (declarations, types, statements, expressions, supporting, imports, classes). |
+| **SimpleASTBuilder** | Converts parse trees to ASTs. Dispatches directly on `HoocParser` contexts via `build*` methods (~50 helpers) rather than subclassing the ANTLR visitor. |
 | **Symbol fixup** | A deferred symbol reference in `HVMCodeGenerator`. Stored in `symbolFixups_` as `SymbolFixup` structs with symbol name, instruction index, and byte offset. Resolved at module finalization. |
-| **SymbolMangler** | Utility for name mangling and demangling (~744 lines). Provides `mangleFunctionName()`, `mangleModuleSymbol()`, `demangleSymbol()`, `demangle()`, `mangleType()`, and `demangleType()`. |
+| **SymbolMangler** | Utility for name mangling and demangling (~805 lines). Provides `mangleFunctionName()`, `mangleModuleSymbol()`, `demangleSymbol()`, `demangle()`, `mangleType()`, and `demangleType()`. |
 
 ## T
 

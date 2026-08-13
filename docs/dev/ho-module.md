@@ -1,6 +1,6 @@
 # How HOModule Is Laid Out
 
-**File:** `src/module/HOModule.cpp` (~1200 lines)
+**File:** `src/hvm/HOModule.h` / `HOModule.cpp` (~1,300 lines)
 
 `HOModule` is the binary container format for compiled bytecode. It supports serialization to/from a binary representation with LE (little-endian) encoding.
 
@@ -55,16 +55,28 @@ So HOModule borrows the general shape of an object file without depending on ELF
 
 ## Section types
 
+The `SectionType` enum (in `HOModule.h`) currently defines 24 `SHT_*` constants. The core executable/loader sections are:
+
 | Constant | Purpose |
 |---|---|
+| `SHT_NULL` | Unused / null section |
 | `SHT_TEXT` | Executable bytecode |
 | `SHT_DATA` | Initialized mutable data |
 | `SHT_RODATA` | Read-only data (string literals, type descriptors) |
+| `SHT_BSS` | Zero-initialized data |
 | `SHT_SYMTAB` | Symbol table (exported symbols) |
+| `SHT_STRTAB` | String pool referenced by offsets |
 | `SHT_RELOC` | Relocation entries for external symbols |
 | `SHT_EXPORT` | Public API exports |
 | `SHT_IMPORT` | External module dependencies |
 | `SHT_FUNCMETA` | Function metadata (args, locals, stack size) |
+| `SHT_TYPES` | Type descriptor records |
+| `SHT_NOTE` | Annotations |
+| `SHT_TLS` | Thread-local storage data |
+| `SHT_DEBUG_*` | DWARF debug sections (line, info, abbrev, str, frame, loc, ranges, macinfo) |
+| `SHT_GROUP` | Section groups |
+
+The core eight (`TEXT`, `DATA`, `RODATA`, `SYMTAB`, `RELOC`, `EXPORT`, `IMPORT`, `FUNCMETA`) are what the loader resolves and what codegen emits by default; the remaining types are reserved for metadata, DWARF, and future use.
 
 ## Binary format
 
@@ -76,15 +88,17 @@ Each section is written as:
 
 The module header contains:
 - Magic number
-- Version
-- Entry point offset
+- Version (major/minor)
+- File type, target architecture, endianness, and pointer size
+- Flags
+- Entry point RVA and base address
 - Number of sections
 
 ## Serialization
 
 ```cpp
-void HOModule::serialize(Buffer &buf) const;
-void HOModule::deserialize(const Buffer &buf);
+bool HOModule::serialize(std::vector<uint8_t>& output) const;
+bool HOModule::deserialize(const std::vector<uint8_t>& input);
 ```
 
 - **Write** — Iterates sections, writes header, then each section's type, size, and data.

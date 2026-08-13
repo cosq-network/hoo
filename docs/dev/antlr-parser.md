@@ -65,7 +65,7 @@ That split keeps the parser layer and the AST layer separate. The generated pars
 
 ## How SimpleASTBuilder uses it
 
-`SimpleASTBuilder` extends `HoocBaseVisitor` and overrides the relevant `visit*` methods. The parser produces a concrete syntax tree (CST); the visitor converts it to an AST by walking the tree and building `ASTNode` objects.
+`SimpleASTBuilder` is a standalone class (it no longer subclasses the ANTLR visitor). It walks the parser's concrete syntax tree (CST) directly: `buildAST()` accepts a `HoocParser::CompilationUnitContext`, iterates its children with `dynamic_cast`, and dispatches to dedicated `build*` helpers that construct typed `ASTNode` objects.
 
 The builder is responsible for:
 
@@ -76,7 +76,7 @@ The builder is responsible for:
 
 The builder is not responsible for lexical analysis or tokenization. Those are handled entirely by the generated lexer and parser.
 
-> **Convention:** Every grammar rule `someRule` has a corresponding `visitSomeRule` override in `SimpleASTBuilder`. Keep these in sync.
+> **Convention:** Every grammar rule `someRule` has a corresponding `build*` helper in `SimpleASTBuilder` (e.g. `buildFunctionDeclaration`, `buildType`, `buildExpression`). Keep these in sync.
 
 ## Practical Notes
 
@@ -108,6 +108,6 @@ Expression-only tests can use `parseExpression()` when they do not need a full c
 ## Troubleshooting
 
 - If `HoocParser.h` or `HoocLexer.h` are missing, the parser generation target has not run or the generated include directory is not on the include path.
-- If you change grammar rules but the builder stops compiling, check whether `SimpleASTBuilder` is missing a corresponding `visit*` or `build*` update.
+- If you change grammar rules but the builder stops compiling, check whether `SimpleASTBuilder` is missing a corresponding `build*` update.
 - If the parser reports syntax errors on valid code, inspect the token stream first. Most mistakes come from lexer rule ordering, missing keywords, or punctuation changes in `Hooc.g4`.
 - If the generated classes appear stale, clean the build tree or rerun the `generate_parser` target so CMake rebuilds the ANTLR outputs.

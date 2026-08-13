@@ -95,6 +95,10 @@ The core profile uses 32 general-purpose 64-bit registers (`r0..r31`):
 
 (See `docs/hvm/hvm_register_set.csv`.)
 
+The full ABI contract — calling convention, frame layout, data representation,
+Hoo compiler conventions, ARC, exceptions, and the native runtime bridge — is
+normative in `docs/hvm/hvm-abi.md`.
+
 ### 3.1 Standard HVM calling convention
 
 - `r1`, `r2`, `r3`, `r5`, `r6`, `r7`, and `r8` carry the first seven scalar or

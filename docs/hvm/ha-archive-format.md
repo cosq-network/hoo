@@ -29,6 +29,9 @@ While `.ha` serves a similar purpose to Java's `.jar` format (providing a single
 | **Manifest / Metadata** | Uses **`META-INF/hoo/archive.json`** (minified JSON) storing dependency graphs, entry points, and strict symbol lookup tables for fast loading. | Uses **`META-INF/MANIFEST.MF`** (custom text-based key-value format) specifying the Main-Class, classpath, and package metadata. |
 | **Execution** | Loaded into the **HVMJIT** (an LLVM ORC-based dynamic binary translator) which topologically orders modules and rejects circular dependencies during resolution. | Loaded into the **JVM** which incrementally loads and verifies `.class` files on-demand during runtime. |
 | **Resolution** | Files are compiled sequentially, packaged into `.ha`, and executed as a monolithic payload. | Highly dynamic classpaths allow multiple overlapping `.jar` files to resolve dependencies at runtime. |
+| **Integrity** | SHA-256 hash per module recorded in the manifest. | CRC-32 per ZIP entry. |
+| **Entry point** | Manifest `entryPoint` (`module` + `symbol`), or scan module `.export` tables for `main`. | `Main-Class` attribute in `MANIFEST.MF`. |
+| **Module linkage** | Per-module `.import` / `.export` tables, resolved across modules in dependency order. | `module-info.class` (`requires`/`exports`/`uses`/`provides`) or the classpath. |
 
 ### Which is better?
 
@@ -61,3 +64,47 @@ HVM bundle resolves each module's own dependency edges with a DFS traversal,
 emits dependencies before dependents, and rejects a real cycle such as
 `A -> B -> C -> A`. A missing optional dependency is ignored for ordering;
 required-module availability is validated by the loader.
+
+## 3. Manifest (`META-INF/hoo/archive.json`)
+
+The manifest is a minified JSON document produced by `HAManifest::toJson()` and
+parsed by `HAManifest::fromJson()` (rejected unless `format == "hoo-archive"`).
+Field names below match the implementation.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `format` | string | `"hoo-archive"` |
+| `formatVersion` | integer | manifest format version (`1`) |
+| `createdBy` | object | `{ "tool", "version" }` — the compiler that built the archive |
+| `entryPoint` | object (optional) | `{ "source", "module", "symbol" }` — the program entry |
+| `modules` | array | per-module records (below) |
+| `symbolIndex` | object | mangled symbol name → `{ "archivePath" }` fast lookup |
+| `moduleIndex` | object | module name → `archivePath` |
+
+Each element of `modules`:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `module` | string | logical module name |
+| `sourcePath` | string | originating source path |
+| `archivePath` | string | entry path inside the archive (e.g. `modules/<name>.ho`) |
+| `sha256` | string | hex SHA-256 of the serialized `.ho` payload |
+| `imports` | array of string | names of modules this module depends on |
+| `symbols` | array | exported symbols: `{ "name", "mangled", "kind", "returnType", "visibility" }` |
+
+## 4. Packaging and Loading
+
+- `HooArchiveCompiler` serializes each compiled `HOModule` with
+  `HOModule::serialize()`, stores it as `modules/<name>.ho`, computes the
+  payload's SHA-256 (`computeSha256`), records the module's imports and
+  exported symbols, and writes the archive manifest. An `entryPoint` is set
+  when a `main` export exists.
+- `HooArchiveLoader` reads the manifest, re-parses each `.ho` payload with
+  `HOModule::parse()`, and loads modules in dependency order. It resolves the
+  manifest `entryPoint` symbol, or scans loaded modules for an exported `main`
+  when none is declared. It fails with a clear error when no entry point can be
+  found or when the declared one is ambiguous.
+- Unlike a JAR, `.ha` does not model per-entry compression or multi-release
+  versioning (`META-INF/versions/`). Each `.ho` payload stays a flat,
+  relocatable binary so the runtime can link and load it without decompressing
+  a whole archive.

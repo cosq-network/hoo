@@ -8,14 +8,16 @@ The test tree is organized by subsystem, not by `src/` mirroring:
 
 ```text
 tests/
-  ast/        - AST node tests
-  codegen/    - Bytecode generation tests
-  core/       - Compiler, CLI, and symbol mangling tests
-  hvm/        - HVM and module format tests
-  jit/        - End-to-end JIT tests
-  parsing/    - Parser and AST builder tests
-  repl/       - REPL tests
-  runtime/    - Runtime library tests
+  ast/              - AST node tests
+  codegen/          - Bytecode generation tests
+  core/             - Compiler, CLI, and symbol mangling tests
+  hvm/              - HVM and module format tests
+  integration/jit/  - End-to-end JIT tests
+  integration/cli/  - CLI end-to-end tests
+  integration/statements/ - Statement end-to-end tests
+  parsing/          - Parser and AST builder tests
+  repl/             - REPL tests
+  runtime/          - Runtime library tests
   test_main.cpp
 ```
 
@@ -178,7 +180,7 @@ TEST(HVMJITLifecycleTest, LoadSourceCodeThenDestroy) {
 
 The full JIT suites in `tests/integration/jit/` follow the same pattern, but extend it with function lookup and execution checks.
 
-The current build registers 2,637 GoogleTest cases in total. Use
+The current build registers 2,643 GoogleTest cases in total. Use
 `hoo-tests --gtest_list_tests` when reporting a fresh count; the number changes
 as test cases are added or removed.
 

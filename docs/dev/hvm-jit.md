@@ -1,8 +1,8 @@
 # How HVMJIT Works
 
-**File:** `src/hvm/HVMJIT.h` / `.cpp` (~8224 lines)
+**File:** `src/hvm/HVMJIT.h` / `.cpp` (~10,100 lines)
 
-`HVMJIT` is the LLVM ORC-based JIT execution engine. It loads compiled `HOModule` bytecode, translates it to LLVM IR, and executes it natively via LLVM ORC JIT. It also supports running modules via an interpreted fallback. With ~100+ `jit_hoo_*` runtime wrappers, it bridges Hoo built-in functions to C runtime implementations.
+`HVMJIT` is the LLVM ORC-based JIT execution engine. It loads compiled `HOModule` bytecode, translates it to LLVM IR, and executes it natively via LLVM ORC JIT. It also supports running modules via an interpreted fallback. With ~190 `jit_hoo_*` runtime wrappers, it bridges Hoo built-in functions to C runtime implementations.
 
 ## What LLVM ORC Does
 
@@ -68,6 +68,9 @@ struct HVMState {
     int64_t vregs[32][8]{};        // Vector registers (for tensor ops)
     int64_t vl = 0;                // Vector length
     int64_t vtype = 0;             // Vector type
+    uint64_t reservationAddr = UINT64_MAX;  // LR/SC reservation
+    uint64_t tlabStart = 0, tlabEnd = 0;    // Thread-local allocation bounds
+    uint64_t csrs[12]{};           // HVM system-profile CSR window (0x000..0x00B)
 };
 ```
 
