@@ -131,15 +131,17 @@ TEST_F(HooBufferJitTest, ConstructorWithCapacityIsNotSupported) {
     EXPECT_FALSE(jit.loadSourceCode("test", source));
 }
 
-TEST_F(HooBufferJitTest, StaticFromBytesIsNotSupported) {
+TEST_F(HooBufferJitTest, BufferFromBytesFactory) {
     const std::string source = R"(
         import hoo.buffer;
         func :int64 test() {
             var b = Buffer.fromBytes("abc", 3);
-            return b.length();
+            if (b.length() != 3) { return 0; }
+            return b.byteAt(1);
         }
     )";
-    EXPECT_FALSE(jit.loadSourceCode("test", source));
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 98);
 }
 
 TEST_F(HooBufferJitTest, BufferAppend) {

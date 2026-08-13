@@ -3314,11 +3314,6 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            if (isStaticCall && resolvedClass == "Buffer" && methodName == "fromBytes") {
-                addError("Buffer.fromBytes is not supported; use free function buffer_fromBytes(data, len)");
-                return 0;
-            }
-
             if (isStaticCall && resolvedClass == "Array") {
                 addError("Array." + methodName + " is not supported as a static method; use an Array instance");
                 return 0;
@@ -3474,6 +3469,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 else if (methodName == "append") symbol = "_F_M_hoo_E_buffer_append_v_p_p";
                 else if (methodName == "appendBuffer") symbol = "_F_M_hoo_E_buffer_appendBuffer_v_p";
                 else if (methodName == "slice" || methodName == "sub") symbol = "_F_M_hoo_E_buffer_slice_v_p_p";
+                else if (methodName == "fromBytes") symbol = "_F_M_hoo_E_buffer_fromBytes_p_p_p";
                 else if (methodName == "data") symbol = "_F_M_hoo_E_buffer_data_v";
                 if (!symbol.empty()) {
                     emitCall(Opcode::CALL, symbol);
@@ -5684,7 +5680,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             if (className == "Map" && (method == "getInt64String" || method == "getStringString")) {
                 result.typeId = 101; result.className = "String"; return result;
             }
-            if (className == "Buffer" && (method == "copy" || method == "slice" || method == "sub")) {
+            if (className == "Buffer" && (method == "copy" || method == "slice" || method == "sub" || method == "fromBytes")) {
                 result.typeId = 113; result.className = "Buffer"; return result;
             }
             result.typeId = inferExpressionTypeIdLegacy(expr);

@@ -66,6 +66,44 @@ func :int64 main() {
 
 ---
 
+#### Factory Constructor: `Buffer.fromBytes`
+
+Creates a new buffer initialized with the contents of an existing byte array. This is the recommended way to create a `Buffer` from raw data.
+
+**Syntax:**
+
+```hoo
+Buffer.fromBytes(data: string, length: int64) :Buffer
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | `string` | The source string whose bytes are copied into the buffer. |
+| `length` | `int64` | Number of bytes to copy from the source. |
+
+**Returns:**
+
+`Buffer` — A new Buffer containing a copy of the specified bytes.
+
+**Complete Example:**
+
+```hoo
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer.fromBytes("Hello", 5);
+    println(buf.length()); // 5
+    buf.release();
+    return 0;
+}
+```
+
+**Alternative:** The free function `buffer_fromBytes(data, length)` provides the same behavior and remains available for backward compatibility.
+
+---
+
 #### `write`
 
 Appends string data to the end of the buffer. The internal storage may be reallocated as the buffer grows, but the buffer **handle stays valid** (growth happens out-of-line and never moves or invalidates the handle). A pointer returned earlier by `data()` may become stale after an append; call `data()` again.
