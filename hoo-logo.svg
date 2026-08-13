@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a1128"/>
+      <stop offset="100%" stop-color="#121f3f"/>
+    </linearGradient>
+    <linearGradient id="silverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#e0e5ec"/>
+      <stop offset="50%" stop-color="#8a95a5"/>
+      <stop offset="100%" stop-color="#4a5568"/>
+    </linearGradient>
+    <linearGradient id="blueGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f2fe"/>
+      <stop offset="100%" stop-color="#4facfe"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="400" height="400" fill="url(#bgGrad)"/>
+  
+  <!-- Silicon Grid Lines -->
+  <g stroke="#1c2d5a" stroke-width="2" opacity="0.5">
+    <line x1="50" y1="0" x2="50" y2="400"/>
+    <line x1="100" y1="0" x2="100" y2="400"/>
+    <line x1="150" y1="0" x2="150" y2="400"/>
+    <line x1="200" y1="0" x2="200" y2="400"/>
+    <line x1="250" y1="0" x2="250" y2="400"/>
+    <line x1="300" y1="0" x2="300" y2="400"/>
+    <line x1="350" y1="0" x2="350" y2="400"/>
+    <line x1="0" y1="50" x2="400" y2="50"/>
+    <line x1="0" y1="100" x2="400" y2="100"/>
+    <line x1="0" y1="150" x2="400" y2="150"/>
+    <line x1="0" y1="200" x2="400" y2="200"/>
+    <line x1="0" y1="250" x2="400" y2="250"/>
+    <line x1="0" y1="300" x2="400" y2="300"/>
+    <line x1="0" y1="350" x2="400" y2="350"/>
+  </g>
+
+  <!-- Stylized Owl / H shape abstract -->
+  <g transform="translate(100, 80)">
+    <!-- Circuit paths -->
+    <path d="M 40,40 L 40,160 L 160,160 L 160,40" fill="none" stroke="url(#blueGlow)" stroke-width="8" stroke-linejoin="round"/>
+    <path d="M 40,100 L 160,100" fill="none" stroke="url(#blueGlow)" stroke-width="8"/>
+    
+    <!-- Nodes -->
+    <circle cx="40" cy="40" r="10" fill="url(#silverGrad)"/>
+    <circle cx="160" cy="40" r="10" fill="url(#silverGrad)"/>
+    <circle cx="40" cy="160" r="10" fill="url(#silverGrad)"/>
+    <circle cx="160" cy="160" r="10" fill="url(#silverGrad)"/>
+    
+    <!-- Central Chip (Owl face/body) -->
+    <rect x="75" y="75" width="50" height="50" rx="10" fill="url(#silverGrad)" stroke="#0a1128" stroke-width="4"/>
+    
+    <!-- Eyes / Core processors -->
+    <circle cx="90" cy="100" r="6" fill="#00f2fe"/>
+    <circle cx="110" cy="100" r="6" fill="#00f2fe"/>
+    
+    <!-- Circuit trace going out -->
+    <path d="M 100,125 L 100,180 L 50,180" fill="none" stroke="#00f2fe" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 100,125 L 100,180 L 150,180" fill="none" stroke="#00f2fe" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Typography -->
+  <text x="200" y="320" font-family="Arial, sans-serif" font-weight="bold" font-size="64" fill="url(#silverGrad)" text-anchor="middle" letter-spacing="4">HOO</text>
+
+
+</svg>
