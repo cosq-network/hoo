@@ -34,6 +34,8 @@ TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
     auto module = compiler_->compile("test", code);
     ASSERT_NE(module, nullptr);
     EXPECT_EQ(module->getName(), "test");
+    // Silicon-ready modules advertise the native HVM64 ISA target.
+    EXPECT_EQ(module->getTargetArch(), TargetArch::HVM64);
 
     auto sym = findSymbol(*module, "add");
     ASSERT_NE(sym, nullptr);
@@ -53,6 +55,42 @@ TEST_F(HVMCodeGeneratorTest, CompileSimpleFunction) {
     }
 
     ASSERT_GE(insts.size(), 4);
+}
+
+TEST_F(HVMCodeGeneratorTest, ArcRetainAdvertisesHvmArcFeature) {
+    std::string code = R"(
+        func :any test() {
+            var s = "hello";
+            return s;
+        }
+    )";
+
+    auto module = compiler_->compile("arcfeat", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_EQ(module->getTargetArch(), TargetArch::HVM64);
+    EXPECT_TRUE(module->requiresFeature(HVMFeature::HVM_ARC));
+    EXPECT_EQ(module->getFlags() & static_cast<uint32_t>(HVMFeature::HVM_ARC),
+              static_cast<uint32_t>(HVMFeature::HVM_ARC));
+}
+
+TEST_F(HVMCodeGeneratorTest, NullableDerefAdvertisesHvmNzFeature) {
+    std::string code = R"(
+        func :int64 test() {
+            var s: String? = null;
+            try {
+                return s.length();
+            } catch (e: Exception) {
+                return 1;
+            }
+        }
+    )";
+
+    auto module = compiler_->compile("nzfeat", code);
+    ASSERT_NE(module, nullptr);
+    EXPECT_EQ(module->getTargetArch(), TargetArch::HVM64);
+    EXPECT_TRUE(module->requiresFeature(HVMFeature::HVM_NZ));
+    EXPECT_EQ(module->getFlags() & static_cast<uint32_t>(HVMFeature::HVM_NZ),
+              static_cast<uint32_t>(HVMFeature::HVM_NZ));
 }
 
 TEST_F(HVMCodeGeneratorTest, GeneratedFramesAreSixteenByteAligned) {

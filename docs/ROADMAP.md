@@ -198,7 +198,7 @@ This document provides a high-level overview of the current status of all tracke
 
 - **[ISSUE-029_unsigned_comparisons.md](issues/ISSUE-029_unsigned_comparisons.md)**
   - **Title**: # ISSUE-029: Missing Unsigned Comparison Instructions in HVM
-  - **Status**: FIXED — wide unsigned comparisons and native HVM 1.5 `CMP_B` comparisons are implemented
+  - **Status**: FIXED — wide unsigned comparisons and native HVM 1.6 `CMP_B` comparisons are implemented
   - **Priority**: High (Crucial for `byte` type correctness)
 
 - **[ISSUE-030_tensor_scalar_arithmetic.md](issues/ISSUE-030_tensor_scalar_arithmetic.md)**
@@ -229,7 +229,7 @@ This document provides a high-level overview of the current status of all tracke
   - **Priority**: Medium
 
 - **[ISSUE-040_hvm_spec_compatibility.md](issues/ISSUE-040_hvm_spec_compatibility.md)**
-  - **Title**: # ISSUE-040: HVM Implementation Is Not Fully Compatible With HVM 1.5 Specification
+  - **Title**: # ISSUE-040: HVM Implementation Is Not Fully Compatible With HVM 1.6 Specification
   - **Status**: IMPLEMENTED (Phases 1-7 complete: CSV parity + JIT IR lowering + LD.P/ST.P hardening + RELEASE zero-flag + ALLOC.BUMP TLAB + feature flags + HVM-V vector expansion)
   - **Priority**: High
 

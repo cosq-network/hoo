@@ -1,16 +1,16 @@
 # HVM Core Instruction Reference
 
-Version: `1.5`
-Profile: `hvm64-core-system` (Hardware Ready)
+Version: `1.6` (silicon-ready revision)
+Profile: `hvm64-core-system` / `hvm64-silicon-mvp` (Hardware Ready)
 Normative sources:
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm-spec.md`
 
-This reference defines a **64-bit hardware-ready ISA**. HVM is RISC-V-inspired but is not binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.5 runtime acceleration instructions with software fallback.
+This reference defines a **64-bit hardware-ready ISA**. HVM is RISC-V-inspired but is not binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.6 runtime acceleration instructions with software fallback.
 
 ## 1. Scope
 
-This reference defines the physical instructions supported by the HVM core and optional HVM 1.5 system profiles. It is sufficient to support the Hoo language through aggressive compiler-level lowering while preserving a 64-bit register and pointer ABI.
+This reference defines the physical instructions supported by the HVM core and optional HVM 1.6 system profiles. It is sufficient to support the Hoo language through aggressive compiler-level lowering while preserving a 64-bit register and pointer ABI.
 
 ## 2. Register Convention Summary
 
@@ -111,9 +111,9 @@ NaN canonicalization: every NaN result is the canonical quiet NaN
 - Native 8-bit: `CMPEQ.B` `CMPNE.B` `CMPLT.B` `CMPLE.B` `CMPULT.B` `CMPULE.B` (opcode `0x42`; operands are truncated to 8 bits before comparison)
 - Float: `FCMPEQ` `FCMPLT` `FCMPLE`
 
-### 4.5a HVM 1.5 scalar sub-word operations
+### 4.5a HVM 1.6 scalar sub-word operations
 
-The HVM 1.5 scalar profile keeps the 64-bit register/ABI model while making
+The HVM 1.6 scalar profile keeps the 64-bit register/ABI model while making
 the low-byte operation explicit:
 
 - `ARITH_B` (`0x11`): `ADD.B`, `SUB.B`, `MUL.B`, `DIV.B`, `DIVU.B`, `REM.B`,
@@ -173,15 +173,20 @@ profile-defined.
 
 ### 4.10 Calls/linking
 - `CALL` `TAILCALL` (J-format, 20-bit relative offset)
+- `CALL_OVERLOADED` (`0xB5`): Toolchain extension with the same control transfer as
+  `CALL`; the Hoo compiler uses it so overload dispatch sites are distinguishable
+  in object code. Listed in `hvm_instruction_set.csv` for parity with the JIT.
 
 ### 4.11 Hardware/System
-- `SYSCALL`: Trigger a system call to the runtime.
-- `BREAK`: Trap to debugger.
+- `SYSCALL`: Synchronous trap to the platform/runtime service handler. On
+  physical silicon this is never a C++ call; `scause` is 16 (U) or 17 (S),
+  `stval` receives `imm15`, and `bad_instruction` holds the faulting word.
+- `BREAK`: Trap to debugger / monitor (`scause = 3`).
 
 **SYSCALL calling convention**: The immediate field selects the service; arguments are
 passed in `r2` (and `r3` for two-argument calls, `r4` for three-argument calls).
 The result is written to `rd`. See `docs/hvm/hvm-spec.md` §7 for the full
-syscall number table.
+syscall number table and silicon service-class rules (runtime 1–11, OS 12–23).
 
 ### 4.12 System/Trap (system profile; privileged)
 - `ECALL`: Trap to supervisor mode. `ECALL` is legal in both U-mode (scause = 8)
@@ -195,20 +200,24 @@ syscall number table.
   unhandled system-profile trap.
 - `CSRRW`: Atomic read-write of a CSR (S-mode only; traps/scause=2 in U-mode). The CSR
   address is the low 12 bits of the HVM `imm15` field; the upper three bits
-  must be zero. CSR addresses in the HVM system window are 0x000..0x008
+  must be zero. CSR addresses in the HVM system window are 0x000..0x00B
   (`sstatus`, `stvec`, `sepc`, `scause`, `stval`, `satp`, `stime`, `stimecmp`,
-  `feature0`); `stime` (0x006) and `feature0` (0x008) are read-only and any
-  write reports an illegal-instruction trap (scause=2).
+  `feature0`, `bad_instruction`, `sip`, `sie`); `stime` (0x006), `feature0`
+  (0x008), and `bad_instruction` (0x009) are read-only — physical silicon raises
+  illegal-instruction on write (`scause=2`); the hosted profile ignores writes.
 - `SFENCE.VMA`: TLB flush after page-table modification (S-mode only; scause=2 in U-mode).
 
 The hosted `HVMJIT` profile does not emulate physical privilege levels, so
 `ECALL` and `TRAPRET` report an unhandled trap there; `SFENCE.VMA` is a no-op.
 Physical processors and system simulators must implement the system-profile
-behavior in `hvm-spec.md` section 9.
+behavior in `hvm-spec.md` section 9. First FPGA/ASIC cores SHOULD implement the
+Silicon MVP profile in `hvm-spec.md` section 10.
 
-### 4.13 HVM 1.5 runtime and green-compute extensions
+### 4.13 HVM 1.6 runtime and green-compute extensions
 - `RETAIN` `RELEASE`: Non-trapping reference-count update helpers for managed Hoo objects.
-- `ICACHE.RNG`: Invalidate instruction/JIT cache state for an address range after code generation.
+- `ICACHE.RNG`: Invalidate instruction-fetch / I-cache state for `[base, base+size)`
+  so subsequent fetches observe prior stores (required on silicon after code stores;
+  hosted interpreters without an I-cache may no-op). See `hvm-spec.md` §10.3.
 - `LOOP.SET` `LOOP.DECBR`: Optional hardware-loop support for low-power counted loops.
   `LOOP.SET` copies `rs` to the per-hart `loop_count` state and records its
   signed `imm15` in `loop_backedge`. `LOOP.DECBR` decrements `loop_count`; when

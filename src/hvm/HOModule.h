@@ -19,8 +19,9 @@ enum class FileType : uint8_t {
 };
 
 enum class TargetArch : uint8_t {
-    X86_64 = 0x00,
-    ARM64 = 0x01,
+    X86_64 = 0x00, // legacy host annotation; not an HVM ISA id
+    ARM64 = 0x01,  // legacy host annotation; not an HVM ISA id
+    HVM64 = 0x02,  // native HVM 64-bit ISA (physical silicon / Bare / system)
     Any = 0xFF
 };
 
@@ -55,13 +56,22 @@ enum class SectionType : uint32_t {
     SHT_GROUP = 0x17
 };
 
+// Module feature flags (header flags[12:0] and .note requiredFeatures).
+// Bit layout matches docs/hvm/ho-file-format.md §3.1 for silicon loaders.
 enum class HVMFeature : uint64_t {
-    HVM_C     = 1ULL << 0,
-    HVM_V     = 1ULL << 1,
-    HVM_A     = 1ULL << 2,
-    HVM_Alloc = 1ULL << 3,
-    HVM_Prof  = 1ULL << 4,
-    HVM_NZ    = 1ULL << 5,
+    HVM_C      = 1ULL << 0,  // compressed encodings
+    HVM_ARC    = 1ULL << 1,  // RETAIN / RELEASE
+    HVM_ICACHE = 1ULL << 2,  // ICACHE.RNG
+    HVM_L      = 1ULL << 3,  // hardware loops
+    HVM_MEM    = 1ULL << 4,  // pair memory / memory hints
+    HVM_V      = 1ULL << 5,  // HVM-V vector
+    HVM_A      = 1ULL << 6,  // HVM-A accelerator doorbell
+    HVM_Alloc  = 1ULL << 7,  // ALLOC.BUMP
+    HVM_ObjRef = 1ULL << 8,  // compact object references
+    HVM_Cap    = 1ULL << 9,  // CHK.B
+    HVM_Prof   = 1ULL << 10, // RDPROF
+    HVM_NZ     = 1ULL << 11, // LD.D.NZ / null-check lowering
+    HVM_RT     = 1ULL << 12, // deterministic silicon-MVP / RT subset
 };
 
 struct SectionFlags {
@@ -247,7 +257,8 @@ public:
     void setPIE(bool pie);
     void setOptimizationLevel(uint8_t level);
 
-    void setRequiredFeatures(uint64_t features) { requiredFeatures_ = features; }
+    void setRequiredFeatures(uint64_t features);
+    void addRequiredFeatures(uint64_t features);
     uint64_t getRequiredFeatures() const { return requiredFeatures_; }
     bool requiresFeature(HVMFeature feature) const {
         return (requiredFeatures_ & static_cast<uint64_t>(feature)) != 0;
@@ -269,7 +280,7 @@ public:
 
     static constexpr uint32_t MAGIC = 0x484F4F43;
     static constexpr uint16_t VERSION_MAJOR = 1;
-    static constexpr uint16_t VERSION_MINOR = 5;
+    static constexpr uint16_t VERSION_MINOR = 6;
     static constexpr size_t HEADER_SIZE = 64;
 
 private:

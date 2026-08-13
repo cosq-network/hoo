@@ -86,9 +86,12 @@ TEST_F(HOModuleTest, SetTargetArch) {
     auto module = HOModule::create();
     module->setTargetArch(TargetArch::X86_64);
     EXPECT_EQ(module->getTargetArch(), TargetArch::X86_64);
-    
+
     module->setTargetArch(TargetArch::ARM64);
     EXPECT_EQ(module->getTargetArch(), TargetArch::ARM64);
+
+    module->setTargetArch(TargetArch::HVM64);
+    EXPECT_EQ(module->getTargetArch(), TargetArch::HVM64);
 }
 
 TEST_F(HOModuleTest, SetEndianness) {

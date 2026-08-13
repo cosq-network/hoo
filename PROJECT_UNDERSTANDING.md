@@ -8,7 +8,7 @@
 
 ## 1. What is Hoo?
 
-Hoo is a **high-performance, statically-typed systems programming language** designed for modern hardware. It compiles to a pure, physical-silicon-ready 64-bit RISC architecture called **HVM (Hoo Virtual Machine) v1.5**.
+Hoo is a **high-performance, statically-typed systems programming language** designed for modern hardware. It compiles to a pure, physical-silicon-ready 64-bit RISC architecture called **HVM (Hoo Virtual Machine) v1.6**.
 
 ### Core Philosophy: "Hardware Purity"
 
@@ -336,7 +336,7 @@ try {
 - Distinct nullable overload mangling
 - ARC cleanup for nullable objects in generic slots
 
-### ISSUE-040: HVM 1.5 Spec Compatibility
+### ISSUE-040: HVM 1.6 Spec Compatibility
 - Native `CMP_B` (byte comparison) instruction
 - CPU profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D)
 - ECALL/TRAPRET/CSRRW for exception handling
@@ -456,7 +456,7 @@ ctest --preset ninja-relwithdebinfo
 
 - **Phase 16**: Extended operator overloading and custom iterators
 - **Phase 17**: Compile-time metaprogramming (generic specialization)
-- **Physical Hardware**: FPGA Soft-Core implementation based on HVM spec
+- **Physical Hardware**: FPGA Soft-Core implementation based on the HVM Silicon MVP profile (`docs/hvm/hvm-spec.md` §10)
 
 ### Known Limitations & TODOs
 

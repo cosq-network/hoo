@@ -135,7 +135,7 @@ scalar/logical expressions. Method dispatch keeps a multi-class candidate index
 ambiguous unknown receivers are rejected during code generation.
 
 For low-precision comparisons, byte-to-byte relational expressions use the
-native HVM 1.5 `CMP_B` family. Mixed byte/integer expressions continue to use
+native HVM 1.6 `CMP_B` family. Mixed byte/integer expressions continue to use
 the wide comparison family so their existing 64-bit ABI behavior is preserved.
 
 Imported archive functions may provide `ExternalFunctionInfo` metadata with

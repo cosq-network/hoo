@@ -11,6 +11,19 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- docs(hvm): bump HVM specification and ISA to version **1.6**
+  - Update `hvm-spec.md`, `instructions.md`, `ho-file-format.md` (format minor `6`),
+    register set CSV, and related project docs.
+  - `.ho` modules now serialize `version_minor = 6` (`HOModule::VERSION_MINOR`).
+
+- docs(hvm)/feat(hvm): silicon-ready ISA contract
+  - Expand CSR window to `0x000..0x00B` with `bad_instruction`, `sip`, and `sie`.
+  - Document Silicon MVP profile (`hvm64-silicon-mvp`), platform-profile checklist,
+    `SYSCALL` service classes, and physical `ICACHE.RNG` coherency.
+  - Align module `HVMFeature` bits with `.ho` header feature flags; add `TargetArch::HVM64`.
+  - JIT records precise trap CSRs (including `bad_instruction`); fix LLVM CSR array
+    size to match `kCsrCount`; codegen emits HVM64 + ARC/ICACHE/NZ feature ads.
+
 - feat(tests): add CLI integration tests for statements
   - Add `WhileLoopCLIIntegrationTest` (17 tests) covering `while` and `do..while`
     loops: basic counting, array traversal, break/continue, nested loops,

@@ -877,6 +877,17 @@ uint8_t HOModule::getPointerSize() const { return pointer_size_; }
 void HOModule::setFlags(uint32_t flags) { flags_ = flags; }
 uint32_t HOModule::getFlags() const { return flags_; }
 
+void HOModule::setRequiredFeatures(uint64_t features) {
+    requiredFeatures_ = features;
+    // Mirror low 13 feature bits into the HO header flags field so silicon
+    // loaders that only inspect the fixed header still see the MVP contract.
+    flags_ = (flags_ & ~0x1FFFU) | static_cast<uint32_t>(features & 0x1FFFU);
+}
+
+void HOModule::addRequiredFeatures(uint64_t features) {
+    setRequiredFeatures(requiredFeatures_ | features);
+}
+
 void HOModule::setEntryPoint(uint64_t rva) { entry_point_ = rva; }
 uint64_t HOModule::getEntryPoint() const { return entry_point_; }
 

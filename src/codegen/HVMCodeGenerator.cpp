@@ -741,7 +741,12 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     }
     // For now we look for a marker or use default.
     module_ = std::make_unique<hvm::HOModule>(moduleName);
+    // Native HVM64 ISA target for physical silicon / Bare / system profiles.
+    module_->setTargetArch(TargetArch::HVM64);
     moduleUsesNullChecks_ = false;
+    moduleUsesArc_ = false;
+    moduleUsesICache_ = false;
+    moduleUsesMem_ = false;
     instructions_.clear();
     currentByteOffset_ = 0;
     errors_.clear();
@@ -1232,10 +1237,22 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     textSection.virtual_size = textSection.data.size();
     module_->addSection(std::move(textSection));
 
+    uint64_t required = 0;
     if (moduleUsesNullChecks_) {
-        // The module embeds kSysThrowToHandler (SYSCALL 9) after a failed
-        // null check; declare the HVM_NZ feature so loaders accept it.
-        module_->setRequiredFeatures(static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ));
+        // Null-check lowering uses LD.D.NZ and/or SYSCALL throw paths.
+        required |= static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ);
+    }
+    if (moduleUsesArc_) {
+        required |= static_cast<uint64_t>(hvm::HVMFeature::HVM_ARC);
+    }
+    if (moduleUsesICache_) {
+        required |= static_cast<uint64_t>(hvm::HVMFeature::HVM_ICACHE);
+    }
+    if (moduleUsesMem_) {
+        required |= static_cast<uint64_t>(hvm::HVMFeature::HVM_MEM);
+    }
+    if (required != 0) {
+        module_->addRequiredFeatures(required);
     }
 
     return std::make_unique<HVMGeneratedModule>(std::move(module_));
@@ -4737,8 +4754,18 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
 }
 
 void HVMCodeGenerator::emit(Opcode op, const Operands& operands) {
-    // Regular 32‑bit/escape emission
+    // Regular 32‑bit/escape emission. Track green-compute / silicon feature use
+    // so the module header advertises the physical-CPU feature contract.
     HVMInstruction inst(op, operands);
+    if (op == Opcode::RETAIN || op == Opcode::RELEASE) {
+        moduleUsesArc_ = true;
+    }
+    if (op == Opcode::ICACHE_RNG) {
+        moduleUsesICache_ = true;
+    }
+    if (op == Opcode::LD_P || op == Opcode::ST_P) {
+        moduleUsesMem_ = true;
+    }
     instructions_.push_back(inst);
     currentByteOffset_ += inst.getSize();
 }

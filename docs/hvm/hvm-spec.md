@@ -1,13 +1,19 @@
 # Hoo Virtual Machine (HVM) Specification
 
-Version: `1.5`
+Version: `1.6` (silicon-ready revision)
 
 This document is the **normative architectural contract** for a physical HVM
 microprocessor, a cycle-accurate simulator, the interpreter, and the LLVM JIT.
 HVM is a standalone 64-bit load/store ISA. It is RISC-V-inspired but is not
 binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V,
-AMD64, or ARM64. HVM 1.5 adds profile-gated extensions without changing the
+AMD64, or ARM64. HVM 1.6 adds profile-gated extensions without changing the
 64-bit register machine or public ABI.
+
+**Silicon readiness.** A conforming physical implementation must implement the
+mandatory core in section 5.1, the CSR window and trap contract in section 9,
+and publish a platform profile (section 8.2). First-silicon / FPGA soft-cores
+SHOULD implement the Silicon MVP profile in section 10 before optional
+extensions.
 
 ## 1. Scope
 
@@ -51,7 +57,7 @@ Each hart has the following state:
 - `pc`: 64-bit byte address.
 - `r0..r31`: 64-bit integer registers, with `r0` permanently reading as zero
   and writes to it discarded.
-- Optional floating-point status/control state; the HVM 1.5 core does not
+- Optional floating-point status/control state; the HVM 1.6 core does not
   expose accrued FP exception flags through the public ABI.
 - `privilege`: `S` or `U` in the system profile.
 - `trap_state`: `cause`, `fault_pc`, `fault_address`, `bad_instruction`, and
@@ -227,9 +233,9 @@ A hosted HVM execution API reports an unhandled synchronous trap as `-1` and
 sets its VM error state for compatibility with the current interpreter/JIT
 API.
 
-### 5.2 HVM 1.5 Required Green-Compute Core Extensions
+### 5.2 HVM 1.6 Required Green-Compute Core Extensions
 
-HVM 1.5 promotes the following low-complexity extensions into the standard HVM CPU profile for documented mobile, desktop, server, and robotics systems:
+HVM 1.6 promotes the following low-complexity extensions into the standard HVM CPU profile for documented mobile, desktop, server, and robotics systems:
 
 - Runtime atomics: `RETAIN`, `RELEASE`
 - JIT cache coherency: `ICACHE.RNG`
@@ -237,9 +243,9 @@ HVM 1.5 promotes the following low-complexity extensions into the standard HVM C
 
 These instructions remain 64-bit operations. They do not change pointer width, register width, stack slot width, or the public ABI.
 
-### 5.3 HVM 1.5 scalar sub-word profile
+### 5.3 HVM 1.6 scalar sub-word profile
 
-The HVM 1.5 scalar profile adds five base-encoded instruction families while
+The HVM 1.6 scalar profile adds five base-encoded instruction families while
 retaining the 64-bit register machine:
 
 - `ARITH_B` (`0x11`) samples operands from bits 7:0 and provides wrapping
@@ -264,7 +270,7 @@ the existing f64 language boundary, preserving mixed-precision compatibility.
 
 ### 5.4 Floating-point state and semantics
 
-HVM has no separate floating-point register file in version 1.5. `FADD`,
+HVM has no separate floating-point register file in version 1.6. `FADD`,
 `FSUB`, `FMUL`, `FDIV`, and floating comparisons interpret the 64-bit contents
 of the referenced general-purpose registers as IEEE-754 binary64 values and
 write their result bit pattern to a general-purpose register.
@@ -399,7 +405,8 @@ address faults); see section 5.1 for the core-only trap-entry contract.
 
 ## 7. System Call (SYSCALL) Interface
 
-`SYSCALL` dispatches to internal runtime services via the immediate field `imm15`:
+`SYSCALL` dispatches to platform or runtime services via the immediate field
+`imm15`:
 
 In a hosted interpreter or JIT, the service table is a direct runtime bridge.
 On physical hardware, `SYSCALL` is a synchronous trap with cause `16` from
@@ -409,6 +416,14 @@ and `bad_instruction` holds the faulting `SYSCALL` (section 9.3), so the
 handler can dispatch without re-reading memory. A hardware implementation must
 not depend on C++ symbols or the presence of `hoort` in order to decode or
 retire the instruction.
+
+**Service classes** (normative for silicon platform profiles):
+
+| Class | Numbers | Role on physical silicon |
+|-------|---------|--------------------------|
+| Runtime / managed | 1–11 | Implemented by S-mode firmware or a guest runtime (`hoort`); may be documented unavailable on Bare-metal MVP boards that do not run managed Hoo code |
+| OS / platform | 12–23 | Implemented by the board OS or S-mode monitor (threading, file I/O, clock, entropy) |
+| Reserved | ≥ 24 | Must raise an illegal-service response defined by the platform profile (typically `rd = -1` or a documented trap) |
 
 | imm15 | Name           | Operation                              | Reads Register | Writes Register |
 |-------|----------------|----------------------------------------|----------------|-----------------|
@@ -442,7 +457,7 @@ Arguments are passed in registers `r2`, `r3`, and `r4` (for three-argument calls
 
 - This spec is a **pure hardware profile**, suitable for physical CPU design.
 - The HVM backend now performs aggressive lowering to maintain this purity.
-- HVM 1.5 remains a **64-bit architecture**. Compact object references are an optional managed-runtime representation and are not native pointers at C/C++ ABI boundaries.
+- HVM 1.6 remains a **64-bit architecture**. Compact object references are an optional managed-runtime representation and are not native pointers at C/C++ ABI boundaries.
 - **RET implementation note**: The architectural semantics of `RET` are `pc = r29` (branch to link register). In the interpreter and JIT backends, `RET` is implemented via native C++ function return (`return r1`); this is equivalent because `CALL` stores the return address (`pc+4`) in `r29` before transferring control via a C++ function call. A physical hardware implementation must execute `pc = r29` directly.
 - **JAL / CALL redundancy**: `JAL` (base32, 16-bit offset) and `CALL` (escape32, 20-bit offset) are semantically identical — both set `rd = pc+4; pc += offset`. `CALL` provides a larger reachable range; `JAL` saves code space when the offset fits in 16 bits.
 - **JMP / TAILCALL redundancy**: `JMP` (base32, 16-bit offset) and `TAILCALL` (escape32, 20-bit offset) are semantically identical — both perform `pc += offset` without saving a return address. `TAILCALL` provides a larger range; `JMP` saves code space when the offset fits.
@@ -472,11 +487,12 @@ A processor or SoC claiming HVM conformance must publish a platform profile
 that defines:
 
 - reset address, physical address width, RAM and MMIO ranges;
-- implemented optional-extension feature bits;
-- interrupt sources, priority, routing, and timer frequency;
+- implemented optional-extension feature bits (`feature0` and module flags);
+- interrupt sources, priority, routing into `sip.SEIP`, and timer frequency;
 - boot firmware entry state and device-discovery mechanism;
 - cache-coherency and DMA rules;
-- reservation granule and atomicity domain;
+- reservation granule and atomicity domain (multi-hart);
+- `ICACHE.RNG` line size / coherency with the data side;
 - debug, halt, single-step, and external-observation behavior; and
 - synchronous-exception and trap-entry contract (vector target, or the
   deterministic halt and cause-exposure mechanism) for implementations that
@@ -486,6 +502,16 @@ The core specification deliberately does not assign device addresses or
 pretend that the hosted Hoo runtime is present on bare hardware. A bare-metal
 program must provide the syscall and allocation services required by its ABI,
 or the platform must document those services as unavailable.
+
+**Normative platform-profile checklist** (must be answered in the board doc):
+
+1. Reset `pc`, initial `sp`, and whether firmware runs before U-mode.
+2. PA width and Bare vs HVM-39 default after reset.
+3. Silicon MVP vs full system feature set (section 10).
+4. Which `SYSCALL` numbers are implemented vs return-unavailable.
+5. External IRQ map into `sip.SEIP` and vectored `stvec` usage.
+6. Single-hart vs multi-hart coherency and LR/SC domain.
+7. Debug: `BREAK` halt vs monitor trap.
 
 ### 8.3 Hosted HVMJIT profile
 
@@ -534,22 +560,25 @@ reset in M-mode and transition to S-mode or U-mode through machine firmware.
 
 CSRs are addressed by a 12-bit immediate field in the `CSRRW` instruction.
 
-| Address | Name       | Description                                                        |
-|---------|------------|--------------------------------------------------------------------|
-| 0x000   | `sstatus`  | Supervisor status (SPP, SIE, SPIE, UPIE)                           |
-| 0x001   | `stvec`    | Trap handler PC (4-byte aligned, mode bits in low 2 bits)          |
-| 0x002   | `sepc`     | Exception program counter (address of trapping instruction)        |
-| 0x003   | `scause`   | Exception cause (bit 63 = interrupt flag, low bits = cause code)   |
-| 0x004   | `stval`    | Trap value (faulting address for page faults)                     |
-| 0x005   | `satp`     | Supervisor address translation (mode + ASID + page-table PPN)      |
-| 0x006   | `stime`    | Cycle counter (read-only, 64-bit, increments every cycle)          |
-| 0x007   | `stimecmp` | Timer compare value; when `stime >= stimecmp`, a timer interrupt fires |
-| 0x008   | `feature0` | Read-only implemented-feature bit register (see layout below)     |
+| Address | Name              | Description                                                        |
+|---------|-------------------|--------------------------------------------------------------------|
+| 0x000   | `sstatus`         | Supervisor status (SPP, SIE, SPIE, UPIE)                           |
+| 0x001   | `stvec`           | Trap handler PC (4-byte aligned, mode bits in low 2 bits)          |
+| 0x002   | `sepc`            | Exception program counter (address of trapping instruction)        |
+| 0x003   | `scause`          | Exception cause (bit 63 = interrupt flag, low bits = cause code)   |
+| 0x004   | `stval`           | Trap value (faulting address, syscall number, or zero)             |
+| 0x005   | `satp`            | Supervisor address translation (mode + ASID + page-table PPN)      |
+| 0x006   | `stime`           | Cycle counter (read-only, 64-bit, increments every cycle)          |
+| 0x007   | `stimecmp`        | Timer compare value; when `stime >= stimecmp`, a timer interrupt fires |
+| 0x008   | `feature0`        | Read-only implemented-feature bit register (see layout below)     |
+| 0x009   | `bad_instruction` | Complete faulting instruction encoding (see below)                 |
+| 0x00A   | `sip`             | Supervisor interrupt-pending bits                                  |
+| 0x00B   | `sie`             | Supervisor interrupt-enable bits                                   |
 
 **`feature0` field layout** (64-bit, read-only; writes are ignored):
 - Bit 0: `BaseCore`    — `hvm64-core-system` minimal instruction set
 - Bit 1: `GreenCompute` — RETAIN/RELEASE/ICACHE.RNG/LD.P/ST.P
-- Bit 2: `SubWord`     — HVM 1.5 scalar sub-word profile
+- Bit 2: `SubWord`     — HVM 1.6 scalar sub-word profile
 - Bit 3: `Vector`      — HVM-V
 - Bit 4: `HardwareLoop` — HVM-L
 - Bit 5: `Advisory`    — PREFETCH.*/MEMZERO.HINT/BR.HINT
@@ -558,11 +587,34 @@ CSRs are addressed by a 12-bit immediate field in the `CSRRW` instruction.
 - Bit 8: `Cap`         — HVM-Cap
 - Bit 9: `Nz`          — HVM-NZ
 - Bit 10: `Accel`      — HVM-A (implementations not supporting HVM-A leave this 0)
-- Bits 11–63: reserved, read as 0
+- Bit 11: `SiliconMvp` — core advertises Silicon MVP readiness (section 10)
+- Bits 12–63: reserved, read as 0
 
 Software that needs a feature must first read `feature0` and check the
-corresponding bit. Bits 11–63 are reserved; software must treat them as
+corresponding bit. Bits 12–63 are reserved; software must treat them as
 reserved (ignored for behavior, always read as 0).
+
+**`bad_instruction` encoding** (64-bit CSR `0x009`):
+- Hardware writes the complete little-endian instruction encoding of the
+  faulting instruction on every synchronous exception that has a reconstructible
+  instruction word (including `SYSCALL`, `BREAK`, `ECALL`, illegal encodings,
+  and arithmetic traps).
+- Base 32-bit instructions occupy bits 31:0; escape32 instructions occupy bits
+  63:0 as the 8-byte encoding (`0xFE` prefix through payload).
+- On physical silicon, writes to `bad_instruction` raise the illegal-instruction
+  trap (`scause = 2`). The hosted HVMJIT profile ignores software writes.
+- Reset value is 0.
+
+**`sip` / `sie` field layout** (64-bit):
+- Bit 0: `STIP` / `STIE` — supervisor timer interrupt pending / enable
+- Bit 1: `SSIP` / `SSIE` — supervisor software interrupt pending / enable
+- Bit 2: `SEIP` / `SEIE` — supervisor external interrupt pending / enable
+- Bits 3–63: reserved (read as 0, ignore writes)
+
+When `stime >= stimecmp`, hardware sets `sip.STIP`. An interrupt is taken when
+the corresponding `sie` bit is set, `sstatus.SIE == 1`, and privilege rules in
+section 9.3 permit delivery. External interrupt sources, wiring, and priority
+are defined by the platform profile (section 8.2).
 
 **`sstatus` field layout** (64-bit):
 - Bit 1: `SIE`   — Supervisor Interrupt Enable (0 = masked, 1 = enabled)
@@ -584,6 +636,8 @@ reserved (ignored for behavior, always read as 0).
 | 13          | Load page fault                      |
 | 15          | Store/AMO page fault                 |
 | 0x8000_0000_0000_0000 | Supervisor timer interrupt  |
+| 0x8000_0000_0000_0001 | Supervisor software interrupt |
+| 0x8000_0000_0000_0009 | Supervisor external interrupt |
 
 Additional HVM synchronous causes are:
 
@@ -619,6 +673,7 @@ to the reset vector):
 - `stime` = 0 (or a platform-defined monotonic starting offset; see section
   9.5). `stimecmp` = 0.
 - `feature0` = the implemented feature set (read-only). See section 9.2.
+- `sip` = 0. `sie` = 0.
 
 All CSRs and GPRs are 0 unless otherwise specified. `r0` reads as 0 and writes
 are discarded. A platform profile may not redefine these reset values; it may
@@ -775,12 +830,12 @@ of the HVM `imm15` field into `rd`, then writes the value of `rs` to the CSR.
 The upper three immediate bits must be zero. If `rs = r0`, the write is
 suppressed (behaves as a read-only access).
 
-Attempted write to a read-only CSR (e.g., `stime`, `feature0`) is ignored by
-the hosted profile; a physical system-profile implementation raises the
-illegal-instruction trap for such a write (scause = 2). Access to an undefined
-CSR address (an address outside the implemented CSR window, or with an
-unimplemented feature bit set) raises the illegal-instruction trap
-(scause = 2).
+Attempted write to a read-only CSR (e.g., `stime`, `feature0`,
+`bad_instruction`) is ignored by the hosted profile; a physical
+system-profile implementation raises the illegal-instruction trap for such a
+write (scause = 2). Access to an undefined CSR address (an address outside the
+implemented CSR window `0x000..0x00B`, or with an unimplemented feature bit set)
+raises the illegal-instruction trap (scause = 2).
 
 **Privilege and mode violations.** The following are synchronous exceptions
 and trap with the given `scause` values:
@@ -827,3 +882,46 @@ memory models used by modern desktop ISAs.
 The interpreter must serialize memory operations according to this model. A
 JIT may use host atomics and fences, but it must not expose host memory-ordering
 behavior that is weaker than HVM's SC contract.
+
+## 10. Silicon MVP Profile (`hvm64-silicon-mvp`)
+
+This profile is the recommended first implementation for FPGA soft-cores and
+ASIC tapeout candidates. It is a **subset** of the full system profile: every
+Silicon MVP implementation is a conforming HVM core; the converse is not
+required.
+
+### 10.1 Mandatory MVP state and instructions
+
+- Single hart, Bare `satp` (MODE = 0), flat physical address space.
+- Full GPR file `r0..r31`, `pc`, precise retirement, SC memory model.
+- CSR window `0x000..0x00B` with the reset values in section 9.2.
+- Instruction families in section 5.1 (`hvm64-core-system`).
+- Green-compute instructions in section 5.2 (`RETAIN`, `RELEASE`, `ICACHE.RNG`,
+  `LD.P`, `ST.P`).
+- `feature0` MUST set `BaseCore`, `GreenCompute`, and `SiliconMvp`.
+
+### 10.2 Explicitly deferred by MVP
+
+Unless the platform profile requires them, Silicon MVP MAY omit:
+
+- HVM-39 translation and non-Bare `satp` modes
+- HVM-V, HVM-L, HVM-A, HVM-Cap, HVM-Prof, HVM-NZ, advisory hints
+- Multi-hart coherency (a future multi-hart profile must extend LR/SC domains)
+- Managed `SYSCALL` services 1–11 (document as unavailable, or provide firmware)
+
+### 10.3 `ICACHE.RNG` on silicon
+
+`ICACHE.RNG` invalidates instruction-fetch state for the half-open byte range
+`[base, base+size)`. After the instruction retires, every subsequent instruction
+fetch from that range MUST observe all stores that were globally visible before
+the invalidate. The platform profile documents the I-cache line size. A
+implementation without an I-cache may treat the instruction as a full
+instruction-memory coherency barrier. Hosted interpreters without an I-cache
+may execute it as a no-op while preserving architectural legality.
+
+### 10.4 Toolchain contract
+
+Modules targeting physical HVM MUST set `.ho` `target_arch = HVM64 (0x02)`.
+Module feature flags (header bits and `.note` required features) use the layout
+in `docs/hvm/ho-file-format.md` §3.1. Loaders MUST reject modules whose required
+feature bits are not covered by the CPU `feature0` / platform profile.

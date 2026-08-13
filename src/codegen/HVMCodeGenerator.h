@@ -66,6 +66,12 @@ private:
     // True once any null-checking code (LD.D.NZ / null-pointer trap) is emitted;
     // triggers the HVM_NZ module feature flag so loaders accept the module.
     bool moduleUsesNullChecks_ = false;
+    // True once RETAIN/RELEASE (green-compute ARC) is emitted.
+    bool moduleUsesArc_ = false;
+    // True once ICACHE.RNG is emitted.
+    bool moduleUsesICache_ = false;
+    // True once LD.P / ST.P pair memory ops are emitted.
+    bool moduleUsesMem_ = false;
 
     bool isModuleImported(const std::string& moduleName) const;
     bool isSymbolImported(const std::string& name, const std::string& requiredModule) const;

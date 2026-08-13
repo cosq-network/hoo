@@ -533,7 +533,7 @@ InstructionRegistry::InstructionRegistry() {
     reg("divu",  Opcode::ARITH, InstructionFormat::R, 6);
     reg("rem",   Opcode::ARITH, InstructionFormat::R, 7);
 
-    // HVM 1.5 sub-word integer arithmetic (0x11). Results are low-byte
+    // HVM 1.6 sub-word integer arithmetic (0x11). Results are low-byte
     // values; the compiler applies the required signed/unsigned extension.
     reg("add.b",  Opcode::ARITH_B, InstructionFormat::R, 0);
     reg("sub.b",  Opcode::ARITH_B, InstructionFormat::R, 1);
@@ -543,7 +543,7 @@ InstructionRegistry::InstructionRegistry() {
     reg("rem.b",  Opcode::ARITH_B, InstructionFormat::R, 7);
     reg("remu.b", Opcode::ARITH_B, InstructionFormat::R, 8);
 
-    // HVM 1.5 sub-word shifts (0x12). Operands and results are low-byte
+    // HVM 1.6 sub-word shifts (0x12). Operands and results are low-byte
     // values; codegen applies the source type's final extension.
     reg("shl.b", Opcode::SHIFT_B, InstructionFormat::R, 0);
     reg("shr.b", Opcode::SHIFT_B, InstructionFormat::R, 1);
@@ -565,7 +565,7 @@ InstructionRegistry::InstructionRegistry() {
     reg("and",   Opcode::LOGIC, InstructionFormat::R, 0);
     reg("or",    Opcode::LOGIC, InstructionFormat::R, 1);
     reg("xor",   Opcode::LOGIC, InstructionFormat::R, 2);
-    // HVM 1.5 one-bit boolean arithmetic (0x22).
+    // HVM 1.6 one-bit boolean arithmetic (0x22).
     reg("badd",  Opcode::LOGIC_B, InstructionFormat::R, 0);
     reg("bmul",  Opcode::LOGIC_B, InstructionFormat::R, 1);
     reg("bnot",  Opcode::LOGIC_B, InstructionFormat::R, 2);
@@ -576,7 +576,7 @@ InstructionRegistry::InstructionRegistry() {
     reg("fsub",  Opcode::FLOAT_ARITH, InstructionFormat::R, 1);
     reg("fmul",  Opcode::FLOAT_ARITH, InstructionFormat::R, 2);
     reg("fdiv",  Opcode::FLOAT_ARITH, InstructionFormat::R, 3);
-    // HVM 1.5 FP8 arithmetic (0x31), using the canonical E4M3 encoding.
+    // HVM 1.6 FP8 arithmetic (0x31), using the canonical E4M3 encoding.
     reg("fadd.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 0);
     reg("fsub.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 1);
     reg("fmul.b", Opcode::FLOAT_ARITH_B, InstructionFormat::R, 2);
@@ -644,7 +644,7 @@ InstructionRegistry::InstructionRegistry() {
     reg("loop.set", Opcode::LOOP_SET, InstructionFormat::I);
     reg("loop.decbr", Opcode::LOOP_DECBR, InstructionFormat::B);
 
-    // HVM 1.5 required CPU instructions
+    // HVM 1.6 required CPU instructions
     reg("icache.rng", Opcode::ICACHE_RNG, InstructionFormat::R);
     reg("ld.p",  Opcode::LD_P,  InstructionFormat::R);
     reg("st.p",  Opcode::ST_P,  InstructionFormat::R);

@@ -5688,9 +5688,16 @@ bool hooc::HVMJIT::validateModule(const hvm::HOModule& module, const std::string
     {
         static constexpr uint64_t kSupportedFeatures =
             static_cast<uint64_t>(hvm::HVMFeature::HVM_C) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_ARC) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_ICACHE) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_L) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_MEM) |
             static_cast<uint64_t>(hvm::HVMFeature::HVM_V) |
             static_cast<uint64_t>(hvm::HVMFeature::HVM_Alloc) |
-            static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ);
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_ObjRef) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_Cap) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_NZ) |
+            static_cast<uint64_t>(hvm::HVMFeature::HVM_RT);
         uint64_t required = module.getRequiredFeatures();
         uint64_t unsupported = required & ~kSupportedFeatures;
         if (unsupported != 0) {
@@ -6646,8 +6653,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
     while (pc < textSize) {
         if (stopExecutionRequested_.load(std::memory_order_relaxed)) {
             lastError_ = "Execution stopped by inspector";
-            std::lock_guard<std::mutex> lk(lastRegistersMu_);
-            for (size_t i = 0; i < 32; ++i) lastRegisters_[i] = state.regs[i];
+            captureLastArchitecturalState(state);
             return -1;
         }
         std::vector<uint8_t> slice;
@@ -6687,6 +6693,13 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             continue;
         }
         bool jumped = false;
+        const uint64_t insnWord = encodeInstructionWord(*ins);
+        auto trapFault = [&](uint64_t cause, const char* msg) -> int64_t {
+            recordSynchronousTrap(state, pc, cause, 0, insnWord);
+            captureLastArchitecturalState(state);
+            lastError_ = msg;
+            return -1;
+        };
         captureInspectorSnapshot(state, pc, module->getName(), functionName, ins->getMnemonic(), false);
 
         switch (ins->getOpcode()) {
@@ -6723,39 +6736,39 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 switch (o.func) {
                     case 0:
                         if ((b > 0 && a > INT64_MAX - b) || (b < 0 && a < INT64_MIN - b)) {
-                            lastError_ = "Integer overflow: add"; return -1;
+                            return trapFault(kCauseArithmeticOverflow, "Integer overflow: add");
                         }
                         writeReg(o.rd, static_cast<uint64_t>(a + b)); break;
                     case 1:
                         if ((b < 0 && a > INT64_MAX + b) || (b > 0 && a < INT64_MIN + b)) {
-                            lastError_ = "Integer overflow: sub"; return -1;
+                            return trapFault(kCauseArithmeticOverflow, "Integer overflow: sub");
                         }
                         writeReg(o.rd, static_cast<uint64_t>(a - b)); break;
                     case 2:
                         if (a != 0 && b != 0) {
-                            if (a == -1) { if (b == INT64_MIN) { lastError_ = "Integer overflow: mul"; return -1; } }
-                            else if (b == -1) { if (a == INT64_MIN) { lastError_ = "Integer overflow: mul"; return -1; } }
+                            if (a == -1) { if (b == INT64_MIN) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mul"); } }
+                            else if (b == -1) { if (a == INT64_MIN) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mul"); } }
                             else if (a > 0) {
-                                if (b > 0) { if (a > INT64_MAX / b) { lastError_ = "Integer overflow: mul"; return -1; } }
-                                else { if (b < INT64_MIN / a) { lastError_ = "Integer overflow: mul"; return -1; } }
+                                if (b > 0) { if (a > INT64_MAX / b) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mul"); } }
+                                else { if (b < INT64_MIN / a) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mul"); } }
                             } else {
-                                if (b > 0) { if (a < INT64_MIN / b) { lastError_ = "Integer overflow: mul"; return -1; } }
-                                else { if (a < INT64_MAX / b) { lastError_ = "Integer overflow: mul"; return -1; } }
+                                if (b > 0) { if (a < INT64_MIN / b) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mul"); } }
+                                else { if (a < INT64_MAX / b) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mul"); } }
                             }
                         }
                         writeReg(o.rd, static_cast<uint64_t>(a * b)); break;
                     case 5:
-                        if (b == 0) { lastError_ = "Division by zero"; return -1; }
-                        if (a == INT64_MIN && b == -1) { lastError_ = "Integer overflow: div"; return -1; }
+                        if (b == 0) { return trapFault(kCauseDivisionByZero, "Division by zero"); }
+                        if (a == INT64_MIN && b == -1) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: div"); }
                         writeReg(o.rd, static_cast<uint64_t>(a / b)); break;
                     case 6: {
                         const uint64_t ua = readReg(o.rs1), ub = readReg(o.rs2);
-                        if (ub == 0) { lastError_ = "Unsigned division by zero"; return -1; }
+                        if (ub == 0) { return trapFault(kCauseDivisionByZero, "Unsigned division by zero"); }
                         writeReg(o.rd, ua / ub); break;
                     }
                     case 7:
-                        if (b == 0) { lastError_ = "Modulo by zero"; return -1; }
-                        if (a == INT64_MIN && b == -1) { lastError_ = "Integer overflow: mod"; return -1; }
+                        if (b == 0) { return trapFault(kCauseDivisionByZero, "Modulo by zero"); }
+                        if (a == INT64_MIN && b == -1) { return trapFault(kCauseArithmeticOverflow, "Integer overflow: mod"); }
                         writeReg(o.rd, static_cast<uint64_t>(a % b)); break;
                     default:
                         lastError_ = "Unsupported ARITH func: " + std::to_string(o.func);
@@ -6774,18 +6787,18 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     case 1: writeReg(o.rd, static_cast<uint8_t>(ua - ub)); break;
                     case 2: writeReg(o.rd, static_cast<uint8_t>(ua * ub)); break;
                     case 5:
-                        if (sb == 0) { lastError_ = "8-bit division by zero"; return -1; }
-                        if (sa == -128 && sb == -1) { lastError_ = "8-bit division overflow"; return -1; }
+                        if (sb == 0) { return trapFault(kCauseDivisionByZero, "8-bit division by zero"); }
+                        if (sa == -128 && sb == -1) { return trapFault(kCauseArithmeticOverflow, "8-bit division overflow"); }
                         writeReg(o.rd, static_cast<uint64_t>(static_cast<int8_t>(sa / sb))); break;
                     case 6:
-                        if (ub == 0) { lastError_ = "8-bit unsigned division by zero"; return -1; }
+                        if (ub == 0) { return trapFault(kCauseDivisionByZero, "8-bit unsigned division by zero"); }
                         writeReg(o.rd, static_cast<uint8_t>(ua / ub)); break;
                     case 7:
-                        if (sb == 0) { lastError_ = "8-bit remainder by zero"; return -1; }
-                        if (sa == -128 && sb == -1) { lastError_ = "8-bit remainder overflow"; return -1; }
+                        if (sb == 0) { return trapFault(kCauseDivisionByZero, "8-bit remainder by zero"); }
+                        if (sa == -128 && sb == -1) { return trapFault(kCauseArithmeticOverflow, "8-bit remainder overflow"); }
                         writeReg(o.rd, static_cast<uint64_t>(static_cast<int8_t>(sa % sb))); break;
                     case 8:
-                        if (ub == 0) { lastError_ = "8-bit unsigned remainder by zero"; return -1; }
+                        if (ub == 0) { return trapFault(kCauseDivisionByZero, "8-bit unsigned remainder by zero"); }
                         writeReg(o.rd, static_cast<uint8_t>(ua % ub)); break;
                     default:
                         lastError_ = "Unsupported ARITH_B func: " + std::to_string(o.func);
@@ -7014,9 +7027,10 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 // target raises an instruction-address-misaligned trap before
                 // any further effect. See docs/hvm/hvm-spec.md section 4.1.
                 if (targetPc & 0x3ULL) {
+                    recordSynchronousTrap(state, pc, 0 /* instruction-address misaligned */,
+                                          targetPc, encodeInstructionWord(*ins));
                     lastError_ = "JALR target not 4-byte aligned (instruction-address misaligned): " +
                                  std::to_string(targetPc);
-                    state.trapHit = true;
                     return -1;
                 }
                 const hvm::Symbol* maybeCalleeSym = [&]() -> const hvm::Symbol* {
@@ -7125,8 +7139,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             }
             case hvm::Opcode::RET:
                 {
-                    std::lock_guard<std::mutex> lk(lastRegistersMu_);
-                    for (size_t i = 0; i < 32; ++i) lastRegisters_[i] = state.regs[i];
+                    captureLastArchitecturalState(state);
                 }
                 return state.regs[1];
             case hvm::Opcode::LD_D: {
@@ -7434,8 +7447,9 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 break;
             }
             case hvm::Opcode::BREAK:
+                recordSynchronousTrap(state, pc, kCauseBreakpoint, 0, encodeInstructionWord(*ins));
+                captureLastArchitecturalState(state);
                 lastError_ = "BREAK trap encountered";
-                state.trapHit = true;
                 return -1;
             case hvm::Opcode::LOOP_SET: {
                 auto o = std::get<hvm::OperandsI>(ins->getOperands());
@@ -7477,8 +7491,9 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 const uint64_t ptrVal = readReg(o.rs1);
                 const uint64_t boundVal = readReg(o.rs2);
                 if (ptrVal >= boundVal) {
+                    recordSynchronousTrap(state, pc, kCauseNullOrBounds, ptrVal,
+                                          encodeInstructionWord(*ins));
                     lastError_ = "Out of bounds trap";
-                    state.trapHit = true;
                     return -1;
                 }
                 writeReg(o.rd, ptrVal);
@@ -7604,7 +7619,9 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 break;
             }
             case hvm::Opcode::ICACHE_RNG:
-                // No-op in interpreter (no JIT cache to invalidate)
+                // Architectural I-cache invalidate for [base, base+size).
+                // Hosted interpreter has no I-cache; physical silicon must make
+                // subsequent fetches from the range observe prior stores.
                 break;
             case hvm::Opcode::LD_P: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
@@ -7649,14 +7666,17 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 // HVM resets into S-mode (see hvm-spec.md section 9.2), so ECALL
                 // here is a legal system-profile trap (scause 9) that the hosted
                 // profile cannot service -- there is no host-side S-mode monitor.
+                recordSynchronousTrap(state, pc, kCauseEcallS, 0, encodeInstructionWord(*ins));
+                captureLastArchitecturalState(state);
                 lastError_ = "ECALL: unhandled system-profile trap (no S-mode monitor in hosted profile)";
-                state.trapHit = true;
                 return -1;
             case hvm::Opcode::TRAPRET:
                 // TRAPRET returns from S-mode; the hosted profile has no S-mode
                 // trap handler to return from, so it surfaces as an unhandled trap.
+                recordSynchronousTrap(state, pc, kCauseIllegalInstruction, 0,
+                                      encodeInstructionWord(*ins));
+                captureLastArchitecturalState(state);
                 lastError_ = "TRAPRET: unhandled system-profile trap (no S-mode trap handler in hosted profile)";
-                state.trapHit = true;
                 return -1;
             case hvm::Opcode::LR_D: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
@@ -7701,15 +7721,18 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                 const uint16_t csrImmediate = static_cast<uint16_t>(o.imm15);
                 if (o.imm15 < 0 || (csrImmediate & 0x7000U) != 0 ||
                     (csrImmediate & 0x0FFFU) >= HVMJIT::kCsrCount) {
+                    recordSynchronousTrap(state, pc, kCauseIllegalInstruction, 0,
+                                          encodeInstructionWord(*ins));
+                    captureLastArchitecturalState(state);
                     lastError_ = "Invalid HVM CSR address";
-                    state.trapHit = true;
                     return -1;
                 }
                 const uint64_t csr = csrImmediate & 0x0FFFU;
                 const uint64_t oldValue = state.csrs[csr];
                 writeReg(o.rd, oldValue);
-                // stime (0x006) and feature0 (0x008) are read-only.
-                if (csr != HVMJIT::kCsrStime && csr != HVMJIT::kCsrFeature0 && o.rs != 0) {
+                // stime, feature0, and bad_instruction are read-only. Hosted
+                // profile ignores writes; physical silicon raises scause=2.
+                if (!isReadOnlyCsr(csr) && o.rs != 0) {
                     state.csrs[csr] = readReg(o.rs);
                 }
                 break;
@@ -7722,14 +7745,16 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             case hvm::Opcode::PREFETCH_NTA:
             case hvm::Opcode::MEMZERO_HINT:
             case hvm::Opcode::BR_HINT:
-                // Advisory no-ops per HVM 1.5 spec
+    // Advisory no-ops per HVM 1.6 spec
                 break;
             case hvm::Opcode::RDPROF:
                 writeReg(std::get<hvm::OperandsI>(ins->getOperands()).rd, 0);
                 break;
             case hvm::Opcode::DOORBELL:
+                recordSynchronousTrap(state, pc, kCauseIllegalInstruction, 0,
+                                      encodeInstructionWord(*ins));
+                captureLastArchitecturalState(state);
                 lastError_ = "DOORBELL not implemented (HVM-A accelerator not available)";
-                state.trapHit = true;
                 return -1;
             case hvm::Opcode::VECTOR_FMA: {
                 auto o = std::get<hvm::OperandsR>(ins->getOperands());
@@ -7766,10 +7791,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
         }
     }
     captureInspectorSnapshot(state, pc, module->getName(), functionName, "HALT", true);
-    {
-        std::lock_guard<std::mutex> lk(lastRegistersMu_);
-        for (size_t i = 0; i < 32; ++i) lastRegisters_[i] = state.regs[i];
-    }
+    captureLastArchitecturalState(state);
     return state.regs[1];
 }
 
@@ -8145,7 +8167,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
     llvm::Type* i64 = builder.getInt64Ty();
     llvm::Type* i8Ptr = llvm::PointerType::get(*context, 0);
     llvm::StructType* stateTy = llvm::StructType::create(*context, "hvm.state");
-    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64, i64, i64, llvm::ArrayType::get(i64, 8)});
+    stateTy->setBody({llvm::ArrayType::get(i64, 32), i8Ptr, i8Ptr, builder.getInt1Ty(), i64, i64, llvm::ArrayType::get(llvm::ArrayType::get(i64, 8), 32), i64, i64, i64, i64, i64, llvm::ArrayType::get(i64, HVMJIT::kCsrCount)});
     llvm::PointerType* statePtrTy = llvm::PointerType::get(*context, 0);
     llvm::FunctionType* fnTy = llvm::FunctionType::get(i64, {statePtrTy}, false);
 
@@ -9541,7 +9563,7 @@ llvm::Expected<llvm::orc::ThreadSafeModule> HVMJIT::translateModule(hvm::HOModul
                     const uint64_t csr = csrImmediate & 0x0FFFU;
                     auto* csrValue = builder.CreateLoad(i64, csrPtr(csr));
                     writeReg(o.rd, csrValue);
-                    if (csr != HVMJIT::kCsrStime && csr != HVMJIT::kCsrFeature0 && o.rs != 0) {
+                    if (!isReadOnlyCsr(csr) && o.rs != 0) {
                         builder.CreateStore(readReg(o.rs), csrPtr(csr));
                     }
                 } else if (op == hvm::Opcode::SFENCE_VMA) {
@@ -9763,10 +9785,7 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
         gStateOwnerByPtr[&state] = this;
     }
     const int64_t rv = fn(&state);
-    {
-        std::lock_guard<std::mutex> lk(lastRegistersMu_);
-        for (size_t i = 0; i < 32; ++i) lastRegisters_[i] = state.regs[i];
-    }
+    captureLastArchitecturalState(state);
     {
         std::lock_guard<std::mutex> lk(gStateOwnerMu);
         gStateOwnerByPtr.erase(&state);
@@ -9983,6 +10002,17 @@ void HVMJIT::stopExecution() {
 std::array<int64_t, 32> HVMJIT::getRegisters() const {
     std::lock_guard<std::mutex> lk(lastRegistersMu_);
     return lastRegisters_;
+}
+
+std::array<uint64_t, HVMJIT::kCsrCount> HVMJIT::getCsrs() const {
+    std::lock_guard<std::mutex> lk(lastRegistersMu_);
+    return lastCsrs_;
+}
+
+void HVMJIT::captureLastArchitecturalState(const HVMState& state) {
+    std::lock_guard<std::mutex> lk(lastRegistersMu_);
+    for (size_t i = 0; i < 32; ++i) lastRegisters_[i] = state.regs[i];
+    for (size_t i = 0; i < kCsrCount; ++i) lastCsrs_[i] = state.csrs[i];
 }
 
 std::vector<uint8_t> HVMJIT::readVirtualMemory(uint64_t addr, size_t size) const {

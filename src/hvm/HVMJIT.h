@@ -111,7 +111,7 @@ public:
         uint64_t reservationAddr = UINT64_MAX;
         uint64_t tlabStart = 0;
         uint64_t tlabEnd = 0;
-        uint64_t csrs[9]{}; // HVM system-profile CSR window 0x000..0x008
+        uint64_t csrs[12]{}; // HVM system-profile CSR window 0x000..0x00B
     };
 
     // HVM system-profile CSR addresses (see docs/hvm/hvm-spec.md section 9.2).
@@ -124,13 +124,36 @@ public:
     static constexpr uint64_t kCsrStime = 0x006;
     static constexpr uint64_t kCsrStimecmp = 0x007;
     static constexpr uint64_t kCsrFeature0 = 0x008;
-    static constexpr uint64_t kCsrCount = 0x009;
+    static constexpr uint64_t kCsrBadInstruction = 0x009;
+    static constexpr uint64_t kCsrSip = 0x00A;
+    static constexpr uint64_t kCsrSie = 0x00B;
+    static constexpr uint64_t kCsrCount = 0x00C;
+
+    // sip/sie interrupt pending/enable bits (HVM system profile).
+    static constexpr uint64_t kSipStip = 1ULL << 0; // supervisor timer
+    static constexpr uint64_t kSipSsip = 1ULL << 1; // supervisor software
+    static constexpr uint64_t kSipSeip = 1ULL << 2; // supervisor external
+
+    // Synchronous exception / interrupt cause codes (scause).
+    static constexpr uint64_t kCauseIllegalInstruction = 2;
+    static constexpr uint64_t kCauseBreakpoint = 3;
+    static constexpr uint64_t kCauseEcallU = 8;
+    static constexpr uint64_t kCauseEcallS = 9;
+    static constexpr uint64_t kCauseSyscallU = 16;
+    static constexpr uint64_t kCauseSyscallS = 17;
+    static constexpr uint64_t kCauseArithmeticOverflow = 18;
+    static constexpr uint64_t kCauseDivisionByZero = 19;
+    static constexpr uint64_t kCauseNullOrBounds = 20;
+    static constexpr uint64_t kCauseInterruptBit = 1ULL << 63;
+    static constexpr uint64_t kCauseTimerInterrupt = kCauseInterruptBit | 0;
+    static constexpr uint64_t kCauseSoftwareInterrupt = kCauseInterruptBit | 1;
+    static constexpr uint64_t kCauseExternalInterrupt = kCauseInterruptBit | 9;
 
     // feature0 (CSR 0x008) is read-only and reports the implemented HVM
     // feature set. See docs/hvm/hvm-spec.md section 9.2 for the bit layout.
     static constexpr uint64_t kFeatureBaseCore = 1ULL << 0;   // hvm64-core-system
     static constexpr uint64_t kFeatureGreenCompute = 1ULL << 1; // RETAIN/RELEASE/ICACHE.RNG/LD.P/ST.P
-    static constexpr uint64_t kFeatureSubWord = 1ULL << 2;    // HVM 1.5 scalar sub-word profile
+    static constexpr uint64_t kFeatureSubWord = 1ULL << 2;    // HVM 1.6 scalar sub-word profile
     static constexpr uint64_t kFeatureVector = 1ULL << 3;     // HVM-V
     static constexpr uint64_t kFeatureHardwareLoop = 1ULL << 4; // HVM-L
     static constexpr uint64_t kFeatureAdvisory = 1ULL << 5;   // PREFETCH.*/MEMZERO.HINT/BR.HINT
@@ -139,16 +162,49 @@ public:
     static constexpr uint64_t kFeatureCap = 1ULL << 8;        // HVM-Cap
     static constexpr uint64_t kFeatureNz = 1ULL << 9;         // HVM-NZ
     static constexpr uint64_t kFeatureAccel = 1ULL << 10;     // HVM-A (not implemented in hosted profile)
+    // Bit 11 marks a silicon-MVP-capable core (Bare + green-compute contract).
+    static constexpr uint64_t kFeatureSiliconMvp = 1ULL << 11;
 
-    // Feature set reported by the hosted interpreter/JIT profile. Every
-    // bit-0..bit-9 extension is implemented; HVM-A (bit 10) is not.
+    // Feature set reported by the hosted interpreter/JIT profile. Bits 0..9 and
+    // SiliconMvp are set; HVM-A (bit 10) is not.
     static constexpr uint64_t kHostedFeature0 =
         kFeatureBaseCore | kFeatureGreenCompute | kFeatureSubWord |
         kFeatureVector | kFeatureHardwareLoop | kFeatureAdvisory |
-        kFeatureAlloc | kFeatureProf | kFeatureCap | kFeatureNz;
+        kFeatureAlloc | kFeatureProf | kFeatureCap | kFeatureNz |
+        kFeatureSiliconMvp;
+
+    // Silicon MVP feature0 subset for first FPGA/ASIC cores (see hvm-spec §10).
+    static constexpr uint64_t kSiliconMvpFeature0 =
+        kFeatureBaseCore | kFeatureGreenCompute | kFeatureSiliconMvp;
 
     static void initResetState(HVMState& state) {
         state.csrs[kCsrFeature0] = kHostedFeature0;
+    }
+
+    // Record a precise synchronous trap into the architectural CSR window.
+    // Hosted execution still returns -1 for unhandled traps; the CSRs remain
+    // readable so silicon and simulator profiles share one observation contract.
+    static void recordSynchronousTrap(HVMState& state, uint64_t faultPc, uint64_t cause,
+                                      uint64_t stval, uint64_t badInstruction) {
+        state.csrs[kCsrSepc] = faultPc;
+        state.csrs[kCsrScause] = cause;
+        state.csrs[kCsrStval] = stval;
+        state.csrs[kCsrBadInstruction] = badInstruction;
+        state.reservationAddr = UINT64_MAX;
+        state.trapHit = true;
+    }
+
+    static uint64_t encodeInstructionWord(const hvm::HVMInstruction& ins) {
+        const auto bytes = ins.encode();
+        uint64_t word = 0;
+        for (size_t i = 0; i < bytes.size() && i < 8; ++i) {
+            word |= static_cast<uint64_t>(bytes[i]) << (8U * static_cast<unsigned>(i));
+        }
+        return word;
+    }
+
+    static bool isReadOnlyCsr(uint64_t csr) {
+        return csr == kCsrStime || csr == kCsrFeature0 || csr == kCsrBadInstruction;
     }
     struct InspectorSnapshot {
         std::array<int64_t, 32> regs{};
@@ -165,6 +221,7 @@ public:
     void resetInspector();
     void stopExecution();
     std::array<int64_t, 32> getRegisters() const;
+    std::array<uint64_t, kCsrCount> getCsrs() const;
     std::vector<uint8_t> readVirtualMemory(uint64_t addr, size_t size) const;
     bool getStopExecutionRequested() const { return stopExecutionRequested_.load(std::memory_order_relaxed); }
 
@@ -217,6 +274,7 @@ private:
     bool invokeStateAbiSymbol(const std::string& symbolName, HVMState& state, uint64_t& outValue);
     void captureInspectorSnapshot(const HVMState& state, uint64_t pc, const std::string& moduleName,
                                   const std::string& functionName, const std::string& opcode, bool halted);
+    void captureLastArchitecturalState(const HVMState& state);
     bool runModuleInitializer(const std::shared_ptr<hvm::HOModule>& module);
     bool runModuleVTableInitializers(const std::shared_ptr<hvm::HOModule>& module);
     std::shared_ptr<std::once_flag> getOrCreateModuleInitOnceFlag(const std::string& moduleName);
@@ -286,6 +344,7 @@ private:
     std::atomic<bool> stopExecutionRequested_{false};
     mutable std::mutex lastRegistersMu_;
     std::array<int64_t, 32> lastRegisters_{};
+    std::array<uint64_t, kCsrCount> lastCsrs_{};
     uint64_t tlabStart_ = 0;
     uint64_t tlabEnd_ = 0;
 };

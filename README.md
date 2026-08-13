@@ -12,7 +12,7 @@ Hoo is a high-performance, statically-typed systems programming language and com
 
 ## 1. Architectural Vision: Hardware Purity
 
-The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
+The Hoo ecosystem is built around the **HVM v1.6** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
 
 - **ISA Purity**: No "magic" opcodes for objects or exceptions. The instruction set is limited to fundamental arithmetic, memory, and control-flow primitives.
 - **Aggressive Lowering**: The compiler (`hoo`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
@@ -44,11 +44,11 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
 - [x] **Phase 14 (Archive Loading)**: Cross-file local imports and `.ha` archive format with Zstd compression, manifest, and multi-module JIT loading.
 - [x] **ISSUE-036 (Module Dependency Resolution)**: Corrected per-module dependency graph traversal, transitive topological ordering, explicit cycle detection, bundle/JIT cycle agreement, and loader regression coverage. Removed the obsolete circular-dependency helper.
 - [x] **Phase 15 (Async/Await via libuv)**: Native `async`/`await` syntax, `Future<T>` values (type ID 123), managed and primitive result handling, multiple continuations, and a mutex-protected libuv event loop with cooperative waiting. HVM async functions currently execute through the Future ABI and pump the event loop while awaiting; true VM stack-frame suspension requires future HVM suspend/resume instructions. Coverage includes `NewLanguageFeaturesTest.cpp` and `HooFutureJitTest.cpp`. Language docs: `docs/language/async_await.md`.
-- [x] **HVM 1.5 Spec Compatibility (ISSUE-040)**: Full CSV parity, including the native `CMP_B` comparison family, all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion.
+- [x] **HVM 1.6 Spec Compatibility (ISSUE-040)**: Full CSV parity, including the native `CMP_B` comparison family, all required CPU-profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D, ECALL/TRAPRET/CSRRW, SFENCE.VMA), advisory no-ops, RELEASE zero-flag semantics, ALLOC.BUMP TLAB fast path, module feature flags with loader validation, and complete HVM-V vector ISA expansion.
 - [x] **Nullable Types (ISSUE-047 correctness complete)**: End-to-end `T?` tracking, catchable null checks for member/method/array dereferences, compile-time null-safety validation, distinct nullable overload mangling, and ARC cleanup for nullable named references stored in generic type-ID-100 slots. No required correctness work remains; optional `LD.D.NZ` folding is deferred because its current VM-trap path is not catchable.
 - [x] **Tensor Precision and Broadcasting (ISSUE-025/030)**: Completed low-precision tensor storage, canonical FP8 fallback, native-width integer semantics, scalar promotion, safe tensor-scalar runtime/JIT lowering, and reshape/transpose/softmax utilities.
 - [x] **Verification**: full preset test run passing (`2637 tests`, 0 failures).
-- [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM spec.
+- [ ] **Physical Hardware**: (Next Phase) FPGA Soft-Core implementation based on the HVM Silicon MVP profile (`docs/hvm/hvm-spec.md` §10).
 
 ## Recent Changes
 
@@ -112,7 +112,7 @@ The Hoo ecosystem is built around the **HVM v1.5** specification. Unlike traditi
   synchronized dynamic registry; method dispatch retains all class candidates,
   uses recursive receiver-aware inference, and rejects ambiguous unknown
   receivers.
-- **Native byte comparisons (ISSUE-029)**: added HVM 1.5 `CMP_B` (`0x42`) with
+- **Native byte comparisons (ISSUE-029)**: added HVM 1.6 `CMP_B` (`0x42`) with
   signed and unsigned 8-bit comparison semantics across codegen, interpreter,
   and LLVM ORC JIT.
 

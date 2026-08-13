@@ -1,6 +1,6 @@
 # HVM Object File Format (HO)
 
-Version: `1.5`
+Version: `1.6`
 Extension: `.ho`  
 Endianness: little-endian only
 
@@ -27,9 +27,9 @@ All fields are little-endian.
 |---|---:|---|---|
 | `0x00` | 4 | `magic` | `0x484F4F43` (`"HOO"`) |
 | `0x04` | 2 | `version_major` | format major (`1`) |
-| `0x06` | 2 | `version_minor` | format minor (`5`) |
+| `0x06` | 2 | `version_minor` | format minor (`6`) |
 | `0x08` | 1 | `file_type` | executable/shared/object |
-| `0x09` | 1 | `target_arch` | `0x00` x86_64, `0x01` arm64, `0xFF` any |
+| `0x09` | 1 | `target_arch` | `0x00` x86_64 (legacy host), `0x01` arm64 (legacy host), `0x02` **HVM64** (native ISA / silicon), `0xFF` any |
 | `0x0A` | 1 | `endianness` | must be `0x01` |
 | `0x0B` | 1 | `pointer_size` | currently `8` |
 | `0x0C` | 4 | `flags` | module feature flags |
@@ -45,8 +45,8 @@ All fields are little-endian.
 Notes:
 - Parser validates magic, header size, section table bounds, and little-endian mode.
 - `symtab_offset` is written by serializer and kept for compatibility, but parser discovers metadata via section table.
-- HVM 1.5 modules remain 64-bit. `pointer_size` must be `8` for native HVM64 code.
-- HVM 1.4 readers must reject 1.5 modules unless they explicitly opt into forward-compatible parsing of unknown feature flags.
+- HVM 1.6 modules remain 64-bit. `pointer_size` must be `8` for native HVM64 code.
+- HVM 1.5 readers must reject 1.6 modules unless they explicitly opt into forward-compatible parsing of unknown feature flags.
 
 ### 3.1 Module Feature Flags
 
@@ -214,8 +214,8 @@ Bit masks from `SectionFlags`:
 ## 11. Relationship to HVM ISA
 
 - `.text` carries encoded HVM instructions.
-- HVM 1.5 `.text` may contain base32 and escape32 instructions from `docs/hvm/hvm_instruction_set.csv`.
-- Optional v1.5 extensions must be reflected in the header `flags` field.
+- HVM 1.6 `.text` may contain base32 and escape32 instructions from `docs/hvm/hvm_instruction_set.csv`.
+- Optional v1.6 extensions must be reflected in the header `flags` field.
 - Supported language/runtime surface is defined by:
   - `docs/hvm/hvm-spec.md`
   - `docs/hvm/hvm_instruction_set.csv`

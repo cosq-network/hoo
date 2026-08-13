@@ -39,7 +39,7 @@ enum class Opcode : uint16_t {
     FLOAT_ARITH_B = 0x31, // FADD.B, FSUB.B, FMUL.B, FDIV.B
     CMP      = 0x40, // CMPEQ, CMPNE, CMPLT, CMPLE
     FCMP     = 0x41, // FCMPEQ, FCMPLT, FCMPLE
-    CMP_B    = 0x42, // Native 8-bit comparisons (HVM 1.5)
+    CMP_B    = 0x42, // Native 8-bit comparisons (HVM 1.6)
     BEQ      = 0x50,
     BNE      = 0x51,
     BLT      = 0x52,

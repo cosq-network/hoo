@@ -680,6 +680,7 @@ static const CsvRow kCsvRows[] = {
     {"adjsp", Opcode::ADJSP, InstructionFormat::I, 0},
     {"frame", Opcode::FRAME, InstructionFormat::I, 0},
     {"call",     Opcode::CALL,     InstructionFormat::J, 0},
+    {"call_overloaded", Opcode::CALL_OVERLOADED, InstructionFormat::J, 0},
     {"tailcall", Opcode::TAILCALL, InstructionFormat::J, 0},
     {"syscall",  Opcode::SYSCALL,  InstructionFormat::I, 0},
     {"break",    Opcode::BREAK,    InstructionFormat::R, 0},
@@ -770,7 +771,7 @@ TEST_F(HVMInstructionTest, CsvParity_AllRowsRegistered) {
 
     EXPECT_EQ(missingCount, 0) << missingCount << " CSV mnemonics missing from registry";
     EXPECT_EQ(mismatchCount, 0) << mismatchCount << " registry entries differ from CSV";
-    EXPECT_EQ(totalRows, 138) << "CSV parity table has wrong row count";
+    EXPECT_EQ(totalRows, 139) << "CSV parity table has wrong row count";
 }
 
 TEST_F(HVMInstructionTest, LuiImmediateShiftMatchesHVMEncodingContract) {

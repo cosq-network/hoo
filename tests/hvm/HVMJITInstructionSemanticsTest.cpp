@@ -874,6 +874,28 @@ TEST_F(HVMJITInstructionSemanticsTest, AddOverflowReportsError) {
     EXPECT_EQ(jit.run("_F_main_v"), -1);
     EXPECT_TRUE(jit.hasError());
     EXPECT_NE(jit.getLastError().find("Integer overflow: add"), std::string::npos);
+    const auto csrs = jit.getCsrs();
+    EXPECT_EQ(csrs[HVMJIT::kCsrScause], HVMJIT::kCauseArithmeticOverflow);
+    EXPECT_EQ(csrs[HVMJIT::kCsrSepc], 16); // fourth instruction at byte offset 16
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, DivisionByZeroRecordsScause) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 10}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 0}),
+        makeR(Opcode::ARITH, OperandsR{1, 2, 3, 5}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["divzero_scause.ho"] = buildModuleBytes("divzero_scause", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("divzero_scause.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), -1);
+    EXPECT_TRUE(jit.hasError());
+    const auto csrs = jit.getCsrs();
+    EXPECT_EQ(csrs[HVMJIT::kCsrScause], HVMJIT::kCauseDivisionByZero);
+    EXPECT_EQ(csrs[HVMJIT::kCsrSepc], 8); // third instruction at byte offset 8
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, SubOverflowReportsError) {
@@ -1541,9 +1563,10 @@ TEST_F(HVMJITInstructionSemanticsTest, Feature0ReadableReportsImplementedFeature
 
     HVMJIT jit(io);
     ASSERT_TRUE(jit.loadInput("feature0_read.ho")) << jit.getLastError();
-    // Hosted profile implements base core + extensions (bits 0..9); HVM-A (bit 10) is not.
+    // Hosted profile implements base core + extensions (bits 0..9, 11); HVM-A (bit 10) is not.
     EXPECT_EQ(jit.run("_F_main_v"), static_cast<int64_t>(HVMJIT::kHostedFeature0))
         << jit.getLastError();
+    EXPECT_NE(HVMJIT::kHostedFeature0 & HVMJIT::kFeatureSiliconMvp, 0ULL);
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, Feature0WriteIsIgnored) {
@@ -1564,7 +1587,7 @@ TEST_F(HVMJITInstructionSemanticsTest, Feature0WriteIsIgnored) {
 
 TEST_F(HVMJITInstructionSemanticsTest, CsrAddressOutsideWindowTraps) {
     std::vector<HVMInstruction> ins{
-        makeI(Opcode::CSRRW, OperandsI{1, 0, 9}),
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 12}), // 0x00C is outside 0x000..0x00B
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
     };
     std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
@@ -1590,15 +1613,21 @@ TEST_F(HVMJITInstructionSemanticsTest, CsrResetValuesMatchSpecification) {
         makeI(Opcode::CSRRW, OperandsI{15, 0, 5}),  // satp    -> 0 (Bare)
         makeI(Opcode::CSRRW, OperandsI{16, 0, 6}),  // stime
         makeI(Opcode::CSRRW, OperandsI{17, 0, 7}),  // stimecmp
-        // Fold the eight scalar CSRs into r1: expect 0 at reset.
-        makeR(Opcode::ARITH, OperandsR{18, 10, 11, 0}),
-        makeR(Opcode::ARITH, OperandsR{18, 18, 12, 0}),
-        makeR(Opcode::ARITH, OperandsR{18, 18, 13, 0}),
-        makeR(Opcode::ARITH, OperandsR{18, 18, 14, 0}),
-        makeR(Opcode::ARITH, OperandsR{18, 18, 15, 0}),
-        makeR(Opcode::ARITH, OperandsR{18, 18, 16, 0}),
-        makeR(Opcode::ARITH, OperandsR{18, 18, 17, 0}),
-        makeR(Opcode::MOV, OperandsR{1, 18, 0, 0}),
+        makeI(Opcode::CSRRW, OperandsI{18, 0, 9}),  // bad_instruction
+        makeI(Opcode::CSRRW, OperandsI{19, 0, 10}), // sip
+        makeI(Opcode::CSRRW, OperandsI{20, 0, 11}), // sie
+        // Fold the scalar CSRs into r1: expect 0 at reset.
+        makeR(Opcode::ARITH, OperandsR{21, 10, 11, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 12, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 13, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 14, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 15, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 16, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 17, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 18, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 19, 0}),
+        makeR(Opcode::ARITH, OperandsR{21, 21, 20, 0}),
+        makeR(Opcode::MOV, OperandsR{1, 21, 0, 0}),
         makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
     };
     std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
@@ -1677,6 +1706,57 @@ TEST_F(HVMJITInstructionSemanticsTest, EcallTrapsUnhandledInHostedProfile) {
     EXPECT_EQ(jit.run("_F_main_v"), -1);
     EXPECT_TRUE(jit.hasError());
     EXPECT_NE(jit.getLastError().find("ECALL"), std::string::npos);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, BadInstructionCsrRecordsFaultingEcall) {
+    HVMInstruction ecall(Opcode::ECALL, OperandsR{0, 0, 0, 0});
+    ecall.setFormat(InstructionFormat::R);
+    const uint64_t encoded = HVMJIT::encodeInstructionWord(ecall);
+
+    std::vector<HVMInstruction> trapIns{
+        makeR(Opcode::ECALL, OperandsR{0, 0, 0, 0}),
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> trapSyms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["bad_ins_trap.ho"] = buildModuleBytes("bad_ins_trap", trapIns, trapSyms);
+    HVMJIT trapJit(io);
+    ASSERT_TRUE(trapJit.loadInput("bad_ins_trap.ho")) << trapJit.getLastError();
+    EXPECT_EQ(trapJit.run("_F_main_v"), -1);
+    EXPECT_TRUE(trapJit.hasError());
+    auto csrs = trapJit.getCsrs();
+    EXPECT_EQ(csrs[HVMJIT::kCsrScause], HVMJIT::kCauseEcallS);
+    EXPECT_EQ(csrs[HVMJIT::kCsrBadInstruction], encoded);
+    EXPECT_EQ(csrs[HVMJIT::kCsrStval], 0ULL);
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, BadInstructionWriteIsIgnoredInHostedProfile) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, -1}),
+        makeI(Opcode::CSRRW, OperandsI{1, 2, 9}),      // attempt write to bad_instruction
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 9}),      // read back
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["bad_ins_wo.ho"] = buildModuleBytes("bad_ins_wo", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("bad_ins_wo.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 0) << jit.getLastError();
+}
+
+TEST_F(HVMJITInstructionSemanticsTest, SipSieRoundTrip) {
+    std::vector<HVMInstruction> ins{
+        makeI(Opcode::MOVZ, OperandsI{2, 0, 5}),       // STIP|SSIP bits 0+2? use 1|4 later
+        makeI(Opcode::CSRRW, OperandsI{1, 2, 11}),     // write sie
+        makeI(Opcode::CSRRW, OperandsI{1, 0, 11}),     // read sie
+        makeR(Opcode::RET, OperandsR{0, 0, 0, 0}),
+    };
+    std::vector<Symbol> syms{funcSym("_F_main_v", 0)};
+    io.binaryFiles["sie_rw.ho"] = buildModuleBytes("sie_rw", ins, syms);
+
+    HVMJIT jit(io);
+    ASSERT_TRUE(jit.loadInput("sie_rw.ho")) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_main_v"), 5) << jit.getLastError();
 }
 
 TEST_F(HVMJITInstructionSemanticsTest, TrapretTrapsUnhandledInHostedProfile) {

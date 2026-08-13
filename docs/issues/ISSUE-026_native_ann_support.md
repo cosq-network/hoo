@@ -92,7 +92,7 @@ This issue must not describe proposed functionality as if it already exists.
 Every feature below is subject to capability detection, numerical tests, and a
 portable fallback where practical.
 
-## 2.1 Compatibility Contract: C++17, HVM 1.5, and `hoort`
+## 2.1 Compatibility Contract: C++17, HVM 1.6, and `hoort`
 
 The implementation must preserve the existing target boundaries:
 
@@ -113,7 +113,7 @@ The implementation must preserve the existing target boundaries:
   support must be isolated behind C++17-compatible adapters and must not make
   the minimal `hoort` target depend on those libraries.
 
-### HVM 1.5
+### HVM 1.6
 
 - HVM is a 64-bit load/store ISA, not a tensor or GPU ISA. Tensor objects are
   ARC-managed runtime objects referenced by 64-bit HVM pointers; their metadata
