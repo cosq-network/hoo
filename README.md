@@ -1,5 +1,9 @@
 # Hoo
 
+<p align="center">
+  <img src="hoo-logo.svg" alt="Hoo Logo" width="250" />
+</p>
+
 [![Version](https://img.shields.io/badge/version-1.4.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v1.4.0)
 [![macOS Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-macos)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
 [![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-linux)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
