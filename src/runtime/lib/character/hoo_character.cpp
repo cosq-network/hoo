@@ -9,8 +9,6 @@ struct HooCharacterImpl {
     char data[5]; // Up to 4 bytes + null terminator
 };
 
-#define CHARACTER_METADATA_SIZE offsetof(HooCharacterImpl, data)
-
 static HooCharacterImpl* get_impl(HooCharacter ch) {
     return (HooCharacterImpl*)ch;
 }
@@ -20,17 +18,47 @@ static HooCharacter from_impl(HooCharacterImpl* impl) {
 }
 
 HooCharacter hoo_character_from_utf8(const char* bytes, int64_t length) {
-    if (!bytes || length <= 0 || length > 4) return nullptr;
+    if (!bytes || length <= 0) return nullptr;
+
+    const unsigned char* b = (const unsigned char*)bytes;
+
+    // Determine the UTF-8 sequence length from the lead byte.
+    int64_t seq_len = 1;
+    if (b[0] <= 0x7F) {
+        seq_len = 1;
+    } else if ((b[0] & 0xE0) == 0xC0) {
+        seq_len = 2;
+    } else if ((b[0] & 0xF0) == 0xE0) {
+        seq_len = 3;
+    } else if ((b[0] & 0xF8) == 0xF0) {
+        seq_len = 4;
+    } else {
+        return nullptr; // Invalid UTF-8 lead byte
+    }
+
+    if (seq_len > length) return nullptr; // Truncated UTF-8 sequence
+
+    // Validate continuation bytes.
+    for (int64_t i = 1; i < seq_len; ++i) {
+        if ((b[i] & 0xC0) != 0x80) return nullptr;
+    }
 
     HooCharacterImpl* impl = (HooCharacterImpl*)hoo_alloc(sizeof(HooCharacterImpl), HOO_TYPE_CHARACTER);
-    impl->length = length;
-    std::memcpy(impl->data, bytes, (size_t)length);
-    impl->data[length] = '\0';
+    impl->length = seq_len;
+    std::memcpy(impl->data, bytes, (size_t)seq_len);
+    impl->data[seq_len] = '\0';
 
     return from_impl(impl);
 }
 
 HooCharacter hoo_character_from_codepoint(int64_t cp) {
+    // Negative values are not scalar values, and UTF-16 surrogate codepoints
+    // (0xD800-0xDFFF) are not valid Unicode scalar values either. Map both to
+    // the replacement character U+FFFD.
+    if (cp < 0 || (cp >= 0xD800 && cp <= 0xDFFF)) {
+        return hoo_character_from_codepoint(0xFFFD);
+    }
+
     char bytes[4];
     int64_t len = 0;
 

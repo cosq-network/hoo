@@ -18,11 +18,14 @@ extern "C" {
 typedef void* HooCharacter;
 
 /**
- * Create a Character from a UTF-8 byte sequence.
+ * Create a Character from the first Unicode scalar value in a UTF-8 byte
+ * sequence. Only the first UTF-8 sequence in the buffer is consumed, so
+ * `length` may exceed a single sequence (e.g. a whole string).
  * 
- * @param bytes Pointer to UTF-8 data (must be at least 1-4 bytes depending on sequence)
- * @param length Number of bytes in the UTF-8 sequence
- * @return New HooCharacter with refcount=1, or NULL on failure
+ * @param bytes Pointer to UTF-8 data
+ * @param length Number of bytes available in the buffer
+ * @return New HooCharacter with refcount=1, or NULL if the buffer is empty,
+ *         the lead byte is invalid, or the sequence is truncated
  */
 HooCharacter hoo_character_from_utf8(const char* bytes, int64_t length);
 
@@ -30,7 +33,9 @@ HooCharacter hoo_character_from_utf8(const char* bytes, int64_t length);
  * Create a Character from a Unicode codepoint.
  * 
  * @param codepoint Unicode scalar value
- * @return New HooCharacter with refcount=1
+ * @return New HooCharacter with refcount=1. Negative values, UTF-16 surrogate
+ *         codepoints, and values above U+10FFFF are mapped to the replacement
+ *         character U+FFFD.
  */
 HooCharacter hoo_character_from_codepoint(int64_t codepoint);
 
