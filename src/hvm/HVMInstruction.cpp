@@ -167,14 +167,14 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t
         return inst;
     }
 
-    if (firstByte == kExtendedOpcodeEscape) {
+    auto tryDecodeExtended = [&]() -> std::unique_ptr<HVMInstruction> {
         uint32_t opcodeVal = 0;
         size_t opcodeBytes = 0;
         if (!decodeULEB128(bytes, 1, opcodeVal, opcodeBytes)) return nullptr;
         if (opcodeVal < 0x80U) {
             return nullptr;
         }
-        
+
         // Payload always starts at offset 4 due to alignment padding
         if (8 > bytes.size()) return nullptr;
 
@@ -244,6 +244,15 @@ std::unique_ptr<HVMInstruction> HVMInstruction::decode(const std::vector<uint8_t
 
         bytesUsed = 8;
         return inst;
+    };
+
+    if (firstByte == kExtendedOpcodeEscape) {
+        auto inst = tryDecodeExtended();
+        if (inst) return inst;
+        // A non-extended instruction whose first byte equals the escape value
+        // (e.g. MOVZ/ADDI/LUI with an immediate whose low byte is 0xFE) is
+        // indistinguishable from the extended-opcode prefix at the byte level.
+        // If the extended decode fails, fall through to the normal 32-bit decode.
     }
 
     if (bytes.size() < 4) return nullptr;

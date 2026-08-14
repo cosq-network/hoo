@@ -629,8 +629,9 @@ if(HOO_BUILD_TESTS)
         tests/integration/buffer/BufferCLIIntegrationTest.cpp
         tests/integration/byte_slice/ByteSliceCLIIntegrationTest.cpp
         tests/integration/character/CharacterCLIIntegrationTest.cpp
-        tests/integration/encoding/EncodingCLIIntegrationTest.cpp
-        tests/integration/csv/CsvCLIIntegrationTest.cpp
+         tests/integration/encoding/EncodingCLIIntegrationTest.cpp
+         tests/integration/csv/CsvCLIIntegrationTest.cpp
+         tests/integration/compression/CompressionCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

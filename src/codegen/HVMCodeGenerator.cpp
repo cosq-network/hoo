@@ -371,6 +371,15 @@ static uint32_t characterFreeFunctionReturnTypeId(const std::string& functionNam
     return 109; // Character type ID is 109
 }
 
+static bool isCompressionFreeFunction(const std::string& functionName) {
+    return functionName == "compression_gzip_compress_slice" ||
+           functionName == "compression_deflate_compress_slice";
+}
+
+static uint32_t compressionFreeFunctionReturnTypeId(const std::string& functionName) {
+    return 113; // Buffer type ID is 113
+}
+
 static bool isPathFreeFunction(const std::string& functionName) {
     static const std::unordered_set<std::string> names = {
         "path_separator", "path_join", "path_extension", "path_stem",
@@ -439,8 +448,9 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
            isMathFreeFunction(functionName) || isHashingFreeFunction(functionName) ||
            isSystemFreeFunction(functionName) || isProcessFreeFunction(functionName) ||
            isRegexFreeFunction(functionName) || isThreadFreeFunction(functionName) ||
-           isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName) ||
-           isPathFreeFunction(functionName) || isArgsFreeFunction(functionName) ||
+            isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName) ||
+            isCompressionFreeFunction(functionName) ||
+            isPathFreeFunction(functionName) || isArgsFreeFunction(functionName) ||
            isStringFreeFunction(functionName) || isNetFreeFunction(functionName);
 }
 
@@ -535,6 +545,7 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isThreadFreeFunction(functionName)) return threadFreeFunctionReturnTypeId(functionName);
     if (isUuidFreeFunction(functionName)) return uuidFreeFunctionReturnTypeId(functionName);
     if (isCharacterFreeFunction(functionName)) return characterFreeFunctionReturnTypeId(functionName);
+    if (isCompressionFreeFunction(functionName)) return compressionFreeFunctionReturnTypeId(functionName);
     if (isPathFreeFunction(functionName)) return pathFreeFunctionReturnTypeId(functionName);
     if (isArgsFreeFunction(functionName)) return argsFreeFunctionReturnTypeId(functionName);
     if (isStringFreeFunction(functionName)) return stringFreeFunctionReturnTypeId(functionName);

@@ -44,7 +44,7 @@ compression.release()
 
 **Parameters:** None.
 
-**Returns:** `string` — An empty string.
+**Returns:** `int64` — `0` on success.
 
 ---
 
@@ -55,15 +55,15 @@ Compresses data using the gzip algorithm.
 **Syntax:**
 
 ```hoo
-compression.gzipCompress(data: string, length: int64): string
+compression.gzipCompress(data: ptr, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                      |
-|-----------|----------|----------------------------------|
-| `data`    | `string` | The data to compress.            |
-| `length`  | `int64`  | The number of bytes to compress. |
+| Parameter | Type    | Description                                  |
+|-----------|---------|----------------------------------------------|
+| `data`    | `ptr`   | Raw byte pointer to the data to compress (e.g. `str.data()`). |
+| `length`  | `int64` | The number of bytes to compress.             |
 
 **Returns:** `string` — The compressed data.
 
@@ -78,15 +78,15 @@ Decompresses gzip-compressed data.
 **Syntax:**
 
 ```hoo
-compression.gzipDecompress(data: string, length: int64): string
+compression.gzipDecompress(data: ptr, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                        |
-|-----------|----------|------------------------------------|
-| `data`    | `string` | The gzip-compressed data.          |
-| `length`  | `int64`  | The number of bytes to decompress. |
+| Parameter | Type    | Description                                    |
+|-----------|---------|------------------------------------------------|
+| `data`    | `ptr`   | Raw byte pointer to the gzip-compressed data (e.g. `buf.data()`). |
+| `length`  | `int64` | The number of bytes to decompress.             |
 
 **Returns:** `string` — The decompressed original data.
 
@@ -101,15 +101,15 @@ Compresses data using the deflate algorithm (raw zlib format without gzip header
 **Syntax:**
 
 ```hoo
-compression.deflateCompress(data: string, length: int64): string
+compression.deflateCompress(data: ptr, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                      |
-|-----------|----------|----------------------------------|
-| `data`    | `string` | The data to compress.            |
-| `length`  | `int64`  | The number of bytes to compress. |
+| Parameter | Type    | Description                                  |
+|-----------|---------|----------------------------------------------|
+| `data`    | `ptr`   | Raw byte pointer to the data to compress (e.g. `str.data()`). |
+| `length`  | `int64` | The number of bytes to compress.             |
 
 **Returns:** `string` — The compressed data.
 
@@ -124,19 +124,65 @@ Decompresses deflate-compressed data (raw zlib format without gzip header).
 **Syntax:**
 
 ```hoo
-compression.deflateDecompress(data: string, length: int64): string
+compression.deflateDecompress(data: ptr, length: int64): string
 ```
 
 **Parameters:**
 
-| Parameter | Type     | Description                          |
-|-----------|----------|--------------------------------------|
-| `data`    | `string` | The deflate-compressed data.         |
-| `length`  | `int64`  | The number of bytes to decompress.   |
+| Parameter | Type    | Description                                      |
+|-----------|---------|--------------------------------------------------|
+| `data`    | `ptr`   | Raw byte pointer to the deflate-compressed data (e.g. `buf.data()`). |
+| `length`  | `int64` | The number of bytes to decompress.               |
 
 **Returns:** `string` — The decompressed original data.
 
 **Errors:** Decompression failure returns an empty string.
+
+---
+
+## Free Functions
+
+### `compression_gzip_compress_slice`
+
+Compresses the bytes of a byte slice using the gzip algorithm, without requiring a `Compression` instance.
+
+**Syntax:**
+
+```hoo
+compression_gzip_compress_slice(slice: ByteSlice): Buffer
+```
+
+**Parameters:**
+
+| Parameter | Type        | Description                    |
+|-----------|-------------|--------------------------------|
+| `slice`   | `ByteSlice` | The byte slice to compress.    |
+
+**Returns:** `Buffer` — The compressed data.
+
+**Errors:** Compression failure returns an empty buffer.
+
+---
+
+### `compression_deflate_compress_slice`
+
+Compresses the bytes of a byte slice using the deflate algorithm (raw zlib format without gzip header), without requiring a `Compression` instance.
+
+**Syntax:**
+
+```hoo
+compression_deflate_compress_slice(slice: ByteSlice): Buffer
+```
+
+**Parameters:**
+
+| Parameter | Type        | Description                  |
+|-----------|-------------|------------------------------|
+| `slice`   | `ByteSlice` | The byte slice to compress.  |
+
+**Returns:** `Buffer` — The compressed data.
+
+**Errors:** Compression failure returns an empty buffer.
 
 ---
 

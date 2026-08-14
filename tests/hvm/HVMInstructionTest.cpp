@@ -147,15 +147,38 @@ TEST_F(HVMInstructionTest, DecodeAcceptsImmediateBitsOnNonRFormats) {
     EXPECT_EQ(ops.imm15, 0x1FF);
 }
 
-TEST_F(HVMInstructionTest, DecodeRejectsReservedFuncInExtendedEncoding) {
+TEST_F(HVMInstructionTest, DecodeFallsBackForImmediateMatchingEscapeByte) {
+    // MOVZ with an immediate of 0xFE encodes the escape byte 0xFE as its
+    // first byte (imm[7:0]). The byte-stream decoder must not mistake it for
+    // an extended-opcode prefix and must fall back to the normal 32-bit decode.
+    HVMInstruction orig(Opcode::MOVZ, OperandsI{1, 0, 254});
+    auto encoded = orig.encode();
+    ASSERT_EQ(encoded.size(), 4);
+    EXPECT_EQ(encoded[0], 0xFE);
+    size_t bytesUsed = 0;
+    auto decoded = HVMInstruction::decode(encoded, bytesUsed);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::MOVZ);
+    ASSERT_TRUE(std::holds_alternative<OperandsI>(decoded->getOperands()));
+    const auto& ops = std::get<OperandsI>(decoded->getOperands());
+    EXPECT_EQ(ops.imm15, 254);
+    EXPECT_EQ(bytesUsed, 4);
+}
+
+TEST_F(HVMInstructionTest, DecodeFallsBackWhenExtendedFuncReserved) {
     // BREAK (0xC1, escape32) does not use func. Encode with func=7 and
-    // confirm the byte-stream decoder rejects it.
+    // confirm the byte-stream decoder falls back to the normal 32-bit decode
+    // instead of failing outright (the extended decode is ambiguous with a
+    // 0xFE-first normal instruction, e.g. MOVZ/ADDI with an immediate of 0xFE).
+    // The fallback word does not map to a known instruction.
     HVMInstruction orig(Opcode::BREAK, OperandsR{0, 0, 0, 7});
     auto encoded = orig.encode();
     ASSERT_EQ(encoded.size(), 8);
     size_t bytesUsed = 0;
     auto decoded = HVMInstruction::decode(encoded, bytesUsed);
-    EXPECT_EQ(decoded, nullptr);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::UNKNOWN);
+    EXPECT_EQ(bytesUsed, 4);
 }
 
 TEST_F(HVMInstructionTest, ToAssemblyIFormat) {
@@ -336,7 +359,7 @@ TEST_F(HVMInstructionTest, ExtendedOpcodeUsesEscapedEncoding) {
     EXPECT_EQ(ops.imm15, 100);
 }
 
-TEST_F(HVMInstructionTest, RejectEscapedBaseOpcode) {
+TEST_F(HVMInstructionTest, EscapedBaseOpcodeFallsBackToNormalDecode) {
     HVMInstruction orig(Opcode::ARITH, OperandsR{1, 2, 3, 0});
     const auto payload = orig.encode32();
 
@@ -351,8 +374,14 @@ TEST_F(HVMInstructionTest, RejectEscapedBaseOpcode) {
     escaped.push_back(static_cast<uint8_t>((payload >> 16U) & 0xFFU));
     escaped.push_back(static_cast<uint8_t>((payload >> 24U) & 0xFFU));
 
-    auto decoded = HVMInstruction::decode(escaped);
-    EXPECT_EQ(decoded, nullptr);
+    // The ULEB128 opcode is a base opcode (< 0x80), so the extended decode
+    // fails; the sequence falls back to the normal 32-bit decode, which does
+    // not map to a known instruction.
+    size_t bytesUsed = 0;
+    auto decoded = HVMInstruction::decode(escaped, bytesUsed);
+    ASSERT_NE(decoded, nullptr);
+    EXPECT_EQ(decoded->getOpcode(), Opcode::UNKNOWN);
+    EXPECT_EQ(bytesUsed, 4);
 }
 
 TEST_F(HVMInstructionTest, ExtendedOpcodeRoundTripAllEscape32) {
@@ -563,25 +592,37 @@ TEST_F(HVMInstructionTest, ToAssemblyBREAK) {
     EXPECT_EQ(asmResult, "break r0, r0, r0");
 }
 
-TEST_F(HVMInstructionTest, ExtendedOpcodeRejectsMalformedEncoding) {
+TEST_F(HVMInstructionTest, ExtendedOpcodeTruncatedFallsBackToNormalDecode) {
     // Missing escape byte entirely
     std::vector<uint8_t> noEscape = {0x00, 0x00, 0x00, 0x00};
     auto decoded = HVMInstruction::decode(noEscape);
     ASSERT_NE(decoded, nullptr);
     EXPECT_FALSE(decoded->isExtended());
 
-    // Escape byte but truncated (only 5 bytes, need 8)
+    // Escape byte but truncated (only 5 bytes, need 8): the extended decode
+    // fails and the sequence falls back to the normal 4-byte decode, which
+    // does not map to a known instruction.
     std::vector<uint8_t> truncated = {0xFE, 0xC0, 0x00, 0x00, 0x00};
     size_t used = 999;
     auto dec2 = HVMInstruction::decode(truncated, used);
-    EXPECT_EQ(dec2, nullptr);
-    EXPECT_EQ(used, 0);
+    ASSERT_NE(dec2, nullptr);
+    EXPECT_EQ(dec2->getOpcode(), Opcode::UNKNOWN);
+    EXPECT_EQ(used, 4);
 
-    // Escape byte with valid ULEB128 but missing payload (7 bytes, need 8)
+    // Escape byte with valid ULEB128 but missing payload (7 bytes, need 8):
+    // same fallback to the normal 4-byte decode.
     std::vector<uint8_t> missingPayload = {0xFE, 0xC0, 0x00, 0x00, 0x00, 0x00, 0x00};
     used = 999;
     auto dec3 = HVMInstruction::decode(missingPayload, used);
-    EXPECT_EQ(dec3, nullptr);
+    ASSERT_NE(dec3, nullptr);
+    EXPECT_EQ(dec3->getOpcode(), Opcode::UNKNOWN);
+    EXPECT_EQ(used, 4);
+
+    // Too few bytes for even a 32-bit word is still rejected.
+    std::vector<uint8_t> tooShort = {0xFE, 0xC0, 0x00};
+    used = 999;
+    auto dec4 = HVMInstruction::decode(tooShort, used);
+    EXPECT_EQ(dec4, nullptr);
     EXPECT_EQ(used, 0);
 }
 
