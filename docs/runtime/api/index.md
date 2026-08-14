@@ -602,15 +602,21 @@ and custom subtypes.
 
 ---
 
-## [Csv](csv.md) — Class `Csv`
+## [Csv](csv.md) — Class `Csv` + free constructor
 
 **Import:** `import hoo.csv;`
 
-**Pattern:** Free functions (with instance ARC methods)
+**Pattern:** Instance class with free constructor and ARC methods
 
 | Kind | API | Signature |
 |------|-----|-----------|
+| Constructor | `Csv` | `new Csv() :Csv` |
 | Free | `csv_from_opts` | `csv_from_opts(delimiter: int64, quote: int64) :Csv` |
-| Free | `csv_parse` | `csv_parse(text: string) :array` |
-| Instance | `csv.generate` | `csv.generate(data: array) :string` |
+| Instance | `csv.parse` / `csv.generate` | Parse rows or generate CSV text |
+| Instance | `csv.readFile` / `csv.writeFile` | File I/O |
+| Instance | `csv.escape` | `csv.escape(character: int64) :int64` |
+| Instance | `csv.parseAsMaps` / `csv.readFileAsMaps` | Header-keyed map rows |
+| Instance | `csv.count` / `csv.sum` / `csv.avg` / `csv.min` / `csv.max` | Map-row aggregations |
+| Instance | `csv.select` / `csv.filter` / `csv.sort` | Map-row transformations |
+| Instance | `csv.describe` | Numeric column statistics |
 | Instance | `csv.retain` / `csv.release` / `csv.refcount` | Reference counting |

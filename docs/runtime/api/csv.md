@@ -4,23 +4,28 @@
 
 `hoo.csv`
 
-## Import Statement
+## Import
 
 ```hoo
 import hoo.csv;
 ```
 
-## Module Description
+## Overview
 
-The `Csv` class provides instance methods for parsing comma-separated values (CSV) text into two-dimensional arrays of strings and generating CSV text from arrays. Instance methods provide Automatic Reference Counting (ARC) for memory management of CSV handles.
+`Csv` is an ARC-managed CSV parser and generator. A default instance uses a
+comma delimiter and double quotes. Instances created with `csv_from_opts` use
+the supplied single-byte delimiter and quote characters for parsing,
+generation, and escaping.
+
+CSV rows are returned as `array` values containing `string` fields. Map-based
+methods treat the first row as the header and return arrays of `Map` values
+whose keys and values are strings.
+
+Malformed input and invalid handles generally return `0`/`null` rather than
+throwing. Numeric aggregation and ordering operations throw an invalid-cast
+exception when a non-empty value is not numeric.
 
 ## Class: Csv
-
-### Declaration
-
-```hoo
-class Csv
-```
 
 ### Constructor
 
@@ -28,231 +33,203 @@ class Csv
 new Csv() :Csv
 ```
 
-Creates a new CSV instance.
+Creates a CSV instance configured with `,` as the delimiter and `"` as the
+quote character. The initial reference count is one.
 
-### Public Instance Functions
+### Parsing and Generation
 
 #### `parse`
-
-Parses a CSV-formatted string and returns a two-dimensional array of strings. Each top-level element represents a row, and each row contains the field values for that row.
-
-**Syntax:**
 
 ```hoo
 csv.parse(text: string) :array
 ```
 
-**Parameters:**
+Parses CSV text into an `array` of rows, where each row is an `array` of
+strings. Quoted fields support embedded delimiters, doubled quote characters,
+and newlines. Empty trailing fields are preserved. Unquoted surrounding spaces
+and tabs are trimmed.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `text` | `string` | The raw CSV text to parse. |
-
-**Returns:** `array` — A two-dimensional array (`array` of `array` of `string`). Returns `null` if the input is malformed.
-
-**Errors:** Returns `null` on malformed CSV input. No exception is thrown.
-
-**Complete Example:**
-
-```hoo
-import hoo.csv;
-
-func :int64 main() {
-    var csv = new Csv();
-    var rows = csv.parse("name,age\nAlice,30\nBob,25");
-    println(rows.length()); // 3
-    csv.release();
-    return 0;
-}
-```
-
----
+Returns `null` for a null or empty input, unterminated quoted fields, or text
+following a closing quote that is not whitespace, a delimiter, or a row
+separator.
 
 #### `generate`
-
-Serializes a two-dimensional array of strings into a CSV-formatted string. Fields containing the delimiter, the quote character, or newlines are automatically quoted; embedded quote characters are doubled.
-
-**Syntax:**
 
 ```hoo
 csv.generate(data: array) :string
 ```
 
-**Parameters:**
+Serializes an array of string rows. Fields containing the configured delimiter,
+quote character, or a newline are quoted; quote characters inside quoted fields
+are doubled. Missing fields are emitted as empty fields and rows are separated
+by newlines.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `data` | `array` | A two-dimensional array (`array` of `array` of `string`). |
+Returns an empty string for null, empty, or all-empty input, and `null` for
+allocation or invalid-input failures.
 
-**Returns:** `string` — The CSV-formatted string. Returns an empty string if `data` is null, empty, or contains only empty rows.
-
-**Errors:** Returns an empty string on invalid input. No exception is thrown.
-
-**Complete Example:**
+#### `readFile`
 
 ```hoo
-import hoo.csv;
-
-func :int64 main() {
-    var csv = new Csv();
-    var data = [["a", "b"], ["1", "2"]];
-    var result = csv.generate(data);
-    println(result); // a,b\n1,2\n
-    csv.release();
-    return 0;
-}
+csv.readFile(path: string) :array
 ```
 
----
+Reads a file and parses it using the instance delimiter and quote character.
+Returns `null` when the path cannot be read or the contents are malformed.
+
+#### `writeFile`
+
+```hoo
+csv.writeFile(path: string, data: array) :int64
+```
+
+Generates CSV and writes it to `path` using the instance options. Returns `0`
+on success and `1` on invalid input or an I/O failure.
+
+#### `escape`
+
+```hoo
+csv.escape(character: int64) :int64
+```
+
+Returns `1` when the character must be quoted in a generated field because it
+is the configured delimiter, the configured quote character, or a newline.
+Otherwise returns `0`.
+
+### Map-Based Rows
+
+#### `parseAsMaps`
+
+```hoo
+csv.parseAsMaps(text: string) :array
+```
+
+Parses CSV text using the first row as column names and returns one `Map` per
+remaining row. Map keys and values are strings. Returns `null` for malformed or
+empty input.
+
+#### `readFileAsMaps`
+
+```hoo
+csv.readFileAsMaps(path: string) :array
+```
+
+Reads a CSV file and returns its data as an array of header-keyed maps.
+
+### Aggregations
+
+All aggregation methods operate on the array returned by `parseAsMaps` or
+`readFileAsMaps`. Missing columns and empty values are ignored where possible.
+
+| Method | Signature | Result |
+|---|---|---|
+| `count` | `csv.count(data: array, column: string) :int64` | Number of non-empty values. |
+| `sum` | `csv.sum(data: array, column: string) :int64` | Exact signed `int64` sum of non-empty integer values. |
+| `avg` | `csv.avg(data: array, column: string) :string` | Numeric average as a string, or `null` when there are no values. |
+| `min` | `csv.min(data: array, column: string) :string` | Lexicographic minimum, or `null` when there are no values. |
+| `max` | `csv.max(data: array, column: string) :string` | Lexicographic maximum, or `null` when there are no values. |
+
+`sum` rejects values that are not valid signed integers. `avg` and the
+numeric-ordering operations reject non-finite or non-numeric values.
+
+### Transformations
+
+#### `select`
+
+```hoo
+csv.select(data: array, columns: array) :array
+```
+
+Returns new maps containing only the requested string columns. Missing values
+are represented as empty strings.
+
+#### `filter`
+
+```hoo
+csv.filter(data: array, column: string, operator: string, value: string) :array
+```
+
+Returns rows matching `==`, `!=`, `>`, `>=`, `<`, or `<=`. Equality operators
+compare strings. Ordering operators compare numeric values and validate the
+comparison value and non-empty column values as finite numbers.
+
+#### `sort`
+
+```hoo
+csv.sort(data: array, column: string, ascending: int64) :array
+```
+
+Returns rows sorted by the selected column. A non-zero `ascending` value sorts
+ascending; zero sorts descending. Values are compared as strings.
+
+### Statistics
+
+#### `describe`
+
+```hoo
+csv.describe(data: array, column: string) :Map
+```
+
+Returns a string-valued map containing `count`, `sum`, `avg`, `min`, and `max`
+for non-empty numeric values in the selected column. An empty input returns a
+map containing `count` set to `"0"`.
+
+## Reference Counting
 
 #### `retain`
-
-Increments the reference count of a CSV instance. Returns the same instance for chaining.
-
-**Syntax:**
 
 ```hoo
 csv.retain() :Csv
 ```
 
-**Parameters:**
-
-None.
-
-**Returns:** `Csv` — The same Csv instance with an incremented reference count.
-
-**Errors:** Returns `null` if `csv` is null.
-
-**Complete Example:**
-
-```hoo
-import hoo.csv;
-
-func :int64 main() {
-    var csv = new Csv();
-    var csv2 = csv.retain();
-    csv.release();
-    csv2.release();
-    return 0;
-}
-```
-
----
+Increments the reference count and returns the same instance. Returns `null`
+when called on a null handle.
 
 #### `release`
 
-Decrements the reference count of a CSV instance. When the count reaches zero the instance is freed. After calling `release`, the handle must not be used again.
-
-**Syntax:**
-
 ```hoo
-csv.release()
+csv.release() :void
 ```
 
-**Parameters:**
-
-None.
-
-**Returns:** `void`
-
-**Errors:** No-op if `csv` is null.
-
-**Complete Example:**
-
-```hoo
-import hoo.csv;
-
-func :int64 main() {
-    var csv = new Csv();
-    csv.release();
-    return 0;
-}
-```
-
----
+Decrements the reference count and frees the instance when it reaches zero.
+Do not use the handle after its final release. Releasing a null handle is a
+no-op.
 
 #### `refcount`
-
-Returns the current reference count of a CSV instance. Intended for debugging and testing.
-
-**Syntax:**
 
 ```hoo
 csv.refcount() :int64
 ```
 
-**Parameters:**
-
-None.
-
-**Returns:** `int64` — The current reference count.
-
-**Errors:** Returns `0` if `csv` is null.
-
-**Complete Example:**
-
-```hoo
-import hoo.csv;
-
-func :int64 main() {
-    var csv = new Csv();
-    println(csv.refcount()); // 1
-    csv.release();
-    return 0;
-}
-```
+Returns the current reference count, or `0` for a null handle.
 
 ## Free Functions
 
 ### `csv_from_opts`
 
-Creates a new CSV instance with custom delimiter and quote characters.
-
-**Syntax:**
-
 ```hoo
 csv_from_opts(delimiter: int64, quote: int64) :Csv
 ```
 
-**Parameters:**
+Creates a CSV instance with custom single-byte delimiter and quote characters.
+Both values must be between `1` and `255`, and they must differ. Returns
+`null` for invalid options.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `delimiter` | `int64` | The delimiter character code. |
-| `quote` | `int64` | The quote character code. |
-
-**Returns:** `Csv` — A new Csv instance with the specified options.
-
-**Errors:** Returns `null` if parameters are invalid.
-
-**Complete Example:**
+## Complete Example
 
 ```hoo
-import hoo.csv;
-
-func :int64 main() {
-    var csv = csv_from_opts(59, 34); // semicolon delimiter, double-quote
-    var rows = csv.parse("a;b\n1;2");
-    println(rows.length()); // 2
-    csv.release();
-    return 0;
-}
-```
-
-## Usage Example
-
-```hoo
+import hoo;
 import hoo.csv;
 
 func :int64 main() {
     var csv = new Csv();
-
-    // Parse CSV text
-    var rows = csv.parse("name,age\nAlice,30\nBob,25");
+    var rows = csv.parse("name,score\nAlice,10\nBob,20");
     println(rows.length()); // 3
 
-    // Serialize data to CSV
-    var output = csv.generate([["x", "y"], ["1", "2"]]);
+    var records = csv.parseAsMaps("name,score\nAlice,10\nBob,20");
+    var total: int64 = csv.sum(records, "score");
+    println(string_from_int64(total)); // 30
+
+    var output = csv.generate([["name", "score"], ["Cara", "30"]]);
     println(output);
 
     csv.release();
