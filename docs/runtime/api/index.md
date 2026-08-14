@@ -602,7 +602,7 @@ and custom subtypes.
 
 ---
 
-## [CSV](csv.md) — Class `CSV`
+## [Csv](csv.md) — Class `Csv`
 
 **Import:** `import hoo.csv;`
 
@@ -610,7 +610,7 @@ and custom subtypes.
 
 | Kind | API | Signature |
 |------|-----|-----------|
-| Free | `csv_new_with_opts` | `csv_new_with_opts(opts: Dict) :Csv` |
+| Free | `csv_from_opts` | `csv_from_opts(delimiter: int64, quote: int64) :Csv` |
 | Free | `csv_parse` | `csv_parse(text: string) :array` |
-| Free | `csv_serialize` | `csv_serialize(data: array) :string` |
+| Instance | `csv.generate` | `csv.generate(data: array) :string` |
 | Instance | `csv.retain` / `csv.release` / `csv.refcount` | Reference counting |

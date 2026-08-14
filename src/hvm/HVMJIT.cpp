@@ -2779,6 +2779,20 @@ extern "C" {
         void* result = hoo_csv_read_file(handle, path);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
     }
+    uint64_t jit_csv_parse_as_maps(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* csv = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* result = hoo_csv_parse_as_maps(handle, csv);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
+    uint64_t jit_csv_read_file_as_maps(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* handle = reinterpret_cast<void*>(state->regs[1]);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* result = hoo_csv_read_file_as_maps(handle, path);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
+    }
     uint64_t jit_csv_write_file(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         void* handle = reinterpret_cast<void*>(state->regs[1]);
@@ -4962,6 +4976,8 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_csv_parse_v_p", reinterpret_cast<void*>(&jit_csv_parse)},
         {"_F_M_hoo_E_csv_generate_v_p", reinterpret_cast<void*>(&jit_csv_generate)},
         {"_F_M_hoo_E_csv_readFile_v_p", reinterpret_cast<void*>(&jit_csv_read_file)},
+        {"_F_M_hoo_E_csv_parseAsMaps_v_p", reinterpret_cast<void*>(&jit_csv_parse_as_maps)},
+        {"_F_M_hoo_E_csv_readFileAsMaps_v_p", reinterpret_cast<void*>(&jit_csv_read_file_as_maps)},
         {"_F_M_hoo_E_csv_writeFile_v_p_p", reinterpret_cast<void*>(&jit_csv_write_file)},
         {"_F_M_hoo_E_csv_escape_v_p", reinterpret_cast<void*>(&jit_csv_escape)},
         {"_F_M_hoo_E_csv_count_v_p_p", reinterpret_cast<void*>(&jit_csv_count)},
@@ -9677,6 +9693,7 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
             auto ins = hvm::HVMInstruction::decode(slice, used);
             if (!ins || used == 0) {
                 lastError_ = "Instruction decode failed at PC " + std::to_string(pc) + " in module " + module->getName();
+                fprintf(stderr, "TMPDBG decodefail pc=%llu mod=%s\n", (unsigned long long)pc, module->getName().c_str());
                 return false;
             }
             uint16_t func = 0;
@@ -9798,6 +9815,7 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
         gStateOwnerByPtr[&state] = this;
     }
     const int64_t rv = fn(&state);
+    fprintf(stderr, "TMPDBG runViaJIT returned %lld\n", (long long)rv);
     captureLastArchitecturalState(state);
     {
         std::lock_guard<std::mutex> lk(gStateOwnerMu);
@@ -9839,6 +9857,14 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     if (jitResult != -1) {
         return jitResult;
     }
+    // A stopped compiled run uses -1 as its result. Do not fall back to the
+    // interpreter in that case: restarting the same loop would ignore the
+    // completed stop request and can leave callers blocked waiting for run().
+    if (stopExecutionRequested_.load(std::memory_order_relaxed)) {
+        setError(ErrorPhase::Execute, ErrorCode::ExecutionFailed,
+                 "Execution stopped by inspector");
+        return -1;
+    }
     // JIT returned -1. Capture the JIT error but fall through to interpreter
     // if the error is a lookup/missing-entry failure (the interpreter has a
     // more flexible symbol resolution). Only skip fallback for hard JIT
@@ -9864,6 +9890,7 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     state.tlabEnd = tlabEnd_;
     const int64_t rv = executeFunction(primary, entryPoint, state);
     if (rv == -1 && !jitError.empty()) {
+        fprintf(stderr, "TMPDBG interp-fallback path rv=%lld jitError='%s'\n", (long long)rv, jitError.c_str());
         lastError_ = "[JIT] " + jitError + " | [Interp] " + lastError_;
     }
     shadow_clear_state(&state);

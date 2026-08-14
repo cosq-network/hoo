@@ -7,11 +7,14 @@
 #include "runtime/lib/exception/hoo_exception.h"
 #include <cstring>
 #include <cstdlib>
+#include <cerrno>
 #include <cstdio>
 #include <string>
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <cmath>
+#include <limits>
 
 #ifdef _MSC_VER
 #define hoo_strdup _strdup
@@ -44,6 +47,11 @@ static bool field_needs_quoting(const std::string& field, char delimiter, char q
             return true;
     }
     return false;
+}
+
+static bool valid_csv_options(char delimiter, char quote_char)
+{
+    return delimiter != '\0' && quote_char != '\0' && delimiter != quote_char;
 }
 
 static void append_quoted(std::ostringstream& ss, const std::string& field, char quote_char)
@@ -80,6 +88,9 @@ HooCsv hoo_csv_new(void) {
 }
 
 HooCsv hoo_csv_new_with_opts(int32_t delimiter, int32_t quote_char) {
+    if (delimiter <= 0 || delimiter > 255 || quote_char <= 0 || quote_char > 255 ||
+        delimiter == quote_char)
+        return NULL;
     CsvHandle* h = (CsvHandle*)hoo_alloc(sizeof(CsvHandle), HOO_TYPE_CSV);
     if (h) {
         h->delimiter = (char)delimiter;
@@ -121,10 +132,12 @@ char*** hoo_csv_parse_raw(const char* csv, int64_t* out_rows, int64_t* out_cols)
 char*** hoo_csv_parse_raw_with_opts(const char* csv, char delimiter, char quote_char,
                                     int64_t* out_rows, int64_t* out_cols)
 {
+    if (!out_rows || !out_cols)
+        return NULL;
     *out_rows = 0;
     *out_cols = 0;
 
-    if (!csv || !*csv)
+    if (!valid_csv_options(delimiter, quote_char) || !csv || !*csv)
         return NULL;
 
     try {
@@ -161,6 +174,7 @@ char*** hoo_csv_parse_raw_with_opts(const char* csv, char delimiter, char quote_
 
             if (csv[pos] == quote_char) {
                 pos++;
+                bool closed = false;
                 while (pos < len) {
                     if (csv[pos] == quote_char) {
                         if (pos + 1 < len && csv[pos + 1] == quote_char) {
@@ -168,6 +182,7 @@ char*** hoo_csv_parse_raw_with_opts(const char* csv, char delimiter, char quote_
                             pos += 2;
                         } else {
                             pos++;
+                            closed = true;
                             break;
                         }
                     } else {
@@ -175,10 +190,25 @@ char*** hoo_csv_parse_raw_with_opts(const char* csv, char delimiter, char quote_
                         pos++;
                     }
                 }
+                if (!closed) {
+                    *out_rows = 0;
+                    *out_cols = 0;
+                    return NULL;
+                }
                 current_row.push_back(field);
 
                 while (pos < len && (csv[pos] == ' ' || csv[pos] == '\t'))
                     pos++;
+
+                // A quoted field may only be followed by a delimiter or a
+                // record separator. Reject trailing non-whitespace content
+                // instead of silently treating it as a new row.
+                if (pos < len && csv[pos] != delimiter &&
+                    csv[pos] != '\n' && csv[pos] != '\r') {
+                    *out_rows = 0;
+                    *out_cols = 0;
+                    return NULL;
+                }
             } else {
                 size_t start = pos;
                 while (pos < len && csv[pos] != delimiter
@@ -197,6 +227,11 @@ char*** hoo_csv_parse_raw_with_opts(const char* csv, char delimiter, char quote_
 
             if (csv[pos] == delimiter) {
                 pos++;
+                if (pos >= len) {
+                    current_row.push_back("");
+                    rows.push_back(current_row);
+                    current_row.clear();
+                }
                 continue;
             }
 
@@ -267,6 +302,8 @@ char* hoo_csv_generate_raw_with_opts(const char** headers, const char*** data,
                                      int64_t rows, int64_t cols,
                                      char delimiter, char quote_char)
 {
+    if (!valid_csv_options(delimiter, quote_char) || rows < 0 || cols < 0)
+        return NULL;
     try {
         std::ostringstream ss;
 
@@ -305,6 +342,8 @@ char* hoo_csv_generate_raw_with_opts(const char** headers, const char*** data,
 
 char*** hoo_csv_read_file_raw(const char* path, int64_t* out_rows, int64_t* out_cols)
 {
+    if (!out_rows || !out_cols)
+        return NULL;
     *out_rows = 0;
     *out_cols = 0;
 
@@ -414,6 +453,9 @@ HooString hoo_csv_generate(HooCsv csv, void* data_arr)
         }
 
         if (rows == 0 || cols == 0) return hoo_string_from_cstr("");
+        if ((size_t)rows > std::numeric_limits<size_t>::max() / sizeof(const char**) ||
+            (size_t)cols > std::numeric_limits<size_t>::max() / sizeof(const char*))
+            return NULL;
 
         // Convert HooArray to char***
         const char*** cdata = (const char***)std::malloc(sizeof(const char**) * (size_t)rows);
@@ -529,8 +571,11 @@ int64_t hoo_csv_write_file(HooCsv csv, const char* path, void* data_arr)
 
 int64_t hoo_csv_escape(HooCsv csv, int32_t c)
 {
-    (void)csv;
-    return hoo_csv_escape_raw((char)c);
+    if (!csv) return 0;
+    CsvHandle* h = get_handle(csv);
+    char value = (char)c;
+    return (value == h->delimiter || value == h->quote_char ||
+            value == '\n' || value == '\r') ? 1 : 0;
 }
 
 // ============================================================================
@@ -608,8 +653,8 @@ static void require_numeric(const char* val, const char* column)
 {
     if (!val || val[0] == '\0') return;
     char* end = NULL;
-    std::strtod(val, &end);
-    if (end && *end != '\0') {
+    double number = std::strtod(val, &end);
+    if (!end || *end != '\0' || !std::isfinite(number)) {
         char msg[256];
         if (column) {
             snprintf(msg, sizeof(msg),
@@ -621,6 +666,22 @@ static void require_numeric(const char* val, const char* column)
         HooException exc = hoo_exception_invalid_cast(msg);
         hoo_exception_throw(exc);
     }
+}
+
+static int64_t parse_integer_value(const char* val, const char* column)
+{
+    if (!val || val[0] == '\0') return 0;
+    char* end = NULL;
+    errno = 0;
+    long long number = std::strtoll(val, &end, 10);
+    if (end == val || !end || *end != '\0' || errno == ERANGE) {
+        char msg[256];
+        snprintf(msg, sizeof(msg), "Expected integer value '%s' in column '%s'",
+                 val, column ? column : "");
+        HooException exc = hoo_exception_invalid_cast(msg);
+        hoo_exception_throw(exc);
+    }
+    return static_cast<int64_t>(number);
 }
 
 int64_t hoo_csv_count(HooCsv csv, void* data, const char* column)
@@ -645,8 +706,7 @@ int64_t hoo_csv_sum(HooCsv csv, void* data, const char* column)
     for (int64_t i = 0; i < len; i++) {
         const char* val = get_column_value(data, i, column);
         if (val && val[0] != '\0') {
-            require_numeric(val, column);
-            sum += std::atoll(val);
+            sum += parse_integer_value(val, column);
         }
     }
     return sum;
@@ -903,7 +963,11 @@ HooMap hoo_csv_describe(HooCsv csv, void* data, const char* column)
 
     if (count > 0) {
         char sum_buf[64];
-        snprintf(sum_buf, sizeof(sum_buf), "%lld", (long long)sum);
+        snprintf(sum_buf, sizeof(sum_buf), "%.6f", sum);
+        char* sum_end = sum_buf + strlen(sum_buf) - 1;
+        while (sum_end > sum_buf && *sum_end == '0') sum_end--;
+        if (*sum_end == '.') sum_end--;
+        *(sum_end + 1) = '\0';
         hoo_map_set(result, "sum", sum_buf);
 
         double avg = sum / (double)count;

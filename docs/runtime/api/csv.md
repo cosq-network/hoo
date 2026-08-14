@@ -1,4 +1,4 @@
-# CSV API Reference
+# Csv API Reference
 
 ## Module
 
@@ -12,20 +12,20 @@ import hoo.csv;
 
 ## Module Description
 
-The `CSV` class provides instance methods for parsing comma-separated values (CSV) text into two-dimensional arrays of strings and serializing arrays back into CSV text. Instance methods provide Automatic Reference Counting (ARC) for memory management of CSV handles.
+The `Csv` class provides instance methods for parsing comma-separated values (CSV) text into two-dimensional arrays of strings and generating CSV text from arrays. Instance methods provide Automatic Reference Counting (ARC) for memory management of CSV handles.
 
-## Class: CSV
+## Class: Csv
 
 ### Declaration
 
 ```hoo
-class CSV
+class Csv
 ```
 
 ### Constructor
 
 ```hoo
-CSV() :CSV
+new Csv() :Csv
 ```
 
 Creates a new CSV instance.
@@ -58,7 +58,7 @@ csv.parse(text: string) :array
 import hoo.csv;
 
 func :int64 main() {
-    var csv = CSV();
+    var csv = new Csv();
     var rows = csv.parse("name,age\nAlice,30\nBob,25");
     println(rows.length()); // 3
     csv.release();
@@ -68,14 +68,14 @@ func :int64 main() {
 
 ---
 
-#### `serialize`
+#### `generate`
 
 Serializes a two-dimensional array of strings into a CSV-formatted string. Fields containing the delimiter, the quote character, or newlines are automatically quoted; embedded quote characters are doubled.
 
 **Syntax:**
 
 ```hoo
-csv.serialize(data: array) :string
+csv.generate(data: array) :string
 ```
 
 **Parameters:**
@@ -94,9 +94,9 @@ csv.serialize(data: array) :string
 import hoo.csv;
 
 func :int64 main() {
-    var csv = CSV();
+    var csv = new Csv();
     var data = [["a", "b"], ["1", "2"]];
-    var result = csv.serialize(data);
+    var result = csv.generate(data);
     println(result); // a,b\n1,2\n
     csv.release();
     return 0;
@@ -112,14 +112,14 @@ Increments the reference count of a CSV instance. Returns the same instance for 
 **Syntax:**
 
 ```hoo
-csv.retain() :CSV
+csv.retain() :Csv
 ```
 
 **Parameters:**
 
 None.
 
-**Returns:** `CSV` — The same CSV instance with an incremented reference count.
+**Returns:** `Csv` — The same Csv instance with an incremented reference count.
 
 **Errors:** Returns `null` if `csv` is null.
 
@@ -129,7 +129,7 @@ None.
 import hoo.csv;
 
 func :int64 main() {
-    var csv = CSV();
+    var csv = new Csv();
     var csv2 = csv.retain();
     csv.release();
     csv2.release();
@@ -163,7 +163,7 @@ None.
 import hoo.csv;
 
 func :int64 main() {
-    var csv = CSV();
+    var csv = new Csv();
     csv.release();
     return 0;
 }
@@ -195,7 +195,7 @@ None.
 import hoo.csv;
 
 func :int64 main() {
-    var csv = CSV();
+    var csv = new Csv();
     println(csv.refcount()); // 1
     csv.release();
     return 0;
@@ -204,14 +204,14 @@ func :int64 main() {
 
 ## Free Functions
 
-### `csv_new_with_opts`
+### `csv_from_opts`
 
 Creates a new CSV instance with custom delimiter and quote characters.
 
 **Syntax:**
 
 ```hoo
-csv_new_with_opts(delimiter: int64, quote: int64) :CSV
+csv_from_opts(delimiter: int64, quote: int64) :Csv
 ```
 
 **Parameters:**
@@ -221,7 +221,7 @@ csv_new_with_opts(delimiter: int64, quote: int64) :CSV
 | `delimiter` | `int64` | The delimiter character code. |
 | `quote` | `int64` | The quote character code. |
 
-**Returns:** `CSV` — A new CSV instance with the specified options.
+**Returns:** `Csv` — A new Csv instance with the specified options.
 
 **Errors:** Returns `null` if parameters are invalid.
 
@@ -231,7 +231,7 @@ csv_new_with_opts(delimiter: int64, quote: int64) :CSV
 import hoo.csv;
 
 func :int64 main() {
-    var csv = csv_new_with_opts(59, 34); // semicolon delimiter, double-quote
+    var csv = csv_from_opts(59, 34); // semicolon delimiter, double-quote
     var rows = csv.parse("a;b\n1;2");
     println(rows.length()); // 2
     csv.release();
@@ -245,14 +245,14 @@ func :int64 main() {
 import hoo.csv;
 
 func :int64 main() {
-    var csv = CSV();
+    var csv = new Csv();
 
     // Parse CSV text
     var rows = csv.parse("name,age\nAlice,30\nBob,25");
     println(rows.length()); // 3
 
     // Serialize data to CSV
-    var output = csv.serialize([["x", "y"], ["1", "2"]]);
+    var output = csv.generate([["x", "y"], ["1", "2"]]);
     println(output);
 
     csv.release();

@@ -85,6 +85,34 @@ TEST_F(HooCsvTest, ParseQuotedNewlines) {
     hoo_csv_free_table(table, rows, cols);
 }
 
+TEST_F(HooCsvTest, ParseTrailingEmptyField) {
+    int64_t rows = 0, cols = 0;
+    char*** table = hoo_csv_parse_raw("a,b,", &rows, &cols);
+    ASSERT_NE(table, nullptr);
+    ASSERT_EQ(rows, 1);
+    ASSERT_EQ(cols, 3);
+    EXPECT_STREQ(table[0][0], "a");
+    EXPECT_STREQ(table[0][1], "b");
+    EXPECT_STREQ(table[0][2], "");
+    hoo_csv_free_table(table, rows, cols);
+}
+
+TEST_F(HooCsvTest, ParseUnterminatedQuotedFieldReturnsNull) {
+    int64_t rows = 0, cols = 0;
+    char*** table = hoo_csv_parse_raw("a,\"unterminated", &rows, &cols);
+    EXPECT_EQ(table, nullptr);
+    EXPECT_EQ(rows, 0);
+    EXPECT_EQ(cols, 0);
+}
+
+TEST_F(HooCsvTest, ParseCharactersAfterQuotedFieldReturnsNull) {
+    int64_t rows = 0, cols = 0;
+    char*** table = hoo_csv_parse_raw("a,\"value\"suffix", &rows, &cols);
+    EXPECT_EQ(table, nullptr);
+    EXPECT_EQ(rows, 0);
+    EXPECT_EQ(cols, 0);
+}
+
 TEST_F(HooCsvTest, GenerateSimple) {
     const char* headers[] = {"Name", "Age"};
     const char* row0[] = {"Alice", "30"};
@@ -142,6 +170,30 @@ TEST_F(HooCsvTest, ParseWithOpts) {
     hoo_csv_free_table(table, rows, cols);
 }
 
+TEST_F(HooCsvTest, RawOptionsRejectInvalidCharacters) {
+    int64_t rows = 0, cols = 0;
+    EXPECT_EQ(hoo_csv_parse_raw_with_opts("a,b", '\0', '"', &rows, &cols), nullptr);
+    EXPECT_EQ(hoo_csv_parse_raw_with_opts("a,b", ',', '\0', &rows, &cols), nullptr);
+    EXPECT_EQ(hoo_csv_parse_raw_with_opts("a,b", ',', ',', &rows, &cols), nullptr);
+    EXPECT_EQ(hoo_csv_generate_raw_with_opts(nullptr, nullptr, 0, 0, '\0', '"'), nullptr);
+    EXPECT_EQ(hoo_csv_generate_raw_with_opts(nullptr, nullptr, 0, 0, ',', ','), nullptr);
+}
+
+TEST_F(HooCsvTest, ParseRawRejectsNullOutputPointers) {
+    int64_t rows = 0, cols = 0;
+    EXPECT_EQ(hoo_csv_parse_raw_with_opts("a,b", ',', '"', nullptr, &cols), nullptr);
+    EXPECT_EQ(hoo_csv_parse_raw_with_opts("a,b", ',', '"', &rows, nullptr), nullptr);
+    EXPECT_EQ(hoo_csv_read_file_raw("missing.csv", nullptr, &cols), nullptr);
+    EXPECT_EQ(hoo_csv_read_file_raw("missing.csv", &rows, nullptr), nullptr);
+}
+
+TEST_F(HooCsvTest, GenerateRejectsNegativeDimensions) {
+    const char* row[] = {"value"};
+    const char** data[] = {row};
+    EXPECT_EQ(hoo_csv_generate_raw(nullptr, data, -1, 1), nullptr);
+    EXPECT_EQ(hoo_csv_generate_raw(nullptr, data, 1, -1), nullptr);
+}
+
 TEST_F(HooCsvTest, FromOptsCreatesInstanceWithCustomDelimiter) {
     HooCsv csv = hoo_csv_from_opts(59, 39);
     ASSERT_NE(csv, nullptr);
@@ -163,6 +215,13 @@ TEST_F(HooCsvTest, FromOptsCreatesInstanceWithCustomDelimiter) {
     hoo_array_release(arr);
 
     hoo_csv_release(csv);
+}
+
+TEST_F(HooCsvTest, FromOptsRejectsInvalidCharacters) {
+    EXPECT_EQ(hoo_csv_from_opts(0, '"'), nullptr);
+    EXPECT_EQ(hoo_csv_from_opts(',', 0), nullptr);
+    EXPECT_EQ(hoo_csv_from_opts(',', ','), nullptr);
+    EXPECT_EQ(hoo_csv_from_opts(-1, '"'), nullptr);
 }
 
 TEST_F(HooCsvTest, FreeString) {
@@ -549,6 +608,24 @@ TEST_F(HooCsvTest, SumWorksForAllNumeric) {
     ASSERT_NE(data, nullptr);
     HooCsv csv = hoo_csv_new();
     EXPECT_EQ(hoo_csv_sum(csv, data, "val"), 60);
+    hoo_csv_release(csv);
+    hoo_array_release(data);
+}
+
+TEST_F(HooCsvTest, SumRejectsFractionalValuesInsteadOfTruncating) {
+    HooArray data = parse_to_maps("val\n1.5\n2.5");
+    ASSERT_NE(data, nullptr);
+    HooCsv csv = hoo_csv_new();
+    EXPECT_THROW(hoo_csv_sum(csv, data, "val"), std::exception);
+    hoo_csv_release(csv);
+    hoo_array_release(data);
+}
+
+TEST_F(HooCsvTest, SumPreservesLargeInt64Values) {
+    HooArray data = parse_to_maps("val\n9007199254740993\n1");
+    ASSERT_NE(data, nullptr);
+    HooCsv csv = hoo_csv_new();
+    EXPECT_EQ(hoo_csv_sum(csv, data, "val"), 9007199254740994LL);
     hoo_csv_release(csv);
     hoo_array_release(data);
 }
