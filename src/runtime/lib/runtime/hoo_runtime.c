@@ -376,6 +376,10 @@ void* hoo_retain(void* obj) {
 
     atomic_fetch_add_explicit(&header->refcount, 1, memory_order_relaxed);
 
+    if (getenv("HOO_TRACE_CALLS")) {
+        fprintf(stderr, "[TRACE-RC] hoo_retain(obj=%p type=%lld rc=%lld\n", obj, (long long)header->type_id, (long long)atomic_load(&header->refcount));
+    }
+
 #ifdef HOO_DEBUG_MEMORY
     fprintf(stderr, "[RETAIN] obj=%p type=%lld refcount=%lld\n",
             obj, (long long)header->type_id, (long long)atomic_load(&header->refcount));
@@ -419,6 +423,10 @@ void hoo_release(void* obj) {
     HooObjectHeader* header = (HooObjectHeader*)((char*)obj - sizeof(HooObjectHeader));
 
     int64_t old_count = atomic_fetch_sub_explicit(&header->refcount, 1, memory_order_release);
+
+    if (getenv("HOO_TRACE_CALLS")) {
+        fprintf(stderr, "[TRACE-RC] hoo_release(obj=%p type=%lld old=%lld\n", obj, (long long)header->type_id, (long long)old_count);
+    }
 
 #ifdef HOO_DEBUG_MEMORY
     fprintf(stderr, "[RELEASE] obj=%p type=%lld refcount=%lld\n",

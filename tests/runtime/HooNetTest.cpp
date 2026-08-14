@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "runtime/lib/net/hoo_net.h"
+#include "runtime/lib/runtime/hoo_runtime.h"
 #include "runtime/lib/encoding/hoo_encoding.h"
 #include "runtime/lib/hashing/hoo_hashing.h"
 #include "runtime/lib/compression/hoo_compression.h"
@@ -361,6 +362,93 @@ TEST_F(HooNetTest, ByteSliceHandleFeedsEncodingHashingAndCompression) {
     hoo_buffer_release(compressed);
     hoo_byte_slice_release(slice);
     hoo_buffer_release(buffer);
+}
+
+TEST_F(HooNetTest, ByteSliceHandleRetainsBackingBuffer) {
+    // The handle must keep the buffer alive so releasing the buffer before the
+    // slice is no longer a use-after-free.
+    const uint8_t bytes[] = {'h', 'i'};
+    HooBuffer buffer = hoo_buffer_from_bytes(bytes, 2);
+    HooByteSliceHandle slice = hoo_byte_slice_from_buffer_handle(buffer);
+    ASSERT_NE(slice, nullptr);
+    EXPECT_EQ(hoo_get_refcount(buffer), 2);
+
+    hoo_buffer_release(buffer);
+
+    char* encoded = hoo_encoding_base64_encode_slice(slice);
+    ASSERT_NE(encoded, nullptr);
+    EXPECT_STREQ(encoded, "aGk=");
+    hoo_encoding_free_string(encoded);
+
+    hoo_byte_slice_release(slice);
+}
+
+TEST_F(HooNetTest, ByteSliceHandleFromBytes) {
+    const uint8_t bytes[] = {'h', 'e', 'x'};
+    HooByteSliceHandle slice = hoo_byte_slice_from_bytes_handle(bytes, 3);
+    ASSERT_NE(slice, nullptr);
+    EXPECT_EQ(hoo_byte_slice_view(slice).data, bytes);
+    EXPECT_EQ(hoo_byte_slice_view(slice).length, 3);
+
+    char* encoded = hoo_encoding_hex_encode_slice(slice);
+    ASSERT_NE(encoded, nullptr);
+    EXPECT_STREQ(encoded, "686578");
+    hoo_encoding_free_string(encoded);
+
+    hoo_byte_slice_release(slice);
+    EXPECT_EQ(hoo_byte_slice_view(slice).length, 0);
+}
+
+TEST_F(HooNetTest, ByteSliceHandleReleaseTwiceIsNoOp) {
+    const uint8_t bytes[] = {1, 2, 3};
+    HooBuffer buffer = hoo_buffer_from_bytes(bytes, 3);
+    HooByteSliceHandle slice = hoo_byte_slice_from_buffer_handle(buffer);
+    ASSERT_NE(slice, nullptr);
+
+    hoo_byte_slice_release(slice);
+    hoo_byte_slice_release(slice);
+
+    hoo_buffer_release(buffer);
+}
+
+TEST_F(HooNetTest, ByteSliceHandleWrongTypeIsNoOp) {
+    // Releasing a non-byte-slice handle must not corrupt or free the object.
+    HooBuffer buffer = hoo_buffer_from_bytes(reinterpret_cast<const uint8_t*>("x"), 1);
+    ASSERT_NE(buffer, nullptr);
+
+    HooByteSlice view = hoo_byte_slice_view(buffer);
+    EXPECT_EQ(view.length, 0);
+    EXPECT_EQ(view.data, nullptr);
+
+    hoo_byte_slice_release(buffer);
+    EXPECT_EQ(hoo_buffer_length(buffer), 1);
+    EXPECT_EQ(hoo_buffer_byte_at(buffer, 0), 'x');
+
+    hoo_buffer_release(buffer);
+}
+
+TEST_F(HooNetTest, ByteSliceHandleEmptyBackingConsumers) {
+    // An empty-but-valid slice must feed encoding, hashing, and compression.
+    HooByteSliceHandle slice = hoo_byte_slice_from_bytes_handle(nullptr, 0);
+    ASSERT_NE(slice, nullptr);
+    EXPECT_EQ(hoo_byte_slice_is_valid(hoo_byte_slice_view(slice)), 1);
+
+    char* encoded = hoo_encoding_base64_encode_slice(slice);
+    ASSERT_NE(encoded, nullptr);
+    EXPECT_STREQ(encoded, "");
+    hoo_encoding_free_string(encoded);
+
+    char* digest = hoo_hashing_sha256_slice(slice);
+    ASSERT_NE(digest, nullptr);
+    EXPECT_STREQ(digest, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    hoo_hashing_free_string(digest);
+
+    HooBuffer compressed = hoo_compression_gzip_compress_slice(slice);
+    ASSERT_NE(compressed, nullptr);
+    EXPECT_GT(hoo_buffer_length(compressed), 0);
+    hoo_buffer_release(compressed);
+
+    hoo_byte_slice_release(slice);
 }
 
 TEST_F(HooNetTest, TcpSocketConnectSendReceiveAndAccept) {

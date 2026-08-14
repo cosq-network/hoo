@@ -24,7 +24,7 @@ static int hex_val(char c) {
 }
 
 char* hoo_encoding_base64_encode(const uint8_t* data, int64_t len) {
-    if (!data || len < 0) return nullptr;
+    if (len < 0 || (len != 0 && !data)) return nullptr;
     if (len == 0) {
         char* r = (char*)malloc(1);
         if (r) r[0] = '\0';
@@ -103,7 +103,7 @@ int64_t hoo_encoding_base64_decode(const char* encoded, uint8_t** out_data) {
 }
 
 char* hoo_encoding_hex_encode(const uint8_t* data, int64_t len) {
-    if (!data || len < 0) return nullptr;
+    if (len < 0 || (len != 0 && !data)) return nullptr;
     if (len == 0) {
         char* r = (char*)malloc(1);
         if (r) r[0] = '\0';

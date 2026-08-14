@@ -684,6 +684,10 @@ extern "C" {
     }
     uint64_t jit_hoo_release(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        if (std::getenv("HOO_TRACE_CALLS")) {
+            void* p = reinterpret_cast<void*>(state->regs[1]);
+            fprintf(stderr, "[TRACE-CALL] hoo_release(obj=%p) type=%lld\n", p, hoo_get_type_id(p));
+        }
         hoo_release(reinterpret_cast<void*>(state->regs[1]));
         return 0;
     }
@@ -4387,6 +4391,12 @@ extern "C" {
     HVM_RUNTIME_EXPORT void hooc_hvm_arc_retain_if_managed(uint64_t obj) {
         void* ptr = reinterpret_cast<void*>(obj);
         if (hoo_is_managed_object(ptr)) {
+            if (hoo_get_type_id(ptr) == HOO_TYPE_BYTE_SLICE) {
+                // ByteSlice handles are exclusively owned by the caller and are
+                // released with hoo_byte_slice_release; implicit store/return
+                // retains are skipped so the explicit release stays balanced.
+                return;
+            }
             hoo_retain(ptr);
         }
     }
@@ -5056,7 +5066,7 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_hashing_sha256_slice_p_p", reinterpret_cast<void*>(&jit_hashing_sha256_slice)},
         {"_F_M_hoo_E_hashing_sha1_slice_p_p", reinterpret_cast<void*>(&jit_hashing_sha1_slice)},
         {"_F_M_hoo_E_hashing_md5_slice_p_p", reinterpret_cast<void*>(&jit_hashing_md5_slice)},
-        {"_F_M_hoo_E_hashing_crc32_slice_i8_p", reinterpret_cast<void*>(&jit_hashing_crc32_slice)},
+        {"_F_M_hoo_E_hashing_crc32_slice_p_p", reinterpret_cast<void*>(&jit_hashing_crc32_slice)},
 
         // Process module
         {"_F_M_hoo_E_process_kill_p_p_p", reinterpret_cast<void*>(&jit_process_kill)},
@@ -6558,6 +6568,7 @@ bool HVMJIT::mapModuleSections(const std::shared_ptr<hvm::HOModule>& module) {
 
 bool HVMJIT::invokeStateAbiSymbol(const std::string& symbolName, HVMState& state, uint64_t& outValue) {
     using StateAbiFn = uint64_t(*)(void*);
+    if (std::getenv("HOO_TRACE_CALLS")) fprintf(stderr, "[TRACE-CALL] invokeStateAbiSymbol: %s\n", symbolName.c_str());
     for (const auto& candidate : buildLookupCandidates(symbolName, "hoo")) {
         for (const auto& rs : buildRuntimeSymbols()) {
             if (rs.name && candidate == rs.name && rs.addr) {
@@ -6604,6 +6615,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
     const hvm::Symbol* sym = findFunctionSymbol(*module, functionName);
     if (!sym) {
         uint64_t runtimeRet = 0;
+        if (std::getenv("HOO_TRACE_CALLS")) fprintf(stderr, "[TRACE-CALL] executeFunction: %s (not found)\n", functionName.c_str());
         if (invokeStateAbiSymbol(functionName, state, runtimeRet)) {
             return static_cast<int64_t>(runtimeRet);
         }
@@ -6986,6 +6998,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
                     lastError_ = "CALL target unresolved at PC=" + std::to_string(pc);
                     return -1;
                 }
+                if (std::getenv("HOO_TRACE_CALLS")) fprintf(stderr, "[TRACE-CALL] CALL %s at pc=%llu\n", calleeName.c_str(), (unsigned long long)pc);
                 // Check if the callee is an import (undefined) symbol and resolve it
                 // via the runtime ABI table first to avoid incorrect fuzzy matching in
                 // executeFunction's findFunctionSymbol.

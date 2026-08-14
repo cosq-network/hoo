@@ -32,7 +32,8 @@ static char* alloc_and_hex(const uint8_t* hash, int64_t hash_len) {
 }
 
 char* hoo_hashing_sha256(const uint8_t* data, int64_t len) {
-    if (!data || len < 0) return nullptr;
+    if (len < 0 || (len != 0 && !data)) return nullptr;
+    if (len == 0 && !data) data = (const uint8_t*)"";
 #ifdef __APPLE__
     uint8_t hash[CC_SHA256_DIGEST_LENGTH];
     CC_SHA256(data, (CC_LONG)(len < 0 ? 0 : len), hash);
@@ -76,7 +77,8 @@ char* hoo_hashing_sha256_file(const char* path) {
 }
 
 char* hoo_hashing_sha1(const uint8_t* data, int64_t len) {
-    if (!data || len < 0) return nullptr;
+    if (len < 0 || (len != 0 && !data)) return nullptr;
+    if (len == 0 && !data) data = (const uint8_t*)"";
 #ifdef __APPLE__
     uint8_t hash[CC_SHA1_DIGEST_LENGTH];
     CC_SHA1(data, (CC_LONG)(len < 0 ? 0 : len), hash);
@@ -89,7 +91,8 @@ char* hoo_hashing_sha1(const uint8_t* data, int64_t len) {
 }
 
 char* hoo_hashing_md5(const uint8_t* data, int64_t len) {
-    if (!data || len < 0) return nullptr;
+    if (len < 0 || (len != 0 && !data)) return nullptr;
+    if (len == 0 && !data) data = (const uint8_t*)"";
 #ifdef __APPLE__
     uint8_t hash[CC_MD5_DIGEST_LENGTH];
     CC_MD5(data, (CC_LONG)(len < 0 ? 0 : len), hash);

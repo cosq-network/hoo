@@ -20,8 +20,11 @@ void hoo_compression_release(void* comp) {
 
 int64_t hoo_compression_gzip_compress(const uint8_t* data, int64_t data_len,
                                        uint8_t** out_data, int64_t* out_len) {
-    if (!data || data_len < 0 || !out_data || !out_len) return -1;
+    if (data_len < 0 || (data_len != 0 && !data) || !out_data || !out_len) return -1;
     *out_data = nullptr; *out_len = 0;
+
+    uint8_t empty_byte = 0;
+    if (data_len == 0 && !data) data = &empty_byte;
 
     z_stream strm;
     std::memset(&strm, 0, sizeof(strm));
@@ -92,8 +95,11 @@ int64_t hoo_compression_gzip_decompress(const uint8_t* data, int64_t data_len,
 
 int64_t hoo_compression_deflate_compress(const uint8_t* data, int64_t data_len,
                                           uint8_t** out_data, int64_t* out_len) {
-    if (!data || data_len < 0 || !out_data || !out_len) return -1;
+    if (data_len < 0 || (data_len != 0 && !data) || !out_data || !out_len) return -1;
     *out_data = nullptr; *out_len = 0;
+
+    uint8_t empty_byte = 0;
+    if (data_len == 0 && !data) data = &empty_byte;
 
     z_stream strm;
     std::memset(&strm, 0, sizeof(strm));

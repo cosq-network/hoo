@@ -68,9 +68,13 @@ TEST_F(HooCompressionTest, GzipEmptyInput) {
 TEST_F(HooCompressionTest, NullInputs) {
     uint8_t* out = nullptr;
     int64_t out_len = 0;
-    EXPECT_EQ(hoo_compression_gzip_compress(nullptr, 0, &out, &out_len), -1);
+    // A null pointer with length 0 is a valid empty input for compression.
+    EXPECT_EQ(hoo_compression_gzip_compress(nullptr, 0, &out, &out_len), 0);
+    hoo_compression_free_bytes(out);
     EXPECT_EQ(hoo_compression_gzip_decompress(nullptr, 0, &out, &out_len), -1);
-    EXPECT_EQ(hoo_compression_deflate_compress(nullptr, 0, &out, &out_len), -1);
+    out = nullptr;
+    EXPECT_EQ(hoo_compression_deflate_compress(nullptr, 0, &out, &out_len), 0);
+    hoo_compression_free_bytes(out);
     EXPECT_EQ(hoo_compression_deflate_decompress(nullptr, 0, &out, &out_len), -1);
 }
 

@@ -494,7 +494,8 @@ static uint32_t mathFreeFunctionReturnTypeId(const std::string& functionName, co
 }
 
 static uint32_t hashingFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "hashing_crc32" || functionName == "hashing_crc32_buffer") return 1; // int64
+    if (functionName == "hashing_crc32" || functionName == "hashing_crc32_buffer" ||
+        functionName == "hashing_crc32_slice") return 1; // int64
     return 101; // string
 }
 
@@ -1460,6 +1461,7 @@ static bool isArcManagedTypeId(uint32_t typeId) {
         case 122: // Uuid - uses std::free with custom refcounting
         case 128: // Condition - explicit destroy
         case 129: // Semaphore - explicit destroy
+        case 130: // ByteSlice - caller-owned handle, released explicitly via byte_slice_release
             return false;
         default:
             return typeId >= 100;
@@ -4793,6 +4795,13 @@ uint8_t HVMCodeGenerator::emitConstant(int64_t value) {
         }
         
         uint32_t offset = static_cast<uint32_t>(rodata->data.size());
+        if (offset % 8 != 0) {
+            size_t pad = 8 - (offset % 8);
+            for (size_t i = 0; i < pad; ++i) {
+                rodata->data.push_back(0);
+            }
+            offset = static_cast<uint32_t>(rodata->data.size());
+        }
         for (int i = 0; i < 8; ++i) {
             rodata->data.push_back(static_cast<uint8_t>((value >> (i * 8)) & 0xFF));
         }
