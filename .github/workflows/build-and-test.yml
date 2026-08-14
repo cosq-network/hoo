@@ -45,7 +45,7 @@ jobs:
       - name: Install build tools and dependencies
         run: |
           brew install cmake ninja
-          brew install llvm googletest
+          brew install llvm googletest libzip zstd nlohmann-json libuv
 
       - name: Configure CMake
         run: |
