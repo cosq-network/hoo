@@ -274,3 +274,67 @@ TEST_F(HooDateTimeTest, FreeFuncDecompose) {
     EXPECT_EQ(f.month, 11);
     EXPECT_EQ(f.day, 14);
 }
+
+TEST_F(HooDateTimeTest, FromIso8601PreEpoch) {
+    // Pre-1970 dates are valid ISO 8601 and must parse to negative timestamps.
+    void* dt = hoo_datetime_new_from_iso8601("1960-06-15T10:30:00Z");
+    ASSERT_NE(dt, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(dt), -301239000000LL);
+
+    void* dt2 = hoo_datetime_new_from_iso8601("1955-01-01T00:00:00Z");
+    ASSERT_NE(dt2, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(dt2), -473385600000LL);
+}
+
+TEST_F(HooDateTimeTest, FromIso8601EpochBoundary) {
+    // timegm() returns -1 for 1969-12-31T23:59:59 UTC; that valid instant must
+    // still parse (and must not be conflated with the -1 parse-error sentinel).
+    void* dt = hoo_datetime_new_from_iso8601("1969-12-31T23:59:59Z");
+    ASSERT_NE(dt, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(dt), -1000LL);
+
+    void* dt_ms = hoo_datetime_new_from_iso8601("1969-12-31T23:59:59.500Z");
+    ASSERT_NE(dt_ms, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(dt_ms), -500LL);
+
+    void* dt_last = hoo_datetime_new_from_iso8601("1969-12-31T23:59:59.999Z");
+    ASSERT_NE(dt_last, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(dt_last), -1LL);
+}
+
+TEST_F(HooDateTimeTest, ParseCustomPreEpoch) {
+    void* dt = hoo_datetime_new_parse("1960-06-15 10:30:00", "%Y-%m-%d %H:%M:%S");
+    ASSERT_NE(dt, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(dt), -301239000000LL);
+
+    void* boundary = hoo_datetime_new_parse("1969-12-31 23:59:59", "%Y-%m-%d %H:%M:%S");
+    ASSERT_NE(boundary, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(boundary), -1000LL);
+}
+
+TEST_F(HooDateTimeTest, ParseRejectsTrailingGarbage) {
+    EXPECT_EQ(hoo_datetime_new_from_iso8601("2024-01-15T10:30:00junk"), nullptr);
+    EXPECT_EQ(hoo_datetime_new_from_iso8601("2024-01-15T10:30:00Zjunk"), nullptr);
+    EXPECT_EQ(hoo_datetime_new_from_iso8601("2024-01-15T10:30:00Z "), nullptr);
+    EXPECT_EQ(hoo_datetime_new_from_iso8601("not-a-date"), nullptr);
+    EXPECT_EQ(hoo_datetime_new_parse("2024-06-15junk", "%Y-%m-%d"), nullptr);
+    EXPECT_EQ(hoo_datetime_new_parse("2024-06-15", "%Y"), nullptr);
+}
+
+TEST_F(HooDateTimeTest, AddOverflowSafe) {
+    void* dt = hoo_datetime_new(1700000000000LL);
+    ASSERT_NE(dt, nullptr);
+
+    // Huge deltas would overflow int64; the result must not wrap or crash.
+    void* huge = hoo_datetime_instance_add_days(dt, INT64_MAX);
+    ASSERT_NE(huge, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(huge), 1700000000000LL);
+
+    void* huge_neg = hoo_datetime_instance_add_days(dt, INT64_MIN);
+    ASSERT_NE(huge_neg, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(huge_neg), 1700000000000LL);
+
+    void* huge_ms = hoo_datetime_instance_add_milliseconds(dt, INT64_MAX);
+    ASSERT_NE(huge_ms, nullptr);
+    EXPECT_EQ(hoo_datetime_get_timestamp(huge_ms), 1700000000000LL);
+}

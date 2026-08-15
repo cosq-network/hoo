@@ -203,3 +203,40 @@ TEST_F(HooDatetimeJitTest, BlockedStaticCall) {
     ASSERT_FALSE(jit.loadSourceCode("test", source));
     EXPECT_TRUE(jit.getLastError().find("DateTime.now is not supported as a static method; use free function datetime_now()") != std::string::npos);
 }
+
+TEST_F(HooDatetimeJitTest, PreEpochParse) {
+    const std::string source = R"(
+        import hoo.datetime;
+        func :int64 test() {
+            var dt = datetime_from_iso8601("1960-06-15T10:30:00Z");
+            return dt.getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), -301239000000);
+}
+
+TEST_F(HooDatetimeJitTest, PreEpochParseCustom) {
+    const std::string source = R"(
+        import hoo.datetime;
+        func :int64 test() {
+            var dt = datetime_parse("1960-06-15 10:30:00", "%Y-%m-%d %H:%M:%S");
+            return dt.getTimestamp();
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), -301239000000);
+}
+
+TEST_F(HooDatetimeJitTest, PreEpochRejectedInput) {
+    const std::string source = R"(
+        import hoo.datetime;
+        func :int64 test() {
+            var dt = datetime_from_iso8601("2024-01-15T10:30:00junk");
+            if (!dt) { return 1; }
+            return 0;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}

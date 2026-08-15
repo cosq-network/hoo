@@ -9693,7 +9693,6 @@ bool HVMJIT::ensureJITFunctionTable(const std::shared_ptr<hvm::HOModule>& module
             auto ins = hvm::HVMInstruction::decode(slice, used);
             if (!ins || used == 0) {
                 lastError_ = "Instruction decode failed at PC " + std::to_string(pc) + " in module " + module->getName();
-                fprintf(stderr, "TMPDBG decodefail pc=%llu mod=%s\n", (unsigned long long)pc, module->getName().c_str());
                 return false;
             }
             uint16_t func = 0;
@@ -9815,7 +9814,6 @@ int64_t HVMJIT::runViaJIT(const std::string& entryPoint) {
         gStateOwnerByPtr[&state] = this;
     }
     const int64_t rv = fn(&state);
-    fprintf(stderr, "TMPDBG runViaJIT returned %lld\n", (long long)rv);
     captureLastArchitecturalState(state);
     {
         std::lock_guard<std::mutex> lk(gStateOwnerMu);
@@ -9890,7 +9888,6 @@ int64_t HVMJIT::run(const std::string& entryPoint) {
     state.tlabEnd = tlabEnd_;
     const int64_t rv = executeFunction(primary, entryPoint, state);
     if (rv == -1 && !jitError.empty()) {
-        fprintf(stderr, "TMPDBG interp-fallback path rv=%lld jitError='%s'\n", (long long)rv, jitError.c_str());
         lastError_ = "[JIT] " + jitError + " | [Interp] " + lastError_;
     }
     shadow_clear_state(&state);

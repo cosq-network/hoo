@@ -100,6 +100,21 @@ static char* win_strptime(const char* s, const char* fmt, struct tm* buf) {
 // Internal Helpers (raw int64 timestamp operations, not part of public API)
 // ============================================================================
 
+// Sentinel returned by the parse helpers when the input string cannot be
+// parsed. INT64_MIN is never a legitimate epoch-millisecond timestamp, so it
+// is unambiguous even for pre-1970 dates (negative timestamps are valid).
+#ifndef HOO_DATETIME_PARSE_ERROR
+#define HOO_DATETIME_PARSE_ERROR INT64_MIN
+#endif
+
+// timegm() legitimately returns -1 for the instant 1969-12-31T23:59:59 UTC,
+// so a bare `result == (time_t)-1` check cannot be used to detect failure.
+// This helper identifies that single valid instant.
+static bool is_epoch_minus_one_second(const struct tm& tm_buf) {
+    return tm_buf.tm_year == 69 && tm_buf.tm_mon == 11 && tm_buf.tm_mday == 31 &&
+           tm_buf.tm_hour == 23 && tm_buf.tm_min == 59 && tm_buf.tm_sec == 59;
+}
+
 static int64_t now_ms(void) {
     auto now = std::chrono::system_clock::now();
     return static_cast<int64_t>(
@@ -143,27 +158,17 @@ static int64_t compose(HooDateTimeFields f) {
     tm_buf.tm_hour = static_cast<int>(f.hour);
     tm_buf.tm_min  = static_cast<int>(f.minute);
     tm_buf.tm_sec  = static_cast<int>(f.second);
-    tm_buf.tm_isdst = -1;
 
-    time_t secs = mktime(&tm_buf);
-    if (secs == static_cast<time_t>(-1)) return -1;
+    time_t secs = timegm(&tm_buf);
+    if (secs == static_cast<time_t>(-1) && !is_epoch_minus_one_second(tm_buf)) {
+        return HOO_DATETIME_PARSE_ERROR;
+    }
 
     return static_cast<int64_t>(secs) * 1000 + f.millisecond;
 }
 
 static int64_t compose_utc(HooDateTimeFields f) {
-    struct tm tm_buf = {};
-    tm_buf.tm_year = static_cast<int>(f.year - 1900);
-    tm_buf.tm_mon  = static_cast<int>(f.month - 1);
-    tm_buf.tm_mday = static_cast<int>(f.day);
-    tm_buf.tm_hour = static_cast<int>(f.hour);
-    tm_buf.tm_min  = static_cast<int>(f.minute);
-    tm_buf.tm_sec  = static_cast<int>(f.second);
-
-    time_t secs = timegm(&tm_buf);
-    if (secs == static_cast<time_t>(-1)) return -1;
-
-    return static_cast<int64_t>(secs) * 1000 + f.millisecond;
+    return compose(f);
 }
 
 static char* format_ts(int64_t epoch_ms, const char* format) {
@@ -217,7 +222,7 @@ static char* format_ts(int64_t epoch_ms, const char* format) {
 }
 
 static int64_t parse_ts(const char* str, const char* format) {
-    if (!str || !format) return -1;
+    if (!str || !format) return HOO_DATETIME_PARSE_ERROR;
 
     struct tm tm_buf = {};
     int64_t ms_part = 0;
@@ -230,7 +235,7 @@ static int64_t parse_ts(const char* str, const char* format) {
             if (*p == '\0') break;
 
             if (*p == '%') {
-                if (*s != '%') return -1;
+                if (*s != '%') return HOO_DATETIME_PARSE_ERROR;
                 s++; p++;
             } else if (*p == 'f') {
                 int count = 0;
@@ -239,7 +244,7 @@ static int64_t parse_ts(const char* str, const char* format) {
                     val = val * 10 + (*s - '0');
                     s++; count++;
                 }
-                if (count == 0) return -1;
+                if (count == 0) return HOO_DATETIME_PARSE_ERROR;
                 while (count < 3) { val *= 10; count++; }
                 ms_part = val;
                 p++;
@@ -247,17 +252,22 @@ static int64_t parse_ts(const char* str, const char* format) {
                 char fmt[4] = {'%', *p, '\0'};
                 p++;
                 char* result = strptime(s, fmt, &tm_buf);
-                if (result == nullptr) return -1;
+                if (result == nullptr) return HOO_DATETIME_PARSE_ERROR;
                 s = result;
             }
         } else {
-            if (*s != *p) return -1;
+            if (*s != *p) return HOO_DATETIME_PARSE_ERROR;
             s++; p++;
         }
     }
 
+    // Trailing characters after the format means the string did not fully match.
+    if (*s != '\0') return HOO_DATETIME_PARSE_ERROR;
+
     time_t secs = timegm(&tm_buf);
-    if (secs == static_cast<time_t>(-1)) return -1;
+    if (secs == static_cast<time_t>(-1) && !is_epoch_minus_one_second(tm_buf)) {
+        return HOO_DATETIME_PARSE_ERROR;
+    }
 
     return static_cast<int64_t>(secs) * 1000 + ms_part;
 }
@@ -280,7 +290,7 @@ static char* iso8601_ts(int64_t epoch_ms) {
 }
 
 static int64_t from_iso8601_ts(const char* str) {
-    if (!str) return -1;
+    if (!str) return HOO_DATETIME_PARSE_ERROR;
 
     struct tm tm_buf = {};
     int64_t ms_part = 0;
@@ -292,7 +302,7 @@ static int64_t from_iso8601_ts(const char* str) {
     char* result = strptime(s, "%Y-%m-%dT%H:%M:%S", &tm_buf);
     if (result == nullptr) {
         result = strptime(s, "%Y-%m-%dT%H:%M", &tm_buf);
-        if (result == nullptr) return -1;
+        if (result == nullptr) return HOO_DATETIME_PARSE_ERROR;
     }
     s = result;
 
@@ -325,8 +335,13 @@ static int64_t from_iso8601_ts(const char* str) {
         tz_minutes = h * 60 + m;
     }
 
+    // Trailing characters after the timezone means the string is not valid ISO 8601.
+    if (*s != '\0') return HOO_DATETIME_PARSE_ERROR;
+
     time_t secs = timegm(&tm_buf);
-    if (secs == static_cast<time_t>(-1)) return -1;
+    if (secs == static_cast<time_t>(-1) && !is_epoch_minus_one_second(tm_buf)) {
+        return HOO_DATETIME_PARSE_ERROR;
+    }
 
     int64_t epoch_ms_result = static_cast<int64_t>(secs) * 1000 + ms_part;
     if (tz_sign != 0) {
@@ -336,24 +351,52 @@ static int64_t from_iso8601_ts(const char* str) {
     return epoch_ms_result;
 }
 
+// Returns false if `a + b` would overflow int64; otherwise stores the sum.
+static bool safe_add(int64_t a, int64_t b, int64_t* out) {
+    if ((b > 0 && a > INT64_MAX - b) || (b < 0 && a < INT64_MIN - b)) {
+        return false;
+    }
+    *out = a + b;
+    return true;
+}
+
+// Adds `n * ms_per_unit` to a timestamp without signed-overflow UB. If the
+// delta or the sum is not representable in int64, the original timestamp is
+// returned unchanged.
+static int64_t add_scaled(int64_t epoch_ms, int64_t n, int64_t ms_per_unit) {
+    if (n < INT64_MIN / ms_per_unit || n > INT64_MAX / ms_per_unit) {
+        return epoch_ms;
+    }
+    int64_t delta = n * ms_per_unit;
+    int64_t result = 0;
+    if (!safe_add(epoch_ms, delta, &result)) {
+        return epoch_ms;
+    }
+    return result;
+}
+
 static int64_t add_days(int64_t epoch_ms, int64_t days) {
-    return epoch_ms + days * 86400000LL;
+    return add_scaled(epoch_ms, days, 86400000LL);
 }
 
 static int64_t add_hours(int64_t epoch_ms, int64_t hours) {
-    return epoch_ms + hours * 3600000LL;
+    return add_scaled(epoch_ms, hours, 3600000LL);
 }
 
 static int64_t add_minutes(int64_t epoch_ms, int64_t minutes) {
-    return epoch_ms + minutes * 60000LL;
+    return add_scaled(epoch_ms, minutes, 60000LL);
 }
 
 static int64_t add_seconds(int64_t epoch_ms, int64_t seconds) {
-    return epoch_ms + seconds * 1000LL;
+    return add_scaled(epoch_ms, seconds, 1000LL);
 }
 
 static int64_t add_milliseconds(int64_t epoch_ms, int64_t ms) {
-    return epoch_ms + ms;
+    int64_t result = 0;
+    if (!safe_add(epoch_ms, ms, &result)) {
+        return epoch_ms;
+    }
+    return result;
 }
 
 static int64_t diff_days(int64_t from, int64_t to) {
@@ -413,13 +456,13 @@ void* hoo_datetime_new_now(void) {
 
 void* hoo_datetime_new_from_iso8601(const char* str) {
     int64_t ts = from_iso8601_ts(str);
-    if (ts < 0) return nullptr;
+    if (ts == INT64_MIN) return nullptr;
     return hoo_datetime_new(ts);
 }
 
 void* hoo_datetime_new_parse(const char* str, const char* format) {
     int64_t ts = parse_ts(str, format);
-    if (ts < 0) return nullptr;
+    if (ts == INT64_MIN) return nullptr;
     return hoo_datetime_new(ts);
 }
 
