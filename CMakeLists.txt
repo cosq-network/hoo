@@ -632,6 +632,7 @@ if(HOO_BUILD_TESTS)
          tests/integration/encoding/EncodingCLIIntegrationTest.cpp
          tests/integration/csv/CsvCLIIntegrationTest.cpp
          tests/integration/compression/CompressionCLIIntegrationTest.cpp
+        tests/integration/datetime/DatetimeCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
