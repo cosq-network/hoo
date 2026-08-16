@@ -8,6 +8,7 @@ extern "C" {
 #endif
 
 typedef void* HooBuffer;
+typedef void* HooString;
 
 // ── Creation / Destruction ──────────────────────────────────────────────────
 
@@ -23,10 +24,16 @@ int64_t       hoo_buffer_length(HooBuffer buf);
 int64_t       hoo_buffer_capacity(HooBuffer buf);
 const uint8_t* hoo_buffer_data(HooBuffer buf);
 
+// ── Conversion ───────────────────────────────────────────────────────────────
+
+HooString hoo_buffer_to_string(HooBuffer buf);
+
 // ── Read / Write ────────────────────────────────────────────────────────────
 
 int64_t  hoo_buffer_byte_at(HooBuffer buf, int64_t index);
 int64_t  hoo_buffer_set_byte(HooBuffer buf, int64_t index, int64_t byte_val);
+int64_t  hoo_buffer_write_byte(HooBuffer buf, int64_t byte_val);
+int64_t  hoo_buffer_write(HooBuffer buf, HooString str);
 HooBuffer hoo_buffer_append(HooBuffer buf, const uint8_t* data, int64_t length);
 HooBuffer hoo_buffer_append_buffer(HooBuffer buf, HooBuffer other);
 int64_t  hoo_buffer_clear(HooBuffer buf);

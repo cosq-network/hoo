@@ -94,6 +94,84 @@ TEST_F(HooBufferJitTest, BufferClear) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
+TEST_F(HooBufferJitTest, BufferWriteByte) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = new Buffer();
+            b.write_byte(72);
+            b.write_byte(105);
+            if (b.length() != 2) { return 0; }
+            if (b.byteAt(0) != 72) { return 0; }
+            if (b.byteAt(1) != 105) { return 0; }
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooBufferJitTest, BufferFactoryWithCapacity) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = Buffer(64);
+            if (b.length() != 0) { return 0; }
+            if (b.capacity() < 64) { return 0; }
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooBufferJitTest, BufferToString) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = Buffer(16);
+            b.write_byte(72);
+            b.write_byte(105);
+            var s: string = b.to_string();
+            return s.equals("Hi");
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooBufferJitTest, BufferWrite) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = Buffer(8);
+            b.write("Hello");
+            if (b.length() != 5) { return 0; }
+            if (b.byteAt(0) != 72) { return 0; }
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
+TEST_F(HooBufferJitTest, BufferRefcountRetainRelease) {
+    const std::string source = R"(
+        import hoo.buffer;
+        func :int64 test() {
+            var b = Buffer(8);
+            b.write("Hi");
+            if (b.refcount() < 1) { return 0; }
+            b.retain();
+            if (b.refcount() < 2) { return 0; }
+            b.release();
+            return 1;
+        }
+    )";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
+}
+
 TEST_F(HooBufferJitTest, BufferByteAtIndex) {
     const std::string source = R"(
         import hoo.buffer;

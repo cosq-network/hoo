@@ -507,6 +507,46 @@ TEST_F(HooFSTest, CAbi_Bridge_ListDir) {
     hoo_fs_delete(file2.c_str());
 }
 
+TEST_F(HooFSTest, CAbi_Bridge_ListDirEmptyAndMissing) {
+    std::string emptyDir = mkpath("cabi_empty_list");
+    ASSERT_EQ(hoo_fs_mkdirs(emptyDir.c_str()), 1);
+
+    int64_t count = 0;
+    char** entries = hoo_fs_list_dir(emptyDir.c_str(), &count);
+    EXPECT_EQ(entries, nullptr);
+    EXPECT_EQ(count, 0);
+
+    count = 0;
+    entries = hoo_fs_list_dir("/nonexistent_hoo_dir_xyz", &count);
+    EXPECT_EQ(entries, nullptr);
+    EXPECT_EQ(count, -1);
+
+    std::string file = mkpath("cabi_list_on_file.txt");
+    ASSERT_EQ(hoo_fs_write_text(file.c_str(), "x"), 1);
+    count = 0;
+    entries = hoo_fs_list_dir(file.c_str(), &count);
+    EXPECT_EQ(entries, nullptr);
+    EXPECT_EQ(count, -1);
+
+    hoo_fs_rmdir(emptyDir.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_ReadTextOnDirectoryReturnsNull) {
+    std::string dir = mkpath("cabi_read_dir");
+    ASSERT_EQ(hoo_fs_mkdir(dir.c_str()), 1);
+    char* content = hoo_fs_read_text(dir.c_str());
+    EXPECT_EQ(content, nullptr);
+    hoo_fs_rmdir(dir.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_RmdirOnFileFails) {
+    std::string file = mkpath("cabi_rmdir_file.txt");
+    ASSERT_EQ(hoo_fs_write_text(file.c_str(), "x"), 1);
+    EXPECT_EQ(hoo_fs_rmdir(file.c_str()), 0);
+    EXPECT_EQ(hoo_fs_exists(file.c_str()), 1);
+    hoo_fs_delete(file.c_str());
+}
+
 TEST_F(HooFSTest, CAbi_Bridge_CreateTempFile) {
     char* tmpPath = hoo_fs_create_temp_file("cabitest");
     ASSERT_NE(tmpPath, nullptr);

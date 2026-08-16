@@ -180,6 +180,78 @@ TEST_F(BugFixVerificationTest, StringConcat_LengthOfResult) {
     EXPECT_EQ(runEntry("_F_test_i8"), 6) << jit->getLastError();
 }
 
+TEST_F(BugFixVerificationTest, StringLiteral_EmbeddedNulPreserved) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = "a\0b";
+            return s.length();
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_test_i8"), 3) << jit->getLastError();
+}
+
+TEST_F(BugFixVerificationTest, StringLiteral_EmbeddedNulInInterpolatedPart) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = "x\0yz";
+            return s.length();
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_test_i8"), 4) << jit->getLastError();
+}
+
+TEST_F(BugFixVerificationTest, StringConcat_Int64RightOperand) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = "n=" + 42;
+            return s.equals("n=42");
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(BugFixVerificationTest, StringConcat_Int64LeftOperand) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = 7 + "!";
+            return s.equals("7!");
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(BugFixVerificationTest, StringConcat_DoubleOperand) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = "d=" + 3.5;
+            return s.equals("d=3.5");
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_test_i8"), 1) << jit->getLastError();
+}
+
+TEST_F(BugFixVerificationTest, StringConcat_BoolOperand) {
+    std::string code = R"(
+        import hoo;
+        func :int64 test() {
+            var s = "t=" + true;
+            return s.equals("t=true");
+        }
+    )";
+    ASSERT_TRUE(loadCode(code)) << jit->getLastError();
+    EXPECT_EQ(runEntry("_F_test_i8"), 1) << jit->getLastError();
+}
+
 // ============================================================================
 // Issue #013 - Unicode escape sequences in string literals
 // ============================================================================

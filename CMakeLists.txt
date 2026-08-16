@@ -635,6 +635,7 @@ if(HOO_BUILD_TESTS)
          tests/integration/compression/CompressionCLIIntegrationTest.cpp
         tests/integration/datetime/DatetimeCLIIntegrationTest.cpp
         tests/integration/fs/FsCLIIntegrationTest.cpp
+        tests/integration/fs/FsModuleIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

@@ -369,8 +369,12 @@ Rules:
 - When `rs == 1` the offset is applied to the `.data` base.
 - Any other `rs` is an ordinary register-relative address.
 - String literals are placed NUL-terminated in `.rodata` and materialized by
-  `LDA rd, 0, offset` followed by a call to the `String.fromCStr` bridge
-  (`_F_M_hoo_E_String_fromCStr_static_p_p`).
+  `LDA rd, 0, offset`, loading the literal length into the following argument
+  register, then calling the `String.fromBytes` bridge
+  (`_F_M_hoo_E_String_fromBytes_static_p_p_p`). The explicit length preserves
+  embedded NUL bytes; the older `String.fromCStr` bridge
+  (`_F_M_hoo_E_String_fromCStr_static_p_p`) truncates at the first NUL and is
+  only used where the caller already has a C string.
 - Text-section offsets (e.g. exception handler PCs) must be materialized as
   integer immediates (`ADDI reg, 0, off`) so `LDA`'s `rs=0` rodata special
   case cannot reinterpret them as data pointers.

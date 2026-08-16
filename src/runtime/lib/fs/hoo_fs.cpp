@@ -474,7 +474,11 @@ bool Directory::createTree()
 
 bool Directory::remove()
 {
-    try { return ::fs::remove(path_); } catch (...) { return false; }
+    // fs_rmdir must only remove directories, never regular files.
+    try {
+        if (!::fs::is_directory(path_)) return false;
+        return ::fs::remove(path_);
+    } catch (...) { return false; }
 }
 
 std::vector<std::string> Directory::list() const
@@ -561,9 +565,10 @@ char* hoo_fs_read_text(const char* path)
     if (!path) return nullptr;
     std::string content = hoo::fs::File(path).readText();
     // readText() returns {} both when the file is missing/unreadable and when
-    // it exists but is empty. Distinguish: a missing/unreadable file yields
-    // null; an existing empty file yields an empty string ("").
-    if (content.empty() && !hoo::fs::File(path).exists()) return nullptr;
+    // it exists but is empty. Distinguish: a path that is not a regular file
+    // (missing, a directory, unreadable) yields null; an existing empty
+    // regular file yields an empty string ("").
+    if (content.empty() && !hoo::fs::File(path).isFile()) return nullptr;
     char* result = static_cast<char*>(std::malloc(content.size() + 1));
     if (!result) return nullptr;
     std::memcpy(result, content.data(), content.size() + 1);
@@ -626,6 +631,12 @@ int64_t hoo_fs_rmdir(const char* path)
 char** hoo_fs_list_dir(const char* path, int64_t* out_count)
 {
     if (!path || !out_count) return nullptr;
+    // Missing, unreadable, or not-a-directory: signal null with count -1 so
+    // callers can distinguish "empty directory" (count 0) from "cannot list".
+    if (!hoo::fs::Directory(path).isDirectory()) {
+        *out_count = -1;
+        return nullptr;
+    }
     std::vector<std::string> entries = hoo::fs::Directory(path).list();
     if (entries.empty()) {
         *out_count = 0;

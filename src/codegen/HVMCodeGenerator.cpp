@@ -2768,11 +2768,14 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             uint8_t addrReg = emitRoDataAddress(offset);
 
             emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
-            emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromCStr_static_p_p");
+            uint8_t lenReg = emitConstant(static_cast<int64_t>(val.size()));
+            emit(Opcode::MOV, OperandsR{2, lenReg, 0, 0});
+            emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromBytes_static_p_p_p");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
 
             freeRegister(addrReg);
+            freeRegister(lenReg);
             return dest;
         }
         if (auto interpStr = dynamic_cast<const ast::InterpolatedString*>(&primary)) {
@@ -2817,10 +2820,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 uint8_t addrReg = emitRoDataAddress(offset);
                 
                 emit(Opcode::MOV, OperandsR{1, addrReg, 0, 0});
-                emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromCStr_static_p_p");
+                uint8_t lenReg = emitConstant(static_cast<int64_t>(text.size()));
+                emit(Opcode::MOV, OperandsR{2, lenReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromBytes_static_p_p_p");
                 uint8_t strReg = allocateRegister();
                 emit(Opcode::MOV, OperandsR{strReg, 1, 0, 0});
                 freeRegister(addrReg);
+                freeRegister(lenReg);
                 return strReg;
             };
 
@@ -3510,6 +3516,10 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 else if (methodName == "slice" || methodName == "sub") symbol = "_F_M_hoo_E_buffer_slice_v_p_p";
                 else if (methodName == "fromBytes") symbol = "_F_M_hoo_E_buffer_fromBytes_p_p_p";
                 else if (methodName == "data") symbol = "_F_M_hoo_E_buffer_data_v";
+                else if (methodName == "to_string") symbol = "_F_M_hoo_E_buffer_to_string_v";
+                else if (methodName == "release") symbol = "_F_hoo_release_v_p";
+                else if (methodName == "retain") symbol = "_F_hoo_retain_p_p";
+                else if (methodName == "refcount") symbol = "_F_hoo_get_refcount_i8_p";
                 if (!symbol.empty()) {
                     emitCall(Opcode::CALL, symbol);
                     uint8_t dest = allocateRegister();
@@ -3661,6 +3671,22 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (!requiredModule.empty() && !isSymbolImported(functionName, requiredModule)) {
                     addError("Use of '" + functionName + "' requires 'import " + requiredModule + ";'");
                     return 0;
+                }
+
+                if (functionName == "Buffer" && isSymbolImported("Buffer", "hoo.buffer")) {
+                    if (funcCall->getArguments() && !funcCall->getArguments()->getArguments().empty()) {
+                        uint8_t capReg = visitExpression(*funcCall->getArguments()->getArguments()[0]);
+                        emit(Opcode::MOV, OperandsR{1, capReg, 0, 0});
+                        freeRegister(capReg);
+                    } else {
+                        uint8_t zeroReg = emitConstant(0);
+                        emit(Opcode::MOV, OperandsR{1, zeroReg, 0, 0});
+                        freeRegister(zeroReg);
+                    }
+                    emitCall(Opcode::CALL, "_F_M_hoo_E_buffer_new_v_p");
+                    uint8_t dest = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                    return dest;
                 }
                 
                 MangledFunctionParams mp;
@@ -3865,24 +3891,50 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         if (isStringConcat) {
             uint8_t left = visitExpression(binary->getLeft());
             uint8_t right = visitExpression(binary->getRight());
-            emit(Opcode::MOV, OperandsR{1, left, 0, 0});
-            emit(Opcode::MOV, OperandsR{2, right, 0, 0});
+            uint8_t leftArg = left;
+            uint8_t rightArg = right;
+            bool leftOwned = isManagedTemporary(binary->getLeft());
+            bool rightOwned = isManagedTemporary(binary->getRight());
+            if (leftType != 101) {
+                uint8_t typeIdReg = emitConstant(static_cast<int64_t>(leftType));
+                emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, typeIdReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromAny_static_p_i8_i8");
+                leftArg = allocateRegister();
+                emit(Opcode::MOV, OperandsR{leftArg, 1, 0, 0});
+                freeRegister(typeIdReg);
+                freeRegister(left);
+                leftOwned = true;
+            }
+            if (rightType != 101) {
+                uint8_t typeIdReg = emitConstant(static_cast<int64_t>(rightType));
+                emit(Opcode::MOV, OperandsR{1, right, 0, 0});
+                emit(Opcode::MOV, OperandsR{2, typeIdReg, 0, 0});
+                emitCall(Opcode::CALL, "_F_M_hoo_E_String_fromAny_static_p_i8_i8");
+                rightArg = allocateRegister();
+                emit(Opcode::MOV, OperandsR{rightArg, 1, 0, 0});
+                freeRegister(typeIdReg);
+                freeRegister(right);
+                rightOwned = true;
+            }
+            emit(Opcode::MOV, OperandsR{1, leftArg, 0, 0});
+            emit(Opcode::MOV, OperandsR{2, rightArg, 0, 0});
             emitCall(Opcode::CALL, "_F_M_hoo_E_String_concat_p_p");
             uint8_t dest = allocateRegister();
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-            if (isManagedTemporary(binary->getLeft())) {
-                emit(Opcode::MOV, OperandsR{1, left, 0, 0});
+            if (leftOwned) {
+                emit(Opcode::MOV, OperandsR{1, leftArg, 0, 0});
                 emitCall(Opcode::CALL, "_F_hoo_release_v_p");
-                freeRegister(left);
+                freeRegister(leftArg);
             } else {
-                freeRegister(left);
+                freeRegister(leftArg);
             }
-            if (isManagedTemporary(binary->getRight())) {
-                emit(Opcode::MOV, OperandsR{1, right, 0, 0});
+            if (rightOwned) {
+                emit(Opcode::MOV, OperandsR{1, rightArg, 0, 0});
                 emitCall(Opcode::CALL, "_F_hoo_release_v_p");
-                freeRegister(right);
+                freeRegister(rightArg);
             } else {
-                freeRegister(right);
+                freeRegister(rightArg);
             }
             return dest;
         }
@@ -5658,6 +5710,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 result.className = builtinClassNameFromTypeId(result.typeId);
                 return result;
             }
+            if (id->getName() == "Buffer" && isSymbolImported("Buffer", "hoo.buffer")) {
+                result.typeId = 113;
+                result.className = "Buffer";
+                return result;
+            }
             auto overloadIt = functionOverloadReturns_.find(id->getName());
             if (overloadIt != functionOverloadReturns_.end()) {
                 if (const auto* selected = selectOverload(overloadIt->second)) return selected->result;
@@ -5950,6 +6007,17 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
                         if (member == "clear") return 4;
                         return 100;
                     }
+                    if (objectTypeId == 113) {
+                        if (member == "length" || member == "capacity" ||
+                            member == "byteAt" || member == "setByte" ||
+                            member == "clear" || member == "refcount") return 1;
+                        if (member == "to_string") return 101;
+                        if (member == "write" || member == "write_byte") return 4;
+                        if (member == "copy" || member == "slice" ||
+                            member == "sub" || member == "fromBytes" ||
+                            member == "retain") return 113;
+                        return 100;
+                    }
                     if (objectTypeId == 118) {
                         if (member == "length" || member == "push") return 1;
                         if (member == "clear") return 4;
@@ -6112,6 +6180,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                             if (member == "length" || member == "capacity" ||
                                 member == "byteAt" || member == "setByte" ||
                                 member == "clear") return 1;
+                            if (member == "to_string") return 101;
                             if (member == "copy" || member == "slice") return 113;
                             return 100;
                         }

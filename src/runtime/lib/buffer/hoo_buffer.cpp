@@ -1,4 +1,5 @@
 #include "runtime/lib/buffer/hoo_buffer.h"
+#include "runtime/lib/string/hoo_string.h"
 #include "runtime/lib/runtime/hoo_runtime.h"
 #include <cstring>
 #include <cstdlib>
@@ -123,6 +124,21 @@ int64_t hoo_buffer_set_byte(HooBuffer buf, int64_t index, int64_t byte_val) {
     return old;
 }
 
+int64_t hoo_buffer_write_byte(HooBuffer buf, int64_t byte_val) {
+    if (!buf) return -1;
+    uint8_t b = (uint8_t)(byte_val & 0xFF);
+    hoo_buffer_append(buf, &b, 1);
+    return 0;
+}
+
+int64_t hoo_buffer_write(HooBuffer buf, HooString str) {
+    if (!buf) return -1;
+    if (!str) return 0;
+    hoo_buffer_append(buf, reinterpret_cast<const uint8_t*>(hoo_string_data(str)),
+                      hoo_string_length(str));
+    return 0;
+}
+
 HooBuffer hoo_buffer_append(HooBuffer buf, const uint8_t* data, int64_t length) {
     if (!buf || !data || length < 0) return buf;
     if (length == 0) return buf;
@@ -172,6 +188,14 @@ int64_t hoo_buffer_clear(HooBuffer buf) {
     if (!buf) return -1;
     to_impl(buf)->length = 0;
     return 0;
+}
+
+// ── Conversion ───────────────────────────────────────────────────────────────
+
+HooString hoo_buffer_to_string(HooBuffer buf) {
+    if (!buf) return hoo_string_new();
+    BufferImpl* impl = to_impl(buf);
+    return hoo_string_from_bytes(reinterpret_cast<const char*>(impl->data), impl->length);
 }
 
 // ── Slice ───────────────────────────────────────────────────────────────────
