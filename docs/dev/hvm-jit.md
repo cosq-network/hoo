@@ -284,6 +284,13 @@ JIT wrappers:
 - `jit_hoo_throw` / `jit_hoo_rethrow` — Throw/rethrow with handler dispatch
 - `jit_hoo_exception_runtime` / `jit_hoo_exception_clear` — Runtime exception creation/clearing
 
+An `await` on a rejected `Future<T>` reaches this same dispatch: the future
+bridge (`_F_hoo_future_await_unwrap_native_p_p`) reports rejection via `r2`
+(error flag) and `r3` (exception handle) instead of throwing from C++, and the
+compiler emits `SYSCALL 9` with the handle in `r2`. Both backends then route
+the returned handler PC through `shadow_throw_to_handler` exactly as a `throw`
+would.
+
 ### Exception dispatch targets (`validPcs`)
 
 When `translateModule` lowers `SYSCALL 9` (`kSysThrowToHandler`) and

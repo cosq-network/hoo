@@ -290,6 +290,11 @@ fn main(): void {
 }
 ```
 
+Awaits on a rejected `Future<T>` re-enter the enclosing `try/catch` through the
+same shadow-stack handler dispatch as a `throw` statement (the future bridge
+reports rejection via an error flag and exception handle without unwinding C++
+stacks; see `docs/hvm/hvm-abi.md` §9.2.1).
+
 ### 4.5 Exception Handling
 
 Try/catch with shadow stack mechanism:

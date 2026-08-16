@@ -38,6 +38,14 @@ handler PC and transfer control rather than behaving like ordinary calls.
 Catch dispatch preserves the thrown handle across the handler-pop call and uses
 the runtime type-compatibility helper before entering a catch clause.
 
+Async `await` rejection uses the same path: the future bridge
+(`_F_hoo_future_await_unwrap_native_p_p`) reports a rejected Future through the
+register file (`r2` = error flag, `r3` = exception handle) instead of throwing
+from C++, and the compiler emits `kSysThrowToHandler` (syscall 9) so control
+transfers to the nearest registered handler — identically to a `throw`
+statement — in both the interpreter and the JIT (see `docs/hvm/hvm-abi.md`
+§9.2.1).
+
 The compiled throw/rethrow path routes the returned handler PC through a
 switch whose cases are the function's valid exception-dispatch targets (see
 `docs/dev/hvm-jit.md`, "Exception dispatch targets"). The target set spans the

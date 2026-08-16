@@ -465,11 +465,32 @@ Key runtime symbols emitted by the compiler:
 | `_F_hoo_exception_null_pointer_p` | — | `r1` = exception |
 | `_F_hoo_future_new_native_i64` | `r1` = element type_id | `r1` = Future |
 | `_F_hoo_future_set_value_native_v_p_p` | `r1` = Future, `r2` = value | — |
+| `_F_hoo_future_set_error_native_v_p_p` | `r1` = Future, `r2` = error message | — |
+| `_F_hoo_future_await_unwrap_native_p_p` | `r1` = Future | `r1` = value, `r2` = error flag, `r3` = exception handle |
 | `_F_hoo_push_handler_v_p` | `r2` = handler PC | — |
 
 Allocation (`hoo_alloc`) uses a thread-local allocation buffer (64 KiB blocks,
 objects ≤ 2048 bytes bump-allocated) with a `malloc` fallback; see
 `docs/runtime/memory-model.md`.
+
+#### 9.2.1 The `await` bridge ABI
+
+`_F_hoo_future_await_unwrap_native_p_p` is the bridge the compiler emits for an
+`await` expression. It blocks until the Future is ready while pumping the libuv
+event loop (condition-variable wait with cooperative pumping, never a
+busy-spin) and **must not unwind C++ stacks**. Its results are delivered
+through the register file:
+
+- `r1` — resolved value. ARC-managed values are retained for the caller;
+  primitive values arrive as raw register bits.
+- `r2` — error flag: `1` when the Future was rejected, `0` on success.
+- `r3` — exception handle (refcount 1, owned by the call site) when `r2 == 1`,
+  otherwise undefined.
+
+On success the compiler consumes `r1` directly. On rejection it emits
+`SYSCALL kSysThrowToHandler` (9) with the handle in `r2` so control transfers to
+the nearest registered handler (enclosing `try/catch`) exactly as a `throw`
+statement would, in both the interpreter and the JIT.
 
 ## 10. FFI Boundary (C ABI)
 

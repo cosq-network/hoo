@@ -49,6 +49,14 @@ static int future_value_is_managed(const HooFutureImpl* impl, void* value) {
     return hoo_is_managed_object(value) != 0;
 }
 
+/* Snapshot of a resolved future's payload, captured while holding the mutex
+ * so readers never race with a concurrent resolution. */
+typedef struct {
+    void* value;             /* resolved value (ARC-managed), or NULL        */
+    int64_t value_is_managed;/* whether value owns an ARC reference          */
+    char* error_message;     /* non-NULL when resolved with an error         */
+} FutureResolvedState;
+
 /* ------------------------------------------------------------------ */
 /* Destructor – registered with the ARC engine                         */
 /* ------------------------------------------------------------------ */
@@ -143,16 +151,25 @@ static void trigger_continuation(HooFutureImpl* impl) {
         continuations = impl->continuations;
         impl->continuations = NULL;
     }
+    if (!continuations) return;
+    /* Take our own reference so the future cannot be freed mid-pass by a
+     * callback (or another thread) dropping the final external reference.
+     * Each queued continuation owns one reference that is released before
+     * its callback runs; our temporary reference keeps the future alive for
+     * the whole pass so the release of the last queued reference cannot make
+     * the subsequent loop iteration touch freed memory. */
+    hoo_retain(impl);
     while (continuations) {
         HooFutureContinuationNode* next = continuations->next;
         HooFutureContinuation callback = continuations->callback;
         void* callback_arg = continuations->arg;
         free(continuations);
-        if (callback) callback(callback_arg);
-        /* Each pending continuation owns one reference while queued. */
-        hoo_release((HooFuture)impl);
         continuations = next;
+        hoo_release((HooFuture)impl);
+        if (callback) callback(callback_arg);
     }
+    /* Final release. This may free the future, so do not touch it after. */
+    hoo_release((HooFuture)impl);
 }
 
 void hoo_future_set_value(HooFuture f, void* value) {
@@ -211,7 +228,7 @@ void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, vo
     }
 }
 
-static void wait_for_future(HooFutureImpl* impl) {
+static void wait_for_future(HooFutureImpl* impl, FutureResolvedState* out) {
     std::unique_lock<std::mutex> lock(*impl->mutex);
     while (!impl->ready) {
         lock.unlock();
@@ -221,25 +238,52 @@ static void wait_for_future(HooFutureImpl* impl) {
             impl->cv->wait_for(lock, std::chrono::milliseconds(16));
         }
     }
+    /* Resolved fields are immutable once ready; capture them under the lock
+     * so readers observe a consistent, race-free snapshot. */
+    if (out) {
+        out->value = impl->value;
+        out->value_is_managed = impl->value_is_managed;
+        out->error_message = impl->error_message;
+    }
 }
 
 void* hoo_future_get_value(HooFuture f) {
     if (!f) return NULL;
     HooFutureImpl* impl = get_impl(f);
-    wait_for_future(impl);
-    return impl->value;
+    FutureResolvedState state;
+    wait_for_future(impl, &state);
+    return state.value;
+}
+
+void* hoo_future_await_wait(HooFuture f, int64_t* out_has_error,
+                            HooException* out_exception) {
+    if (out_has_error) *out_has_error = 0;
+    if (out_exception) *out_exception = NULL;
+    if (!f) return NULL;
+    HooFutureImpl* impl = get_impl(f);
+    FutureResolvedState state;
+    wait_for_future(impl, &state);
+    if (state.error_message) {
+        if (out_has_error) *out_has_error = 1;
+        if (out_exception) *out_exception = hoo_exception_runtime(state.error_message);
+        return NULL;
+    }
+    void* result = state.value;
+    if (result && state.value_is_managed) hoo_retain(result);
+    return result;
 }
 
 void* _F_hoo_future_await_unwrap_p_p(HooFuture f) {
     if (!f) return NULL;
     HooFutureImpl* impl = get_impl(f);
-    wait_for_future(impl);
-    if (impl->error_message) {
-        HooException exc = hoo_exception_runtime(impl->error_message);
+    FutureResolvedState state;
+    wait_for_future(impl, &state);
+    if (state.error_message) {
+        HooException exc = hoo_exception_runtime(state.error_message);
         hoo_exception_throw(exc); // does not return
     }
-    void* result = impl->value;
-    if (result && impl->value_is_managed) hoo_retain(result);
+    void* result = state.value;
+    if (result && state.value_is_managed) hoo_retain(result);
     return result;
 }
 

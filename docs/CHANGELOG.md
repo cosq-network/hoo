@@ -11,6 +11,20 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- fix(async): route rejected `await` through HVM exception handlers
+  - Add the non-throwing `hoo_future_await_wait` bridge (documented in
+    `hvm-abi.md` §9.2.1); `await` codegen now checks the future's error flag and
+    re-enters the enclosing `try/catch` via the `kSysThrowToHandler` syscall in
+    both the interpreter and the JIT, instead of unwinding through a C++
+    exception raised from the bridge.
+  - Harden continuation firing (`trigger_continuation`) against a use-after-free
+    when a callback drops the last external Future reference, and capture
+    resolved future state under the per-future mutex so readers never observe a
+    concurrent resolution mid-write.
+  - Replace the placeholder await-error test with end-to-end rejection
+    (`AwaitRejectedFutureIsHandled`) and happy-path
+    (`AwaitResolvedFutureValuePassedThrough`) coverage in `HooFutureJitTest`.
+
 - docs(hvm): bump HVM specification and ISA to version **1.6**
   - Update `hvm-spec.md`, `instructions.md`, `ho-file-format.md` (format minor `6`),
     register set CSV, and related project docs.

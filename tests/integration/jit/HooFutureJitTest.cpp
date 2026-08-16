@@ -206,18 +206,71 @@ TEST_F(HooFutureJitTest, MultipleContinuationsAreAllInvoked) {
     hoo_future_release(fut);
 }
 
-TEST_F(HooFutureJitTest, AwaitUnwrapWithError) {
-    HooFuture fut = hoo_future_new(1);
-    ASSERT_NE(fut, nullptr);
-    
-    // Set an error
-    hoo_future_set_error(fut, "Test error");
-    
-    // await_unwrap should throw an exception
-    // In a real test, we'd catch the exception, but for now we just verify it compiles
-    // The test will fail if an unhandled exception occurs
-    
-    hoo_future_release(fut);
+TEST_F(HooFutureJitTest, AwaitRejectedFutureIsHandled) {
+    // A rejected Future awaited inside an async function with a try/catch
+    // must route the rejection into the catch clause instead of aborting.
+    std::string code = R"(
+        import hoo;
+
+        async func:Future<int64> probe(f: Future<int64>) {
+            try {
+                var v = await(f);
+                return v;
+            } catch (e: Exception) {
+                return 7;
+            }
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+
+    HooFuture rejected = hoo_future_new(1);
+    ASSERT_NE(rejected, nullptr);
+    hoo_future_set_error(rejected, "boom");
+
+    void* tramp = jit->createInboundTrampoline("test", "_F_M_test_E_probe_p_p", 1);
+    ASSERT_NE(tramp, nullptr) << jit->getLastError();
+    auto fn = reinterpret_cast<uint64_t (*)(uint64_t)>(tramp);
+    uint64_t futPtr = fn(reinterpret_cast<uint64_t>(rejected));
+    HooFuture result = reinterpret_cast<HooFuture>(futPtr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(hoo_future_is_ready(result), 1) << "async function returned a pending Future";
+    ASSERT_EQ(hoo_future_has_error(result), 0);
+    EXPECT_EQ(reinterpret_cast<int64_t>(hoo_future_get_value(result)), 7);
+
+    hoo_future_release(result);
+    hoo_future_release(rejected);
+}
+
+TEST_F(HooFutureJitTest, AwaitResolvedFutureValuePassedThrough) {
+    // The happy path through the await bridge: a resolved value must flow
+    // out of await unchanged, and the error flag must stay clear.
+    std::string code = R"(
+        import hoo;
+
+        async func:Future<int64> probe(f: Future<int64>) {
+            return await(f) + 1;
+        }
+    )";
+
+    ASSERT_TRUE(jit->loadSourceCode("test", code)) << jit->getLastError();
+
+    HooFuture resolved = hoo_future_new(1);
+    ASSERT_NE(resolved, nullptr);
+    hoo_future_set_value(resolved, reinterpret_cast<void*>(static_cast<uintptr_t>(41)));
+
+    void* tramp = jit->createInboundTrampoline("test", "_F_M_test_E_probe_p_p", 1);
+    ASSERT_NE(tramp, nullptr) << jit->getLastError();
+    auto fn = reinterpret_cast<uint64_t (*)(uint64_t)>(tramp);
+    uint64_t futPtr = fn(reinterpret_cast<uint64_t>(resolved));
+    HooFuture result = reinterpret_cast<HooFuture>(futPtr);
+    ASSERT_NE(result, nullptr);
+    ASSERT_EQ(hoo_future_is_ready(result), 1);
+    ASSERT_EQ(hoo_future_has_error(result), 0);
+    EXPECT_EQ(reinterpret_cast<int64_t>(hoo_future_get_value(result)), 42);
+
+    hoo_future_release(result);
+    hoo_future_release(resolved);
 }
 
 // ============================================================================

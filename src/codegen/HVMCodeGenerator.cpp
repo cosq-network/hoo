@@ -2898,10 +2898,18 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t futureReg = visitExpression(awaitExpr->getFuture());
         emit(Opcode::MOV, OperandsR{1, futureReg, 0, 0});
         emitCall(Opcode::CALL, "_F_hoo_future_await_unwrap_native_p_p");
+        /* r1 = resolved value (retained for managed values), r2 = error flag,
+         * r3 = exception handle (owned by this site when the flag is set). */
         uint8_t dest = allocateRegister();
         emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+        uint8_t errorFlagReg = allocateRegister();
+        emit(Opcode::MOV, OperandsR{errorFlagReg, 2, 0, 0});
+        uint8_t exceptionReg = allocateRegister();
+        emit(Opcode::MOV, OperandsR{exceptionReg, 3, 0, 0});
         /* Identifier expressions borrow a local Future; call expressions
-         * produce an owned temporary which must be released after await. */
+         * produce an owned temporary which must be released after await.
+         * Release before the rejection check so an owned Future is not
+         * leaked when the exception path transfers control to a handler. */
         const ast::ASTNode* futureSource = &awaitExpr->getFuture();
         while (auto primary = dynamic_cast<const ast::PrimaryExpression*>(futureSource)) {
             futureSource = &primary->getPrimary();
@@ -2913,6 +2921,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             emit(Opcode::RELEASE, OperandsR{futureReg, 0, 0, 0});
         }
         freeRegister(futureReg);
+        /* Rejected futures re-enter the enclosing try/catch via the HVM
+         * handler stack. The SYSCALL throw path (rather than a C++ exception
+         * from the bridge) routes control to the registered handler PC in
+         * both the interpreter and the JIT. */
+        Label* okLabel = createLabel();
+        emitBranch(Opcode::BEQ, errorFlagReg, 0, okLabel);
+        emit(Opcode::MOV, OperandsR{2, exceptionReg, 0, 0});
+        emit(Opcode::SYSCALL, OperandsI{0, 0, 9});
+        bindLabel(okLabel);
+        freeRegister(exceptionReg);
+        freeRegister(errorFlagReg);
         return dest;
     }
 

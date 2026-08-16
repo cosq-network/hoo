@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "runtime/lib/exception/hoo_exception.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -84,6 +85,22 @@ const char* hoo_future_get_error(HooFuture f);
  * refcount incremented; primitive values are returned as raw register bits.
  */
 void* _F_hoo_future_await_unwrap_p_p(HooFuture f);
+
+/**
+ * Non-throwing wait used by the HVM await bridge.
+ *
+ * Waits until the future is ready while pumping the event loop and yielding
+ * instead of busy-spinning, but never performs C++ stack unwinding.
+ *
+ * On success returns the resolved value (managed values are retained for the
+ * caller; primitives are returned as raw register bits) and writes 0 to
+ * *out_has_error. On failure returns NULL, writes 1 to *out_has_error, and
+ * writes a newly created exception (refcount 1, owned by the caller) to
+ * *out_exception. *out_exception is NULL on success and may be NULL if the
+ * caller does not need the handle.
+ */
+void* hoo_future_await_wait(HooFuture f, int64_t* out_has_error,
+                            HooException* out_exception);
 
 /**
  * Coroutine continuation callback signature.

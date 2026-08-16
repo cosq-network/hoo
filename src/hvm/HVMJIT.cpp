@@ -940,7 +940,15 @@ extern "C" {
     uint64_t jit_hoo_future_await_unwrap(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         HooFuture fut = reinterpret_cast<HooFuture>(state->regs[1]);
-        void* result = _F_hoo_future_await_unwrap_p_p(fut);
+        /* r1 out: resolved value (retained for managed values) or NULL on
+         * error. r2 out: 1 when the future rejected, 0 otherwise. r3 out:
+         * exception handle (owned by the codegen, which transfers it to the
+         * HVM handler stack via the kSysThrowToHandler syscall). */
+        int64_t hasError = 0;
+        HooException exc = nullptr;
+        void* result = hoo_future_await_wait(fut, &hasError, &exc);
+        state->regs[2] = hasError;
+        state->regs[3] = static_cast<int64_t>(reinterpret_cast<uintptr_t>(exc));
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(result));
     }
     uint64_t jit_hoo_exception_runtime(void* /*state_ptr*/) {
@@ -4577,6 +4585,7 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_hoo_future_set_value_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_value)},
         {"_F_hoo_future_set_value_native_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_value)},
         {"_F_hoo_future_set_error_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_error)},
+        {"_F_hoo_future_set_error_native_v_p_p", reinterpret_cast<void*>(&jit_hoo_future_set_error)},
         {"_F_hoo_future_get_value_p_p", reinterpret_cast<void*>(&jit_hoo_future_get_value)},
         {"_F_hoo_future_await_unwrap_p_p", reinterpret_cast<void*>(&jit_hoo_future_await_unwrap)},
         {"_F_hoo_future_await_unwrap_native_p_p", reinterpret_cast<void*>(&jit_hoo_future_await_unwrap)},

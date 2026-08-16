@@ -32,6 +32,17 @@ Because the JIT translates HVM bytecode to native execution, standard C++ `try-c
 2. **Throwing**: The compiler emits `CALL throw(exc)`. On macOS/Linux, the runtime calls `Exception.throw(exc)`, which throws a native `HooStdException` (wrapping the handle). The JIT `SYSCALL` bridge catches this and triggers `hoo_hvm_sys_throw_to_handler_state`. On Windows, the JIT bridge directly sets the current exception via `Exception.setCurrent()` and transfers control through the shadow stack, bypassing C++ exception unwinding entirely.
 3. **Routing**: The JIT pops the latest shadow frame, restores the virtual `fp`/`sp`, places the exception handle into argument register `r1`, and modifies the virtual Program Counter (`PC`) to jump directly to the `catchPc` block.
 
+### Await rejections
+
+`await` on a rejected `Future<T>` is not a bridge-side C++ throw. The future
+bridge (`hoo_future_await_wait`) blocks until the Future resolves, then reports
+rejection via an error flag and an exception handle instead of unwinding
+(see `docs/hvm/hvm-abi.md` §9.2.1). The compiler's `await` lowering follows the
+bridge with `SYSCALL kSysThrowToHandler` (9), so a rejected Future re-enters the
+enclosing `try/catch` through the same shadow-stack handler dispatch as a
+`throw` statement. An `await` rejection with no registered handler surfaces as
+the standard "Unhandled exception trap".
+
 ### Platform-Specific Behavior
 
 | Platform | Throw Mechanism | C++ Exception Unwinding |
