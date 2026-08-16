@@ -341,23 +341,35 @@ Key-specific operations (int64, string, char, byte): `m.put(key, value)`, `m.get
 
 | API | Signature |
 |-----|-----------|
-| `fs_read` | `fs_read(path: string) :string` |
-| `fs_write` | `fs_write(path: string, data: string) :void` |
-| `fs_append` | `fs_append(path: string, data: string) :void` |
+| `fs_read_text` | `fs_read_text(path: string) :string` |
+| `fs_read_text` | `fs_read_text(path: string, fallback: string) :string` |
+| `fs_write_text` | `fs_write_text(path: string, data: string) :int64` |
+| `fs_append_text` | `fs_append_text(path: string, data: string) :int64` |
 | `fs_exists` | `fs_exists(path: string) :int64` |
 | `fs_is_dir` | `fs_is_dir(path: string) :int64` |
 | `fs_is_file` | `fs_is_file(path: string) :int64` |
 | `fs_delete` | `fs_delete(path: string) :int64` |
+| `fs_remove` | `fs_remove(path: string) :int64` |
 | `fs_mkdir` | `fs_mkdir(path: string) :int64` |
 | `fs_mkdirs` | `fs_mkdirs(path: string) :int64` |
 | `fs_rmdir` | `fs_rmdir(path: string) :int64` |
-| `fs_list` | `fs_list(path: string) :array` |
-| `fs_cwd` | `fs_cwd() :string` |
+| `fs_list_dir` | `fs_list_dir(path: string) :array` |
+| `fs_current_dir` | `fs_current_dir() :string` |
+| `fs_current_exe_dir` | `fs_current_exe_dir() :string` |
+| `fs_temp_dir` | `fs_temp_dir() :string` |
+| `fs_create_temp_file` | `fs_create_temp_file(prefix: string) :string` |
+| `fs_create_temp_dir` | `fs_create_temp_dir() :string` |
 | `fs_size` | `fs_size(path: string) :int64` |
+| `fs_last_modified` | `fs_last_modified(path: string) :int64` |
 | `fs_copy` | `fs_copy(source: string, dest: string) :int64` |
 | `fs_move` | `fs_move(source: string, dest: string) :int64` |
-| `fs_read_bytes` | `fs_read_bytes(path: string) :array` |
-| `fs_read_bytes_buffer` | `fs_read_bytes_buffer(path: string, buffer: Buffer, offset: int64, length: int64) :int64` |
+| `fs_rename` | `fs_rename(old_path: string, new_path: string) :int64` |
+| `fs_read_bytes` | `fs_read_bytes(path: string) :Buffer` |
+| `fs_read_bytes` | `fs_read_bytes(path: string, fallback: Buffer) :Buffer` |
+| `fs_read_bytes_buffer` | `fs_read_bytes_buffer(path: string) :Buffer` |
+| `fs_read_bytes_buffer` | `fs_read_bytes_buffer(path: string, fallback: Buffer) :Buffer` |
+| `fs_write_bytes` | `fs_write_bytes(path: string, buf: Buffer) :int64` |
+| `fs_write_bytes_buffer` | `fs_write_bytes_buffer(path: string, buf: Buffer) :int64` |
 
 ---
 

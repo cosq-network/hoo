@@ -516,3 +516,135 @@ TEST_F(HooFSTest, CAbi_Bridge_CreateTempFile) {
     hoo_fs_delete(tmpPath);
     hoo_fs_free_string(tmpPath);
 }
+
+TEST_F(HooFSTest, CAbi_Bridge_Move) {
+    std::string src = mkpath("cabi_move_src.txt");
+    std::string dst = mkpath("cabi_move_dst.txt");
+
+    ASSERT_EQ(hoo_fs_write_text(src.c_str(), "moveme"), 1);
+    EXPECT_EQ(hoo_fs_move(src.c_str(), dst.c_str()), 1);
+    EXPECT_EQ(hoo_fs_exists(src.c_str()), 0);
+    EXPECT_EQ(hoo_fs_exists(dst.c_str()), 1);
+
+    char* readback = hoo_fs_read_text(dst.c_str());
+    ASSERT_NE(readback, nullptr);
+    EXPECT_STREQ(readback, "moveme");
+    hoo_fs_free_string(readback);
+
+    // Moving a nonexistent source must fail.
+    EXPECT_EQ(hoo_fs_move(src.c_str(), dst.c_str()), 0);
+
+    hoo_fs_delete(dst.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_Remove) {
+    std::string path = mkpath("cabi_remove.txt");
+
+    ASSERT_EQ(hoo_fs_write_text(path.c_str(), "gone"), 1);
+    EXPECT_EQ(hoo_fs_exists(path.c_str()), 1);
+    EXPECT_EQ(hoo_fs_remove(path.c_str()), 1);
+    EXPECT_EQ(hoo_fs_exists(path.c_str()), 0);
+
+    // Removing a nonexistent file must fail.
+    EXPECT_EQ(hoo_fs_remove(path.c_str()), 0);
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_ReadTextEmptyVsMissing) {
+    std::string path = mkpath("cabi_empty.txt");
+
+    // Existing but empty file returns an empty string, not null.
+    ASSERT_EQ(hoo_fs_write_text(path.c_str(), ""), 1);
+    char* empty = hoo_fs_read_text(path.c_str());
+    ASSERT_NE(empty, nullptr);
+    EXPECT_STREQ(empty, "");
+    hoo_fs_free_string(empty);
+
+    // Missing file returns null.
+    std::string missing = mkpath("cabi_missing.txt");
+    EXPECT_EQ(hoo_fs_read_text(missing.c_str()), nullptr);
+
+    hoo_fs_delete(path.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_ReadBytesBufferEmptyVsMissing) {
+    std::string path = mkpath("cabi_empty.bin");
+
+    // Existing but empty file returns a zero-length buffer, not null.
+    ASSERT_EQ(hoo_fs_write_text(path.c_str(), ""), 1);
+    HooBuffer empty = hoo_fs_read_bytes_buffer(path.c_str());
+    ASSERT_NE(empty, nullptr);
+    EXPECT_EQ(hoo_buffer_length(empty), 0);
+    hoo_buffer_release(empty);
+
+    // Missing file returns null.
+    std::string missing = mkpath("cabi_missing.bin");
+    EXPECT_EQ(hoo_fs_read_bytes_buffer(missing.c_str()), nullptr);
+
+    hoo_fs_delete(path.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_WriteBytesAndReadBack) {
+    std::string path = mkpath("cabi_bytes.bin");
+    const uint8_t data[] = {0x00, 0xFF, 0xAB, 0xCD, 0x01, 0x02};
+
+    EXPECT_EQ(hoo_fs_write_bytes(path.c_str(), data, 6), 1);
+
+    uint8_t* readback = nullptr;
+    int64_t len = 0;
+    EXPECT_EQ(hoo_fs_read_bytes(path.c_str(), &readback, &len), 1);
+    ASSERT_NE(readback, nullptr);
+    ASSERT_EQ(len, 6);
+    for (int64_t i = 0; i < len; ++i) {
+        EXPECT_EQ(readback[i], data[i]) << "byte mismatch at index " << i;
+    }
+    std::free(readback);
+
+    // Writing to an unwritable path must fail (returns 0).
+    EXPECT_EQ(hoo_fs_write_bytes("/nonexistent-dir/hoo/x.bin", data, 6), 0);
+
+    hoo_fs_delete(path.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_WriteBytesBuffer) {
+    std::string path = mkpath("cabi_buf.bin");
+    const char* content = "buffer content";
+
+    HooBuffer buf = hoo_buffer_from_bytes(reinterpret_cast<const uint8_t*>(content), strlen(content));
+    ASSERT_NE(buf, nullptr);
+    EXPECT_EQ(hoo_fs_write_bytes_buffer(path.c_str(), buf), 1);
+    hoo_buffer_release(buf);
+
+    char* readback = hoo_fs_read_text(path.c_str());
+    ASSERT_NE(readback, nullptr);
+    EXPECT_STREQ(readback, content);
+    hoo_fs_free_string(readback);
+
+    hoo_fs_delete(path.c_str());
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_CreateTempDir) {
+    char* dir = hoo_fs_create_temp_dir();
+    ASSERT_NE(dir, nullptr);
+    EXPECT_GT(strlen(dir), 0);
+    EXPECT_EQ(hoo_fs_exists(dir), 1);
+    EXPECT_EQ(hoo_fs_is_dir(dir), 1);
+
+    EXPECT_EQ(hoo_fs_rmdir(dir), 1);
+    EXPECT_EQ(hoo_fs_exists(dir), 0);
+    hoo_fs_free_string(dir);
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_CurrentDir) {
+    char* cwd = hoo_fs_current_dir();
+    ASSERT_NE(cwd, nullptr);
+    EXPECT_GT(strlen(cwd), 0);
+    hoo_fs_free_string(cwd);
+}
+
+TEST_F(HooFSTest, CAbi_Bridge_CurrentExeDir) {
+    char* exeDir = hoo_fs_current_exe_dir();
+    ASSERT_NE(exeDir, nullptr);
+    EXPECT_GT(strlen(exeDir), 0);
+    EXPECT_EQ(exeDir[0], '/');
+    hoo_fs_free_string(exeDir);
+}

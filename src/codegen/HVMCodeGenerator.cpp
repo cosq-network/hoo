@@ -217,13 +217,16 @@ static bool isFsFreeFunction(const std::string& functionName) {
         "fs_exists",
         "fs_read_text",
         "fs_read_bytes",
+        "fs_read_bytes_buffer",
         "fs_write_text",
         "fs_write_bytes",
+        "fs_write_bytes_buffer",
         "fs_append_text",
         "fs_copy",
         "fs_move",
         "fs_remove",
         "fs_delete",
+        "fs_rename",
         "fs_mkdir",
         "fs_mkdirs",
         "fs_rmdir",
@@ -395,6 +398,7 @@ static uint32_t pathFreeFunctionReturnTypeId(const std::string& functionName) {
     if (functionName == "path_separator" || functionName == "path_list_separator") return 6; // byte/char
     if (functionName == "path_is_absolute" || functionName == "path_is_relative" ||
         functionName == "path_has_extension") return 1; // int64
+    if (functionName == "path_split") return 102; // array of strings
     return 101; // string
 }
 
@@ -469,13 +473,19 @@ static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
     if (functionName == "fs_exists" || functionName == "fs_is_dir" ||
         functionName == "fs_is_file" || functionName == "fs_size" ||
         functionName == "fs_remove" || functionName == "fs_delete" ||
-        functionName == "fs_mkdir" || functionName == "fs_mkdirs" ||
-        functionName == "fs_rmdir" || functionName == "fs_copy" ||
-        functionName == "fs_move") return 1;
-    if (functionName == "fs_read_bytes" || functionName == "fs_read_bytes_default") return 113;
+        functionName == "fs_rename" || functionName == "fs_mkdir" ||
+        functionName == "fs_mkdirs" || functionName == "fs_rmdir" ||
+        functionName == "fs_copy" || functionName == "fs_move" ||
+        functionName == "fs_last_modified" ||
+        functionName == "fs_write_text" || functionName == "fs_append_text" ||
+        functionName == "fs_write_bytes" || functionName == "fs_write_bytes_buffer") return 1;
+    if (functionName == "fs_read_bytes" || functionName == "fs_read_bytes_default" ||
+        functionName == "fs_read_bytes_buffer" || functionName == "fs_read_bytes_buffer_default") return 113;
     if (functionName == "fs_read_text" || functionName == "fs_read_text_default") return 101;
     if (functionName == "fs_list_dir") return 102;
-    if (functionName == "fs_last_modified") return 101;
+    if (functionName == "fs_temp_dir" || functionName == "fs_create_temp_dir" ||
+        functionName == "fs_create_temp_file" || functionName == "fs_current_dir" ||
+        functionName == "fs_current_exe_dir") return 101;
     return 100;
 }
 

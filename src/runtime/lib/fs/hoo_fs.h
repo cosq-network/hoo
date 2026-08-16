@@ -22,7 +22,9 @@ int64_t hoo_fs_is_dir(const char* path);
 int64_t hoo_fs_size(const char* path);
 int64_t hoo_fs_last_modified(const char* path);
 int64_t hoo_fs_delete(const char* path);
+int64_t hoo_fs_remove(const char* path);
 int64_t hoo_fs_rename(const char* old_path, const char* new_path);
+int64_t hoo_fs_move(const char* old_path, const char* new_path);
 int64_t hoo_fs_copy(const char* src, const char* dst);
 char*   hoo_fs_read_text(const char* path);
 int64_t hoo_fs_write_text(const char* path, const char* content);
@@ -37,12 +39,17 @@ int64_t hoo_fs_rmdir(const char* path);
 char**  hoo_fs_list_dir(const char* path, int64_t* out_count);
 void    hoo_fs_free_list(char** list, int64_t count);
 char*   hoo_fs_temp_dir(void);
+char*   hoo_fs_create_temp_dir(void);
 char*   hoo_fs_create_temp_file(const char* prefix);
+char*   hoo_fs_current_dir(void);
+char*   hoo_fs_current_exe_dir(void);
 void    hoo_fs_free_string(char* str);
 
 // Path module C-ABI bridges (merged from hoo_path.h)
 char*   hoo_path_dirname(const char* path);
 char*   hoo_path_basename(const char* path);
+char*   hoo_path_filename(const char* path);
+char*   hoo_path_parent(const char* path);
 char*   hoo_path_extension(const char* path);
 char*   hoo_path_stem(const char* path);
 char*   hoo_path_root(const char* path);
@@ -83,6 +90,9 @@ char separator();
 char listSeparator();
 std::string tempDir();
 std::string createTempFile(const std::string& prefix);
+std::string createTempDir();
+std::string currentDir();
+std::string currentExeDir();
 bool copyFile(const std::string& src, const std::string& dst);
 
 // ── Path ────────────────────────────────────────────────────────────────────

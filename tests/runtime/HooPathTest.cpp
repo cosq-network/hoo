@@ -223,3 +223,83 @@ TEST_F(HooPathTest, FreeString) {
 TEST_F(HooPathTest, FreeParts) {
     hoo_path_free_parts(nullptr, 0);
 }
+
+TEST_F(HooPathTest, Filename) {
+    char* result = hoo_path_filename("/foo/bar/file.txt");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "file.txt");
+    hoo_path_free_string(result);
+
+    result = hoo_path_filename("file.txt");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "file.txt");
+    hoo_path_free_string(result);
+
+    result = hoo_path_filename("/foo/bar/");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "bar");
+    hoo_path_free_string(result);
+}
+
+TEST_F(HooPathTest, Parent) {
+    char* result = hoo_path_parent("/foo/bar/file.txt");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "/foo/bar");
+    hoo_path_free_string(result);
+
+    result = hoo_path_parent("file.txt");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, ".");
+    hoo_path_free_string(result);
+
+    result = hoo_path_parent("/foo/bar/");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "/foo/bar");
+    hoo_path_free_string(result);
+}
+
+TEST_F(HooPathTest, EmptyPathNeverReturnsNull) {
+    char* result = hoo_path_basename("");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "");
+    hoo_path_free_string(result);
+
+    result = hoo_path_dirname("");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, ".");
+    hoo_path_free_string(result);
+
+    result = hoo_path_stem("file");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "file");
+    hoo_path_free_string(result);
+
+    result = hoo_path_stem("");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "");
+    hoo_path_free_string(result);
+
+    result = hoo_path_filename("");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, "");
+    hoo_path_free_string(result);
+
+    result = hoo_path_parent("");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(result, ".");
+    hoo_path_free_string(result);
+}
+
+TEST_F(HooPathTest, NullPathReturnsNull) {
+    char* result = hoo_path_basename(nullptr);
+    EXPECT_EQ(result, nullptr);
+
+    result = hoo_path_dirname(nullptr);
+    EXPECT_EQ(result, nullptr);
+
+    result = hoo_path_filename(nullptr);
+    EXPECT_EQ(result, nullptr);
+
+    result = hoo_path_parent(nullptr);
+    EXPECT_EQ(result, nullptr);
+}

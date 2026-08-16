@@ -590,6 +590,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/jit/HooCsvJitTest.cpp
         tests/integration/jit/HooDatetimeJitTest.cpp
         tests/integration/jit/HooPathJitTest.cpp
+        tests/integration/jit/HooFsJitTest.cpp
         tests/integration/jit/HooHashingJitTest.cpp
         tests/integration/jit/HooEncodingJitTest.cpp
         tests/integration/jit/HooProcessJitTest.cpp
@@ -633,6 +634,7 @@ if(HOO_BUILD_TESTS)
          tests/integration/csv/CsvCLIIntegrationTest.cpp
          tests/integration/compression/CompressionCLIIntegrationTest.cpp
         tests/integration/datetime/DatetimeCLIIntegrationTest.cpp
+        tests/integration/fs/FsCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

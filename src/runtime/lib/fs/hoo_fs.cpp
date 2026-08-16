@@ -8,6 +8,17 @@
 #include <random>
 #include <chrono>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <limits.h>
+#include <unistd.h>
+#endif
+
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 namespace fs = std::filesystem;
 
 #ifdef _MSC_VER
@@ -32,7 +43,9 @@ bool write_bytes_impl(const std::string& path, const uint8_t* data, std::streams
     try {
         std::ofstream file(path, std::ios::out | std::ios::binary | std::ios::trunc);
         if (!file.is_open()) return false;
-        file.write(reinterpret_cast<const char*>(data), len);
+        if (len > 0 && data) {
+            file.write(reinterpret_cast<const char*>(data), len);
+        }
         file.close();
         return file.good();
     } catch (...) {
@@ -120,6 +133,67 @@ std::string createTempFile(const std::string& prefix)
             }
         }
         return {};
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string createTempDir()
+{
+    try {
+        ::fs::path dir = ::fs::temp_directory_path();
+        const std::string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        for (int attempt = 0; attempt < 256; attempt++) {
+            std::string name = "hoo";
+            for (int i = 0; i < 6; i++) {
+                name += chars[random_int()];
+            }
+            ::fs::path tmp = dir / name;
+            if (::fs::create_directory(tmp)) {
+                return tmp.string();
+            }
+        }
+        return {};
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string currentDir()
+{
+    try {
+        return ::fs::current_path().string();
+    } catch (...) {
+        return {};
+    }
+}
+
+std::string currentExeDir()
+{
+    std::string exe;
+#ifdef _WIN32
+    char buf[MAX_PATH];
+    const DWORD n = GetModuleFileNameA(NULL, buf, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) return {};
+    exe = buf;
+#elif defined(__APPLE__)
+    char buf[PATH_MAX];
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) != 0) return {};
+    exe = buf;
+    char resolved[PATH_MAX];
+    if (::realpath(buf, resolved) != nullptr) exe = resolved;
+#else
+    char buf[PATH_MAX];
+    const ssize_t n = ::readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n <= 0) return {};
+    buf[n] = '\0';
+    exe = buf;
+#endif
+    try {
+        ::fs::path p(exe);
+        ::fs::path parent = p.parent_path();
+        return parent.empty() ? std::string() : parent.string();
     } catch (...) {
         return {};
     }
@@ -460,10 +534,20 @@ int64_t hoo_fs_delete(const char* path)
     return hoo::fs::File(path).remove() ? 1 : 0;
 }
 
+int64_t hoo_fs_remove(const char* path)
+{
+    return hoo_fs_delete(path);
+}
+
 int64_t hoo_fs_rename(const char* old_path, const char* new_path)
 {
     if (!old_path || !new_path) return 0;
     return hoo::fs::File(old_path).rename(new_path) ? 1 : 0;
+}
+
+int64_t hoo_fs_move(const char* old_path, const char* new_path)
+{
+    return hoo_fs_rename(old_path, new_path);
 }
 
 int64_t hoo_fs_copy(const char* src, const char* dst)
@@ -476,7 +560,10 @@ char* hoo_fs_read_text(const char* path)
 {
     if (!path) return nullptr;
     std::string content = hoo::fs::File(path).readText();
-    if (content.empty()) return nullptr;
+    // readText() returns {} both when the file is missing/unreadable and when
+    // it exists but is empty. Distinguish: a missing/unreadable file yields
+    // null; an existing empty file yields an empty string ("").
+    if (content.empty() && !hoo::fs::File(path).exists()) return nullptr;
     char* result = static_cast<char*>(std::malloc(content.size() + 1));
     if (!result) return nullptr;
     std::memcpy(result, content.data(), content.size() + 1);
@@ -569,11 +656,32 @@ char* hoo_fs_temp_dir(void)
     return hoo_strdup(tmp.c_str());
 }
 
+char* hoo_fs_create_temp_dir(void)
+{
+    std::string tmp = hoo::fs::createTempDir();
+    if (tmp.empty()) return nullptr;
+    return hoo_strdup(tmp.c_str());
+}
+
 char* hoo_fs_create_temp_file(const char* prefix)
 {
     std::string tmp = hoo::fs::createTempFile(prefix ? prefix : "hoo");
     if (tmp.empty()) return nullptr;
     return hoo_strdup(tmp.c_str());
+}
+
+char* hoo_fs_current_dir(void)
+{
+    std::string cwd = hoo::fs::currentDir();
+    if (cwd.empty()) return nullptr;
+    return hoo_strdup(cwd.c_str());
+}
+
+char* hoo_fs_current_exe_dir(void)
+{
+    std::string dir = hoo::fs::currentExeDir();
+    if (dir.empty()) return nullptr;
+    return hoo_strdup(dir.c_str());
 }
 
 void hoo_fs_free_string(char* str)
@@ -587,14 +695,24 @@ char* hoo_path_dirname(const char* path)
 {
     if (!path) return nullptr;
     std::string result = hoo::fs::Path(path).dirname();
-    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
+    return hoo_strdup(result.c_str());
 }
 
 char* hoo_path_basename(const char* path)
 {
     if (!path) return nullptr;
     std::string result = hoo::fs::Path(path).basename();
-    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
+    return hoo_strdup(result.c_str());
+}
+
+char* hoo_path_filename(const char* path)
+{
+    return hoo_path_basename(path);
+}
+
+char* hoo_path_parent(const char* path)
+{
+    return hoo_path_dirname(path);
 }
 
 char* hoo_path_extension(const char* path)
@@ -608,7 +726,7 @@ char* hoo_path_stem(const char* path)
 {
     if (!path) return nullptr;
     std::string result = hoo::fs::Path(path).stem();
-    return !result.empty() ? hoo_strdup(result.c_str()) : nullptr;
+    return hoo_strdup(result.c_str());
 }
 
 char* hoo_path_root(const char* path)
@@ -733,7 +851,8 @@ HooBuffer hoo_fs_read_bytes_buffer(const char* path) {
     uint8_t* data = nullptr;
     int64_t len = 0;
     int64_t result = hoo_fs_read_bytes(path, &data, &len);
-    if (result == 0 || !data) return nullptr;
+    if (result == 0) return nullptr;
+    if (!data) return hoo_buffer_new(0); // empty file -> empty buffer
     HooBuffer buf = hoo_buffer_from_bytes(data, len);
     free(data);
     return buf;

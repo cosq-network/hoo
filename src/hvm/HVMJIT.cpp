@@ -1101,8 +1101,16 @@ extern "C" {
     }
     uint64_t jit_array_get_string(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        void* arr = reinterpret_cast<void*>(state->regs[1]);
+        if (arr && ((int64_t*)arr)[2] >= 100) {
+            // Managed string array: slots hold HooString objects (fs_list_dir,
+            // path_split, regex_split, csv, json, ...). Return the object.
+            void* obj = nullptr;
+            if (!hoo_array_get_object(arr, state->regs[2], &obj) || !obj) return 0;
+            return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_retain(obj)));
+        }
         const char* dest = nullptr;
-        hoo_array_get_string(reinterpret_cast<void*>(state->regs[1]), state->regs[2], &dest);
+        hoo_array_get_string(arr, state->regs[2], &dest);
         if (!dest) return 0;
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_cstr(dest)));
     }
@@ -2129,42 +2137,36 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         int64_t ts = hoo_fs_last_modified(path);
-        if (ts <= 0) return 0;
-        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_int64(ts)));
+        return static_cast<uint64_t>(ts);
     }
     uint64_t jit_fs_delete(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        hoo_fs_delete(path);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_delete(path));
     }
     uint64_t jit_fs_rename(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* old_path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         const char* new_path = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        hoo_fs_rename(old_path, new_path);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_rename(old_path, new_path));
     }
     uint64_t jit_fs_copy(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* src = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         const char* dst = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        hoo_fs_copy(src, dst);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_copy(src, dst));
     }
     uint64_t jit_fs_write_text(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         const char* content = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        hoo_fs_write_text(path, content);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_write_text(path, content));
     }
     uint64_t jit_fs_append_text(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         const char* content = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        hoo_fs_append_text(path, content);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_append_text(path, content));
     }
     uint64_t jit_fs_read_bytes_buffer(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2175,26 +2177,22 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[2]);
-        hoo_fs_write_bytes_buffer(path, buf);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_write_bytes_buffer(path, buf));
     }
     uint64_t jit_fs_mkdir(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        hoo_fs_mkdir(path);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_mkdir(path));
     }
     uint64_t jit_fs_mkdirs(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        hoo_fs_mkdirs(path);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_mkdirs(path));
     }
     uint64_t jit_fs_rmdir(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        hoo_fs_rmdir(path);
-        return 0;
+        return static_cast<uint64_t>(hoo_fs_rmdir(path));
     }
     uint64_t jit_fs_list_dir(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2230,6 +2228,49 @@ extern "C" {
         hoo_fs_free_string(path);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
+    uint64_t jit_fs_move(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* old_path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* new_path = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(hoo_fs_move(old_path, new_path));
+    }
+    uint64_t jit_fs_remove(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(hoo_fs_remove(path));
+    }
+    uint64_t jit_fs_read_bytes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_fs_read_bytes_buffer(path)));
+    }
+    uint64_t jit_fs_write_bytes(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        HooBuffer buf = reinterpret_cast<HooBuffer>(state->regs[2]);
+        return static_cast<uint64_t>(hoo_fs_write_bytes_buffer(path, buf));
+    }
+    uint64_t jit_fs_create_temp_dir(void* /*state_ptr*/) {
+        char* dir = hoo_fs_create_temp_dir();
+        if (!dir) return 0;
+        void* str = hoo_string_from_cstr(dir);
+        hoo_fs_free_string(dir);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_fs_current_dir(void* /*state_ptr*/) {
+        char* dir = hoo_fs_current_dir();
+        if (!dir) return 0;
+        void* str = hoo_string_from_cstr(dir);
+        hoo_fs_free_string(dir);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_fs_current_exe_dir(void* /*state_ptr*/) {
+        char* dir = hoo_fs_current_exe_dir();
+        if (!dir) return 0;
+        void* str = hoo_string_from_cstr(dir);
+        hoo_fs_free_string(dir);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
     // Default-value variants for readText/readBytes (fallback when file missing)
     uint64_t jit_fs_read_text_default(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2240,6 +2281,17 @@ extern "C" {
             void* str = hoo_string_from_cstr(text);
             free(text);
             return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+        }
+        hoo_retain(fallback);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(fallback));
+    }
+    uint64_t jit_fs_read_bytes_default(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        void* fallback = reinterpret_cast<void*>(state->regs[2]);
+        HooBuffer buf = hoo_fs_read_bytes_buffer(path);
+        if (buf) {
+            return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(buf));
         }
         hoo_retain(fallback);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(fallback));
@@ -3057,6 +3109,51 @@ extern "C" {
         void* str = hoo_string_from_cstr(result);
         hoo_path_free_string(result);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_filename(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_filename(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_parent(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_parent(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_root(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        char* result = hoo_path_root(path);
+        if (!result) return 0;
+        void* str = hoo_string_from_cstr(result);
+        hoo_path_free_string(result);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_path_split(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        int64_t count = 0;
+        char** parts = hoo_path_split(path, &count);
+        void* arr = hoo_array_new();
+        for (int64_t i = 0; i < count; ++i) {
+            void* str = hoo_string_from_cstr(parts[i]);
+            hoo_retain(str);
+            arr = hoo_array_push_object(arr, str);
+            hoo_release(str);
+        }
+        if (arr && count > 0) {
+            ((int64_t*)arr)[2] = HOO_TYPE_STRING;
+        }
+        hoo_path_free_parts(parts, count);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
     }
     uint64_t jit_path_extension(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -4912,6 +5009,22 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_fs_temp_dir_p", reinterpret_cast<void*>(&jit_fs_temp_dir)},
         {"_F_M_hoo_E_fs_create_temp_file_v_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
         {"_F_M_hoo_E_fs_create_temp_file_p_p", reinterpret_cast<void*>(&jit_fs_create_temp_file)},
+        {"_F_M_hoo_E_fs_move_v_p_p", reinterpret_cast<void*>(&jit_fs_move)},
+        {"_F_M_hoo_E_fs_move_p_p_p", reinterpret_cast<void*>(&jit_fs_move)},
+        {"_F_M_hoo_E_fs_remove_v_p", reinterpret_cast<void*>(&jit_fs_remove)},
+        {"_F_M_hoo_E_fs_remove_p_p", reinterpret_cast<void*>(&jit_fs_remove)},
+        {"_F_M_hoo_E_fs_read_bytes_v_p", reinterpret_cast<void*>(&jit_fs_read_bytes)},
+        {"_F_M_hoo_E_fs_read_bytes_p_p", reinterpret_cast<void*>(&jit_fs_read_bytes)},
+        {"_F_M_hoo_E_fs_read_bytes_v_p_p", reinterpret_cast<void*>(&jit_fs_read_bytes_default)},
+        {"_F_M_hoo_E_fs_read_bytes_p_p_p", reinterpret_cast<void*>(&jit_fs_read_bytes_default)},
+        {"_F_M_hoo_E_fs_write_bytes_v_p_p", reinterpret_cast<void*>(&jit_fs_write_bytes)},
+        {"_F_M_hoo_E_fs_write_bytes_p_p_p", reinterpret_cast<void*>(&jit_fs_write_bytes)},
+        {"_F_M_hoo_E_fs_create_temp_dir_v", reinterpret_cast<void*>(&jit_fs_create_temp_dir)},
+        {"_F_M_hoo_E_fs_create_temp_dir_p", reinterpret_cast<void*>(&jit_fs_create_temp_dir)},
+        {"_F_M_hoo_E_fs_current_dir_v", reinterpret_cast<void*>(&jit_fs_current_dir)},
+        {"_F_M_hoo_E_fs_current_dir_p", reinterpret_cast<void*>(&jit_fs_current_dir)},
+        {"_F_M_hoo_E_fs_current_exe_dir_v", reinterpret_cast<void*>(&jit_fs_current_exe_dir)},
+        {"_F_M_hoo_E_fs_current_exe_dir_p", reinterpret_cast<void*>(&jit_fs_current_exe_dir)},
 
         // Regex class/instance methods
         {"_F_M_hoo_E_regex_new_v_p", reinterpret_cast<void*>(&jit_regex_new)},
@@ -5028,6 +5141,14 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_path_dirname_p_p", reinterpret_cast<void*>(&jit_path_dirname)},
         {"_F_M_hoo_E_path_basename_v_p", reinterpret_cast<void*>(&jit_path_basename)},
         {"_F_M_hoo_E_path_basename_p_p", reinterpret_cast<void*>(&jit_path_basename)},
+        {"_F_M_hoo_E_path_filename_v_p", reinterpret_cast<void*>(&jit_path_filename)},
+        {"_F_M_hoo_E_path_filename_p_p", reinterpret_cast<void*>(&jit_path_filename)},
+        {"_F_M_hoo_E_path_parent_v_p", reinterpret_cast<void*>(&jit_path_parent)},
+        {"_F_M_hoo_E_path_parent_p_p", reinterpret_cast<void*>(&jit_path_parent)},
+        {"_F_M_hoo_E_path_root_v_p", reinterpret_cast<void*>(&jit_path_root)},
+        {"_F_M_hoo_E_path_root_p_p", reinterpret_cast<void*>(&jit_path_root)},
+        {"_F_M_hoo_E_path_split_v_p", reinterpret_cast<void*>(&jit_path_split)},
+        {"_F_M_hoo_E_path_split_p_p", reinterpret_cast<void*>(&jit_path_split)},
         {"_F_M_hoo_E_path_extension_v_p", reinterpret_cast<void*>(&jit_path_extension)},
         {"_F_M_hoo_E_path_extension_p_p", reinterpret_cast<void*>(&jit_path_extension)},
         {"_F_M_hoo_E_path_stem_v_p", reinterpret_cast<void*>(&jit_path_stem)},

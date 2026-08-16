@@ -984,3 +984,65 @@ TEST_F(HVMCodeGeneratorTest, EmitsDecimalComparisonCall) {
     auto* sym = module->getSymbol("_F_hoo_Decimal_lt_p_p_p");
     EXPECT_NE(sym, nullptr) << "Expected reference to _F_hoo_Decimal_lt_p_p_p symbol";
 }
+
+TEST_F(HVMCodeGeneratorTest, FsNewFunctionsEmitMangledSymbols) {
+    std::string code = R"(
+        import hoo.io;
+        func :int64 test() {
+            var a = "/tmp/a";
+            var b = "/tmp/b";
+            var r: int64 = 0;
+            r = fs_move(a, b);
+            r = fs_remove(a);
+            r = fs_rename(a, b);
+            r = fs_mkdir(a);
+            r = fs_mkdirs(a);
+            r = fs_rmdir(a);
+            r = fs_copy(a, b);
+            r = fs_delete(a);
+            r = fs_exists(a);
+            r = fs_is_dir(a);
+            r = fs_is_file(a);
+            r = fs_size(a);
+            r = fs_last_modified(a);
+            r = fs_write_text(a, "x");
+            r = fs_append_text(a, "x");
+            var t = fs_temp_dir();
+            var td = fs_create_temp_dir();
+            var tf = fs_create_temp_file("hoo");
+            var cwd = fs_current_dir();
+            var exeDir = fs_current_exe_dir();
+            return r;
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_fs_move"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_fs_remove"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_fs_rename"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_fs_create_temp_dir"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_fs_current_dir"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_fs_current_exe_dir"), nullptr);
+}
+
+TEST_F(HVMCodeGeneratorTest, PathNewFunctionsEmitMangledSymbols) {
+    std::string code = R"(
+        import hoo.path;
+        func :int64 test() {
+            var p = "a/b/c.txt";
+            var f = path_filename(p);
+            var parent = path_parent(p);
+            var parts = path_split(p);
+            return f.length();
+        }
+    )";
+
+    auto module = compiler_->compile("test", code);
+    ASSERT_NE(module, nullptr) << compiler_->getLastError();
+
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_path_filename"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_path_parent"), nullptr);
+    EXPECT_NE(findSymbol(*module, "_F_M_hoo_E_path_split"), nullptr);
+}
