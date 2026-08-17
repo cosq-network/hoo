@@ -355,28 +355,36 @@ bool StaticHOModule::serialize(std::vector<uint8_t>& output) const {
 
     output.resize(32, 0);
     uint32_t magic = 0x484F4F48;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x00) = magic;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x04) = static_cast<uint32_t>(ModuleType::StaticRuntime);
-    *reinterpret_cast<uint32_t*>(output.data() + 0x08) = 1;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x0C) = static_cast<uint32_t>(module_name_.size());
+    std::memcpy(output.data() + 0x00, &magic, sizeof(magic));
+    { uint32_t v = static_cast<uint32_t>(ModuleType::StaticRuntime);
+      std::memcpy(output.data() + 0x04, &v, sizeof(v)); }
+    { uint32_t v = 1;
+      std::memcpy(output.data() + 0x08, &v, sizeof(v)); }
+    { uint32_t v = static_cast<uint32_t>(module_name_.size());
+      std::memcpy(output.data() + 0x0C, &v, sizeof(v)); }
 
     uint32_t symCount = static_cast<uint32_t>(symbols_by_name_.size());
-    *reinterpret_cast<uint32_t*>(output.data() + 0x10) = symCount;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x14) = static_cast<uint32_t>(dependencies_.size());
-    *reinterpret_cast<uint32_t*>(output.data() + 0x18) = linked_ ? 1 : 0;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x1C) = static_cast<uint32_t>(library_path_.size());
+    std::memcpy(output.data() + 0x10, &symCount, sizeof(symCount));
+    { uint32_t v = static_cast<uint32_t>(dependencies_.size());
+      std::memcpy(output.data() + 0x14, &v, sizeof(v)); }
+    { uint32_t v = linked_ ? 1 : 0;
+      std::memcpy(output.data() + 0x18, &v, sizeof(v)); }
+    { uint32_t v = static_cast<uint32_t>(library_path_.size());
+      std::memcpy(output.data() + 0x1C, &v, sizeof(v)); }
 
     size_t offset = 32;
     output.insert(output.end(), module_name_.begin(), module_name_.end());
+    offset += module_name_.size();
 
     for (const auto& [name, sym] : symbols_by_name_) {
         uint32_t nameLen = static_cast<uint32_t>(name.size());
         output.resize(output.size() + 8 + nameLen + sym.signature.size() + 1, 0);
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = nameLen;
+        std::memcpy(output.data() + offset, &nameLen, sizeof(nameLen));
         offset += 4;
         std::memcpy(output.data() + offset, name.data(), nameLen);
         offset += nameLen;
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = static_cast<uint32_t>(sym.signature.size());
+        { uint32_t v = static_cast<uint32_t>(sym.signature.size());
+          std::memcpy(output.data() + offset, &v, sizeof(v)); }
         offset += 4;
         if (!sym.signature.empty()) {
             std::memcpy(output.data() + offset, sym.signature.data(), sym.signature.size());
@@ -387,18 +395,21 @@ bool StaticHOModule::serialize(std::vector<uint8_t>& output) const {
     for (const auto& dep : dependencies_) {
         uint32_t nameLen = static_cast<uint32_t>(dep.module_name.size());
         output.resize(output.size() + 12 + nameLen, 0);
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = nameLen;
+        std::memcpy(output.data() + offset, &nameLen, sizeof(nameLen));
         offset += 4;
         std::memcpy(output.data() + offset, dep.module_name.data(), nameLen);
         offset += nameLen;
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = static_cast<uint32_t>(dep.type);
+        { uint32_t v = static_cast<uint32_t>(dep.type);
+          std::memcpy(output.data() + offset, &v, sizeof(v)); }
         offset += 4;
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = dep.optional ? 1 : 0;
+        { uint32_t v = dep.optional ? 1 : 0;
+          std::memcpy(output.data() + offset, &v, sizeof(v)); }
         offset += 4;
     }
 
     if (!library_path_.empty()) {
-        output.insert(output.end(), library_path_.begin(), library_path_.end());
+        output.resize(offset + library_path_.size(), 0);
+        std::memcpy(output.data() + offset, library_path_.data(), library_path_.size());
     }
 
     return true;
@@ -410,19 +421,22 @@ bool StaticHOModule::deserialize(const std::vector<uint8_t>& input) {
         return false;
     }
 
-    uint32_t magic = *reinterpret_cast<const uint32_t*>(input.data() + 0x00);
+    uint32_t magic;
+    std::memcpy(&magic, input.data() + 0x00, sizeof(magic));
     if (magic != 0x484F4F48) {
         error_ = "Invalid magic number";
         return false;
     }
 
-    uint32_t recordedType = *reinterpret_cast<const uint32_t*>(input.data() + 0x04);
+    uint32_t recordedType;
+    std::memcpy(&recordedType, input.data() + 0x04, sizeof(recordedType));
     if (recordedType != static_cast<uint32_t>(ModuleType::StaticRuntime)) {
         error_ = "Module type mismatch";
         return false;
     }
 
-    uint32_t nameLen = *reinterpret_cast<const uint32_t*>(input.data() + 0x0C);
+    uint32_t nameLen;
+    std::memcpy(&nameLen, input.data() + 0x0C, sizeof(nameLen));
     if (input.size() < 32 + nameLen) {
         error_ = "Input too small for name";
         return false;
@@ -430,16 +444,23 @@ bool StaticHOModule::deserialize(const std::vector<uint8_t>& input) {
 
     module_name_ = std::string(reinterpret_cast<const char*>(input.data() + 32), nameLen);
 
-    uint32_t symCount = *reinterpret_cast<const uint32_t*>(input.data() + 0x10);
-    uint32_t depCount = *reinterpret_cast<const uint32_t*>(input.data() + 0x14);
-    linked_ = *reinterpret_cast<const uint32_t*>(input.data() + 0x18) != 0;
-    uint32_t libPathLen = *reinterpret_cast<const uint32_t*>(input.data() + 0x1C);
+    uint32_t symCount, depCount, linkedVal, libPathLen;
+    std::memcpy(&symCount, input.data() + 0x10, sizeof(symCount));
+    std::memcpy(&depCount, input.data() + 0x14, sizeof(depCount));
+    std::memcpy(&linkedVal, input.data() + 0x18, sizeof(linkedVal));
+    linked_ = linkedVal != 0;
+    std::memcpy(&libPathLen, input.data() + 0x1C, sizeof(libPathLen));
 
     size_t offset = 32 + nameLen;
 
     symbols_by_name_.clear();
     for (uint32_t i = 0; i < symCount; ++i) {
-        uint32_t symNameLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for symbol name length";
+            return false;
+        }
+        uint32_t symNameLen;
+        std::memcpy(&symNameLen, input.data() + offset, sizeof(symNameLen));
         offset += 4;
 
         if (input.size() < offset + symNameLen) {
@@ -450,11 +471,20 @@ bool StaticHOModule::deserialize(const std::vector<uint8_t>& input) {
         std::string symName(reinterpret_cast<const char*>(input.data() + offset), symNameLen);
         offset += symNameLen;
 
-        uint32_t sigLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for signature length";
+            return false;
+        }
+        uint32_t sigLen;
+        std::memcpy(&sigLen, input.data() + offset, sizeof(sigLen));
         offset += 4;
 
         std::string signature;
         if (sigLen > 0) {
+            if (input.size() < offset + sigLen) {
+                error_ = "Input too small for signature";
+                return false;
+            }
             signature = std::string(reinterpret_cast<const char*>(input.data() + offset), sigLen);
             offset += sigLen;
         }
@@ -474,7 +504,12 @@ bool StaticHOModule::deserialize(const std::vector<uint8_t>& input) {
     dependencies_.clear();
     dependency_names_.clear();
     for (uint32_t i = 0; i < depCount; ++i) {
-        uint32_t depNameLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for dependency name length";
+            return false;
+        }
+        uint32_t depNameLen;
+        std::memcpy(&depNameLen, input.data() + offset, sizeof(depNameLen));
         offset += 4;
 
         if (input.size() < offset + depNameLen) {
@@ -485,9 +520,15 @@ bool StaticHOModule::deserialize(const std::vector<uint8_t>& input) {
         std::string depName(reinterpret_cast<const char*>(input.data() + offset), depNameLen);
         offset += depNameLen;
 
-        uint32_t depType = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 8 > input.size()) {
+            error_ = "Input too small for dependency type/optional";
+            return false;
+        }
+        uint32_t depType;
+        std::memcpy(&depType, input.data() + offset, sizeof(depType));
         offset += 4;
-        uint32_t optional = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        uint32_t optional;
+        std::memcpy(&optional, input.data() + offset, sizeof(optional));
         offset += 4;
 
         addDependency(depName, static_cast<ModuleType>(depType), optional != 0);
@@ -792,26 +833,35 @@ bool DynamicHOModule::serialize(std::vector<uint8_t>& output) const {
 
     output.resize(40, 0);
     uint32_t magic = 0x484F4F48;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x00) = magic;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x04) = static_cast<uint32_t>(ModuleType::DynamicLibrary);
-    *reinterpret_cast<uint32_t*>(output.data() + 0x08) = 1;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x0C) = static_cast<uint32_t>(module_name_.size());
+    std::memcpy(output.data() + 0x00, &magic, sizeof(magic));
+    { uint32_t v = static_cast<uint32_t>(ModuleType::DynamicLibrary);
+      std::memcpy(output.data() + 0x04, &v, sizeof(v)); }
+    { uint32_t v = 1;
+      std::memcpy(output.data() + 0x08, &v, sizeof(v)); }
+    { uint32_t v = static_cast<uint32_t>(module_name_.size());
+      std::memcpy(output.data() + 0x0C, &v, sizeof(v)); }
 
     uint32_t symCount = static_cast<uint32_t>(symbols_by_name_.size());
-    *reinterpret_cast<uint32_t*>(output.data() + 0x10) = symCount;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x14) = static_cast<uint32_t>(dependencies_.size());
-    *reinterpret_cast<uint32_t*>(output.data() + 0x18) = library_loaded_ ? 1 : 0;
-    *reinterpret_cast<uint32_t*>(output.data() + 0x1C) = static_cast<uint32_t>(library_path_.size());
-    *reinterpret_cast<uint32_t*>(output.data() + 0x20) = static_cast<uint32_t>(exported_symbols_.size());
-    *reinterpret_cast<uint32_t*>(output.data() + 0x24) = static_cast<uint32_t>(loaded_libraries_.size());
+    std::memcpy(output.data() + 0x10, &symCount, sizeof(symCount));
+    { uint32_t v = static_cast<uint32_t>(dependencies_.size());
+      std::memcpy(output.data() + 0x14, &v, sizeof(v)); }
+    { uint32_t v = library_loaded_ ? 1 : 0;
+      std::memcpy(output.data() + 0x18, &v, sizeof(v)); }
+    { uint32_t v = static_cast<uint32_t>(library_path_.size());
+      std::memcpy(output.data() + 0x1C, &v, sizeof(v)); }
+    { uint32_t v = static_cast<uint32_t>(exported_symbols_.size());
+      std::memcpy(output.data() + 0x20, &v, sizeof(v)); }
+    { uint32_t v = static_cast<uint32_t>(loaded_libraries_.size());
+      std::memcpy(output.data() + 0x24, &v, sizeof(v)); }
 
     size_t offset = 40;
     output.insert(output.end(), module_name_.begin(), module_name_.end());
+    offset += module_name_.size();
 
     for (const auto& [name, sym] : symbols_by_name_) {
         uint32_t nameLen = static_cast<uint32_t>(name.size());
         output.resize(output.size() + 4 + nameLen, 0);
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = nameLen;
+        std::memcpy(output.data() + offset, &nameLen, sizeof(nameLen));
         offset += 4;
         std::memcpy(output.data() + offset, name.data(), nameLen);
         offset += nameLen;
@@ -820,24 +870,28 @@ bool DynamicHOModule::serialize(std::vector<uint8_t>& output) const {
     for (const auto& dep : dependencies_) {
         uint32_t nameLen = static_cast<uint32_t>(dep.module_name.size());
         output.resize(output.size() + 12 + nameLen, 0);
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = nameLen;
+        std::memcpy(output.data() + offset, &nameLen, sizeof(nameLen));
         offset += 4;
         std::memcpy(output.data() + offset, dep.module_name.data(), nameLen);
         offset += nameLen;
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = static_cast<uint32_t>(dep.type);
+        { uint32_t v = static_cast<uint32_t>(dep.type);
+          std::memcpy(output.data() + offset, &v, sizeof(v)); }
         offset += 4;
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = dep.optional ? 1 : 0;
+        { uint32_t v = dep.optional ? 1 : 0;
+          std::memcpy(output.data() + offset, &v, sizeof(v)); }
         offset += 4;
     }
 
     if (!library_path_.empty()) {
-        output.insert(output.end(), library_path_.begin(), library_path_.end());
+        output.resize(offset + library_path_.size(), 0);
+        std::memcpy(output.data() + offset, library_path_.data(), library_path_.size());
+        offset += library_path_.size();
     }
 
     for (const auto& expSym : exported_symbols_) {
         uint32_t nameLen = static_cast<uint32_t>(expSym.size());
-        output.resize(output.size() + 4 + nameLen, 0);
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = nameLen;
+        output.resize(offset + 4 + nameLen, 0);
+        std::memcpy(output.data() + offset, &nameLen, sizeof(nameLen));
         offset += 4;
         std::memcpy(output.data() + offset, expSym.data(), nameLen);
         offset += nameLen;
@@ -845,8 +899,8 @@ bool DynamicHOModule::serialize(std::vector<uint8_t>& output) const {
 
     for (const auto& loadedLib : loaded_libraries_) {
         uint32_t nameLen = static_cast<uint32_t>(loadedLib.size());
-        output.resize(output.size() + 4 + nameLen, 0);
-        *reinterpret_cast<uint32_t*>(output.data() + offset) = nameLen;
+        output.resize(offset + 4 + nameLen, 0);
+        std::memcpy(output.data() + offset, &nameLen, sizeof(nameLen));
         offset += 4;
         std::memcpy(output.data() + offset, loadedLib.data(), nameLen);
         offset += nameLen;
@@ -861,19 +915,22 @@ bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
         return false;
     }
 
-    uint32_t magic = *reinterpret_cast<const uint32_t*>(input.data() + 0x00);
+    uint32_t magic;
+    std::memcpy(&magic, input.data() + 0x00, sizeof(magic));
     if (magic != 0x484F4F48) {
         error_ = "Invalid magic number";
         return false;
     }
 
-    uint32_t recordedType = *reinterpret_cast<const uint32_t*>(input.data() + 0x04);
+    uint32_t recordedType;
+    std::memcpy(&recordedType, input.data() + 0x04, sizeof(recordedType));
     if (recordedType != static_cast<uint32_t>(ModuleType::DynamicLibrary)) {
         error_ = "Module type mismatch";
         return false;
     }
 
-    uint32_t nameLen = *reinterpret_cast<const uint32_t*>(input.data() + 0x0C);
+    uint32_t nameLen;
+    std::memcpy(&nameLen, input.data() + 0x0C, sizeof(nameLen));
     if (input.size() < 40 + nameLen) {
         error_ = "Input too small for name";
         return false;
@@ -881,18 +938,25 @@ bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
 
     module_name_ = std::string(reinterpret_cast<const char*>(input.data() + 40), nameLen);
 
-    uint32_t symCount = *reinterpret_cast<const uint32_t*>(input.data() + 0x10);
-    uint32_t depCount = *reinterpret_cast<const uint32_t*>(input.data() + 0x14);
-    library_loaded_ = *reinterpret_cast<const uint32_t*>(input.data() + 0x18) != 0;
-    uint32_t libPathLen = *reinterpret_cast<const uint32_t*>(input.data() + 0x1C);
-    uint32_t expSymCount = *reinterpret_cast<const uint32_t*>(input.data() + 0x20);
-    uint32_t loadedLibCount = *reinterpret_cast<const uint32_t*>(input.data() + 0x24);
+    uint32_t symCount, depCount, linkedVal, libPathLen, expSymCount, loadedLibCount;
+    std::memcpy(&symCount, input.data() + 0x10, sizeof(symCount));
+    std::memcpy(&depCount, input.data() + 0x14, sizeof(depCount));
+    std::memcpy(&linkedVal, input.data() + 0x18, sizeof(linkedVal));
+    library_loaded_ = linkedVal != 0;
+    std::memcpy(&libPathLen, input.data() + 0x1C, sizeof(libPathLen));
+    std::memcpy(&expSymCount, input.data() + 0x20, sizeof(expSymCount));
+    std::memcpy(&loadedLibCount, input.data() + 0x24, sizeof(loadedLibCount));
 
     size_t offset = 40 + nameLen;
 
     symbols_by_name_.clear();
     for (uint32_t i = 0; i < symCount; ++i) {
-        uint32_t symNameLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for symbol name length";
+            return false;
+        }
+        uint32_t symNameLen;
+        std::memcpy(&symNameLen, input.data() + offset, sizeof(symNameLen));
         offset += 4;
 
         if (input.size() < offset + symNameLen) {
@@ -917,7 +981,12 @@ bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
     dependencies_.clear();
     dependency_names_.clear();
     for (uint32_t i = 0; i < depCount; ++i) {
-        uint32_t depNameLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for dependency name length";
+            return false;
+        }
+        uint32_t depNameLen;
+        std::memcpy(&depNameLen, input.data() + offset, sizeof(depNameLen));
         offset += 4;
 
         if (input.size() < offset + depNameLen) {
@@ -928,9 +997,15 @@ bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
         std::string depName(reinterpret_cast<const char*>(input.data() + offset), depNameLen);
         offset += depNameLen;
 
-        uint32_t depType = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 8 > input.size()) {
+            error_ = "Input too small for dependency type/optional";
+            return false;
+        }
+        uint32_t depType;
+        std::memcpy(&depType, input.data() + offset, sizeof(depType));
         offset += 4;
-        uint32_t optional = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        uint32_t optional;
+        std::memcpy(&optional, input.data() + offset, sizeof(optional));
         offset += 4;
 
         addDependency(depName, static_cast<ModuleType>(depType), optional != 0);
@@ -943,7 +1018,12 @@ bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
 
     exported_symbols_.clear();
     for (uint32_t i = 0; i < expSymCount; ++i) {
-        uint32_t symLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for exported symbol length";
+            return false;
+        }
+        uint32_t symLen;
+        std::memcpy(&symLen, input.data() + offset, sizeof(symLen));
         offset += 4;
 
         if (input.size() < offset + symLen) {
@@ -957,7 +1037,12 @@ bool DynamicHOModule::deserialize(const std::vector<uint8_t>& input) {
 
     loaded_libraries_.clear();
     for (uint32_t i = 0; i < loadedLibCount; ++i) {
-        uint32_t libLen = *reinterpret_cast<const uint32_t*>(input.data() + offset);
+        if (offset + 4 > input.size()) {
+            error_ = "Input too small for loaded library length";
+            return false;
+        }
+        uint32_t libLen;
+        std::memcpy(&libLen, input.data() + offset, sizeof(libLen));
         offset += 4;
 
         if (input.size() < offset + libLen) {

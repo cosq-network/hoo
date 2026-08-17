@@ -29,8 +29,8 @@ extern "C" {
  * Exception type IDs for overload resolution errors.
  * These extend the core type IDs defined in hoo_runtime.h.
  */
-#define HOO_TYPE_AMBIGUOUS_OVERLOAD    130   /**< AmbiguousOverloadException */
-#define HOO_TYPE_NO_MATCHING_OVERLOAD  131   /**< NoMatchingOverloadException */
+#define HOO_TYPE_AMBIGUOUS_OVERLOAD    132   /**< AmbiguousOverloadException */
+#define HOO_TYPE_NO_MATCHING_OVERLOAD  133   /**< NoMatchingOverloadException */
 
 /* ─────────────────────────── Overload Kind ─────────────────────────────── */
 

@@ -98,7 +98,9 @@ java -version             # Must be 17+
 2. **Install build tools and dependencies**:
    ```bash
    sudo apt install -y cmake ninja-build make clang llvm-dev \
-     libgtest-dev uuid-dev wget unzip
+     libgtest-dev uuid-dev wget unzip \
+     libuv1-dev zlib1g-dev libssl-dev libcurl4-openssl-dev \
+     libzip-dev libzstd-dev nlohmann-json3-dev
    ```
 
 3. **ANTLR4 C++ Runtime**: compiled automatically from source by CMake via `FetchContent`
@@ -180,7 +182,7 @@ See the dedicated [Windows build guide](building-windows.md) for detailed, step-
    ctest --preset windows-vs18-env --output-on-failure
    ```
 
-> **Note**: On Windows, vcpkg manifest mode provides GoogleTest, ZLIB, OpenSSL, and curl. ANTLR4 is normally built from source via `FetchContent` unless `ANTLR4_ROOT` points at an installed runtime. Windows builds use the **dynamic MSVC runtime** (`/MD`, `MultiThreadedDLL`) so project objects and vcpkg libraries use the same CRT. ANTLR's own C++ tests are disabled; only Hoo's `HooUnitTests` target is registered with CTest. JIT runtime symbols are exported automatically via linker flags — no manual `__declspec(dllexport)` needed.
+> **Note**: On Windows, vcpkg manifest mode provides GoogleTest, ZLIB, OpenSSL, and curl. ANTLR4 is normally built from source via `FetchContent` unless `ANTLR4_ROOT` points at an installed runtime. Windows builds use the **static MSVC runtime** (`/MT`, `MultiThreaded`) so project objects and vcpkg libraries use the same CRT. ANTLR's own C++ tests are disabled; only Hoo's `HooUnitTests` target is registered with CTest. JIT runtime symbols are exported automatically via linker flags — no manual `__declspec(dllexport)` needed.
 
 ---
 

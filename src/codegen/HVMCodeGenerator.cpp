@@ -19,6 +19,7 @@
 #include <functional>
 #include <climits>
 #include <array>
+#include "runtime/lib/runtime/hoo_runtime.h"
 
 using namespace hvm;
 
@@ -90,9 +91,9 @@ static std::string singletonMethodReturnType(const std::string& className, const
     if (className == "Math" && (methodName == "abs" || methodName == "min" ||
                                 methodName == "max" || methodName == "sign")) {
         for (uint32_t typeId : argTypeIds) {
-            if (typeId == 2 || typeId == 9) return "double";
-            if (typeId == 5) return "int8";
-            if (typeId == 6) return "byte";
+            if (typeId == HOO_TYPE_FLOAT64 || typeId == 9) return "double";
+            if (typeId == HOO_TYPE_INT8) return "int8";
+            if (typeId == HOO_TYPE_BYTE) return "byte";
         }
     }
     if (int64Methods.count(methodName)) return "int64";
@@ -140,43 +141,49 @@ static std::string classToPrefix(const std::string& className) {
 
 static uint32_t builtinConstructedTypeId(const std::string& className) {
     static const std::unordered_map<std::string, uint32_t> typeIds = {
-        {"String", 101},
-        {"Array", 102},
-        {"Map", 103},
-        {"Character", 109},
-        {"Args", 110},
-        {"Compression", 111},
-        {"Csv", 114},
-        {"Buffer", 113},
-        {"URL", 106},
-        {"HttpClient", 108},
-        {"HttpResponse", 107},
-        {"Random", 105},
-        {"Dict", 117},
-        {"List", 118},
-        {"DateTime", 119},
-        {"Regex", 120},
-        {"Mutex", 121},
-        {"Condition", 128},
-        {"Semaphore", 129},
-        {"Uuid", 122},
-        {"Decimal", 125},
-        {"Socket", 127},
+        {"String", HOO_TYPE_STRING},
+        {"Array", HOO_TYPE_ARRAY},
+        {"Map", HOO_TYPE_MAP},
+        {"Character", HOO_TYPE_CHARACTER},
+        {"Args", HOO_TYPE_ARGS},
+        {"Compression", HOO_TYPE_COMPRESSION},
+        {"Csv", HOO_TYPE_CSV},
+        {"Buffer", HOO_TYPE_BUFFER},
+        {"URL", HOO_TYPE_NET_URL},
+        {"HttpClient", HOO_TYPE_NET_HTTP_CLI},
+        {"HttpResponse", HOO_TYPE_NET_HTTP_RES},
+        {"Random", HOO_TYPE_RANDOM},
+        {"Dict", HOO_TYPE_DICT},
+        {"List", HOO_TYPE_LIST},
+        {"DateTime", HOO_TYPE_DATETIME},
+        {"Regex", HOO_TYPE_REGEX},
+        {"Mutex", HOO_TYPE_MUTEX},
+        {"Condition", HOO_TYPE_CONDITION},
+        {"Semaphore", HOO_TYPE_SEMAPHORE},
+        {"Uuid", HOO_TYPE_UUID},
+        {"Decimal", HOO_TYPE_DECIMAL},
+        {"Socket", HOO_TYPE_NET_SOCKET},
+        {"Tensor", HOO_TYPE_TENSOR},
     };
     auto it = typeIds.find(className);
-    return it != typeIds.end() ? it->second : 100;
+    return it != typeIds.end() ? it->second : HOO_TYPE_OBJECT;
 }
 
 static std::string builtinClassNameFromTypeId(uint32_t typeId) {
     static const std::unordered_map<uint32_t, std::string> names = {
-        {101, "String"}, {102, "Array"}, {103, "Map"}, {104, "Tensor"},
-        {105, "Random"}, {106, "URL"}, {107, "HttpResponse"},
-        {108, "HttpClient"}, {109, "Character"}, {110, "Args"},
-        {111, "Compression"}, {113, "Buffer"}, {114, "Csv"},
-        {117, "Dict"}, {118, "List"}, {119, "DateTime"},
-        {120, "Regex"}, {121, "Mutex"}, {122, "Uuid"}, {125, "Decimal"},
-        {127, "Socket"},
-        {128, "Condition"}, {129, "Semaphore"}
+        {HOO_TYPE_STRING, "String"}, {HOO_TYPE_ARRAY, "Array"},
+        {HOO_TYPE_MAP, "Map"}, {HOO_TYPE_EXCEPTION, "Exception"},
+        {HOO_TYPE_RANDOM, "Random"}, {HOO_TYPE_NET_URL, "URL"},
+        {HOO_TYPE_NET_HTTP_RES, "HttpResponse"},
+        {HOO_TYPE_NET_HTTP_CLI, "HttpClient"}, {HOO_TYPE_CHARACTER, "Character"},
+        {HOO_TYPE_UUID, "Uuid"}, {HOO_TYPE_REGEX, "Regex"},
+        {HOO_TYPE_BUFFER, "Buffer"}, {HOO_TYPE_CSV, "Csv"},
+        {HOO_TYPE_ARGS, "Args"}, {HOO_TYPE_COMPRESSION, "Compression"},
+        {HOO_TYPE_DICT, "Dict"}, {HOO_TYPE_LIST, "List"},
+        {HOO_TYPE_DATETIME, "DateTime"}, {HOO_TYPE_MUTEX, "Mutex"},
+        {HOO_TYPE_DECIMAL, "Decimal"}, {HOO_TYPE_NET_SOCKET, "Socket"},
+        {HOO_TYPE_CONDITION, "Condition"}, {HOO_TYPE_SEMAPHORE, "Semaphore"},
+        {HOO_TYPE_TENSOR, "Tensor"}
     };
     auto it = names.find(typeId);
     return it == names.end() ? std::string{} : it->second;
@@ -199,9 +206,9 @@ static bool isJsonFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t jsonFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "json_deserialize_hashmap") return 117;
-    if (functionName == "json_deserialize_anyarray") return 118;
-    return 101;
+    if (functionName == "json_deserialize_hashmap") return HOO_TYPE_DICT;
+    if (functionName == "json_deserialize_anyarray") return HOO_TYPE_LIST;
+    return HOO_TYPE_STRING;
 }
 
 static bool isBufferFreeFunction(const std::string& functionName) {
@@ -325,8 +332,8 @@ static bool isProcessFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t processFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "process_capture") return 101; // string (type ID 101)
-    return 1; // int64 (type ID 1)
+    if (functionName == "process_capture") return HOO_TYPE_STRING; // string (type ID 101)
+    return HOO_TYPE_INT64; // int64 (type ID 1)
 }
 
 static bool isRegexFreeFunction(const std::string& functionName) {
@@ -337,9 +344,9 @@ static bool isRegexFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t regexFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "regex_replace") return 101; // string
-    if (functionName == "regex_split") return 102; // array
-    return 1; // int64 (match, search)
+    if (functionName == "regex_replace") return HOO_TYPE_STRING; // string
+    if (functionName == "regex_split") return HOO_TYPE_ARRAY; // array
+    return HOO_TYPE_INT64; // int64 (match, search)
 }
 
 static bool isThreadFreeFunction(const std::string& functionName) {
@@ -350,7 +357,7 @@ static bool isThreadFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t threadFreeFunctionReturnTypeId(const std::string& functionName) {
-    return 1; // int64
+    return HOO_TYPE_INT64; // int64
 }
 
 static bool isUuidFreeFunction(const std::string& functionName) {
@@ -361,10 +368,10 @@ static bool isUuidFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t uuidFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "uuid_from_bytes") return 122; // Uuid
-    if (functionName == "uuid_to_bytes") return 113; // Buffer
-    if (functionName == "uuid_v4" || functionName == "uuid_nil" || functionName == "uuid_to_string") return 101; // string
-    return 1; // int64
+    if (functionName == "uuid_from_bytes") return HOO_TYPE_UUID; // Uuid
+    if (functionName == "uuid_to_bytes") return HOO_TYPE_BUFFER; // Buffer
+    if (functionName == "uuid_v4" || functionName == "uuid_nil" || functionName == "uuid_to_string") return HOO_TYPE_STRING; // string
+    return HOO_TYPE_INT64; // int64
 }
 
 static bool isCharacterFreeFunction(const std::string& functionName) {
@@ -372,7 +379,7 @@ static bool isCharacterFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t characterFreeFunctionReturnTypeId(const std::string& functionName) {
-    return 109; // Character type ID is 109
+    return HOO_TYPE_CHARACTER; // Character type ID is 109
 }
 
 static bool isCompressionFreeFunction(const std::string& functionName) {
@@ -381,7 +388,7 @@ static bool isCompressionFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t compressionFreeFunctionReturnTypeId(const std::string& functionName) {
-    return 113; // Buffer type ID is 113
+    return HOO_TYPE_BUFFER; // Buffer type ID is 113
 }
 
 static bool isPathFreeFunction(const std::string& functionName) {
@@ -396,11 +403,11 @@ static bool isPathFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t pathFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "path_separator" || functionName == "path_list_separator") return 6; // byte/char
+    if (functionName == "path_separator" || functionName == "path_list_separator") return HOO_TYPE_BYTE; // byte/char
     if (functionName == "path_is_absolute" || functionName == "path_is_relative" ||
-        functionName == "path_has_extension") return 1; // int64
-    if (functionName == "path_split") return 102; // array of strings
-    return 101; // string
+        functionName == "path_has_extension") return HOO_TYPE_INT64; // int64
+    if (functionName == "path_split") return HOO_TYPE_ARRAY; // array of strings
+    return HOO_TYPE_STRING; // string
 }
 
 static bool isArgsFreeFunction(const std::string& functionName) {
@@ -411,8 +418,8 @@ static bool isArgsFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t argsFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "args_count") return 1; // int64
-    return 101; // string
+    if (functionName == "args_count") return HOO_TYPE_INT64; // int64
+    return HOO_TYPE_STRING; // string
 }
 
 static bool isStringFreeFunction(const std::string& functionName) {
@@ -423,7 +430,7 @@ static bool isStringFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t stringFreeFunctionReturnTypeId(const std::string& functionName) {
-    return 101; // string
+    return HOO_TYPE_STRING; // string
 }
 
 static bool isNetFreeFunction(const std::string& functionName) {
@@ -439,10 +446,10 @@ static bool isNetFreeFunction(const std::string& functionName) {
 static uint32_t netFreeFunctionReturnTypeId(const std::string& functionName) {
     if (functionName == "net_socket_new" || functionName == "net_socket_accept" ||
         functionName == "net_socket_retain") return 127; // Socket
-    if (functionName == "net_socket_receive") return 113; // Buffer
-    if (functionName == "net_socket_last_error") return 101; // String
-    if (functionName == "net_socket_release") return 4; // void
-    return 1; // int64
+    if (functionName == "net_socket_receive") return HOO_TYPE_BUFFER; // Buffer
+    if (functionName == "net_socket_last_error") return HOO_TYPE_STRING; // String
+    if (functionName == "net_socket_release") return HOO_TYPE_VOID; // void
+    return HOO_TYPE_INT64; // int64
 }
 
 static bool isHooModuleFreeFunction(const std::string& functionName) {
@@ -460,14 +467,14 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
-    if (functionName == "datetime_now_seconds") return 1;
-    if (functionName == "datetime_now_precise") return 2;
-    if (functionName == "datetime_format" || functionName == "datetime_iso8601") return 101; // string is type ID 101
+    if (functionName == "datetime_now_seconds") return HOO_TYPE_INT64;
+    if (functionName == "datetime_now_precise") return HOO_TYPE_FLOAT64;
+    if (functionName == "datetime_format" || functionName == "datetime_iso8601") return HOO_TYPE_STRING; // string is type ID 101
     if (functionName == "datetime_diff_days" ||
         functionName == "datetime_diff_hours" ||
-        functionName == "datetime_compare") return 1; // int64
-    if (functionName == "datetime_diff_seconds") return 2; // double
-    return 119; // DateTime is 119
+        functionName == "datetime_compare") return HOO_TYPE_INT64; // int64
+    if (functionName == "datetime_diff_seconds") return HOO_TYPE_FLOAT64; // double
+    return HOO_TYPE_DATETIME; // DateTime is 119
 }
 
 static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -479,15 +486,15 @@ static uint32_t fsFreeFunctionReturnTypeId(const std::string& functionName) {
         functionName == "fs_copy" || functionName == "fs_move" ||
         functionName == "fs_last_modified" ||
         functionName == "fs_write_text" || functionName == "fs_append_text" ||
-        functionName == "fs_write_bytes" || functionName == "fs_write_bytes_buffer") return 1;
+        functionName == "fs_write_bytes" || functionName == "fs_write_bytes_buffer") return HOO_TYPE_INT64;
     if (functionName == "fs_read_bytes" || functionName == "fs_read_bytes_default" ||
-        functionName == "fs_read_bytes_buffer" || functionName == "fs_read_bytes_buffer_default") return 113;
-    if (functionName == "fs_read_text" || functionName == "fs_read_text_default") return 101;
-    if (functionName == "fs_list_dir") return 102;
+        functionName == "fs_read_bytes_buffer" || functionName == "fs_read_bytes_buffer_default") return HOO_TYPE_BUFFER;
+    if (functionName == "fs_read_text" || functionName == "fs_read_text_default") return HOO_TYPE_STRING;
+    if (functionName == "fs_list_dir") return HOO_TYPE_ARRAY;
     if (functionName == "fs_temp_dir" || functionName == "fs_create_temp_dir" ||
         functionName == "fs_create_temp_file" || functionName == "fs_current_dir" ||
-        functionName == "fs_current_exe_dir") return 101;
-    return 100;
+        functionName == "fs_current_exe_dir") return HOO_TYPE_STRING;
+    return HOO_TYPE_OBJECT;
 }
 
 static uint32_t mathFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
@@ -504,20 +511,20 @@ static uint32_t mathFreeFunctionReturnTypeId(const std::string& functionName, co
     if (functionName == "math_abs" || functionName == "math_min" ||
         functionName == "math_max" || functionName == "math_sign") {
         for (uint32_t typeId : argTypeIds) {
-            if (typeId == 2 || typeId == 9) return 2; // double
-            if (typeId == 5) return 5; // int8
-            if (typeId == 6) return 6; // byte
+            if (typeId == HOO_TYPE_FLOAT64 || typeId == 9) return HOO_TYPE_FLOAT64; // double
+            if (typeId == HOO_TYPE_INT8) return HOO_TYPE_INT8; // int8
+            if (typeId == HOO_TYPE_BYTE) return HOO_TYPE_BYTE; // byte
         }
     }
-    if (int64Methods.count(functionName)) return 1; // int64
-    if (doubleMethods.count(functionName)) return 2; // double
-    return 100;
+    if (int64Methods.count(functionName)) return HOO_TYPE_INT64; // int64
+    if (doubleMethods.count(functionName)) return HOO_TYPE_FLOAT64; // double
+    return HOO_TYPE_OBJECT;
 }
 
 static uint32_t hashingFreeFunctionReturnTypeId(const std::string& functionName) {
     if (functionName == "hashing_crc32" || functionName == "hashing_crc32_buffer" ||
-        functionName == "hashing_crc32_slice") return 1; // int64
-    return 101; // string
+        functionName == "hashing_crc32_slice") return HOO_TYPE_INT64; // int64
+    return HOO_TYPE_STRING; // string
 }
 
 static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -525,28 +532,28 @@ static uint32_t systemFreeFunctionReturnTypeId(const std::string& functionName) 
         functionName == "system_os_name" || functionName == "system_os_version" ||
         functionName == "system_exec" || functionName == "system_user_home" ||
         functionName == "system_user_name" || functionName == "system_current_dir") {
-        return 101; // string
+        return HOO_TYPE_STRING; // string
     }
-    if (functionName == "system_exit") return 4; // void
-    return 1; // int64
+    if (functionName == "system_exit") return HOO_TYPE_VOID; // void
+    return HOO_TYPE_INT64; // int64
 }
 
 static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionName, const std::vector<uint32_t>& argTypeIds) {
-    if (functionName == "print" || functionName == "println") return 4; // void
+    if (functionName == "print" || functionName == "println") return HOO_TYPE_VOID; // void
     if (isJsonFreeFunction(functionName)) return jsonFreeFunctionReturnTypeId(functionName);
     if (isBufferFreeFunction(functionName)) {
-        if (functionName == "byte_slice_from_buffer") return 130;
-        if (functionName == "byte_slice_release") return 4;
+        if (functionName == "byte_slice_from_buffer") return HOO_TYPE_BYTE_SLICE;
+        if (functionName == "byte_slice_release") return HOO_TYPE_VOID;
     }
-    if (isCsvFreeFunction(functionName)) return 114;
+    if (isCsvFreeFunction(functionName)) return HOO_TYPE_CSV;
     if (isFsFreeFunction(functionName)) return fsFreeFunctionReturnTypeId(functionName);
     if (isDatetimeFreeFunction(functionName)) return datetimeFreeFunctionReturnTypeId(functionName);
     if (isEncodingFreeFunction(functionName)) {
         if (functionName == "encoding_base64_decode_buffer" ||
             functionName == "encoding_hex_decode_buffer") {
-            return 113; // Buffer type ID is 113
+            return HOO_TYPE_BUFFER; // Buffer type ID is 113
         }
-        return 101; // String type ID is 101
+        return HOO_TYPE_STRING; // String type ID is 101
     }
     if (isMathFreeFunction(functionName)) return mathFreeFunctionReturnTypeId(functionName, argTypeIds);
     if (isHashingFreeFunction(functionName)) return hashingFreeFunctionReturnTypeId(functionName);
@@ -561,7 +568,7 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isArgsFreeFunction(functionName)) return argsFreeFunctionReturnTypeId(functionName);
     if (isStringFreeFunction(functionName)) return stringFreeFunctionReturnTypeId(functionName);
     if (isNetFreeFunction(functionName)) return netFreeFunctionReturnTypeId(functionName);
-    return 100;
+    return HOO_TYPE_OBJECT;
 }
 
 HVMCodeGenerator::HVMCodeGenerator() {
@@ -717,10 +724,10 @@ void HVMCodeGenerator::setExternalFunctionMetadata(
             else if (type == "char") functionReturnTypes_[name] = 7;
             else if (type == "bit") functionReturnTypes_[name] = 8;
             else if (type == "f8") functionReturnTypes_[name] = 9;
-            else if (type == "string") functionReturnTypes_[name] = 101;
-            else if (type == "tensor") functionReturnTypes_[name] = 104;
+            else if (type == "string") functionReturnTypes_[name] = HOO_TYPE_STRING;
+            else if (type == "tensor") functionReturnTypes_[name] = HOO_TYPE_TENSOR;
             else if (type == "any") functionReturnTypes_[name] = 0;
-            else functionReturnTypes_[name] = 100;
+            else functionReturnTypes_[name] = HOO_TYPE_OBJECT;
         }
     }
 }
@@ -784,35 +791,35 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     functionFutureElementTypes_.clear();
     for (const auto& [name, info] : externalFunctionMetadata_) {
         const std::string& type = info.returnType;
-        uint32_t typeId = 100;
-        if (type == "int64") typeId = 1;
-        else if (type == "double") typeId = 2;
-        else if (type == "bool") typeId = 3;
-        else if (type == "void") typeId = 4;
-        else if (type == "int8") typeId = 5;
-        else if (type == "byte") typeId = 6;
-        else if (type == "char") typeId = 7;
+        uint32_t typeId = HOO_TYPE_OBJECT;
+        if (type == "int64") typeId = HOO_TYPE_INT64;
+        else if (type == "double") typeId = HOO_TYPE_FLOAT64;
+        else if (type == "bool") typeId = HOO_TYPE_BOOL;
+        else if (type == "void") typeId = HOO_TYPE_VOID;
+        else if (type == "int8") typeId = HOO_TYPE_INT8;
+        else if (type == "byte") typeId = HOO_TYPE_BYTE;
+        else if (type == "char") typeId = HOO_TYPE_CHAR;
         else if (type == "bit") typeId = 8;
         else if (type == "f8") typeId = 9;
-        else if (type == "string") typeId = 101;
-        else if (type == "tensor") typeId = 104;
+        else if (type == "string") typeId = HOO_TYPE_STRING;
+        else if (type == "tensor") typeId = HOO_TYPE_TENSOR;
         else if (type == "any") typeId = 0;
         functionReturnTypes_[name] = typeId;
         if (!info.returnClass.empty()) functionReturnClass_[name] = info.returnClass;
         if (!info.parameterTypes.empty()) {
             OverloadReturnInfo overload;
             for (const auto& parameter : info.parameterTypes) {
-                uint32_t parameterId = 100;
-                if (parameter == "int64") parameterId = 1;
-                else if (parameter == "double") parameterId = 2;
-                else if (parameter == "bool") parameterId = 3;
-                else if (parameter == "int8") parameterId = 5;
-                else if (parameter == "byte") parameterId = 6;
-                else if (parameter == "char") parameterId = 7;
+                uint32_t parameterId = HOO_TYPE_OBJECT;
+                if (parameter == "int64") parameterId = HOO_TYPE_INT64;
+                else if (parameter == "double") parameterId = HOO_TYPE_FLOAT64;
+                else if (parameter == "bool") parameterId = HOO_TYPE_BOOL;
+                else if (parameter == "int8") parameterId = HOO_TYPE_INT8;
+                else if (parameter == "byte") parameterId = HOO_TYPE_BYTE;
+                else if (parameter == "char") parameterId = HOO_TYPE_CHAR;
                 else if (parameter == "bit") parameterId = 8;
                 else if (parameter == "f8") parameterId = 9;
-                else if (parameter == "string") parameterId = 101;
-                else if (parameter == "tensor") parameterId = 104;
+                else if (parameter == "string") parameterId = HOO_TYPE_STRING;
+                else if (parameter == "tensor") parameterId = HOO_TYPE_TENSOR;
                 else if (parameter == "any") parameterId = 0;
                 overload.parameterTypes.push_back(parameterId);
                 overload.parameterIsNullable.push_back(false);
@@ -822,19 +829,19 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
         }
     }
     auto externalTypeId = [](const std::string& type) -> uint32_t {
-        if (type == "int64") return 1;
-        if (type == "double") return 2;
-        if (type == "bool") return 3;
-        if (type == "void") return 4;
-        if (type == "int8") return 5;
-        if (type == "byte") return 6;
-        if (type == "char") return 7;
+        if (type == "int64") return HOO_TYPE_INT64;
+        if (type == "double") return HOO_TYPE_FLOAT64;
+        if (type == "bool") return HOO_TYPE_BOOL;
+        if (type == "void") return HOO_TYPE_VOID;
+        if (type == "int8") return HOO_TYPE_INT8;
+        if (type == "byte") return HOO_TYPE_BYTE;
+        if (type == "char") return HOO_TYPE_CHAR;
         if (type == "bit") return 8;
         if (type == "f8") return 9;
-        if (type == "string") return 101;
-        if (type == "tensor") return 104;
+        if (type == "string") return HOO_TYPE_STRING;
+        if (type == "tensor") return HOO_TYPE_TENSOR;
         if (type == "any") return 0;
-        return 100;
+        return HOO_TYPE_OBJECT;
     };
     for (const auto& [name, overloads] : externalFunctionMetadataSets_) {
         for (size_t index = externalFunctionMetadata_.count(name) ? 1 : 0;
@@ -888,7 +895,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const ast::FunctionDeclaration*>(decl.get())) {
             if (funcDecl->isAsync()) {
-                uint32_t elementType = 4;
+                uint32_t elementType = HOO_TYPE_VOID;
                 if (auto futureType = dynamic_cast<const ast::FutureType*>(funcDecl->getReturnType())) {
                     elementType = typeIdFromDeclaredType(&futureType->getElementType());
                 }
@@ -920,7 +927,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         functionReturnClass_[funcDecl->getName()] = clsName;
                     }
                 } else {
-                    overloadInfo.result.typeId = 4;
+                    overloadInfo.result.typeId = HOO_TYPE_VOID;
                 }
                 functionOverloadReturns_[funcDecl->getName()].push_back(std::move(overloadInfo));
             }
@@ -1076,7 +1083,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                         layout.fieldOffsets[var->getName()] = currentOffset;
                         std::string fieldClassName;
                         layout.fieldTypeIds[var->getName()] =
-                            var->getType() ? typeIdFromDeclaredType(var->getType(), &fieldClassName) : 100;
+                            var->getType() ? typeIdFromDeclaredType(var->getType(), &fieldClassName) : HOO_TYPE_OBJECT;
                         layout.fieldClassNames[var->getName()] = fieldClassName;
                         layout.fieldIsNullable[var->getName()] =
                             var->getType() ? isNullableDeclaredType(var->getType()) : false;
@@ -1142,7 +1149,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                                 overloadInfo.result.className = returnClass;
                             } else {
                                 layout.methodReturnTypes[fn->getName()] = 4;
-                                overloadInfo.result.typeId = 4;
+                                overloadInfo.result.typeId = HOO_TYPE_VOID;
                             }
                             layout.methodOverloadReturns[fn->getName()].push_back(std::move(overloadInfo));
                         }
@@ -1329,7 +1336,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     currentFunctionHasReturn_ = false;
     currentFunctionIsAsync_ = decl && decl->isAsync();
     if (decl && decl->isAsync() && decl->getReturnType() &&
-        typeIdFromDeclaredType(decl->getReturnType()) != 4 &&
+        typeIdFromDeclaredType(decl->getReturnType()) != HOO_TYPE_VOID &&
         !dynamic_cast<const ast::FutureType*>(decl->getReturnType())) {
         addError("Async function '" + decl->getName() + "' must return Future<T>");
     }
@@ -1359,14 +1366,14 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     };
 
     if (isMethod) {
-        int32_t thisOffset = reserveLocal("this", 100, currentClass_ ? currentClass_->name : "");
+        int32_t thisOffset = reserveLocal("this", HOO_TYPE_OBJECT, currentClass_ ? currentClass_->name : "");
         emit(Opcode::ST_D, OperandsI{1, 30, static_cast<int16_t>(thisOffset)});
     }
 
     if (decl) {
         mapParams(decl->getParameters());
         if (decl->isAsync()) {
-            uint32_t elemTypeId = 4; // async functions without a declared result are Future<void>
+            uint32_t elemTypeId = HOO_TYPE_VOID; // async functions without a declared result are Future<void>
             if (decl->getReturnType()) {
                 if (auto futureType = dynamic_cast<const ast::FutureType*>(decl->getReturnType())) {
                     elemTypeId = typeIdFromDeclaredType(&futureType->getElementType());
@@ -1377,7 +1384,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
             emitCall(Opcode::CALL, "_F_hoo_future_new_native_i64");
             freeRegister(elemTypeReg);
             
-            asyncFutureOffset_ = reserveLocal("__async_future__", 123, "Future");
+            asyncFutureOffset_ = reserveLocal("__async_future__", HOO_TYPE_FUTURE, "Future");
             emit(Opcode::ST_D, OperandsI{1, 30, static_cast<int16_t>(asyncFutureOffset_)});
         }
         visitStatement(decl->getBody());
@@ -1386,7 +1393,7 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
         visitStatement(ctorDecl->getBody());
     }
 
-    if (decl && decl->getReturnType() && typeIdFromDeclaredType(decl->getReturnType()) != 4 && !currentFunctionHasReturn_) {
+    if (decl && decl->getReturnType() && typeIdFromDeclaredType(decl->getReturnType()) != HOO_TYPE_VOID && !currentFunctionHasReturn_) {
         addError("Non-void function '" + decl->getName() + "' has no return statement");
     }
 
@@ -1479,18 +1486,18 @@ static bool isArcManagedTypeId(uint32_t typeId) {
     // Unknown/default (100) is excluded because it may be assigned to raw pointers
     // or primitive values that cannot be passed to hoo_release.
     switch (typeId) {
-        case 100: // Unknown - could be raw pointer, int64, etc.
-        case 110: // Args - uses calloc and dedicated args_release cleanup
-        case 111: // Compression - uses std::free
-        case 120: // Regex - uses delete with custom refcounting
-        case 121: // Mutex - uses delete
-        case 122: // Uuid - uses std::free with custom refcounting
-        case 128: // Condition - explicit destroy
-        case 129: // Semaphore - explicit destroy
-        case 130: // ByteSlice - caller-owned handle, released explicitly via byte_slice_release
+        case HOO_TYPE_OBJECT: // Unknown - could be raw pointer, int64, etc.
+        case HOO_TYPE_ARGS: // Args - uses calloc and dedicated args_release cleanup
+        case HOO_TYPE_COMPRESSION: // Compression - uses std::free
+        case HOO_TYPE_REGEX: // Regex - uses delete with custom refcounting
+        case HOO_TYPE_MUTEX: // Mutex - uses delete
+        case HOO_TYPE_UUID: // Uuid - uses std::free with custom refcounting
+        case HOO_TYPE_CONDITION: // Condition - explicit destroy
+        case HOO_TYPE_SEMAPHORE: // Semaphore - explicit destroy
+        case HOO_TYPE_BYTE_SLICE: // ByteSlice - caller-owned handle, released explicitly via byte_slice_release
             return false;
         default:
-            return typeId >= 100;
+            return typeId >= HOO_TYPE_OBJECT;
     }
 }
 
@@ -1562,9 +1569,9 @@ void HVMCodeGenerator::endFunction(const FunctionPrologueInfo& info) {
 void HVMCodeGenerator::visitFunction(const ast::FunctionDeclaration& decl) {
     // Populate function return type inference info before processing body
     if (decl.isAsync()) {
-        functionReturnTypes_[decl.getName()] = 123;
+        functionReturnTypes_[decl.getName()] = HOO_TYPE_FUTURE;
         functionReturnClass_[decl.getName()] = "Future";
-        uint32_t elementType = 4;
+        uint32_t elementType = HOO_TYPE_VOID;
         if (auto futureType = dynamic_cast<const ast::FutureType*>(decl.getReturnType())) {
             elementType = typeIdFromDeclaredType(&futureType->getElementType());
         }
@@ -1938,16 +1945,16 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                 }
             } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(decl.getInitializer())) {
                 auto& elements = arrLit->getElements()->getExpressions();
-                uint32_t commonType = 100;
+                uint32_t commonType = HOO_TYPE_OBJECT;
                 for (const auto& elem : elements) {
                     uint32_t t = getTypeId(nullptr, elem.get());
-                    if (t != 100) {
-                        if (commonType == 100) commonType = t;
-                        else if (commonType != t) { commonType = 100; break; }
+                    if (t != HOO_TYPE_OBJECT) {
+                        if (commonType == HOO_TYPE_OBJECT) commonType = t;
+                        else if (commonType != t) { commonType = HOO_TYPE_OBJECT; break; }
                     }
                 }
                 if (arrLit->isList()) {
-                    elemTypeId = (commonType == 100) ? 0 : commonType;
+                    elemTypeId = (commonType == HOO_TYPE_OBJECT) ? 0 : commonType;
                 } else {
                     elemTypeId = commonType;
                 }
@@ -1956,64 +1963,64 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
                     elemTypeId = tensorElementTypeIdFromLiteral(*tensorLit);
                 } else if (auto arrLit = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
                     if (arrLit->isList()) {
-                        uint32_t commonType = 100;
+                        uint32_t commonType = HOO_TYPE_OBJECT;
                         if (arrLit->getElements()) {
                             for (const auto& elem : arrLit->getElements()->getExpressions()) {
                                 uint32_t t = getTypeId(nullptr, elem.get());
-                                if (t != 100) {
-                                    if (commonType == 100) commonType = t;
-                                    else if (commonType != t) { commonType = 100; break; }
+                                if (t != HOO_TYPE_OBJECT) {
+                                    if (commonType == HOO_TYPE_OBJECT) commonType = t;
+                                    else if (commonType != t) { commonType = HOO_TYPE_OBJECT; break; }
                                 }
                             }
                         }
-                        elemTypeId = (commonType == 100) ? 0 : commonType;
+                        elemTypeId = (commonType == HOO_TYPE_OBJECT) ? 0 : commonType;
                     }
                 }
             } else if (auto binExpr = dynamic_cast<const ast::BinaryExpression*>(decl.getInitializer())) {
                 auto inferTensorElemType = [&](const ast::Expression& operand) -> uint32_t {
                     if (auto pe2 = dynamic_cast<const ast::PrimaryExpression*>(&operand)) {
                         if (auto id2 = dynamic_cast<const ast::Identifier*>(&pe2->getPrimary())) {
-                            if (getLocalTypeId(id2->getName()) == 104) {
+                            if (getLocalTypeId(id2->getName()) == HOO_TYPE_TENSOR) {
                                 return getLocalElementTypeId(id2->getName());
                             }
                         }
                     }
-                    return 100;
+                    return HOO_TYPE_OBJECT;
                 };
                 uint32_t leftElem = inferTensorElemType(binExpr->getLeft());
                 uint32_t rightElem = inferTensorElemType(binExpr->getRight());
-                if (leftElem != 100) elemTypeId = leftElem;
-                else if (rightElem != 100) elemTypeId = rightElem;
+                if (leftElem != HOO_TYPE_OBJECT) elemTypeId = leftElem;
+                else if (rightElem != HOO_TYPE_OBJECT) elemTypeId = rightElem;
             } else if (auto logicAnd = dynamic_cast<const ast::LogicalAnd*>(decl.getInitializer())) {
                 auto inferElem = [&](const ast::Expression& operand) -> uint32_t {
                     if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&operand)) {
                         if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
-                            if (getLocalTypeId(id->getName()) == 104) {
+                            if (getLocalTypeId(id->getName()) == HOO_TYPE_TENSOR) {
                                 return getLocalElementTypeId(id->getName());
                             }
                         }
                     }
-                    return 100;
+                    return HOO_TYPE_OBJECT;
                 };
                 uint32_t leftElem = inferElem(logicAnd->getLeft());
                 uint32_t rightElem = inferElem(logicAnd->getRight());
-                if (leftElem != 100) elemTypeId = leftElem;
-                else if (rightElem != 100) elemTypeId = rightElem;
+                if (leftElem != HOO_TYPE_OBJECT) elemTypeId = leftElem;
+                else if (rightElem != HOO_TYPE_OBJECT) elemTypeId = rightElem;
             } else if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(decl.getInitializer())) {
                 auto inferElem = [&](const ast::Expression& operand) -> uint32_t {
                     if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&operand)) {
                         if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
-                            if (getLocalTypeId(id->getName()) == 104) {
+                            if (getLocalTypeId(id->getName()) == HOO_TYPE_TENSOR) {
                                 return getLocalElementTypeId(id->getName());
                             }
                         }
                     }
-                    return 100;
+                    return HOO_TYPE_OBJECT;
                 };
                 uint32_t leftElem = inferElem(logicOr->getLeft());
                 uint32_t rightElem = inferElem(logicOr->getRight());
-                if (leftElem != 100) elemTypeId = leftElem;
-                else if (rightElem != 100) elemTypeId = rightElem;
+                if (leftElem != HOO_TYPE_OBJECT) elemTypeId = leftElem;
+                else if (rightElem != HOO_TYPE_OBJECT) elemTypeId = rightElem;
             }
         }
         bool declNullable = isNullableDeclaredType(decl.getType());
@@ -2021,7 +2028,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             validateAssignmentNullSafety(declNullable, typeId, decl.getInitializer(), decl.getName());
         }
         int32_t offset = reserveLocal(decl.getName(), typeId, varClassName, elemTypeId, keyTypeId, declNullable);
-        if (typeId == 110 && decl.getInitializer()) {
+        if (typeId == HOO_TYPE_ARGS && decl.getInitializer()) {
             auto& local = scopeStack_.back()[decl.getName()];
             local.arcManaged = true;
             local.cleanupSymbol = "_F_M_hoo_E_args_release_v";
@@ -2105,8 +2112,8 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         restoreRegisterMask(loopExitMask);
     } else if (auto switchStmt = dynamic_cast<const ast::SwitchStatement*>(&stmt)) {
         auto supportsSwitchCompare = [](uint32_t typeId) {
-            return typeId == 0 || typeId == 1 || typeId == 3 || typeId == 5 ||
-                   typeId == 6 || typeId == 7 || typeId == 8;
+            return typeId == 0 || typeId == HOO_TYPE_INT64 || typeId == HOO_TYPE_BOOL || typeId == HOO_TYPE_INT8 ||
+                   typeId == HOO_TYPE_BYTE || typeId == HOO_TYPE_CHAR || typeId == 8;
         };
         uint32_t discriminantType = inferExpressionTypeId(switchStmt->getDiscriminant());
         if (!supportsSwitchCompare(discriminantType)) {
@@ -2204,7 +2211,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             isStepOne = false;
             if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(forRange->getStep())) {
                 if (auto il = dynamic_cast<const ast::IntegerLiteral*>(&pe->getPrimary())) {
-                    if (il->getValue() == 1) {
+                    if (il->getValue() == HOO_TYPE_INT64) {
                         isStepOne = true;
                     }
                 }
@@ -2307,14 +2314,14 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         
         // Convert string to character array, or map to key array
         uint32_t forInTypeId = inferExpressionTypeId(forIn->getIterable());
-        if (forInTypeId == 101) { // String
+        if (forInTypeId == HOO_TYPE_STRING) { // String
             uint8_t oldReg = iterReg;
             emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_String_to_characters_p_p");
             iterReg = allocateRegister();
             emit(Opcode::MOV, OperandsR{iterReg, 1, 0, 0});
             freeRegister(oldReg);
-        } else if (forInTypeId == 103) { // Map
+        } else if (forInTypeId == HOO_TYPE_MAP) { // Map
             uint32_t mapKeyTypeId = 0;
             if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
                 if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
@@ -2356,10 +2363,10 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         Label* stepLabel = createLabel();
         bindLabel(startLabel);
         
-        uint32_t forInElemTypeId = (forInTypeId == 101) ? 109 : 100;
+        uint32_t forInElemTypeId = (forInTypeId == HOO_TYPE_STRING) ? HOO_TYPE_CHARACTER : HOO_TYPE_OBJECT;
         if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&forIn->getIterable())) {
             if (auto id = dynamic_cast<const ast::Identifier*>(&pe->getPrimary())) {
-                uint32_t et = forInTypeId == 103
+                uint32_t et = forInTypeId == HOO_TYPE_MAP
                     ? getLocalKeyTypeId(id->getName())
                     : getLocalElementTypeId(id->getName());
                 if (et != 0) forInElemTypeId = et;
@@ -2369,13 +2376,13 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
         // Lowered: item = iter[i] via a type-correct runtime accessor.
         emit(Opcode::MOV, OperandsR{1, iterReg, 0, 0});
         emit(Opcode::MOV, OperandsR{2, iReg, 0, 0});
-        if (forInElemTypeId == 2 || forInElemTypeId == 9) {
+        if (forInElemTypeId == HOO_TYPE_FLOAT64 || forInElemTypeId == 9) {
             emitCall(Opcode::CALL, "_F_array_get_double_v_p_p");
-        } else if (forInElemTypeId == 3 || forInElemTypeId == 8) {
+        } else if (forInElemTypeId == HOO_TYPE_BOOL || forInElemTypeId == 8) {
             emitCall(Opcode::CALL, "_F_array_get_bool_v_p_p");
-        } else if (forInElemTypeId == 101) {
+        } else if (forInElemTypeId == HOO_TYPE_STRING) {
             emitCall(Opcode::CALL, "_F_array_get_object_v_p_p");
-        } else if (forInElemTypeId == 100 || forInElemTypeId == 109) {
+        } else if (forInElemTypeId == HOO_TYPE_OBJECT || forInElemTypeId == HOO_TYPE_CHARACTER) {
             emitCall(Opcode::CALL, "_F_array_get_object_v_p_p");
         } else {
             emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
@@ -2468,7 +2475,7 @@ void HVMCodeGenerator::visitStatement(const ast::Statement& stmt) {
             const auto& clause = tryCatch->getCatchClauses()[i];
             Label* nextClause = (i + 1 < catchLabels.size()) ? catchLabels[i + 1] : unhandledLabel;
             uint32_t catchTypeId = getTypeId(clause.type.get(), nullptr, nullptr);
-            if (catchTypeId == 100) {
+            if (catchTypeId == HOO_TYPE_OBJECT) {
                 // `Exception` is the open base type in the Hoo type system;
                 // every runtime exception is compatible with it.
                 emitJump(Opcode::JMP, 0, catchLabels[i]);
@@ -2647,7 +2654,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return dest;
         }
         if (auto boolLit = dynamic_cast<const ast::BooleanLiteral*>(&primary)) {
-            return emitConstant(boolLit->getValue() ? 1 : 0);
+            return emitConstant(boolLit->getValue() ? HOO_TYPE_INT64 : 0);
         }
         if (auto bitLit = dynamic_cast<const ast::BitLiteral*>(&primary)) {
             return emitConstant(bitLit->getValue());
@@ -2699,11 +2706,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             uint32_t commonElemType = 0;
             for (const auto& elem : elements) {
                 uint32_t t = getTypeId(nullptr, elem.get());
-                if (t == 100) { commonElemType = 100; break; }
+                if (t == HOO_TYPE_OBJECT) { commonElemType = HOO_TYPE_OBJECT; break; }
                 if (commonElemType == 0) commonElemType = t;
-                else if (commonElemType != t) { commonElemType = 100; break; }
+                else if (commonElemType != t) { commonElemType = HOO_TYPE_OBJECT; break; }
             }
-            if (commonElemType >= 100 && commonElemType != 100 && commonElemType != 109) {
+            if (commonElemType >= HOO_TYPE_OBJECT && commonElemType != HOO_TYPE_OBJECT && commonElemType != HOO_TYPE_CHARACTER) {
                 uint8_t offReg = emitConstant(16);
                 uint8_t typeReg = emitConstant(static_cast<int64_t>(commonElemType));
                 emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
@@ -2728,15 +2735,15 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, elemReg, 0, 0});
                 
-                if (elemType == 1 || elemType == 8) {
+                if (elemType == HOO_TYPE_INT64 || elemType == 8) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushInt64_p_i8");
-                } else if (elemType == 101) {
+                } else if (elemType == HOO_TYPE_STRING) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushObject_p_p");
                 } else if (isNestedArray) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushArray_p_p");
-                } else if (elemType == 2 || elemType == 9) {
+                } else if (elemType == HOO_TYPE_FLOAT64 || elemType == 9) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushDouble_p_d");
-                } else if (elemType == 3) {
+                } else if (elemType == HOO_TYPE_BOOL) {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushBool_p_i8");
                 } else {
                     emitCall(Opcode::CALL, "_F_hoo_Array_pushObject_p_p");
@@ -2840,7 +2847,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 if (part.isExpression) {
                     uint8_t valReg = visitExpression(*part.expression);
                     
-                    int64_t typeId = 100; // Default: Object
+                    int64_t typeId = HOO_TYPE_OBJECT; // Default: Object
                     const ast::Expression* actualExpr = part.expression.get();
                     
                     // Unfold PrimaryExpression to find literals
@@ -2849,16 +2856,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                         targetNode = &pe->getPrimary();
                     }
 
-                    if (dynamic_cast<const ast::IntegerLiteral*>(targetNode)) typeId = 1;
-                    else if (dynamic_cast<const ast::FloatingLiteral*>(targetNode)) typeId = 2;
-                    else if (dynamic_cast<const ast::BooleanLiteral*>(targetNode)) typeId = 3;
-                    else if (dynamic_cast<const ast::StringLiteral*>(targetNode)) typeId = 101;
-                    else if (dynamic_cast<const ast::CharacterLiteral*>(targetNode)) typeId = 109;
+                    if (dynamic_cast<const ast::IntegerLiteral*>(targetNode)) typeId = HOO_TYPE_INT64;
+                    else if (dynamic_cast<const ast::FloatingLiteral*>(targetNode)) typeId = HOO_TYPE_FLOAT64;
+                    else if (dynamic_cast<const ast::BooleanLiteral*>(targetNode)) typeId = HOO_TYPE_BOOL;
+                    else if (dynamic_cast<const ast::StringLiteral*>(targetNode)) typeId = HOO_TYPE_STRING;
+                    else if (dynamic_cast<const ast::CharacterLiteral*>(targetNode)) typeId = HOO_TYPE_CHARACTER;
                     else if (auto id = dynamic_cast<const ast::Identifier*>(targetNode)) {
                         for (auto si = scopeStack_.rbegin(); si != scopeStack_.rend(); ++si) {
                             auto it = si->find(id->getName());
                             if (it != si->end()) {
-                                typeId = it->second.typeId != 0 ? it->second.typeId : 100;
+                                typeId = it->second.typeId != 0 ? it->second.typeId : HOO_TYPE_OBJECT;
                                 break;
                             }
                         }
@@ -2896,7 +2903,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return 0;
         }
         uint32_t futureTypeId = inferExpressionTypeId(awaitExpr->getFuture());
-        if (futureTypeId != 123) {
+        if (futureTypeId != HOO_TYPE_FUTURE) {
             addError(std::string("await expression must be used with a Future type"));
             return 0;
         }
@@ -3033,7 +3040,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return dest;
         }
         if (isBuiltinClassName(className) && classes_.find(className) == classes_.end()) {
-            if (builtinConstructedTypeId(className) == 100) {
+            if (builtinConstructedTypeId(className) == HOO_TYPE_OBJECT) {
                 addError("Built-in class '" + className + "' does not have a constructor");
                 return 0;
             }
@@ -3064,17 +3071,17 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 return 0;
             }
 
-            if (className == "Map" && argCount != 2) {
+            if (className == "Map" && argCount != HOO_TYPE_FLOAT64) {
                 addError("Map constructor expects exactly two arguments");
                 return 0;
             }
 
-            if (className == "Uuid" && argCount != 1) {
+            if (className == "Uuid" && argCount != HOO_TYPE_INT64) {
                 addError("Uuid constructor expects exactly one argument");
                 return 0;
             }
 
-            if (className == "Character" && argCount != 1) {
+            if (className == "Character" && argCount != HOO_TYPE_INT64) {
                 addError("Character constructor expects exactly one argument");
                 return 0;
             }
@@ -3117,7 +3124,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         
         // 1. Allocate: CALL hoo_alloc(size, typeId)
         uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
-        uint8_t typeReg = emitConstant(100); // Generic Object typeId
+        uint8_t typeReg = emitConstant(HOO_TYPE_OBJECT); // Generic Object typeId
         emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
         emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
         emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
@@ -3249,7 +3256,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             if (methodName == "release" && !objName.empty()) {
                 for (auto scopeIt = scopeStack_.rbegin(); scopeIt != scopeStack_.rend(); ++scopeIt) {
                     auto localIt = scopeIt->find(objName);
-                    if (localIt != scopeIt->end() && localIt->second.typeId == 110) {
+                    if (localIt != scopeIt->end() && localIt->second.typeId == HOO_TYPE_ARGS) {
                         localIt->second.explicitlyReleased = true;
                         break;
                     }
@@ -3285,7 +3292,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 auto it = methodNameToClasses_.find(methodName);
                 if (it != methodNameToClasses_.end()) {
                     fallbackCandidates = it->second;
-                    if (fallbackCandidates.size() == 1) {
+                    if (fallbackCandidates.size() == HOO_TYPE_INT64) {
                         resolvedClass = fallbackCandidates.front();
                     }
                 }
@@ -3332,7 +3339,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     while (auto primExpr = dynamic_cast<const ast::PrimaryExpression*>(objExpr)) {
                         auto& primary = primExpr->getPrimary();
                         if (dynamic_cast<const ast::StringLiteral*>(&primary)) {
-                            typeId = 101;
+                            typeId = HOO_TYPE_STRING;
                         } else if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) {
                             // Int64 has no recognized object methods by default
                         }
@@ -3340,25 +3347,25 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     }
                 }
                 switch (typeId) {
-                    case 101: resolvedClass = "String"; break;
-                    case 102: resolvedClass = "Array"; break;
-                    case 103: resolvedClass = "Map"; break;
-                    case 109: resolvedClass = "Character"; break;
-                    case 110: resolvedClass = "Args"; break;
-                    case 111: resolvedClass = "Compression"; break;
-                    case 114: resolvedClass = "Csv"; break;
-                    case 113: resolvedClass = "Buffer"; break;
-                    case 106: resolvedClass = "URL"; break;
-                    case 108: resolvedClass = "HttpClient"; break;
-                    case 107: resolvedClass = "HttpResponse"; break;
-                    case 105: resolvedClass = "Random"; break;
-                    case 117: resolvedClass = "Dict"; break;
-                    case 118: resolvedClass = "List"; break;
-                    case 119: resolvedClass = "DateTime"; break;
-                    case 120: resolvedClass = "Regex"; break;
-                    case 121: resolvedClass = "Mutex"; break;
-                    case 122: resolvedClass = "Uuid"; break;
-                    case 125: resolvedClass = "Decimal"; break;
+                    case HOO_TYPE_STRING: resolvedClass = "String"; break;
+                    case HOO_TYPE_ARRAY: resolvedClass = "Array"; break;
+                    case HOO_TYPE_MAP: resolvedClass = "Map"; break;
+                    case HOO_TYPE_CHARACTER: resolvedClass = "Character"; break;
+                    case HOO_TYPE_ARGS: resolvedClass = "Args"; break;
+                    case HOO_TYPE_COMPRESSION: resolvedClass = "Compression"; break;
+                    case HOO_TYPE_CSV: resolvedClass = "Csv"; break;
+                    case HOO_TYPE_BUFFER: resolvedClass = "Buffer"; break;
+                    case HOO_TYPE_NET_URL: resolvedClass = "URL"; break;
+                    case HOO_TYPE_NET_HTTP_CLI: resolvedClass = "HttpClient"; break;
+                    case HOO_TYPE_NET_HTTP_RES: resolvedClass = "HttpResponse"; break;
+                    case HOO_TYPE_RANDOM: resolvedClass = "Random"; break;
+                    case HOO_TYPE_DICT: resolvedClass = "Dict"; break;
+                    case HOO_TYPE_LIST: resolvedClass = "List"; break;
+                    case HOO_TYPE_DATETIME: resolvedClass = "DateTime"; break;
+                    case HOO_TYPE_REGEX: resolvedClass = "Regex"; break;
+                    case HOO_TYPE_MUTEX: resolvedClass = "Mutex"; break;
+                    case HOO_TYPE_UUID: resolvedClass = "Uuid"; break;
+                    case HOO_TYPE_DECIMAL: resolvedClass = "Decimal"; break;
                     default: break;
                 }
             }
@@ -3453,7 +3460,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
 
             if (resolvedClass == "List") {
                 if (methodName == "push") {
-                    uint32_t argType = 100;
+                    uint32_t argType = HOO_TYPE_OBJECT;
                     if (funcCall->getArguments() && !funcCall->getArguments()->getArguments().empty()) {
                         argType = getTypeId(nullptr, funcCall->getArguments()->getArguments()[0].get());
                     }
@@ -3817,16 +3824,16 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         const uint32_t rightExprType = inferExpressionTypeId(binary->getRight());
       
 
-        if (leftExprType == 125 || rightExprType == 125) {
-            if (leftExprType != 125 || rightExprType != 125) {
+        if (leftExprType == HOO_TYPE_DECIMAL || rightExprType == HOO_TYPE_DECIMAL) {
+            if (leftExprType != HOO_TYPE_DECIMAL || rightExprType != HOO_TYPE_DECIMAL) {
                 addError("Decimal operands must both be Decimal types");
                 return 0;
             }
             return emitDecimalBinaryOp(*binary);
         }
-        if (leftExprType == 104 || rightExprType == 104) {
-            const bool leftIsTensor = leftExprType == 104;
-            const bool rightIsTensor = rightExprType == 104;
+        if (leftExprType == HOO_TYPE_TENSOR || rightExprType == HOO_TYPE_TENSOR) {
+            const bool leftIsTensor = leftExprType == HOO_TYPE_TENSOR;
+            const bool rightIsTensor = rightExprType == HOO_TYPE_TENSOR;
             if (leftIsTensor != rightIsTensor) {
                 const bool scalarIsLeft = !leftIsTensor;
                 switch (binary->getOperator()) {
@@ -3852,7 +3859,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             const auto leftTensorInfo = inferExpressionTypeInfo(binary->getLeft());
             const auto rightTensorInfo = inferExpressionTypeInfo(binary->getRight());
             const auto isLowPrecisionTensorElement = [](uint32_t elementType) {
-                return elementType == 5 || elementType == 6 || elementType == 8 || elementType == 9;
+                return elementType == HOO_TYPE_INT8 || elementType == HOO_TYPE_BYTE || elementType == 8 || elementType == 9;
             };
             const bool lowPrecisionTensor =
                 isLowPrecisionTensorElement(leftTensorInfo.elementTypeId) ||
@@ -3896,11 +3903,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         const uint32_t leftType = leftExprType;
         const uint32_t rightType = rightExprType;
-        const bool isFloatExpr = leftType == 2 || leftType == 9 || rightType == 2 || rightType == 9;
-        const bool isUnsigned = leftType == 6 || rightType == 6;
-        const bool isNativeByteCompare = leftType == 6 && rightType == 6;
-        const bool isSubwordInt = ((leftType == 5 || leftType == 6) &&
-                                   (rightType == 5 || rightType == 6)) ||
+        const bool isFloatExpr = leftType == HOO_TYPE_FLOAT64 || leftType == 9 || rightType == HOO_TYPE_FLOAT64 || rightType == 9;
+        const bool isUnsigned = leftType == HOO_TYPE_BYTE || rightType == 6;
+        const bool isNativeByteCompare = leftType == HOO_TYPE_BYTE && rightType == 6;
+        const bool isSubwordInt = ((leftType == HOO_TYPE_INT8 || leftType == HOO_TYPE_BYTE) &&
+                                   (rightType == HOO_TYPE_INT8 || rightType == HOO_TYPE_BYTE)) ||
                                   (leftType == 8 && rightType == 8);
         const bool isNativeF8Arithmetic = leftType == 9 && rightType == 9 &&
             (binary->getOperator() == ast::BinaryOperator::PLUS ||
@@ -3908,7 +3915,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
              binary->getOperator() == ast::BinaryOperator::MULTIPLY ||
              binary->getOperator() == ast::BinaryOperator::DIVIDE);
         const bool isStringConcat = binary->getOperator() == ast::BinaryOperator::PLUS
-            && (leftType == 101 || rightType == 101);
+            && (leftType == HOO_TYPE_STRING || rightType == HOO_TYPE_STRING);
         const bool isAnd = binary->getOperator() == ast::BinaryOperator::AND;
         const bool isOr = binary->getOperator() == ast::BinaryOperator::OR;
 
@@ -3919,7 +3926,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             uint8_t rightArg = right;
             bool leftOwned = isManagedTemporary(binary->getLeft());
             bool rightOwned = isManagedTemporary(binary->getRight());
-            if (leftType != 101) {
+            if (leftType != HOO_TYPE_STRING) {
                 uint8_t typeIdReg = emitConstant(static_cast<int64_t>(leftType));
                 emit(Opcode::MOV, OperandsR{1, left, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, typeIdReg, 0, 0});
@@ -3930,7 +3937,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 freeRegister(left);
                 leftOwned = true;
             }
-            if (rightType != 101) {
+            if (rightType != HOO_TYPE_STRING) {
                 uint8_t typeIdReg = emitConstant(static_cast<int64_t>(rightType));
                 emit(Opcode::MOV, OperandsR{1, right, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, typeIdReg, 0, 0});
@@ -4060,7 +4067,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                                     binary->getOperator() == ast::BinaryOperator::MODULO ||
                                     binary->getOperator() == ast::BinaryOperator::SHIFT_LEFT ||
                                     binary->getOperator() == ast::BinaryOperator::SHIFT_RIGHT)) {
-            if (leftType == 5 && rightType == 5) {
+            if (leftType == HOO_TYPE_INT8 && rightType == HOO_TYPE_INT8) {
                 uint8_t shift = emitConstant(56);
                 emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 0});
                 emit(Opcode::SHIFT, OperandsR{dest, dest, shift, 2});
@@ -4085,7 +4092,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         uint8_t left = visitExpression(logicAnd->getLeft());
         uint8_t dest = allocateRegister();
-        if (leftType == 104 || rightType == 104) {
+        if (leftType == HOO_TYPE_TENSOR || rightType == HOO_TYPE_TENSOR) {
             uint8_t right = visitExpression(logicAnd->getRight());
             emit(Opcode::MOV, OperandsR{1, left, 0, 0});
             emit(Opcode::MOV, OperandsR{2, right, 0, 0});
@@ -4116,7 +4123,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         }
         uint8_t left = visitExpression(logicOr->getLeft());
         uint8_t dest = allocateRegister();
-        if (leftType == 104 || rightType == 104) {
+        if (leftType == HOO_TYPE_TENSOR || rightType == HOO_TYPE_TENSOR) {
             uint8_t right = visitExpression(logicOr->getRight());
             emit(Opcode::MOV, OperandsR{1, left, 0, 0});
             emit(Opcode::MOV, OperandsR{2, right, 0, 0});
@@ -4144,7 +4151,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t dest = allocateRegister();
         if (inferExpressionTypeId(logicalNot->getOperand()) == 8) {
             emit(Opcode::LOGIC_B, OperandsR{dest, src, 0, 2});
-        } else if (inferExpressionTypeId(logicalNot->getOperand()) == 104) {
+        } else if (inferExpressionTypeId(logicalNot->getOperand()) == HOO_TYPE_TENSOR) {
             emit(Opcode::MOV, OperandsR{1, src, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Tensor_not_p_p");
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
@@ -4159,11 +4166,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         uint8_t src = visitExpression(unaryMinus->getOperand());
         uint8_t dest = allocateRegister();
         const uint32_t operandType = inferExpressionTypeId(unaryMinus->getOperand());
-        if (operandType == 125) { // Decimal
+        if (operandType == HOO_TYPE_DECIMAL) { // Decimal
             emit(Opcode::MOV, OperandsR{1, src, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_Decimal_neg_p_p");
             emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
-        } else if (operandType == 2) {
+        } else if (operandType == HOO_TYPE_FLOAT64) {
             uint8_t zero = emitConstant(0);
             emit(Opcode::FLOAT_ARITH, OperandsR{dest, zero, src, 1});
             freeRegister(zero);
@@ -4184,7 +4191,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             freeRegister(srcF8);
             freeRegister(zeroF8);
             freeRegister(zero);
-        } else if (operandType == 5) {
+        } else if (operandType == HOO_TYPE_INT8) {
             uint8_t zero = emitConstant(0);
             emit(Opcode::ARITH_B, OperandsR{dest, zero, src, 1});
             uint8_t shift = emitConstant(56);
@@ -4256,7 +4263,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 case ast::CompoundAssignmentOperator::MODULO_ASSIGN:
                     {
                         const uint32_t lhsType = inferExpressionTypeId(compoundAssign->getLeft());
-                        if (lhsType == 2 || lhsType == 9) {
+                        if (lhsType == HOO_TYPE_FLOAT64 || lhsType == 9) {
                             emit(Opcode::MOV, OperandsR{1, lhsReg, 0, 0});
                             emit(Opcode::MOV, OperandsR{2, rhsReg, 0, 0});
                             emitCall(Opcode::CALL, "_F_M_hoo_E_math_fmod_d_p_p");
@@ -4287,7 +4294,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             const uint32_t lhsType = inferExpressionTypeId(compoundAssign->getLeft());
             const uint32_t rhsType = inferExpressionTypeId(compoundAssign->getRight());
             const bool isSubwordInt =
-                ((lhsType == 5 || lhsType == 6) && (rhsType == 5 || rhsType == 6)) ||
+                ((lhsType == HOO_TYPE_INT8 || lhsType == HOO_TYPE_BYTE) && (rhsType == HOO_TYPE_INT8 || rhsType == HOO_TYPE_BYTE)) ||
                 (lhsType == 8 && rhsType == 8);
             const bool isNativeF8 = lhsType == 9 && rhsType == 9 &&
                 compoundAssign->getOperator() != ast::CompoundAssignmentOperator::MODULO_ASSIGN &&
@@ -4296,8 +4303,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             bool nativeF8Lowered = false;
             if (isSubwordInt && op == Opcode::ARITH) {
                 op = Opcode::ARITH_B;
-                if (lhsType == 6 && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::DIVIDE_ASSIGN) func = 6;
-                if (lhsType == 6 && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::MODULO_ASSIGN) func = 8;
+                if (lhsType == HOO_TYPE_BYTE && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::DIVIDE_ASSIGN) func = 6;
+                if (lhsType == HOO_TYPE_BYTE && compoundAssign->getOperator() == ast::CompoundAssignmentOperator::MODULO_ASSIGN) func = 8;
             }
             if (isSubwordInt && op == Opcode::SHIFT) {
                 op = Opcode::SHIFT_B;
@@ -4325,13 +4332,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
 
             if (op == Opcode::ARITH_B || op == Opcode::SHIFT_B) {
-                if (lhsType == 5) {
+                if (lhsType == HOO_TYPE_INT8) {
                     uint8_t shift = emitConstant(56);
                     emit(Opcode::SHIFT, OperandsR{resultReg, resultReg, shift, 0});
                     emit(Opcode::SHIFT, OperandsR{resultReg, resultReg, shift, 2});
                     freeRegister(shift);
                 } else {
-                    uint8_t mask = emitConstant(op == Opcode::SHIFT_B && lhsType == 8 ? 1 : 0xFF);
+                    uint8_t mask = emitConstant(op == Opcode::SHIFT_B && lhsType == 8 ? HOO_TYPE_INT64 : 0xFF);
                     emit(Opcode::LOGIC, OperandsR{resultReg, resultReg, mask, 0});
                     freeRegister(mask);
                 }
@@ -4441,7 +4448,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 uint32_t oldTypeId = getLocalTypeId(id->getName());
                 validateAssignmentNullSafety(getLocalIsNullable(id->getName()), oldTypeId,
                                              &assign->getRight(), id->getName());
-                if (oldTypeId >= 100) {
+                if (oldTypeId >= HOO_TYPE_OBJECT) {
                     emit(Opcode::LD_D, OperandsI{1, 30, static_cast<int16_t>(offset)});
                     emitCall(Opcode::CALL, "_F_hoo_release_v_p");
                 }
@@ -4465,7 +4472,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 }
             }
 
-            if (sourceTypeId == 118) {
+            if (sourceTypeId == HOO_TYPE_LIST) {
                 uint8_t typeReg = emitConstant(static_cast<int64_t>(valueTypeId));
                 emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
@@ -4473,7 +4480,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 emit(Opcode::MOV, OperandsR{5, valueReg, 0, 0});
                 emitCall(Opcode::CALL, "_F_hoo_list_set_i8_p_i8_i8_i8");
                 freeRegister(typeReg);
-            } else if (sourceTypeId == 117) {
+            } else if (sourceTypeId == HOO_TYPE_DICT) {
                 emit(Opcode::MOV, OperandsR{1, objReg, 0, 0});
                 emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
                 if (mapValueTypeId == 0) {
@@ -4520,7 +4527,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     bool fieldNullable = false;
                     auto fIt = classIt->second.fieldIsNullable.find(leftMember->getMember());
                     if (fIt != classIt->second.fieldIsNullable.end()) fieldNullable = fIt->second;
-                    uint32_t fieldTypeId = 100;
+                    uint32_t fieldTypeId = HOO_TYPE_OBJECT;
                     auto tfIt = classIt->second.fieldTypeIds.find(leftMember->getMember());
                     if (tfIt != classIt->second.fieldTypeIds.end()) fieldTypeId = tfIt->second;
                     validateAssignmentNullSafety(fieldNullable, fieldTypeId, &assign->getRight(), leftMember->getMember());
@@ -4557,7 +4564,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             }
         }
 
-        if (sourceTypeId == 118) {
+        if (sourceTypeId == HOO_TYPE_LIST) {
             emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
             emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
             emitCall(Opcode::CALL, "_F_hoo_list_get_data_i8_p_i8");
@@ -4568,7 +4575,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             return dest;
         }
 
-        if (sourceTypeId == 117) {
+        if (sourceTypeId == HOO_TYPE_DICT) {
             emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
             emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
             if (elementTypeId == 0) {
@@ -4586,7 +4593,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         // Bounds check: compare idx against length via runtime call
         uint8_t lenReg = allocateRegister();
         emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
-        emitCall(Opcode::CALL, sourceTypeId == 104 ? "_F_hoo_Tensor_length_i8_p" : "_F_array_length_v_p");
+        emitCall(Opcode::CALL, sourceTypeId == HOO_TYPE_TENSOR ? "_F_hoo_Tensor_length_i8_p" : "_F_array_length_v_p");
         emit(Opcode::MOV, OperandsR{lenReg, 1, 0, 0});
         uint8_t cmpReg = allocateRegister();
         emit(Opcode::CMP, OperandsR{cmpReg, idxReg, lenReg, 1}); // 1 = BLT (idx < len)
@@ -4600,13 +4607,13 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
         // Access element via runtime call
         emit(Opcode::MOV, OperandsR{1, arrReg, 0, 0});
         emit(Opcode::MOV, OperandsR{2, idxReg, 0, 0});
-        if (sourceTypeId == 104 && (elementTypeId == 2 || elementTypeId == 9)) {
+        if (sourceTypeId == HOO_TYPE_TENSOR && (elementTypeId == HOO_TYPE_FLOAT64 || elementTypeId == 9)) {
             emitCall(Opcode::CALL, "_F_hoo_Tensor_getDouble_d_p_i8");
-        } else if (sourceTypeId == 104) {
+        } else if (sourceTypeId == HOO_TYPE_TENSOR) {
             emitCall(Opcode::CALL, "_F_hoo_Tensor_getInt64_i8_p_i8");
-        } else if (elementTypeId == 2 || elementTypeId == 9) {
+        } else if (elementTypeId == HOO_TYPE_FLOAT64 || elementTypeId == 9) {
             emitCall(Opcode::CALL, "_F_array_get_double_v_p_p");
-        } else if (elementTypeId == 3 || elementTypeId == 8) {
+        } else if (elementTypeId == HOO_TYPE_BOOL || elementTypeId == 8) {
             emitCall(Opcode::CALL, "_F_array_get_bool_v_p_p");
         } else {
             emitCall(Opcode::CALL, "_F_array_get_int64_v_p_p");
@@ -4696,20 +4703,20 @@ int32_t HVMCodeGenerator::reserveLocal(const std::string& name, uint32_t typeId,
 
 static uint32_t dictKeyTypeId(const ast::DictType& type) {
     switch (type.getKeyType()) {
-        case ast::DictKeyType::INT64: return 1;
-        case ast::DictKeyType::INT8: return 5;
-        case ast::DictKeyType::BYTE: return 6;
+        case ast::DictKeyType::INT64: return HOO_TYPE_INT64;
+        case ast::DictKeyType::INT8: return HOO_TYPE_INT8;
+        case ast::DictKeyType::BYTE: return HOO_TYPE_BYTE;
     }
-    return 1;
+    return HOO_TYPE_INT64;
 }
 
 static uint32_t mapKeyTypeId(const ast::MapType& type) {
     switch (type.getKeyType()) {
-        case ast::MapKeyType::INT64: return 1;
-        case ast::MapKeyType::INT8: return 5;
-        case ast::MapKeyType::BYTE: return 6;
-        case ast::MapKeyType::CHAR: return 7;
-        case ast::MapKeyType::STRING: return 101;
+        case ast::MapKeyType::INT64: return HOO_TYPE_INT64;
+        case ast::MapKeyType::INT8: return HOO_TYPE_INT8;
+        case ast::MapKeyType::BYTE: return HOO_TYPE_BYTE;
+        case ast::MapKeyType::CHAR: return HOO_TYPE_CHAR;
+        case ast::MapKeyType::STRING: return HOO_TYPE_STRING;
     }
     return 0;
 }
@@ -4727,11 +4734,11 @@ static uint32_t mapConstructorKeyTypeId(const ast::NewObjectExpression& expr) {
     const auto* args = expr.getArguments();
     if (!args || args->getArguments().empty()) return 0;
     switch (integerLiteralValue(*args->getArguments()[0], -1)) {
-        case 0: return 6;   // HOO_MAP_KEY_BYTE
-        case 1: return 5;   // HOO_MAP_KEY_INT8
-        case 2: return 1;   // HOO_MAP_KEY_INT64
-        case 3: return 7;   // HOO_MAP_KEY_CHAR
-        case 4: return 101; // HOO_MAP_KEY_STRING
+        case 0: return HOO_TYPE_BYTE;   // HOO_MAP_KEY_BYTE
+        case 1: return HOO_TYPE_INT8;   // HOO_MAP_KEY_INT8
+        case 2: return HOO_TYPE_INT64;   // HOO_MAP_KEY_INT64
+        case 3: return HOO_TYPE_CHAR;   // HOO_MAP_KEY_CHAR
+        case 4: return HOO_TYPE_STRING; // HOO_MAP_KEY_STRING
         default: return 0;
     }
 }
@@ -4740,14 +4747,14 @@ static uint32_t mapConstructorValueTypeId(const ast::NewObjectExpression& expr) 
     const auto* args = expr.getArguments();
     if (!args || args->getArguments().size() < 2) return 0;
     switch (integerLiteralValue(*args->getArguments()[1], -1)) {
-        case 0: return 100; // HOO_MAP_VAL_ANY
-        case 1: return 1;   // HOO_MAP_VAL_INT64
-        case 2: return 2;   // HOO_MAP_VAL_DOUBLE
-        case 3: return 3;   // HOO_MAP_VAL_BOOL
-        case 4: return 101; // HOO_MAP_VAL_STRING
-        case 5: return 100; // HOO_MAP_VAL_OBJECT
-        case 6: return 5;   // HOO_MAP_VAL_INT8
-        case 7: return 7;   // HOO_MAP_VAL_CHAR
+        case 0: return HOO_TYPE_OBJECT; // HOO_MAP_VAL_ANY
+        case 1: return HOO_TYPE_INT64;   // HOO_MAP_VAL_INT64
+        case 2: return HOO_TYPE_FLOAT64;   // HOO_MAP_VAL_DOUBLE
+        case 3: return HOO_TYPE_BOOL;   // HOO_MAP_VAL_BOOL
+        case 4: return HOO_TYPE_STRING; // HOO_MAP_VAL_STRING
+        case 5: return HOO_TYPE_OBJECT; // HOO_MAP_VAL_OBJECT
+        case 6: return HOO_TYPE_INT8;   // HOO_MAP_VAL_INT8
+        case 7: return HOO_TYPE_CHAR;   // HOO_MAP_VAL_CHAR
         default: return 0;
     }
 }
@@ -4823,7 +4830,7 @@ void HVMCodeGenerator::validateAssignmentNullSafety(bool targetNullable, uint32_
     const auto valueInfo = inferExpressionTypeInfo(*value);
     if (!valueInfo.isNullable) return;
     const bool isNullLiteral = isNullLiteralExpression(value);
-    if (targetTypeId >= 100) {
+    if (targetTypeId >= HOO_TYPE_OBJECT) {
         // Reference-typed target: the literal null is a valid reference value,
         // but a possibly-null value must not flow into a non-nullable slot
         // because a later dereference would be unsafe.
@@ -5066,52 +5073,52 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
     if (dynamic_cast<const ast::AnyType*>(type)) return 0;
     if (dynamic_cast<const ast::ListType*>(type)) {
         if (outClassName) *outClassName = "List";
-        return 118;
+        return HOO_TYPE_LIST;
     }
-    if (dynamic_cast<const ast::ByteSliceType*>(type)) return 130;
+    if (dynamic_cast<const ast::ByteSliceType*>(type)) return HOO_TYPE_BYTE_SLICE;
     if (dynamic_cast<const ast::DictType*>(type)) {
         if (outClassName) *outClassName = "Dict";
-        return 117;
+        return HOO_TYPE_DICT;
     }
     if (dynamic_cast<const ast::DecimalType*>(type)) {
     if (outClassName) *outClassName = "Decimal";
-    return 125;
+    return HOO_TYPE_DECIMAL;
 }
     if (auto bt = dynamic_cast<const ast::BaseType*>(type)) {
         if (bt->isPrimitive()) {
             switch (bt->getPrimitiveType()->getKind()) {
-                case ast::PrimitiveTypeKind::INT64: return 1;
+                case ast::PrimitiveTypeKind::INT64: return HOO_TYPE_INT64;
                 case ast::PrimitiveTypeKind::FLOAT:
                 case ast::PrimitiveTypeKind::DOUBLE:
-                case ast::PrimitiveTypeKind::F64:   return 2;
+                case ast::PrimitiveTypeKind::F64:   return HOO_TYPE_FLOAT64;
                 case ast::PrimitiveTypeKind::BIT:    return 8;
                 case ast::PrimitiveTypeKind::F8:     return 9;
-                case ast::PrimitiveTypeKind::BOOL:    return 3;
-                case ast::PrimitiveTypeKind::VOID:    return 4;
-                case ast::PrimitiveTypeKind::INT8:    return 5;
-                case ast::PrimitiveTypeKind::BYTE:    return 6;
-                case ast::PrimitiveTypeKind::CHAR:    return 7;
-                case ast::PrimitiveTypeKind::STRING:  return 101;
-                case ast::PrimitiveTypeKind::BUFFER:  return 113;
-                default: return 1;
+                case ast::PrimitiveTypeKind::BOOL:    return HOO_TYPE_BOOL;
+                case ast::PrimitiveTypeKind::VOID:    return HOO_TYPE_VOID;
+                case ast::PrimitiveTypeKind::INT8:    return HOO_TYPE_INT8;
+                case ast::PrimitiveTypeKind::BYTE:    return HOO_TYPE_BYTE;
+                case ast::PrimitiveTypeKind::CHAR:    return HOO_TYPE_CHAR;
+                case ast::PrimitiveTypeKind::STRING:  return HOO_TYPE_STRING;
+                case ast::PrimitiveTypeKind::BUFFER:  return HOO_TYPE_BUFFER;
+                default: return HOO_TYPE_INT64;
             }
         } else {
             std::string name = bt->getIdentifier();
             if (outClassName) *outClassName = name;
             uint32_t tid = builtinConstructedTypeId(name);
-            if (tid != 100) return tid;
+            if (tid != HOO_TYPE_OBJECT) return tid;
             // Case-insensitive fallback for buffer
-            if (name == "buffer") return 113;
-            return 100;
+            if (name == "buffer") return HOO_TYPE_BUFFER;
+            return HOO_TYPE_OBJECT;
         }
     }
-    if (dynamic_cast<const ast::ArrayType*>(type)) return 102;
+    if (dynamic_cast<const ast::ArrayType*>(type)) return HOO_TYPE_ARRAY;
     if (dynamic_cast<const ast::FutureType*>(type)) {
         if (outClassName) *outClassName = "Future";
-        return 123;
+        return HOO_TYPE_FUTURE;
     }
-    if (dynamic_cast<const ast::MapType*>(type)) return 103;
-    if (dynamic_cast<const ast::TensorType*>(type)) return 104;
+    if (dynamic_cast<const ast::MapType*>(type)) return HOO_TYPE_MAP;
+    if (dynamic_cast<const ast::TensorType*>(type)) return HOO_TYPE_TENSOR;
     if (auto opt = dynamic_cast<const ast::OptionalType*>(type)) {
         // Preserve the underlying type of T? instead of collapsing to generic
         // object. A nullable array (int64[]?) stays an array; a nullable
@@ -5120,30 +5127,30 @@ uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::st
         const ast::ArrayType& inner = opt->getArrayType();
         if (inner.getDimensionCount() > 0) {
             if (outClassName) *outClassName = "";
-            return 102;
+            return HOO_TYPE_ARRAY;
         }
         return typeIdFromDeclaredType(&inner.getBaseType(), outClassName);
     }
-    return 100;
+    return HOO_TYPE_OBJECT;
 }
 
 std::string HVMCodeGenerator::typeIdToMangleType(uint32_t typeId) const {
     switch (typeId) {
-        case 1: return "int64";
-        case 2: return "double";
-        case 3: return "bool";
-        case 4: return "void";
-        case 5: return "int8";
-        case 6: return "byte";
-        case 7: return "char";
+        case HOO_TYPE_INT64: return "int64";
+        case HOO_TYPE_FLOAT64: return "double";
+        case HOO_TYPE_BOOL: return "bool";
+        case HOO_TYPE_VOID: return "void";
+        case HOO_TYPE_INT8: return "int8";
+        case HOO_TYPE_BYTE: return "byte";
+        case HOO_TYPE_CHAR: return "char";
         case 8: return "bit";
         case 9: return "f8";
-        case 130: return "ptr";
+        case HOO_TYPE_BYTE_SLICE: return "ptr";
         case 0: return "any";
-        case 101: return "string";
-        case 104: return "tensor";
+        case HOO_TYPE_STRING: return "string";
+        case HOO_TYPE_TENSOR: return "tensor";
         /* Future values use the stable pointer ABI in function symbols. */
-        case 123: return "ptr";
+        case HOO_TYPE_FUTURE: return "ptr";
         default: return "ptr";
     }
 }
@@ -5159,18 +5166,18 @@ uint32_t HVMCodeGenerator::tensorElementTypeIdFromType(const ast::TensorType& ty
 }
 
 uint32_t HVMCodeGenerator::tensorElementTypeIdFromLiteral(const ast::TensorLiteral& literal) {
-    uint32_t commonType = 100;
+    uint32_t commonType = HOO_TYPE_OBJECT;
     if (!literal.getElements()) return commonType;
     std::function<uint32_t(const ast::Expression&)> leafType = [&](const ast::Expression& expression) -> uint32_t {
         if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(&expression)) {
             if (auto nested = dynamic_cast<const ast::ArrayLiteral*>(&pe->getPrimary())) {
-                uint32_t nestedCommon = 100;
+                uint32_t nestedCommon = HOO_TYPE_OBJECT;
                 if (!nested->getElements()) return nestedCommon;
                 for (const auto& child : nested->getElements()->getExpressions()) {
                     uint32_t childType = leafType(*child);
-                    if (childType == 100) continue;
-                    if (nestedCommon == 100) nestedCommon = childType;
-                    else if (nestedCommon != childType) return 100;
+                    if (childType == HOO_TYPE_OBJECT) continue;
+                    if (nestedCommon == HOO_TYPE_OBJECT) nestedCommon = childType;
+                    else if (nestedCommon != childType) return HOO_TYPE_OBJECT;
                 }
                 return nestedCommon;
             }
@@ -5180,15 +5187,15 @@ uint32_t HVMCodeGenerator::tensorElementTypeIdFromLiteral(const ast::TensorLiter
     for (const auto& elem : literal.getElements()->getExpressions()) {
         uint32_t type = leafType(*elem);
 
-        if (type != 100) {
-            if (commonType == 100) commonType = type;
+        if (type != HOO_TYPE_OBJECT) {
+            if (commonType == HOO_TYPE_OBJECT) commonType = type;
             else if (commonType != type) {
-                if ((commonType == 2 || commonType == 9) && (type == 2 || type == 9)) commonType = 2;
-                else return 100;
+                if ((commonType == HOO_TYPE_FLOAT64 || commonType == 9) && (type == HOO_TYPE_FLOAT64 || type == 9)) commonType = HOO_TYPE_FLOAT64;
+                else return HOO_TYPE_OBJECT;
             }
         }
     }
-    return commonType == 100 ? 1 : commonType;
+    return commonType == HOO_TYPE_OBJECT ? HOO_TYPE_INT64 : commonType;
 }
 
 std::vector<int64_t> HVMCodeGenerator::tensorShapeFromLiteral(const ast::TensorLiteral& literal) {
@@ -5267,7 +5274,7 @@ uint8_t HVMCodeGenerator::emitTensorNewEx(uint32_t elemTypeId, size_t rank,
 
 uint8_t HVMCodeGenerator::emitTensorNewCall(uint32_t elemTypeId, size_t rank,
                                             const std::function<uint8_t(size_t)>& emitDim) {
-    if (rank == 1 || rank == 2 || rank == 3) {
+    if (rank == HOO_TYPE_INT64 || rank == HOO_TYPE_FLOAT64 || rank == HOO_TYPE_BOOL) {
         uint8_t elemReg = emitConstant(static_cast<int64_t>(elemTypeId));
         emit(Opcode::MOV, OperandsR{1, elemReg, 0, 0});
         freeRegister(elemReg);
@@ -5276,8 +5283,8 @@ uint8_t HVMCodeGenerator::emitTensorNewCall(uint32_t elemTypeId, size_t rank,
             emit(Opcode::MOV, OperandsR{argReg(2, i), dimReg, 0, 0});
             freeRegister(dimReg);
         }
-        if (rank == 1) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
-        else if (rank == 2) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
+        if (rank == HOO_TYPE_INT64) emitCall(Opcode::CALL, "_F_hoo_Tensor_new1_p_i8_i8");
+        else if (rank == HOO_TYPE_FLOAT64) emitCall(Opcode::CALL, "_F_hoo_Tensor_new2_p_i8_i8_i8");
         else emitCall(Opcode::CALL, "_F_hoo_Tensor_new3_p_i8_i8_i8_i8");
         uint8_t result = allocateRegister();
         emit(Opcode::MOV, OperandsR{result, 1, 0, 0});
@@ -5317,7 +5324,7 @@ uint8_t HVMCodeGenerator::emitTensorBinaryCall(const ast::BinaryExpression& bina
 
 uint8_t HVMCodeGenerator::emitTensorScalarCall(const ast::BinaryExpression& binary, const std::string& symbolName) {
     const uint32_t leftType = inferExpressionTypeId(binary.getLeft());
-    const bool leftIsTensor = leftType == 104;
+    const bool leftIsTensor = leftType == HOO_TYPE_TENSOR;
     const ast::Expression& tensorExpr = leftIsTensor ? binary.getLeft() : binary.getRight();
     const ast::Expression& scalarExpr = leftIsTensor ? binary.getRight() : binary.getLeft();
     const uint32_t scalarType = inferExpressionTypeId(scalarExpr);
@@ -5546,19 +5553,19 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             return inferExpressionTypeInfo(paren->getExpression());
         }
         if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) {
-            result.typeId = arr->isList() ? 118 : 102;
+            result.typeId = arr->isList() ? HOO_TYPE_LIST : HOO_TYPE_ARRAY;
             if (arr->getElements()) {
                 uint32_t common = 0;
                 for (const auto& element : arr->getElements()->getExpressions()) {
                     const auto elementInfo = inferExpressionTypeInfo(*element);
-                    if (elementInfo.typeId == 100) { common = 100; break; }
+                    if (elementInfo.typeId == HOO_TYPE_OBJECT) { common = HOO_TYPE_OBJECT; break; }
                     if (common == 0) common = elementInfo.typeId;
-                    else if (common != elementInfo.typeId) { common = 100; break; }
+                    else if (common != elementInfo.typeId) { common = HOO_TYPE_OBJECT; break; }
                 }
                 if (arr->isList()) {
-                    if (common != 0 && common != 100) result.elementTypeId = common;
+                    if (common != 0 && common != HOO_TYPE_OBJECT) result.elementTypeId = common;
                 } else {
-                    result.elementTypeId = common == 0 ? 100 : common;
+                    result.elementTypeId = common == 0 ? HOO_TYPE_OBJECT : common;
                 }
             }
             return result;
@@ -5567,17 +5574,17 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             result.typeId = 0;
             result.isNullable = true;
         }
-        else if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) result.typeId = 1;
-        else if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) result.typeId = 2;
-        else if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) result.typeId = 3;
+        else if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) result.typeId = HOO_TYPE_INT64;
+        else if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) result.typeId = HOO_TYPE_FLOAT64;
+        else if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) result.typeId = HOO_TYPE_BOOL;
         else if (dynamic_cast<const ast::BitLiteral*>(&primary)) result.typeId = 8;
         else if (dynamic_cast<const ast::F8Literal*>(&primary)) result.typeId = 9;
         else if (dynamic_cast<const ast::StringLiteral*>(&primary) ||
-                 dynamic_cast<const ast::InterpolatedString*>(&primary)) result.typeId = 101;
-        else if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) result.typeId = 109;
-        else if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) result.typeId = 125;
+                 dynamic_cast<const ast::InterpolatedString*>(&primary)) result.typeId = HOO_TYPE_STRING;
+        else if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) result.typeId = HOO_TYPE_CHARACTER;
+        else if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) result.typeId = HOO_TYPE_DECIMAL;
         else if (auto tensorLiteral = dynamic_cast<const ast::TensorLiteral*>(&primary)) {
-            result.typeId = 104;
+            result.typeId = HOO_TYPE_TENSOR;
             result.elementTypeId = tensorElementTypeIdFromLiteral(*tensorLiteral);
         }
         else if (auto nested = dynamic_cast<const ast::Expression*>(&primary)) {
@@ -5588,8 +5595,8 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
 
     if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
         const auto future = inferExpressionTypeInfo(awaitExpr->getFuture());
-        if (future.typeId == 123) {
-            result.typeId = future.elementTypeId != 0 ? future.elementTypeId : 100;
+        if (future.typeId == HOO_TYPE_FUTURE) {
+            result.typeId = future.elementTypeId != 0 ? future.elementTypeId : HOO_TYPE_OBJECT;
             result.className = builtinClassNameFromTypeId(result.typeId);
         }
         result.isNullable = future.isNullable;
@@ -5599,7 +5606,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
         const auto array = inferExpressionTypeInfo(arrayAccess->getArray());
         if (array.elementTypeId != 0) result.typeId = array.elementTypeId;
-        else if (array.typeId == 104) result.typeId = 1;
+        else if (array.typeId == HOO_TYPE_TENSOR) result.typeId = HOO_TYPE_INT64;
         result.isNullable = array.isNullable;
         return result;
     }
@@ -5614,7 +5621,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         return result;
     }
     if (auto newHash = dynamic_cast<const ast::NewDictExpression*>(&expr)) {
-        result.typeId = 117;
+        result.typeId = HOO_TYPE_DICT;
         result.className = "Dict";
         result.keyTypeId = dictKeyTypeId(newHash->getDictType());
         result.elementTypeId = typeIdFromDeclaredType(&newHash->getDictType().getValueType());
@@ -5627,7 +5634,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
 
     if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
         const auto operand = inferExpressionTypeInfo(logicalNot->getOperand());
-        result.typeId = operand.typeId == 104 ? 104 : 3;
+        result.typeId = operand.typeId == HOO_TYPE_TENSOR ? HOO_TYPE_TENSOR : HOO_TYPE_BOOL;
         result.elementTypeId = operand.elementTypeId;
         return result;
     }
@@ -5635,14 +5642,14 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
     if (auto logicalAnd = dynamic_cast<const ast::LogicalAnd*>(&expr)) {
         const auto left = inferExpressionTypeInfo(logicalAnd->getLeft());
         const auto right = inferExpressionTypeInfo(logicalAnd->getRight());
-        result.typeId = (left.typeId == 104 || right.typeId == 104) ? 104 : 3;
+        result.typeId = (left.typeId == HOO_TYPE_TENSOR || right.typeId == HOO_TYPE_TENSOR) ? HOO_TYPE_TENSOR : HOO_TYPE_BOOL;
         return result;
     }
 
     if (auto logicalOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
         const auto left = inferExpressionTypeInfo(logicalOr->getLeft());
         const auto right = inferExpressionTypeInfo(logicalOr->getRight());
-        result.typeId = (left.typeId == 104 || right.typeId == 104) ? 104 : 3;
+        result.typeId = (left.typeId == HOO_TYPE_TENSOR || right.typeId == HOO_TYPE_TENSOR) ? HOO_TYPE_TENSOR : HOO_TYPE_BOOL;
         return result;
     }
 
@@ -5652,8 +5659,8 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
         // Tensor comparisons and logical operations return tensor masks, not
         // scalar booleans. Preserve that shape so the code generator selects
         // the tensor runtime path for chained indexing and composition.
-        if (left.typeId == 104 || right.typeId == 104) {
-            result.typeId = 104;
+        if (left.typeId == HOO_TYPE_TENSOR || right.typeId == HOO_TYPE_TENSOR) {
+            result.typeId = HOO_TYPE_TENSOR;
             result.elementTypeId = 8;
             return result;
         }
@@ -5664,11 +5671,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             case ast::BinaryOperator::LESS_EQUALS:
             case ast::BinaryOperator::GREATER:
             case ast::BinaryOperator::GREATER_EQUALS:
-                result.typeId = 3;
+                result.typeId = HOO_TYPE_BOOL;
                 return result;
             case ast::BinaryOperator::PLUS:
-                if (left.typeId == 101 || right.typeId == 101) {
-                    result.typeId = 101;
+                if (left.typeId == HOO_TYPE_STRING || right.typeId == HOO_TYPE_STRING) {
+                    result.typeId = HOO_TYPE_STRING;
                     result.className = "String";
                     return result;
                 }
@@ -5676,15 +5683,15 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             default:
                 break;
         }
-        if (left.typeId == 125 || right.typeId == 125) {
-            result.typeId = 125;
+        if (left.typeId == HOO_TYPE_DECIMAL || right.typeId == HOO_TYPE_DECIMAL) {
+            result.typeId = HOO_TYPE_DECIMAL;
         } else if (left.typeId == 9 || right.typeId == 9) {
             result.typeId = 9;
-        } else if (left.typeId == 2 || right.typeId == 2) {
-            result.typeId = 2;
+        } else if (left.typeId == HOO_TYPE_FLOAT64 || right.typeId == HOO_TYPE_FLOAT64) {
+            result.typeId = HOO_TYPE_FLOAT64;
         } else if (left.typeId == right.typeId) {
             result = left;
-        } else if (left.typeId != 100) {
+        } else if (left.typeId != HOO_TYPE_OBJECT) {
             result = left;
         } else {
             result = right;
@@ -5742,11 +5749,11 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                     const uint32_t expected = overload.parameterTypes[i];
                     if (argNullable && !paramNullable) { viable = false; break; }
                     if (actual == expected) continue;
-                    if (expected == 1 && (actual == 5 || actual == 6)) score += 1;
-                    else if (expected == 2 && actual == 9) score += 1;
-                    else if (expected == 2 && (actual == 1 || actual == 5 || actual == 6)) score += 2;
-                    else if (expected == 3 && actual == 8) score += 1;
-                    else if (expected == 100) score += 3;
+                    if (expected == HOO_TYPE_INT64 && (actual == HOO_TYPE_INT8 || actual == HOO_TYPE_BYTE)) score += 1;
+                    else if (expected == HOO_TYPE_FLOAT64 && actual == 9) score += 1;
+                    else if (expected == HOO_TYPE_FLOAT64 && (actual == HOO_TYPE_INT64 || actual == HOO_TYPE_INT8 || actual == HOO_TYPE_BYTE)) score += 2;
+                    else if (expected == HOO_TYPE_BOOL && actual == 8) score += 1;
+                    else if (expected == HOO_TYPE_OBJECT) score += 3;
                     else if (expected == 0) score += 20;
                     else { viable = false; break; }
                 }
@@ -5776,7 +5783,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 return result;
             }
             if (id->getName() == "Buffer" && isSymbolImported("Buffer", "hoo.buffer")) {
-                result.typeId = 113;
+                result.typeId = HOO_TYPE_BUFFER;
                 result.className = "Buffer";
                 return result;
             }
@@ -5794,7 +5801,7 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                     result.className = externalMeta->second.returnClass;
                 }
                 if (result.className.empty()) result.className = builtinClassNameFromTypeId(result.typeId);
-                if (result.typeId == 123) {
+                if (result.typeId == HOO_TYPE_FUTURE) {
                     auto futureIt = functionFutureElementTypes_.find(id->getName());
                     if (futureIt != functionFutureElementTypes_.end()) result.elementTypeId = futureIt->second;
                 }
@@ -5827,12 +5834,12 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             if (className.size() > 0 && classes_.count(className) &&
                 classes_.at(className).isSerializable) {
                 if (memberAccess->getMember() == "deserialize") {
-                    result.typeId = 100;
+                    result.typeId = HOO_TYPE_OBJECT;
                     result.className = className;
                     return result;
                 }
                 if (memberAccess->getMember() == "serialize") {
-                    result.typeId = 101;
+                    result.typeId = HOO_TYPE_STRING;
                     return result;
                 }
             }
@@ -5853,13 +5860,13 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
             // for a subsequent receiver lookup.
             const auto& method = memberAccess->getMember();
             if (className == "Array" && (method == "sort" || method == "reverse" || method == "shuffle")) {
-                result.typeId = 102; result.className = "Array"; return result;
+                result.typeId = HOO_TYPE_ARRAY; result.className = "Array"; return result;
             }
             if (className == "Map" && (method == "getInt64String" || method == "getStringString")) {
-                result.typeId = 101; result.className = "String"; return result;
+                result.typeId = HOO_TYPE_STRING; result.className = "String"; return result;
             }
             if (className == "Buffer" && (method == "copy" || method == "slice" || method == "sub" || method == "fromBytes")) {
-                result.typeId = 113; result.className = "Buffer"; return result;
+                result.typeId = HOO_TYPE_BUFFER; result.className = "Buffer"; return result;
             }
             result.typeId = inferExpressionTypeIdLegacy(expr);
             result.className = builtinClassNameFromTypeId(result.typeId);
@@ -5883,11 +5890,11 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
             if (auto id = dynamic_cast<const ast::Identifier*>(&node)) {
                 for (auto scope = scopeStack_.rbegin(); scope != scopeStack_.rend(); ++scope) {
                     auto local = scope->find(id->getName());
-                    if (local != scope->end() && local->second.typeId == 123) {
-                        return local->second.elementTypeId != 0 ? local->second.elementTypeId : 100;
+                    if (local != scope->end() && local->second.typeId == HOO_TYPE_FUTURE) {
+                        return local->second.elementTypeId != 0 ? local->second.elementTypeId : HOO_TYPE_OBJECT;
                     }
                 }
-                return 100;
+                return HOO_TYPE_OBJECT;
             }
             if (auto nested = dynamic_cast<const ast::Expression*>(&node)) {
                 source = nested;
@@ -5909,58 +5916,58 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
         if (auto id = dynamic_cast<const ast::Identifier*>(source)) {
             for (auto scope = scopeStack_.rbegin(); scope != scopeStack_.rend(); ++scope) {
                 auto local = scope->find(id->getName());
-                if (local != scope->end() && local->second.typeId == 123) {
-                    return local->second.elementTypeId != 0 ? local->second.elementTypeId : 100;
+                if (local != scope->end() && local->second.typeId == HOO_TYPE_FUTURE) {
+                    return local->second.elementTypeId != 0 ? local->second.elementTypeId : HOO_TYPE_OBJECT;
                 }
             }
         }
-        return 100;
+        return HOO_TYPE_OBJECT;
     }
     if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&expr)) {
         const ast::ASTNode& primary = primaryExpr->getPrimary();
-        if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) return 1;
-        if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) return 2;
-        if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) return 3;
+        if (dynamic_cast<const ast::IntegerLiteral*>(&primary)) return HOO_TYPE_INT64;
+        if (dynamic_cast<const ast::FloatingLiteral*>(&primary)) return HOO_TYPE_FLOAT64;
+        if (dynamic_cast<const ast::BooleanLiteral*>(&primary)) return HOO_TYPE_BOOL;
         if (dynamic_cast<const ast::BitLiteral*>(&primary)) return 8;
         if (dynamic_cast<const ast::F8Literal*>(&primary)) return 9;
-        if (dynamic_cast<const ast::StringLiteral*>(&primary)) return 101;
-        if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return 109;
-        if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return 101;
-        if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) return 125;
-        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isList() ? 118 : 102;
-        if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return 104;
+        if (dynamic_cast<const ast::StringLiteral*>(&primary)) return HOO_TYPE_STRING;
+        if (dynamic_cast<const ast::CharacterLiteral*>(&primary)) return HOO_TYPE_CHARACTER;
+        if (dynamic_cast<const ast::InterpolatedString*>(&primary)) return HOO_TYPE_STRING;
+        if (dynamic_cast<const ast::DecimalLiteral*>(&primary)) return HOO_TYPE_DECIMAL;
+        if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&primary)) return arr->isList() ? HOO_TYPE_LIST : HOO_TYPE_ARRAY;
+        if (dynamic_cast<const ast::TensorLiteral*>(&primary)) return HOO_TYPE_TENSOR;
         if (auto id = dynamic_cast<const ast::Identifier*>(&primary)) {
             return getLocalTypeId(id->getName());
         }
         if (auto paren = dynamic_cast<const ast::ParenthesizedExpression*>(&primary)) {
             return inferExpressionTypeId(paren->getExpression());
         }
-        return 100;
+        return HOO_TYPE_OBJECT;
     }
 
     if (auto unaryMinus = dynamic_cast<const ast::UnaryMinus*>(&expr)) {
         return inferExpressionTypeId(unaryMinus->getOperand());
     }
     if (auto logicalNot = dynamic_cast<const ast::LogicalNot*>(&expr)) {
-        return inferExpressionTypeId(logicalNot->getOperand()) == 104 ? 104 : 3;
+        return inferExpressionTypeId(logicalNot->getOperand()) == HOO_TYPE_TENSOR ? HOO_TYPE_TENSOR : HOO_TYPE_BOOL;
     }
     if (auto logicAnd = dynamic_cast<const ast::LogicalAnd*>(&expr)) {
         uint32_t left = inferExpressionTypeId(logicAnd->getLeft());
         uint32_t right = inferExpressionTypeId(logicAnd->getRight());
-        if (left == 104 || right == 104) return 104;
-        return left == 8 && right == 8 ? 8 : 3;
+        if (left == HOO_TYPE_TENSOR || right == HOO_TYPE_TENSOR) return HOO_TYPE_TENSOR;
+        return left == 8 && right == 8 ? 8 : HOO_TYPE_BOOL;
     }
     if (auto logicOr = dynamic_cast<const ast::LogicalOr*>(&expr)) {
         uint32_t left = inferExpressionTypeId(logicOr->getLeft());
         uint32_t right = inferExpressionTypeId(logicOr->getRight());
-        if (left == 104 || right == 104) return 104;
-        return left == 8 && right == 8 ? 8 : 3;
+        if (left == HOO_TYPE_TENSOR || right == HOO_TYPE_TENSOR) return HOO_TYPE_TENSOR;
+        return left == 8 && right == 8 ? 8 : HOO_TYPE_BOOL;
     }
     if (auto binary = dynamic_cast<const ast::BinaryExpression*>(&expr)) {
         uint32_t left = inferExpressionTypeId(binary->getLeft());
         uint32_t right = inferExpressionTypeId(binary->getRight());
-        if (left == 104 || right == 104) return 104;
-        if (left == 125 || right == 125) return 125;
+        if (left == HOO_TYPE_TENSOR || right == HOO_TYPE_TENSOR) return HOO_TYPE_TENSOR;
+        if (left == HOO_TYPE_DECIMAL || right == HOO_TYPE_DECIMAL) return HOO_TYPE_DECIMAL;
         switch (binary->getOperator()) {
             case ast::BinaryOperator::LESS:
             case ast::BinaryOperator::LESS_EQUALS:
@@ -5968,15 +5975,15 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
             case ast::BinaryOperator::GREATER_EQUALS:
             case ast::BinaryOperator::EQUALS:
             case ast::BinaryOperator::NOT_EQUALS:
-                return 3;
+                return HOO_TYPE_BOOL;
             case ast::BinaryOperator::AND:
             case ast::BinaryOperator::OR:
-                return left == 8 && right == 8 ? 8 : 3;
+                return left == 8 && right == 8 ? 8 : HOO_TYPE_BOOL;
             default:
                 if (left == 9 || right == 9) return 9;
-                if (left == 2 || right == 2) return 2;
+                if (left == HOO_TYPE_FLOAT64 || right == HOO_TYPE_FLOAT64) return HOO_TYPE_FLOAT64;
                 if (left == 8 && right == 8) return 8;
-                return left != 100 ? left : right;
+                return left != HOO_TYPE_OBJECT ? left : right;
         }
     }
     if (auto arrayAccess = dynamic_cast<const ast::ArrayAccess*>(&expr)) {
@@ -5984,20 +5991,20 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
             if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
                 uint32_t containerTypeId = getLocalTypeId(id->getName());
                 uint32_t elementTypeId = getLocalElementTypeId(id->getName());
-                if (containerTypeId == 104) {
-                    return elementTypeId != 100 && elementTypeId != 0 ? elementTypeId : 1;
+                if (containerTypeId == HOO_TYPE_TENSOR) {
+                    return elementTypeId != HOO_TYPE_OBJECT && elementTypeId != 0 ? elementTypeId : HOO_TYPE_INT64;
                 }
-                if (elementTypeId != 100) return elementTypeId;
+                if (elementTypeId != HOO_TYPE_OBJECT) return elementTypeId;
             }
         }
-        return 100;
+        return HOO_TYPE_OBJECT;
     }
     if (auto newExpr = dynamic_cast<const ast::NewObjectExpression*>(&expr)) {
         uint32_t typeId = builtinConstructedTypeId(newExpr->getClassName());
-        return typeId != 100 ? typeId : 100;
+        return typeId != HOO_TYPE_OBJECT ? typeId : HOO_TYPE_OBJECT;
     }
     if (dynamic_cast<const ast::NewDictExpression*>(&expr)) {
-        return 117;
+        return HOO_TYPE_DICT;
     }
     if (auto funcCall = dynamic_cast<const ast::FunctionCall*>(&expr)) {
         if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&funcCall->getFunction())) {
@@ -6029,25 +6036,25 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
 
                         const std::string returnType =
                             singletonMethodReturnType(className, memberAccess->getMember(), argTypeIds);
-                        if (returnType == "int64") return 1;
-                        if (returnType == "double") return 2;
-                        if (returnType == "int8") return 5;
-                        if (returnType == "byte") return 6;
-                        if (returnType == "bool") return 3;
-                        if (returnType == "void") return 4;
+                        if (returnType == "int64") return HOO_TYPE_INT64;
+                        if (returnType == "double") return HOO_TYPE_FLOAT64;
+                        if (returnType == "int8") return HOO_TYPE_INT8;
+                        if (returnType == "byte") return HOO_TYPE_BYTE;
+                        if (returnType == "bool") return HOO_TYPE_BOOL;
+                        if (returnType == "void") return HOO_TYPE_VOID;
                     }
 
                     uint32_t objectTypeId = getLocalTypeId(className);
                     if (objectTypeId == 0) {
                         static const std::unordered_map<std::string, uint32_t> builtinTypeIds = {
-                            {"Array", 102}, {"Tensor", 104}, {"String", 101},
-                            {"Map", 103}, {"Buffer", 113}, {"Character", 109},
-                            {"Random", 105}, {"DateTime", 119}, {"Args", 110},
-                            {"Compression", 111}, {"Csv", 114}, {"Path", 114},
-                            {"URL", 106}, {"HttpClient", 108}, {"HttpResponse", 107},
-                            {"Http", 108}, {"Response", 107}, {"Dict", 117},
-                            {"List", 118}, {"Regex", 120}, {"Mutex", 121},
-                            {"Uuid", 122}
+                            {"Array", HOO_TYPE_ARRAY}, {"Tensor", HOO_TYPE_TENSOR}, {"String", HOO_TYPE_STRING},
+                            {"Map", HOO_TYPE_MAP}, {"Buffer", HOO_TYPE_BUFFER}, {"Character", HOO_TYPE_CHARACTER},
+                            {"Random", HOO_TYPE_RANDOM}, {"DateTime", HOO_TYPE_DATETIME}, {"Args", HOO_TYPE_ARGS},
+                            {"Compression", HOO_TYPE_COMPRESSION}, {"Csv", HOO_TYPE_CSV}, {"Path", HOO_TYPE_CSV},
+                            {"URL", HOO_TYPE_NET_URL}, {"HttpClient", HOO_TYPE_NET_HTTP_CLI}, {"HttpResponse", HOO_TYPE_NET_HTTP_RES},
+                            {"Http", HOO_TYPE_NET_HTTP_CLI}, {"Response", HOO_TYPE_NET_HTTP_RES}, {"Dict", HOO_TYPE_DICT},
+                            {"List", HOO_TYPE_LIST}, {"Regex", HOO_TYPE_REGEX}, {"Mutex", HOO_TYPE_MUTEX},
+                            {"Uuid", HOO_TYPE_UUID}
                         };
                         auto it = builtinTypeIds.find(className);
                         if (it != builtinTypeIds.end()) {
@@ -6055,72 +6062,72 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
                         }
                     }
                     const std::string& member = memberAccess->getMember();
-                    if (objectTypeId == 102) {
-                        if (member == "length" || member == "empty") return 1;
-                        if (member == "sort" || member == "reverse" || member == "shuffle" || member == "sortRange") return 102;
-                        if (member == "binarySearch") return 1;
-                        return 100;
+                    if (objectTypeId == HOO_TYPE_ARRAY) {
+                        if (member == "length" || member == "empty") return HOO_TYPE_INT64;
+                        if (member == "sort" || member == "reverse" || member == "shuffle" || member == "sortRange") return HOO_TYPE_ARRAY;
+                        if (member == "binarySearch") return HOO_TYPE_INT64;
+                        return HOO_TYPE_OBJECT;
                     }
-                    if (objectTypeId == 105) {
-                        if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return 1;
-                        if (member == "nextBool") return 3;
-                        if (member == "nextDouble") return 2;
-                        return 100;
+                    if (objectTypeId == HOO_TYPE_RANDOM) {
+                        if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return HOO_TYPE_INT64;
+                        if (member == "nextBool") return HOO_TYPE_BOOL;
+                        if (member == "nextDouble") return HOO_TYPE_FLOAT64;
+                        return HOO_TYPE_OBJECT;
                     }
-                    if (objectTypeId == 117) {
-                        if (member == "count" || member == "remove") return 1;
-                        if (member == "clear") return 4;
-                        return 100;
+                    if (objectTypeId == HOO_TYPE_DICT) {
+                        if (member == "count" || member == "remove") return HOO_TYPE_INT64;
+                        if (member == "clear") return HOO_TYPE_VOID;
+                        return HOO_TYPE_OBJECT;
                     }
-                    if (objectTypeId == 113) {
+                    if (objectTypeId == HOO_TYPE_BUFFER) {
                         if (member == "length" || member == "capacity" ||
                             member == "byteAt" || member == "setByte" ||
-                            member == "clear" || member == "refcount") return 1;
-                        if (member == "to_string") return 101;
-                        if (member == "write" || member == "write_byte") return 4;
+                            member == "clear" || member == "refcount") return HOO_TYPE_INT64;
+                        if (member == "to_string") return HOO_TYPE_STRING;
+                        if (member == "write" || member == "write_byte") return HOO_TYPE_VOID;
                         if (member == "copy" || member == "slice" ||
                             member == "sub" || member == "fromBytes" ||
-                            member == "retain") return 113;
-                        return 100;
+                            member == "retain") return HOO_TYPE_BUFFER;
+                        return HOO_TYPE_OBJECT;
                     }
-                    if (objectTypeId == 118) {
-                        if (member == "length" || member == "push") return 1;
-                        if (member == "clear") return 4;
+                    if (objectTypeId == HOO_TYPE_LIST) {
+                        if (member == "length" || member == "push") return HOO_TYPE_INT64;
+                        if (member == "clear") return HOO_TYPE_VOID;
                         if (member == "pop") return 0;
-                        return 100;
+                        return HOO_TYPE_OBJECT;
                     }
-                    if (objectTypeId == 119) {
-                        if (member == "format" || member == "iso8601") return 101;
+                    if (objectTypeId == HOO_TYPE_DATETIME) {
+                        if (member == "format" || member == "iso8601") return HOO_TYPE_STRING;
                         if (member == "addDays" || member == "addHours" || member == "addMinutes" ||
                             member == "addSeconds" || member == "addMilliseconds" ||
-                            member == "now" || member == "parse" || member == "fromIso8601") return 119;
+                            member == "now" || member == "parse" || member == "fromIso8601") return HOO_TYPE_DATETIME;
                         if (member == "getTimestamp" || member == "compare" ||
-                            member == "diffDays" || member == "diffHours") return 1;
-                        if (member == "diffSeconds") return 2;
-                        return 119;
+                            member == "diffDays" || member == "diffHours") return HOO_TYPE_INT64;
+                        if (member == "diffSeconds") return HOO_TYPE_FLOAT64;
+                        return HOO_TYPE_DATETIME;
                     }
-                    if (objectTypeId == 110) {
+                    if (objectTypeId == HOO_TYPE_ARGS) {
                         if (member == "count" || member == "has" ||
                             member == "parse" || member == "getInt" ||
-                            member == "getBool") return 1;
+                            member == "getBool") return HOO_TYPE_INT64;
                         if (member == "get" || member == "value" ||
                             member == "programName" || member == "getString" ||
-                            member == "helpText") return 101;
-                        if (member == "getFloat") return 2;
+                            member == "helpText") return HOO_TYPE_STRING;
+                        if (member == "getFloat") return HOO_TYPE_FLOAT64;
                         if (member == "addString" || member == "addInt" ||
                             member == "addFlag" || member == "addFloat" ||
-                            member == "addPositional" || member == "clear") return 4;
-                        if (member == "new") return 110;
-                        return 100;
+                            member == "addPositional" || member == "clear") return HOO_TYPE_VOID;
+                        if (member == "new") return HOO_TYPE_ARGS;
+                        return HOO_TYPE_OBJECT;
                     }
                 }
             }
         }
     }
 
-    if (dynamic_cast<const ast::InterpolatedString*>(&expr)) return 101;
+    if (dynamic_cast<const ast::InterpolatedString*>(&expr)) return HOO_TYPE_STRING;
 
-    return 100;
+    return HOO_TYPE_OBJECT;
 }
 
 uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expression* initializer, std::string* outClassName) {
@@ -6129,21 +6136,21 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
             // Basic inference from literal
             if (auto pe = dynamic_cast<const ast::PrimaryExpression*>(initializer)) {
                 const ast::ASTNode& node = pe->getPrimary();
-                if (dynamic_cast<const ast::IntegerLiteral*>(&node)) return 1;
-                if (dynamic_cast<const ast::FloatingLiteral*>(&node)) return 2;
+                if (dynamic_cast<const ast::IntegerLiteral*>(&node)) return HOO_TYPE_INT64;
+                if (dynamic_cast<const ast::FloatingLiteral*>(&node)) return HOO_TYPE_FLOAT64;
                 if (dynamic_cast<const ast::BitLiteral*>(&node)) return 8;
                 if (dynamic_cast<const ast::F8Literal*>(&node)) return 9;
-                if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return 3;
-                if (dynamic_cast<const ast::StringLiteral*>(&node)) return 101;
-                if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&node)) return arr->isList() ? 118 : 102;
-                if (dynamic_cast<const ast::TensorLiteral*>(&node)) return 104;
-                if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return 109;
+                if (dynamic_cast<const ast::BooleanLiteral*>(&node)) return HOO_TYPE_BOOL;
+                if (dynamic_cast<const ast::StringLiteral*>(&node)) return HOO_TYPE_STRING;
+                if (auto arr = dynamic_cast<const ast::ArrayLiteral*>(&node)) return arr->isList() ? HOO_TYPE_LIST : HOO_TYPE_ARRAY;
+                if (dynamic_cast<const ast::TensorLiteral*>(&node)) return HOO_TYPE_TENSOR;
+                if (dynamic_cast<const ast::CharacterLiteral*>(&node)) return HOO_TYPE_CHARACTER;
             }
             const auto inferredInfo = inferExpressionTypeInfo(*initializer);
             if (outClassName && !inferredInfo.className.empty()) {
                 *outClassName = inferredInfo.className;
             }
-            if (inferredInfo.typeId != 100) return inferredInfo.typeId;
+            if (inferredInfo.typeId != HOO_TYPE_OBJECT) return inferredInfo.typeId;
             // Back-compat inference for older class-style factory calls.
             if (auto fc = dynamic_cast<const ast::FunctionCall*>(initializer)) {
                 if (auto ma = dynamic_cast<const ast::MemberAccess*>(&fc->getFunction())) {
@@ -6155,166 +6162,166 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         }
                     }
                     if (clsName == "Array") {
-                        if (ma->getMember() == "new") return 102;
-                        return 101;
+                        if (ma->getMember() == "new") return HOO_TYPE_ARRAY;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Map") {
-                        if (ma->getMember() == "new") return 103;
-                        return 101;
+                        if (ma->getMember() == "new") return HOO_TYPE_MAP;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Args") {
-                        if (ma->getMember() == "new") return 110;
-                        return 101;
+                        if (ma->getMember() == "new") return HOO_TYPE_ARGS;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Compression") {
-                        if (ma->getMember() == "new") return 111;
-                        return 101;
+                        if (ma->getMember() == "new") return HOO_TYPE_COMPRESSION;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Csv") {
                         if (ma->getMember() == "new" || ma->getMember() == "newWithOpts" ||
-                             ma->getMember() == "retain") return 114;
-                        return 101;
+                             ma->getMember() == "retain") return HOO_TYPE_CSV;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Character") {
-                        if (ma->getMember() == "new") return 109;
-                        return 101;
+                        if (ma->getMember() == "new") return HOO_TYPE_CHARACTER;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Buffer") {
-                        if (ma->getMember() == "new") return 113;
-                        return 101;
+                        if (ma->getMember() == "new") return HOO_TYPE_BUFFER;
+                        return HOO_TYPE_STRING;
                     }
                     if (clsName == "Random") {
-                        if (ma->getMember() == "new") return 105;
-                        return 100;
+                        if (ma->getMember() == "new") return HOO_TYPE_RANDOM;
+                        return HOO_TYPE_OBJECT;
                     }
                     if (clsName == "DateTime") {
                         const std::string& member = ma->getMember();
-                        if (member == "iso8601" || member == "format") return 101;
-                        if (member == "nowSeconds") return 1;
-                        if (member == "nowPrecise") return 2;
-                        return 119;
+                        if (member == "iso8601" || member == "format") return HOO_TYPE_STRING;
+                        if (member == "nowSeconds") return HOO_TYPE_INT64;
+                        if (member == "nowPrecise") return HOO_TYPE_FLOAT64;
+                        return HOO_TYPE_DATETIME;
                     }
                     if (isBuiltinClassName(clsName)) {
                         uint32_t tid = builtinConstructedTypeId(clsName);
-                        if (tid != 100) return tid;
-                        return 101;
+                        if (tid != HOO_TYPE_OBJECT) return tid;
+                        return HOO_TYPE_STRING;
                     }
                     // Inference from instance method calls (e.g. args.get(0))
                     if (!clsName.empty()) {
                         const std::string& member = ma->getMember();
                         uint32_t objTypeId = getLocalTypeId(clsName);
-                        if (objTypeId == 110) {
+                        if (objTypeId == HOO_TYPE_ARGS) {
                             if (member == "count" || member == "has" ||
                                 member == "parse" || member == "getInt" ||
-                                member == "getBool") return 1;
+                                member == "getBool") return HOO_TYPE_INT64;
                             if (member == "get" || member == "value" ||
                                 member == "programName" || member == "getString" ||
-                                member == "helpText") return 101;
-                            if (member == "getFloat") return 2;
+                                member == "helpText") return HOO_TYPE_STRING;
+                            if (member == "getFloat") return HOO_TYPE_FLOAT64;
                             if (member == "addString" || member == "addInt" ||
                                 member == "addFlag" || member == "addFloat" ||
-                                member == "addPositional" || member == "clear") return 4;
-                            return 100;
+                                member == "addPositional" || member == "clear") return HOO_TYPE_VOID;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 114) {
+                        if (objTypeId == HOO_TYPE_CSV) {
                             if (member == "parse" || member == "readFile" ||
                                 member == "parseAsMaps" || member == "readFileAsMaps" ||
                                 member == "select" || member == "filter" || member == "sort")
-                                return 102;
+                                return HOO_TYPE_ARRAY;
                             if (member == "generate" || member == "avg" ||
                                 member == "min" || member == "max")
-                                return 101;
+                                return HOO_TYPE_STRING;
                             if (member == "escape" || member == "writeFile" ||
                                 member == "count" || member == "sum")
-                                return 1;
-                            if (member == "describe") return 103;
-                            return 100;
+                                return HOO_TYPE_INT64;
+                            if (member == "describe") return HOO_TYPE_MAP;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 111) {
+                        if (objTypeId == HOO_TYPE_COMPRESSION) {
                             if (member == "gzipCompress" || member == "gzipDecompress" ||
                                 member == "deflateCompress" || member == "deflateDecompress")
-                                return 101;
-                            return 100;
+                                return HOO_TYPE_STRING;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 109) {
-                            if (member == "codepoint" || member == "length") return 1;
-                            if (member == "data") return 101;
-                            return 100;
+                        if (objTypeId == HOO_TYPE_CHARACTER) {
+                            if (member == "codepoint" || member == "length") return HOO_TYPE_INT64;
+                            if (member == "data") return HOO_TYPE_STRING;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 113) {
+                        if (objTypeId == HOO_TYPE_BUFFER) {
                             if (member == "length" || member == "capacity" ||
                                 member == "byteAt" || member == "setByte" ||
-                                member == "clear") return 1;
-                            if (member == "to_string") return 101;
-                            if (member == "copy" || member == "slice") return 113;
-                            return 100;
+                                member == "clear") return HOO_TYPE_INT64;
+                            if (member == "to_string") return HOO_TYPE_STRING;
+                            if (member == "copy" || member == "slice") return HOO_TYPE_BUFFER;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 105) {
+                        if (objTypeId == HOO_TYPE_RANDOM) {
                             if (member == "nextInt" || member == "nextIntMax" ||
                                 member == "nextBytes")
-                                return 1;
-                            if (member == "nextBool") return 3;
-                            if (member == "nextDouble") return 2;
-                            return 100;
+                                return HOO_TYPE_INT64;
+                            if (member == "nextBool") return HOO_TYPE_BOOL;
+                            if (member == "nextDouble") return HOO_TYPE_FLOAT64;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 117) {
-                            if (member == "count" || member == "remove") return 1;
-                            if (member == "clear") return 4;
-                            return 100;
+                        if (objTypeId == HOO_TYPE_DICT) {
+                            if (member == "count" || member == "remove") return HOO_TYPE_INT64;
+                            if (member == "clear") return HOO_TYPE_VOID;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 118) {
-                            if (member == "length" || member == "push") return 1;
-                            if (member == "clear") return 4;
+                        if (objTypeId == HOO_TYPE_LIST) {
+                            if (member == "length" || member == "push") return HOO_TYPE_INT64;
+                            if (member == "clear") return HOO_TYPE_VOID;
                             if (member == "pop") return 0;
-                            return 100;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 106) {
-                            if (member == "getPort") return 1;
+                        if (objTypeId == HOO_TYPE_NET_URL) {
+                            if (member == "getPort") return HOO_TYPE_INT64;
                             if (member == "getScheme" || member == "getHost" ||
                                 member == "getPath" || member == "getQuery" ||
                                 member == "getFragment" || member == "toString")
-                                return 101;
-                            return 100;
+                                return HOO_TYPE_STRING;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 108) {
-                            if (member == "setHeader") return 1;
+                        if (objTypeId == HOO_TYPE_NET_HTTP_CLI) {
+                            if (member == "setHeader") return HOO_TYPE_INT64;
                             if (member == "get" || member == "post" ||
                                 member == "put" || member == "delete")
-                                return 107;
-                            return 100;
+                                return HOO_TYPE_NET_HTTP_RES;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 107) {
+                        if (objTypeId == HOO_TYPE_NET_HTTP_RES) {
                             if (member == "statusCode" || member == "getStatusCode" ||
                                 member == "isSuccess")
-                                return 1;
+                                return HOO_TYPE_INT64;
                             if (member == "getBody" || member == "body" ||
                                 member == "statusText" || member == "getStatusText")
-                                return 101;
-                            return 100;
+                                return HOO_TYPE_STRING;
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 120) { // Regex
-                            if (member == "match" || member == "search") return 1; // int64 (type ID 1)
-                            if (member == "replace" || member == "find" || member == "group") return 101; // string (type ID 101)
-                            if (member == "split") return 102; // array (type ID 102)
-                            if (member == "release") return 4; // void (type ID 4)
-                            return 100;
+                        if (objTypeId == HOO_TYPE_REGEX) { // Regex
+                            if (member == "match" || member == "search") return HOO_TYPE_INT64; // int64 (type ID 1)
+                            if (member == "replace" || member == "find" || member == "group") return HOO_TYPE_STRING; // string (type ID 101)
+                            if (member == "split") return HOO_TYPE_ARRAY; // array (type ID 102)
+                            if (member == "release") return HOO_TYPE_VOID; // void (type ID 4)
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 121) { // Mutex
-                            if (member == "lock" || member == "unlock" || member == "release") return 1; // int64 (type ID 1)
-                            return 100;
+                        if (objTypeId == HOO_TYPE_MUTEX) { // Mutex
+                            if (member == "lock" || member == "unlock" || member == "release") return HOO_TYPE_INT64; // int64 (type ID 1)
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 122) { // Uuid
-                            if (member == "toString") return 101; // string (type ID 101)
-                            if (member == "isNil" || member == "equals" || member == "compare") return 1; // int64 (type ID 1)
-                            if (member == "release") return 4; // void (type ID 4)
-                            if (member == "toBytes") return 113; // Buffer (type ID 113)
-                            return 100;
+                        if (objTypeId == HOO_TYPE_UUID) { // Uuid
+                            if (member == "toString") return HOO_TYPE_STRING; // string (type ID 101)
+                            if (member == "isNil" || member == "equals" || member == "compare") return HOO_TYPE_INT64; // int64 (type ID 1)
+                            if (member == "release") return HOO_TYPE_VOID; // void (type ID 4)
+                            if (member == "toBytes") return HOO_TYPE_BUFFER; // Buffer (type ID 113)
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 125) { // Decimal
-                            if (member == "toString") return 101; // string (type ID 101)
-                            return 100;
+                        if (objTypeId == HOO_TYPE_DECIMAL) { // Decimal
+                            if (member == "toString") return HOO_TYPE_STRING; // string (type ID 101)
+                            return HOO_TYPE_OBJECT;
                         }
-                        if (objTypeId == 103) {
+                        if (objTypeId == HOO_TYPE_MAP) {
                             if (member == "length" || member == "empty" ||
                                 member == "keyType" || member == "valueType" ||
                                 member == "containsInt64" || member == "containsString" ||
@@ -6322,14 +6329,14 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                                 member == "getInt64Int64" || member == "getInt64Bool" ||
                                 member == "getInt8Int64" || member == "getInt8Bool" ||
                                 member == "getStringInt64" || member == "getStringBool")
-                                return 1;
+                                return HOO_TYPE_INT64;
                             if (member == "getInt64Double" ||
                                 member == "getStringDouble" || member == "getInt8Double")
-                                return 2;
+                                return HOO_TYPE_FLOAT64;
                             if (member == "getInt64String" ||
                                 member == "getStringString" || member == "getInt8String")
-                                return 101;
-                            return 100;
+                                return HOO_TYPE_STRING;
+                            return HOO_TYPE_OBJECT;
                         }
                         // Inference for user-defined class methods
                         std::string objClassName = getLocalClassName(clsName);
@@ -6362,7 +6369,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
             }
             if (dynamic_cast<const ast::NewDictExpression*>(initializer)) {
                 if (outClassName) *outClassName = "Dict";
-                return 117;
+                return HOO_TYPE_DICT;
             }
             // Inference from array subscript (arr[0])
             if (auto aa = dynamic_cast<const ast::ArrayAccess*>(initializer)) {
@@ -6378,7 +6385,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                 }
             }
         }
-        return 100; // Default to Object
+        return HOO_TYPE_OBJECT; // Default to Object
     }
     
     return typeIdFromDeclaredType(type);
@@ -6398,7 +6405,7 @@ void HVMCodeGenerator::emitModuleInit() {
         // Allocate: hoo_alloc(size, typeId)
         uint8_t sizeReg = emitConstant(static_cast<int64_t>(it->second.totalSize));
         emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-        uint8_t typeReg = emitConstant(100);
+        uint8_t typeReg = emitConstant(HOO_TYPE_OBJECT);
         emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
         emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
         freeRegister(sizeReg);
@@ -6500,28 +6507,28 @@ uint32_t HVMCodeGenerator::serializeFieldTypeId(const ast::Type& type) const {
     if (auto bt = dynamic_cast<const ast::BaseType*>(&type)) {
         if (bt->isPrimitive()) {
             switch (bt->getPrimitiveType()->getKind()) {
-                case ast::PrimitiveTypeKind::INT64:  return 1;   // HOO_TYPE_INT64
-                case ast::PrimitiveTypeKind::INT8:   return 1;   // Promote to INT64
-                case ast::PrimitiveTypeKind::BYTE:   return 1;   // Promote to INT64
+                case ast::PrimitiveTypeKind::INT64:  return HOO_TYPE_INT64;   // HOO_TYPE_INT64
+                case ast::PrimitiveTypeKind::INT8:   return HOO_TYPE_INT64;   // Promote to INT64
+                case ast::PrimitiveTypeKind::BYTE:   return HOO_TYPE_INT64;   // Promote to INT64
                 case ast::PrimitiveTypeKind::FLOAT:
                 case ast::PrimitiveTypeKind::DOUBLE:
-                case ast::PrimitiveTypeKind::F64:    return 2;   // HOO_TYPE_FLOAT64
-                case ast::PrimitiveTypeKind::F8:     return 2;   // Promote to FLOAT64
-                case ast::PrimitiveTypeKind::BOOL:   return 3;   // HOO_TYPE_BOOL
-                case ast::PrimitiveTypeKind::BIT:    return 3;   // Promote to BOOL
-                case ast::PrimitiveTypeKind::STRING: return 101; // HOO_TYPE_STRING
-                case ast::PrimitiveTypeKind::BUFFER: return 113; // HOO_TYPE_BUFFER
+                case ast::PrimitiveTypeKind::F64:    return HOO_TYPE_FLOAT64;   // HOO_TYPE_FLOAT64
+                case ast::PrimitiveTypeKind::F8:     return HOO_TYPE_FLOAT64;   // Promote to FLOAT64
+                case ast::PrimitiveTypeKind::BOOL:   return HOO_TYPE_BOOL;   // HOO_TYPE_BOOL
+                case ast::PrimitiveTypeKind::BIT:    return HOO_TYPE_BOOL;   // Promote to BOOL
+                case ast::PrimitiveTypeKind::STRING: return HOO_TYPE_STRING; // HOO_TYPE_STRING
+                case ast::PrimitiveTypeKind::BUFFER: return HOO_TYPE_BUFFER; // HOO_TYPE_BUFFER
                 default: return 0;
             }
         }
         std::string name = bt->getIdentifier();
-        if (name == "String" || name == "string") return 101;
-        if (name == "Buffer" || name == "buffer") return 113; // HOO_TYPE_BUFFER
+        if (name == "String" || name == "string") return HOO_TYPE_STRING;
+        if (name == "Buffer" || name == "buffer") return HOO_TYPE_BUFFER; // HOO_TYPE_BUFFER
         return 0;
     }
-    if (dynamic_cast<const ast::DictType*>(&type)) return 117;  // HOO_TYPE_HASHMAP
-    if (dynamic_cast<const ast::ListType*>(&type)) return 118; // HOO_TYPE_ANYARRAY
-    if (dynamic_cast<const ast::TensorType*>(&type)) return 126;  // HOO_TYPE_TENSOR_SERIALIZED
+    if (dynamic_cast<const ast::DictType*>(&type)) return HOO_TYPE_DICT;  // HOO_TYPE_HASHMAP
+    if (dynamic_cast<const ast::ListType*>(&type)) return HOO_TYPE_LIST; // HOO_TYPE_ANYARRAY
+    if (dynamic_cast<const ast::TensorType*>(&type)) return HOO_TYPE_TENSOR_SERIALIZED;  // HOO_TYPE_TENSOR_SERIALIZED
     return 0;
 }
 
@@ -6596,7 +6603,7 @@ void HVMCodeGenerator::emitSerializeMethod(const ClassLayout& layout, const ast:
                             emitCall(Opcode::CALL, "_F_M_hoo_E_String_data_p");
                             emitCall(Opcode::CALL, "_F_M_hoo_E_json_deserialize_hashmap_p_p");
                             emit(Opcode::MOV, OperandsR{fieldReg, 1, 0, 0});
-                            hooType = 117;
+                            hooType = HOO_TYPE_DICT;
                         }
                     }
                 }
@@ -6670,7 +6677,7 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
     // 2. Allocate new instance: hoo_alloc(size, typeId)
     uint8_t sizeReg = emitConstant(static_cast<int64_t>(layout.totalSize));
     emit(Opcode::MOV, OperandsR{1, sizeReg, 0, 0});
-    uint8_t typeReg = emitConstant(100); // Generic Object typeId
+    uint8_t typeReg = emitConstant(HOO_TYPE_OBJECT); // Generic Object typeId
     emit(Opcode::MOV, OperandsR{2, typeReg, 0, 0});
     emitCall(Opcode::CALL, "_F_hoo_alloc_p_i8_i8");
     freeRegister(sizeReg);
@@ -6753,13 +6760,13 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
 
                 // r1 now has the value.data — reverse type promotion if needed
                 if (serializedType != origFieldType && serializedType != 0) {
-                    if (origFieldType == 5 || origFieldType == 6) {
+                    if (origFieldType == HOO_TYPE_INT8 || origFieldType == HOO_TYPE_BYTE) {
                         // INT8/BYTE promoted to INT64: truncate to 8 bits
                         uint8_t maskReg = emitConstant(0xFF);
                         emit(Opcode::MOV, OperandsR{2, maskReg, 0, 0});
                         emit(Opcode::LOGIC, OperandsR{1, 1, 2, 0}); // AND
                         freeRegister(maskReg);
-                        if (origFieldType == 5) {
+                        if (origFieldType == HOO_TYPE_INT8) {
                             // INT8: sign-extend from 8 bits
                             uint8_t shiftReg = emitConstant(56);
                             emit(Opcode::MOV, OperandsR{2, shiftReg, 0, 0});
@@ -6779,7 +6786,7 @@ void HVMCodeGenerator::emitDeserializeMethod(const ClassLayout& layout, const as
                     } else if (origFieldType == 9) {
                         // F8 values are stored as float64 bits in registers and
                         // fields, so the deserialized double needs no conversion.
-                    } else if (origFieldType == 113) {
+                    } else if (origFieldType == HOO_TYPE_BUFFER) {
                         // Buffer fields are JSON round-tripped as base64 and
                         // decoded back into a Buffer handle by the JSON layer,
                         // so the value is already in field-ready form.

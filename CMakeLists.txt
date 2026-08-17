@@ -653,6 +653,8 @@ if(HOO_BUILD_TESTS)
         tests/repl/HooReplTest.cpp
         tests/repl/HooReplAdvancedTest.cpp
         tests/repl/HooReplDebugTest.cpp
+        tests/verify/TypeIdConsistencyTest.cpp
+        tests/verify/HOModuleBaseSerializationTest.cpp
     )
     set_target_properties(hoo-tests PROPERTIES VERSION ${HOO_VERSION})
     if(MSVC)
