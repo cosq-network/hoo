@@ -86,6 +86,16 @@ private:
     void restoreRegisterMask(const RegisterMask& mask);
     void emitCompressed(uint8_t opcode4, uint8_t rd, uint8_t rs1, uint8_t imm4);
 
+    // Frame slots used to spill live temporaries (r9-r20) around CALL
+    // instructions. The HVM ABI is fully caller-saved apart from the return
+    // register (r1), the link register (r29) and the frame pointer (r30), so
+    // any temporary live across a call would otherwise be clobbered by the
+    // callee (e.g. the left operand of `a + f()`). Slots are reserved lazily
+    // on the first call; an offset of 0 means the slot is not yet reserved
+    // (the frame base at 0 holds the saved link/frame pointers).
+    int32_t callSpillSlots_[12] = {};
+    bool callSpillSlotsReserved_ = false;
+
 
 
     // Local Variable & Stack Management

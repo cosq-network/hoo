@@ -18,6 +18,7 @@
 #include <sstream>
 #include <functional>
 #include <climits>
+#include <array>
 
 using namespace hvm;
 
@@ -774,6 +775,7 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     errors_.clear();
     scopeStack_.clear();
     currentStackOffset_ = 0;
+    callSpillSlotsReserved_ = false;
     allLabels_.clear();
     symbolFixups_.clear();
     functionReturnTypes_.clear();
@@ -1337,6 +1339,9 @@ HVMCodeGenerator::FunctionPrologueInfo HVMCodeGenerator::beginFunction(
     info.isPrivate = decl && decl->isPrivate();
     bool isFactory = ctorDecl && ctorDecl->isFactory();
     scopeStack_.push_back({});
+    // Spill-slot offsets are relative to this function's frame (r30), so each
+    // function must reserve its own slots on its first call.
+    callSpillSlotsReserved_ = false;
     emit(Opcode::ENTER, OperandsI{0, 0, 0});
 
     uint8_t firstArgReg = isMethod ? 2 : 1;
@@ -4965,6 +4970,32 @@ void HVMCodeGenerator::emitJump(Opcode op, uint8_t rd, Label* target) {
 }
 
 void HVMCodeGenerator::emitCall(Opcode op, const std::string& symbol) {
+    // The HVM call ABI only guarantees the return value (r1), the link
+    // register (r29) and the frame pointer (r30) survive a CALL. Both the
+    // interpreter and the JIT execute the callee against the same HVMState,
+    // so every other register is caller-saved. Spill any live temporary
+    // (r9-r20) to frame slots before the call and reload it afterwards;
+    // without this, a value kept in a temporary across a call is clobbered
+    // by the callee (e.g. the left operand of `a + f()` or `a + await(f())`).
+    std::array<uint8_t, 12> spillRegs;
+    int spillCount = 0;
+    for (uint8_t reg = 9; reg <= 20; ++reg) {
+        if (usedRegs_[reg]) spillRegs[spillCount++] = reg;
+    }
+    if (spillCount > 0) {
+        if (!callSpillSlotsReserved_) {
+            for (int i = 0; i < 12; ++i) {
+                currentStackOffset_ -= 8;
+                callSpillSlots_[i] = currentStackOffset_;
+            }
+            callSpillSlotsReserved_ = true;
+        }
+        for (int i = 0; i < spillCount; ++i) {
+            const uint8_t reg = spillRegs[i];
+            emit(Opcode::ST_D, OperandsI{reg, 30, static_cast<int16_t>(callSpillSlots_[reg - 9])});
+        }
+    }
+
     size_t instrIdx = instructions_.size();
     uint32_t instrOff = currentByteOffset_;
     
@@ -4990,7 +5021,22 @@ void HVMCodeGenerator::emitCall(Opcode op, const std::string& symbol) {
         symbolFixups_.push_back({symbol, instrIdx, instrOff});
     }
 
-    emit(op, OperandsJ{29, wordOffset}); 
+    emit(op, OperandsJ{29, wordOffset});
+
+    if (spillCount > 0) {
+        for (int i = spillCount - 1; i >= 0; --i) {
+            const uint8_t reg = spillRegs[i];
+            emit(Opcode::LD_D, OperandsI{reg, 30, static_cast<int16_t>(callSpillSlots_[reg - 9])});
+        }
+        // Release spill-slot references.  ST_D retained each managed value
+        // when spilling; LD_D is a raw load with no ARC side-effects, so the
+        // slot still holds a reference.  Storing zero triggers the ST_D
+        // write-barrier which calls arc_release_if_managed on the old value.
+        for (int i = 0; i < spillCount; ++i) {
+            const uint8_t reg = spillRegs[i];
+            emit(Opcode::ST_D, OperandsI{0, 30, static_cast<int16_t>(callSpillSlots_[reg - 9])});
+        }
+    }
 }
 
 void HVMCodeGenerator::emitBranch(Opcode op, uint8_t rs1, uint8_t rs2, Label* target) {
