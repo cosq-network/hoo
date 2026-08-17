@@ -17,10 +17,10 @@
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
-#include <netdb.h>
 #ifdef _WIN32
 #include <winsock2.h>
 #else
+#include <netdb.h>
 #include <arpa/inet.h>
 #endif
 
