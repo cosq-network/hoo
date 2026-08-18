@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "runtime/lib/runtime/hoo_runtime.h"
 #include "runtime/lib/exception/hoo_exception.h"
 
 #ifdef __cplusplus
@@ -13,13 +14,10 @@ extern "C" {
  * A Future<T> is a reference-counted placeholder for a value of type T
  * that becomes available at some point in the future.
  *
- * Type IDs:
+ * Type IDs are defined in hoo_runtime.h:
  *   HOO_TYPE_FUTURE    = 123  (generic future object)
  *   HOO_TYPE_UV_HANDLE = 124  (libuv handle wrapper, reserved for future use)
  */
-
-#define HOO_TYPE_FUTURE     123
-#define HOO_TYPE_UV_HANDLE  124
 
 /** Opaque future pointer */
 typedef void* HooFuture;
@@ -62,10 +60,16 @@ void hoo_future_set_value(HooFuture f, void* value);
 void hoo_future_set_error(HooFuture f, const char* error_message);
 
 /**
- * Get the resolved value.
+ * Get the resolved value without retaining it.
  * Waits until the future is ready while pumping the event loop and yielding
  * instead of busy-spinning.
- * Returns NULL for void futures or if the future resolved with an error.
+ * Returns NULL for void futures, if the future resolved with an error,
+ * or if the wait timed out.
+ *
+ * OWNERSHIP: The returned pointer is NOT retained.  The caller borrows the
+ * value and must not store it beyond the future's lifetime without calling
+ * hoo_retain() explicitly.  For a retained copy, use hoo_future_await_wait()
+ * or _F_hoo_future_await_unwrap_p_p() instead.
  */
 void* hoo_future_get_value(HooFuture f);
 
@@ -111,7 +115,15 @@ typedef void (*HooFutureContinuation)(void* arg);
 /**
  * Register a continuation callback to be executed when the future resolves.
  * If the future is already resolved, the callback is executed immediately
- * or scheduled on the event loop.
+ * on the calling thread.
+ *
+ * RE-ENTRANCY: The callback must NOT call hoo_future_set_value(),
+ * hoo_future_set_error(), or hoo_future_set_continuation() on the same
+ * future, as the continuation list is being drained and the mutex is not
+ * re-entrant.
+ *
+ * OOM: If malloc fails, falls back to synchronous invocation when the future
+ * is already resolved; silently drops the continuation if still pending.
  */
 void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, void* arg);
 

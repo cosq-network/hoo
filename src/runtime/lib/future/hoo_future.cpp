@@ -41,11 +41,30 @@ static HooFutureImpl* get_impl(HooFuture f) {
     return (HooFutureImpl*)f;
 }
 
+/*
+ * Returns 1 when elem_type_id corresponds to a primitive value type that is
+ * passed through the void* ABI as raw register bits (never ARC-managed).
+ * All other type IDs are treated as potentially managed objects that require
+ * hoo_is_managed_object() verification before ARC operations.
+ */
+static int is_primitive_type_id(int64_t elem_type_id) {
+    switch (elem_type_id) {
+        case HOO_TYPE_INT64:
+        case HOO_TYPE_FLOAT64:
+        case HOO_TYPE_BOOL:
+        case HOO_TYPE_VOID:
+        case HOO_TYPE_INT8:
+        case HOO_TYPE_BYTE:
+        case HOO_TYPE_CHAR:
+            return 1;
+        default:
+            return 0;
+    }
+}
+
 static int future_value_is_managed(const HooFutureImpl* impl, void* value) {
     if (!value) return 0;
-    /* Primitive values are passed through the void* ABI as register bits. */
-    if (impl->elem_type_id > 0 && impl->elem_type_id < 100) return 0;
-    /* Type 100 is the unknown/object type; verify it before using ARC. */
+    if (is_primitive_type_id(impl->elem_type_id)) return 0;
     return hoo_is_managed_object(value) != 0;
 }
 
@@ -152,12 +171,28 @@ static void trigger_continuation(HooFutureImpl* impl) {
         impl->continuations = NULL;
     }
     if (!continuations) return;
-    /* Take our own reference so the future cannot be freed mid-pass by a
-     * callback (or another thread) dropping the final external reference.
-     * Each queued continuation owns one reference that is released before
-     * its callback runs; our temporary reference keeps the future alive for
-     * the whole pass so the release of the last queued reference cannot make
-     * the subsequent loop iteration touch freed memory. */
+    /*
+     * Ownership protocol for continuation drain:
+     *
+     * Each enqueued node holds one retain on the future (added at enqueue
+     * time in set_continuation).  We drain the list under our own temporary
+     * retain so the future cannot be freed mid-pass:
+     *
+     *   1. Take a temporary retain on the future (our "drain" reference).
+     *   2. For each node: capture next/callback/arg, free the node, release
+     *      the node's enqueue-time retain, then invoke the callback.
+     *   3. After the loop, release our drain reference.
+     *
+     * Between step 2's release and the next iteration, the future may
+     * already be at refcount 0 — but we already captured `next` before the
+     * release, so the subsequent iteration is safe.  Our drain reference
+     * (taken in step 1 and released in step 3) guarantees the memory backing
+     * `next` (which was captured while the node was alive) remains valid.
+     *
+     * NOTE: callbacks must NOT re-enter the future API on the same future
+     * (e.g. calling set_value or set_continuation again), as the mutex is
+     * not re-entrant and the continuation list has already been moved.
+     */
     hoo_retain(impl);
     while (continuations) {
         HooFutureContinuationNode* next = continuations->next;
@@ -195,7 +230,16 @@ void hoo_future_set_error(HooFuture f, const char* error_message) {
     {
         std::lock_guard<std::mutex> lock(*impl->mutex);
         if (impl->ready) return;
-        impl->error_message = error_message ? strdup(error_message) : NULL;
+        if (error_message) {
+            impl->error_message = strdup(error_message);
+            /* If strdup fails under OOM, store an empty string so callers
+             * still observe a resolved-with-error state. */
+            if (!impl->error_message) {
+                impl->error_message = strdup("");
+            }
+        } else {
+            impl->error_message = NULL;
+        }
         impl->ready = 1;
     }
     impl->cv->notify_all();
@@ -207,7 +251,12 @@ void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, vo
     HooFutureImpl* impl = get_impl(f);
     bool invoke_now = false;
     HooFutureContinuationNode* node = (HooFutureContinuationNode*)malloc(sizeof(HooFutureContinuationNode));
-    if (!node) return;
+    if (!node) {
+        /* OOM: fall back to synchronous invocation if already resolved. */
+        std::lock_guard<std::mutex> lock(*impl->mutex);
+        if (impl->ready) callback(arg);
+        return;
+    }
     node->callback = callback;
     node->arg = arg;
     node->next = NULL;
@@ -228,15 +277,31 @@ void hoo_future_set_continuation(HooFuture f, HooFutureContinuation callback, vo
     }
 }
 
+/*
+ * Maximum number of event-loop iterations to spin before aborting.
+ * At 16 ms per wait_for iteration this gives ~160 seconds before the
+ * runtime gives up, which is generous enough for real I/O but will
+ * surface stuck futures during development.
+ */
+#define HOO_FUTURE_WAIT_MAX_ITERATIONS 10000
+
 static void wait_for_future(HooFutureImpl* impl, FutureResolvedState* out) {
     std::unique_lock<std::mutex> lock(*impl->mutex);
+    int64_t iterations = 0;
     while (!impl->ready) {
+        if (iterations >= HOO_FUTURE_WAIT_MAX_ITERATIONS) {
+            /* Future never resolved — abort the wait to avoid an infinite
+             * hang.  The future is returned as-is (pending state); callers
+             * will observe a NULL value / no error. */
+            break;
+        }
         lock.unlock();
         hoo_event_loop_run_nowait();
         lock.lock();
         if (!impl->ready) {
             impl->cv->wait_for(lock, std::chrono::milliseconds(16));
         }
+        ++iterations;
     }
     /* Resolved fields are immutable once ready; capture them under the lock
      * so readers observe a consistent, race-free snapshot. */

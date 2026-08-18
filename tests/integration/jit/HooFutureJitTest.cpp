@@ -337,6 +337,183 @@ TEST_F(HooFutureJitTest, FutureRetention) {
 }
 
 // ============================================================================
+// FIX REGRESSION TESTS
+// ============================================================================
+
+TEST_F(HooFutureJitTest, PrimitiveValueTypeId_Int64) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(99)));
+    EXPECT_EQ(reinterpret_cast<intptr_t>(hoo_future_get_value(fut)), 99);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, PrimitiveValueTypeId_Float64) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_FLOAT64);
+    ASSERT_NE(fut, nullptr);
+    double val = 3.14;
+    uintptr_t bits;
+    static_assert(sizeof(bits) >= sizeof(val), "pointer must hold double bits");
+    memcpy(&bits, &val, sizeof(val));
+    hoo_future_set_value(fut, reinterpret_cast<void*>(bits));
+    uintptr_t out = reinterpret_cast<uintptr_t>(hoo_future_get_value(fut));
+    double result;
+    memcpy(&result, &out, sizeof(result));
+    EXPECT_DOUBLE_EQ(result, 3.14);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, PrimitiveValueTypeId_Bool) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_BOOL);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(1)));
+    EXPECT_EQ(reinterpret_cast<intptr_t>(hoo_future_get_value(fut)), 1);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, PrimitiveValueTypeId_Void) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_VOID);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, nullptr);
+    EXPECT_EQ(hoo_future_get_value(fut), nullptr);
+    EXPECT_EQ(hoo_future_is_ready(fut), 1);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, NonPrimitiveValueTypeId_Zero) {
+    HooFuture fut = hoo_future_new(0);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, nullptr);
+    EXPECT_EQ(hoo_future_is_ready(fut), 1);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, SetError_NullMessage) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_error(fut, nullptr);
+    EXPECT_EQ(hoo_future_is_ready(fut), 1);
+    EXPECT_EQ(hoo_future_has_error(fut), 0);
+    EXPECT_EQ(hoo_future_get_error(fut), nullptr);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, SetError_EmptyString) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_error(fut, "");
+    EXPECT_EQ(hoo_future_is_ready(fut), 1);
+    EXPECT_EQ(hoo_future_has_error(fut), 1);
+    const char* err = hoo_future_get_error(fut);
+    ASSERT_NE(err, nullptr);
+    EXPECT_STREQ(err, "");
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, SetError_DuplicateResolutionIsNoop) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_error(fut, "first error");
+    hoo_future_set_error(fut, "second error");
+    EXPECT_STREQ(hoo_future_get_error(fut), "first error");
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, SetValue_DuplicateResolutionIsNoop) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(42)));
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(99)));
+    EXPECT_EQ(reinterpret_cast<intptr_t>(hoo_future_get_value(fut)), 42);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, ContinuationOnError) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    bool called = false;
+    hoo_future_set_continuation(fut, [](void* arg) {
+        *static_cast<bool*>(arg) = true;
+    }, &called);
+    EXPECT_FALSE(called);
+    hoo_future_set_error(fut, "fail");
+    EXPECT_TRUE(called);
+    EXPECT_EQ(hoo_future_has_error(fut), 1);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, ContinuationAfterErrorResolution) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_error(fut, "fail");
+    bool called = false;
+    hoo_future_set_continuation(fut, [](void* arg) {
+        *static_cast<bool*>(arg) = true;
+    }, &called);
+    EXPECT_TRUE(called);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, GetValueOwnership_BorrowedPointer) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(42)));
+    void* ptr1 = hoo_future_get_value(fut);
+    void* ptr2 = hoo_future_get_value(fut);
+    EXPECT_EQ(ptr1, ptr2);
+    EXPECT_EQ(reinterpret_cast<intptr_t>(ptr1), 42);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, AwaitWaitRetainsValue) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(55)));
+    int64_t hasError = 0;
+    HooException exc = nullptr;
+    void* result = hoo_future_await_wait(fut, &hasError, &exc);
+    EXPECT_EQ(hasError, 0);
+    EXPECT_EQ(exc, nullptr);
+    EXPECT_EQ(reinterpret_cast<intptr_t>(result), 55);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, AwaitWait_ErrorReturnsNullAndException) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_error(fut, "async failure");
+    int64_t hasError = 0;
+    HooException exc = nullptr;
+    void* result = hoo_future_await_wait(fut, &hasError, &exc);
+    EXPECT_EQ(hasError, 1);
+    EXPECT_NE(exc, nullptr);
+    EXPECT_EQ(result, nullptr);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, ContinuationMultipleCallbacksOnValue) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    int count = 0;
+    auto cb = [](void* arg) { ++*static_cast<int*>(arg); };
+    hoo_future_set_continuation(fut, cb, &count);
+    hoo_future_set_continuation(fut, cb, &count);
+    hoo_future_set_continuation(fut, cb, &count);
+    hoo_future_set_value(fut, reinterpret_cast<void*>(static_cast<uintptr_t>(1)));
+    EXPECT_EQ(count, 3);
+    hoo_future_release(fut);
+}
+
+TEST_F(HooFutureJitTest, ContinuationNullCallbackIsNoop) {
+    HooFuture fut = hoo_future_new(HOO_TYPE_INT64);
+    ASSERT_NE(fut, nullptr);
+    hoo_future_set_continuation(fut, nullptr, nullptr);
+    hoo_future_set_value(fut, nullptr);
+    EXPECT_EQ(hoo_future_is_ready(fut), 1);
+    hoo_future_release(fut);
+}
+
+// ============================================================================
 // NULL SAFETY TESTS
 // ============================================================================
 
