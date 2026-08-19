@@ -603,6 +603,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/jit/IntegerTypesTest.cpp
         tests/integration/jit/NewLanguageFeaturesTest.cpp
         tests/integration/jit/HooFutureJitTest.cpp
+        tests/integration/future/FutureAsyncCLIIntegrationTest.cpp
         tests/integration/jit/CharacterLiteralTest.cpp
         tests/integration/jit/HooCharacterApiJitTest.cpp
         tests/integration/jit/FloatingLiteralTest.cpp
