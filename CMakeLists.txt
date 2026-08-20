@@ -633,6 +633,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/byte_slice/ByteSliceCLIIntegrationTest.cpp
         tests/integration/character/CharacterCLIIntegrationTest.cpp
          tests/integration/encoding/EncodingCLIIntegrationTest.cpp
+         tests/integration/hashing/HashingCLIIntegrationTest.cpp
          tests/integration/csv/CsvCLIIntegrationTest.cpp
          tests/integration/compression/CompressionCLIIntegrationTest.cpp
         tests/integration/datetime/DatetimeCLIIntegrationTest.cpp

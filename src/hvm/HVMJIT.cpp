@@ -806,9 +806,9 @@ extern "C" {
     uint64_t jit_hoo_readline(void* /*state_ptr*/) {
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_readline()));
     }
-    void* jit_hoo_readchar(void* /*state_ptr*/) {
-    return static_cast<void*>(hoo_readchar());
-}
+    uint64_t jit_hoo_readchar(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_readchar()));
+    }
 
 
     uint64_t jit_hoo_array_new(void* /*state_ptr*/) {

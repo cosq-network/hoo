@@ -201,17 +201,17 @@ Computes the HMAC-SHA256 of a message using a secret key.
 **Syntax:**
 
 ```hoo
-hashing_hmac_sha256(data: string, key: string) :string
+hashing_hmac_sha256(key: string, data: string) :string
 ```
 
 **Parameters:**
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `data` | `string` | The message data. |
 | `key` | `string` | The secret key. |
+| `data` | `string` | The message data to authenticate. |
 
-**Returns:** `string` — The HMAC-SHA256 hex digest. Returns `0` on error.
+**Returns:** `string` — The HMAC-SHA256 hex digest (64 hexadecimal characters). Returns `0` on error.
 
 **Errors:** Returns `0` if either argument is nil.
 
@@ -221,7 +221,7 @@ hashing_hmac_sha256(data: string, key: string) :string
 import hoo.hashing;
 
 func :int64 main() {
-    var hmac = hashing_hmac_sha256("message", "secret");
+    var hmac = hashing_hmac_sha256("secret", "message");
     if hmac != 0 {
         println(hmac);
     }
@@ -376,6 +376,204 @@ func :int64 main() {
     buf.write("Hello, World!");
     var hash = hashing_sha256_buffer(buf);
     if hash != 0 { println(hash); }
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+### Function: `hashing_hmac_sha256_buffer`
+
+Computes the HMAC-SHA256 of a Buffer using a Buffer key.
+
+**Syntax:**
+
+```hoo
+hashing_hmac_sha256_buffer(key: Buffer, data: Buffer) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key` | `Buffer` | The secret key buffer. |
+| `data` | `Buffer` | The message data buffer to authenticate. |
+
+**Returns:** `string` — The HMAC-SHA256 hex digest (64 hexadecimal characters). Returns `0` on error.
+
+**Errors:** Returns `0` if either argument is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.hashing;
+import hoo.buffer;
+
+func :int64 main() {
+    var key = Buffer(32);
+    key.write("secret");
+    var data = Buffer(64);
+    data.write("message");
+    var hmac = hashing_hmac_sha256_buffer(key, data);
+    if hmac != 0 { println(hmac); }
+    key.release();
+    data.release();
+    return 0;
+}
+```
+
+---
+
+### Function: `hashing_sha256_slice`
+
+Computes the SHA-256 hash of a ByteSlice and returns the hex digest.
+
+**Syntax:**
+
+```hoo
+hashing_sha256_slice(slice: ByteSlice) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slice` | `ByteSlice` | The byte slice to hash. |
+
+**Returns:** `string` — The SHA-256 hex digest. Returns `0` on error.
+
+**Errors:** Returns `0` if `slice` is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.hashing;
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("Hello, World!");
+    var slice = buf.slice(0, 5);
+    var hash = hashing_sha256_slice(slice);
+    if hash != 0 { println(hash); }
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+### Function: `hashing_sha1_slice`
+
+Computes the SHA-1 hash of a ByteSlice and returns the hex digest.
+
+**Syntax:**
+
+```hoo
+hashing_sha1_slice(slice: ByteSlice) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slice` | `ByteSlice` | The byte slice to hash. |
+
+**Returns:** `string` — The SHA-1 hex digest. Returns `0` on error.
+
+**Errors:** Returns `0` if `slice` is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.hashing;
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("Hello");
+    var slice = buf.slice(0, 5);
+    var hash = hashing_sha1_slice(slice);
+    if hash != 0 { println(hash); }
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+### Function: `hashing_md5_slice`
+
+Computes the MD5 hash of a ByteSlice and returns the hex digest.
+
+**Syntax:**
+
+```hoo
+hashing_md5_slice(slice: ByteSlice) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slice` | `ByteSlice` | The byte slice to hash. |
+
+**Returns:** `string` — The MD5 hex digest. Returns `0` on error.
+
+**Errors:** Returns `0` if `slice` is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.hashing;
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("Hello");
+    var slice = buf.slice(0, 5);
+    var hash = hashing_md5_slice(slice);
+    if hash != 0 { println(hash); }
+    buf.release();
+    return 0;
+}
+```
+
+---
+
+### Function: `hashing_crc32_slice`
+
+Computes the CRC-32 checksum of a ByteSlice.
+
+**Syntax:**
+
+```hoo
+hashing_crc32_slice(slice: ByteSlice) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slice` | `ByteSlice` | The byte slice to checksum. |
+
+**Returns:** `int64` — The CRC-32 checksum. Returns `0` on error.
+
+**Errors:** Returns `0` if `slice` is null.
+
+**Complete Example:**
+
+```hoo
+import hoo.hashing;
+import hoo.buffer;
+
+func :int64 main() {
+    var buf = Buffer(64);
+    buf.write("Hello");
+    var slice = buf.slice(0, 5);
+    var crc = hashing_crc32_slice(slice);
+    println(crc);
     buf.release();
     return 0;
 }

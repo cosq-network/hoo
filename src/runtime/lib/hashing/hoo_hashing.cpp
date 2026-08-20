@@ -1,6 +1,8 @@
 #include "runtime/lib/hashing/hoo_hashing.h"
 #include "runtime/lib/buffer/hoo_buffer.h"
 
+#include <mutex>
+
 #ifdef __APPLE__
 #include <CommonCrypto/CommonCrypto.h>
 #else
@@ -107,8 +109,8 @@ char* hoo_hashing_md5(const uint8_t* data, int64_t len) {
 uint64_t hoo_hashing_crc32(const uint8_t* data, int64_t len) {
     if (!data || len < 0) return 0;
     static uint32_t table[256];
-    static bool table_init = false;
-    if (!table_init) {
+    static std::once_flag table_flag;
+    std::call_once(table_flag, [] {
         for (uint32_t i = 0; i < 256; i++) {
             uint32_t crc = i;
             for (int j = 0; j < 8; j++) {
@@ -119,8 +121,7 @@ uint64_t hoo_hashing_crc32(const uint8_t* data, int64_t len) {
             }
             table[i] = crc;
         }
-        table_init = true;
-    }
+    });
     uint32_t crc = 0xFFFFFFFF;
     for (int64_t i = 0; i < len; i++)
         crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >> 8);

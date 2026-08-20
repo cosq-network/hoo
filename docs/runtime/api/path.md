@@ -79,6 +79,111 @@ func :void example() {
 
 ---
 
+### `path_join_multi`
+
+Joins multiple path components into a single path using the platform separator.
+
+**Syntax:**
+
+```hoo
+path_join_multi(parts: array) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `parts` | `array` | An array of path component strings. |
+
+**Returns:** `string` — The joined path.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var full = path_join_multi(["usr", "local", "bin"]);
+    println(full); // "usr/local/bin"
+}
+```
+
+---
+
+### `path_dirname`
+
+Returns the directory portion of a path (everything before the last separator).
+
+**Syntax:**
+
+```hoo
+path_dirname(path: string) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to inspect. |
+
+**Returns:** `string` — The directory portion. Returns `"."` if the path has no directory component.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var dir = path_dirname("/home/user/file.txt");
+    println(dir); // "/home/user"
+
+    var noDir = path_dirname("file.txt");
+    println(noDir); // "."
+}
+```
+
+---
+
+### `path_basename`
+
+Returns the last component of a path (the filename or directory name). For paths ending with a separator (e.g., `"/foo/bar/"`), returns the last non-separator component.
+
+**Syntax:**
+
+```hoo
+path_basename(path: string) :string
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to inspect. |
+
+**Returns:** `string` — The last path component. Returns `""` if the path is empty or only separators.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var name = path_basename("/home/user/file.txt");
+    println(name); // "file.txt"
+
+    var dir = path_basename("/home/user/docs/");
+    println(dir); // "docs"
+}
+```
+
+---
+
 ### `path_extension`
 
 Returns the file extension including the leading dot (e.g., `".txt"`). Returns an empty string if the path has no extension.
@@ -377,6 +482,42 @@ func :void example() {
     println(has); // 1
 
     var no = path_has_extension("Makefile");
+    println(no); // 0
+}
+```
+
+---
+
+### `path_has_root`
+
+Checks whether a path has a root component (e.g., starts with `/` on Unix or `C:\` on Windows).
+
+**Syntax:**
+
+```hoo
+path_has_root(path: string) :int64
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | `string` | The path to check. |
+
+**Returns:** `int64` — `1` if the path has a root, `0` otherwise.
+
+**Errors:** None.
+
+**Complete Example:**
+
+```hoo
+import hoo.path;
+
+func :void example() {
+    var has = path_has_root("/home/user");
+    println(has); // 1
+
+    var no = path_has_root("relative/path");
     println(no); // 0
 }
 ```

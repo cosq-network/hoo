@@ -540,7 +540,9 @@ int64_t hoo_fs_delete(const char* path)
 
 int64_t hoo_fs_remove(const char* path)
 {
-    return hoo_fs_delete(path);
+    if (!path) return 0;
+    if (!hoo::fs::File(path).isFile()) return 0;
+    return hoo::fs::File(path).remove() ? 1 : 0;
 }
 
 int64_t hoo_fs_rename(const char* old_path, const char* new_path)

@@ -41,10 +41,10 @@ void hoo_println(void* str);
 void* hoo_readline(void);
 
 /**
- * Read a single character from stdin.
- * Blocks until a character is available.
+ * Read a single character from stdin (non-blocking).
+ * Returns NULL immediately if no character is available.
  *
- * @return HooCharacter instance for the character, or NULL on EOF
+ * @return HooCharacter instance for the character, or NULL if no input is available or on EOF
  */
 HooCharacter hoo_readchar(void);
 
