@@ -621,6 +621,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/expressions/ExpressionOperatorsIntegrationTest.cpp
         tests/integration/literals/LiteralIntegrationTest.cpp
         tests/integration/collections/CollectionIntegrationTest.cpp
+        tests/integration/generic_array/GenericArrayCLIIntegrationTest.cpp
         tests/integration/args/ArgsCLIIntegrationTest.cpp
         tests/integration/statements/ForLoopCLIIntegrationTest.cpp
         tests/integration/statements/WhileLoopCLIIntegrationTest.cpp
