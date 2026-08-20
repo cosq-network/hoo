@@ -178,6 +178,11 @@ int64_t hoo_array_pop(HooArray arr, void* dest) {
     if (raw[0] <= 0) return 0;
     int64_t index = raw[0] - 1;
     *(int64_t*)dest = raw[index + ARRAY_HEADER_WORDS];
+    if (raw[2] >= 100) {
+        void* elem = (void*)raw[index + ARRAY_HEADER_WORDS];
+        raw[index + ARRAY_HEADER_WORDS] = 0;
+        if (elem) hoo_release(elem);
+    }
     raw[0]--;
     return 1;
 }
@@ -219,7 +224,6 @@ HooArray hoo_array_push_int64(HooArray arr, int64_t value) {
         }
     }
     return hoo_array_push(arr, &value);
-    return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_double(HooArray arr, double value) {
@@ -235,40 +239,32 @@ HooArray hoo_array_push_double(HooArray arr, double value) {
         }
     }
     return hoo_array_push(arr, &value);
-    // Directly push double value without type enforcement
-    return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_float(HooArray arr, float value) {
-    // Store float as double without type enforcement
     double dval = value;
     return hoo_array_push(arr, &dval);
 }
 
 HooArray hoo_array_push_bool(HooArray arr, int64_t value) {
-    // Store bool as int64 0/1 without type enforcement
     int64_t bval = value ? 1 : 0;
     return hoo_array_push(arr, &bval);
 }
 
 HooArray hoo_array_push_char(HooArray arr, char value) {
-    // Store char as int64 without type enforcement
     int64_t cval = value;
     return hoo_array_push(arr, &cval);
 }
 
 HooArray hoo_array_push_string(HooArray arr, const char* value) {
-    // Push string pointer without type enforcement
     return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_object(HooArray arr, void* value) {
-    // Push object pointer without type enforcement
     return hoo_array_push(arr, &value);
 }
 
 HooArray hoo_array_push_array(HooArray arr, HooArray value) {
-    // Push nested array without type enforcement
     if (value) hoo_retain(value);
     return hoo_array_push(arr, &value);
 }
@@ -413,10 +409,11 @@ HooArray hoo_array_shuffle(HooArray arr) {
     int64_t len = raw[0];
     if (len <= 1) return arr;
     int64_t* elements = raw + ARRAY_HEADER_WORDS;
-    
-    // Simple Fisher-Yates shuffle using rand()
+
+    thread_local std::mt19937 rng{std::random_device{}()};
     for (int64_t i = len - 1; i > 0; i--) {
-        int64_t j = std::rand() % (i + 1);
+        std::uniform_int_distribution<int64_t> dist(0, i);
+        int64_t j = dist(rng);
         int64_t tmp = elements[i];
         elements[i] = elements[j];
         elements[j] = tmp;

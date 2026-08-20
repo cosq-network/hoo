@@ -3,8 +3,6 @@
 #include <cstring>
 #include <cmath>
 
-using namespace hooc;
-
 class HooArrayPhase7Test : public ::testing::Test {
 protected:
     void TearDown() override {
@@ -991,5 +989,266 @@ TEST_F(HooArrayPhase7Test, ReverseDoesNotReleaseArray) {
     int64_t rc_before = hoo_array_refcount(arr);
     arr = hoo_array_reverse(arr);
     EXPECT_EQ(hoo_array_refcount(arr), rc_before);
+    hoo_array_release(arr);
+}
+
+// ============================================================================
+// Additional C API Tests: pop, set, from_buffer, repeat, push_h,
+// binary search, shuffle, sort_range, element_type, type mismatch
+// ============================================================================
+
+TEST_F(HooArrayPhase7Test, PopInt64) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 10);
+    arr = hoo_array_push_int64(arr, 20);
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_pop(arr, &dest), 1);
+    EXPECT_EQ(dest, 20);
+    EXPECT_EQ(hoo_array_length(arr), 1);
+    EXPECT_EQ(hoo_array_pop(arr, &dest), 1);
+    EXPECT_EQ(dest, 10);
+    EXPECT_EQ(hoo_array_length(arr), 0);
+    EXPECT_EQ(hoo_array_pop(arr, &dest), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, PopEmptyReturnsZero) {
+    HooArray arr = hoo_array_new();
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_pop(arr, &dest), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, PopNullReturnsZero) {
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_pop(nullptr, &dest), 0);
+}
+
+TEST_F(HooArrayPhase7Test, SetInt64) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 100);
+    arr = hoo_array_push_int64(arr, 200);
+    int64_t new_val = 999;
+    EXPECT_EQ(hoo_array_set(arr, 0, &new_val), 1);
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_get_int64(arr, 0, &dest), 1);
+    EXPECT_EQ(dest, 999);
+    EXPECT_EQ(hoo_array_get_int64(arr, 1, &dest), 1);
+    EXPECT_EQ(dest, 200);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SetOutOfBounds) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 10);
+    int64_t new_val = 99;
+    EXPECT_EQ(hoo_array_set(arr, 5, &new_val), 0);
+    EXPECT_EQ(hoo_array_set(arr, -1, &new_val), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, FromBuffer) {
+    int64_t data[] = {10, 20, 30, 40, 50};
+    HooArray arr = hoo_array_from_buffer(data, 5);
+    ASSERT_NE(arr, nullptr);
+    EXPECT_EQ(hoo_array_length(arr), 5);
+    int64_t dest = 0;
+    for (int64_t i = 0; i < 5; i++) {
+        EXPECT_EQ(hoo_array_get_int64(arr, i, &dest), 1);
+        EXPECT_EQ(dest, data[i]);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, FromBufferEmpty) {
+    HooArray arr = hoo_array_from_buffer(nullptr, 0);
+    ASSERT_NE(arr, nullptr);
+    EXPECT_EQ(hoo_array_length(arr), 0);
+    EXPECT_EQ(hoo_array_empty(arr), 1);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, RepeatInt64) {
+    int64_t val = 42;
+    HooArray arr = hoo_array_repeat(&val, 5);
+    ASSERT_NE(arr, nullptr);
+    EXPECT_EQ(hoo_array_length(arr), 5);
+    int64_t dest = 0;
+    for (int64_t i = 0; i < 5; i++) {
+        EXPECT_EQ(hoo_array_get_int64(arr, i, &dest), 1);
+        EXPECT_EQ(dest, 42);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, RepeatZero) {
+    int64_t val = 1;
+    HooArray arr = hoo_array_repeat(&val, 0);
+    ASSERT_NE(arr, nullptr);
+    EXPECT_EQ(hoo_array_length(arr), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, PushH) {
+    HooArray arr = hoo_array_new();
+    int64_t val1 = 10, val2 = 20;
+    EXPECT_EQ(hoo_array_push_h(&arr, &val1), 1);
+    EXPECT_EQ(hoo_array_length(arr), 1);
+    EXPECT_EQ(hoo_array_push_h(&arr, &val2), 1);
+    EXPECT_EQ(hoo_array_length(arr), 2);
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_get_int64(arr, 0, &dest), 1);
+    EXPECT_EQ(dest, 10);
+    EXPECT_EQ(hoo_array_get_int64(arr, 1, &dest), 1);
+    EXPECT_EQ(dest, 20);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, PushHNull) {
+    HooArray arr = hoo_array_new();
+    int64_t val = 1;
+    HooArray null_arr = nullptr;
+    EXPECT_EQ(hoo_array_push_h(&null_arr, &val), 0);
+    EXPECT_EQ(hoo_array_push_h(&arr, nullptr), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, BinarySearchInt64Found) {
+    HooArray arr = hoo_array_new();
+    for (int64_t i = 0; i < 10; i++) arr = hoo_array_push_int64(arr, i * 2);
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, 0), 0);
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, 4), 2);
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, 18), 9);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, BinarySearchInt64NotFound) {
+    HooArray arr = hoo_array_new();
+    for (int64_t i = 0; i < 5; i++) arr = hoo_array_push_int64(arr, i * 10);
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, 3), -1);
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, -1), -1);
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, 100), -1);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, BinarySearchInt64Empty) {
+    HooArray arr = hoo_array_new();
+    EXPECT_EQ(hoo_array_binary_search_int64(arr, 1), -1);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, BinarySearchInt64Null) {
+    EXPECT_EQ(hoo_array_binary_search_int64(nullptr, 1), -1);
+}
+
+TEST_F(HooArrayPhase7Test, BinarySearchDoubleFound) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_double(arr, 1.1);
+    arr = hoo_array_push_double(arr, 2.2);
+    arr = hoo_array_push_double(arr, 3.3);
+    EXPECT_EQ(hoo_array_binary_search_double(arr, 1.1), 0);
+    EXPECT_EQ(hoo_array_binary_search_double(arr, 2.2), 1);
+    EXPECT_EQ(hoo_array_binary_search_double(arr, 3.3), 2);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, BinarySearchDoubleNotFound) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_double(arr, 1.0);
+    arr = hoo_array_push_double(arr, 2.0);
+    EXPECT_EQ(hoo_array_binary_search_double(arr, 1.5), -1);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortRangeInt64) {
+    HooArray arr = hoo_array_new();
+    for (int64_t i = 0; i < 10; i++) arr = hoo_array_push_int64(arr, 9 - i);
+    arr = hoo_array_sort_range(arr, 2, 7);
+    int64_t dest = 0;
+    int64_t expected[] = {9, 8, 3, 4, 5, 6, 7, 2, 1, 0};
+    for (int64_t i = 0; i < 10; i++) {
+        EXPECT_EQ(hoo_array_get_int64(arr, i, &dest), 1);
+        EXPECT_EQ(dest, expected[i]);
+    }
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, SortRangeClampsToLength) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 3);
+    arr = hoo_array_push_int64(arr, 1);
+    arr = hoo_array_sort_range(arr, 0, 100);
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_get_int64(arr, 0, &dest), 1);
+    EXPECT_EQ(dest, 1);
+    EXPECT_EQ(hoo_array_get_int64(arr, 1, &dest), 1);
+    EXPECT_EQ(dest, 3);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ShufflePreservesLength) {
+    HooArray arr = hoo_array_new();
+    for (int64_t i = 0; i < 100; i++) arr = hoo_array_push_int64(arr, i);
+    arr = hoo_array_shuffle(arr);
+    EXPECT_EQ(hoo_array_length(arr), 100);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ShuffleNullReturnsNull) {
+    EXPECT_EQ(hoo_array_shuffle(nullptr), nullptr);
+}
+
+TEST_F(HooArrayPhase7Test, ShuffleSingleElement) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 42);
+    arr = hoo_array_shuffle(arr);
+    int64_t dest = 0;
+    EXPECT_EQ(hoo_array_get_int64(arr, 0, &dest), 1);
+    EXPECT_EQ(dest, 42);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ElementTypeInt64) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 1);
+    EXPECT_STREQ(hoo_array_element_type(arr), "int64");
+    EXPECT_EQ(hoo_array_is_type(arr, "int64"), 1);
+    EXPECT_EQ(hoo_array_is_type(arr, "double"), 0);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ElementTypeDouble) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_double(arr, 1.0);
+    EXPECT_STREQ(hoo_array_element_type(arr), "double");
+    EXPECT_EQ(hoo_array_is_type(arr, "double"), 1);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ElementTypeNull) {
+    HooArray arr = hoo_array_new();
+    EXPECT_EQ(hoo_array_element_type(arr), nullptr);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, ElementTypeNullArray) {
+    EXPECT_EQ(hoo_array_element_type(nullptr), nullptr);
+}
+
+TEST_F(HooArrayPhase7Test, PushInt64TypeMismatchReturnsNull) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_double(arr, 1.0);
+    ASSERT_NE(arr, nullptr);
+    HooArray result = hoo_array_push_int64(arr, 42);
+    EXPECT_EQ(result, nullptr);
+    hoo_array_release(arr);
+}
+
+TEST_F(HooArrayPhase7Test, PushDoubleTypeMismatchReturnsNull) {
+    HooArray arr = hoo_array_new();
+    arr = hoo_array_push_int64(arr, 1);
+    ASSERT_NE(arr, nullptr);
+    HooArray result = hoo_array_push_double(arr, 1.0);
+    EXPECT_EQ(result, nullptr);
     hoo_array_release(arr);
 }

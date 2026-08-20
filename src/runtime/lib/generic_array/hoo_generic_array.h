@@ -3,30 +3,29 @@
 #include <stdint.h>
 
 #ifdef __cplusplus
-    #include <any>
-    #include <typeinfo>
-    #include <vector>
-#endif
-
-#ifdef __cplusplus
 extern "C" {
 #endif
 
 // ============================================================================
-// HooArray - Generic Dynamic Array using std::vector + std::any
+// HooArray - Generic Dynamic Array (Hardware-Ready)
 // ============================================================================
 //
-// A truly type-agnostic dynamic array that can store elements of any type.
-// Elements are stored using std::any for type safety and flexibility.
-// Supports multi-dimensional arrays naturally through nested HooArray values.
+// A type-agnostic dynamic array backed by contiguous 64-bit slots managed
+// through hoo_alloc/hoo_realloc with ARC (Automatic Reference Counting).
 //
-// Internally managed with automatic reference counting (ARC).
+// Each element occupies exactly one int64_t slot regardless of actual type.
+// Scalars are stored by value; pointers are stored as raw bit patterns.
+//
+// The array's element type is set on the first typed push (push_int64,
+// push_double) and can also be written directly into the header for
+// managed-element arrays (element_type >= 100) to enable automatic
+// release on destruction.
 //
 // Thread safety: a HooArray is NOT internally synchronised.  Concurrent
 // access from multiple threads must be externally serialised by the caller.
 //
 
-typedef void* HooArray;  // Opaque handle to HooArrayImpl
+typedef void* HooArray;  // Opaque handle to raw memory layout
 
 // ============================================================================
 // Creation and Destruction
@@ -75,7 +74,11 @@ int64_t hoo_array_length(HooArray arr);
 int64_t hoo_array_get(HooArray arr, int64_t index, void* dest);
 
 /**
- * Set element by index via pointer
+ * Set element by index via pointer.
+ * For managed-element arrays (element_type >= 100), this transfers ownership:
+ * the array releases its old reference and takes ownership of the new value
+ * without retaining it.  The caller must ensure the new value outlives the
+ * array, or explicitly retain it before calling set.
  * @param arr Array
  * @param index Index (0-based)
  * @param value Pointer to value
@@ -103,7 +106,9 @@ HooArray hoo_array_push(HooArray arr, const void* value);
 int64_t hoo_array_push_h(HooArray* arr_ptr, const void* value);
 
 /**
- * Remove and return last element
+ * Remove and return last element.
+ * For managed-element arrays (element_type >= 100), the array releases its
+ * reference and transfers ownership of the popped value to the caller.
  * @param arr Array
  * @param dest Destination buffer
  * @return 1 if success, 0 if empty
@@ -168,7 +173,9 @@ HooArray hoo_array_push_bool(HooArray arr, int64_t value);
 HooArray hoo_array_push_char(HooArray arr, char value);
 
 /**
- * Push string pointer
+ * Push string pointer.
+ * Unowning: the array stores the raw pointer without retaining it.
+ * The caller retains ownership and must ensure the string outlives the array.
  * @param arr Array handle
  * @param value Pointer to string
  * @return The array handle (possibly new), or NULL on failure
@@ -176,7 +183,10 @@ HooArray hoo_array_push_char(HooArray arr, char value);
 HooArray hoo_array_push_string(HooArray arr, const char* value);
 
 /**
- * Push object pointer (class instance)
+ * Push object pointer (class instance).
+ * Unowning: the array stores the raw pointer without retaining it.
+ * The caller retains ownership and must ensure the object outlives the array,
+ * or retain the object before pushing to transfer ownership to the array.
  * @param arr Array handle
  * @param value Pointer to object
  * @return The array handle (possibly new), or NULL on failure
@@ -184,7 +194,10 @@ HooArray hoo_array_push_string(HooArray arr, const char* value);
 HooArray hoo_array_push_object(HooArray arr, void* value);
 
 /**
- * Push array (for multi-dimensional arrays)
+ * Push array (for multi-dimensional arrays).
+ * Retaining: the array calls hoo_retain on the child array, sharing ownership.
+ * The child array is automatically released when the parent is cleared or
+ * destroyed.
  * @param arr Array handle
  * @param value HooArray handle
  * @return The array handle (possibly new), or NULL on failure
@@ -374,85 +387,3 @@ int64_t hoo_array_is_type(HooArray arr, const char* type_name);
 #ifdef __cplusplus
 }  // extern "C"
 #endif
-
-// ============================================================================
-// C++ Implementation Class (outside extern "C")
-// ============================================================================
-
-#ifdef __cplusplus
-
-namespace hooc {
-
-/**
-  * HooArrayImpl - C++ implementation using std::vector + std::any
-  * Allocated via hoo_alloc, so it has a 16-byte hidden header.
-  */
-class HooArrayImpl {
-public:
-    HooArrayImpl();
-    ~HooArrayImpl();
-
-    HooArrayImpl(const HooArrayImpl&) = delete;
-    HooArrayImpl& operator=(const HooArrayImpl&) = delete;
-
-    // Template methods for type-safe operations
-    template<typename T>
-    int64_t push(const T& value) {
-        try {
-            element_type = &typeid(T);
-            elements.push_back(std::any(value));
-            return static_cast<int64_t>(elements.size());
-        } catch (...) {
-            return -1;
-        }
-    }
-
-    template<typename T>
-    bool get(int64_t index, T& dest) const {
-        if (index < 0 || index >= static_cast<int64_t>(elements.size())) {
-            return false;
-        }
-        try {
-            dest = std::any_cast<T>(elements[index]);
-            return true;
-        } catch (const std::bad_any_cast&) {
-            return false;
-        }
-    }
-
-    template<typename T>
-    bool set(int64_t index, const T& value) {
-        if (index < 0 || index >= static_cast<int64_t>(elements.size())) {
-            return false;
-        }
-        try {
-            elements[index] = std::any(value);
-            return true;
-        } catch (...) {
-            return false;
-        }
-    }
-
-    // Basic operations
-    void clear() { elements.clear(); }
-    int64_t length() const { return static_cast<int64_t>(elements.size()); }
-    bool empty() const { return elements.empty(); }
-
-    // Type information
-    const std::type_info* getElementType() const { return element_type; }
-    bool isType(const std::type_info& type) const {
-        return element_type && (*element_type == type);
-    }
-
-    // Container access
-    std::vector<std::any>& getElements() { return elements; }
-    const std::vector<std::any>& getElements() const { return elements; }
-
-private:
-    std::vector<std::any> elements;
-    const std::type_info* element_type;
-};
-
-} // namespace hooc
-
-#endif // __cplusplus
