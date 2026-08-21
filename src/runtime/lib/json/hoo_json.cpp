@@ -18,9 +18,7 @@
 #include <climits>
 #include <cstdint>
 #include <exception>
-#include <iomanip>
 #include <memory>
-#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -113,9 +111,18 @@ std::string jsonEscape(const std::string& s) {
 
 std::string formatDouble(double value) {
     if (!std::isfinite(value)) return {};
-    std::ostringstream oss;
-    oss << std::setprecision(17) << value;
-    return oss.str();
+    // Use shortest representation that round-trips correctly
+    char buf[64];
+    std::snprintf(buf, sizeof(buf), "%.17g", value);
+    std::string result(buf);
+    // Ensure integral floats have a decimal point so they are parsed as f64
+    // on deserialization (e.g., "2" would become int64, but "2.0" stays f64)
+    if (result.find('.') == std::string::npos &&
+        result.find('e') == std::string::npos &&
+        result.find('E') == std::string::npos) {
+        result += ".0";
+    }
+    return result;
 }
 
 uint64_t pointerToData(const void* ptr) {
@@ -145,8 +152,16 @@ struct Parser {
     const char* input = nullptr;
     size_t len = 0;
     size_t pos = 0;
+    int depth = 0;
+    static constexpr int MAX_DEPTH = 256;
 
     explicit Parser(const char* json) : input(json), len(std::strlen(json)) {}
+
+    void checkDepth() {
+        if (depth > MAX_DEPTH) {
+            throw std::runtime_error("JSON nesting depth exceeds maximum of " + std::to_string(MAX_DEPTH));
+        }
+    }
 
     void skipWhitespace() {
         while (pos < len) {
@@ -266,26 +281,30 @@ struct Parser {
 
     std::unique_ptr<JsonNode> parseArray() {
         if (!consume('[')) return nullptr;
+        checkDepth();
+        ++depth;
         auto node = std::make_unique<JsonNode>();
         node->kind = JsonKind::Array;
         skipWhitespace();
-        if (consume(']')) return node;
+        if (consume(']')) { --depth; return node; }
         while (true) {
             auto item = parseValue();
             if (!item) return nullptr;
             node->arrayValues.push_back(std::move(item));
             skipWhitespace();
-            if (consume(']')) return node;
+            if (consume(']')) { --depth; return node; }
             if (!consume(',')) return nullptr;
         }
     }
 
     std::unique_ptr<JsonNode> parseObject() {
         if (!consume('{')) return nullptr;
+        checkDepth();
+        ++depth;
         auto node = std::make_unique<JsonNode>();
         node->kind = JsonKind::Object;
         skipWhitespace();
-        if (consume('}')) return node;
+        if (consume('}')) { --depth; return node; }
         while (true) {
             std::string key;
             if (!parseString(key)) return nullptr;
@@ -294,7 +313,7 @@ struct Parser {
             if (!value) return nullptr;
             node->objectValues.emplace_back(std::move(key), std::move(value));
             skipWhitespace();
-            if (consume('}')) return node;
+            if (consume('}')) { --depth; return node; }
             if (!consume(',')) return nullptr;
         }
     }
@@ -395,9 +414,14 @@ void stringifyNode(const JsonNode& node, std::string& out, int indent, bool pret
     }
 }
 
-void serializeAnyValue(HooAnyValue value, std::string& out);
+void serializeAnyValue(HooAnyValue value, std::string& out, int depth = 0);
 
-void serializeTensor(HooTensor tensor, std::string& out) {
+static constexpr int MAX_SERIALIZE_DEPTH = 256;
+
+void serializeTensor(HooTensor tensor, std::string& out, int depth) {
+    if (depth > MAX_SERIALIZE_DEPTH) {
+        throw std::runtime_error("JSON serialization depth exceeds maximum");
+    }
     if (!tensor) throw std::runtime_error("Tensor is nil");
     int64_t rank = hoo_tensor_rank(tensor);
     if (rank < 0 || rank > 3) throw std::runtime_error("Tensor rank is invalid");
@@ -417,8 +441,11 @@ void serializeTensor(HooTensor tensor, std::string& out) {
     out += "]}";
 }
 
-void serializeList(HooList array, std::string& out) {
+void serializeList(HooList array, std::string& out, int depth) {
     if (!array) throw std::runtime_error("List is nil");
+    if (depth > MAX_SERIALIZE_DEPTH) {
+        throw std::runtime_error("JSON serialization depth exceeds maximum");
+    }
     int64_t length = hoo_list_length(array);
     if (length < 0) throw std::runtime_error("List length is invalid");
     out += '[';
@@ -426,13 +453,16 @@ void serializeList(HooList array, std::string& out) {
         HooAnyValue value{0, 0};
         if (!hoo_list_get(array, i, &value)) throw std::runtime_error("failed to read List element");
         if (i > 0) out += ',';
-        serializeAnyValue(value, out);
+        serializeAnyValue(value, out, depth + 1);
     }
     out += ']';
 }
 
-void serializeDict(HooDict map, std::string& out) {
+void serializeDict(HooDict map, std::string& out, int depth) {
     if (!map) throw std::runtime_error("Dict is nil");
+    if (depth > MAX_SERIALIZE_DEPTH) {
+        throw std::runtime_error("JSON serialization depth exceeds maximum");
+    }
     int64_t count = hoo_dict_count(map);
     if (count < 0) throw std::runtime_error("Dict count is invalid");
 
@@ -452,20 +482,20 @@ void serializeDict(HooDict map, std::string& out) {
             if (!hoo_dict_get_any_at_i8(map, keys[static_cast<size_t>(i)], &value)) {
                 throw std::runtime_error("failed to read Dict any value");
             }
-            serializeAnyValue(value, out);
+            serializeAnyValue(value, out, depth + 1);
         } else {
             uint64_t data = 0;
             if (!hoo_dict_get_fixed_at_i8(map, keys[static_cast<size_t>(i)], &data)) {
                 throw std::runtime_error("failed to read Dict value");
             }
             HooAnyValue value{valueType, data};
-            serializeAnyValue(value, out);
+            serializeAnyValue(value, out, depth + 1);
         }
     }
     out += '}';
 }
 
-void serializeAnyValue(HooAnyValue value, std::string& out) {
+void serializeAnyValue(HooAnyValue value, std::string& out, int depth) {
     switch (value.type_id) {
         case HOO_TYPE_INT64:
             out += std::to_string(dataToInt64(value.data));
@@ -514,13 +544,13 @@ void serializeAnyValue(HooAnyValue value, std::string& out) {
             return;
         }
         case HOO_TYPE_TENSOR_SERIALIZED:
-            serializeTensor(dataToPointer<void>(value.data), out);
+            serializeTensor(dataToPointer<void>(value.data), out, depth);
             return;
         case HOO_TYPE_DICT:
-            serializeDict(dataToPointer<void>(value.data), out);
+            serializeDict(dataToPointer<void>(value.data), out, depth);
             return;
         case HOO_TYPE_LIST:
-            serializeList(dataToPointer<void>(value.data), out);
+            serializeList(dataToPointer<void>(value.data), out, depth);
             return;
         case HOO_TYPE_VOID:
             out += "null";
@@ -544,15 +574,19 @@ bool numberIsFloat(const std::string& text) {
     return text.find_first_of(".eE") != std::string::npos;
 }
 
-HooAnyValue nodeToAnyValue(const JsonNode& node);
+HooAnyValue nodeToAnyValue(const JsonNode& node, int depth = 0);
+static constexpr int MAX_SERIALIZATION_DEPTH = 256;
 
-HooList nodeToList(const JsonNode& node) {
+HooList nodeToList(const JsonNode& node, int depth) {
+    if (depth > MAX_SERIALIZATION_DEPTH) {
+        throw std::runtime_error("JSON deserialization depth exceeds maximum");
+    }
     if (node.kind != JsonKind::Array) throw std::runtime_error("JSON root is not an array");
     HooList array = hoo_list_new_capacity(static_cast<int64_t>(node.arrayValues.size()));
     if (!array) throw std::runtime_error("failed to allocate List");
     try {
         for (const auto& item : node.arrayValues) {
-            HooAnyValue value = nodeToAnyValue(*item);
+            HooAnyValue value = nodeToAnyValue(*item, depth);
             if (!hoo_list_push(array, value.type_id, value.data)) {
                 hoo_any_release(value);
                 throw std::runtime_error("failed to append List element");
@@ -566,7 +600,10 @@ HooList nodeToList(const JsonNode& node) {
     }
 }
 
-HooDict nodeToDict(const JsonNode& node) {
+HooDict nodeToDict(const JsonNode& node, int depth) {
+    if (depth > MAX_SERIALIZATION_DEPTH) {
+        throw std::runtime_error("JSON deserialization depth exceeds maximum");
+    }
     if (node.kind != JsonKind::Object) throw std::runtime_error("JSON root is not an object");
     HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
     if (!map) throw std::runtime_error("failed to allocate Dict");
@@ -576,7 +613,7 @@ HooDict nodeToDict(const JsonNode& node) {
             if (!parseInt64Text(keyText, key)) {
                 throw std::runtime_error("JSON object key '" + keyText + "' is not a valid int64 Dict key");
             }
-            HooAnyValue value = nodeToAnyValue(*valueNode);
+            HooAnyValue value = nodeToAnyValue(*valueNode, depth);
             if (!hoo_dict_set_any_i8(map, key, value.type_id, value.data)) {
                 hoo_any_release(value);
                 throw std::runtime_error("failed to set Dict value");
@@ -590,7 +627,7 @@ HooDict nodeToDict(const JsonNode& node) {
     }
 }
 
-HooAnyValue nodeToAnyValue(const JsonNode& node) {
+HooAnyValue nodeToAnyValue(const JsonNode& node, int depth) {
     switch (node.kind) {
         case JsonKind::Null:
             return HooAnyValue{HOO_TYPE_VOID, 0};
@@ -620,7 +657,7 @@ HooAnyValue nodeToAnyValue(const JsonNode& node) {
             return HooAnyValue{HOO_TYPE_STRING, pointerToData(str)};
         }
         case JsonKind::Array: {
-            HooList array = nodeToList(node);
+            HooList array = nodeToList(node, depth + 1);
             return HooAnyValue{HOO_TYPE_LIST, pointerToData(array)};
         }
         case JsonKind::Object: {
@@ -683,7 +720,7 @@ HooAnyValue nodeToAnyValue(const JsonNode& node) {
                     throw;
                 }
             }
-            HooDict map = nodeToDict(node);
+            HooDict map = nodeToDict(node, depth + 1);
             return HooAnyValue{HOO_TYPE_DICT, pointerToData(map)};
         }
     }
@@ -709,7 +746,7 @@ extern "C" {
 HooString hoo_json_serialize_hashmap(HooDict map) {
     try {
         std::string out;
-        serializeDict(map, out);
+        serializeDict(map, out, 0);
         HooString result = hoo_string_from_cstr(out.c_str());
         if (!result) throw std::runtime_error("failed to allocate output string");
         return result;
@@ -723,7 +760,7 @@ HooString hoo_json_serialize_hashmap(HooDict map) {
 HooString hoo_json_serialize_anyarray(HooList array) {
     try {
         std::string out;
-        serializeList(array, out);
+        serializeList(array, out, 0);
         HooString result = hoo_string_from_cstr(out.c_str());
         if (!result) throw std::runtime_error("failed to allocate output string");
         return result;
@@ -740,7 +777,7 @@ HooDict hoo_json_deserialize_hashmap(const char* json) {
         Parser parser(json);
         auto root = parser.parseDocument();
         if (!root) throw std::runtime_error("invalid JSON input");
-        return nodeToDict(*root);
+        return nodeToDict(*root, 0);
     } catch (const std::exception& e) {
         rethrowAsJsonRuntime("deserialization", e);
     } catch (...) {
@@ -754,7 +791,7 @@ HooList hoo_json_deserialize_anyarray(const char* json) {
         Parser parser(json);
         auto root = parser.parseDocument();
         if (!root) throw std::runtime_error("invalid JSON input");
-        return nodeToList(*root);
+        return nodeToList(*root, 0);
     } catch (const std::exception& e) {
         rethrowAsJsonRuntime("deserialization", e);
     } catch (...) {

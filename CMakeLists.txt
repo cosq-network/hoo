@@ -639,6 +639,7 @@ if(HOO_BUILD_TESTS)
         tests/integration/datetime/DatetimeCLIIntegrationTest.cpp
         tests/integration/fs/FsCLIIntegrationTest.cpp
         tests/integration/fs/FsModuleIntegrationTest.cpp
+        tests/integration/json/JsonCLIIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

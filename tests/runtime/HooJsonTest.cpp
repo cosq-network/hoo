@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <functional>
 
 #include "runtime/lib/anyarray/hoo_list.h"
 #include "runtime/lib/buffer/hoo_buffer.h"
@@ -24,7 +25,7 @@ static int64_t testDataToInt64(uint64_t data) {
     return value;
 }
 
-static void expectJsonThrowsContaining(void (*fn)(), const char* messagePart) {
+static void expectJsonThrowsContaining(std::function<void()> fn, const char* messagePart) {
     try {
         fn();
         FAIL() << "Expected JSON runtime exception";
@@ -40,7 +41,7 @@ static void expectJsonThrowsContaining(void (*fn)(), const char* messagePart) {
     }
 }
 
-static void expectJsonThrows(void (*fn)()) {
+static void expectJsonThrows(std::function<void()> fn) {
     expectJsonThrowsContaining(fn, nullptr);
 }
 
@@ -308,4 +309,301 @@ TEST_F(HooJsonTest, FormattingRejectsMalformedNumbersAndStrings) {
 TEST_F(HooJsonTest, FormattingRejectsNullInput) {
     expectJsonThrows([]() { (void)hoo_json_minify(nullptr); });
     expectJsonThrows([]() { (void)hoo_json_beautify(nullptr); });
+}
+
+// ============================================================================
+// Float64 round-trip tests
+// ============================================================================
+
+TEST_F(HooJsonTest, Float64IntegralValuePreservesDecimalPoint) {
+    // 2.0 must serialize as "2.0" (not "2") so it deserializes back as f64
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    ASSERT_NE(map, nullptr);
+    double val = 2.0;
+    uint64_t bits = 0;
+    std::memcpy(&bits, &val, sizeof(val));
+    ASSERT_EQ(hoo_dict_set_any_i8(map, 1, HOO_TYPE_FLOAT64, bits), 1);
+
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+    // Must contain "2.0" not "2"
+    EXPECT_NE(std::strstr(hoo_string_data(json), "2.0"), nullptr)
+        << "float 2.0 must serialize as 2.0, got: " << hoo_string_data(json);
+
+    // Deserialize back — must be f64, not int64
+    HooDict decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue result{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(decoded, 1, &result), 1);
+    EXPECT_EQ(result.type_id, HOO_TYPE_FLOAT64)
+        << "2.0 must deserialize back as f64, not int64";
+
+    hoo_string_release(json);
+    hoo_dict_release(decoded);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, Float64NonIntegralPreservesValue) {
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    ASSERT_NE(map, nullptr);
+    double val = 3.14;
+    uint64_t bits = 0;
+    std::memcpy(&bits, &val, sizeof(val));
+    ASSERT_EQ(hoo_dict_set_any_i8(map, 1, HOO_TYPE_FLOAT64, bits), 1);
+
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+    // Should contain "3.14"
+    EXPECT_NE(std::strstr(hoo_string_data(json), "3.14"), nullptr);
+
+    HooDict decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue result{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(decoded, 1, &result), 1);
+    EXPECT_EQ(result.type_id, HOO_TYPE_FLOAT64);
+
+    hoo_string_release(json);
+    hoo_dict_release(decoded);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, Float64ZeroPreservesDecimalPoint) {
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    ASSERT_NE(map, nullptr);
+    double val = 0.0;
+    uint64_t bits = 0;
+    std::memcpy(&bits, &val, sizeof(val));
+    ASSERT_EQ(hoo_dict_set_any_i8(map, 1, HOO_TYPE_FLOAT64, bits), 1);
+
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+    // "0.0" must have decimal point
+    EXPECT_NE(std::strstr(hoo_string_data(json), "0.0"), nullptr);
+
+    HooDict decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue result{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(decoded, 1, &result), 1);
+    EXPECT_EQ(result.type_id, HOO_TYPE_FLOAT64);
+
+    hoo_string_release(json);
+    hoo_dict_release(decoded);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, Float64NegativePreservesDecimalPoint) {
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_ANY);
+    ASSERT_NE(map, nullptr);
+    double val = -5.0;
+    uint64_t bits = 0;
+    std::memcpy(&bits, &val, sizeof(val));
+    ASSERT_EQ(hoo_dict_set_any_i8(map, 1, HOO_TYPE_FLOAT64, bits), 1);
+
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+    EXPECT_NE(std::strstr(hoo_string_data(json), "-5.0"), nullptr);
+
+    HooDict decoded = hoo_json_deserialize_hashmap(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue result{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(decoded, 1, &result), 1);
+    EXPECT_EQ(result.type_id, HOO_TYPE_FLOAT64);
+
+    hoo_string_release(json);
+    hoo_dict_release(decoded);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, Float64InArrayRoundTrip) {
+    HooList list = hoo_list_new();
+    ASSERT_NE(list, nullptr);
+
+    double val = 1.0;
+    uint64_t bits = 0;
+    std::memcpy(&bits, &val, sizeof(val));
+    ASSERT_EQ(hoo_list_push(list, HOO_TYPE_FLOAT64, bits), 1);
+
+    HooString json = hoo_json_serialize_anyarray(list);
+    ASSERT_NE(json, nullptr);
+    EXPECT_NE(std::strstr(hoo_string_data(json), "1.0"), nullptr);
+
+    HooList decoded = hoo_json_deserialize_anyarray(hoo_string_data(json));
+    ASSERT_NE(decoded, nullptr);
+    HooAnyValue result{0, 0};
+    ASSERT_EQ(hoo_list_get(decoded, 0, &result), 1);
+    EXPECT_EQ(result.type_id, HOO_TYPE_FLOAT64);
+
+    hoo_string_release(json);
+    hoo_list_release(decoded);
+    hoo_list_release(list);
+}
+
+// ============================================================================
+// Empty container tests
+// ============================================================================
+
+TEST_F(HooJsonTest, SerializeEmptyDict) {
+    HooDict map = hoo_dict_new(HOO_TYPE_INT64, HOO_TYPE_INT64);
+    ASSERT_NE(map, nullptr);
+
+    HooString json = hoo_json_serialize_hashmap(map);
+    ASSERT_NE(json, nullptr);
+    EXPECT_STREQ(hoo_string_data(json), "{}");
+
+    hoo_string_release(json);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, SerializeEmptyList) {
+    HooList list = hoo_list_new();
+    ASSERT_NE(list, nullptr);
+
+    HooString json = hoo_json_serialize_anyarray(list);
+    ASSERT_NE(json, nullptr);
+    EXPECT_STREQ(hoo_string_data(json), "[]");
+
+    hoo_string_release(json);
+    hoo_list_release(list);
+}
+
+TEST_F(HooJsonTest, DeserializeEmptyObject) {
+    HooDict map = hoo_json_deserialize_hashmap("{}");
+    ASSERT_NE(map, nullptr);
+    EXPECT_EQ(hoo_dict_count(map), 0);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, DeserializeEmptyArray) {
+    HooList list = hoo_json_deserialize_anyarray("[]");
+    ASSERT_NE(list, nullptr);
+    EXPECT_EQ(hoo_list_length(list), 0);
+    hoo_list_release(list);
+}
+
+// ============================================================================
+// Boundary integer tests
+// ============================================================================
+
+TEST_F(HooJsonTest, DeserializeInt64MaxValue) {
+    HooDict map = hoo_json_deserialize_hashmap(R"({"1":9223372036854775807})");
+    ASSERT_NE(map, nullptr);
+    HooAnyValue value{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(map, 1, &value), 1);
+    EXPECT_EQ(value.type_id, HOO_TYPE_INT64);
+    EXPECT_EQ(testDataToInt64(value.data), 9223372036854775807LL);
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, DeserializeInt64MinValue) {
+    HooDict map = hoo_json_deserialize_hashmap(R"({"1":-9223372036854775808})");
+    ASSERT_NE(map, nullptr);
+    HooAnyValue value{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(map, 1, &value), 1);
+    EXPECT_EQ(value.type_id, HOO_TYPE_INT64);
+    EXPECT_EQ(testDataToInt64(value.data), (-9223372036854775807LL - 1));
+    hoo_dict_release(map);
+}
+
+TEST_F(HooJsonTest, DeserializeInt64Zero) {
+    HooDict map = hoo_json_deserialize_hashmap(R"({"1":0})");
+    ASSERT_NE(map, nullptr);
+    HooAnyValue value{0, 0};
+    ASSERT_EQ(hoo_dict_get_any_i8(map, 1, &value), 1);
+    EXPECT_EQ(value.type_id, HOO_TYPE_INT64);
+    EXPECT_EQ(testDataToInt64(value.data), 0);
+    hoo_dict_release(map);
+}
+
+// ============================================================================
+// Trailing garbage rejection
+// ============================================================================
+
+TEST_F(HooJsonTest, DeserializeRejectsTrailingGarbage) {
+    expectJsonThrows([]() { (void)hoo_json_deserialize_hashmap("{} x"); });
+    expectJsonThrows([]() { (void)hoo_json_deserialize_hashmap("[]  "); });
+    expectJsonThrows([]() { (void)hoo_json_minify("42 extra"); });
+}
+
+// ============================================================================
+// Leading zeros rejection
+// ============================================================================
+
+TEST_F(HooJsonTest, DeserializeRejectsLeadingZeros) {
+    expectJsonThrows([]() { (void)hoo_json_deserialize_hashmap(R"({"1":07})"); });
+    expectJsonThrows([]() { (void)hoo_json_deserialize_anyarray("[00]"); });
+}
+
+// ============================================================================
+// Recursion depth limit tests
+// ============================================================================
+
+TEST_F(HooJsonTest, DeserializeRejectsDeeplyNestedArray) {
+    // Build a 300-deep nested array
+    std::string deep(300, '[');
+    deep += "1";
+    deep += std::string(300, ']');
+    expectJsonThrowsContaining(
+        [&]() { (void)hoo_json_deserialize_anyarray(deep.c_str()); },
+        "depth exceeds maximum"
+    );
+}
+
+TEST_F(HooJsonTest, DeserializeRejectsDeeplyNestedObject) {
+    // Build a 300-deep nested object
+    std::string deep;
+    for (int i = 0; i < 300; i++) deep += "{\"1\":";
+    deep += "42";
+    deep += std::string(300, '}');
+    expectJsonThrowsContaining(
+        [&]() { (void)hoo_json_deserialize_hashmap(deep.c_str()); },
+        "depth exceeds maximum"
+    );
+}
+
+TEST_F(HooJsonTest, DeserializeAcceptsMaxDepthExactly) {
+    // 255-deep nested array should succeed (parser allows up to 256)
+    std::string deep(255, '[');
+    deep += "1";
+    deep += std::string(255, ']');
+    HooList list = hoo_json_deserialize_anyarray(deep.c_str());
+    ASSERT_NE(list, nullptr);
+    EXPECT_EQ(hoo_list_length(list), 1);
+    hoo_list_release(list);
+}
+
+// ============================================================================
+// Null input rejection for serialize
+// ============================================================================
+
+TEST_F(HooJsonTest, SerializeNullDictThrows) {
+    expectJsonThrowsContaining([]() { (void)hoo_json_serialize_hashmap(nullptr); }, "serialization failed");
+}
+
+TEST_F(HooJsonTest, SerializeNullListThrows) {
+    expectJsonThrowsContaining([]() { (void)hoo_json_serialize_anyarray(nullptr); }, "serialization failed");
+}
+
+// ============================================================================
+// Minify/beautify scalar tests
+// ============================================================================
+
+TEST_F(HooJsonTest, MinifyScalar) {
+    HooString result = hoo_json_minify("42");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(hoo_string_data(result), "42");
+    hoo_string_release(result);
+}
+
+TEST_F(HooJsonTest, BeautifyScalar) {
+    HooString result = hoo_json_beautify("true");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(hoo_string_data(result), "true");
+    hoo_string_release(result);
+}
+
+TEST_F(HooJsonTest, MinifyNull) {
+    HooString result = hoo_json_minify("null");
+    ASSERT_NE(result, nullptr);
+    EXPECT_STREQ(hoo_string_data(result), "null");
+    hoo_string_release(result);
 }

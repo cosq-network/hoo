@@ -20,15 +20,18 @@ typedef void* HooString;
  *
  * Buffers and tensors use tagged objects. Dict keys are numeric in Hoo and
  * are serialized as JSON object field names.
- * Returns a HooString with refcount=1, or NULL on unsupported input.
+ * Returns a HooString with refcount=1.
+ * Throws a RuntimeException on nil input or unsupported value types.
  */
 HooString hoo_json_serialize_hashmap(HooDict map);
 
 /**
  * Serialize a List to a JSON array string.
  *
- * Supported elements: int64, int8, byte, bool, f64, string, Dict, List.
- * Returns a HooString with refcount=1, or NULL on unsupported input.
+ * Supported elements: int64, int8, byte, bool, f64, string, Dict, List,
+ * Buffer, and Tensor.
+ * Returns a HooString with refcount=1.
+ * Throws a RuntimeException on nil input or unsupported element types.
  */
 HooString hoo_json_serialize_anyarray(HooList array);
 
