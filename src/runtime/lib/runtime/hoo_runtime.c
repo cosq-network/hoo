@@ -8,6 +8,14 @@
 
 #ifdef _WIN32
 #include <windows.h>
+// Provide OpenSSL's OPENSSL_Applink symbol so libcrypto can interoperate with
+// the MSVC C runtime (avoids the "OPENSSL_Uplink ... no OPENSSL_Applink" abort).
+// applink.c is only meant to be compiled into the application once; guard with
+// a macro of our own so this translation unit is the single provider.
+#ifndef HOO_OPENSSL_APPLINK_PROVIDED
+#define HOO_OPENSSL_APPLINK_PROVIDED
+#include <openssl/applink.c>
+#endif
 typedef SRWLOCK hoo_mutex_t;
 #define HOO_MUTEX_INIT SRWLOCK_INIT
 static void hoo_mutex_lock(hoo_mutex_t* m) { AcquireSRWLockExclusive(m); }

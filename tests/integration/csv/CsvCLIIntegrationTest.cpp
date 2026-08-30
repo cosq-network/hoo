@@ -27,6 +27,9 @@ protected:
 
     void SetUp() override {
         tempDir = std::filesystem::temp_directory_path().string();
+        for (char& c : tempDir) {
+            if (c == '\\') c = '/';
+        }
         hooExe = HOO_EXECUTABLE;
     }
 
@@ -44,7 +47,15 @@ protected:
     }
 
     ExecResult runHoo(const std::string& args) {
+        #ifdef _WIN32
+        const std::string command = "\"\"" + hooExe + "\" " + args + " 2>&1\"";
+#else
+        #ifdef _WIN32
+        const std::string command = "\"\"" + hooExe + "\" " + args + " 2>&1\"";
+#else
         const std::string command = "\"" + hooExe + "\" " + args + " 2>&1";
+#endif
+#endif
         FILE* pipe = popen(command.c_str(), "r");
         if (!pipe) return {"popen failed", -1};
         std::ostringstream output;

@@ -1,3 +1,7 @@
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+
 #include "runtime/lib/net/hoo_net.h"
 #include "runtime/lib/runtime/hoo_runtime.h"
 #include "runtime/lib/byte_slice/hoo_byte_slice.h"
@@ -22,11 +26,34 @@
 #else
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <poll.h>
 #endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// ============================================================================
+// File descriptor / socket handle conversion helpers
+// ============================================================================
+// libuv exposes OS handles through uv_os_fd_t, which is an int on POSIX but a
+// HANDLE on Windows. Reinterpreting through intptr_t keeps both backends
+// portable for OpenSSL's int-based SSL_set_fd and uv_poll_init_socket.
+static int hoo_net_os_fd_to_int(uv_os_fd_t fd) {
+#ifdef _WIN32
+    return static_cast<int>(reinterpret_cast<intptr_t>(fd));
+#else
+    return static_cast<int>(fd);
+#endif
+}
+
+static uv_os_sock_t hoo_net_os_fd_to_sock(uv_os_fd_t fd) {
+#ifdef _WIN32
+    return reinterpret_cast<uv_os_sock_t>(fd);
+#else
+    return fd;
+#endif
+}
 
 // ============================================================================
 // URL Implementation
@@ -481,6 +508,97 @@ int64_t hoo_net_socket_connect(HooSocket handle, const char* host, int64_t port)
     return socket->connected ? 0 : -1;
 }
 
+// ============================================================================
+// TLS handshake (non-blocking, driven by a raw poll on the OS socket)
+// ============================================================================
+// libuv cannot switch TCP handles to blocking mode on Windows, so a blocking
+// synchronous SSL_connect/SSL_accept (which works on POSIX) fails there with
+// SSL_ERROR_WANT_READ. Instead we keep the socket non-blocking and drive the
+// OpenSSL handshake manually: call SSL_connect/SSL_accept, and when it asks for
+// more traffic, block on the raw OS socket with poll()/WSAPoll() until that
+// direction is ready, then retry.
+//
+// We deliberately wait on the raw file descriptor rather than a uv_poll handle:
+// on Windows uv_poll is implemented over WSAEventSelect, and re-arming a
+// WSAEventSelect on an IOCP-associated TCP handle can abort the connection
+// (WSAECONNABORTED) part-way through the accepted server-side handshake.
+
+static int socket_tls_wait_ready(uv_os_fd_t fd, bool wantWrite, int64_t timeoutMs) {
+#ifdef _WIN32
+    WSAPOLLFD pfd{};
+    pfd.fd = reinterpret_cast<uv_os_sock_t>(fd);
+#else
+    pollfd pfd{};
+    pfd.fd = static_cast<int>(fd);
+#endif
+    pfd.events = static_cast<short>(wantWrite ? POLLOUT : POLLIN);
+    pfd.revents = 0;
+    int64_t t = timeoutMs;
+    if (t < 0) t = 10000;
+    if (t > 3600000) t = 10000;
+#ifdef _WIN32
+    WSAPOLLFD arr[1] = { pfd };
+    int r = WSAPoll(arr, 1, static_cast<int>(t));
+#else
+    pollfd arr[1] = { pfd };
+    int r = ::poll(arr, 1, static_cast<int>(t));
+#endif
+    return r > 0 ? 1 : (r == 0 ? 0 : -1);
+}
+
+// Runs the OpenSSL handshake to completion on the OS socket. Returns 0 on
+// success. Works on both POSIX and Windows.
+static int socket_tls_handshake(HooSocketImpl* socket, bool server) {
+    if (!socket || !socket->ssl) return -1;
+    uv_os_fd_t fd;
+    if (uv_fileno(reinterpret_cast<const uv_handle_t*>(&socket->tcp), &fd) != 0) {
+        socket_set_error(socket, server ? "tls accept" : "tls connect", UV_EINVAL);
+        return -1;
+    }
+    // Ensure the underlying OS socket is non-blocking so OpenSSL reports
+    // WANT_READ/WANT_WRITE. (uv_stream_set_blocking is a no-op for TCP on
+    // Windows; ioctlsocket toggles the raw Winsock socket directly.)
+#ifdef _WIN32
+    u_long mode = 1;
+    if (ioctlsocket(reinterpret_cast<uv_os_sock_t>(fd), FIONBIO, &mode) != 0) {
+        socket_set_error(socket, server ? "tls accept" : "tls connect", UV_EINVAL);
+        return -1;
+    }
+#else
+    uv_stream_set_blocking(reinterpret_cast<uv_stream_t*>(&socket->tcp), 0);
+#endif
+    socket->tlsServer = server;
+    socket->status = -1;
+
+    const int64_t timeoutMs = socket->timeoutMs > 0 ? socket->timeoutMs : 10000;
+    const int64_t deadline = static_cast<int64_t>(uv_hrtime() / 1000000ULL) + timeoutMs;
+
+    for (;;) {
+        const int r = server ? SSL_accept(socket->ssl) : SSL_connect(socket->ssl);
+        if (r == 1) {
+            socket->status = 0;
+            return 0;
+        }
+        const int sslError = SSL_get_error(socket->ssl, r);
+        if (sslError != SSL_ERROR_WANT_READ && sslError != SSL_ERROR_WANT_WRITE) {
+            socket_set_error(socket, server ? "tls accept" : "tls connect", UV_EPROTO);
+            return -1;
+        }
+        const int64_t remaining =
+            deadline - static_cast<int64_t>(uv_hrtime() / 1000000ULL);
+        if (remaining <= 0) {
+            socket_set_error(socket, server ? "tls accept" : "tls connect", UV_ETIMEDOUT);
+            return -1;
+        }
+        const int w = socket_tls_wait_ready(fd, sslError == SSL_ERROR_WANT_WRITE, remaining);
+        if (w <= 0) {
+            socket_set_error(socket, server ? "tls accept" : "tls connect",
+                             w == 0 ? UV_ETIMEDOUT : UV_EPROTO);
+            return -1;
+        }
+    }
+}
+
 int64_t hoo_net_socket_set_timeout(HooSocket handle, int64_t timeout_ms) {
     auto* socket = static_cast<HooSocketImpl*>(handle);
     if (!socket || timeout_ms <= 0) return -1;
@@ -513,18 +631,11 @@ int64_t hoo_net_socket_connect_tls(HooSocket handle, const char* host, int64_t p
     SSL_set_tlsext_host_name(socket->ssl, host);
     uv_os_fd_t fd;
     if (uv_fileno(reinterpret_cast<const uv_handle_t*>(&socket->tcp), &fd) != 0 ||
-        SSL_set_fd(socket->ssl, static_cast<int>(fd)) != 1) {
+        SSL_set_fd(socket->ssl, hoo_net_os_fd_to_int(fd)) != 1) {
         socket_set_error(socket, "tls descriptor", UV_EPROTO);
         return -1;
     }
-    uv_stream_set_blocking(reinterpret_cast<uv_stream_t*>(&socket->tcp), 1);
-    int result = SSL_connect(socket->ssl);
-    uv_stream_set_blocking(reinterpret_cast<uv_stream_t*>(&socket->tcp), 0);
-    if (result != 1) {
-        socket_set_error(socket, "tls connect", UV_EPROTO);
-        return -1;
-    }
-    return 0;
+    return socket_tls_handshake(socket, false);
 }
 
 int64_t hoo_net_socket_enable_tls_server(HooSocket handle, const char* certificate_file,
@@ -617,16 +728,12 @@ static HooSocket socket_accept_connection(HooSocketImpl* server) {
         client->ssl = SSL_new(client->sslContext);
         uv_os_fd_t fd;
         if (!client->ssl || uv_fileno(reinterpret_cast<const uv_handle_t*>(&client->tcp), &fd) != 0 ||
-            SSL_set_fd(client->ssl, static_cast<int>(fd)) != 1) {
+            SSL_set_fd(client->ssl, hoo_net_os_fd_to_int(fd)) != 1) {
             socket_set_error(server, "tls accept", UV_EPROTO);
             hoo_net_socket_release(client);
             return nullptr;
         }
-        uv_stream_set_blocking(reinterpret_cast<uv_stream_t*>(&client->tcp), 1);
-        int tlsStatus = SSL_accept(client->ssl);
-        uv_stream_set_blocking(reinterpret_cast<uv_stream_t*>(&client->tcp), 0);
-        if (tlsStatus != 1) {
-            socket_set_error(server, "tls accept", UV_EPROTO);
+        if (socket_tls_handshake(client, true) != 0) {
             hoo_net_socket_release(client);
             return nullptr;
         }
@@ -704,7 +811,64 @@ const char* hoo_net_socket_last_error(HooSocket handle) {
     return socket ? socket->error.c_str() : "invalid socket";
 }
 
+// Performs a best-effort graceful TLS shutdown before the OS socket is closed:
+// sends close_notify, half-closes the connection, and drains any inbound data
+// still buffered. Closing a socket while unread data remains in its receive
+// buffer makes Windows emit RST instead of FIN, which aborts the peer's
+// pending handshake/read with SSL_ERROR_SYSCALL (WSAECONNABORTED). Because the
+// TLS 1.3 client finishes its handshake before the server has read its
+// Finished message (and post-handshake session tickets are still unread), an
+// immediate close would otherwise race against and kill the server handshake.
+// The fd is non-blocking, so every step below is instantaneous.
+static void socket_tls_graceful_shutdown(HooSocketImpl* socket) {
+    if (!socket->ssl || !socket->connected) return;
+    uv_os_fd_t fd;
+    if (uv_fileno(reinterpret_cast<const uv_handle_t*>(&socket->tcp), &fd) != 0) return;
+#ifdef _WIN32
+    const uv_os_sock_t sock = reinterpret_cast<uv_os_sock_t>(fd);
+#else
+    const int sock = static_cast<int>(fd);
+#endif
+    auto nowMs = []() { return static_cast<int64_t>(uv_hrtime() / 1000000ULL); };
+    // Grace period: with TLS 1.3 the client completes its handshake before the
+    // server has read its Finished message. Closing now would abort the peer's
+    // pending handshake read (WSAECONNABORTED and discard of the buffered
+    // Finished). Keep the connection open briefly and drain inbound data until
+    // the peer closes or the deadline expires.
+    char discard[1024];
+    const int64_t graceDeadline = nowMs() + 250;
+    for (;;) {
+        const int64_t remaining = graceDeadline - nowMs();
+        if (remaining <= 0) break;
+        const int w = socket_tls_wait_ready(fd, false, remaining > 25 ? 25 : remaining);
+        if (w < 0) break;
+        if (w == 0) continue;
+        const int n = static_cast<int>(::recv(sock, discard, static_cast<int>(sizeof(discard)), 0));
+        if (n <= 0) break;
+    }
+    // The peer has finished (or timed out): close_notify, half-close, final drain.
+    SSL_shutdown(socket->ssl);
+    ::shutdown(sock,
+#ifdef _WIN32
+               SD_SEND
+#else
+               SHUT_WR
+#endif
+    );
+    const int64_t finalDeadline = nowMs() + 50;
+    for (;;) {
+        const int64_t remaining = finalDeadline - nowMs();
+        if (remaining <= 0) break;
+        const int w = socket_tls_wait_ready(fd, false, remaining > 25 ? 25 : remaining);
+        if (w < 0) break;
+        if (w == 0) continue;
+        const int n = static_cast<int>(::recv(sock, discard, static_cast<int>(sizeof(discard)), 0));
+        if (n <= 0) break;
+    }
+}
+
 static void socket_close_common(HooSocketImpl* socket, uv_close_cb closeCb) {
+    socket_tls_graceful_shutdown(socket);
     if (socket->asyncPoll) {
         uv_poll_stop(socket->asyncPoll);
         uv_close(reinterpret_cast<uv_handle_t*>(socket->asyncPoll), [](uv_handle_t* handle) {
@@ -857,7 +1021,7 @@ int64_t hoo_net_socket_async_start_read(HooSocket handle, HooSocketDataCallback 
         auto* poll = new uv_poll_t;
         poll->data = socket;
 #ifdef _WIN32
-        int status = uv_poll_init_socket(socket->loop, poll, static_cast<uv_os_sock_t>(fd));
+        int status = uv_poll_init_socket(socket->loop, poll, hoo_net_os_fd_to_sock(fd));
 #else
         int status = uv_poll_init(socket->loop, poll, static_cast<int>(fd));
 #endif
@@ -924,9 +1088,11 @@ void hoo_net_socket_release(HooSocket socket) {
 
 static void net_socket_destructor(void* obj) {
     auto* socket = static_cast<HooSocketImpl*>(obj);
+    // Close first so the TLS session is still alive for the graceful shutdown
+    // inside socket_close_common; SSL_free must not run before it.
+    if (socket->initialized && !socket->closing) hoo_net_socket_close(socket);
     if (socket->ssl) SSL_free(socket->ssl);
     if (socket->sslContext) SSL_CTX_free(socket->sslContext);
-    if (socket->initialized && !socket->closing) hoo_net_socket_close(socket);
     if (socket->ownsLoop) uv_loop_close(socket->loop);
     if (socket->loopOwner) hoo_release(socket->loopOwner);
     socket->~HooSocketImpl();

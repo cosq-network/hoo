@@ -16,8 +16,27 @@ static struct tm* win_gmtime_r(const time_t* t, struct tm* buf) {
     if (gmtime_s(buf, t) != 0) return nullptr;
     return buf;
 }
+// Number of days since 1970-01-01 for a civil date (Howard Hinnant's
+// civil-from-days algorithm). Handles pre-1970 years correctly, unlike MSVC's
+// _mkgmtime which returns -1 for any date before 1970.
+static long long days_from_civil(int y, unsigned m, unsigned d) {
+    y -= static_cast<int>(m <= 2);
+    const long long era = static_cast<long long>((y >= 0 ? y : y - 399) / 400);
+    const unsigned yoe = static_cast<unsigned>(y - era * 400);
+    const unsigned doy = (153u * (m + (m > 2 ? -3u : 9u)) + 2u) / 5u + d - 1u;
+    const unsigned doe = yoe * 365u + yoe / 4u - yoe / 100u + doy;
+    return era * 146097LL + static_cast<long long>(doe) - 719468LL;
+}
+
 static time_t win_timegm(struct tm* buf) {
-    return _mkgmtime(buf);
+    long long days = days_from_civil(buf->tm_year + 1900,
+                                     static_cast<unsigned>(buf->tm_mon + 1),
+                                     static_cast<unsigned>(buf->tm_mday));
+    long long secs = days * 86400LL
+                   + buf->tm_hour * 3600LL
+                   + buf->tm_min * 60LL
+                   + buf->tm_sec;
+    return static_cast<time_t>(secs);
 }
 static char* win_strptime(const char* s, const char* fmt, struct tm* buf) {
     if (!s || !fmt || !buf) return nullptr;

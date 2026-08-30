@@ -575,7 +575,8 @@ TEST_F(BugFixVerificationTest, ArrayLiteralStringElementsOwned) {
     EXPECT_STREQ("world", hoo_string_data(s1));
     EXPECT_EQ(hoo_get_refcount(s0), 1);
     EXPECT_EQ(hoo_get_refcount(s1), 1);
-    while (hoo_get_refcount(a) > 0) {
+    int64_t rc = hoo_get_refcount(a);
+    for (int64_t i = 0; i < rc; ++i) {
         hoo_array_release(a);
     }
     EXPECT_EQ(hoo_is_managed_object(s0), 0);
@@ -622,7 +623,8 @@ TEST_F(BugFixVerificationTest, RegexSplitPartsAreValidStrings) {
     EXPECT_STREQ("a", hoo_string_data(s0));
     EXPECT_STREQ("b", hoo_string_data(s1));
     EXPECT_STREQ("c", hoo_string_data(s2));
-    while (hoo_get_refcount(a) > 0) {
+    int64_t rc2 = hoo_get_refcount(a);
+    for (int64_t i = 0; i < rc2; ++i) {
         hoo_array_release(a);
     }
     EXPECT_EQ(hoo_is_managed_object(s0), 0);

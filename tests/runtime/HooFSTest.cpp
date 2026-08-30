@@ -685,6 +685,10 @@ TEST_F(HooFSTest, CAbi_Bridge_CurrentExeDir) {
     char* exeDir = hoo_fs_current_exe_dir();
     ASSERT_NE(exeDir, nullptr);
     EXPECT_GT(strlen(exeDir), 0);
+#ifdef _WIN32
+    EXPECT_TRUE(strlen(exeDir) >= 3 && exeDir[1] == ':');
+#else
     EXPECT_EQ(exeDir[0], '/');
+#endif
     hoo_fs_free_string(exeDir);
 }

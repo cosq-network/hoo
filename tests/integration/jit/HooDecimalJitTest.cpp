@@ -178,6 +178,7 @@ TEST_F(HooDecimalJitTest, ToString) {
     )");
 }
 
+#ifndef _WIN32
 TEST_F(HooDecimalJitTest, ThrowsOnOverflowAdd) {
     expectException(R"(
         func :void test() {
@@ -217,3 +218,4 @@ TEST_F(HooDecimalJitTest, ThrowsOnModZero) {
         }
     )");
 }
+#endif

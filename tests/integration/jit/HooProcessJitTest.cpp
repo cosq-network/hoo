@@ -63,9 +63,7 @@ TEST_F(HooProcessJitTest, SpawnAndWait) {
         import hoo.process;
         func :int64 test() {
             var args = new Array();
-            args.pushString("/c");
-            args.pushString("echo hi");
-            var pid = process_spawn("cmd.exe", args);
+            var pid = process_spawn("cmd.exe /c exit 0", args);
             if (pid <= 0) {
                 return -1;
             }
@@ -78,8 +76,9 @@ TEST_F(HooProcessJitTest, SpawnAndWait) {
         import hoo.process;
         func :int64 test() {
             var args = new Array();
-            args.pushString("hi");
-            var pid = process_spawn("echo", args);
+            args.pushString("-c");
+            args.pushString("exit 0");
+            var pid = process_spawn("sh", args);
             if (pid <= 0) {
                 return -1;
             }
@@ -90,3 +89,4 @@ TEST_F(HooProcessJitTest, SpawnAndWait) {
     ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 0);
 }
+

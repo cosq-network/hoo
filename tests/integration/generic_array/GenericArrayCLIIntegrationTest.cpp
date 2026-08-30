@@ -31,6 +31,9 @@ protected:
 
     void SetUp() override {
         tempDir = std::filesystem::temp_directory_path().string();
+        for (char& c : tempDir) {
+            if (c == '\\') c = '/';
+        }
         hooExe = HOO_EXECUTABLE;
     }
 
@@ -59,45 +62,28 @@ protected:
             + ".ha";
     }
 
-    ExecResult runHoo(const std::string& args) {
+        ExecResult runHoo(const std::string& args) {
 #ifdef _WIN32
-        static int captureCounter = 0;
-        std::string capturePath = tempDir + "/hoo_ga_capture_"
-            + std::to_string(std::time(nullptr))
-            + "_" + std::to_string(++captureCounter)
-            + ".txt";
-        std::string cmd = "cmd.exe /S /C \"" + hooExe + "\" " + args
-            + " > \"" + capturePath + "\" 2>&1\"";
-        int status = std::system(cmd.c_str());
-
-        std::ifstream captured(capturePath, std::ios::binary);
-        std::ostringstream out;
-        out << captured.rdbuf();
-        captured.close();
-        std::remove(capturePath.c_str());
-
-        ExecResult result;
-        result.exitCode = status;
-        result.output = out.str();
-        return result;
+        const std::string command = "\"\"" + hooExe + "\" " + args + " 2>&1\"";
 #else
-        std::string cmd = "\"" + hooExe + "\" " + args + " 2>&1";
-        FILE* pipe = popen(cmd.c_str(), "r");
-        ExecResult result;
-        if (!pipe) {
-            result.exitCode = -1;
-            result.output = "popen failed";
-            return result;
-        }
-        std::ostringstream out;
-        char buf[4096];
-        while (fgets(buf, sizeof(buf), pipe)) {
-            out << buf;
-        }
-        int status = pclose(pipe);
-        result.exitCode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
-        result.output = out.str();
-        return result;
+        #ifdef _WIN32
+        const std::string command = "\"\"" + hooExe + "\" " + args + " 2>&1\"";
+#else
+        const std::string command = "\"" + hooExe + "\" " + args + " 2>&1";
+#endif
+#endif
+        FILE* pipe = popen(command.c_str(), "r");
+        if (!pipe) return {"popen failed", -1};
+
+        std::ostringstream output;
+        char buffer[4096];
+        while (fgets(buffer, sizeof(buffer), pipe)) output << buffer;
+
+        const int status = pclose(pipe);
+#ifdef _WIN32
+        return {output.str(), status};
+#else
+        return {output.str(), WIFEXITED(status) ? WEXITSTATUS(status) : -1};
 #endif
     }
 

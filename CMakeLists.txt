@@ -699,6 +699,7 @@ if(HOO_BUILD_TESTS)
             "/EXPORT:hooc_hvm_sys_getrandom"
             "/EXPORT:hooc_hvm_arc_retain_if_managed"
             "/EXPORT:hooc_hvm_arc_release_if_managed"
+            "/EXPORT:hooc_hvm_f8_arith"
         )
     else()
         target_link_libraries(hoo-tests GTest::gtest GTest::gtest_main)

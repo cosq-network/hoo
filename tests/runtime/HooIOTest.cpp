@@ -3,6 +3,11 @@
 #include "runtime/lib/string/hoo_string.h"
 #include "runtime/lib/runtime/hoo_runtime.h"
 #include "runtime/lib/character/hoo_character.h"
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 class HooIOTest : public ::testing::Test {
 };
@@ -57,30 +62,61 @@ TEST_F(HooIOTest, PrintUnicodeString) {
 }
 
 TEST_F(HooIOTest, ReadCharNonBlocking) {
-    // When no input is available, readchar should return NULL without blocking
+    // Redirect stdin to a temporary file with no content to simulate EOF
+    FILE* temp = tmpfile();
+#ifdef _WIN32
+    int old_stdin = _dup(_fileno(stdin));
+    _dup2(_fileno(temp), _fileno(stdin));
+#else
+    int old_stdin = dup(fileno(stdin));
+    dup2(fileno(temp), fileno(stdin));
+#endif
+
     HooCharacter ch = hoo_readchar();
-    // If no input is available, the function returns NULL.
     if (ch == NULL) {
         SUCCEED();
     } else {
-        // Ensure the returned object is a managed Character with correct type ID.
         EXPECT_EQ(hoo_get_type_id(ch), HOO_TYPE_CHARACTER);
         hoo_character_release(ch);
     }
+
+    // Restore stdin
+#ifdef _WIN32
+    _dup2(old_stdin, _fileno(stdin));
+    _close(old_stdin);
+#else
+    dup2(old_stdin, fileno(stdin));
+    close(old_stdin);
+#endif
+    fclose(temp);
 }
 
 TEST_F(HooIOTest, ReadLineReturnsString) {
-    // hoo_readline reads from stdin, which is not available in unit tests.
-    // When stdin is not a tty, it may return empty or block.
-    // We just verify the function doesn't crash.
-    // Note: This test may produce different results depending on the test runner.
-    // In a CI environment with no stdin, it should return an empty string.
+    // Redirect stdin to a temporary file to prevent blocking
+    FILE* temp = tmpfile();
+#ifdef _WIN32
+    int old_stdin = _dup(_fileno(stdin));
+    _dup2(_fileno(temp), _fileno(stdin));
+#else
+    int old_stdin = dup(fileno(stdin));
+    dup2(fileno(temp), fileno(stdin));
+#endif
+
     void* result = hoo_readline();
     if (result != nullptr) {
-        // If we got a result, it should be a valid HooString
         EXPECT_EQ(hoo_get_type_id(result), HOO_TYPE_STRING);
         hoo_string_release(result);
     }
+
+    // Restore stdin
+#ifdef _WIN32
+    _dup2(old_stdin, _fileno(stdin));
+    _close(old_stdin);
+#else
+    dup2(old_stdin, fileno(stdin));
+    close(old_stdin);
+#endif
+    fclose(temp);
 }
 
 TEST_F(HooIOTest, PrintMultipleTimes) {

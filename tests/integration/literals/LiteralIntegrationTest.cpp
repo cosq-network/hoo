@@ -24,6 +24,9 @@ protected:
 
     void SetUp() override {
         tempDir = std::filesystem::temp_directory_path().string();
+        for (char& c : tempDir) {
+            if (c == '\\') c = '/';
+        }
         hooExe = HOO_EXECUTABLE;
     }
 
@@ -58,7 +61,12 @@ protected:
             out << buf;
         }
         int status = pclose(pipe);
+#ifdef _WIN32
+        // _pclose on Windows returns the child's exit code directly.
+        result.exitCode = status;
+#else
         result.exitCode = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
+#endif
         result.output = out.str();
         return result;
     }

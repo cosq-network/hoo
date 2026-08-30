@@ -15,6 +15,19 @@ struct ThreadContext {
     ThreadStart ts;
 };
 
+// On Windows libuv backs `uv_mutex_t` with an SRW lock, which lets the same
+// thread re-acquire a lock it already holds; `uv_mutex_trylock` therefore
+// reports "acquired" for a same-thread re-entry, unlike POSIX non-recursive
+// mutexes. Track the owner so `hoo_thread_mutex_try_lock` can report "busy"
+// for the calling thread's own held lock, giving POSIX-consistent semantics.
+struct MutexImpl {
+    uv_mutex_t lock;
+#ifdef _WIN32
+    uv_thread_t owner;
+    bool owned;
+#endif
+};
+
 static void uv_thread_wrapper(void* arg) {
     ThreadStart* ts = (ThreadStart*)arg;
     ts->result = ts->func(ts->arg);
@@ -54,36 +67,63 @@ int64_t hoo_thread_self(void) {
 }
 
 HooMutex hoo_thread_mutex_create(void) {
-    uv_mutex_t* mutex = (uv_mutex_t*)malloc(sizeof(uv_mutex_t));
-    if (!mutex) return NULL;
-    if (uv_mutex_init(mutex) != 0) {
-        free(mutex);
+    MutexImpl* impl = (MutexImpl*)malloc(sizeof(MutexImpl));
+    if (!impl) return NULL;
+    if (uv_mutex_init(&impl->lock) != 0) {
+        free(impl);
         return NULL;
     }
-    return (HooMutex)mutex;
+#ifdef _WIN32
+    impl->owned = false;
+    impl->owner = (uv_thread_t)0;
+#endif
+    return (HooMutex)impl;
 }
 
 int64_t hoo_thread_mutex_lock(HooMutex mutex) {
     if (!mutex) return -1;
-    uv_mutex_lock((uv_mutex_t*)mutex);
+    MutexImpl* impl = (MutexImpl*)mutex;
+    uv_mutex_lock(&impl->lock);
+#ifdef _WIN32
+    impl->owner = uv_thread_self();
+    impl->owned = true;
+#endif
     return 0;
 }
 
 int64_t hoo_thread_mutex_try_lock(HooMutex mutex) {
     if (!mutex) return -1;
-    return uv_mutex_trylock((uv_mutex_t*)mutex) == 0 ? 0 : 1;
+    MutexImpl* impl = (MutexImpl*)mutex;
+#ifdef _WIN32
+    const uv_thread_t self = uv_thread_self();
+    if (impl->owned && uv_thread_equal(&impl->owner, &self)) {
+        return 1;
+    }
+    if (uv_mutex_trylock(&impl->lock) != 0) return 1;
+    impl->owner = self;
+    impl->owned = true;
+    return 0;
+#else
+    return uv_mutex_trylock(&impl->lock) == 0 ? 0 : 1;
+#endif
 }
 
 int64_t hoo_thread_mutex_unlock(HooMutex mutex) {
     if (!mutex) return -1;
-    uv_mutex_unlock((uv_mutex_t*)mutex);
+    MutexImpl* impl = (MutexImpl*)mutex;
+#ifdef _WIN32
+    impl->owned = false;
+    impl->owner = (uv_thread_t)0;
+#endif
+    uv_mutex_unlock(&impl->lock);
     return 0;
 }
 
 int64_t hoo_thread_mutex_destroy(HooMutex mutex) {
     if (!mutex) return -1;
-    uv_mutex_destroy((uv_mutex_t*)mutex);
-    free(mutex);
+    MutexImpl* impl = (MutexImpl*)mutex;
+    uv_mutex_destroy(&impl->lock);
+    free(impl);
     return 0;
 }
 
@@ -99,13 +139,32 @@ HooCondition hoo_thread_condition_create(void) {
 
 int64_t hoo_thread_condition_wait(HooCondition condition, HooMutex mutex) {
     if (!condition || !mutex) return -1;
-    uv_cond_wait((uv_cond_t*)condition, (uv_mutex_t*)mutex);
+    MutexImpl* impl = (MutexImpl*)mutex;
+#ifdef _WIN32
+    impl->owned = false;
+    impl->owner = (uv_thread_t)0;
+#endif
+    uv_cond_wait((uv_cond_t*)condition, &impl->lock);
+#ifdef _WIN32
+    impl->owner = uv_thread_self();
+    impl->owned = true;
+#endif
     return 0;
 }
 
 int64_t hoo_thread_condition_timed_wait(HooCondition condition, HooMutex mutex, uint64_t timeout_ns) {
     if (!condition || !mutex) return -1;
-    return uv_cond_timedwait((uv_cond_t*)condition, (uv_mutex_t*)mutex, timeout_ns);
+    MutexImpl* impl = (MutexImpl*)mutex;
+#ifdef _WIN32
+    impl->owned = false;
+    impl->owner = (uv_thread_t)0;
+#endif
+    int r = uv_cond_timedwait((uv_cond_t*)condition, &impl->lock, timeout_ns);
+#ifdef _WIN32
+    impl->owner = uv_thread_self();
+    impl->owned = true;
+#endif
+    return r;
 }
 
 int64_t hoo_thread_condition_notify_one(HooCondition condition) {
