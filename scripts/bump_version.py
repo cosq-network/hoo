@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 """
-bump_version.py – Semantic version bumping for the Hoo project.
+bump_version.py – Semantic version bumping for the Hoo project (GitFlow).
 
 Usage:
-    python scripts/bump_version.py [major|minor|patch|auto]
+    python scripts/bump_version.py [major|minor|patch|auto|release|hotfix]
 
-    auto  – inspect git log since last tag and pick the bump level from
-            conventional commit prefixes:
-              BREAKING CHANGE or 'BREAKING:' → major
-              feat:                           → minor
-              fix: / chore: / refactor: etc  → patch
+    auto    – inspect git log since last tag and pick the bump level from
+              conventional commit prefixes:
+                BREAKING CHANGE or 'BREAKING:' → major
+                feat:                           → minor
+                fix: / chore: / refactor: etc  → patch
+    release – GitFlow: run on main after a release/* merge. Bumps minor and
+              resets patch (major only when a BREAKING change is present).
+    hotfix  – GitFlow: run on main after a hotfix/* merge. Bumps patch
+              (major only when a BREAKING change is present).
 
 The script updates:
   - CMakeLists.txt  (project version)
   - docs/CHANGELOG.md (prepend new section)
   - README.md (version badge)
-Then commits and tags.
+Then commits and tags (vX.Y.Z) on main.
 """
 
 import subprocess
@@ -230,15 +234,29 @@ def update_hvm_module_version(new_ver):
 
 def main():
     level_arg = sys.argv[1] if len(sys.argv) > 1 else "auto"
-    if level_arg not in ("major", "minor", "patch", "auto"):
-        print(f"Usage: bump_version.py [major|minor|patch|auto]")
+    if level_arg not in ("major", "minor", "patch", "auto", "release", "hotfix"):
+        print(f"Usage: bump_version.py [major|minor|patch|auto|release|hotfix]")
         sys.exit(1)
 
     old_ver = read_current_version()
     tag = last_tag()
     commits = commits_since(tag)
 
-    level = bump_level_from_commits(commits) if level_arg == "auto" else level_arg
+    # GitFlow modes determine the level from the commit set, escalating to
+    # major when a BREAKING change is present.
+    if level_arg in ("release", "hotfix"):
+        detected = bump_level_from_commits(commits)
+        if detected == "major":
+            level = "major"
+        else:
+            level = "minor" if level_arg == "release" else "patch"
+    else:
+        level = (
+            bump_level_from_commits(commits)
+            if level_arg == "auto"
+            else level_arg
+        )
+
     new_ver = calc_new_version(*old_ver, level)
     ver_str = ".".join(str(x) for x in new_ver)
 

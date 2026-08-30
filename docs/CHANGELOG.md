@@ -11,6 +11,17 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- ci: adopt GitFlow for CI/CD and versioning
+  - Rework `.github/workflows/build-and-test.yml` around the GitFlow branch
+    model: `main` (stable/production), `dev` (integration), plus `feature/*`,
+    `release/*` and `hotfix/*` branches.
+  - Version bumping is now gitflow-aware: `release/*` merges to `main` bump the
+    minor and reset the patch; `hotfix/*` merges bump the patch (either escalates
+    to major on a `BREAKING` change). Detection reads the merge commit; ambiguous
+    pushes are skipped rather than guessed.
+  - Add a `sync-main-to-dev` job that merges the released version back into `dev`
+    so the development branch tracks the latest release.
+
 - fix(test): resolve all Windows test suite hangs and massive failures
   - Fixed a blocking hang in `HooProcessJitTest` by changing the spawned shell to exit immediately (`cmd.exe /c exit 0`).
   - Fixed an infinite loop hang in `BugFixVerificationTest` caused by reading use-after-free garbage data in the refcount loop on Windows.
