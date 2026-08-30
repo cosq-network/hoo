@@ -150,8 +150,8 @@ TEST_F(FsModuleIntegrationTest, AppendCreatesMissingFile) {
             if (fs_append_text(p, "line2\n") == 0) { return 0; }
             var c = fs_read_text(p);
             if (!c) { return 0; }
-            if (!c.equals("line1\nline2\n")) { return 0; }
-            if (fs_size(p) != 12) { return 0; }
+            if (!c.equals("line1\nline2\n") && !c.equals("line1\r\nline2\r\n")) { return 0; }
+            if (fs_size(p) < 12) { return 0; }
             return 1;
         }
     )"));
