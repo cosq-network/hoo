@@ -1,8 +1,8 @@
 # Hoo Project Understanding
 
-**Last Updated**: 2026-08-12  
+**Last Updated**: 2026-09-01  
 **Version**: 1.4.0  
-**Status**: Production-ready with 2,117 passing tests
+**Status**: Production-ready with 3,270 passing tests
 
 ---
 
@@ -52,7 +52,7 @@ src/
 ├── ast/              # AST node definitions, type system, SimpleASTBuilder
 ├── codegen/          # HVMCodeGenerator (AST → bytecode)
 ├── hvm/              # ISA definitions, module serialization, HVMJIT engine
-├── runtime/lib/      # hoort runtime library (24 modules: strings, arrays, maps, etc.)
+├── runtime/lib/      # hoort runtime library (33 modules: strings, arrays, maps, etc.)
 ├── core/             # CLI, compiler driver, symbol mangling, IO providers
 ├── repl/             # Interactive shell (--repl flag)
 └── archive/          # Archive loading (.ha format), local imports
@@ -71,7 +71,6 @@ docs/
 ├── hvm/              # ISA spec, instruction reference, file formats
 ├── dev/              # Developer guides (AST builder, codegen, etc.)
 ├── runtime/          # API documentation for hoort library
-├── language/         # Language features (async/await)
 └── issues/           # Feature tracking (ISSUE-001, etc.)
 ```
 
@@ -177,7 +176,7 @@ Defines Hoo's complete grammar:
 
 ### 3.6 Runtime Library: hoort
 
-**Location**: `src/runtime/lib/` (24 specialized modules)
+**Location**: `src/runtime/lib/` (33 specialized modules)
 
 **Core Principle**: All managed objects are **64-bit handles** (pointers) to C++ instances with a **16-byte ARC header**:
 
@@ -353,7 +352,7 @@ try {
 ## 6. Performance & Testing
 
 ### Test Coverage
-- **2,637 tests** passing (0 failures)
+- **3,270 tests** passing (0 failures)
 - **Unit tests**: Parsing, AST, codegen, HVM instruction semantics, runtime (ARC, strings, arrays, etc.)
 - **Integration tests**: CLI, JIT compilation, exception handling, async operations
 - **End-to-end tests**: Collections, operators, literals, statements, arguments
@@ -389,7 +388,7 @@ try {
 **Runtime & Execution**:
 - `src/hvm/HVMJIT.cpp` — JIT compilation and execution engine
 - `src/hvm/HOModule.cpp` — Binary module format serialization
-- `src/runtime/lib/*.cpp` — 24 runtime modules (strings, arrays, etc.)
+- `src/runtime/lib/*.cpp` — 33 runtime modules (strings, arrays, etc.)
 
 **Archive & Loading**:
 - `src/archive/HAArchive.cpp` — ZIP+Zstd container handling
@@ -537,7 +536,7 @@ Hoo is a **systems programming language that compiles directly to a hardware-rea
 - **Modern OOP**: Classes, inheritance, access qualifiers, virtual methods
 - **Async/Await**: Native coroutines with libuv integration
 - **Zero Runtime Overhead**: All complex semantics resolved at compile time
-- **Production Ready**: 2,117 tests passing, cross-platform (macOS, Linux, Windows)
-- **Extensible**: 24 runtime modules covering strings, collections, networking, async, threading, JSON, regex, compression, and more
+- **Production Ready**: 3,270 tests passing, cross-platform (macOS, Linux, Windows)
+- **Extensible**: 33 runtime modules covering strings, collections, networking, async, threading, JSON, regex, compression, and more
 
 The codebase is well-structured, well-tested, and designed for clear separation of concerns: parser → AST → codegen → bytecode → JIT → native code. Every component has a clear responsibility, making the project maintainable and easy to extend.

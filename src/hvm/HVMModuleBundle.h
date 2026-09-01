@@ -1,5 +1,4 @@
-#ifndef HVM_HVM_HVM_MODULE_BUNDLE_H
-#define HVM_HVM_HVM_MODULE_BUNDLE_H
+#pragma once
 
 #include <set>
 #include <unordered_map>
@@ -116,4 +115,4 @@ private:
 
 }
 
-#endif
+

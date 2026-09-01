@@ -96,6 +96,7 @@ HooException hoo_exception_create(int64_t typeId, const char* message) {
 
 HooException hoo_exception_create_with_cause(int64_t typeId, const char* message, HooException cause) {
     HooExceptionImpl* impl = (HooExceptionImpl*)hoo_alloc(sizeof(HooExceptionImpl), HOO_TYPE_EXCEPTION);
+    if (!impl) return nullptr;
 
     impl->typeId = typeId;
     impl->typeName = (typeId >= 0 && typeId < 5) ? type_names[typeId] : "CustomException";
@@ -103,7 +104,11 @@ HooException hoo_exception_create_with_cause(int64_t typeId, const char* message
     if (message) {
         size_t len = std::strlen(message);
         impl->message = (const char*)std::malloc(len + 1);
-        std::memcpy((void*)impl->message, message, len + 1);
+        if (impl->message) {
+            std::memcpy((void*)impl->message, message, len + 1);
+        } else {
+            impl->message = "";
+        }
     } else {
         impl->message = "";
     }
@@ -143,17 +148,26 @@ HooException hoo_exception_custom(const char* exceptionType, const char* message
     if (!exceptionType) exceptionType = "CustomException";
 
     HooExceptionImpl* impl = (HooExceptionImpl*)hoo_alloc(sizeof(HooExceptionImpl), HOO_TYPE_EXCEPTION);
+    if (!impl) return nullptr;
 
     impl->typeId = HOO_EXCEPTION_CUSTOM;
 
     size_t typeLen = std::strlen(exceptionType);
     impl->typeName = (const char*)std::malloc(typeLen + 1);
-    std::memcpy((void*)impl->typeName, exceptionType, typeLen + 1);
+    if (impl->typeName) {
+        std::memcpy((void*)impl->typeName, exceptionType, typeLen + 1);
+    } else {
+        impl->typeName = "";
+    }
 
     if (message) {
         size_t msgLen = std::strlen(message);
         impl->message = (const char*)std::malloc(msgLen + 1);
-        std::memcpy((void*)impl->message, message, msgLen + 1);
+        if (impl->message) {
+            std::memcpy((void*)impl->message, message, msgLen + 1);
+        } else {
+            impl->message = "";
+        }
     } else {
         impl->message = "";
     }

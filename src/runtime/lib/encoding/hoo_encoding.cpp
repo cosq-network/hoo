@@ -1,3 +1,8 @@
+// hoo_encoding.cpp
+// NOTE: This module does not participate in ARC. It operates on plain byte
+// buffers and uses malloc/free directly because encoded data is transient and
+// not stored as managed Hoo objects.
+
 #include "runtime/lib/encoding/hoo_encoding.h"
 #include "runtime/lib/buffer/hoo_buffer.h"
 #include <cstring>

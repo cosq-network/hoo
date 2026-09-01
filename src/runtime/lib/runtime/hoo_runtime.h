@@ -1,5 +1,4 @@
-#ifndef HOO_RUNTIME_H
-#define HOO_RUNTIME_H
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -217,4 +216,3 @@ void hoo_tlab_reset_thread_cache(void);
 }
 #endif
 
-#endif // HOO_RUNTIME_H

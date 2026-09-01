@@ -1,5 +1,4 @@
-#ifndef HVM_HVM_MODULE_H
-#define HVM_HVM_MODULE_H
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -317,4 +316,4 @@ private:
 
 }
 
-#endif
+

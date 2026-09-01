@@ -6,7 +6,6 @@
 #ifdef _WIN32
 #include <process.h>
 #include <windows.h>
-#include <cstring>
 #define popen _popen
 #define pclose _pclose
 #else

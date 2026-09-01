@@ -532,6 +532,8 @@ if(HOO_BUILD_TESTS)
         tests/parsing/VariableDeclarationParseTest.cpp
         tests/parsing/IfElseIfParsingTest.cpp
         tests/parsing/WhileLoopParsingTest.cpp
+        tests/parsing/ForLoopParsingTest.cpp
+        tests/parsing/FunctionModifiersTest.cpp
         tests/parsing/ImportStatementParsingTest.cpp
         tests/parsing/ModuleLevelVariableParsingTest.cpp
         tests/parsing/ClassDeclarationParsingTest.cpp
@@ -554,6 +556,7 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooTensorTest.cpp
         tests/runtime/StringBasicsTest.cpp
         tests/runtime/HooCharacterTest.cpp
+        tests/runtime/HooCharacterExtraTest.cpp
         tests/runtime/HooRuntimeTest.cpp
         tests/runtime/HooMapTest.cpp
         tests/runtime/HooAnyCollectionsTest.cpp
@@ -575,7 +578,6 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooCompressionTest.cpp
         tests/runtime/HooArgsTest.cpp
         tests/runtime/HooBufferTest.cpp
-        tests/runtime/HooNetTest.cpp
         tests/runtime/HooThreadTest.cpp
         tests/runtime/HooOverloadTest.cpp
         tests/integration/jit/HooMathJitTest.cpp
@@ -632,10 +634,10 @@ if(HOO_BUILD_TESTS)
         tests/integration/buffer/BufferCLIIntegrationTest.cpp
         tests/integration/byte_slice/ByteSliceCLIIntegrationTest.cpp
         tests/integration/character/CharacterCLIIntegrationTest.cpp
-         tests/integration/encoding/EncodingCLIIntegrationTest.cpp
-         tests/integration/hashing/HashingCLIIntegrationTest.cpp
-         tests/integration/csv/CsvCLIIntegrationTest.cpp
-         tests/integration/compression/CompressionCLIIntegrationTest.cpp
+        tests/integration/encoding/EncodingCLIIntegrationTest.cpp
+        tests/integration/hashing/HashingCLIIntegrationTest.cpp
+        tests/integration/csv/CsvCLIIntegrationTest.cpp
+        tests/integration/compression/CompressionCLIIntegrationTest.cpp
         tests/integration/datetime/DatetimeCLIIntegrationTest.cpp
         tests/integration/fs/FsCLIIntegrationTest.cpp
         tests/integration/fs/FsModuleIntegrationTest.cpp

@@ -1,5 +1,4 @@
-#ifndef HOO_IO_H
-#define HOO_IO_H
+#pragma once
 
 #include <stdint.h>
 #include <stddef.h>
@@ -51,5 +50,3 @@ HooCharacter hoo_readchar(void);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // HOO_IO_H

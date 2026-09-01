@@ -1,5 +1,4 @@
-#ifndef HVM_HVM_JIT_H
-#define HVM_HVM_JIT_H
+#pragma once
 
 #include <memory>
 #include <string>
@@ -351,4 +350,3 @@ private:
 
 } // namespace hooc
 
-#endif // HVM_HVM_JIT_H

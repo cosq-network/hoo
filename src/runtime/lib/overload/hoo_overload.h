@@ -1,3 +1,5 @@
+#pragma once
+
 /**
  * @file hoo_overload.h
  * @brief Runtime function overload resolution API for the Hoo language.
@@ -11,8 +13,6 @@
  * Phase 1: Static resolution used by the code generator for built-in overloads.
  * Phase 3: Dynamic resolution for call sites that cannot be resolved at compile time.
  */
-
-#pragma once
 
 #ifdef __cplusplus
 #include <cstdint>

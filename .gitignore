@@ -9,7 +9,8 @@ CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
 Makefile
-*.cmake
+/*/CMakeFiles/
+**/cmake_install.cmake
 
 # Generated ANTLR4 files
 antlr4/generated/
@@ -59,6 +60,7 @@ tools/antlr-*.jar
 
 # Test outputs
 test_output/
+test_out.txt
 *.test
 
 # Coverage files
