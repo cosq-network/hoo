@@ -15,6 +15,7 @@ namespace fs = std::filesystem;
 #else
 #include "core/Platform.h"
 #include <sys/utsname.h>
+#include <unistd.h>
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/time.h>

@@ -11,6 +11,8 @@
 #else
 #include "core/Platform.h"
 #include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
 #endif
 
 extern "C" {
