@@ -22,6 +22,7 @@ namespace fs = std::filesystem;
 #include <mach/mach.h>
 #elif defined(__linux__)
 #include <sys/sysinfo.h>
+#include <pwd.h>
 #endif
 #endif
 
@@ -230,6 +231,11 @@ char* hoo_system_user_name(void) {
     const char* user = getenv("USERNAME");
 #else
     const char* user = getenv("USER");
+    if (!user) user = getenv("LOGNAME");
+    if (!user) {
+        struct passwd* pw = getpwuid(getuid());
+        if (pw && pw->pw_name) user = pw->pw_name;
+    }
 #endif
     if (!user) return strdup("");
     return strdup(user);
