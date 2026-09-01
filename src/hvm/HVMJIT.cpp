@@ -1,3 +1,6 @@
+#if !defined(_WIN32) && !defined(__APPLE__) && !defined(__FreeBSD__) && !defined(__OpenBSD__) && !defined(__NetBSD__)
+#define _GNU_SOURCE
+#endif
 #include "hvm/HVMJIT.h"
 
 #include <algorithm>
@@ -44,6 +47,9 @@
 #include "runtime/lib/json/hoo_json.h"
 
 #include <fcntl.h>
+#ifdef __linux__
+#include <sys/random.h>
+#endif
 #ifndef _WIN32
 #include <sys/stat.h>
 #include <time.h>
@@ -3384,12 +3390,17 @@ extern "C" {
         HooArray args = reinterpret_cast<HooArray>(state->regs[2]);
         
         int64_t len = hoo_array_length(args);
+        bool managedStrings = args && ((int64_t*)args)[2] >= 100;
         std::vector<const char*> argv_vec;
         argv_vec.push_back(cmd);
         for (int64_t i = 0; i < len; ++i) {
             void* obj = nullptr;
             if (hoo_array_get_object(args, i, &obj) && obj) {
-                argv_vec.push_back(hoo_string_data(obj));
+                if (managedStrings) {
+                    argv_vec.push_back(hoo_string_data(obj));
+                } else {
+                    argv_vec.push_back(static_cast<const char*>(obj));
+                }
             } else {
                 argv_vec.push_back("");
             }
