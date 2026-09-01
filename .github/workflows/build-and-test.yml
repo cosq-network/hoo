@@ -66,6 +66,10 @@ jobs:
   build-macos:
     name: Build macOS (Apple Silicon)
     runs-on: macos-latest
+    # Skip redundant full rebuilds when the triggering push is a version bump
+    # (bump_version.py auto-pushes a '[skip ci]' commit to main). PR events
+    # always build.
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]') }}
 
     steps:
       - name: Checkout code
@@ -81,6 +85,15 @@ jobs:
         with:
           distribution: 'temurin'
           java-version: '21'
+
+      - name: Cache Homebrew (Apple Silicon)
+        id: cache-brew
+        uses: actions/cache@v4
+        with:
+          path: /opt/homebrew/Cellar
+          key: brew-${{ runner.os }}-${{ runner.arch }}
+          restore-keys: |
+            brew-${{ runner.os }}-${{ runner.arch }}
 
       - name: Install build tools and dependencies
         run: |
@@ -129,6 +142,7 @@ jobs:
   build-linux:
     name: Build Linux (Release)
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]') }}
 
     steps:
       - name: Checkout code
@@ -181,21 +195,12 @@ jobs:
       - name: Add LLVM to PATH
         run: echo "/opt/llvm/bin" >> $GITHUB_PATH
 
-      - name: Cache GoogleTest
-        id: cache-gtest
-        uses: actions/cache@v4
-        with:
-          path: /usr/local/lib/libgtest*
-          key: gtest-linux
-
       - name: Install GoogleTest
-        if: steps.cache-gtest.outputs.cache-hit != 'true'
         run: |
+          # On Ubuntu 24.04 (ubuntu-latest) libgtest-dev ships prebuilt static
+          # libraries (libgtest/libgtest_main) that FindGTest picks up directly,
+          # so no from-source build is needed (and /usr/src/gtest no longer exists).
           sudo apt-get install -y libgtest-dev
-          cd /usr/src/gtest
-          sudo cmake . -DCMAKE_BUILD_TYPE=Release
-          sudo make -j$(nproc)
-          sudo cp lib/*.a /usr/local/lib/
 
       - name: Configure CMake
         run: |
@@ -244,6 +249,7 @@ jobs:
   build-windows:
     name: Build Windows (x64)
     runs-on: windows-latest
+    if: ${{ github.event_name != 'push' || !contains(github.event.head_commit.message, '[skip ci]') }}
     env:
       LLVM_DIR: C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\lib\cmake\llvm
       VCPKG_ROOT: C:\vcpkg
@@ -315,7 +321,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}\vcpkg_installed
-          key: vcpkg-windows-msvc-mt-${{ hashFiles('vcpkg.json', 'CMakeLists.txt', 'CMakePresets.json', '.github/workflows/build-and-test.yml') }}
+          # Key only on the dependency manifest (+ lockfile when present) so a
+          # version bump (which edits CMakeLists.txt) does not invalidate the cache.
+          key: vcpkg-windows-msvc-mt-${{ hashFiles('vcpkg.json', 'vcpkg.lockfile') }}
 
       - name: Configure CMake
         run: cmake --preset windows-vs18-env -DVCPKG_INSTALLED_DIR="${{ github.workspace }}\vcpkg_installed" -DCMAKE_BUILD_TYPE=Release
@@ -333,12 +341,23 @@ jobs:
         shell: pwsh
         run: |
           cmake --install build --config Release --prefix package
-          # LLVM DLLs needed at runtime
-          Copy-Item "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin\*.dll" package\bin\ -ErrorAction SilentlyContinue
-          # vcpkg DLLs (libcurl, libcrypto, zlib)
-          if (Test-Path vcpkg_installed\x64-windows\bin\*.dll) {
-            Copy-Item vcpkg_installed\x64-windows\bin\*.dll package\bin\
+          # LLVM DLLs needed at runtime. Copy only the components the project
+          # links (Core, ExecutionEngine, OrcJIT, Support, Target, TargetParser,
+          # native=X86) plus their transitive JIT/format/debug/transform
+          # dependencies, and drop the unrelated architecture targets (AArch64,
+          # RISCV, PowerPC, WebAssembly, ...) to keep the artifact lean.
+          $llvmDlls = Get-ChildItem "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin\LLVM*.dll" -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -match '^LLVM(Analysis|AsmParser|AsmPrinter|BinaryFormat|BitReader|BitWriter|CodeGen|Core|DebugInfo|Demangle|Disassembler|ExecutionEngine|FrontendOpenMP|InstCombine|Instrumentation|IPO|IRReader|Linker|MC|MCDisassembler|MCParser|MCTargetDesc|Object|OrcJIT|Passes|ProfileData|Remarks|ScalarOpts|SelectionDAG|Support|TableGen|Target|TargetParser|TransformUtils|X86|WindowsDriver|WindowsManifest)'
           }
+          Copy-Item $llvmDlls package\bin\ -ErrorAction SilentlyContinue
+          # vcpkg DLLs needed at runtime. Curated to the runtime dependencies
+          # (ANTLR runtime, OpenSSL, libcurl, libzip, libuv, zlib, zstd, bzip2),
+          # excluding the test-only DLLs (gtest/gmock) from the package.
+          $vcpkgDlls = Get-ChildItem "vcpkg_installed\x64-windows\bin\*.dll" -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -in @('antlr4-runtime.dll','bz2.dll','libcrypto-3-x64.dll','libcurl.dll','libssl-3-x64.dll','uv.dll','zip.dll','zlib1.dll','zstd.dll') -or
+            $_.Name -match '^lib(crypto|ssl).*\.dll$' -or $_.Name -match '^zlib.*\.dll$'
+          }
+          Copy-Item $vcpkgDlls package\bin\ -ErrorAction SilentlyContinue
           foreach ($path in @("package\bin\hoo.exe", "package\lib\hoo-core.lib", "package\lib\hoo-parser.lib", "package\lib\hoort.lib", "package\lib\hoorepl.lib")) {
             if (-not (Test-Path $path)) {
               throw "Required package file missing: $path"
@@ -460,7 +479,8 @@ jobs:
   sync-main-to-dev:
     name: Sync main to dev
     runs-on: ubuntu-latest
-    needs: [build-macos, build-linux, build-windows]
+    # Run after the version bump so dev picks up the released version on main.
+    needs: [build-macos, build-linux, build-windows, bump-version]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'skip ci')
 
     steps:
