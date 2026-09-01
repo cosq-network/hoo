@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "src/core/SymbolMangler.h"
+#include <algorithm>
 #include <vector>
 #include <string>
 
