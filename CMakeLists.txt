@@ -467,6 +467,7 @@ if(MSVC)
 endif()
 target_link_libraries(hoo hoo-core hoorepl)
 target_include_directories(hoo PRIVATE ${CMAKE_SOURCE_DIR}/src)
+set_target_properties(hoo PROPERTIES ENABLE_EXPORTS ON)
 
 # =============================================================================
 # Versioning for all components
@@ -680,6 +681,7 @@ if(HOO_BUILD_TESTS)
         tests/verify/HOModuleBaseSerializationTest.cpp
     )
     set_target_properties(hoo-tests PROPERTIES VERSION ${HOO_VERSION})
+    set_target_properties(hoo-tests PROPERTIES ENABLE_EXPORTS ON)
     if(MSVC)
         hoo_use_static_msvc_runtime(hoo-tests)
     endif()
