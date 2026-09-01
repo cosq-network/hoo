@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/string/hoo_string.h"
+#include "runtime/lib/text/hoo_string.h"
 
 using namespace hooc;
 

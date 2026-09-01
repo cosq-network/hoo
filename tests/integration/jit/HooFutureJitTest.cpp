@@ -4,8 +4,8 @@
 #include <vector>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/future/hoo_future.h"
-#include "runtime/lib/event_loop/hoo_event_loop.h"
+#include "runtime/lib/concurrency/hoo_future.h"
+#include "runtime/lib/concurrency/hoo_event_loop.h"
 
 using namespace hooc;
 

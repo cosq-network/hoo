@@ -1,9 +1,9 @@
 #include <gtest/gtest.h>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/generic_array/hoo_generic_array.h"
-#include "runtime/lib/string/hoo_string.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/mem/hoo_generic_array.h"
+#include "runtime/lib/text/hoo_string.h"
+#include "runtime/lib/core/hoo_runtime.h"
 #include <cmath>
 #include <cstring>
 

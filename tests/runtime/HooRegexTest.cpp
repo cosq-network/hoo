@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <cstring>
-#include "runtime/lib/regex/hoo_regex.h"
+#include "runtime/lib/text/hoo_regex.h"
 
 class HooRegexTest : public ::testing::Test {
 protected:

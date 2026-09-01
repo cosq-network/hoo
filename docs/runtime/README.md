@@ -105,3 +105,21 @@ instead of arbitrary dispatch.
 
 ## Build
 All runtime sources live in `src/runtime/lib/` and are compiled into the `hoort` static library target. Test sources in `tests/runtime/` are linked into the `hoo-tests` executable. Legacy C-ABI function pointers are additionally registered in `lookupPlainRuntimeSymbolAddress()` for interpreter and non-JIT code paths.
+
+Sources are organized into broad top-level modules that group similar domains
+under a common name (each domain keeps its `hoo_*.h`/`hoo_*.cpp` pair):
+
+| Module | Domains |
+| :--- | :--- |
+| `core/` | runtime (ARC/alloc), exception, ai, overload |
+| `mem/` | buffer, byte_slice, any, list, generic_array, dict, map, tensor |
+| `text/` | string, character, regex, encoding, csv |
+| `data/` | json, compression, hashing, uuid, datetime, decimal, math |
+| `concurrency/` | thread, future, event_loop |
+| `system/` | system, fs, path, process, args |
+| `io/` | io, net |
+
+So, for example, the header for the thread module is
+`src/runtime/lib/concurrency/hoo_thread.h` and the file-system module lives at
+`src/runtime/lib/system/hoo_fs.h`. The public classes, `extern "C"` ABI, and HVM
+mangled symbols are unchanged by this layout.

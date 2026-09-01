@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
-#include "runtime/lib/process/hoo_process.h"
+#include "runtime/lib/system/hoo_process.h"
 
 class HooProcessTest : public ::testing::Test {
 };

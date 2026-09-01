@@ -1,6 +1,6 @@
 #include "runtime/lib/io/hoo_io.h"
-#include "runtime/lib/string/hoo_string.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/text/hoo_string.h"
+#include "runtime/lib/core/hoo_runtime.h"
 #include <cstdio>
 #include <cstring>
 #include <cstdlib>
@@ -11,7 +11,7 @@
     #include <io.h>
     #include <fcntl.h>
 #endif
-#include "runtime/lib/character/hoo_character.h"
+#include "runtime/lib/text/hoo_character.h"
 // ============================================================================
 // I/O Implementation
 // ============================================================================

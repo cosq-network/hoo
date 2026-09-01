@@ -1,7 +1,7 @@
 #include "repl/REPLSession.h"
 #include "core/SymbolMangler.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
-#include "runtime/lib/string/hoo_string.h"
+#include "runtime/lib/core/hoo_runtime.h"
+#include "runtime/lib/text/hoo_string.h"
 #include <iostream>
 #include <sstream>
 #include <algorithm>

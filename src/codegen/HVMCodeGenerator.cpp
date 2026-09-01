@@ -19,7 +19,7 @@
 #include <functional>
 #include <climits>
 #include <array>
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/core/hoo_runtime.h"
 
 using namespace hvm;
 

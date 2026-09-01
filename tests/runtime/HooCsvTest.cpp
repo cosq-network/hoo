@@ -3,12 +3,12 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
-#include "runtime/lib/csv/hoo_csv.h"
-#include "runtime/lib/generic_array/hoo_generic_array.h"
-#include "runtime/lib/map/hoo_map.h"
-#include "runtime/lib/string/hoo_string.h"
-#include "runtime/lib/exception/hoo_exception.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/text/hoo_csv.h"
+#include "runtime/lib/mem/hoo_generic_array.h"
+#include "runtime/lib/mem/hoo_map.h"
+#include "runtime/lib/text/hoo_string.h"
+#include "runtime/lib/core/hoo_exception.h"
+#include "runtime/lib/core/hoo_runtime.h"
 
 // Helper: parse CSV into HooArray<HooMap> using the OOP API
 static HooArray parse_to_maps(const char* csv_str) {

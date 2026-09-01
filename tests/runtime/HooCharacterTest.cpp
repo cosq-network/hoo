@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/character/hoo_character.h"
-#include "runtime/lib/string/hoo_string.h"
-#include "runtime/lib/generic_array/hoo_generic_array.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/text/hoo_character.h"
+#include "runtime/lib/text/hoo_string.h"
+#include "runtime/lib/mem/hoo_generic_array.h"
+#include "runtime/lib/core/hoo_runtime.h"
 #include <cstring>
 
 class HooCharacterTest : public ::testing::Test {

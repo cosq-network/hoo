@@ -291,40 +291,49 @@ else()
     set(HOO_RUNTIME_LIBRARY_TYPE STATIC)
 endif()
 
+# Runtime library sources are grouped into broad top-level modules:
+#   core/          - fundamental runtime (alloc/ARC), exception, ai, overload
+#   mem/           - memory & collections (buffer, array, list, dict, map, tensor)
+#   text/          - string, character, regex, encoding, csv
+#   data/          - json, compression, hashing, uuid, datetime, decimal, math
+#   concurrency/   - thread, future, event_loop
+#   system/        - system, fs, path, process, args
+#   io/            - io, net
 add_library(hoort ${HOO_RUNTIME_LIBRARY_TYPE}
-    src/runtime/lib/ai/hoo_ai.cpp
-    src/runtime/lib/runtime/hoo_runtime.c
-    src/runtime/lib/any/hoo_any.cpp
-    src/runtime/lib/anyarray/hoo_list.cpp
-    src/runtime/lib/hashmap/hoo_dict.cpp
-    src/runtime/lib/string/hoo_string.cpp
-    src/runtime/lib/character/hoo_character.cpp
-    src/runtime/lib/generic_array/hoo_generic_array.cpp
-    src/runtime/lib/tensor/hoo_tensor.cpp
-    src/runtime/lib/map/hoo_map.cpp
-    src/runtime/lib/io/hoo_io.cpp
-    src/runtime/lib/exception/hoo_exception.cpp
-    src/runtime/lib/math/hoo_math.cpp
-    src/runtime/lib/net/hoo_net.cpp
-    src/runtime/lib/future/hoo_future.cpp
-    src/runtime/lib/event_loop/hoo_event_loop.cpp
-    src/runtime/lib/fs/hoo_fs.cpp
-    src/runtime/lib/datetime/hoo_datetime.cpp
-    src/runtime/lib/encoding/hoo_encoding.cpp
+    src/runtime/lib/core/hoo_runtime.c
+    src/runtime/lib/core/hoo_ai.cpp
+    src/runtime/lib/core/hoo_exception.cpp
+    src/runtime/lib/core/hoo_overload.cpp
+    src/runtime/lib/mem/hoo_any.cpp
+    src/runtime/lib/mem/hoo_list.cpp
+    src/runtime/lib/mem/hoo_dict.cpp
+    src/runtime/lib/mem/hoo_generic_array.cpp
+    src/runtime/lib/mem/hoo_tensor.cpp
+    src/runtime/lib/mem/hoo_map.cpp
+    src/runtime/lib/mem/hoo_buffer.cpp
+    src/runtime/lib/mem/hoo_byte_slice.cpp
+    src/runtime/lib/text/hoo_string.cpp
+    src/runtime/lib/text/hoo_character.cpp
+    src/runtime/lib/text/hoo_regex.cpp
+    src/runtime/lib/text/hoo_encoding.cpp
+    src/runtime/lib/text/hoo_csv.cpp
+    src/runtime/lib/data/hoo_json.cpp
+    src/runtime/lib/data/hoo_compression.cpp
+    src/runtime/lib/data/hoo_hashing.cpp
+    src/runtime/lib/data/hoo_uuid.cpp
+    src/runtime/lib/data/hoo_datetime.cpp
+    src/runtime/lib/data/hoo_decimal.cpp
+    src/runtime/lib/data/hoo_math.cpp
+    src/runtime/lib/concurrency/hoo_thread.cpp
+    src/runtime/lib/concurrency/hoo_future.cpp
+    src/runtime/lib/concurrency/hoo_event_loop.cpp
     src/runtime/lib/system/hoo_system.cpp
-    src/runtime/lib/regex/hoo_regex.cpp
-    src/runtime/lib/csv/hoo_csv.cpp
-    src/runtime/lib/uuid/hoo_uuid.cpp
-    src/runtime/lib/hashing/hoo_hashing.cpp
-    src/runtime/lib/process/hoo_process.cpp
-    src/runtime/lib/compression/hoo_compression.cpp
-    src/runtime/lib/args/hoo_args.cpp
-    src/runtime/lib/thread/hoo_thread.cpp
-    src/runtime/lib/json/hoo_json.cpp
-    src/runtime/lib/buffer/hoo_buffer.cpp
-    src/runtime/lib/byte_slice/hoo_byte_slice.cpp
-    src/runtime/lib/overload/hoo_overload.cpp
-    src/runtime/lib/decimal/hoo_decimal.cpp
+    src/runtime/lib/system/hoo_fs.cpp
+    src/runtime/lib/system/hoo_path.cpp
+    src/runtime/lib/system/hoo_process.cpp
+    src/runtime/lib/system/hoo_args.cpp
+    src/runtime/lib/io/hoo_io.cpp
+    src/runtime/lib/io/hoo_net.cpp
 )
 if(MSVC)
     hoo_use_static_msvc_runtime(hoort)
@@ -342,14 +351,14 @@ target_link_libraries(hoort PUBLIC $<TARGET_NAME_IF_EXISTS:libuv::uv_a>)
 
 
 set_source_files_properties(
-    src/runtime/lib/runtime/hoo_runtime.c
+    src/runtime/lib/core/hoo_runtime.c
     PROPERTIES
         LANGUAGE C
 )
 
 if(MSVC)
     set_source_files_properties(
-        src/runtime/lib/runtime/hoo_runtime.c
+        src/runtime/lib/core/hoo_runtime.c
         PROPERTIES
             COMPILE_OPTIONS "/TC;/std:c11;/experimental:c11atomics"
     )

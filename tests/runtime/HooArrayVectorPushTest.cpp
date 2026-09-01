@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/generic_array/hoo_generic_array.h"
+#include "runtime/lib/mem/hoo_generic_array.h"
 
 using namespace hooc;
 

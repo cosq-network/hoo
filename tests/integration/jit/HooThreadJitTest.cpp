@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "hvm/HVMJIT.h"
 #include "core/DefaultIOProvider.h"
-#include "runtime/lib/thread/hoo_thread.h"
+#include "runtime/lib/concurrency/hoo_thread.h"
 
 using namespace hooc;
 

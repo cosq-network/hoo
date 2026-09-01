@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/core/hoo_runtime.h"
 #include <atomic>
 #include <thread>
 

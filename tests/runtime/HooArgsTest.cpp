@@ -2,7 +2,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <string>
-#include "runtime/lib/args/hoo_args.h"
+#include "runtime/lib/system/hoo_args.h"
 
 class HooArgsTest : public ::testing::Test {
 protected:

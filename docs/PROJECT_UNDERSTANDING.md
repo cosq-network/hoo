@@ -52,7 +52,7 @@ src/
 ├── ast/              # AST node definitions, type system, SimpleASTBuilder
 ├── codegen/          # HVMCodeGenerator (AST → bytecode)
 ├── hvm/              # ISA definitions, module serialization, HVMJIT engine
-├── runtime/lib/      # hoort runtime library (33 modules: strings, arrays, maps, etc.)
+├── runtime/lib/      # hoort runtime library (grouped modules: core/ mem/ text/ data/ concurrency/ system/ io/)
 ├── core/             # CLI, compiler driver, symbol mangling, IO providers
 ├── repl/             # Interactive shell (--repl flag)
 └── archive/          # Archive loading (.ha format), local imports
@@ -176,7 +176,7 @@ Defines Hoo's complete grammar:
 
 ### 3.6 Runtime Library: hoort
 
-**Location**: `src/runtime/lib/` (33 specialized modules)
+**Location**: `src/runtime/lib/` (grouped modules: `core/` `mem/` `text/` `data/` `concurrency/` `system/` `io/`)
 
 **Core Principle**: All managed objects are **64-bit handles** (pointers) to C++ instances with a **16-byte ARC header**:
 
@@ -388,7 +388,7 @@ try {
 **Runtime & Execution**:
 - `src/hvm/HVMJIT.cpp` — JIT compilation and execution engine
 - `src/hvm/HOModule.cpp` — Binary module format serialization
-- `src/runtime/lib/*.cpp` — 33 runtime modules (strings, arrays, etc.)
+- `src/runtime/lib/*/hoo_*.cpp` — runtime modules (strings, arrays, etc.)
 
 **Archive & Loading**:
 - `src/archive/HAArchive.cpp` — ZIP+Zstd container handling
@@ -443,7 +443,7 @@ ctest --preset ninja-relwithdebinfo
 1. **Grammar Change** → Update `src/parsing/Hooc.g4` → ANTLR regenerates parser
 2. **AST Change** → Modify `src/ast/*.h` → Update `SimpleASTBuilder.cpp` → Rebuild
 3. **Codegen Change** → Edit `HVMCodeGenerator.cpp` → Recompile → Test with `.hoo` files
-4. **Runtime Change** → Update `src/runtime/lib/hoo_*.cpp` → Rebuild runtime library → Test
+4. **Runtime Change** → Update `src/runtime/lib/*/hoo_*.cpp` → Rebuild runtime library → Test
 
 ### Key Entry Points for Debugging
 
@@ -537,6 +537,6 @@ Hoo is a **systems programming language that compiles directly to a hardware-rea
 - **Async/Await**: Native coroutines with libuv integration
 - **Zero Runtime Overhead**: All complex semantics resolved at compile time
 - **Production Ready**: 3,270 tests passing, cross-platform (macOS, Linux, Windows)
-- **Extensible**: 33 runtime modules covering strings, collections, networking, async, threading, JSON, regex, compression, and more
+- **Extensible**: runtime modules covering strings, collections, networking, async, threading, JSON, regex, compression, and more
 
 The codebase is well-structured, well-tested, and designed for clear separation of concerns: parser → AST → codegen → bytecode → JIT → native code. Every component has a clear responsibility, making the project maintainable and easy to extend.

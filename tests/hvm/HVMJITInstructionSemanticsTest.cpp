@@ -10,8 +10,8 @@
 #include "hvm/HOModule.h"
 #include "hvm/HVMInstruction.h"
 #include "hvm/HVMJIT.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
-#include "runtime/lib/exception/hoo_exception.h"
+#include "runtime/lib/core/hoo_runtime.h"
+#include "runtime/lib/core/hoo_exception.h"
 
 using namespace hvm;
 using namespace hooc;

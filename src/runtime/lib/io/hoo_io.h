@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "runtime/lib/character/hoo_character.h"
+#include "runtime/lib/text/hoo_character.h"
 
 #ifdef __cplusplus
 extern "C" {

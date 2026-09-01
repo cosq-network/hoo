@@ -424,7 +424,7 @@ operations plus ordinary control flow:
   path) and `_F_hoo_exception_runtime_p`.
 - The runtime functions are `hoo_push_handler(void*)`, `hoo_pop_handler()`,
   `hoo_throw_handler(void*)`, `hoo_rethrow_handler()`; see
-  `src/runtime/lib/exception/hoo_exception.cpp`.
+  `src/runtime/lib/core/hoo_exception.cpp`.
 
 ## 9. SYSCALL Contract and Runtime Bridge
 

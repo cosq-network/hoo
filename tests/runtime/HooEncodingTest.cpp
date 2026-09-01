@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
 #include <cstdlib>
-#include "runtime/lib/encoding/hoo_encoding.h"
+#include "runtime/lib/text/hoo_encoding.h"
 
 class HooEncodingTest : public ::testing::Test {
 };

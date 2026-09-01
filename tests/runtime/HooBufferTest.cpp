@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/buffer/hoo_buffer.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
+#include "runtime/lib/mem/hoo_buffer.h"
+#include "runtime/lib/core/hoo_runtime.h"
 #include <cstring>
 #include <limits>
 #include <cstdlib>

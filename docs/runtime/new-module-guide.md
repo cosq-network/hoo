@@ -32,11 +32,21 @@ Three touch points are required for every new runtime function:
 | 4 | **Build** | `CMakeLists.txt` | Source file for `hoort` library |
 | 5 | **Tests** | `tests/integration/jit/*.cpp` | JIT integration tests |
 
+> Where to put new modules: `src/runtime/lib/` is organized into broad top-level
+> groups that place similar domains under a common name — `core/`, `mem/`,
+> `text/`, `data/`, `concurrency/`, `system/`, and `io/`. Add the new
+> `hoo_*.h`/`hoo_*.cpp` pair into the most appropriate group (see the module
+> table in `docs/runtime/README.md`). A threading domain, for example, lives in
+> `concurrency/`.
+
 ---
 
 ## Layer 1: Runtime implementation
 
 **Location:** `src/runtime/lib/<module>/hoo_<module>.h` and `src/runtime/lib/<module>/hoo_<module>.cpp`
+
+For a concurrency module, for example, the files live in
+`src/runtime/lib/concurrency/`.
 
 ### Header conventions
 - Functions must be declared `extern "C"` for stable ABI
@@ -45,7 +55,7 @@ Three touch points are required for every new runtime function:
 - Return type `void*` for objects (maps to opaque ptr in Hoo)
 
 ```c
-// src/runtime/lib/thread/hoo_thread.h
+// src/runtime/lib/concurrency/hoo_thread.h
 #pragma once
 #include <stdint.h>
 
@@ -65,7 +75,7 @@ int64_t hoo_thread_self(void);
 ### CMake registration
 Add the `.cpp` to the `hoort` library in `CMakeLists.txt` alongside the other modules:
 ```cmake
-src/runtime/lib/thread/hoo_thread.cpp
+src/runtime/lib/concurrency/hoo_thread.cpp
 ```
 
 ---
@@ -79,7 +89,7 @@ src/runtime/lib/thread/hoo_thread.cpp
 Insert alongside the other runtime includes (alphabetically):
 
 ```cpp
-#include "runtime/lib/thread/hoo_thread.h"
+#include "runtime/lib/concurrency/hoo_thread.h"
 ```
 
 ### 2b — Write a JIT wrapper function

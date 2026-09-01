@@ -3,7 +3,7 @@
 #include "core/SymbolMangler.h"
 #include "hvm/HOModule.h"
 #include "hvm/HVMJIT.h"
-#include "runtime/lib/args/hoo_args.h"
+#include "runtime/lib/system/hoo_args.h"
 #include "repl/REPLSession.h"
 #include "archive/HooArchiveCompiler.h"
 #include "archive/HooArchiveLoader.h"

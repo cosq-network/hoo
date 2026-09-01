@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <cstring>
-#include "runtime/lib/datetime/hoo_datetime.h"
-#include "runtime/lib/string/hoo_string.h"
+#include "runtime/lib/data/hoo_datetime.h"
+#include "runtime/lib/text/hoo_string.h"
 
 class HooDateTimeTest : public ::testing::Test {
 };

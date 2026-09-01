@@ -239,7 +239,7 @@ cmake --preset windows-vs18-env
 
 ### "fatal error C1083: Cannot open include file: 'pthread.h'"
 MSVC does not provide `<pthread.h>`. The codebase uses platform-specific implementations:
-- `hoo_thread.cpp` — uses Win32 `CreateThread` / `CRITICAL_SECTION` on Windows, pthread on macOS/Linux
+- `hoo_thread.cpp` (`src/runtime/lib/concurrency/`) — uses Win32 `CreateThread` / `CRITICAL_SECTION` on Windows, pthread on macOS/Linux
 - `HVMJIT.cpp` — uses `std::thread` on Windows, pthread on macOS/Linux
 
 Run a clean build from the **x64 Native Tools Command Prompt**.

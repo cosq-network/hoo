@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
-#include "runtime/lib/math/hoo_math.h"
-#include "runtime/lib/buffer/hoo_buffer.h"
+#include "runtime/lib/data/hoo_math.h"
+#include "runtime/lib/mem/hoo_buffer.h"
 #include <limits>
 
 class HooMathTest : public ::testing::Test {

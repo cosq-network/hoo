@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <cstring>
-#include "runtime/lib/fs/hoo_fs.h"
+#include "runtime/lib/system/hoo_fs.h"
 
 class HooPathTest : public ::testing::Test {
 };

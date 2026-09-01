@@ -4,14 +4,14 @@
 #include <cstring>
 #include <functional>
 
-#include "runtime/lib/anyarray/hoo_list.h"
-#include "runtime/lib/buffer/hoo_buffer.h"
-#include "runtime/lib/exception/hoo_exception.h"
-#include "runtime/lib/hashmap/hoo_dict.h"
-#include "runtime/lib/json/hoo_json.h"
-#include "runtime/lib/runtime/hoo_runtime.h"
-#include "runtime/lib/string/hoo_string.h"
-#include "runtime/lib/tensor/hoo_tensor.h"
+#include "runtime/lib/mem/hoo_list.h"
+#include "runtime/lib/mem/hoo_buffer.h"
+#include "runtime/lib/core/hoo_exception.h"
+#include "runtime/lib/mem/hoo_dict.h"
+#include "runtime/lib/data/hoo_json.h"
+#include "runtime/lib/core/hoo_runtime.h"
+#include "runtime/lib/text/hoo_string.h"
+#include "runtime/lib/mem/hoo_tensor.h"
 
 class HooJsonTest : public ::testing::Test {};
 
