@@ -1,3 +1,6 @@
+#if !defined(_WIN32) && !defined(__APPLE__)
+#define _GNU_SOURCE
+#endif
 #include "hvm/HOModuleBase.h"
 #include "core/SymbolMangler.h"
 #include "core/DefaultIOProvider.h"
@@ -15,6 +18,7 @@
 #include <mach-o/dyld.h>
 #else
 #include <dlfcn.h>
+#include <elf.h>
 #include <link.h>
 #endif
 
@@ -797,20 +801,34 @@ bool DynamicHOModule::loadExportedSymbols() {
         struct link_map* map = nullptr;
 
         if (dlinfo(library_handle_, RTLD_DI_LINKMAP, &map) == 0 && map) {
-            for (auto* sym = map->l_symtab; sym < map->l_symtab + map->l_nsyms; ++sym) {
-                const char* sym_name = map->l_strings + sym->st_name;
-                if (sym_name && sym_name[0]) {
-                    exported_symbols_.push_back(sym_name);
+            const ElfW(Dyn)* dyn = static_cast<const ElfW(Dyn)*>(map->l_ld);
+            ElfW(Sym)* symtab = nullptr;
+            const char* strtab = nullptr;
 
-                    ModuleSymbol msym;
-                    msym.name = sym_name;
-                    msym.mangled_name = hooc::SymbolMangler::mangleModuleSymbol(
-                        std::vector<std::string>{module_name_}, sym_name);
-                    msym.binding = (sym->st_shndx == SHN_UNDEF) ? SymbolBinding::Weak : SymbolBinding::Global;
-                    msym.type = (sym->st_info & STT_FUNC) ? SymbolType::Function : SymbolType::Object;
-                    msym.address = sym->st_value;
-                    msym.size = sym->st_size;
-                    addSymbolInternal(msym);
+            for (; dyn->d_tag != DT_NULL; ++dyn) {
+                if (dyn->d_tag == DT_SYMTAB) {
+                    symtab = reinterpret_cast<ElfW(Sym)*>(dyn->d_un.d_ptr);
+                } else if (dyn->d_tag == DT_STRTAB) {
+                    strtab = reinterpret_cast<const char*>(dyn->d_un.d_ptr);
+                }
+            }
+
+            if (symtab && strtab) {
+                for (ElfW(Sym)* sym = symtab; sym->st_name != 0; ++sym) {
+                    const char* sym_name = strtab + sym->st_name;
+                    if (sym_name && sym_name[0]) {
+                        exported_symbols_.push_back(sym_name);
+
+                        ModuleSymbol msym;
+                        msym.name = sym_name;
+                        msym.mangled_name = hooc::SymbolMangler::mangleModuleSymbol(
+                            std::vector<std::string>{module_name_}, sym_name);
+                        msym.binding = (sym->st_shndx == SHN_UNDEF) ? SymbolBinding::Weak : SymbolBinding::Global;
+                        msym.type = ((sym->st_info & 0xf) == STT_FUNC) ? SymbolType::Function : SymbolType::Object;
+                        msym.address = sym->st_value;
+                        msym.size = sym->st_size;
+                        addSymbolInternal(msym);
+                    }
                 }
             }
         }
