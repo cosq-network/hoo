@@ -170,7 +170,24 @@ if(NOT TARGET zstd::libzstd_shared AND TARGET zstd::libzstd)
     add_library(zstd::libzstd_shared ALIAS zstd::libzstd)
 endif()
 find_package(nlohmann_json REQUIRED)
-find_package(libuv CONFIG REQUIRED)
+
+find_package(libuv CONFIG QUIET)
+if(NOT libuv_FOUND)
+    message(STATUS "libuv CMake config not found; building from source via FetchContent")
+    include(FetchContent)
+    FetchContent_Declare(
+        libuv
+        URL https://github.com/libuv/libuv/archive/refs/tags/v1.48.0.tar.gz
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(libuv)
+    if(NOT TARGET libuv::uv AND TARGET uv)
+        add_library(libuv::uv ALIAS uv)
+    endif()
+    if(NOT TARGET libuv::uv_a AND TARGET uv_a)
+        add_library(libuv::uv_a ALIAS uv_a)
+    endif()
+endif()
 
 find_package(LLVM QUIET CONFIG)
 if(NOT LLVM_FOUND)
