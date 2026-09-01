@@ -11,6 +11,31 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- ci: fix Linux build, skip redundant bumps, and slim downstream jobs
+  - Fix the Linux job on `ubuntu-latest` (Ubuntu 24.04): rely on the distro's
+    prebuilt `libgtest-dev` instead of compiling GoogleTest from
+    `/usr/src/gtest` (which no longer exists on 24.04), repairing the broken CI.
+  - Gate the three build jobs on a `[skip ci]` guard so the GitFlow version-bump
+    autopush to `main` no longer triggers redundant full cross-platform rebuilds.
+  - Serialize `sync-main-to-dev` after `bump-version` so `dev` always picks up
+    the released version from `main`.
+  - Base the Windows vcpkg cache key on `vcpkg.json`/`vcpkg.lockfile` only, so
+    routine version bumps no longer invalidate the dependency cache.
+  - Trim the Windows package DLL copy to the LLVM components actually linked and
+    the vcpkg runtime DLLs, excluding unrelated architecture targets and
+    test-only gtest/gmock DLLs.
+  - Cache Homebrew installs (`/opt/homebrew/Cellar`) for the Apple Silicon runner.
+
+- test(build): re-enable orphaned tests, dedupe CMake sources, harden exceptions
+  - Re-register `HooCharacterExtraTest`, `ForLoopParsingTest`, and
+    `FunctionModifiersTest` in the `hoo-tests` target; remove the duplicate
+    `HooNetTest.cpp` entry and the empty `hoo_path.cpp` stub.
+  - Add null checks in `hoo_exception_create_with_cause()` and
+    `hoo_exception_custom()` so failed allocations degrade to an empty message.
+  - Migrate the last 7 `#ifndef` headers to `#pragma once` and move it to line 1
+    in `hoo_overload.h`.
+  - Test suite now reports **3,270 passing tests** across 142 suites (0 failures).
+
 - ci: adopt GitFlow for CI/CD and versioning
   - Rework `.github/workflows/build-and-test.yml` around the GitFlow branch
     model: `main` (stable/production), `dev` (integration), plus `feature/*`,

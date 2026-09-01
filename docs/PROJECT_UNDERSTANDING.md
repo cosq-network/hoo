@@ -327,7 +327,7 @@ try {
 - `serializable` keyword for JSON round-tripping
 - Tagged buffer/tensor JSON conversion
 - Nested field lowering and cycle validation
-- Full preset verification (2,117 tests pass)
+- Full preset verification (3,270 tests pass)
 
 ### Phase 11.2: DateTime as Instantiable Class
 - Converted from singleton API to ARC-managed class (type ID 119)

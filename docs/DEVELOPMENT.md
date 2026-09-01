@@ -93,20 +93,26 @@ All jobs live in `.github/workflows/build-and-test.yml`:
 
 | Job | Trigger |
 |-----|---------|
-| **build-macos** (Apple Silicon) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*` |
-| **build-linux** (x64, Release) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*` |
-| **build-windows** (x64, Release) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*` |
+| **build-macos** (Apple Silicon) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*`; skipped on `[skip ci]` autopushes |
+| **build-linux** (x64, Release) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*`; skipped on `[skip ci]` autopushes |
+| **build-windows** (x64, Release) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*`; skipped on `[skip ci]` autopushes |
 | **create-release-bundle** | Push to `main` (after the three build jobs) |
 | **bump-version** | Push to `main` from a `release/*` or `hotfix/*` merge (after the three build jobs) |
-| **sync-main-to-dev** | Push to `main` (merges the new version back into `dev`) |
+| **sync-main-to-dev** | Push to `main` (after the three build jobs and `bump-version`; merges the new version back into `dev`) |
 | **create-release** | Tag push `v*` or manual dispatch |
 
 ### Linux Pipeline Notes
-- Runs on `ubuntu-latest` with LLVM 22 (downloaded from the LLVM release asset),
-  Ninja, CMake, ANTLR4 (via vcpkg), GoogleTest, and libuv/ssl/curl/zip/zstd
-  installed from apt.
+- Runs on `ubuntu-latest` (Ubuntu 24.04) with LLVM 22 (downloaded from the LLVM
+  release asset), Ninja, CMake, ANTLR4 (via vcpkg), and libuv/ssl/curl/zip/zstd
+  installed from apt. GoogleTest comes from the distro's prebuilt `libgtest-dev`
+  package (found directly by `find_package(GTest)` — no from-source compile).
 - Configures a single `Release` build and runs `ctest` after the binary check.
 - Uploads `hoo-linux-x86_64.tar.gz` as an artifact.
+
+The three build jobs share a `[skip ci]` guard: when a version bump is pushed
+back to `main`, `bump_version.py` commits with a `[skip ci]` message, so the
+autopush does not trigger a redundant full cross-platform rebuild. Presubmit
+(PR) runs always build.
 
 ### Windows Pipeline Notes
 - Runs on `windows-latest` with the MSVC toolchain and LLVM 22.

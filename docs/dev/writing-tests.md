@@ -180,7 +180,7 @@ TEST(HVMJITLifecycleTest, LoadSourceCodeThenDestroy) {
 
 The full JIT suites in `tests/integration/jit/` follow the same pattern, but extend it with function lookup and execution checks.
 
-The current build registers 2,643 GoogleTest cases in total. Use
+The current build registers 3,270 GoogleTest cases across 142 test suites. Use
 `hoo-tests --gtest_list_tests` when reporting a fresh count; the number changes
 as test cases are added or removed.
 
