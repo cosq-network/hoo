@@ -2,6 +2,7 @@
 
 #include "ASTNode.h"
 #include "FunctionModifier.h"
+#include <algorithm>
 #include <vector>
 #include <string>
 
