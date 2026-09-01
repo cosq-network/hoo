@@ -1226,9 +1226,10 @@ TEST_F(HVMJITInstructionSemanticsTest, SyscallFileIOWithDiskFile) {
         makeI(Opcode::MOVZ, OperandsI{5, 0, 116}),
         makeI(Opcode::ST_H, OperandsI{5, 30, -24}),
 
-        // Open for writing: O_RDWR|O_CREAT|O_TRUNC = 0x602
+        // Open for writing: O_RDWR|O_CREAT|O_TRUNC = 0x242 (Linux-style flags),
+        // where O_RDWR=2, O_CREAT=0x40, O_TRUNC=0x200.
         makeI(Opcode::LDA, OperandsI{2, 30, -24}),
-        makeI(Opcode::MOVZ, OperandsI{3, 0, 1538}),
+        makeI(Opcode::MOVZ, OperandsI{3, 0, 578}),
         makeI(Opcode::MOVZ, OperandsI{4, 0, 420}),
         makeI(Opcode::SYSCALL, OperandsI{6, 0, 16}),
         // Check open succeeded: fd should be > 0
