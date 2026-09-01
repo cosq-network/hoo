@@ -2,6 +2,10 @@ if(NOT WIN32)
     return()
 endif()
 
+if(POLICY CMP0207)
+    cmake_policy(SET CMP0207 NEW)
+endif()
+
 set(HOO_EXE "${CMAKE_INSTALL_PREFIX}/bin/hoo.exe")
 if(NOT EXISTS "${HOO_EXE}")
     message(WARNING "hoo.exe not found at ${HOO_EXE} - skipping DLL collection")

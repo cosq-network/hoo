@@ -349,18 +349,26 @@ jobs:
           # native=X86) plus their transitive JIT/format/debug/transform
           # dependencies, and drop the unrelated architecture targets (AArch64,
           # RISCV, PowerPC, WebAssembly, ...) to keep the artifact lean.
-          $llvmDlls = Get-ChildItem "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin\LLVM*.dll" -ErrorAction SilentlyContinue | Where-Object {
+          $llvmDlls = @(Get-ChildItem "C:\clang+llvm-22.1.4-x86_64-pc-windows-msvc\bin\LLVM*.dll" -ErrorAction SilentlyContinue | Where-Object {
             $_.Name -match '^LLVM(Analysis|AsmParser|AsmPrinter|BinaryFormat|BitReader|BitWriter|CodeGen|Core|DebugInfo|Demangle|Disassembler|ExecutionEngine|FrontendOpenMP|InstCombine|Instrumentation|IPO|IRReader|Linker|MC|MCDisassembler|MCParser|MCTargetDesc|Object|OrcJIT|Passes|ProfileData|Remarks|ScalarOpts|SelectionDAG|Support|TableGen|Target|TargetParser|TransformUtils|X86|WindowsDriver|WindowsManifest)'
+          })
+          if ($llvmDlls.Count -gt 0) {
+            Copy-Item $llvmDlls package\bin\ -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "No LLVM DLLs found in the LLVM bin directory; LLVM is expected to be linked statically."
           }
-          Copy-Item $llvmDlls package\bin\ -ErrorAction SilentlyContinue
           # vcpkg DLLs needed at runtime. Curated to the runtime dependencies
           # (ANTLR runtime, OpenSSL, libcurl, libzip, libuv, zlib, zstd, bzip2),
           # excluding the test-only DLLs (gtest/gmock) from the package.
-          $vcpkgDlls = Get-ChildItem "vcpkg_installed\x64-windows\bin\*.dll" -ErrorAction SilentlyContinue | Where-Object {
+          $vcpkgDlls = @(Get-ChildItem "vcpkg_installed\x64-windows\bin\*.dll" -ErrorAction SilentlyContinue | Where-Object {
             $_.Name -in @('antlr4-runtime.dll','bz2.dll','libcrypto-3-x64.dll','libcurl.dll','libssl-3-x64.dll','uv.dll','zip.dll','zlib1.dll','zstd.dll') -or
             $_.Name -match '^lib(crypto|ssl).*\.dll$' -or $_.Name -match '^zlib.*\.dll$'
+          })
+          if ($vcpkgDlls.Count -gt 0) {
+            Copy-Item $vcpkgDlls package\bin\ -ErrorAction SilentlyContinue
+          } else {
+            Write-Host "No vcpkg DLLs found; runtime DLLs will come from the CMake install step."
           }
-          Copy-Item $vcpkgDlls package\bin\ -ErrorAction SilentlyContinue
           foreach ($path in @("package\bin\hoo.exe", "package\lib\hoo-core.lib", "package\lib\hoo-parser.lib", "package\lib\hoort.lib", "package\lib\hoorepl.lib")) {
             if (-not (Test-Path $path)) {
               throw "Required package file missing: $path"
