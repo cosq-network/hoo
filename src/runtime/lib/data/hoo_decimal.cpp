@@ -32,65 +32,6 @@ static HooDecimalImpl* toImpl(HooDecimal d) {
     return static_cast<HooDecimalImpl*>(d);
 }
 
-/// Parse a decimal string into mantissa without floating-point intermediate.
-/// "19.99" with scale=2 -> mantissa=1999
-/// "-0.001" with scale=3 -> mantissa=-1
-/// "100" with scale=0 -> mantissa=100
-static int64_t parseDecimalMantissa(const char* text, int32_t scale) {
-    if (!text || !*text) return 0;
-
-    const char* p = text;
-    bool negative = false;
-
-    // Skip leading whitespace
-    while (*p == ' ' || *p == '\t') ++p;
-
-    if (*p == '-') { negative = true; ++p; }
-    else if (*p == '+') { ++p; }
-
-    int64_t integerPart = 0;
-    int64_t fractionalPart = 0;
-    int fractionalDigits = 0;
-    bool hasDecimalPoint = false;
-
-    // Parse integer part
-    while (*p >= '0' && *p <= '9') {
-        integerPart = integerPart * 10 + (*p - '0');
-        ++p;
-    }
-
-    // Parse decimal point and fractional part
-    if (*p == '.') {
-        hasDecimalPoint = true;
-        ++p;
-        while (*p >= '0' && *p <= '9' && fractionalDigits < scale) {
-            fractionalPart = fractionalPart * 10 + (*p - '0');
-            ++fractionalDigits;
-            ++p;
-        }
-        // Skip remaining digits beyond scale
-        while (*p >= '0' && *p <= '9') ++p;
-    }
-
-    // Combine: integerPart * 10^scale + fractionalPart
-    int64_t mantissa = integerPart;
-    for (int32_t i = 0; i < scale; ++i) {
-        mantissa *= 10;
-    }
-
-    // Add fractional digits, padding with zeros if needed
-    for (int32_t i = fractionalDigits; i < scale; ++i) {
-        fractionalPart *= 10;
-    }
-    mantissa += fractionalPart;
-
-    // Handle case where no decimal point but scale > 0
-    // e.g., "100m" with scale=2 should be 10000 (representing 100.00)
-    // This is already handled by the loop above.
-
-    return negative ? -mantissa : mantissa;
-}
-
 // Exceptions
 // ============================================================================
 
@@ -109,23 +50,9 @@ static int64_t parseDecimalMantissa(const char* text, int32_t scale) {
     hoo_exception_throw(exc);
 }
 
-static int32_t countDigits(int64_t m) {
-    if (m == 0) return 1;
-    if (m < 0) {
-        if (m == INT64_MIN) return 19; // 9223372036854775808
-        m = -m;
-    }
-    int32_t count = 0;
-    while (m > 0) {
-        m /= 10;
-        ++count;
-    }
-    return count;
-}
-
-static bool fitsPrecision(int64_t m, int32_t prec) {
-    return countDigits(m) <= prec;
-}
+// ============================================================================
+// Overflow guards
+// ============================================================================
 
 static bool addWouldOverflow(int64_t a, int64_t b) {
     if (b > 0 && a > INT64_MAX - b) return true;
@@ -148,6 +75,93 @@ static bool mulWouldOverflow(int64_t a, int64_t b) {
     if (a < 0 && b > 0 && a < INT64_MIN / b) return true;
     if (a < 0 && b < 0 && a < INT64_MAX / b) return true;
     return false;
+}
+
+/// Parse a decimal string into mantissa without floating-point intermediate.
+/// "19.99" with scale=2 -> mantissa=1999
+/// "-0.001" with scale=3 -> mantissa=-1
+/// "100" with scale=0 -> mantissa=100
+/// Throws a DecimalOverflow exception if the scaled mantissa does not fit
+/// in int64 (previously this silently overflowed, producing undefined
+/// behavior).
+static int64_t parseDecimalMantissa(const char* text, int32_t scale) {
+    if (!text || !*text) return 0;
+
+    const char* p = text;
+    bool negative = false;
+
+    // Skip leading whitespace
+    while (*p == ' ' || *p == '\t') ++p;
+
+    if (*p == '-') { negative = true; ++p; }
+    else if (*p == '+') { ++p; }
+
+    int64_t integerPart = 0;
+    int64_t fractionalPart = 0;
+    int fractionalDigits = 0;
+
+    // Parse integer part
+    while (*p >= '0' && *p <= '9') {
+        int64_t d = *p - '0';
+        if (mulWouldOverflow(integerPart, 10) || addWouldOverflow(integerPart * 10, d)) {
+            throwDecimalOverflow();
+        }
+        integerPart = integerPart * 10 + d;
+        ++p;
+    }
+
+    // Parse decimal point and fractional part
+    if (*p == '.') {
+        ++p;
+        while (*p >= '0' && *p <= '9' && fractionalDigits < scale) {
+            int64_t d = *p - '0';
+            if (mulWouldOverflow(fractionalPart, 10) || addWouldOverflow(fractionalPart * 10, d)) {
+                throwDecimalOverflow();
+            }
+            fractionalPart = fractionalPart * 10 + d;
+            ++fractionalDigits;
+            ++p;
+        }
+        // Skip remaining digits beyond scale
+        while (*p >= '0' && *p <= '9') ++p;
+    }
+
+    // Combine: integerPart * 10^scale + fractionalPart
+    int64_t mantissa = integerPart;
+    for (int32_t i = 0; i < scale; ++i) {
+        if (mulWouldOverflow(mantissa, 10)) throwDecimalOverflow();
+        mantissa *= 10;
+    }
+
+    // Add fractional digits, padding with zeros if needed
+    for (int32_t i = fractionalDigits; i < scale; ++i) {
+        if (mulWouldOverflow(fractionalPart, 10)) throwDecimalOverflow();
+        fractionalPart *= 10;
+    }
+    if (addWouldOverflow(mantissa, fractionalPart)) throwDecimalOverflow();
+    mantissa += fractionalPart;
+
+    // negative is only applied to a non-negative magnitude, so -mantissa
+    // cannot overflow.
+    return negative ? -mantissa : mantissa;
+}
+
+static int32_t countDigits(int64_t m) {
+    if (m == 0) return 1;
+    if (m < 0) {
+        if (m == INT64_MIN) return 19; // 9223372036854775808
+        m = -m;
+    }
+    int32_t count = 0;
+    while (m > 0) {
+        m /= 10;
+        ++count;
+    }
+    return count;
+}
+
+static bool fitsPrecision(int64_t m, int32_t prec) {
+    return countDigits(m) <= prec;
 }
 
 /// Normalize: ensure the mantissa fits within precision digits.
@@ -292,8 +306,12 @@ extern "C" HooDecimal hoo_decimal_div(HooDecimal a, HooDecimal b) {
 
     if (db->mantissa == 0) throwDecimalDivZero();
 
-    // Scale up numerator to get desired precision
+    // Scale up numerator to get desired precision. Clamp the target scale to
+    // the result precision so low-precision decimals (e.g. Decimal<8,2>) do
+    // not throw an overflow for results that fit their precision.
+    int32_t resultPrecision = std::max(da->precision, db->precision);
     int32_t targetScale = std::max(da->scale, db->scale) + 8; // 8 extra digits
+    if (targetScale > resultPrecision) targetScale = resultPrecision;
     int64_t numerator = da->mantissa;
     for (int32_t i = 0; i < targetScale - da->scale; ++i) {
         if (mulWouldOverflow(numerator, 10)) throwDecimalOverflow();
@@ -308,7 +326,7 @@ extern "C" HooDecimal hoo_decimal_div(HooDecimal a, HooDecimal b) {
 
     if (denominator == -1 && numerator == INT64_MIN) throwDecimalOverflow();
     int64_t quotient = numerator / denominator;
-    return hoo_decimal_new(quotient, da->precision, targetScale);
+    return hoo_decimal_new(quotient, resultPrecision, targetScale);
 }
 
 extern "C" HooDecimal hoo_decimal_mod(HooDecimal a, HooDecimal b) {
@@ -352,8 +370,15 @@ extern "C" HooDecimal hoo_decimal_neg(HooDecimal d) {
 // ============================================================================
 
 static int compareAligned(const HooDecimalImpl* da, const HooDecimalImpl* db) {
+    // Use a 128-bit intermediate so scale alignment never silently overflows
+    // the mantissa (previously this was int64 UB near INT64_MAX/INT64_MIN).
+#if defined(__SIZEOF_INT128__)
+    __int128 ma = da->mantissa;
+    __int128 mb = db->mantissa;
+#else
     int64_t ma = da->mantissa;
     int64_t mb = db->mantissa;
+#endif
     int32_t sa = da->scale;
     int32_t sb = db->scale;
 
@@ -407,39 +432,53 @@ extern "C" HooString hoo_decimal_to_string(HooDecimal d) {
     int64_t m = impl->mantissa;
     int32_t s = impl->scale;
 
-    // Convert mantissa to string
-    char buf[64];
+    // Convert mantissa to string. Use an unsigned magnitude so negating
+    // INT64_MIN (which is UB in int64) is handled correctly.
+    char buf[96];
+    uint64_t mag;
     bool negative = m < 0;
-    if (negative) m = -m;
-
-    char* p = buf + sizeof(buf) - 1;
-    *p = '\0';
-
-    if (m == 0) {
-        *(--p) = '0';
+    if (negative) {
+        mag = static_cast<uint64_t>(-(m + 1)) + 1;
     } else {
-        while (m > 0) {
-            *(--p) = '0' + static_cast<char>(m % 10);
-            m /= 10;
+        mag = static_cast<uint64_t>(m);
+    }
+
+    char digits[24];
+    size_t len = 0;
+    if (mag == 0) {
+        digits[len++] = '0';
+    } else {
+        while (mag > 0) {
+            digits[len++] = '0' + static_cast<char>(mag % 10);
+            mag /= 10;
+        }
+        for (size_t i = 0; i < len / 2; ++i) {
+            char t = digits[i];
+            digits[i] = digits[len - 1 - i];
+            digits[len - 1 - i] = t;
         }
     }
 
-    if (negative) *(--p) = '-';
-
-    // Insert decimal point
-    size_t len = std::strlen(p);
-    if (s > 0 && static_cast<size_t>(s) < len) {
-        // Build result with decimal point
+    size_t idx = 0;
+    if (negative) buf[idx++] = '-';
+    if (s <= 0) {
+        std::memcpy(buf + idx, digits, len);
+        idx += len;
+    } else if (static_cast<int64_t>(len) > s) {
         size_t intLen = len - static_cast<size_t>(s);
-        char* result = static_cast<char*>(std::malloc(len + 2)); // +1 for '.', +1 for '\0'
-        std::memcpy(result, p, intLen);
-        result[intLen] = '.';
-        std::memcpy(result + intLen + 1, p + intLen, s);
-        result[len + 1] = '\0';
-        HooString str = hoo_string_from_cstr(result);
-        std::free(result);
-        return str;
+        std::memcpy(buf + idx, digits, intLen);
+        idx += intLen;
+        buf[idx++] = '.';
+        std::memcpy(buf + idx, digits + intLen, static_cast<size_t>(s));
+        idx += static_cast<size_t>(s);
     } else {
-        return hoo_string_from_cstr(p);
+        buf[idx++] = '0';
+        buf[idx++] = '.';
+        size_t zeros = static_cast<size_t>(s) - len;
+        for (size_t i = 0; i < zeros; ++i) buf[idx++] = '0';
+        std::memcpy(buf + idx, digits, len);
+        idx += len;
     }
+    buf[idx] = '\0';
+    return hoo_string_from_cstr(buf);
 }

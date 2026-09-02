@@ -178,6 +178,39 @@ TEST_F(HooDecimalJitTest, ToString) {
     )");
 }
 
+TEST_F(HooDecimalJitTest, ToStringFraction) {
+    // Regression: values < 1 previously rendered as bare digits ("0.5" -> "5").
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = 0.05m;
+            var s: string = a.toString();
+            return s.equals("0.05");
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, ToStringNegativeFraction) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<38,2> = -0.05m;
+            var s: string = a.toString();
+            return s.equals("-0.05");
+        }
+    )");
+}
+
+TEST_F(HooDecimalJitTest, DivLowPrecisionDoesNotOverflow) {
+    expectTrue(R"(
+        func :bool test() {
+            var a: Decimal<4,2> = 1.00m;
+            var b: Decimal<4,2> = 7.00m;
+            var q: Decimal<4,2> = a / b;
+            var s: string = q.toString();
+            return s.equals("0.1428");
+        }
+    )");
+}
+
 #ifndef _WIN32
 TEST_F(HooDecimalJitTest, ThrowsOnOverflowAdd) {
     expectException(R"(

@@ -267,6 +267,26 @@ Key-specific operations (int64, string, char, byte): `m.put(key, value)`, `m.get
 
 ---
 
+## [Decimal](decimal.md) — Type `Decimal<P,S>`
+
+**Import:** `import hoo;`
+
+**Pattern:** Value type with `Decimal<P,S>` type parameters
+
+Fixed-precision decimal arithmetic backed by an `int64` scaled mantissa.
+
+| Kind | API | Signature |
+|------|-----|-----------|
+| Literal | `19.99m` | `Decimal<38,2>` (declared via `var x: Decimal<P,S>`) |
+| Instance | `d.toString` | `d.toString() :string` |
+
+Arithmetic (`+`, `-`, `*`, `/`, `%`, unary `-`), comparisons
+(`==`, `!=`, `<`, `<=`, `>`, `>=`). See [decimal.md](decimal.md) for
+exceptions (`DecimalOverflow`, `DecimalDivZero`, `DecimalModZero`) and
+precision limits.
+
+---
+
 ## [DateTime](datetime.md) — Class `DateTime`
 
 **Import:** `import hoo.datetime;`

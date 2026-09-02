@@ -1,5 +1,6 @@
 #include "runtime/lib/data/hoo_uuid.h"
 #include "runtime/lib/mem/hoo_buffer.h"
+#include "runtime/lib/core/hoo_runtime.h"
 #include <cstring>
 #include <cstdlib>
 #include <cstdio>
@@ -11,9 +12,13 @@
 #include <wincrypt.h>
 #endif
 
+// UUIDs are ARC-managed objects allocated via hoo_alloc (atomic refcount in
+// the hidden header) and freed by the runtime when the reference count drops
+// to zero. This is consistent with the rest of the runtime (previously a
+// raw malloc + non-atomic manual refcount was used, which is racy when UUIDs
+// are shared across threads).
 struct UUIDData {
     uint8_t bytes[16];
-    int refcount;
 };
 
 static UUIDData* to_data(HooUUID uuid) {
@@ -55,9 +60,8 @@ extern "C" {
 #endif
 
 HooUUID hoo_uuid_v4(void) {
-    UUIDData* data = (UUIDData*)std::malloc(sizeof(UUIDData));
+    UUIDData* data = (UUIDData*)hoo_alloc(sizeof(UUIDData), HOO_TYPE_UUID);
     if (!data) return NULL;
-    data->refcount = 1;
     fill_random_bytes(data->bytes, 16);
     data->bytes[6] = (data->bytes[6] & 0x0F) | 0x40;
     data->bytes[8] = (data->bytes[8] & 0x3F) | 0x80;
@@ -65,10 +69,8 @@ HooUUID hoo_uuid_v4(void) {
 }
 
 HooUUID hoo_uuid_nil(void) {
-    UUIDData* data = (UUIDData*)std::malloc(sizeof(UUIDData));
+    UUIDData* data = (UUIDData*)hoo_alloc(sizeof(UUIDData), HOO_TYPE_UUID);
     if (!data) return NULL;
-    data->refcount = 1;
-    std::memset(data->bytes, 0, 16);
     return from_data(data);
 }
 
@@ -84,9 +86,8 @@ HooUUID hoo_uuid_from_string(const char* str) {
             return NULL;
         }
     }
-    UUIDData* data = (UUIDData*)std::malloc(sizeof(UUIDData));
+    UUIDData* data = (UUIDData*)hoo_alloc(sizeof(UUIDData), HOO_TYPE_UUID);
     if (!data) return NULL;
-    data->refcount = 1;
     unsigned int p[11];
     int n = std::sscanf(str, "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
         &p[0], &p[1], &p[2], &p[3], &p[4],
@@ -116,9 +117,8 @@ HooUUID hoo_uuid_from_string(const char* str) {
 
 HooUUID hoo_uuid_from_bytes(const uint8_t* bytes) {
     if (!bytes) return NULL;
-    UUIDData* data = (UUIDData*)std::malloc(sizeof(UUIDData));
+    UUIDData* data = (UUIDData*)hoo_alloc(sizeof(UUIDData), HOO_TYPE_UUID);
     if (!data) return NULL;
-    data->refcount = 1;
     std::memcpy(data->bytes, bytes, 16);
     return from_data(data);
 }
@@ -175,18 +175,11 @@ int64_t hoo_uuid_compare(HooUUID a, HooUUID b) {
 
 HooUUID hoo_uuid_retain(HooUUID uuid) {
     if (!uuid) return NULL;
-    UUIDData* data = to_data(uuid);
-    data->refcount++;
-    return uuid;
+    return static_cast<HooUUID>(hoo_retain(uuid));
 }
 
 void hoo_uuid_release(HooUUID uuid) {
-    if (!uuid) return;
-    UUIDData* data = to_data(uuid);
-    data->refcount--;
-    if (data->refcount <= 0) {
-        std::free(data);
-    }
+    hoo_release(uuid);
 }
 
 void hoo_uuid_free_string(char* str) {

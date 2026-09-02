@@ -232,6 +232,9 @@ int64_t hoo_exception_refcount(HooException exc);
  *
  * @param exc Exception to throw (must not be NULL)
  */
+#if defined(__cplusplus)
+[[noreturn]]
+#endif
 void hoo_exception_throw(HooException exc);
 
 /**

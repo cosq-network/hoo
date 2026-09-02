@@ -270,9 +270,11 @@ int64_t hoo_math_lcm(int64_t a, int64_t b) {
 }
 
 int64_t hoo_math_factorial(int64_t n) {
-    if (n < 0) return 0;
+    // 20! is the largest factorial that fits in int64. Rather than silently
+    // returning a clamped (wrong) value for larger inputs, return 0 (the
+    // same "not computable" sentinel used for negative inputs).
+    if (n < 0 || n > 20) return 0;
     if (n <= 1) return 1;
-    if (n > 20) n = 20;
     int64_t result = 1;
     for (int64_t i = 2; i <= n; i++) {
         result *= i;
@@ -281,9 +283,10 @@ int64_t hoo_math_factorial(int64_t n) {
 }
 
 int64_t hoo_math_fibonacci(int64_t n) {
-    if (n < 0) return 0;
+    // F(92) is the largest Fibonacci number that fits in int64. Rather than
+    // silently returning a clamped (wrong) value for larger inputs, return 0.
+    if (n < 0 || n > 92) return 0;
     if (n <= 1) return n;
-    if (n > 92) n = 92;
     int64_t a = 0, b = 1;
     for (int64_t i = 2; i <= n; i++) {
         int64_t c = a + b;

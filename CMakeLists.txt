@@ -599,6 +599,7 @@ if(HOO_BUILD_TESTS)
         tests/runtime/HooCsvTest.cpp
         tests/runtime/HooJsonTest.cpp
         tests/runtime/HooUuidTest.cpp
+        tests/runtime/HooDecimalTest.cpp
         tests/runtime/HooPathTest.cpp
         tests/runtime/HooHashingTest.cpp
         tests/runtime/HooProcessTest.cpp

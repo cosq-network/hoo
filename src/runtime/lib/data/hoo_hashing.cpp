@@ -13,6 +13,7 @@
 
 #include <cstring>
 #include <cstdlib>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <fstream>
@@ -37,8 +38,19 @@ char* hoo_hashing_sha256(const uint8_t* data, int64_t len) {
     if (len < 0 || (len != 0 && !data)) return nullptr;
     if (len == 0 && !data) data = (const uint8_t*)"";
 #ifdef __APPLE__
+    // Feed data in chunks: CC_LONG is 32-bit, so a single one-shot call
+    // would silently truncate inputs larger than 4 GiB.
+    CC_SHA256_CTX ctx;
+    CC_SHA256_Init(&ctx);
+    int64_t offset = 0;
+    while (offset < len) {
+        int64_t chunk = len - offset;
+        if (chunk > (int64_t)UINT32_MAX) chunk = (int64_t)UINT32_MAX;
+        CC_SHA256_Update(&ctx, data + offset, (CC_LONG)chunk);
+        offset += chunk;
+    }
     uint8_t hash[CC_SHA256_DIGEST_LENGTH];
-    CC_SHA256(data, (CC_LONG)(len < 0 ? 0 : len), hash);
+    CC_SHA256_Final(hash, &ctx);
     return alloc_and_hex(hash, CC_SHA256_DIGEST_LENGTH);
 #else
     uint8_t hash[SHA256_DIGEST_LENGTH];
@@ -82,8 +94,19 @@ char* hoo_hashing_sha1(const uint8_t* data, int64_t len) {
     if (len < 0 || (len != 0 && !data)) return nullptr;
     if (len == 0 && !data) data = (const uint8_t*)"";
 #ifdef __APPLE__
+    // Feed data in chunks: CC_LONG is 32-bit, so a single one-shot call
+    // would silently truncate inputs larger than 4 GiB.
+    CC_SHA1_CTX ctx;
+    CC_SHA1_Init(&ctx);
+    int64_t offset = 0;
+    while (offset < len) {
+        int64_t chunk = len - offset;
+        if (chunk > (int64_t)UINT32_MAX) chunk = (int64_t)UINT32_MAX;
+        CC_SHA1_Update(&ctx, data + offset, (CC_LONG)chunk);
+        offset += chunk;
+    }
     uint8_t hash[CC_SHA1_DIGEST_LENGTH];
-    CC_SHA1(data, (CC_LONG)(len < 0 ? 0 : len), hash);
+    CC_SHA1_Final(hash, &ctx);
     return alloc_and_hex(hash, CC_SHA1_DIGEST_LENGTH);
 #else
     uint8_t hash[SHA_DIGEST_LENGTH];
@@ -96,8 +119,24 @@ char* hoo_hashing_md5(const uint8_t* data, int64_t len) {
     if (len < 0 || (len != 0 && !data)) return nullptr;
     if (len == 0 && !data) data = (const uint8_t*)"";
 #ifdef __APPLE__
+    // MD5 is cryptographically broken but remains an intentionally supported
+    // legacy hashing API; silence CommonCrypto's deprecation warnings.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    // Feed data in chunks: CC_LONG is 32-bit, so a single one-shot call
+    // would silently truncate inputs larger than 4 GiB.
+    CC_MD5_CTX ctx;
+    CC_MD5_Init(&ctx);
+    int64_t offset = 0;
+    while (offset < len) {
+        int64_t chunk = len - offset;
+        if (chunk > (int64_t)UINT32_MAX) chunk = (int64_t)UINT32_MAX;
+        CC_MD5_Update(&ctx, data + offset, (CC_LONG)chunk);
+        offset += chunk;
+    }
     uint8_t hash[CC_MD5_DIGEST_LENGTH];
-    CC_MD5(data, (CC_LONG)(len < 0 ? 0 : len), hash);
+    CC_MD5_Final(hash, &ctx);
+#pragma clang diagnostic pop
     return alloc_and_hex(hash, CC_MD5_DIGEST_LENGTH);
 #else
     uint8_t hash[MD5_DIGEST_LENGTH];
@@ -136,9 +175,18 @@ char* hoo_hashing_hmac_sha256(const uint8_t* key, int64_t key_len,
     CCHmac(kCCHmacAlgSHA256, key, (size_t)key_len, data, (size_t)data_len, mac);
     return alloc_and_hex(mac, CC_SHA256_DIGEST_LENGTH);
 #else
+    // The legacy HMAC() API is deprecated in OpenSSL 3.0; it is still
+    // supported, so keep it but silence the deprecation warning.
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
     unsigned int mac_len = 0;
     uint8_t mac[SHA256_DIGEST_LENGTH];
     HMAC(EVP_sha256(), key, (int)key_len, data, (size_t)data_len, mac, &mac_len);
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
     return alloc_and_hex(mac, SHA256_DIGEST_LENGTH);
 #endif
 }

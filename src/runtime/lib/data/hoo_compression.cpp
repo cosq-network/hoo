@@ -7,6 +7,7 @@
 #include "runtime/lib/mem/hoo_buffer.h"
 #include <cstdlib>
 #include <cstring>
+#include <cstdint>
 #include <vector>
 #include <zlib.h>
 
@@ -26,6 +27,9 @@ void hoo_compression_release(void* comp) {
 int64_t hoo_compression_gzip_compress(const uint8_t* data, int64_t data_len,
                                        uint8_t** out_data, int64_t* out_len) {
     if (data_len < 0 || (data_len != 0 && !data) || !out_data || !out_len) return -1;
+    // zlib's avail_in/avail_out are uInt (32-bit); refuse sizes that would
+    // silently truncate instead of producing corrupt output.
+    if (data_len > (int64_t)UINT32_MAX) return -1;
     *out_data = nullptr; *out_len = 0;
 
     uint8_t empty_byte = 0;
@@ -37,6 +41,7 @@ int64_t hoo_compression_gzip_compress(const uint8_t* data, int64_t data_len,
         return -1;
 
     uLong bound = deflateBound(&strm, (uLong)data_len);
+    if (bound > (uLong)UINT32_MAX) { deflateEnd(&strm); return -1; }
     uint8_t* buf = (uint8_t*)std::malloc(bound);
     if (!buf) { deflateEnd(&strm); return -1; }
 
@@ -64,6 +69,8 @@ int64_t hoo_compression_gzip_compress(const uint8_t* data, int64_t data_len,
 int64_t hoo_compression_gzip_decompress(const uint8_t* data, int64_t data_len,
                                          uint8_t** out_data, int64_t* out_len) {
     if (!data || data_len < 0 || !out_data || !out_len) return -1;
+    // zlib's avail_in is uInt (32-bit); refuse sizes that would truncate.
+    if (data_len > (int64_t)UINT32_MAX) return -1;
     *out_data = nullptr; *out_len = 0;
 
     z_stream strm;
@@ -101,6 +108,9 @@ int64_t hoo_compression_gzip_decompress(const uint8_t* data, int64_t data_len,
 int64_t hoo_compression_deflate_compress(const uint8_t* data, int64_t data_len,
                                           uint8_t** out_data, int64_t* out_len) {
     if (data_len < 0 || (data_len != 0 && !data) || !out_data || !out_len) return -1;
+    // zlib's avail_in/avail_out are uInt (32-bit); refuse sizes that would
+    // silently truncate instead of producing corrupt output.
+    if (data_len > (int64_t)UINT32_MAX) return -1;
     *out_data = nullptr; *out_len = 0;
 
     uint8_t empty_byte = 0;
@@ -112,6 +122,7 @@ int64_t hoo_compression_deflate_compress(const uint8_t* data, int64_t data_len,
         return -1;
 
     uLong bound = deflateBound(&strm, (uLong)data_len);
+    if (bound > (uLong)UINT32_MAX) { deflateEnd(&strm); return -1; }
     uint8_t* buf = (uint8_t*)std::malloc(bound);
     if (!buf) { deflateEnd(&strm); return -1; }
 
@@ -139,6 +150,8 @@ int64_t hoo_compression_deflate_compress(const uint8_t* data, int64_t data_len,
 int64_t hoo_compression_deflate_decompress(const uint8_t* data, int64_t data_len,
                                             uint8_t** out_data, int64_t* out_len) {
     if (!data || data_len < 0 || !out_data || !out_len) return -1;
+    // zlib's avail_in is uInt (32-bit); refuse sizes that would truncate.
+    if (data_len > (int64_t)UINT32_MAX) return -1;
     *out_data = nullptr; *out_len = 0;
 
     z_stream strm;
