@@ -16,13 +16,13 @@ namespace fs = std::filesystem;
 #include "core/Platform.h"
 #include <sys/utsname.h>
 #include <unistd.h>
+#include <pwd.h>
 #ifdef __APPLE__
 #include <sys/sysctl.h>
 #include <sys/time.h>
 #include <mach/mach.h>
 #elif defined(__linux__)
 #include <sys/sysinfo.h>
-#include <pwd.h>
 #endif
 #endif
 
