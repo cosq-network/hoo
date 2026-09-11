@@ -11,6 +11,13 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- fix(test): guard HooDecimalTest C++ exception tests on Windows
+  - Guard `ParseOverflowThrows`, `AddOverflowThrows`, and `DivByZeroThrows`
+    with `#ifndef _WIN32` so SEH unwinding no longer corrupts the OrcJIT
+    exception-handling state (previously caused a SEGFAULT in
+    `NewLanguageFeaturesTest.TryCatchFinallyHandlesThrownException`).
+  - Test suite now reports **3,283 passing tests** across 142 suites (0 failures).
+
 - ci: fix Linux build, skip redundant bumps, and slim downstream jobs
   - Fix the Linux job on `ubuntu-latest` (Ubuntu 24.04): rely on the distro's
     prebuilt `libgtest-dev` instead of compiling GoogleTest from
@@ -34,7 +41,7 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
     `hoo_exception_custom()` so failed allocations degrade to an empty message.
   - Migrate the last 7 `#ifndef` headers to `#pragma once` and move it to line 1
     in `hoo_overload.h`.
-  - Test suite now reports **3,270 passing tests** across 142 suites (0 failures).
+  - Test suite now reports **3,283 passing tests** across 142 suites (0 failures).
 
 - ci: adopt GitFlow for CI/CD and versioning
   - Rework `.github/workflows/build-and-test.yml` around the GitFlow branch

@@ -315,7 +315,7 @@ ctest --preset windows-vs18-env --output-on-failure
 If `build\hoo-tests.exe --gtest_brief=1` passes but `ctest --preset windows-vs18-env` fails, re-run CMake to regenerate `build\CTestTestfile.cmake`. Stale generated CTest files may contain an old or malformed `PATH`.
 
 ### Test files with Windows-specific changes
-The following test files have `#ifdef _WIN32` guards for platform-specific behavior:
+The following test files have `#ifdef _WIN32` or `#ifndef _WIN32` guards for platform-specific behavior:
 
 | File | Changes |
 |------|---------|
@@ -333,5 +333,6 @@ The following test files have `#ifdef _WIN32` guards for platform-specific behav
 | `tests/runtime/HooHashingTest.cpp` | `Sha256File` creates a temp file instead of `/dev/null`; `Sha256FileNotFound` uses `Z:\` path |
 | `tests/runtime/HooSystemTest.cpp` | `UserHome` checks for drive letter prefix; `SetCurrentDir` uses drive root instead of `/tmp` |
 | `tests/runtime/HooPathTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix; `HasRoot` uses `C:\` prefix |
+| `tests/runtime/HooDecimalTest.cpp` | Guarded `ParseOverflowThrows`, `AddOverflowThrows`, `DivByZeroThrows` with `#ifndef _WIN32`; SEH unwinding on Windows corrupts OrcJIT exception-handling state for subsequent JIT tests |
 | `tests/integration/jit/HooPathJitTest.cpp` | `Separator` expects `\` on Windows; `ListSeparator` expects `;`; `IsAbsolute` uses `C:\` prefix |
 | `tests/runtime/HooProcessTest.cpp` | `echo`   `cmd.exe /c echo`; `false`   `cmd.exe /c exit 1`; `sleep`   `cmd.exe /c timeout` |
