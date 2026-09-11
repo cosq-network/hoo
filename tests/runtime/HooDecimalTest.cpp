@@ -82,6 +82,10 @@ TEST_F(HooDecimalTest, ToStringInt64Max) {
     hoo_decimal_release(a);
 }
 
+// On Windows, C++ exception tests use SEH unwinding which corrupts the
+// ORC JIT exception handling state for subsequent JIT tests (crash in
+// NewLanguageFeaturesTest.TryCatchFinallyHandlesThrownException).
+#ifndef _WIN32
 TEST_F(HooDecimalTest, ParseOverflowThrows) {
     // A 39-digit literal cannot fit in an int64 mantissa at scale 2.
     EXPECT_THROW(hoo_decimal_from_literal(
@@ -108,6 +112,7 @@ TEST_F(HooDecimalTest, DivByZeroThrows) {
     hoo_decimal_release(a);
     hoo_decimal_release(b);
 }
+#endif
 
 TEST_F(HooDecimalTest, DivOneThird) {
     HooDecimal a = hoo_decimal_from_literal("1.00", 38, 2);
