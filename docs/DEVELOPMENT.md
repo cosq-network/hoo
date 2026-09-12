@@ -46,7 +46,11 @@ The script will:
    - `CMakeLists.txt` – `project(Hoo VERSION X.Y.Z)`
    - `docs/CHANGELOG.md` – prepend a new version section with commit messages
    - `README.md` – update the version badge URL
-4. Create a git commit: `chore: bump version to X.Y.Z`
+   - `vcpkg.json` – the `version-string`
+   - `src/hvm/HOModule.h` – the `.ho` header `VERSION_MAJOR`/`VERSION_MINOR`,
+     kept in lock-step with the two leading version components (the patch
+     component is documentation-only and is not encoded in the header).
+4. Create a git commit: `chore: bump version to X.Y.Z [skip ci]`
 5. Create a git tag: `vX.Y.Z`
 
 ## GitFlow Workflow
@@ -61,19 +65,27 @@ The repository follows [GitFlow](https://nvie.com/posts/a-successful-git-branchi
 | `release/*`   | Preparing a release             | `dev` | `main` and `dev` |
 | `hotfix/*`    | Urgent fixes to production      | `main` | `main` and `dev` |
 
-Releasing a new version:
+Releases are produced **only from `main`**. The `dev` branch is the
+development/integration line and is never tagged or released directly; after
+every release CI syncs `main` back into `dev`.
+
+Releasing a new version (from the `1.0.0` base, a `release/*` merge bumps the
+minor to `1.1.0`; a `hotfix/*` merge bumps the patch to `1.0.1`; a `BREAKING`
+change bumps the major):
 
 ```bash
 # 1. Cut a release branch from dev
 git checkout dev
-git checkout -b release/v1.5.0
+git checkout -b release/v1.1.0
 # 2. Final tweaks, then merge back into main (bumps minor) and dev
-git checkout main && git merge --no-ff release/v1.5.0
-git checkout dev  && git merge --no-ff release/v1.5.0
+git checkout main && git merge --no-ff release/v1.1.0
+git checkout dev  && git merge --no-ff release/v1.1.0
 ```
 
 CI detects the `release/*` or `hotfix/*` source from the merge commit, bumps the
-version, tags `vX.Y.Z` on `main`, and syncs the version back into `dev`.
+version, tags `vX.Y.Z` on `main`, and syncs the version back into `dev`. The tag
+is pushed to `main`, and only a `main`-contained tag can trigger a GitHub
+Release (see `create-release` below).
 
 ## Generating Release Notes Manually
 
@@ -96,15 +108,16 @@ All jobs live in `.github/workflows/build-and-test.yml`:
 | **build-macos** (Apple Silicon) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*`; skipped on `[skip ci]` autopushes |
 | **build-linux** (x64, Release) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*`; skipped on `[skip ci]` autopushes |
 | **build-windows** (x64, Release) | Push / PR to `main`, `dev`, `feature/*`, `release/*`, `hotfix/*`; tag push `v*`; skipped on `[skip ci]` autopushes |
-| **create-release-bundle** | Push to `main` (after the three build jobs) |
-| **bump-version** | Push to `main` from a `release/*` or `hotfix/*` merge (after the three build jobs) |
+| **create-release-bundle** | Push to `main` (after the three build jobs; skipped on `[skip ci]`) |
+| **bump-version** | Push to `main` from a `release/*` or `hotfix/*` merge, or an admin `workflow_dispatch` with a `bump_mode` override (after the three build jobs) |
 | **sync-main-to-dev** | Push to `main` (after the three build jobs and `bump-version`; merges the new version back into `dev`) |
-| **create-release** | Tag push `v*` or manual dispatch |
+| **create-release** | `v*` tag push; verifies the tag is contained in `main`, so releases happen only from `main` |
 
 ### Linux Pipeline Notes
 - Runs on `ubuntu-latest` (Ubuntu 24.04) with LLVM 22 (downloaded from the LLVM
-  release asset), Ninja, CMake, ANTLR4 (via vcpkg), and libuv/ssl/curl/zip/zstd
-  installed from apt. GoogleTest comes from the distro's prebuilt `libgtest-dev`
+  release asset), Ninja, and CMake; libuv/ssl/curl/zip/zstd/nlohmann-json come
+  from apt, and ANTLR4's C++ runtime is built from source via CMake FetchContent
+  (not vcpkg). GoogleTest comes from the distro's prebuilt `libgtest-dev`
   package (found directly by `find_package(GTest)` — no from-source compile).
 - Configures a single `Release` build and runs `ctest` after the binary check.
 - Uploads `hoo-linux-x86_64.tar.gz` as an artifact.
@@ -125,17 +138,22 @@ autopush does not trigger a redundant full cross-platform rebuild. Presubmit
   combined `hoo-all-platforms.tar.gz` bundle is assembled.
 - The **bump-version** job inspects the merge commit message to detect whether
   the change came from a `release/*` (minor) or `hotfix/*` (patch) branch and
-  bumps/tags accordingly. A manual `workflow_dispatch` `bump_mode` input can
-  override detection. If the source merge cannot be identified, the bump is
-  skipped (never guessed).
+  bumps/tags accordingly. An admin `workflow_dispatch` with a `bump_mode`
+  override can force the level (main only). If the source merge cannot be
+  identified and no override is given, the bump is skipped (never guessed).
 - The **sync-main-to-dev** job then merges `main` into `dev` so the development
   branch carries the released version as its new base.
-- On tag pushes matching `v*`, a GitHub Release is published with the platform
-  binaries attached and a categorised changelog generated from git history. A
-  manual `workflow_dispatch` publishes the tag given in the `tag` input; the
-  tag must already exist in the repository and must equal the project version
-  in `CMakeLists.txt` at that tag (the build jobs fail fast otherwise), and the
-  builds/artifacts are produced from that exact tag, never from `dev`.
+- On a tag push matching `v*`, a GitHub Release is published with the platform
+  binaries attached and a categorised changelog generated from git history.
+  Because tags are created only by **bump-version** on `main`, and
+  **create-release** verifies the tag is contained in `origin/main`, releases
+  can only ever be produced from `main` — there is no manual tag-release path.
+- Versioning is based on the `1.0.0` release with standard pre-1.0/1.x SemVer:
+  `release/*` merges bump the minor, `hotfix/*` merges bump the patch, and a
+  `BREAKING CHANGE` escalates to a major bump. The `.ho` module header
+  (`HOModule.h` `VERSION_MAJOR`/`VERSION_MINOR`) tracks the two leading
+  components; the patch is documentation-only. `dev` carries the in-development
+  version and is synced from `main` after each release.
 
 ## Conventional Commit Format
 

@@ -10,11 +10,15 @@ name: Build and Test
 #   release/*         - branched from dev, merged into main AND dev
 #   hotfix/*          - branched from main, merged into main AND dev
 #
-# Versioning (SemVer):
+# Versioning (SemVer, GitFlow):
 #   release/* merge to main => bump minor, reset patch (or major on BREAKING)
 #   hotfix/*  merge to main => bump patch              (or major on BREAKING)
-#   A version tag (vX.Y.Z) is created on main only. dev carries the next
-#   development version.
+#   A version tag (vX.Y.Z) is created on main ONLY, by the bump-version job
+#   after a release/* or hotfix/* merge. Releases (GitHub Release + bundle) are
+#   produced ONLY from main-created tags; there is no manual tag-release path.
+#   dev carries the next development version and is synced from main after each
+#   release. The .ho module header version (HOModule.h VERSION_MAJOR/MINOR) is
+#   kept in lock-step with the two leading version components on every bump.
 # =============================================================================
 
 on:
@@ -36,11 +40,8 @@ on:
       - 'hotfix/**'
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Tag to release (e.g. v0.2.0)'
-        required: false
       bump_mode:
-        description: 'Version bump mode for release/hotfix on main'
+        description: 'Admin override for the version bump level when running on main'
         required: false
         default: 'auto'
         type: choice
@@ -76,23 +77,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          # On a manual dispatch, build exactly the tag being released.
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
 
       - name: Read project version
         id: version
         run: |
           python3 -c 'import pathlib,re; text=pathlib.Path("CMakeLists.txt").read_text(); print("version=" + re.search(r"project\s*\([^)]*?VERSION\s+(\d+\.\d+\.\d+)", text, re.S).group(1))' >> "$GITHUB_OUTPUT"
-
-      - name: Validate manual release tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          if [ "${{ github.event.inputs.tag }}" != "v${{ steps.version.outputs.version }}" ]; then
-            echo "::error::workflow_dispatch tag '${{ github.event.inputs.tag }}' must exist and equal the project version at that tag (v${{ steps.version.outputs.version }}); aborting release."
-            exit 1
-          fi
-          echo "Release target validated: ${{ github.event.inputs.tag }}"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -167,23 +156,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          # On a manual dispatch, build exactly the tag being released.
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
 
       - name: Read project version
         id: version
         run: |
           python3 -c 'import pathlib,re; text=pathlib.Path("CMakeLists.txt").read_text(); print("version=" + re.search(r"project\s*\([^)]*?VERSION\s+(\d+\.\d+\.\d+)", text, re.S).group(1))' >> "$GITHUB_OUTPUT"
-
-      - name: Validate manual release tag
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          if [ "${{ github.event.inputs.tag }}" != "v${{ steps.version.outputs.version }}" ]; then
-            echo "::error::workflow_dispatch tag '${{ github.event.inputs.tag }}' must exist and equal the project version at that tag (v${{ steps.version.outputs.version }}); aborting release."
-            exit 1
-          fi
-          echo "Release target validated: ${{ github.event.inputs.tag }}"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -298,9 +275,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          # On a manual dispatch, build exactly the tag being released.
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
 
       - name: Read project version
         id: version
@@ -311,16 +285,6 @@ jobs:
             throw "Unable to read project version from CMakeLists.txt"
           }
           "version=$($Matches[1])" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-
-      - name: Validate manual release tag
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          if [ "${{ github.event.inputs.tag }}" != "v${{ steps.version.outputs.version }}" ]; then
-            echo "::error::workflow_dispatch tag '${{ github.event.inputs.tag }}' must exist and equal the project version at that tag (v${{ steps.version.outputs.version }}); aborting release."
-            exit 1
-          fi
-          echo "Release target validated: ${{ github.event.inputs.tag }}"
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -474,16 +438,19 @@ jobs:
   # Determines the bump level from the branch that was merged into main:
   #   release/*  => minor (+ reset patch), or major on BREAKING change
   #   hotfix/*   => patch, or major on BREAKING change
-  # A manual bump_mode via workflow_dispatch overrides the detection.
-  # If the source merge cannot be identified as release/* or hotfix/*
-  # (e.g. a direct push or an unlabelled squash merge), the bump is
-  # SKIPPED rather than guessed — never bump on an ambiguous push.
+  # An admin may force the level with the bump_mode input via workflow_dispatch
+  # (runs on main only). If the source merge cannot be identified as release/*
+  # or hotfix/* and no override is given, the bump is SKIPPED rather than
+  # guessed — never bump on an ambiguous push.
   # =====================================================================
   bump-version:
     name: Bump Version
     runs-on: ubuntu-latest
     needs: [build-macos, build-linux, build-windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && !contains(github.event.head_commit.message, 'skip ci')
+    if: >-
+      !contains(github.event.head_commit.message, 'skip ci') &&
+      ((github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+       github.event_name == 'workflow_dispatch')
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -579,41 +546,37 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # =====================================================================
-  # GitHub Release (tag push or manual dispatch)
+  # GitHub Release (main-created tag push only)
+  # ---------------------------------------------------------------------
+  # Releases happen ONLY from main: bump-version tags vX.Y.Z on main after a
+  # release/* or hotfix/* merge, and the tag push triggers this job. A guard
+  # verifies the tag is contained in origin/main, so a tag forced onto any
+  # other branch cannot produce a release.
   # =====================================================================
   create-release:
     name: Publish GitHub Release
     runs-on: ubuntu-latest
     needs: [build-macos, build-linux, build-windows]
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.tag != '')
+    if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # On a manual dispatch, check out the exact tag being released so the
-          # generated changelog and attached artifacts match the released source.
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.tag || '' }}
+
+      - name: Ensure release tag is on main
+        run: |
+          git fetch origin main
+          if ! git merge-base --is-ancestor "${{ github.ref_name }}" origin/main; then
+            echo "::error::Release tag '${{ github.ref_name }}' is not contained in main; releases may only be produced from main."
+            exit 1
+          fi
+          echo "Release tag ${{ github.ref_name }} confirmed on main."
 
       - name: Determine tag name
         id: tag
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "tag=${{ github.event.inputs.tag }}" >> $GITHUB_OUTPUT
-          else
-            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Validate released tag matches project version
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          sem="$(python3 -c 'import pathlib,re; t=pathlib.Path("CMakeLists.txt").read_text(); print(re.search(r"project\s*\([^)]*?VERSION\s+(\d+\.\d+\.\d+)", t, re.S).group(1))')"
-          if [ "${{ steps.tag.outputs.tag }}" != "v$sem" ]; then
-            echo "::error::Dispatch tag '${{ steps.tag.outputs.tag }}' does not match the released project version (v$sem); aborting release."
-            exit 1
-          fi
-          echo "Release target validated: ${{ steps.tag.outputs.tag }}"
+        run: echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4

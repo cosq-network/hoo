@@ -1,14 +1,14 @@
 # Hoo Project Understanding
 
 **Last Updated**: 2026-09-11  
-**Version**: 1.4.0  
+**Version**: 1.0.0  
 **Status**: Production-ready with 3,339 passing tests
 
 ---
 
 ## 1. What is Hoo?
 
-Hoo is a **high-performance, statically-typed systems programming language** designed for modern hardware. It compiles to a pure, physical-silicon-ready 64-bit RISC architecture called **HVM (Hoo Virtual Machine) v1.6**.
+Hoo is a **high-performance, statically-typed systems programming language** designed for modern hardware. It compiles to a pure, physical-silicon-ready 64-bit RISC architecture called **HVM (Hoo Virtual Machine) v1.0.0**.
 
 ### Core Philosophy: "Hardware Purity"
 
@@ -340,7 +340,7 @@ try {
 - Distinct nullable overload mangling
 - ARC cleanup for nullable objects in generic slots
 
-### ISSUE-040: HVM 1.6 Spec Compatibility
+### ISSUE-040: HVM 1.0.0 Spec Compatibility
 - Native `CMP_B` (byte comparison) instruction
 - CPU profile instructions (ICACHE.RNG, LD.P/ST.P, LR.D/SC.D)
 - ECALL/TRAPRET/CSRRW for exception handling

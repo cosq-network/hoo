@@ -152,7 +152,7 @@ public:
     // feature set. See docs/hvm/hvm-spec.md section 9.2 for the bit layout.
     static constexpr uint64_t kFeatureBaseCore = 1ULL << 0;   // hvm64-core-system
     static constexpr uint64_t kFeatureGreenCompute = 1ULL << 1; // RETAIN/RELEASE/ICACHE.RNG/LD.P/ST.P
-    static constexpr uint64_t kFeatureSubWord = 1ULL << 2;    // HVM 1.6 scalar sub-word profile
+    static constexpr uint64_t kFeatureSubWord = 1ULL << 2;    // HVM 1.0.0 scalar sub-word profile
     static constexpr uint64_t kFeatureVector = 1ULL << 3;     // HVM-V
     static constexpr uint64_t kFeatureHardwareLoop = 1ULL << 4; // HVM-L
     static constexpr uint64_t kFeatureAdvisory = 1ULL << 5;   // PREFETCH.*/MEMZERO.HINT/BR.HINT

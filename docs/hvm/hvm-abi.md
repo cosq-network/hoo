@@ -1,6 +1,6 @@
 # HVM Application Binary Interface (HVM-ABI)
 
-Version: `1.6` (silicon-ready revision)
+Version: `1.0.0` (silicon-ready revision)
 
 Normative sources:
 - `docs/hvm/hvm-spec.md` (ISA, register roles, syscall contract)
@@ -185,7 +185,7 @@ Growing down (lower addresses at the bottom):
 | `f64` / `double` | IEEE-754 binary64 bit pattern in a GPR |
 | `f8` | canonical E4M3 FP8 byte, encoded/decoded at the `f64` boundary (software-compatible shim when the host lacks native FP8) |
 
-Sub-word results produced by the HVM 1.6 scalar profile (`ARITH_B`,
+Sub-word results produced by the HVM 1.0.0 scalar profile (`ARITH_B`,
 `SHIFT_B`, `LOGIC_B`, `CMP_B`, `FLOAT_ARITH_B`) are normalized by codegen to
 this 64-bit ABI representation before they reach a call boundary.
 
@@ -392,7 +392,7 @@ Rules:
 - `hoo_alloc(size, type_id)` returns an object with `refcount = 1`.
 - `hoo_retain(obj)` increments and returns `obj`; `hoo_release(obj)` decrements
   and frees at zero.
-- The compiler emits `RETAIN`/`RELEASE` instructions (HVM 1.6 green-compute
+- The compiler emits `RETAIN`/`RELEASE` instructions (HVM 1.0.0 green-compute
   core) for ARC-managed values, and calls `_F_hoo_release_v_p` during scope
   cleanup for every ARC-managed local that was not explicitly released.
 - ARC applies to type IDs `>= 100` with explicit exclusions for types that

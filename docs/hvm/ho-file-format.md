@@ -1,6 +1,6 @@
 # HVM Object File Format (HO)
 
-Version: `1.6`
+Version: `1.0.0` (spec); header carries `version_major`/`version_minor` = `1`/`0`
 Extension: `.ho`  
 Endianness: little-endian only
 
@@ -62,8 +62,8 @@ Notes:
 - Parser validates magic, header size, section table bounds, and little-endian mode.
 - `symtab_offset` is written by serializer and kept for compatibility, but parser discovers metadata via section table.
 - The four 32-bit counts at `0x30`-`0x3C` (symbol/reloc/export/import) are informational only; the parser derives entry counts from metadata section payload sizes.
-- HVM 1.6 modules remain 64-bit. `pointer_size` must be `8` for native HVM64 code.
-- HVM 1.5 readers must reject 1.6 modules unless they explicitly opt into forward-compatible parsing of unknown feature flags.
+- HVM 1.0.0 modules remain 64-bit. `pointer_size` must be `8` for native HVM64 code.
+- Readers whose `version_major` differs from a module's `version_major` must reject it; same-major readers SHOULD parse forward when they can ignore unknown feature flags.
 
 ### 3.1 The `flags` Field
 
@@ -358,8 +358,8 @@ Parser hardening:
 ## 11. Relationship to HVM ISA
 
 - `.text` carries encoded HVM instructions.
-- HVM 1.6 `.text` may contain base32 and escape32 instructions from `docs/hvm/hvm_instruction_set.csv`.
-- Optional v1.6 extensions must be reflected in the header `flags` field.
+- HVM 1.0.0 `.text` may contain base32 and escape32 instructions from `docs/hvm/hvm_instruction_set.csv`.
+- Optional v1.0.0 extensions must be reflected in the header `flags` field.
 - Supported language/runtime surface is defined by:
   - `docs/hvm/hvm-spec.md`
   - `docs/hvm/hvm_instruction_set.csv`
@@ -410,7 +410,7 @@ Consumers:
   `modules/<name>.ho` inside a `.ha` archive and re-parse it with
   `HOModule::parse()` (see `docs/hvm/ha-archive-format.md`).
 - `HVMJIT::parseAndLoadModuleFromPath()` / `validateModule()` re-parse a `.ho`
-  and validate: magic and version exactly `1.6`, little-endian, `pointer_size`
+  and validate: magic and version exactly `1.0` (major/minor `1`/`0`), little-endian, `pointer_size`
   `8`, a non-empty `.text` present with `ALLOC | EXECUTE`, `.text`
   `virtual_size` not smaller than its payload, every `STT_FUNC` symbol offset
   within `.text`, and optional `.data` / `.rodata` sections.
@@ -469,7 +469,7 @@ to a JIT. The differences are structural:
   `(Ljava/lang/String;)V`). HO uses type offsets in `.funcmeta`, `STT_TYPE`
   symbols, and the `SHT_TYPES` section.
 - **Byte order.** `.class` is big-endian; HO is little-endian.
-- **Versioning.** Both encode major/minor in the header; HO is currently `1.6`.
+- **Versioning.** Both encode major/minor in the header; HO is currently `1.0` (spec 1.0.0, patch doc-only).
 
 ### 12.3 HO vs ELF
 
@@ -551,7 +551,7 @@ A .NET assembly is a PE/COFF file extended with CLR metadata — the closest
 | Type signatures | `#Blob` signatures (length-prefixed, compressed) | `.types` descriptor strings + `STT_TYPE` symbols |
 | References | metadata tokens (4-byte table id + row index) resolved by the JIT | symbol indices / string offsets resolved by loader or JIT |
 | Entry point | `EntryPointToken` in the CLI header | header `entry_point` RVA or manifest entry point |
-| Versioning | runtime version in CLI header; assembly version attributes | header `version_major` / `version_minor` (`1.6`) |
+| Versioning | runtime version in CLI header; assembly version attributes | header `version_major` / `version_minor` (`1`/`0`) |
 | Relocations | none for managed code (JIT resolves tokens); PE `.reloc` only for native/mixed | explicit `.reloc` table for static linking |
 | Features / safety | CLI header flags (ILOnly, 32BitRequired, StrongNameSigned) | `flags` field + `.note` required features |
 

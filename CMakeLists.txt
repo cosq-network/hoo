@@ -5,7 +5,7 @@ if(POLICY CMP0091)
 endif()
 
 project(Hoo
-    VERSION 1.4.0
+    VERSION 1.0.0
     DESCRIPTION "Hoo – a high-performance statically-typed systems programming language"
     LANGUAGES C CXX
 )

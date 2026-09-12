@@ -58,8 +58,11 @@ std::string HooCLI::getUsage(std::string_view programName) const {
 }
 
 std::string HooCLI::getVersion() const {
+    const std::string hvm =
+        std::to_string(hvm::HOModule::VERSION_MAJOR) + "." +
+        std::to_string(hvm::HOModule::VERSION_MINOR);
     return std::string(COMPILER_NAME) + " - " + std::string("Hoo") + " v" + VERSION +
-           "\n" + "HVM v1.4 Physical" +
+           "\n" + "HVM v" + hvm + " Physical" +
            "\n" + "Licensed under the Apache License, Version 2.0\n";
 }
 

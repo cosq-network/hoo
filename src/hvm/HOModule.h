@@ -278,8 +278,11 @@ public:
     static std::unique_ptr<HOModule> parse(FILE* file);
 
     static constexpr uint32_t MAGIC = 0x484F4F43;
+    // HVM specification version encoded in every .ho module header. The spec is
+    // versioned 1.0.0; the header stores major/minor only (patch is doc-only),
+    // so a 1.0.0 spec header carries version_major=1, version_minor=0.
     static constexpr uint16_t VERSION_MAJOR = 1;
-    static constexpr uint16_t VERSION_MINOR = 6;
+    static constexpr uint16_t VERSION_MINOR = 0;
     static constexpr size_t HEADER_SIZE = 64;
 
 private:

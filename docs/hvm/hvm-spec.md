@@ -1,12 +1,12 @@
 # Hoo Virtual Machine (HVM) Specification
 
-Version: `1.6` (silicon-ready revision)
+Version: `1.0.0` (silicon-ready revision)
 
 This document is the **normative architectural contract** for a physical HVM
 microprocessor, a cycle-accurate simulator, the interpreter, and the LLVM JIT.
 HVM is a standalone 64-bit load/store ISA. It is RISC-V-inspired but is not
 binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V,
-AMD64, or ARM64. HVM 1.6 adds profile-gated extensions without changing the
+AMD64, or ARM64. HVM 1.0.0 adds profile-gated extensions without changing the
 64-bit register machine or public ABI.
 
 **Silicon readiness.** A conforming physical implementation must implement the
@@ -57,7 +57,7 @@ Each hart has the following state:
 - `pc`: 64-bit byte address.
 - `r0..r31`: 64-bit integer registers, with `r0` permanently reading as zero
   and writes to it discarded.
-- Optional floating-point status/control state; the HVM 1.6 core does not
+- Optional floating-point status/control state; the HVM 1.0.0 core does not
   expose accrued FP exception flags through the public ABI.
 - `privilege`: `S` or `U` in the system profile.
 - `trap_state`: `cause`, `fault_pc`, `fault_address`, `bad_instruction`, and
@@ -237,9 +237,9 @@ A hosted HVM execution API reports an unhandled synchronous trap as `-1` and
 sets its VM error state for compatibility with the current interpreter/JIT
 API.
 
-### 5.2 HVM 1.6 Required Green-Compute Core Extensions
+### 5.2 HVM 1.0.0 Required Green-Compute Core Extensions
 
-HVM 1.6 promotes the following low-complexity extensions into the standard HVM CPU profile for documented mobile, desktop, server, and robotics systems:
+HVM 1.0.0 promotes the following low-complexity extensions into the standard HVM CPU profile for documented mobile, desktop, server, and robotics systems:
 
 - Runtime atomics: `RETAIN`, `RELEASE`
 - JIT cache coherency: `ICACHE.RNG`
@@ -247,9 +247,9 @@ HVM 1.6 promotes the following low-complexity extensions into the standard HVM C
 
 These instructions remain 64-bit operations. They do not change pointer width, register width, stack slot width, or the public ABI.
 
-### 5.3 HVM 1.6 scalar sub-word profile
+### 5.3 HVM 1.0.0 scalar sub-word profile
 
-The HVM 1.6 scalar profile adds five base-encoded instruction families while
+The HVM 1.0.0 scalar profile adds five base-encoded instruction families while
 retaining the 64-bit register machine:
 
 - `ARITH_B` (`0x11`) samples operands from bits 7:0 and provides wrapping
@@ -274,7 +274,7 @@ the existing f64 language boundary, preserving mixed-precision compatibility.
 
 ### 5.4 Floating-point state and semantics
 
-HVM has no separate floating-point register file in version 1.6. `FADD`,
+HVM has no separate floating-point register file in version 1.0.0. `FADD`,
 `FSUB`, `FMUL`, `FDIV`, and floating comparisons interpret the 64-bit contents
 of the referenced general-purpose registers as IEEE-754 binary64 values and
 write their result bit pattern to a general-purpose register.
@@ -461,7 +461,7 @@ Arguments are passed in registers `r2`, `r3`, and `r4` (for three-argument calls
 
 - This spec is a **pure hardware profile**, suitable for physical CPU design.
 - The HVM backend now performs aggressive lowering to maintain this purity.
-- HVM 1.6 remains a **64-bit architecture**. Compact object references are an optional managed-runtime representation and are not native pointers at C/C++ ABI boundaries.
+- HVM 1.0.0 remains a **64-bit architecture**. Compact object references are an optional managed-runtime representation and are not native pointers at C/C++ ABI boundaries.
 - **RET implementation note**: The architectural semantics of `RET` are `pc = r29` (branch to link register). In the interpreter and JIT backends, `RET` is implemented via native C++ function return (`return r1`); this is equivalent because `CALL` stores the return address (`pc+4`) in `r29` before transferring control via a C++ function call. A physical hardware implementation must execute `pc = r29` directly.
 - **JAL / CALL redundancy**: `JAL` (base32, 16-bit offset) and `CALL` (escape32, 20-bit offset) are semantically identical — both set `rd = pc+4; pc += offset`. `CALL` provides a larger reachable range; `JAL` saves code space when the offset fits in 16 bits.
 - **JMP / TAILCALL redundancy**: `JMP` (base32, 16-bit offset) and `TAILCALL` (escape32, 20-bit offset) are semantically identical — both perform `pc += offset` without saving a return address. `TAILCALL` provides a larger range; `JMP` saves code space when the offset fits.
@@ -582,7 +582,7 @@ CSRs are addressed by a 12-bit immediate field in the `CSRRW` instruction.
 **`feature0` field layout** (64-bit, read-only; writes are ignored):
 - Bit 0: `BaseCore`    — `hvm64-core-system` minimal instruction set
 - Bit 1: `GreenCompute` — RETAIN/RELEASE/ICACHE.RNG/LD.P/ST.P
-- Bit 2: `SubWord`     — HVM 1.6 scalar sub-word profile
+- Bit 2: `SubWord`     — HVM 1.0.0 scalar sub-word profile
 - Bit 3: `Vector`      — HVM-V
 - Bit 4: `HardwareLoop` — HVM-L
 - Bit 5: `Advisory`    — PREFETCH.*/MEMZERO.HINT/BR.HINT

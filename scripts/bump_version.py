@@ -215,17 +215,24 @@ def update_hvm_module_version(new_ver):
         return
     with open(path) as f:
         content = f.read()
+    # The .ho header carries major/minor only; keep it in lock-step with the
+    # two leading components of the versioned release (patch is doc-only).
+    updated = re.sub(
+        r'(static constexpr uint16_t VERSION_MAJOR = )(\d+);',
+        lambda m: f'{m.group(1)}{new_ver[0]};',
+        content,
+    )
     updated = re.sub(
         r'(static constexpr uint16_t VERSION_MINOR = )(\d+);',
         lambda m: f'{m.group(1)}{new_ver[1]};',
-        content,
+        updated,
     )
     if updated != content:
         with open(path, "w") as f:
             f.write(updated)
-        print(f"  HOModule.h      updated VERSION_MINOR → {new_ver[1]}")
+        print(f"  HOModule.h      updated .ho header version -> {new_ver[0]}.{new_ver[1]}")
     else:
-        print(f"  HOModule.h      VERSION_MINOR unchanged")
+        print(f"  HOModule.h      .ho header version unchanged")
 
 
 # ---------------------------------------------------------------------------

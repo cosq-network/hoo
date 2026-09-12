@@ -8055,7 +8055,7 @@ int64_t HVMJIT::executeFunction(const std::shared_ptr<hvm::HOModule>& module, co
             case hvm::Opcode::PREFETCH_NTA:
             case hvm::Opcode::MEMZERO_HINT:
             case hvm::Opcode::BR_HINT:
-    // Advisory no-ops per HVM 1.6 spec
+    // Advisory no-ops per HVM 1.0.0 spec
                 break;
             case hvm::Opcode::RDPROF:
                 writeReg(std::get<hvm::OperandsI>(ins->getOperands()).rd, 0);

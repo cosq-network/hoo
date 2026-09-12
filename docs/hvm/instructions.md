@@ -1,16 +1,16 @@
 # HVM Core Instruction Reference
 
-Version: `1.6` (silicon-ready revision)
+Version: `1.0.0` (silicon-ready revision)
 Profile: `hvm64-core-system` / `hvm64-silicon-mvp` (Hardware Ready)
 Normative sources:
 - `docs/hvm/hvm_instruction_set.csv`
 - `docs/hvm/hvm-spec.md`
 
-This reference defines a **64-bit hardware-ready ISA**. HVM is RISC-V-inspired but is not binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.6 runtime acceleration instructions with software fallback.
+This reference defines a **64-bit hardware-ready ISA**. HVM is RISC-V-inspired but is not binary-, privilege-, trap-, memory-model-, or ABI-compatible with RISC-V. All high-level VM constructs are handled via software lowering, standard library calls, or profile-gated HVM 1.0.0 runtime acceleration instructions with software fallback.
 
 ## 1. Scope
 
-This reference defines the physical instructions supported by the HVM core and optional HVM 1.6 system profiles. It is sufficient to support the Hoo language through aggressive compiler-level lowering while preserving a 64-bit register and pointer ABI.
+This reference defines the physical instructions supported by the HVM core and optional HVM 1.0.0 system profiles. It is sufficient to support the Hoo language through aggressive compiler-level lowering while preserving a 64-bit register and pointer ABI.
 
 ## 2. Register Convention Summary
 
@@ -111,9 +111,9 @@ NaN canonicalization: every NaN result is the canonical quiet NaN
 - Native 8-bit: `CMPEQ.B` `CMPNE.B` `CMPLT.B` `CMPLE.B` `CMPULT.B` `CMPULE.B` (opcode `0x42`; operands are truncated to 8 bits before comparison)
 - Float: `FCMPEQ` `FCMPLT` `FCMPLE`
 
-### 4.5a HVM 1.6 scalar sub-word operations
+### 4.5a HVM 1.0.0 scalar sub-word operations
 
-The HVM 1.6 scalar profile keeps the 64-bit register/ABI model while making
+The HVM 1.0.0 scalar profile keeps the 64-bit register/ABI model while making
 the low-byte operation explicit:
 
 - `ARITH_B` (`0x11`): `ADD.B`, `SUB.B`, `MUL.B`, `DIV.B`, `DIVU.B`, `REM.B`,
@@ -213,7 +213,7 @@ Physical processors and system simulators must implement the system-profile
 behavior in `hvm-spec.md` section 9. First FPGA/ASIC cores SHOULD implement the
 Silicon MVP profile in `hvm-spec.md` section 10.
 
-### 4.13 HVM 1.6 runtime and green-compute extensions
+### 4.13 HVM 1.0.0 runtime and green-compute extensions
 - `RETAIN` `RELEASE`: Non-trapping reference-count update helpers for managed Hoo objects.
 - `ICACHE.RNG`: Invalidate instruction-fetch / I-cache state for `[base, base+size)`
   so subsequent fetches observe prior stores (required on silicon after code stores;

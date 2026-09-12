@@ -4,7 +4,7 @@
   <img src="hoo-logo.svg" alt="Hoo Logo" width="250" />
 </p>
 
-[![Version](https://img.shields.io/badge/version-1.4.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v1.4.0)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/cosq-network/hoo/releases/tag/v1.0.0)
 [![macOS Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-macos)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
 [![Linux Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-linux)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
 [![Windows Build](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml/badge.svg?job=build-windows)](https://github.com/cosq-network/hoo/actions/workflows/build-and-test.yml)
@@ -16,7 +16,7 @@ Hoo is a high-performance, statically-typed systems programming language and com
 
 ## 1. Architectural Vision: Hardware Purity
 
-The Hoo ecosystem is built around the **HVM v1.6** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
+The Hoo ecosystem is built around the **HVM v1.0.0** specification. Unlike traditional virtual machines (JVM, Python) that rely on high-level semantic bytecode, HVM is a normative model for a physical processor.
 
 - **ISA Purity**: No "magic" opcodes for objects or exceptions. The instruction set is limited to fundamental arithmetic, memory, and control-flow primitives.
 - **Aggressive Lowering**: The compiler (`hoo`) performs all complex memory offset calculations, array scaling, and exception shadow-stack management at compile-time.
@@ -125,7 +125,7 @@ src/
 docs/         Normative specifications and implementation guides.
 ```
 
-## 7. HVM v1.6 Normative Reference
+## 7. HVM v1.0.0 Normative Reference
 
 Current profile: **Silicon MVP** (Physical Silicon Ready)
 

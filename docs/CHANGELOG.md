@@ -11,6 +11,27 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- chore(release): reset all component versions to **1.0.0** and harden GitFlow CI/CD
+  - Project version reset to `1.0.0` in `CMakeLists.txt`, `README.md` badge, and
+    `vcpkg.json`. The HVM specification is reset from 1.6 to **1.0.0** across
+    `docs/hvm/` (spec, ISA, ABI, file format, register set CSV) and the derived
+    mentions in `PROJECT_UNDERSTANDING.md` / dev docs / issues.
+  - `.ho` module header version reset to `VERSION_MAJOR=1` /
+    `VERSION_MINOR=0` (spec `1.0.0`; the header stores major/minor only, patch
+    is documentation-only). `bump_version.py` now keeps `VERSION_MAJOR` and
+    `VERSION_MINOR` in lock-step with the two leading version components on
+    every gitflow bump (previously only the minor moved).
+  - CI/CD: releases are produced **only from `main`** — the manual
+    `workflow_dispatch` tag-release path is removed; `create-release` triggers on
+    a `v*` tag push and verifies the tag is contained in `origin/main`;
+    `bump-version` remains main-only (with an admin `bump_mode` override).
+    Bump policy follows standard SemVer (pre-1.0): `release/*` → minor,
+    `hotfix/*` → patch, `BREAKING CHANGE` → major.
+  - CI/CD: scoped per-build-job concurrency (instead of a workflow-wide
+    cancel-in-progress) and a `[skip ci]` guard on `create-release-bundle`, so a
+    version-bump autopush to `main` can no longer cancel the in-flight release
+    bundle/sync jobs or run the bundle against skipped builds.
+
 - feat(runtime): raise Hoo exceptions for unexpected `hoo.system` failures
   - Unexpected failures in `system_set_env`, `system_unset_env`,
     `system_set_current_dir`, `system_exec`, `system_exec_status`,
