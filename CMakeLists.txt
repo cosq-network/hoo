@@ -666,6 +666,8 @@ if(HOO_BUILD_TESTS)
         tests/integration/hashing/HashingCLIIntegrationTest.cpp
         tests/integration/csv/CsvCLIIntegrationTest.cpp
         tests/integration/compression/CompressionCLIIntegrationTest.cpp
+        tests/integration/regex/RegexCLIIntegrationTest.cpp
+        tests/integration/system/SystemCLIIntegrationTest.cpp
         tests/integration/datetime/DatetimeCLIIntegrationTest.cpp
         tests/integration/fs/FsCLIIntegrationTest.cpp
         tests/integration/fs/FsModuleIntegrationTest.cpp

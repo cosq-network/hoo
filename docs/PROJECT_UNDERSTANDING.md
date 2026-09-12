@@ -2,7 +2,7 @@
 
 **Last Updated**: 2026-09-11  
 **Version**: 1.4.0  
-**Status**: Production-ready with 3,283 passing tests
+**Status**: Production-ready with 3,339 passing tests
 
 ---
 
@@ -327,7 +327,7 @@ try {
 - `serializable` keyword for JSON round-tripping
 - Tagged buffer/tensor JSON conversion
 - Nested field lowering and cycle validation
-- Full preset verification (3,283 tests pass)
+- Full preset verification (3,339 tests pass)
 
 ### Phase 11.2: DateTime as Instantiable Class
 - Converted from singleton API to ARC-managed class (type ID 119)
@@ -352,7 +352,7 @@ try {
 ## 6. Performance & Testing
 
 ### Test Coverage
-- **3,283 tests** passing (0 failures)
+- **3,339 tests** passing (0 failures)
 - **Unit tests**: Parsing, AST, codegen, HVM instruction semantics, runtime (ARC, strings, arrays, etc.)
 - **Integration tests**: CLI, JIT compilation, exception handling, async operations
 - **End-to-end tests**: Collections, operators, literals, statements, arguments
@@ -536,7 +536,7 @@ Hoo is a **systems programming language that compiles directly to a hardware-rea
 - **Modern OOP**: Classes, inheritance, access qualifiers, virtual methods
 - **Async/Await**: Native coroutines with libuv integration
 - **Zero Runtime Overhead**: All complex semantics resolved at compile time
-- **Production Ready**: 3,283 tests passing, cross-platform (macOS, Linux, Windows)
+- **Production Ready**: 3,339 tests passing, cross-platform (macOS, Linux, Windows)
 - **Extensible**: runtime modules covering strings, collections, networking, async, threading, JSON, regex, compression, and more
 
 The codebase is well-structured, well-tested, and designed for clear separation of concerns: parser → AST → codegen → bytecode → JIT → native code. Every component has a clear responsibility, making the project maintainable and easy to extend.

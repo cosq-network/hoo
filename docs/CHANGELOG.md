@@ -11,12 +11,88 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(runtime): raise Hoo exceptions for unexpected `hoo.system` failures
+  - Unexpected failures in `system_set_env`, `system_unset_env`,
+    `system_set_current_dir`, `system_exec`, `system_exec_status`,
+    `system_uptime_ms`, `system_total_memory`, and `system_free_memory` now
+    raise a `RuntimeException` instead of returning a sentinel value at the Hoo
+    level; `hoo_system_get_env` still returns `nil` for an unset variable
+    (expected absence).  The C-ABI sentinel contracts are unchanged for
+    embedders (except `hoo_system_exec`, which returns `NULL` on spawn failure
+    instead of `""`).
+  - New `jit_hoo_exception_current` bridge and `_F_hoo_exception_current_p`
+    symbol; each throw-capable `jit_system_*` bridge records the pending
+    exception via `hoo_system_error_message()` and the code generator
+    re-throws it through the HVM throw syscall (SYSCALL 9), so `try/catch`
+    works in both the interpreter and the JIT.
+  - `hoo_system_exit` now flushes `stdout`/`stderr` and clamps the code to
+    `0..255`; documented that it bypasses ARC teardown / shadow-stack
+    unwinding (embedders should raise an exception instead).
+  - Windows names/values and user/home/hostname strings are now converted
+    through UTF-8 (`SetEnvironmentVariableW`/`GetEnvironmentVariableW`,
+    `GetComputerNameW`); `system_set_env(name, "")` deletes the variable.
+  - Fixed error plumbing: all throw-capable functions capture platform error
+    strings for the raised exception; `system_current_dir` now delegates to
+    `hoo_fs_current_dir` (single source of truth).
+  - Docs: rewrote `docs/runtime/api/system.md` (exceptions, exec text-only /
+    stderr inheritance, exit contract, UTF-8), rewrote the phantom-laden
+    `docs/runtime/api/process.md` to the five real functions
+    (`process_self_pid`, `process_capture`, `process_kill`, `process_spawn`,
+    `process_wait`), fixed the Process table in `docs/runtime/api/index.md`,
+    and corrected the `System`/`Process` class-claim in `docs/runtime/README.md`.
+  - `tests/integration/system/SystemCLIIntegrationTest.cpp` now covers the
+    new exception semantics (try/catch catches system failure, uncaught
+    system failure exits with the trap, invalid env name throws, empty-value
+    set removes the variable, `e.message` is populated on failure) plus the
+    exit contract (code propagation, clamping to 0..255, stdout flush,
+    immediate termination), a UTF-8 environment-value round trip, monotonic
+    uptime, memory ordering, exec empty-output, and multi-variable isolation
+    (37 end-to-end tests total, all cross-platform).
+  - Test suite now reports **3,354 passing tests** across 145 suites (0 failures).
+  - `hoo_system_unset_env` on Windows now truly deletes the variable via
+    `SetEnvironmentVariableW(name, NULL)`; `hoo_system_set_env`/`get_env` were
+    switched to the same Win32 process environment block so get/set/unset stay
+    consistent (UCRT `getenv`/`_putenv_s` keep a separate copy).
+  - Cross-platform fixes: the four `hooc_hvm_sys_{push,pop,throw,rethrow}_
+    handler_state` bridges are now `HVM_RUNTIME_EXPORT`ed, so OrcJIT compiles
+    `try/catch` bytecode natively on Windows instead of silently falling back
+    to the interpreter; `hoo_system_free_memory` on macOS now releases the
+    `mach_host_self()` send right (`mach_port_deallocate`), removing a
+    per-call send-right leak.
+  - `hoo_system_os_version` on Windows now uses `RtlGetVersion` instead of the
+    deprecated `GetVersionExA`, which lied (reported 6.2.x on Windows 8.1+).
+  - `hoo_system_exec_status` now returns a normalized exit code on POSIX
+    (`WEXITSTATUS`, `128 + signal`), matching the code `_pclose` already
+    reported on Windows.
+  - Removed dead null checks in the `system_*` JIT bridge string paths and made
+    the null/empty-string contracts explicit in `hoo_system.h`.
+  - Rewrote `docs/runtime/api/system.md`, whose old API names (`system_env`,
+    `system_env_set`, `system_env_unset`, `system_info`, `system_time_nanos`,
+    `system_free_string`) never existed in the runtime and failed at run time.
+  - Add `tests/integration/system/SystemCLIIntegrationTest.cpp` with 22
+    end-to-end CLI tests covering every `system_*` free function, the get/set/
+    unset environment round trip, normalized exec status, and guards against
+    the documented-but-nonexistent `system_env` and `System.*` call styles.
+  - Test suite now reports **3,339 passing tests** across 145 suites (0 failures).
+
+- test(integration): add end-to-end regex module CLI test suite
+  - Add `tests/integration/regex/RegexCLIIntegrationTest.cpp` with 24 tests
+    covering `Regex` compile (constructor and `Regex.compile` with `i`/`s`
+    flags), compile-failure null, `match`, `search`, `find`, `find_all`,
+    `capture`, `group`, `replace`, `split`, the four free functions
+    (`regex_match`, `regex_search`, `regex_replace`, `regex_split`), and
+    `println` output verification of returned strings.
+  - Add `jit_regex_compile` / `jit_regex_compile_with_flags` trampolines and
+    `_F_M_hoo_E_regex_compile_v_p[_p]` JIT symbol entries so the static
+    `Regex.compile(pattern, flags)` call is reachable by the JIT.
+  - Test suite now reports **3,339 passing tests** across 145 suites (0 failures).
+
 - fix(test): guard HooDecimalTest C++ exception tests on Windows
   - Guard `ParseOverflowThrows`, `AddOverflowThrows`, and `DivByZeroThrows`
     with `#ifndef _WIN32` so SEH unwinding no longer corrupts the OrcJIT
     exception-handling state (previously caused a SEGFAULT in
     `NewLanguageFeaturesTest.TryCatchFinallyHandlesThrownException`).
-  - Test suite now reports **3,283 passing tests** across 142 suites (0 failures).
+  - Test suite now reports **3,339 passing tests** across 145 suites (0 failures).
 
 - ci: fix Linux build, skip redundant bumps, and slim downstream jobs
   - Fix the Linux job on `ubuntu-latest` (Ubuntu 24.04): rely on the distro's
@@ -41,7 +117,7 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
     `hoo_exception_custom()` so failed allocations degrade to an empty message.
   - Migrate the last 7 `#ifndef` headers to `#pragma once` and move it to line 1
     in `hoo_overload.h`.
-  - Test suite now reports **3,283 passing tests** across 142 suites (0 failures).
+  - Test suite now reports **3,339 passing tests** across 145 suites (0 failures).
 
 - ci: adopt GitFlow for CI/CD and versioning
   - Rework `.github/workflows/build-and-test.yml` around the GitFlow branch

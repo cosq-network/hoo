@@ -324,6 +324,33 @@ static bool isSystemFreeFunction(const std::string& functionName) {
     return names.count(functionName) > 0;
 }
 
+// How a throw-capable system free function signals failure in its C-ABI
+// return value.  The jit_* bridge records a pending RuntimeException via
+// hoo_exception_set_current() and returns these signals; the code generator
+// uses them to decide whether to re-throw the pending exception so Hoo
+// try/catch works in both the interpreter and the JIT.
+enum class SystemThrowCondition : uint8_t {
+    None,          // call never fails in a way Hoo should observe
+    NonZeroFails,  // 0 = success, any non-zero value = failure
+    NilFails,      // non-nil pointer = success, 0 (nil) = failure
+    NegOneFails    // any value except -1 = success
+};
+
+static SystemThrowCondition systemFreeFunctionThrowCondition(const std::string& functionName) {
+    if (functionName == "system_set_env" || functionName == "system_unset_env" ||
+        functionName == "system_set_current_dir") {
+        return SystemThrowCondition::NonZeroFails;
+    }
+    if (functionName == "system_exec") {
+        return SystemThrowCondition::NilFails;
+    }
+    if (functionName == "system_uptime_ms" || functionName == "system_exec_status" ||
+        functionName == "system_total_memory" || functionName == "system_free_memory") {
+        return SystemThrowCondition::NegOneFails;
+    }
+    return SystemThrowCondition::None;
+}
+
 static bool isProcessFreeFunction(const std::string& functionName) {
     static const std::unordered_set<std::string> names = {
         "process_self_pid", "process_capture", "process_kill", "process_spawn", "process_wait"
@@ -3812,6 +3839,29 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 
                 uint8_t dest = allocateRegister();
                 emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+
+                // Throw-capable system functions (set_env, unset_env, exec,
+                // exec_status, set_current_dir, uptime_ms, total_memory,
+                // free_memory) record unexpected failures as a pending
+                // RuntimeException before returning their failure signal.
+                // Re-raise it through the HVM throw syscall so Hoo try/catch
+                // handles it uniformly in the interpreter and the JIT.
+                switch (systemFreeFunctionThrowCondition(functionName)) {
+                    case SystemThrowCondition::NonZeroFails:
+                        emitSystemThrowCheck(dest, /*throwOnZeroResult=*/false,
+                                             /*throwOnNegOneResult=*/false);
+                        break;
+                    case SystemThrowCondition::NilFails:
+                        emitSystemThrowCheck(dest, /*throwOnZeroResult=*/true,
+                                             /*throwOnNegOneResult=*/false);
+                        break;
+                    case SystemThrowCondition::NegOneFails:
+                        emitSystemThrowCheck(dest, /*throwOnZeroResult=*/false,
+                                             /*throwOnNegOneResult=*/true);
+                        break;
+                    case SystemThrowCondition::None:
+                        break;
+                }
                 return dest;
             }
         }
@@ -5068,6 +5118,31 @@ void HVMCodeGenerator::emitNullCheck(uint8_t valueReg) {
     bindLabel(ok);
 }
 
+void HVMCodeGenerator::emitSystemThrowCheck(uint8_t valueReg, bool throwOnZeroResult, bool throwOnNegOneResult) {
+    // The bridge recorded a pending RuntimeException via
+    // hoo_exception_set_current() before returning the failure signal that
+    // triggers this check.  Re-throw it through the HVM throw syscall so Hoo
+    // try/catch handles it uniformly in the interpreter and the JIT.
+    Label* skip = createLabel();
+    if (throwOnNegOneResult) {
+        // success is any value other than -1: branch on (value + 1) != 0
+        uint8_t tmp = allocateRegister();
+        emit(Opcode::ADDI, OperandsI{tmp, valueReg, 1});
+        emitBranch(Opcode::BNE, tmp, 0, skip);
+        freeRegister(tmp);
+    } else if (throwOnZeroResult) {
+        // failure is exactly 0 (nil / valid success values are non-zero)
+        emitBranch(Opcode::BNE, valueReg, 0, skip);
+    } else {
+        // failure is any non-zero value; 0 is success
+        emitBranch(Opcode::BEQ, valueReg, 0, skip);
+    }
+    emitCall(Opcode::CALL, "_F_hoo_exception_current_p");
+    emit(Opcode::MOV, OperandsR{2, 1, 0, 0});
+    emit(Opcode::SYSCALL, OperandsI{0, 0, 9});
+    bindLabel(skip);
+}
+
 
 uint32_t HVMCodeGenerator::typeIdFromDeclaredType(const ast::Type* type, std::string* outClassName) const {
     if (dynamic_cast<const ast::AnyType*>(type)) return 0;
@@ -6302,7 +6377,7 @@ uint32_t HVMCodeGenerator::getTypeId(const ast::Type* type, const ast::Expressio
                         if (objTypeId == HOO_TYPE_REGEX) { // Regex
                             if (member == "match" || member == "search") return HOO_TYPE_INT64; // int64 (type ID 1)
                             if (member == "replace" || member == "find" || member == "group") return HOO_TYPE_STRING; // string (type ID 101)
-                            if (member == "split") return HOO_TYPE_ARRAY; // array (type ID 102)
+                            if (member == "split" || member == "find_all" || member == "capture") return HOO_TYPE_ARRAY; // array (type ID 102)
                             if (member == "release") return HOO_TYPE_VOID; // void (type ID 4)
                             return HOO_TYPE_OBJECT;
                         }

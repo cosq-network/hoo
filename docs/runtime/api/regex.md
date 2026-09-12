@@ -83,7 +83,7 @@ matches(text: string) :int64
 
 **Returns:** `int64` — 1 if the pattern matches somewhere in `text`, 0 otherwise.
 
-**Errors:** Returns -1 if the regex evaluation fails.
+**Errors:** Returns 0 if the regex evaluation fails.
 
 **Complete Example:**
 
@@ -118,7 +118,7 @@ is_match(text: string) :int64
 
 **Returns:** `int64` — 1 if the pattern fully matches `text`, 0 otherwise.
 
-**Errors:** Returns -1 if the regex evaluation fails.
+**Errors:** Returns 0 if the regex evaluation fails.
 
 **Complete Example:**
 

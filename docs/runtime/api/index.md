@@ -424,11 +424,11 @@ precision limits.
 
 | API | Signature |
 |-----|-----------|
-| `process_execute` | `process_execute(command: string) :string` |
-| `process_capture` | `process_capture(command: string, input: string) :string` |
-| `process_capture_status` | `process_capture_status(command: string, input: string) :array` |
-| `process_exit` | `process_exit(exit_code: int64) :void` |
-| `process_pid` | `process_pid() :int64` |
+| `process_self_pid` | `process_self_pid() :int64` |
+| `process_capture` | `process_capture(command: string) :string` |
+| `process_kill` | `process_kill(pid: int64, signal: int64) :int64` |
+| `process_spawn` | `process_spawn(command: string, argv: array) :int64` |
+| `process_wait` | `process_wait(pid: int64) :int64` |
 
 ---
 
@@ -440,12 +440,24 @@ precision limits.
 
 | API | Signature |
 |-----|-----------|
-| `system_info` | `system_info() :string` |
-| `system_env` | `system_env(name: string) :string` |
-| `system_time_nanos` | `system_time_nanos() :int64` |
-| `system_env_set` | `system_env_set(name: string, value: string) :int64` |
-| `system_env_unset` | `system_env_unset(name: string) :int64` |
-| `system_free_string` | `system_free_string(str: string) :void` |
+| `system_get_env` | `system_get_env(name: string) :string` |
+| `system_set_env` | `system_set_env(name: string, value: string) :int64` |
+| `system_unset_env` | `system_unset_env(name: string) :int64` |
+| `system_hostname` | `system_hostname() :string` |
+| `system_os_name` | `system_os_name() :string` |
+| `system_os_version` | `system_os_version() :string` |
+| `system_cpu_count` | `system_cpu_count() :int64` |
+| `system_process_id` | `system_process_id() :int64` |
+| `system_uptime_ms` | `system_uptime_ms() :int64` |
+| `system_exit` | `system_exit(code: int64) :void` |
+| `system_exec` | `system_exec(command: string) :string` |
+| `system_exec_status` | `system_exec_status(command: string) :int64` |
+| `system_user_home` | `system_user_home() :string` |
+| `system_user_name` | `system_user_name() :string` |
+| `system_current_dir` | `system_current_dir() :string` |
+| `system_set_current_dir` | `system_set_current_dir(path: string) :int64` |
+| `system_total_memory` | `system_total_memory() :int64` |
+| `system_free_memory` | `system_free_memory() :int64` |
 
 ---
 

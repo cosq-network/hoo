@@ -61,6 +61,66 @@ TEST_F(HooStandardLibraryJitTest, RegexFree) {
     EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 1);
 }
 
+TEST_F(HooStandardLibraryJitTest, RegexFindAll) {
+    const std::string source = R"hoo(
+        import hoo.regex;
+        func:int64 test() {
+            var re = new Regex("\\d+");
+            var matches = re.find_all("a1 b22 c333");
+            var count = matches.length();
+            re.release();
+            return count;
+        }
+    )hoo";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
+}
+
+TEST_F(HooStandardLibraryJitTest, RegexCapture) {
+    const std::string source = R"hoo(
+        import hoo.regex;
+        func:int64 test() {
+            var re = new Regex("(\\w+)@(\\w+)");
+            var groups = re.capture("user@host");
+            var count = groups.length();
+            re.release();
+            return count;
+        }
+    )hoo";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 3);
+}
+
+TEST_F(HooStandardLibraryJitTest, RegexFind) {
+    const std::string source = R"hoo(
+        import hoo.regex;
+        func:int64 test() {
+            var re = new Regex("\\w+");
+            var m = re.find("hello world");
+            var len = m.length();
+            re.release();
+            return len;
+        }
+    )hoo";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 5);
+}
+
+TEST_F(HooStandardLibraryJitTest, RegexGroup) {
+    const std::string source = R"hoo(
+        import hoo.regex;
+        func:int64 test() {
+            var re = new Regex("(\\w+)@(\\w+)");
+            var g = re.group("user@host", 1);
+            var len = g.length();
+            re.release();
+            return len;
+        }
+    )hoo";
+    ASSERT_TRUE(jit.loadSourceCode("test", source)) << jit.getLastError();
+    EXPECT_EQ(jit.run("_F_M_test_E_test_i8"), 4);
+}
+
 TEST_F(HooStandardLibraryJitTest, UuidClass) {
     const std::string source = R"(
         import hoo.uuid;

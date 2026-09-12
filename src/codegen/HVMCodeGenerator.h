@@ -388,6 +388,16 @@ private:
      */
     void emitNullCheck(uint8_t valueReg);
 
+    /**
+     * Emit a pending-runtime-exception check after a call to a throw-capable
+     * system free function.  On failure the bridge recorded the exception via
+     * hoo_exception_set_current(); this raises it through the HVM throw
+     * syscall (SYSCALL 9) so Hoo try/catch works in both interpreters and the
+     * JIT.  The check is emitted only for functions whose C-ABI contract lacks
+     * a usable failure signal in the return value otherwise.
+     */
+    void emitSystemThrowCheck(uint8_t valueReg, bool throwOnZeroResult, bool throwOnNegOneResult);
+
 };
 
 } // namespace hooc

@@ -25,6 +25,30 @@ TEST_F(HooRegexTest, CompileWithFlags) {
     EXPECT_EQ(hoo_regex_match(re_, "HELLO"), 1);
 }
 
+TEST_F(HooRegexTest, DotAllFlagMatchesNewline) {
+    re_ = hoo_regex_compile_with_flags("a.b", "s");
+    ASSERT_NE(re_, nullptr);
+    EXPECT_EQ(hoo_regex_match(re_, "a\nb"), 1);
+}
+
+TEST_F(HooRegexTest, GlobalFlagAccepted) {
+    re_ = hoo_regex_compile_with_flags("a", "ig");
+    ASSERT_NE(re_, nullptr);
+    EXPECT_EQ(hoo_regex_match(re_, "A"), 1);
+}
+
+TEST_F(HooRegexTest, UnknownFlagRejected) {
+    HooRegex bad = hoo_regex_compile_with_flags("a", "x");
+    EXPECT_EQ(bad, nullptr);
+    EXPECT_NE(hoo_regex_error(), nullptr);
+}
+
+TEST_F(HooRegexTest, MatchReturnsZeroOnError) {
+    EXPECT_EQ(hoo_regex_match(nullptr, "hello"), 0);
+    EXPECT_EQ(hoo_regex_search(nullptr, "hello"), 0);
+    EXPECT_NE(hoo_regex_error(), nullptr);
+}
+
 TEST_F(HooRegexTest, Match) {
     re_ = hoo_regex_compile("hello");
     ASSERT_NE(re_, nullptr);
@@ -102,6 +126,32 @@ TEST_F(HooRegexTest, Group) {
     ASSERT_NE(g2, nullptr);
     EXPECT_STREQ(g2, "host");
     hoo_regex_free_string(g2);
+}
+
+TEST_F(HooRegexTest, Capture) {
+    re_ = hoo_regex_compile("(\\w+)@(\\w+)");
+    ASSERT_NE(re_, nullptr);
+    char** groups = nullptr;
+    int64_t count = 0;
+    int64_t ret = hoo_regex_capture(re_, "user@host", &groups, &count);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(count, 3);
+    ASSERT_NE(groups, nullptr);
+    EXPECT_STREQ(groups[0], "user@host");
+    EXPECT_STREQ(groups[1], "user");
+    EXPECT_STREQ(groups[2], "host");
+    hoo_regex_free_matches(groups, count);
+}
+
+TEST_F(HooRegexTest, CaptureNoMatchReturnsEmpty) {
+    re_ = hoo_regex_compile("(\\w+)@(\\w+)");
+    ASSERT_NE(re_, nullptr);
+    char** groups = nullptr;
+    int64_t count = -1;
+    int64_t ret = hoo_regex_capture(re_, "no-atom-here", &groups, &count);
+    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(count, 0);
+    EXPECT_EQ(groups, nullptr);
 }
 
 TEST_F(HooRegexTest, Error) {

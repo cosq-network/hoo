@@ -15,6 +15,7 @@ int64_t  hoo_regex_match(HooRegex re, const char* str);
 int64_t  hoo_regex_search(HooRegex re, const char* str);
 char*    hoo_regex_find(HooRegex re, const char* str);
 int64_t  hoo_regex_find_all(HooRegex re, const char* str, char*** out_matches, int64_t* out_count);
+int64_t  hoo_regex_capture(HooRegex re, const char* str, char*** out_groups, int64_t* out_count);
 
 char*    hoo_regex_replace(HooRegex re, const char* str, const char* replacement);
 char**   hoo_regex_split(HooRegex re, const char* str, int64_t* out_count);

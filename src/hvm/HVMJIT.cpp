@@ -969,6 +969,9 @@ extern "C" {
         hoo_exception_clear();
         return 0;
     }
+    uint64_t jit_hoo_exception_current(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_exception_current()));
+    }
     uint64_t jit_hoo_exception_matches_type(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_exception_matches_type(
@@ -2043,34 +2046,50 @@ extern "C" {
         hoo_system_free_string(val);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
+    // Record the last system-module failure as a pending RuntimeException.
+    // The code generator follows every throw-capable system call with a
+    // "pending exception?" check that rethrows through the HVM throw syscall
+    // (SYSCALL 9), so Hoo try/catch works in both the interpreter and the JIT.
+    static uint64_t jit_system_raise_failure(void) {
+        HooException exc = hoo_exception_runtime(hoo_system_error_message());
+        hoo_exception_set_current(exc);
+        return 0;
+    }
     uint64_t jit_system_set_env(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         const char* value = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
-        return static_cast<uint64_t>(hoo_system_set_env(name, value));
+        const int64_t rc = hoo_system_set_env(name, value);
+        if (rc != 0) {
+            jit_system_raise_failure();
+            return static_cast<uint64_t>(rc);
+        }
+        return 0;
     }
     uint64_t jit_system_unset_env(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* name = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return static_cast<uint64_t>(hoo_system_unset_env(name));
+        const int64_t rc = hoo_system_unset_env(name);
+        if (rc != 0) {
+            jit_system_raise_failure();
+            return static_cast<uint64_t>(rc);
+        }
+        return 0;
     }
     uint64_t jit_system_hostname(void* /*state_ptr*/) {
         char* hostname = hoo_system_hostname();
-        if (!hostname) return 0;
         void* str = hoo_string_from_cstr(hostname);
         hoo_system_free_string(hostname);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_system_os_name(void* /*state_ptr*/) {
         char* os = hoo_system_os_name();
-        if (!os) return 0;
         void* str = hoo_string_from_cstr(os);
         hoo_system_free_string(os);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_system_os_version(void* /*state_ptr*/) {
         char* ver = hoo_system_os_version();
-        if (!ver) return 0;
         void* str = hoo_string_from_cstr(ver);
         hoo_system_free_string(ver);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
@@ -2082,7 +2101,9 @@ extern "C" {
         return static_cast<uint64_t>(hoo_system_process_id());
     }
     uint64_t jit_system_uptime_ms(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(hoo_system_uptime_ms());
+        const int64_t rc = hoo_system_uptime_ms();
+        if (rc == -1) return jit_system_raise_failure();
+        return static_cast<uint64_t>(rc);
     }
     uint64_t jit_system_exit(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2094,7 +2115,7 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* command = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         char* out = hoo_system_exec(command);
-        if (!out) return 0;
+        if (!out) return jit_system_raise_failure();
         void* str = hoo_string_from_cstr(out);
         hoo_system_free_string(out);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
@@ -2102,25 +2123,24 @@ extern "C" {
     uint64_t jit_system_exec_status(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* command = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return static_cast<uint64_t>(hoo_system_exec_status(command));
+        const int64_t rc = hoo_system_exec_status(command);
+        if (rc == -1) return jit_system_raise_failure();
+        return static_cast<uint64_t>(rc);
     }
     uint64_t jit_system_user_home(void* /*state_ptr*/) {
         char* home = hoo_system_user_home();
-        if (!home) return 0;
         void* str = hoo_string_from_cstr(home);
         hoo_system_free_string(home);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_system_user_name(void* /*state_ptr*/) {
         char* name = hoo_system_user_name();
-        if (!name) return 0;
         void* str = hoo_string_from_cstr(name);
         hoo_system_free_string(name);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
     }
     uint64_t jit_system_current_dir(void* /*state_ptr*/) {
         char* dir = hoo_system_current_dir();
-        if (!dir) return 0;
         void* str = hoo_string_from_cstr(dir);
         hoo_system_free_string(dir);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
@@ -2128,13 +2148,22 @@ extern "C" {
     uint64_t jit_system_set_current_dir(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         const char* path = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
-        return static_cast<uint64_t>(hoo_system_set_current_dir(path));
+        const int64_t rc = hoo_system_set_current_dir(path);
+        if (rc != 0) {
+            jit_system_raise_failure();
+            return static_cast<uint64_t>(rc);
+        }
+        return 0;
     }
     uint64_t jit_system_total_memory(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(hoo_system_total_memory());
+        const int64_t rc = hoo_system_total_memory();
+        if (rc == -1) return jit_system_raise_failure();
+        return static_cast<uint64_t>(rc);
     }
     uint64_t jit_system_free_memory(void* /*state_ptr*/) {
-        return static_cast<uint64_t>(hoo_system_free_memory());
+        const int64_t rc = hoo_system_free_memory();
+        if (rc == -1) return jit_system_raise_failure();
+        return static_cast<uint64_t>(rc);
     }
     uint64_t jit_fs_exists(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -2345,6 +2374,17 @@ extern "C" {
         const char* pattern = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_regex_compile(pattern)));
     }
+    uint64_t jit_regex_compile(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* pattern = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_regex_compile(pattern)));
+    }
+    uint64_t jit_regex_compile_with_flags(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        const char* pattern = hoo_string_data(reinterpret_cast<void*>(state->regs[1]));
+        const char* flags = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_regex_compile_with_flags(pattern, flags)));
+    }
     uint64_t jit_regex_match(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
@@ -2458,6 +2498,71 @@ extern "C" {
                 ((int64_t*)arr)[2] = HOO_TYPE_STRING;
             }
             hoo_regex_release(re);
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
+    }
+    uint64_t jit_regex_find(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        char* found = hoo_regex_find(re, text);
+        if (!found) return 0;
+        void* str = hoo_string_from_cstr(found);
+        hoo_regex_free_string(found);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_regex_find_all(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* arr = hoo_array_new();
+        int64_t count = 0;
+        char** matches = nullptr;
+        int64_t rc = hoo_regex_find_all(re, text, &matches, &count);
+        if (rc == 0 && matches) {
+            for (int64_t i = 0; i < count; ++i) {
+                void* s = hoo_string_from_cstr(matches[i]);
+                hoo_retain(s);
+                arr = hoo_array_push_object(arr, s);
+                hoo_string_release(s);
+            }
+            hoo_regex_free_matches(matches, count);
+        }
+        if (arr && count > 0) {
+            ((int64_t*)arr)[2] = HOO_TYPE_STRING;
+        }
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
+    }
+    uint64_t jit_regex_group(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        int64_t group_index = static_cast<int64_t>(state->regs[3]);
+        char* group = hoo_regex_group(re, text, group_index);
+        if (!group) return 0;
+        void* str = hoo_string_from_cstr(group);
+        hoo_regex_free_string(group);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(str));
+    }
+    uint64_t jit_regex_capture(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        HooRegex re = reinterpret_cast<HooRegex>(state->regs[1]);
+        const char* text = hoo_string_data(reinterpret_cast<void*>(state->regs[2]));
+        void* arr = hoo_array_new();
+        int64_t count = 0;
+        char** groups = nullptr;
+        int64_t rc = hoo_regex_capture(re, text, &groups, &count);
+        if (rc == 0 && groups) {
+            for (int64_t i = 0; i < count; ++i) {
+                void* s = hoo_string_from_cstr(groups[i]);
+                hoo_retain(s);
+                arr = hoo_array_push_object(arr, s);
+                hoo_string_release(s);
+            }
+            hoo_regex_free_matches(groups, count);
+        }
+        if (arr && count > 0) {
+            ((int64_t*)arr)[2] = HOO_TYPE_STRING;
         }
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(arr));
     }
@@ -4032,15 +4137,15 @@ extern "C" {
         HooException exc = hoo_exception_runtime("hvm runtime exception");
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(exc));
     }
-    extern "C" uint64_t hooc_hvm_sys_push_handler_state(void* state_ptr, uint64_t handler_pc) {
+    extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_push_handler_state(void* state_ptr, uint64_t handler_pc) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return shadow_push_handler(state, handler_pc);
     }
-    extern "C" uint64_t hooc_hvm_sys_pop_handler_state(void* state_ptr) {
+    extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_pop_handler_state(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return shadow_pop_handler(state);
     }
-    extern "C" uint64_t hooc_hvm_sys_throw_to_handler_state(void* state_ptr, uint64_t exc) {
+    extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_throw_to_handler_state(void* state_ptr, uint64_t exc) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
 #ifdef _WIN32
         hoo_exception_set_current(reinterpret_cast<HooException>(exc));
@@ -4053,7 +4158,7 @@ extern "C" {
         return shadow_throw_to_handler(state, exc, false);
 #endif
     }
-    extern "C" uint64_t hooc_hvm_sys_rethrow_to_handler_state(void* state_ptr) {
+    extern "C" HVM_RUNTIME_EXPORT uint64_t hooc_hvm_sys_rethrow_to_handler_state(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
 #ifdef _WIN32
         return shadow_throw_to_handler(state, 0, true);
@@ -4699,6 +4804,7 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_hoo_exception_null_pointer_p", reinterpret_cast<void*>(&jit_hoo_exception_null_pointer)},
         {"_F_hoo_exception_matches_type_i8_p_i8", reinterpret_cast<void*>(&jit_hoo_exception_matches_type)},
         {"_F_hoo_exception_clear_v", reinterpret_cast<void*>(&jit_hoo_exception_clear)},
+        {"_F_hoo_exception_current_p", reinterpret_cast<void*>(&jit_hoo_exception_current)},
         {"_F_hoo_push_handler_v_p", reinterpret_cast<void*>(&jit_hoo_push_handler)},
         {"_F_hoo_pop_handler_v", reinterpret_cast<void*>(&jit_hoo_pop_handler)},
         {"_F_hoo_throw_v_p", reinterpret_cast<void*>(&jit_hoo_throw)},
@@ -5072,6 +5178,8 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
 
         // Regex class/instance methods
         {"_F_M_hoo_E_regex_new_v_p", reinterpret_cast<void*>(&jit_regex_new)},
+        {"_F_M_hoo_E_regex_compile_v_p", reinterpret_cast<void*>(&jit_regex_compile)},
+        {"_F_M_hoo_E_regex_compile_v_p_p", reinterpret_cast<void*>(&jit_regex_compile_with_flags)},
         {"_F_M_hoo_E_regex_match_v_p", reinterpret_cast<void*>(&jit_regex_match)},
         {"_F_M_hoo_E_regex_search_v_p", reinterpret_cast<void*>(&jit_regex_search)},
         {"_F_M_hoo_E_regex_replace_v_p_p", reinterpret_cast<void*>(&jit_regex_replace)},
@@ -5083,6 +5191,10 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_regex_search_p_p_p", reinterpret_cast<void*>(&jit_regex_search_free)},
         {"_F_M_hoo_E_regex_replace_p_p_p_p", reinterpret_cast<void*>(&jit_regex_replace_free)},
         {"_F_M_hoo_E_regex_split_p_p_p", reinterpret_cast<void*>(&jit_regex_split_free)},
+        {"_F_M_hoo_E_regex_find_v_p", reinterpret_cast<void*>(&jit_regex_find)},
+        {"_F_M_hoo_E_regex_find_all_v_p", reinterpret_cast<void*>(&jit_regex_find_all)},
+        {"_F_M_hoo_E_regex_group_v_p_p", reinterpret_cast<void*>(&jit_regex_group)},
+        {"_F_M_hoo_E_regex_capture_v_p", reinterpret_cast<void*>(&jit_regex_capture)},
 
         // Uuid class/instance methods
         {"_F_M_hoo_E_uuid_new_v_p", reinterpret_cast<void*>(&jit_uuid_new_with_string)},
