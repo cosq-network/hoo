@@ -130,9 +130,12 @@ autopush does not trigger a redundant full cross-platform rebuild. Presubmit
   skipped (never guessed).
 - The **sync-main-to-dev** job then merges `main` into `dev` so the development
   branch carries the released version as its new base.
-- On tag pushes matching `v*` (or a manual `workflow_dispatch`), a GitHub
-  Release is published with the platform binaries attached and a categorised
-  changelog generated from git history.
+- On tag pushes matching `v*`, a GitHub Release is published with the platform
+  binaries attached and a categorised changelog generated from git history. A
+  manual `workflow_dispatch` publishes the tag given in the `tag` input; the
+  tag must already exist in the repository and must equal the project version
+  in `CMakeLists.txt` at that tag (the build jobs fail fast otherwise), and the
+  builds/artifacts are produced from that exact tag, never from `dev`.
 
 ## Conventional Commit Format
 
