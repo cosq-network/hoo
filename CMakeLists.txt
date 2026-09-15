@@ -672,6 +672,14 @@ if(HOO_BUILD_TESTS)
         tests/integration/fs/FsCLIIntegrationTest.cpp
         tests/integration/fs/FsModuleIntegrationTest.cpp
         tests/integration/json/JsonCLIIntegrationTest.cpp
+        tests/integration/string/StringCLIIntegrationTest.cpp
+        tests/integration/math/MathCLIIntegrationTest.cpp
+        tests/integration/uuid/UuidCLIIntegrationTest.cpp
+        tests/integration/thread/ThreadCLIIntegrationTest.cpp
+        tests/runtime/io/HooIoCliIntegrationTest.cpp
+        tests/runtime/path/HooPathCliIntegrationTest.cpp
+        tests/runtime/dict/HooDictCliIntegrationTest.cpp
+        tests/runtime/list/HooListCliIntegrationTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp

@@ -139,6 +139,25 @@ static std::string classToPrefix(const std::string& className) {
     return it != map.end() ? it->second : "";
 }
 
+// Return types for instance-method calls that are mangled via the
+// "prefix_methodname" convention, so the emitted symbol matches the
+// runtime contract table in HVMJIT.cpp.
+static std::string prefixMethodReturnType(const std::string& prefix, const std::string& methodName) {
+    if (prefix == "random") {
+        if (methodName == "nextInt" || methodName == "nextIntMax") return "int64";
+        if (methodName == "nextDouble") return "double";
+        if (methodName == "nextBool") return "bool";
+        if (methodName == "nextBytes" || methodName == "release") return "void";
+    }
+    if (prefix == "uuid") {
+        if (methodName == "toString") return "string";
+        if (methodName == "isNil" || methodName == "equals" || methodName == "compare") return "int64";
+        if (methodName == "toBytes") return "ptr";
+        if (methodName == "release") return "void";
+    }
+    return "void";
+}
+
 static uint32_t builtinConstructedTypeId(const std::string& className) {
     static const std::unordered_map<std::string, uint32_t> typeIds = {
         {"String", HOO_TYPE_STRING},
@@ -179,7 +198,7 @@ static std::string builtinClassNameFromTypeId(uint32_t typeId) {
         {HOO_TYPE_UUID, "Uuid"}, {HOO_TYPE_REGEX, "Regex"},
         {HOO_TYPE_BUFFER, "Buffer"}, {HOO_TYPE_CSV, "Csv"},
         {HOO_TYPE_ARGS, "Args"}, {HOO_TYPE_COMPRESSION, "Compression"},
-        {HOO_TYPE_DICT, "Dict"}, {HOO_TYPE_LIST, "List"},
+        {HOO_TYPE_ARRAY, "Array"}, {HOO_TYPE_DICT, "Dict"}, {HOO_TYPE_LIST, "List"},
         {HOO_TYPE_DATETIME, "DateTime"}, {HOO_TYPE_MUTEX, "Mutex"},
         {HOO_TYPE_DECIMAL, "Decimal"}, {HOO_TYPE_NET_SOCKET, "Socket"},
         {HOO_TYPE_CONDITION, "Condition"}, {HOO_TYPE_SEMAPHORE, "Semaphore"},
@@ -300,7 +319,8 @@ static bool isMathFreeFunction(const std::string& functionName) {
         "math_hypot", "math_sin", "math_cos", "math_tan", "math_asin", "math_acos", "math_atan", "math_atan2",
         "math_sinh", "math_cosh", "math_tanh", "math_exp", "math_exp2", "math_expm1", "math_log", "math_log10",
         "math_log2", "math_log1p", "math_floor", "math_ceil", "math_round", "math_trunc", "math_fract",
-        "math_is_even", "math_is_odd", "math_is_prime", "math_gcd", "math_lcm", "math_factorial", "math_fibonacci"
+        "math_is_even", "math_is_odd", "math_is_prime", "math_gcd", "math_lcm", "math_factorial", "math_fibonacci",
+        "math_fmod"
     };
     return names.count(functionName) > 0;
 }
@@ -533,7 +553,8 @@ static uint32_t mathFreeFunctionReturnTypeId(const std::string& functionName, co
         "math_sqrt", "math_get_pi", "math_get_e", "math_get_tau", "math_get_inf", "math_get_neg_inf", "math_get_nan",
         "math_pow", "math_cbrt", "math_hypot", "math_sin", "math_cos", "math_tan", "math_asin", "math_acos", "math_atan",
         "math_atan2", "math_sinh", "math_cosh", "math_tanh", "math_exp", "math_exp2", "math_expm1", "math_log",
-        "math_log10", "math_log2", "math_log1p", "math_floor", "math_ceil", "math_round", "math_trunc", "math_fract", "math_clamp"
+        "math_log10", "math_log2", "math_log1p", "math_floor", "math_ceil", "math_round", "math_trunc", "math_fract", "math_clamp",
+        "math_fmod"
     };
     if (functionName == "math_abs" || functionName == "math_min" ||
         functionName == "math_max" || functionName == "math_sign") {
@@ -675,7 +696,8 @@ bool HVMCodeGenerator::isSymbolImported(const std::string& name, const std::stri
 
 std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     // Intrinsic data types exempt from imports
-    if (name == "String" || name == "Array" || name == "Map" || name == "Exception") {
+    if (name == "String" || name == "Array" || name == "Map" || name == "Exception" ||
+        name == "Character") {
         return "";
     }
 
@@ -3625,11 +3647,15 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     bool isInt64Ret = (methodName == "length" || methodName == "isEmpty" ||
                                        methodName == "isSuccess" || methodName == "equals" ||
                                        methodName == "contains" || methodName == "startsWith" ||
-                                       methodName == "indexOf" || methodName == "count" ||
-                                       methodName == "size" || methodName == "statusCode" ||
-                                       methodName == "port" || methodName == "selfPid" ||
-                                       methodName == "kill" || methodName == "readchar" ||
-                                       methodName == "compare" || methodName == "keyType");
+                                       methodName == "endsWith" || methodName == "indexOf" ||
+                                       methodName == "lastIndexOf" || methodName == "toInt64" ||
+                                       methodName == "toDouble" || methodName == "byteAt" ||
+                                       methodName == "count" || methodName == "size" ||
+                                       methodName == "statusCode" || methodName == "port" ||
+                                       methodName == "selfPid" || methodName == "kill" ||
+                                       methodName == "readchar" || methodName == "compare" ||
+                                       methodName == "keyType" || methodName == "nextInt" ||
+                                       methodName == "nextIntMax" || methodName == "nextBytes");
                     bool isVoidRet = (methodName == "release" || methodName == "setTimeout" ||
                                       methodName == "print" || methodName == "println" ||
                                       methodName == "lock" || methodName == "unlock" ||
@@ -3646,6 +3672,8 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                                       methodName == "setEnv" || methodName == "unsetEnv" ||
                                       methodName == "setCurrentDir");
                     if (isInt64Ret) mp.returnType = "int64";
+                    else if (methodName == "nextDouble") mp.returnType = "double";
+                    else if (methodName == "nextBool") mp.returnType = "bool";
                     else if (isVoidRet) mp.returnType = "void";
                     else mp.returnType = "ptr";
 
@@ -3676,7 +3704,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 } else {
                     std::string prefix = classToPrefix(resolvedClass);
                     mp.functionName = prefix + "_" + methodName;
-                    mp.returnType = "void";
+                    mp.returnType = prefixMethodReturnType(prefix, methodName);
                     if (funcCall->getArguments()) {
                         auto& args = funcCall->getArguments()->getArguments();
                         for (size_t i = 0; i < args.size(); ++i) {
@@ -5958,6 +5986,89 @@ uint32_t HVMCodeGenerator::inferExpressionTypeId(const ast::Expression& expr) {
 }
 
 uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& expr) {
+    if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&expr)) {
+        const auto receiver = inferExpressionTypeInfo(memberAccess->getObject());
+        std::string className = receiver.className;
+        if (className.empty()) className = builtinClassNameFromTypeId(receiver.typeId);
+        if (!className.empty()) {
+            auto classIt = classes_.find(className);
+            if (classIt != classes_.end()) {
+                const auto fieldIt = classIt->second.fieldTypeIds.find(memberAccess->getMember());
+                if (fieldIt != classIt->second.fieldTypeIds.end()) {
+                    return fieldIt->second;
+                }
+            }
+        }
+        uint32_t typeId = receiver.typeId;
+        const std::string& member = memberAccess->getMember();
+        if (typeId == HOO_TYPE_STRING || className == "String") {
+            if (member == "length" || member == "isEmpty" ||
+                member == "indexOf" || member == "lastIndexOf" ||
+                member == "contains" || member == "startsWith" ||
+                member == "endsWith" || member == "equals" ||
+                member == "compare" || member == "toInt64" ||
+                member == "toDouble" || member == "byteAt") return HOO_TYPE_INT64;
+            if (member == "toUpper" || member == "toLower" ||
+                member == "trim" || member == "replace" ||
+                member == "substring" || member == "concat" ||
+                member == "repeat" || member == "fromChar" ||
+                member == "toString" || member == "escape" ||
+                member == "unescape" || member == "padStart" ||
+                member == "padEnd" || member == "stripPrefix" ||
+                member == "stripSuffix" || member == "toBase64" ||
+                member == "fromBase64" || member == "toHex" ||
+                member == "fromHex") return HOO_TYPE_STRING;
+            if (member == "split") return HOO_TYPE_ARRAY;
+            return HOO_TYPE_OBJECT;
+        }
+        if (typeId == HOO_TYPE_ARRAY || className == "Array") {
+            if (member == "length" || member == "empty") return HOO_TYPE_INT64;
+            if (member == "sort" || member == "reverse" || member == "shuffle" || member == "sortRange") return HOO_TYPE_ARRAY;
+            if (member == "binarySearch") return HOO_TYPE_INT64;
+            return HOO_TYPE_OBJECT;
+        }
+        if (typeId == HOO_TYPE_RANDOM || className == "Random") {
+            if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return HOO_TYPE_INT64;
+            if (member == "nextBool") return HOO_TYPE_BOOL;
+            if (member == "nextDouble") return HOO_TYPE_FLOAT64;
+            return HOO_TYPE_OBJECT;
+        }
+        if (typeId == HOO_TYPE_DICT || className == "Dict") {
+            if (member == "count" || member == "remove") return HOO_TYPE_INT64;
+            if (member == "clear") return HOO_TYPE_VOID;
+            return HOO_TYPE_OBJECT;
+        }
+        if (typeId == HOO_TYPE_BUFFER || className == "Buffer") {
+            if (member == "length" || member == "capacity" ||
+                member == "byteAt" || member == "setByte" ||
+                member == "clear" || member == "refcount") return HOO_TYPE_INT64;
+            if (member == "to_string") return HOO_TYPE_STRING;
+            if (member == "write" || member == "write_byte") return HOO_TYPE_VOID;
+            if (member == "copy" || member == "slice" ||
+                member == "sub" || member == "fromBytes" ||
+                member == "retain") return HOO_TYPE_BUFFER;
+            return HOO_TYPE_OBJECT;
+        }
+        if (typeId == HOO_TYPE_LIST || className == "List") {
+            if (member == "length" || member == "push") return HOO_TYPE_INT64;
+            if (member == "clear") return HOO_TYPE_VOID;
+            if (member == "pop") return 0;
+            return HOO_TYPE_OBJECT;
+        }
+        if (typeId == HOO_TYPE_DATETIME || className == "DateTime") {
+            if (member == "format" || member == "iso8601") return HOO_TYPE_STRING;
+            if (member == "addDays" || member == "addHours" || member == "addMinutes" ||
+                member == "addSeconds" || member == "addMilliseconds" ||
+                member == "now" || member == "parse" || member == "fromIso8601") return HOO_TYPE_DATETIME;
+            if (member == "getTimestamp" || member == "compare" ||
+                member == "getYear" || member == "getMonth" ||
+                member == "getDay" || member == "getHour" ||
+                member == "getMinute" || member == "getSecond" ||
+                member == "getMillisecond") return HOO_TYPE_INT64;
+            return HOO_TYPE_OBJECT;
+        }
+        return HOO_TYPE_OBJECT;
+    }
     if (auto awaitExpr = dynamic_cast<const ast::AwaitExpression*>(&expr)) {
         const ast::Expression* source = &awaitExpr->getFuture();
         while (auto primary = dynamic_cast<const ast::PrimaryExpression*>(source)) {
@@ -6095,106 +6206,136 @@ uint32_t HVMCodeGenerator::inferExpressionTypeIdLegacy(const ast::Expression& ex
                 }
                 auto it = functionReturnTypes_.find(id->getName());
                 if (it != functionReturnTypes_.end()) return it->second;
+                uint32_t constructedType = builtinConstructedTypeId(id->getName());
+                if (constructedType != HOO_TYPE_OBJECT) return constructedType;
             }
         }
         if (auto memberAccess = dynamic_cast<const ast::MemberAccess*>(&funcCall->getFunction())) {
+            std::string className;
             if (auto primaryExpr = dynamic_cast<const ast::PrimaryExpression*>(&memberAccess->getObject())) {
                 if (auto id = dynamic_cast<const ast::Identifier*>(&primaryExpr->getPrimary())) {
-                    const std::string& className = id->getName();
-                    if (isSingletonBuiltinClass(className)) {
-                        std::vector<uint32_t> argTypeIds;
-                        if (funcCall->getArguments()) {
-                            for (const auto& arg : funcCall->getArguments()->getArguments()) {
-                                argTypeIds.push_back(inferExpressionTypeId(*arg));
-                            }
-                        }
-
-                        const std::string returnType =
-                            singletonMethodReturnType(className, memberAccess->getMember(), argTypeIds);
-                        if (returnType == "int64") return HOO_TYPE_INT64;
-                        if (returnType == "double") return HOO_TYPE_FLOAT64;
-                        if (returnType == "int8") return HOO_TYPE_INT8;
-                        if (returnType == "byte") return HOO_TYPE_BYTE;
-                        if (returnType == "bool") return HOO_TYPE_BOOL;
-                        if (returnType == "void") return HOO_TYPE_VOID;
-                    }
-
-                    uint32_t objectTypeId = getLocalTypeId(className);
-                    if (objectTypeId == 0) {
-                        static const std::unordered_map<std::string, uint32_t> builtinTypeIds = {
-                            {"Array", HOO_TYPE_ARRAY}, {"Tensor", HOO_TYPE_TENSOR}, {"String", HOO_TYPE_STRING},
-                            {"Map", HOO_TYPE_MAP}, {"Buffer", HOO_TYPE_BUFFER}, {"Character", HOO_TYPE_CHARACTER},
-                            {"Random", HOO_TYPE_RANDOM}, {"DateTime", HOO_TYPE_DATETIME}, {"Args", HOO_TYPE_ARGS},
-                            {"Compression", HOO_TYPE_COMPRESSION}, {"Csv", HOO_TYPE_CSV}, {"Path", HOO_TYPE_CSV},
-                            {"URL", HOO_TYPE_NET_URL}, {"HttpClient", HOO_TYPE_NET_HTTP_CLI}, {"HttpResponse", HOO_TYPE_NET_HTTP_RES},
-                            {"Http", HOO_TYPE_NET_HTTP_CLI}, {"Response", HOO_TYPE_NET_HTTP_RES}, {"Dict", HOO_TYPE_DICT},
-                            {"List", HOO_TYPE_LIST}, {"Regex", HOO_TYPE_REGEX}, {"Mutex", HOO_TYPE_MUTEX},
-                            {"Uuid", HOO_TYPE_UUID}
-                        };
-                        auto it = builtinTypeIds.find(className);
-                        if (it != builtinTypeIds.end()) {
-                            objectTypeId = it->second;
+                    className = id->getName();
+                }
+            }
+            if (className.empty()) {
+                const auto receiver = inferExpressionTypeInfo(memberAccess->getObject());
+                className = receiver.className;
+                if (className.empty()) className = builtinClassNameFromTypeId(receiver.typeId);
+            }
+            if (!className.empty()) {
+                if (isSingletonBuiltinClass(className)) {
+                    std::vector<uint32_t> argTypeIds;
+                    if (funcCall->getArguments()) {
+                        for (const auto& arg : funcCall->getArguments()->getArguments()) {
+                            argTypeIds.push_back(inferExpressionTypeId(*arg));
                         }
                     }
-                    const std::string& member = memberAccess->getMember();
-                    if (objectTypeId == HOO_TYPE_ARRAY) {
-                        if (member == "length" || member == "empty") return HOO_TYPE_INT64;
-                        if (member == "sort" || member == "reverse" || member == "shuffle" || member == "sortRange") return HOO_TYPE_ARRAY;
-                        if (member == "binarySearch") return HOO_TYPE_INT64;
-                        return HOO_TYPE_OBJECT;
+
+                    const std::string returnType =
+                        singletonMethodReturnType(className, memberAccess->getMember(), argTypeIds);
+                    if (returnType == "int64") return HOO_TYPE_INT64;
+                    if (returnType == "double") return HOO_TYPE_FLOAT64;
+                    if (returnType == "int8") return HOO_TYPE_INT8;
+                    if (returnType == "byte") return HOO_TYPE_BYTE;
+                    if (returnType == "bool") return HOO_TYPE_BOOL;
+                    if (returnType == "void") return HOO_TYPE_VOID;
+                }
+
+                uint32_t objectTypeId = getLocalTypeId(className);
+                if (objectTypeId == 0) {
+                    static const std::unordered_map<std::string, uint32_t> builtinTypeIds = {
+                        {"Array", HOO_TYPE_ARRAY}, {"Tensor", HOO_TYPE_TENSOR}, {"String", HOO_TYPE_STRING},
+                        {"Map", HOO_TYPE_MAP}, {"Buffer", HOO_TYPE_BUFFER}, {"Character", HOO_TYPE_CHARACTER},
+                        {"Random", HOO_TYPE_RANDOM}, {"DateTime", HOO_TYPE_DATETIME}, {"Args", HOO_TYPE_ARGS},
+                        {"Compression", HOO_TYPE_COMPRESSION}, {"Csv", HOO_TYPE_CSV}, {"Path", HOO_TYPE_CSV},
+                        {"URL", HOO_TYPE_NET_URL}, {"HttpClient", HOO_TYPE_NET_HTTP_CLI}, {"HttpResponse", HOO_TYPE_NET_HTTP_RES},
+                        {"Http", HOO_TYPE_NET_HTTP_CLI}, {"Response", HOO_TYPE_NET_HTTP_RES}, {"Dict", HOO_TYPE_DICT},
+                        {"List", HOO_TYPE_LIST}, {"Regex", HOO_TYPE_REGEX}, {"Mutex", HOO_TYPE_MUTEX},
+                        {"Uuid", HOO_TYPE_UUID}
+                    };
+                    auto it = builtinTypeIds.find(className);
+                    if (it != builtinTypeIds.end()) {
+                        objectTypeId = it->second;
                     }
-                    if (objectTypeId == HOO_TYPE_RANDOM) {
-                        if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return HOO_TYPE_INT64;
-                        if (member == "nextBool") return HOO_TYPE_BOOL;
-                        if (member == "nextDouble") return HOO_TYPE_FLOAT64;
-                        return HOO_TYPE_OBJECT;
-                    }
-                    if (objectTypeId == HOO_TYPE_DICT) {
-                        if (member == "count" || member == "remove") return HOO_TYPE_INT64;
-                        if (member == "clear") return HOO_TYPE_VOID;
-                        return HOO_TYPE_OBJECT;
-                    }
-                    if (objectTypeId == HOO_TYPE_BUFFER) {
-                        if (member == "length" || member == "capacity" ||
-                            member == "byteAt" || member == "setByte" ||
-                            member == "clear" || member == "refcount") return HOO_TYPE_INT64;
-                        if (member == "to_string") return HOO_TYPE_STRING;
-                        if (member == "write" || member == "write_byte") return HOO_TYPE_VOID;
-                        if (member == "copy" || member == "slice" ||
-                            member == "sub" || member == "fromBytes" ||
-                            member == "retain") return HOO_TYPE_BUFFER;
-                        return HOO_TYPE_OBJECT;
-                    }
-                    if (objectTypeId == HOO_TYPE_LIST) {
-                        if (member == "length" || member == "push") return HOO_TYPE_INT64;
-                        if (member == "clear") return HOO_TYPE_VOID;
-                        if (member == "pop") return 0;
-                        return HOO_TYPE_OBJECT;
-                    }
-                    if (objectTypeId == HOO_TYPE_DATETIME) {
-                        if (member == "format" || member == "iso8601") return HOO_TYPE_STRING;
-                        if (member == "addDays" || member == "addHours" || member == "addMinutes" ||
-                            member == "addSeconds" || member == "addMilliseconds" ||
-                            member == "now" || member == "parse" || member == "fromIso8601") return HOO_TYPE_DATETIME;
-                        if (member == "getTimestamp" || member == "compare" ||
-                            member == "diffDays" || member == "diffHours") return HOO_TYPE_INT64;
-                        if (member == "diffSeconds") return HOO_TYPE_FLOAT64;
-                        return HOO_TYPE_DATETIME;
-                    }
-                    if (objectTypeId == HOO_TYPE_ARGS) {
-                        if (member == "count" || member == "has" ||
-                            member == "parse" || member == "getInt" ||
-                            member == "getBool") return HOO_TYPE_INT64;
-                        if (member == "get" || member == "value" ||
-                            member == "programName" || member == "getString" ||
-                            member == "helpText") return HOO_TYPE_STRING;
-                        if (member == "getFloat") return HOO_TYPE_FLOAT64;
-                        if (member == "addString" || member == "addInt" ||
-                            member == "addFlag" || member == "addFloat" ||
-                            member == "addPositional" || member == "clear") return HOO_TYPE_VOID;
-                        if (member == "new") return HOO_TYPE_ARGS;
-                        return HOO_TYPE_OBJECT;
-                    }
+                }
+                const std::string& member = memberAccess->getMember();
+                if (objectTypeId == HOO_TYPE_ARRAY) {
+                    if (member == "length" || member == "empty") return HOO_TYPE_INT64;
+                    if (member == "sort" || member == "reverse" || member == "shuffle" || member == "sortRange") return HOO_TYPE_ARRAY;
+                    if (member == "binarySearch") return HOO_TYPE_INT64;
+                    return HOO_TYPE_OBJECT;
+                }
+                if (objectTypeId == HOO_TYPE_RANDOM) {
+                    if (member == "nextInt" || member == "nextIntMax" || member == "nextBytes") return HOO_TYPE_INT64;
+                    if (member == "nextBool") return HOO_TYPE_BOOL;
+                    if (member == "nextDouble") return HOO_TYPE_FLOAT64;
+                    return HOO_TYPE_OBJECT;
+                }
+                if (objectTypeId == HOO_TYPE_DICT) {
+                    if (member == "count" || member == "remove") return HOO_TYPE_INT64;
+                    if (member == "clear") return HOO_TYPE_VOID;
+                    return HOO_TYPE_OBJECT;
+                }
+                if (objectTypeId == HOO_TYPE_BUFFER) {
+                    if (member == "length" || member == "capacity" ||
+                        member == "byteAt" || member == "setByte" ||
+                        member == "clear" || member == "refcount") return HOO_TYPE_INT64;
+                    if (member == "to_string") return HOO_TYPE_STRING;
+                    if (member == "write" || member == "write_byte") return HOO_TYPE_VOID;
+                    if (member == "copy" || member == "slice" ||
+                        member == "sub" || member == "fromBytes" ||
+                        member == "retain") return HOO_TYPE_BUFFER;
+                    return HOO_TYPE_OBJECT;
+                }
+                if (objectTypeId == HOO_TYPE_LIST) {
+                    if (member == "length" || member == "push") return HOO_TYPE_INT64;
+                    if (member == "clear") return HOO_TYPE_VOID;
+                    if (member == "pop") return 0;
+                    return HOO_TYPE_OBJECT;
+                }
+                if (objectTypeId == HOO_TYPE_DATETIME) {
+                    if (member == "format" || member == "iso8601") return HOO_TYPE_STRING;
+                    if (member == "addDays" || member == "addHours" || member == "addMinutes" ||
+                        member == "addSeconds" || member == "addMilliseconds" ||
+                        member == "now" || member == "parse" || member == "fromIso8601") return HOO_TYPE_DATETIME;
+                    if (member == "getTimestamp" || member == "compare" ||
+                        member == "diffDays" || member == "diffHours") return HOO_TYPE_INT64;
+                    if (member == "diffSeconds") return HOO_TYPE_FLOAT64;
+                    return HOO_TYPE_DATETIME;
+                }
+                if (objectTypeId == HOO_TYPE_ARGS) {
+                    if (member == "count" || member == "has" ||
+                        member == "parse" || member == "getInt" ||
+                        member == "getBool") return HOO_TYPE_INT64;
+                    if (member == "get" || member == "value" ||
+                        member == "programName" || member == "getString" ||
+                        member == "helpText") return HOO_TYPE_STRING;
+                    if (member == "getFloat") return HOO_TYPE_FLOAT64;
+                    if (member == "addString" || member == "addInt" ||
+                        member == "addFlag" || member == "addFloat" ||
+                        member == "addPositional" || member == "clear") return HOO_TYPE_VOID;
+                    if (member == "new") return HOO_TYPE_ARGS;
+                    return HOO_TYPE_OBJECT;
+                }
+                if (objectTypeId == HOO_TYPE_STRING) {
+                    if (member == "length" || member == "isEmpty" ||
+                        member == "indexOf" || member == "lastIndexOf" ||
+                        member == "contains" || member == "startsWith" ||
+                        member == "endsWith" || member == "equals" ||
+                        member == "compare" || member == "toInt64" ||
+                        member == "toDouble" || member == "byteAt") return HOO_TYPE_INT64;
+                    if (member == "toUpper" || member == "toLower" ||
+                        member == "trim" || member == "replace" ||
+                        member == "substring" || member == "concat" ||
+                        member == "repeat" || member == "fromChar" ||
+                        member == "toString" || member == "escape" ||
+                        member == "unescape" || member == "padStart" ||
+                        member == "padEnd" || member == "stripPrefix" ||
+                        member == "stripSuffix" || member == "toBase64" ||
+                        member == "fromBase64" || member == "toHex" ||
+                        member == "fromHex") return HOO_TYPE_STRING;
+                    if (member == "split") return HOO_TYPE_ARRAY;
+                    return HOO_TYPE_OBJECT;
                 }
             }
         }

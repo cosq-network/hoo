@@ -1051,6 +1051,62 @@ extern "C" {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(hoo_string_index_of(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2])));
     }
+    uint64_t jit_string_last_index_of(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_string_last_index_of(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_string_ends_with(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_string_ends_with(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_string_to_upper(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_to_upper(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_string_substring(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_substring(reinterpret_cast<void*>(state->regs[1]), state->regs[2], state->regs[3])));
+    }
+    uint64_t jit_string_replace(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_replace(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2]), reinterpret_cast<void*>(state->regs[3]))));
+    }
+    uint64_t jit_string_split(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_split(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2]))));
+    }
+    uint64_t jit_string_to_int64(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_string_to_int64(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_string_to_double(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        double val = hoo_string_to_double(reinterpret_cast<void*>(state->regs[1]));
+        uint64_t bits;
+        std::memcpy(&bits, &val, sizeof(double));
+        return bits;
+    }
+    uint64_t jit_string_compare(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_string_compare(reinterpret_cast<void*>(state->regs[1]), reinterpret_cast<void*>(state->regs[2])));
+    }
+    uint64_t jit_string_byte_at(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_string_byte_at(reinterpret_cast<void*>(state->regs[1]), state->regs[2]));
+    }
+    uint64_t jit_string_retain(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_retain(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_string_refcount(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_string_refcount(reinterpret_cast<void*>(state->regs[1])));
+    }
+    uint64_t jit_string_release(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        hoo_string_release(reinterpret_cast<void*>(state->regs[1]));
+        return 0;
+    }
     // ── Array aliases (match codegen-generated _F_array_*_v_p names) ─────────
     uint64_t jit_array_push_double(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -4744,6 +4800,18 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_String_startsWith_i8_p", reinterpret_cast<void*>(&jit_string_starts_with)},
         {"_F_M_hoo_E_String_trim_p", reinterpret_cast<void*>(&jit_string_trim)},
         {"_F_M_hoo_E_String_indexOf_i8_p", reinterpret_cast<void*>(&jit_string_index_of)},
+        {"_F_M_hoo_E_String_lastIndexOf_i8_p", reinterpret_cast<void*>(&jit_string_last_index_of)},
+        {"_F_M_hoo_E_String_endsWith_i8_p", reinterpret_cast<void*>(&jit_string_ends_with)},
+        {"_F_M_hoo_E_String_substring_p_p_p", reinterpret_cast<void*>(&jit_string_substring)},
+        {"_F_M_hoo_E_String_replace_p_p_p", reinterpret_cast<void*>(&jit_string_replace)},
+        {"_F_M_hoo_E_String_split_p_p", reinterpret_cast<void*>(&jit_string_split)},
+        {"_F_M_hoo_E_String_toInt64_i8", reinterpret_cast<void*>(&jit_string_to_int64)},
+        {"_F_M_hoo_E_String_toDouble_d", reinterpret_cast<void*>(&jit_string_to_double)},
+        {"_F_M_hoo_E_String_compare_i8_p", reinterpret_cast<void*>(&jit_string_compare)},
+        {"_F_M_hoo_E_String_byteAt_i8_p", reinterpret_cast<void*>(&jit_string_byte_at)},
+        {"_F_M_hoo_E_String_retain_p", reinterpret_cast<void*>(&jit_string_retain)},
+        {"_F_M_hoo_E_String_refcount_p", reinterpret_cast<void*>(&jit_string_refcount)},
+        {"_F_M_hoo_E_String_release_v", reinterpret_cast<void*>(&jit_string_release)},
         {"_F_M_hoo_E_String_toCharacters_p", reinterpret_cast<void*>(&jit_hoo_string_to_characters)},
         // String class method redirect names (snake_case, from Hooc source string_*())
         {"_F_M_hoo_E_String_from_cstr_static_p_p", reinterpret_cast<void*>(&jit_hoo_string_from_cstr)},
@@ -5091,10 +5159,12 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         // Random module (instance-based, prefix-style)
         {"_F_M_hoo_E_random_new_v", reinterpret_cast<void*>(&jit_random_new)},
         {"_F_M_hoo_E_random_new_v_p", reinterpret_cast<void*>(&jit_random_new_with_seed)},
-        {"_F_M_hoo_E_random_nextInt_v", reinterpret_cast<void*>(&jit_random_next_int)},
-        {"_F_M_hoo_E_random_nextIntMax_v_p", reinterpret_cast<void*>(&jit_random_next_int_max)},
-        {"_F_M_hoo_E_random_nextDouble_v", reinterpret_cast<void*>(&jit_random_next_double)},
-        {"_F_M_hoo_E_random_nextBool_v", reinterpret_cast<void*>(&jit_random_next_bool)},
+        {"_F_M_hoo_E_random_nextInt_i8", reinterpret_cast<void*>(&jit_random_next_int)},
+        {"_F_M_hoo_E_random_nextIntMax_i8_p", reinterpret_cast<void*>(&jit_random_next_int_max)},
+        {"_F_M_hoo_E_random_nextInt_i8_p", reinterpret_cast<void*>(&jit_random_next_int_max)},
+        {"_F_M_hoo_E_random_retain_v", reinterpret_cast<void*>(&jit_hoo_retain)},
+        {"_F_M_hoo_E_random_nextDouble_d", reinterpret_cast<void*>(&jit_random_next_double)},
+        {"_F_M_hoo_E_random_nextBool_b", reinterpret_cast<void*>(&jit_random_next_bool)},
         {"_F_M_hoo_E_random_nextBytes_v_p_p", reinterpret_cast<void*>(&jit_random_next_bytes)},
         {"_F_M_hoo_E_random_release_v", reinterpret_cast<void*>(&jit_random_release)},
         // System module (free function snake_case names)
@@ -5198,21 +5268,22 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
 
         // Uuid class/instance methods
         {"_F_M_hoo_E_uuid_new_v_p", reinterpret_cast<void*>(&jit_uuid_new_with_string)},
-        {"_F_M_hoo_E_uuid_toString_v", reinterpret_cast<void*>(&jit_uuid_to_string)},
-        {"_F_M_hoo_E_uuid_isNil_v", reinterpret_cast<void*>(&jit_uuid_is_nil)},
-        {"_F_M_hoo_E_uuid_equals_v_p", reinterpret_cast<void*>(&jit_uuid_equals)},
-        {"_F_M_hoo_E_uuid_compare_v_p", reinterpret_cast<void*>(&jit_uuid_compare)},
-        {"_F_M_hoo_E_uuid_toBytes_v", reinterpret_cast<void*>(&jit_uuid_to_bytes)},
+        {"_F_M_hoo_E_uuid_toString_s", reinterpret_cast<void*>(&jit_uuid_to_string)},
+        {"_F_M_hoo_E_uuid_isNil_i8", reinterpret_cast<void*>(&jit_uuid_is_nil)},
+        {"_F_M_hoo_E_uuid_equals_i8_p", reinterpret_cast<void*>(&jit_uuid_equals)},
+        {"_F_M_hoo_E_uuid_compare_i8_p", reinterpret_cast<void*>(&jit_uuid_compare)},
+        {"_F_M_hoo_E_uuid_toBytes_p", reinterpret_cast<void*>(&jit_uuid_to_bytes)},
         {"_F_M_hoo_E_uuid_release_v", reinterpret_cast<void*>(&jit_uuid_release)},
 
         // Uuid free functions
         {"_F_M_hoo_E_uuid_v4_p", reinterpret_cast<void*>(&jit_uuid_v4)},
         {"_F_M_hoo_E_uuid_nil_p", reinterpret_cast<void*>(&jit_uuid_nil_free)},
+        {"_F_M_hoo_E_uuid_is_nil_i8_p", reinterpret_cast<void*>(&jit_uuid_is_nil_free)},
         {"_F_M_hoo_E_uuid_is_nil_p_p", reinterpret_cast<void*>(&jit_uuid_is_nil_free)},
         {"_F_M_hoo_E_uuid_from_bytes_p_p", reinterpret_cast<void*>(&jit_uuid_from_bytes_free)},
         {"_F_M_hoo_E_uuid_to_bytes_p_p", reinterpret_cast<void*>(&jit_uuid_to_bytes_free)},
-        {"_F_M_hoo_E_uuid_equals_p_p_p", reinterpret_cast<void*>(&jit_uuid_equals_free)},
-        {"_F_M_hoo_E_uuid_compare_p_p_p", reinterpret_cast<void*>(&jit_uuid_compare_free)},
+        {"_F_M_hoo_E_uuid_equals_i8_p_p", reinterpret_cast<void*>(&jit_uuid_equals_free)},
+        {"_F_M_hoo_E_uuid_compare_i8_p_p", reinterpret_cast<void*>(&jit_uuid_compare_free)},
         {"_F_M_hoo_E_uuid_to_string_p_p", reinterpret_cast<void*>(&jit_uuid_to_string)},
 
         // Thread free functions

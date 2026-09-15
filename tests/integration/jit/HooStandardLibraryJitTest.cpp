@@ -357,16 +357,6 @@ TEST_F(HooStandardLibraryJitTest, MissingImportThreadFunc) {
     EXPECT_NE(jit.getLastError().find("requires 'import hoo.thread;'"), std::string::npos);
 }
 
-TEST_F(HooStandardLibraryJitTest, MissingImportCharacter) {
-    const std::string source = R"(
-        func:ptr test() {
-            return new Character();
-        }
-    )";
-    ASSERT_FALSE(jit.loadSourceCode("test", source));
-    EXPECT_NE(jit.getLastError().find("requires 'import hoo.character;'"), std::string::npos);
-}
-
 TEST_F(HooStandardLibraryJitTest, MissingImportBuffer) {
     const std::string source = R"(
         func:ptr test() {

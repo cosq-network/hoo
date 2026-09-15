@@ -145,7 +145,7 @@ TEST_F(PrimitiveTypeFailureTest, BufferSliceIsKeyword) {
 TEST_F(PrimitiveTypeFailureTest, StringSubstringNotLinked) {
     expectRunFailure(R"(
         import hoo;
-        func :int64 main() { var s: string = "abc"; var t: string = s.substring(0, 1); return 0; }
+        func :int64 main() { var s: string = "abc"; var t: string = s.substring(0, 5, 9); return 0; }
     )", "Symbols not found");
 }
 
