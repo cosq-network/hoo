@@ -44,6 +44,44 @@ This slice is not an ANN framework yet: autograd, modules, optimizers, data
 pipelines, tokenizers, model import/export, and neural-network layers remain
 planned work described below.
 
+### 1.0.1 Status-layer contract hardening (2026-09-15)
+
+- The `hoo_ai` status layer is now contract-documented: thread-local error
+  semantics, the success-path contract (successful calls clear the thread error
+  state via `hoo_ai_clear_last_error`; failures set a specific `HOO_STATUS`), the
+  private-but-exported nature of `hoo_ai_set_last_error`, and the header-level
+  list of not-yet-implemented planned APIs (`hoo_ai_get_capabilities`,
+  `HooTensorND`, `HooDevice`, and the parameter/tape/dataset ABIs).
+- `hoo_ai_has_feature`, `hoo_ai_dtype_supported`, and the tensor module's dtype
+  validation now derive from a single capability table in `hoo_ai.cpp`
+  (`kSupportedDtypes`), so capability introspection and runtime acceptance can
+  never drift; legacy element type id 3 remains a tensor-only carve-out.
+- A dedicated `tests/runtime/HooAiTest.cpp` unit suite cross-checks
+  `hoo_tensor_new_ex` accept/reject behavior against the capability table for
+  every implemented, legacy, and feature-negative dtype id, plus thread-local
+  error visibility and bounded error-copy behavior.
+
+### 1.0.2 CLI/executable integration coverage (2026-09-15)
+
+Every runtime module under `src/runtime/lib/` now has offline-safe
+executable-target integration tests under `tests/runtime/` (each compiles a
+complete Hoo program and runs it through the `hoo` CLI). Two previously
+internal-only layers are now language-reachable as well:
+
+- `hoo.ai` — `ai_abi_version`, `ai_last_status`, `ai_has_feature`,
+  `ai_dtype_supported` free functions (`import hoo.ai;`), with JIT contracts
+  `_F_M_hoo_E_ai_*`.
+- `hoo.concurrency` — global event-loop helpers `event_loop_init`,
+  `event_loop_run`, `event_loop_run_nowait`, `event_loop_destroy`
+  (`import hoo.concurrency;`), with JIT contracts `_F_M_hoo_E_event_loop_*`.
+
+Related compiler/runtime work also landed during this pass: the `Socket` class
+is wired into codegen's class-method dispatch (`net_socket_` contracts with
+receiver-inclusive instance-call aliases), `Math.abs/min/max/sign` static calls
+and user-defined overloads dispatch through the runtime overload registry
+(`hoo_overload_init()` now runs during JIT bootstrap; `OverloadList` bodies are
+emitted so user overloads link).
+
 ## 1.1 Sufficiency Verdict
 
 This document is sufficient as a broad roadmap, but the current `hoort` tensor

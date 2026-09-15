@@ -11,6 +11,53 @@ Commit messages use the [Conventional Commits](https://www.conventionalcommits.o
 
 ## Unreleased
 
+- feat(stdlib): expose `hoo.ai` and `hoo.concurrency` event loop to Hoo source
+  - New free-function modules: `ai_abi_version`, `ai_last_status`,
+    `ai_has_feature`, `ai_dtype_supported` (`import hoo.ai;`) and
+    `event_loop_init` / `event_loop_run` / `event_loop_run_nowait` /
+    `event_loop_destroy` (`import hoo.concurrency;`), each with JIT wrappers,
+    `_F_M_hoo_E_*` contracts, import requirements, and offline CLI integration
+    tests (`tests/runtime/ai/`, `tests/runtime/concurrency/`).
+  - `hoo_event_loop.h` is not included by `HVMJIT.cpp` directly (libuv's
+    `uv.h` macros conflict with LLVM headers in that translation unit); the
+    four entry points are declared locally instead.
+
+- feat(overload): user overloads compile, link, and dispatch
+  - `OverloadList` declarations were registered for type inference but their
+    bodies were never emitted; they now compile per candidate so
+    `CALL_OVERLOADED` calls to user-defined overloads link at runtime.
+  - `Math` is now a builtin class in codegen: static calls `Math.abs/min/max/
+    sign` route through `CALL_OVERLOADED` with inferred argument type ids and
+    return types, resolved via the runtime overload registry contracts
+    (`hoo_math_*`, `hoo_string_from_*`, `hoo_regex_compile*`,
+    `hoo_buffer_new*`).
+  - `hoo_overload_init()` runs during JIT bootstrap (previously the registry was
+    never initialized in the runtime path, so registry-backed dispatch always
+    failed outside unit tests).
+  - `HooOverloadCliIntegrationTest` (6 tests) covers free-function overloads by
+    parameter type and arity, class method overloads, and Math registry
+    dispatch.
+
+- feat(net): wire the `Socket` class into codegen and add offline CLI tests
+  - `Socket` is a builtin class now (`hoo.net` import, `net_socket_` contracts
+    with receiver-inclusive instance-call aliases plus camel-case method
+    aliases); `HooSocketCliIntegrationTest` (7 tests) covers refused connect,
+    `lastError`, `setTimeout`, bind/listen with ephemeral loopback ports,
+    close, and receive/release safety. All offline (127.0.0.1:9 refusals).
+
+- feat(test): executable-target integration suites for hoo_decimal,
+  hoo_tensor, hoo_process, hoo_net, plus `hoo_ai` status-layer fixes
+  - New offline CLI suites: `HooDecimalCliIntegrationTest` (11),
+    `HooTensorCliIntegrationTest` (17), `HooProcessCliIntegrationTest` (8),
+    `HooNetCliIntegrationTest` (9 URL + HttpClient). Every runtime module now
+    has executable-target coverage under `tests/runtime/`.
+  - `hoo_ai`: thread-local error semantics, success-path contract, and
+    private-but-exported rules documented; `hoo_ai_clear_last_error` added;
+    feature strings and tensor dtype validation driven by one capability
+    table (`hoo_ai_dtype_supported`); dedicated `HooAiTest` unit suite with a
+    cross-check that `hoo_tensor_new_ex` accept/reject agrees with the
+    capability table.
+
 - chore(release): reset all component versions to **1.0.0** and harden GitFlow CI/CD
   - Project version reset to `1.0.0` in `CMakeLists.txt`, `README.md` badge, and
     `vcpkg.json`. The HVM specification is reset from 1.6 to **1.0.0** across

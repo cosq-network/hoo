@@ -25,9 +25,14 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
 5. **[Exceptions](exceptions.md)**
    * `HooException` type IDs, stack unwinding, and shadow stack management.
 6. **[Math](math.md)**
-   * Mathematical constants, functions, and the random number generator state.
+    * Mathematical constants, functions, and the random number generator state.
 7. **[Console I/O](io.md)**
-   * Console input/output (`print`, `readline`, `readchar`).
+    * Console input/output (`print`, `readline`, `readchar`).
+8. **[AI Status & Capabilities](../issues/ISSUE-026_native_ann_support.md)**
+    * `hoo.ai` — the versioned tensor ABI status layer surfaced as free functions
+      (`ai_abi_version`, `ai_last_status`, `ai_has_feature`, `ai_dtype_supported`).
+      Backed by `hoo_ai.h`; feature strings and tensor dtype validation share one
+      capability table so introspection cannot drift from runtime behavior.
 
 ### System & Platform
 7. **[File System](fs.md)**
@@ -70,27 +75,44 @@ Because the HVM v1.4 specification describes a pure physical hardware architectu
     * `hoo.net` — URL parsing (scheme, host, port, path, query, fragment), HTTP client (GET, POST, PUT, DELETE) via libcurl with custom headers, timeout, and redirect following.
 21. **[Threading](thread.md)**
     * `hoo.thread` — thread spawn/join/self via pthreads and Win32 threads, mutex create/lock/unlock/destroy for concurrent synchronization.
+22. **Global Event Loop**
+    * `hoo.concurrency` — libuv-backed global event loop helpers
+      (`event_loop_init`, `event_loop_run`, `event_loop_run_nowait`,
+      `event_loop_destroy`). All calls are mutator-free and safe to invoke
+      repeatedly; `run` on a destroyed loop is a safe no-op. The loop also
+      backs `hoo.concurrency` futures internally.
 
 ### JIT Bridge
-22. **[JIT Integration](jit-integration.md)**
+23. **[JIT Integration](jit-integration.md)**
     * System call mapping (`SYSCALL` 1-23) with platform-specific behavior, ARC optimization passes, host symbol bridging, and flexible symbol resolution (`buildLookupCandidates`).
-23. **[Name Mangling & Demangling](name-mangling.md)**
+24. **[Name Mangling & Demangling](name-mangling.md)**
     * Complete reference for the `_F_` (function) and `_H_` (header) symbol formats, type encoding, module path qualification, class member qualification, and JIT symbol resolution conventions.
-24. **[New Module Guide](new-module-guide.md)**
+25. **[New Module Guide](new-module-guide.md)**
     * Step-by-step walkthrough for wiring a new runtime library function through the codegen, JIT wrapper, and symbol table layers.
 
 ### Synchronization and Socket Extensions
 
 The native runtime ABI includes libuv-backed condition variables, semaphores,
-`hoo::thread::ScopedLock`, and TCP sockets. Socket sends consume borrowed
-`HooByteSlice` views; receives return owned `HooBuffer` handles. The socket
-layer supports DNS-aware connect, IPv4 bind/listen/accept, configurable
-timeouts, TLS client setup with optional peer verification, and TLS server
-configuration from PEM certificate/key files. Protocol-level async events
+`hoo::thread::ScopedLock`, and TCP sockets via the `Socket` class. Socket sends
+consume borrowed `HooByteSlice` views; receives return owned `HooBuffer`
+handles. The socket layer supports DNS-aware connect, IPv4 bind/listen/accept,
+configurable timeouts, TLS client setup with optional peer verification, and TLS
+server configuration from PEM certificate/key files. Protocol-level async events
 remain future work.
 
+### Overload dispatch registry
+
+Static calls on the `Math` built-in class (`Math.abs`, `Math.min`, `Math.max`,
+`Math.sign`) and user-defined free-function/method overloads compile to
+`CALL_OVERLOADED` with argument type ids, then resolve through the runtime
+overload registry (`src/runtime/lib/core/hoo_overload.cpp`, bootstrapped by
+`hoo_overload_init()` during JIT initialization). User-defined overloaded
+functions are emitted per candidate with the `name__<types>` mangling; the
+interpreter resolves them directly from module symbols and the JIT falls back to
+module-local functions when the registry has no entry.
+
 ## Integration & C-ABI
-The library exposes its JIT-facing API via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. Some modules (notably `hoo.fs`) additionally provide a C++ class API (`hoo::fs::File`, `hoo::fs::Directory`, `hoo::fs::Path`) as the primary interface, with `extern "C"` bridge functions delegating to the classes for JIT/FFI compatibility. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively. Each module has corresponding JIT wrapper functions in `src/hvm/HVMJIT.cpp` and a mangled symbol entry in `buildRuntimeSymbols()`. The code generator in `src/codegen/HVMCodeGenerator.cpp` resolves class-based method calls to the appropriate runtime module using a `classToPrefix()` mapping — for example, `Math` → `math_`, `String` → `string_`, `Array` → `array_`, `Map` → `map_`, `Csv` → `csv_`, `DateTime` → `datetime_`, `Hashing` → `hashing_`, `Compression` → `compression_`, `Path` → `path_`, `Thread` → `thread_`, `Regex` → `regex_`, `Encoding` → `encoding_`, `Uuid` → `uuid_`, `Fs` → `fs_`, `Character` → `character_`, `HttpClient` → `http_client_`, `HttpResponse` → `http_response_`, and `Url` → `url_`. Modules that are free-function-only (e.g. `System`, `Process`) technically carry an entry in the mapping (or resolve by exact name) but expose **no public class**, so only the `system_...`/`process_...` free functions are callable from Hoo. JSON free functions are resolved by exact function name instead of class mapping. The compiler then redirects the resolved call to the `hoo` module path. Instance method calls on `var` variables are resolved via type-ID inference, which now covers: primitive literals, constructor calls (`new Map(...)`, `new Array(...)`, `new Character(...)`), function return types (from `functionReturnTypes_` map), user-defined class method return types (from `ClassLayout::methodReturnTypes`), array subscript access (from `Local::elementTypeId`), and built-in method return types for `Args`, `Character`, and `Map`. Unresolved cases default to typeId 100 (Object) and dispatch via `methodNameToClass_`. The Map's C-ABI was redesigned from 70+ type-specific functions into 15 polymorphic functions with internal key/value type dispatch; JIT wrappers remain per-type for register extraction but delegate to the unified `hoo_map_set`/`hoo_map_try_get`/`hoo_map_contains_key`/etc. chain.
+The library exposes its JIT-facing API via `extern "C"` to guarantee ABI stability with the JIT's LLVM `ExecutionEngine`. Some modules (notably `hoo.fs`) additionally provide a C++ class API (`hoo::fs::File`, `hoo::fs::Directory`, `hoo::fs::Path`) as the primary interface, with `extern "C"` bridge functions delegating to the classes for JIT/FFI compatibility. The `HVMJIT` maps absolute host function pointers into the isolated `hoo` JITDylib so HVM code can resolve `CALL` targets natively. Each module has corresponding JIT wrapper functions in `src/hvm/HVMJIT.cpp` and a mangled symbol entry in `buildRuntimeSymbols()`. The code generator in `src/codegen/HVMCodeGenerator.cpp` resolves class-based method calls to the appropriate runtime module using a `classToPrefix()` mapping — for example, `Math` → `math_`, `String` → `string_`, `Array` → `array_`, `Map` → `map_`, `Csv` → `csv_`, `DateTime` → `datetime_`, `Hashing` → `hashing_`, `Compression` → `compression_`, `Path` → `path_`, `Thread` → `thread_`, `Regex` → `regex_`, `Encoding` → `encoding_`, `Uuid` → `uuid_`, `Fs` → `fs_`, `Character` → `character_`, `HttpClient` → `http_client_`, `HttpResponse` → `http_response_`, `Socket` → `net_socket_`, and `Url` → `url_`. Modules that are free-function-only (e.g. `System`, `Process`) technically carry an entry in the mapping (or resolve by exact name) but expose **no public class**, so only the `system_...`/`process_...` free functions are callable from Hoo. JSON free functions are resolved by exact function name instead of class mapping. The compiler then redirects the resolved call to the `hoo` module path. Instance method calls on `var` variables are resolved via type-ID inference, which now covers: primitive literals, constructor calls (`new Map(...)`, `new Array(...)`, `new Character(...)`), function return types (from `functionReturnTypes_` map), user-defined class method return types (from `ClassLayout::methodReturnTypes`), array subscript access (from `Local::elementTypeId`), and built-in method return types for `Args`, `Character`, and `Map`. Unresolved cases default to typeId 100 (Object) and dispatch via `methodNameToClass_`. The Map's C-ABI was redesigned from 70+ type-specific functions into 15 polymorphic functions with internal key/value type dispatch; JIT wrappers remain per-type for register extraction but delegate to the unified `hoo_map_set`/`hoo_map_try_get`/`hoo_map_contains_key`/etc. chain.
 
 ### Current Dispatch Safety
 

@@ -35,6 +35,16 @@ hoo_buffer_release(response);
 hoo_net_socket_release(socket);
 ```
 
+### Hoo source exposure
+
+The `Socket` class is callable from Hoo programs (`import hoo.net;`) with
+instance methods that map to the C-ABI above: `connect(host, port)`,
+`connectTls(...)`, `bind(host, port)`, `listen(backlog)`, `accept()`,
+`send(buffer)`, `receive(maxBytes)`, `setTimeout(ms)`, `lastError()`,
+`localPort()`, `close()`, `retain()`, and `release()`. Connect-style calls
+return a non-zero int64 status on failure (`-1`), and `lastError()` returns the
+per-socket diagnostic string.
+
 ## Class: Url
 
 ### Declaration

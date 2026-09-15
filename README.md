@@ -121,7 +121,7 @@ src/
   runtime/    The 'hoort' library (ARC, Strings, Buffer, Arrays, Maps, Tensors, Exceptions, IO).
   core/       Symbol Mangler, CLI logic, and IO providers.
   repl/       REPL session implementation and interactive driver loop.
-  tests/         Exhaustive unit and integration test suites (3,354 tests in the current preset run).
+   tests/         Exhaustive unit and integration test suites (3,535 tests in the current preset run).
 docs/         Normative specifications and implementation guides.
 ```
 
