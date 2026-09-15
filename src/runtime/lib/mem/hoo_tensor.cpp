@@ -70,11 +70,10 @@ static uint8_t* data(HooTensor tensor) {
 
 static bool valid_element_type(int64_t element_type) {
     /* Type ID 3 is retained for compatibility with existing opaque/bool
-       tensor callers even though it is not an ANN training dtype. */
-    return element_type == 3 || element_type == TENSOR_ELEMENT_BIT || element_type == TENSOR_ELEMENT_F8 ||
-           element_type == TENSOR_ELEMENT_F64 || element_type == TENSOR_ELEMENT_INT8 ||
-           element_type == TENSOR_ELEMENT_BYTE || element_type == TENSOR_ELEMENT_INT64 ||
-           element_type == TENSOR_ELEMENT_F32 || element_type == TENSOR_ELEMENT_INT32;
+       tensor callers even though it is not an ANN training dtype. The
+       ANN dtype set is owned by the hoo_ai capability table so feature
+       introspection and validation cannot drift apart. */
+    return element_type == 3 || hoo_ai_dtype_supported(element_type);
 }
 
 static int64_t element_bytes(int64_t element_type) {
@@ -462,7 +461,7 @@ HooStatus hoo_tensor_new_ex(int64_t element_type, int64_t rank,
         return HOO_STATUS_OUT_OF_MEMORY;
     }
     (void)length;
-    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    hoo_ai_clear_last_error();
     return HOO_STATUS_OK;
 }
 
@@ -479,7 +478,7 @@ HooStatus hoo_tensor_shape(HooTensor tensor, int64_t capacity,
         return HOO_STATUS_OUT_OF_BOUNDS;
     }
     std::memcpy(dims, h->dims, static_cast<size_t>(h->rank) * sizeof(int64_t));
-    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    hoo_ai_clear_last_error();
     return HOO_STATUS_OK;
 }
 
@@ -496,7 +495,7 @@ HooStatus hoo_tensor_strides(HooTensor tensor, int64_t capacity,
         return HOO_STATUS_OUT_OF_BOUNDS;
     }
     std::memcpy(strides, h->strides, static_cast<size_t>(h->rank) * sizeof(int64_t));
-    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    hoo_ai_clear_last_error();
     return HOO_STATUS_OK;
 }
 
@@ -507,7 +506,7 @@ HooStatus hoo_tensor_numel(HooTensor tensor, int64_t* out_numel) {
         return HOO_STATUS_INVALID_ARGUMENT;
     }
     *out_numel = h->length;
-    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    hoo_ai_clear_last_error();
     return HOO_STATUS_OK;
 }
 
@@ -518,7 +517,7 @@ HooStatus hoo_tensor_abi_version(HooTensor tensor, int32_t* out_version) {
         return HOO_STATUS_INVALID_ARGUMENT;
     }
     *out_version = static_cast<int32_t>(h->abi_version);
-    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    hoo_ai_clear_last_error();
     return HOO_STATUS_OK;
 }
 
@@ -534,7 +533,7 @@ HooStatus hoo_tensor_copy(HooTensor tensor, HooTensor* out) {
     if (status != HOO_STATUS_OK) return status;
     std::memcpy(data(result), data(tensor), static_cast<size_t>(h->storage_bytes));
     *out = result;
-    hoo_ai_set_last_error(HOO_STATUS_OK, "");
+    hoo_ai_clear_last_error();
     return HOO_STATUS_OK;
 }
 

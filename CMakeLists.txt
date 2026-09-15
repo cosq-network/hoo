@@ -680,6 +680,11 @@ if(HOO_BUILD_TESTS)
         tests/runtime/path/HooPathCliIntegrationTest.cpp
         tests/runtime/dict/HooDictCliIntegrationTest.cpp
         tests/runtime/list/HooListCliIntegrationTest.cpp
+        tests/runtime/decimal/HooDecimalCliIntegrationTest.cpp
+        tests/runtime/tensor/HooTensorCliIntegrationTest.cpp
+        tests/runtime/process/HooProcessCliIntegrationTest.cpp
+        tests/runtime/net/HooNetCliIntegrationTest.cpp
+        tests/runtime/HooAiTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp
         tests/hvm/HOModuleTest.cpp
