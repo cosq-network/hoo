@@ -5533,6 +5533,27 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_http_client_release_v", reinterpret_cast<void*>(&jit_net_http_client_release)},
         // Net module socket free functions
         {"_F_M_hoo_E_net_socket_new_p", reinterpret_cast<void*>(&jit_net_socket_new)},
+        {"_F_M_hoo_E_net_socket_new_v", reinterpret_cast<void*>(&jit_net_socket_new)},
+        /* Instance-call shapes: the class.method dispatcher moves the receiver
+           into regs[1] and does not count it as a call parameter, so these
+           aliases carry one fewer parameter slot than the receiver-inclusive
+           contract names above. */
+        {"_F_M_hoo_E_net_socket_bind_p_p_p", reinterpret_cast<void*>(&jit_net_socket_bind)},
+        {"_F_M_hoo_E_net_socket_listen_p_p", reinterpret_cast<void*>(&jit_net_socket_listen)},
+        {"_F_M_hoo_E_net_socket_connect_p_p_p", reinterpret_cast<void*>(&jit_net_socket_connect)},
+        {"_F_M_hoo_E_net_socket_set_timeout_p_p", reinterpret_cast<void*>(&jit_net_socket_set_timeout)},
+        {"_F_M_hoo_E_net_socket_setTimeout_p_p", reinterpret_cast<void*>(&jit_net_socket_set_timeout)},
+        {"_F_M_hoo_E_net_socket_accept_p", reinterpret_cast<void*>(&jit_net_socket_accept)},
+        {"_F_M_hoo_E_net_socket_send_p_p", reinterpret_cast<void*>(&jit_net_socket_send)},
+        {"_F_M_hoo_E_net_socket_receive_p_p", reinterpret_cast<void*>(&jit_net_socket_receive)},
+        {"_F_M_hoo_E_net_socket_last_error_p", reinterpret_cast<void*>(&jit_net_socket_last_error)},
+        {"_F_M_hoo_E_net_socket_lastError_p", reinterpret_cast<void*>(&jit_net_socket_last_error)},
+        {"_F_M_hoo_E_net_socket_local_port_p", reinterpret_cast<void*>(&jit_net_socket_local_port)},
+        {"_F_M_hoo_E_net_socket_localPort_p", reinterpret_cast<void*>(&jit_net_socket_local_port)},
+        {"_F_M_hoo_E_net_socket_close_p", reinterpret_cast<void*>(&jit_net_socket_close)},
+        {"_F_M_hoo_E_net_socket_retain_p", reinterpret_cast<void*>(&jit_net_socket_retain)},
+        {"_F_M_hoo_E_net_socket_release_v", reinterpret_cast<void*>(&jit_net_socket_release)},
+        {"_F_M_hoo_E_net_socket_new_v", reinterpret_cast<void*>(&jit_net_socket_new)},
         {"_F_M_hoo_E_net_socket_bind_p_p_p_p", reinterpret_cast<void*>(&jit_net_socket_bind)},
         {"_F_M_hoo_E_net_socket_listen_p_p_p", reinterpret_cast<void*>(&jit_net_socket_listen)},
         {"_F_M_hoo_E_net_socket_connect_p_p_p_p", reinterpret_cast<void*>(&jit_net_socket_connect)},
@@ -5543,7 +5564,10 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_net_socket_send_p_p_p", reinterpret_cast<void*>(&jit_net_socket_send)},
         {"_F_M_hoo_E_net_socket_receive_p_p_p", reinterpret_cast<void*>(&jit_net_socket_receive)},
         {"_F_M_hoo_E_net_socket_last_error_p_p", reinterpret_cast<void*>(&jit_net_socket_last_error)},
+        {"_F_M_hoo_E_net_socket_lastError_p_p", reinterpret_cast<void*>(&jit_net_socket_last_error)},
         {"_F_M_hoo_E_net_socket_local_port_p_p", reinterpret_cast<void*>(&jit_net_socket_local_port)},
+        {"_F_M_hoo_E_net_socket_localPort_p_p", reinterpret_cast<void*>(&jit_net_socket_local_port)},
+        {"_F_M_hoo_E_net_socket_setTimeout_p_p_p", reinterpret_cast<void*>(&jit_net_socket_set_timeout)},
         {"_F_M_hoo_E_net_socket_close_p_p", reinterpret_cast<void*>(&jit_net_socket_close)},
         {"_F_M_hoo_E_net_socket_retain_p_p", reinterpret_cast<void*>(&jit_net_socket_retain)},
         {"_F_M_hoo_E_net_socket_release_p_p", reinterpret_cast<void*>(&jit_net_socket_release)},

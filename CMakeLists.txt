@@ -684,6 +684,7 @@ if(HOO_BUILD_TESTS)
         tests/runtime/tensor/HooTensorCliIntegrationTest.cpp
         tests/runtime/process/HooProcessCliIntegrationTest.cpp
         tests/runtime/net/HooNetCliIntegrationTest.cpp
+        tests/runtime/net/HooSocketCliIntegrationTest.cpp
         tests/runtime/HooAiTest.cpp
         tests/core/SymbolManglerTest.cpp
         tests/hvm/HVMInstructionTest.cpp

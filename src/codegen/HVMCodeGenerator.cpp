@@ -123,6 +123,7 @@ static std::string classToPrefix(const std::string& className) {
         {"URL", "net_url"},
         {"HttpClient", "net_http_client"},
         {"HttpResponse", "net_http_response"},
+        {"Socket", "net_socket"},
         {"Thread", "thread"},
         {"Condition", "thread_condition"},
         {"Semaphore", "thread_semaphore"},
@@ -154,6 +155,13 @@ static std::string prefixMethodReturnType(const std::string& prefix, const std::
         if (methodName == "isNil" || methodName == "equals" || methodName == "compare") return "int64";
         if (methodName == "toBytes") return "ptr";
         if (methodName == "release") return "void";
+    }
+    if (prefix == "net_socket") {
+        /* Contract suffixes in the JIT table declare a ptr return for every
+           socket call except release; values are checked as int64 by the
+           caller where applicable. */
+        if (methodName == "release" || methodName == "release_fixed") return "void";
+        return "ptr";
     }
     return "void";
 }
@@ -707,7 +715,8 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name == "Fs") return "hoo.io";
     if (name == "System") return "hoo.system";
     if (name == "Regex") return "hoo.regex";
-    if (name == "Net" || name == "URL" || name == "HttpClient" || name == "HttpResponse") return "hoo.net";
+    if (name == "Net" || name == "URL" || name == "HttpClient" || name == "HttpResponse" ||
+        name == "Socket") return "hoo.net";
     if (name == "Mutex") return "hoo.thread";
     if (name == "Condition" || name == "Semaphore") return "hoo.thread";
     if (name == "Path") return "hoo.path";
@@ -3407,6 +3416,7 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                     case HOO_TYPE_NET_URL: resolvedClass = "URL"; break;
                     case HOO_TYPE_NET_HTTP_CLI: resolvedClass = "HttpClient"; break;
                     case HOO_TYPE_NET_HTTP_RES: resolvedClass = "HttpResponse"; break;
+                    case HOO_TYPE_NET_SOCKET: resolvedClass = "Socket"; break;
                     case HOO_TYPE_RANDOM: resolvedClass = "Random"; break;
                     case HOO_TYPE_DICT: resolvedClass = "Dict"; break;
                     case HOO_TYPE_LIST: resolvedClass = "List"; break;
@@ -4927,7 +4937,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
     static const std::unordered_set<std::string> builtinClasses = {
         "String", "Array", "Map", "Exception", "Character",
         "DateTime", "Fs", "Thread", "Regex",
-        "Net", "URL", "HttpClient", "HttpResponse",
+        "Net", "URL", "HttpClient", "HttpResponse", "Socket",
         "Path", "Uuid", "Compression",
         "Args", "Csv", "Console", "StringBuilder",
         "Buffer", "Random", "Dict", "List",
