@@ -1034,6 +1034,12 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
     for (const auto& decl : compilationUnit.getDeclarations()) {
         if (auto funcDecl = dynamic_cast<const ast::FunctionDeclaration*>(decl.get())) {
             visitFunction(*funcDecl);
+        } else if (auto overList = dynamic_cast<const ast::OverloadList*>(decl.get())) {
+            // Emit each overload candidate; the call site resolves the
+            // specific mangled candidate by name (CALL_OVERLOADED).
+            for (const auto& funcDecl : overList->getFunctions()) {
+                if (funcDecl) visitFunction(*funcDecl);
+            }
         } else if (auto varDecl = dynamic_cast<const ast::VariableDeclaration*>(decl.get())) {
             // Allocate space for global variable
             uint32_t dataOffset = 0;
@@ -1261,6 +1267,10 @@ std::unique_ptr<GeneratedModule> HVMCodeGenerator::generateModule(const ast::Com
                 if (auto declMember = member->getDeclaration()) {
                     if (auto fn = dynamic_cast<const ast::FunctionDeclaration*>(declMember)) {
                         visitMethod(*fn);
+                    } else if (auto overList = dynamic_cast<const ast::OverloadList*>(declMember)) {
+                        for (const auto& fn : overList->getFunctions()) {
+                            if (fn) visitMethod(*fn);
+                        }
                     }
                 } else if (auto ctor = member->getConstructor()) {
                     if (ctor->isFactory()) {
@@ -3650,6 +3660,38 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
             mp.isOverload = isOverloadedMethod_[resolvedClass][methodName];
 
             if (!resolvedClass.empty() && isBuiltinClassName(resolvedClass)) {
+                /* Runtime overload-registry static methods (Math.abs(int64)
+                   versus Math.abs(double) etc.). The registry stores bare
+                   "<Class>_<method>"-style candidates; the mangled call
+                   carries the argument type ids so CALL_OVERLOADED can
+                   resolve the concrete implementation. */
+                if (isStaticCall && resolvedClass == "Math" &&
+                    (methodName == "abs" || methodName == "min" ||
+                     methodName == "max" || methodName == "sign")) {
+                    MangledFunctionParams omp;
+                    omp.className = resolvedClass;
+                    omp.functionName = methodName;
+                    omp.isOverload = true;
+                    omp.returnType = "ptr";
+                    std::vector<uint8_t> argRegs;
+                    if (funcCall->getArguments()) {
+                        auto& args = funcCall->getArguments()->getArguments();
+                        for (size_t i = 0; i < args.size() && i < 7; ++i) {
+                            argRegs.push_back(visitExpression(*args[i]));
+                            const auto argInfo = inferExpressionTypeInfo(*args[i]);
+                            omp.parameterTypes.push_back(mangleTypeId(argInfo.typeId, argInfo.isNullable));
+                        }
+                        for (size_t i = 0; i < argRegs.size(); ++i) {
+                            emit(Opcode::MOV, OperandsR{argReg(1, i), argRegs[i], 0, 0});
+                            freeRegister(argRegs[i]);
+                        }
+                    }
+                    std::string mangledName = SymbolMangler::mangleFunctionName(omp);
+                    emitCall(Opcode::CALL_OVERLOADED, mangledName);
+                    uint8_t dest = allocateRegister();
+                    emit(Opcode::MOV, OperandsR{dest, 1, 0, 0});
+                    return dest;
+                }
                 if (isClassMethodJitClass(resolvedClass)) {
                     mp.className = resolvedClass;
                     mp.isStatic = isStaticCall;
@@ -4937,7 +4979,7 @@ bool HVMCodeGenerator::isBuiltinClassName(const std::string& name) const {
     static const std::unordered_set<std::string> builtinClasses = {
         "String", "Array", "Map", "Exception", "Character",
         "DateTime", "Fs", "Thread", "Regex",
-        "Net", "URL", "HttpClient", "HttpResponse", "Socket",
+        "Net", "URL", "HttpClient", "HttpResponse", "Socket", "Math",
         "Path", "Uuid", "Compression",
         "Args", "Csv", "Console", "StringBuilder",
         "Buffer", "Random", "Dict", "List",
@@ -5941,6 +5983,15 @@ HVMCodeGenerator::ExpressionTypeInfo HVMCodeGenerator::inferExpressionTypeInfo(c
                 if (className.empty() && classes_.count(objectId->getName()) &&
                     classes_.at(objectId->getName()).isSerializable) {
                     className = objectId->getName();
+                }
+            }
+            if (className == "Math" && !argumentTypeIds.empty()) {
+                const std::string& mathMethod = memberAccess->getMember();
+                if (mathMethod == "abs" || mathMethod == "min" ||
+                    mathMethod == "max" || mathMethod == "sign") {
+                    result.typeId = mathFreeFunctionReturnTypeId("math_" + mathMethod, argumentTypeIds);
+                    result.className = "Math";
+                    return result;
                 }
             }
 

@@ -27,6 +27,7 @@
 #include "runtime/lib/mem/hoo_list.h"
 #include "runtime/lib/mem/hoo_dict.h"
 #include "runtime/lib/core/hoo_exception.h"
+#include "runtime/lib/core/hoo_overload.h"
 #include "runtime/lib/concurrency/hoo_future.h"
 #include "runtime/lib/data/hoo_math.h"
 #include "runtime/lib/system/hoo_fs.h"
@@ -5093,6 +5094,26 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_math_min_v_p_p", reinterpret_cast<void*>(&jit_math_min_int64)},
         {"_F_M_hoo_E_math_max_v_p_p", reinterpret_cast<void*>(&jit_math_max_int64)},
         {"_F_M_hoo_E_math_sign_v_p", reinterpret_cast<void*>(&jit_math_sign_int64)},
+        // Runtime overload-registry resolved implementation names
+        // (src/runtime/lib/core/hoo_overload.cpp "resolvedSymbol" strings).
+        {"hoo_math_abs_int64", reinterpret_cast<void*>(&jit_math_abs_int64)},
+        {"hoo_math_abs_int8", reinterpret_cast<void*>(&jit_math_abs_int8)},
+        {"hoo_math_abs_byte", reinterpret_cast<void*>(&jit_math_abs_byte)},
+        {"hoo_math_abs_double", reinterpret_cast<void*>(&jit_math_abs_double)},
+        {"hoo_math_min_int64", reinterpret_cast<void*>(&jit_math_min_int64)},
+        {"hoo_math_min_double", reinterpret_cast<void*>(&jit_math_min_double)},
+        {"hoo_math_max_int64", reinterpret_cast<void*>(&jit_math_max_int64)},
+        {"hoo_math_max_double", reinterpret_cast<void*>(&jit_math_max_double)},
+        {"hoo_math_sign_int64", reinterpret_cast<void*>(&jit_math_sign_int64)},
+        {"hoo_math_sign_double", reinterpret_cast<void*>(&jit_math_sign_double)},
+        {"hoo_string_from_int64", reinterpret_cast<void*>(&jit_hoo_string_from_int64)},
+        {"hoo_string_from_double", reinterpret_cast<void*>(&jit_hoo_string_from_double)},
+        {"hoo_string_from_bool", reinterpret_cast<void*>(&jit_hoo_string_from_bool)},
+        {"hoo_string_from_any", reinterpret_cast<void*>(&jit_hoo_string_from_any)},
+        {"hoo_regex_compile", reinterpret_cast<void*>(&jit_regex_compile)},
+        {"hoo_regex_compile_with_flags", reinterpret_cast<void*>(&jit_regex_compile_with_flags)},
+        {"hoo_buffer_new_empty", reinterpret_cast<void*>(&jit_hoo_buffer_new)},
+        {"hoo_buffer_new", reinterpret_cast<void*>(&jit_hoo_buffer_new_capacity)},
         // Math functions (singleton class mangled names)
         // Math functions (free function snake_case names)
         {"_F_M_hoo_E_math_abs_i8_p", reinterpret_cast<void*>(&jit_math_abs_int64)},
@@ -6370,6 +6391,10 @@ bool HVMJIT::bootstrapRuntimeModules() {
                  "Mandatory runtime intrinsic symbols are unavailable");
         return false;
     }
+
+    /* The runtime overload registry backs CALL_OVERLOADED dispatch for both
+       the built-in Math/String/Regex/Buffer sets and user-defined overloads. */
+    hoo_overload_init();
 
     auto runtime = hvm::StaticHOModule::create("hoo");
     runtime->registerFunction("alloc", reinterpret_cast<void*>(&hoo_alloc), "_F_hoo_alloc_p_i8_i8");
