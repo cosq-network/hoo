@@ -27,7 +27,17 @@
 #include "runtime/lib/mem/hoo_list.h"
 #include "runtime/lib/mem/hoo_dict.h"
 #include "runtime/lib/core/hoo_exception.h"
+#include "runtime/lib/core/hoo_ai.h"
 #include "runtime/lib/core/hoo_overload.h"
+
+/* hoo_event_loop.h pulls in libuv's uv.h, whose macros clash with LLVM
+   headers in this translation unit; declare the four entry points here. */
+extern "C" {
+void hoo_event_loop_init(void);
+void hoo_event_loop_run(void);
+void hoo_event_loop_run_nowait(void);
+void hoo_event_loop_destroy(void);
+}
 #include "runtime/lib/concurrency/hoo_future.h"
 #include "runtime/lib/data/hoo_math.h"
 #include "runtime/lib/system/hoo_fs.h"
@@ -762,6 +772,38 @@ extern "C" {
     uint64_t jit_hoo_string_from_bool(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
         return static_cast<uint64_t>(reinterpret_cast<uintptr_t>(hoo_string_from_bool(state->regs[1])));
+    }
+    // ── AI status/capability layer (hoo.ai) ────────────────────────────────
+    uint64_t jit_ai_abi_version(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_ai_abi_version());
+    }
+    uint64_t jit_ai_last_status(void* /*state_ptr*/) {
+        return static_cast<uint64_t>(hoo_ai_last_status());
+    }
+    uint64_t jit_ai_has_feature(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_ai_has_feature(hoo_string_data(reinterpret_cast<void*>(state->regs[1]))));
+    }
+    uint64_t jit_ai_dtype_supported(void* state_ptr) {
+        auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
+        return static_cast<uint64_t>(hoo_ai_dtype_supported(static_cast<int64_t>(state->regs[1])));
+    }
+    // ── Global event loop (hoo.concurrency) ───────────────────────────────
+    uint64_t jit_event_loop_init(void* /*state_ptr*/) {
+        hoo_event_loop_init();
+        return 0;
+    }
+    uint64_t jit_event_loop_run(void* /*state_ptr*/) {
+        hoo_event_loop_run();
+        return 0;
+    }
+    uint64_t jit_event_loop_run_nowait(void* /*state_ptr*/) {
+        hoo_event_loop_run_nowait();
+        return 0;
+    }
+    uint64_t jit_event_loop_destroy(void* /*state_ptr*/) {
+        hoo_event_loop_destroy();
+        return 0;
     }
     uint64_t jit_hoo_character_from_utf8(void* state_ptr) {
         auto* state = reinterpret_cast<HVMJIT::HVMState*>(state_ptr);
@@ -5311,6 +5353,18 @@ const std::vector<RuntimeSymbolContract>& buildRuntimeSymbols() {
         {"_F_M_hoo_E_thread_spawn_p_p_p", reinterpret_cast<void*>(&jit_thread_spawn)},
         {"_F_M_hoo_E_thread_join_p_p", reinterpret_cast<void*>(&jit_thread_join)},
         {"_F_M_hoo_E_thread_self_p", reinterpret_cast<void*>(&jit_thread_self)},
+
+        // Global event loop (hoo.concurrency free functions)
+        {"_F_M_hoo_E_event_loop_init_v", reinterpret_cast<void*>(&jit_event_loop_init)},
+        {"_F_M_hoo_E_event_loop_run_v", reinterpret_cast<void*>(&jit_event_loop_run)},
+        {"_F_M_hoo_E_event_loop_run_nowait_v", reinterpret_cast<void*>(&jit_event_loop_run_nowait)},
+        {"_F_M_hoo_E_event_loop_destroy_v", reinterpret_cast<void*>(&jit_event_loop_destroy)},
+
+        // AI status/capability layer (hoo.ai free functions)
+        {"_F_M_hoo_E_ai_abi_version_i8", reinterpret_cast<void*>(&jit_ai_abi_version)},
+        {"_F_M_hoo_E_ai_last_status_i8", reinterpret_cast<void*>(&jit_ai_last_status)},
+        {"_F_M_hoo_E_ai_has_feature_i8_p", reinterpret_cast<void*>(&jit_ai_has_feature)},
+        {"_F_M_hoo_E_ai_dtype_supported_i8_p", reinterpret_cast<void*>(&jit_ai_dtype_supported)},
 
         // Mutex class/instance methods
         {"_F_M_hoo_E_thread_mutex_new_v", reinterpret_cast<void*>(&jit_thread_mutex_new)},

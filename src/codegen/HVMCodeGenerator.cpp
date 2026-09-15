@@ -411,6 +411,31 @@ static bool isThreadFreeFunction(const std::string& functionName) {
     return names.count(functionName) > 0;
 }
 
+static bool isEventLoopFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "event_loop_init", "event_loop_run", "event_loop_run_nowait", "event_loop_destroy"
+    };
+    return names.count(functionName) > 0;
+}
+
+static bool isAiFreeFunction(const std::string& functionName) {
+    static const std::unordered_set<std::string> names = {
+        "ai_abi_version", "ai_last_status", "ai_has_feature", "ai_dtype_supported"
+    };
+    return names.count(functionName) > 0;
+}
+
+static uint32_t eventLoopFreeFunctionReturnTypeId(const std::string& functionName) {
+    (void)functionName;
+    return HOO_TYPE_VOID;
+}
+
+static uint32_t aiFreeFunctionReturnTypeId(const std::string& functionName) {
+    /* All hoo.ai free functions report int64 statuses/flags. */
+    (void)functionName;
+    return HOO_TYPE_INT64;
+}
+
 static uint32_t threadFreeFunctionReturnTypeId(const std::string& functionName) {
     return HOO_TYPE_INT64; // int64
 }
@@ -518,7 +543,8 @@ static bool isHooModuleFreeFunction(const std::string& functionName) {
             isUuidFreeFunction(functionName) || isCharacterFreeFunction(functionName) ||
             isCompressionFreeFunction(functionName) ||
             isPathFreeFunction(functionName) || isArgsFreeFunction(functionName) ||
-           isStringFreeFunction(functionName) || isNetFreeFunction(functionName);
+           isStringFreeFunction(functionName) || isNetFreeFunction(functionName) ||
+            isEventLoopFreeFunction(functionName) || isAiFreeFunction(functionName);
 }
 
 static uint32_t datetimeFreeFunctionReturnTypeId(const std::string& functionName) {
@@ -617,6 +643,8 @@ static uint32_t hooModuleFreeFunctionReturnTypeId(const std::string& functionNam
     if (isProcessFreeFunction(functionName)) return processFreeFunctionReturnTypeId(functionName);
     if (isRegexFreeFunction(functionName)) return regexFreeFunctionReturnTypeId(functionName);
     if (isThreadFreeFunction(functionName)) return threadFreeFunctionReturnTypeId(functionName);
+    if (isEventLoopFreeFunction(functionName)) return eventLoopFreeFunctionReturnTypeId(functionName);
+    if (isAiFreeFunction(functionName)) return aiFreeFunctionReturnTypeId(functionName);
     if (isUuidFreeFunction(functionName)) return uuidFreeFunctionReturnTypeId(functionName);
     if (isCharacterFreeFunction(functionName)) return characterFreeFunctionReturnTypeId(functionName);
     if (isCompressionFreeFunction(functionName)) return compressionFreeFunctionReturnTypeId(functionName);
@@ -751,6 +779,8 @@ std::string HVMCodeGenerator::getRequiredModule(const std::string& name) const {
     if (name.rfind("character_", 0) == 0) return "hoo.character";
     if (name.rfind("system_", 0) == 0) return "hoo.system";
     if (name.rfind("regex_", 0) == 0) return "hoo.regex";
+    if (name.rfind("event_loop_", 0) == 0) return "hoo.concurrency";
+    if (name.rfind("ai_", 0) == 0) return "hoo.ai";
     if (name.rfind("string_", 0) == 0) return "hoo";
 
     return "";
@@ -3868,7 +3898,11 @@ uint8_t HVMCodeGenerator::visitExpression(const ast::Expression& expr) {
                 
                 auto retIt = functionReturnTypes_.find(functionName);
                 if (isHooModuleFreeFunction(functionName)) {
-                    if (isMathFreeFunction(functionName)) {
+                    if (isEventLoopFreeFunction(functionName)) {
+                        mp.returnType = "void";
+                    } else if (isAiFreeFunction(functionName)) {
+                        mp.returnType = "int64";
+                    } else if (isMathFreeFunction(functionName)) {
                         std::vector<uint32_t> argTypeIds;
                         if (funcCall->getArguments()) {
                             for (const auto& arg : funcCall->getArguments()->getArguments()) {
