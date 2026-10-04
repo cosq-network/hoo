@@ -450,7 +450,8 @@ static bool isUuidFreeFunction(const std::string& functionName) {
 static uint32_t uuidFreeFunctionReturnTypeId(const std::string& functionName) {
     if (functionName == "uuid_from_bytes") return HOO_TYPE_UUID; // Uuid
     if (functionName == "uuid_to_bytes") return HOO_TYPE_BUFFER; // Buffer
-    if (functionName == "uuid_v4" || functionName == "uuid_nil" || functionName == "uuid_to_string") return HOO_TYPE_STRING; // string
+    if (functionName == "uuid_v4" || functionName == "uuid_nil") return HOO_TYPE_UUID; // Uuid
+    if (functionName == "uuid_to_string") return HOO_TYPE_STRING; // string
     return HOO_TYPE_INT64; // int64
 }
 
