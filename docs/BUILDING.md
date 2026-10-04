@@ -2,6 +2,8 @@
 
 This document describes how to configure, build, and test the Hoo compiler ecosystem on macOS, Linux, and Windows.
 
+> **Note:** This document reflects the actual build configuration in CMakeLists.txt. For the full project architecture, see [PROJECT_UNDERSTANDING.md](PROJECT_UNDERSTANDING.md). For development/debugging setup, see [debugging-hoo.md](debugging-hoo.md).
+
 ---
 
 ## 1. Prerequisites & Dependencies
