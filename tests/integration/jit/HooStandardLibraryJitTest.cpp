@@ -139,7 +139,9 @@ TEST_F(HooStandardLibraryJitTest, UuidFree) {
     const std::string source = R"(
         import hoo.uuid;
         func:int64 test() {
-            var str = uuid_v4();
+            var id = uuid_v4();
+            var str = id.toString();
+            id.release();
             return str.length();
         }
     )";
